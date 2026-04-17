@@ -72,10 +72,10 @@
   3. `curl https://<ai-writer-domain>/api/health` returns 200
   4. `docker compose -f docker-compose.vps.yml ps` shows all services as healthy
 **Plans**: 4 plans
-  - [ ] 04-01-PLAN.md — Add /healthz route to open-seo-main for container healthcheck (Wave 1)
-  - [ ] 04-02-PLAN.md — Multi-stage Dockerfile.vps for open-seo with worker variant support (Wave 1)
-  - [ ] 04-03-PLAN.md — Supporting infra config files: postgres init SQL, nginx reverse proxy, redis config (Wave 1)
-  - [ ] 04-04-PLAN.md — Unified docker-compose.vps.yml wiring all 7 services with healthchecks + end-to-end smoke verification (Wave 2, checkpoint)
+  - [x] 04-01-PLAN.md — Add /healthz route to open-seo-main for container healthcheck (Wave 1)
+  - [x] 04-02-PLAN.md — Multi-stage Dockerfile.vps for open-seo with worker variant support (Wave 1)
+  - [x] 04-03-PLAN.md — Supporting infra config files: postgres init SQL, nginx reverse proxy, redis config (Wave 1)
+  - [x] 04-04-PLAN.md — Unified docker-compose.vps.yml wiring all 7 services with healthchecks + end-to-end smoke verification (Wave 2, checkpoint)
 
 ---
 
