@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-status: Scoped — ready to plan Phase 08
-last_updated: "2026-04-17T21:00:00.000Z"
-last_activity: 2026-04-17
+status: In progress — Phase 08 plan 02 complete
+last_updated: "2026-04-18T00:28:44Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 14
   completed_phases: 7
-  total_plans: 28
-  completed_plans: 28
+  total_plans: 30
+  completed_plans: 30
   percent: 50
 ---
 
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** One Next.js app at app.tevero.lt. Single Clerk login. AI-Writer content tools + SEO tools as first-class routes. Per-client GSC/GA4 credentials via magic-link invites. Nightly analytics sync across 100 clients.
 
-**Current focus:** v2.0 scoped — Phase 08 next (Next.js unified shell)
+**Current focus:** Phase 08 in progress — plan 02 complete (Clerk auth wired)
 
 ## Current Position
 
-Phase: 08 (not yet started)
-Plan: Not started
-Status: Scoped — ready to plan Phase 08
-Last activity: 2026-04-17
+Phase: 08
+Plan: 02 complete, 03 next
+Status: In progress — Phase 08
+Last activity: 2026-04-18
 
 ## Completed Phases (v1.0)
 
@@ -65,6 +65,19 @@ Last activity: 2026-04-17
 | apps/web (Next.js) | 🔲 Not yet created | Phase 08 scaffolds this |
 | packages/ui (shared components) | 🔲 Not yet created | Phase 09 extracts this |
 
+## Decisions
+
+- React 19.0.0 used (Next.js 15 default; no peer issues encountered) — [08-01]
+- Tailwind v4 pinned at 4.1.17 (not 4.0.0 per plan — @tailwindcss/postcss 4.0.0 incompatible with Next.js 15.1.6) — [08-01]
+- globals.css uses oklch() color space (Tailwind v4 native; replaces hsl() vars from CRA) — [08-01]
+- packages/ui and packages/types tsconfig.json uses standalone compilerOptions (not extending apps/web) to avoid circular reference during bootstrap — [08-01]
+- standalone output lives at .next/standalone/apps/web/server.js (monorepo path, normal for pnpm workspaces) — [08-01]
+- Public route allowlist pattern: protect everything, explicitly exempt /sign-in(.*), /sign-up(.*), /connect/(.*), /api/health — [08-02]
+- force-dynamic on root page.tsx to prevent build-time Clerk key validation error during static prerender — [08-02]
+- typedRoutes moved from experimental to top-level (Next.js 15.5 promotes it) — [08-02]
+- Valid-format placeholder key pk_test_Y2xlcmsuZXhhbXBsZS5jb20k used in .env.local so build succeeds without real keys — [08-02]
+- Smoke test gracefully skips with exit 0 when only placeholder Clerk keys present (Clerk validates sk at runtime for all routes) — [08-02]
+
 ## Next Up
 
-Phase 08: Next.js Unified Shell — scaffold apps/web with Next.js 15 App Router + @clerk/nextjs, port all AI-Writer routes, retire CRA frontend, update docker-compose + nginx
+Phase 08: Next.js Unified Shell — plan 03 next (client list + layout scaffold)
