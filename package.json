@@ -1,0 +1,13 @@
+{
+  "name": "teveroseo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.26.0",
+  "engines": { "node": ">=20.11.0" },
+  "scripts": {
+    "build": "pnpm -r --filter ./apps/web build",
+    "dev": "pnpm --filter @tevero/web dev",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}
