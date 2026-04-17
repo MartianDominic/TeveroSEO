@@ -106,6 +106,27 @@ services:
     networks:
       - teveroseo-net
 
+  # ===== MIGRATIONS (one-shot, behind `migrate` profile — CI-02) =====
+  # Invoked by CI as:
+  #   docker compose -f docker-compose.vps.yml --profile migrate run --rm open-seo-migrate
+  # This service is NOT started by a plain `docker compose up` because of the `profiles` key.
+
+  open-seo-migrate:
+    image: teveroseo/open-seo:latest
+    # Reuses the image built by the `open-seo` service. If CI runs `up -d --build open-seo`
+    # before `run --rm open-seo-migrate`, the fresh image is already tagged and ready.
+    profiles: ["migrate"]
+    restart: "no"
+    command: ["node", ".output/migrate-entry.mjs"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - teveroseo-net
+
   # ===== AI-WRITER =====
 
   ai-writer-backend:
