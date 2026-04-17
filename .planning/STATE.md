@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-04-17T21:35:00Z"
+last_updated: "2026-04-17T22:09:31.802Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 14
-  completed_phases: 7
-  total_plans: 34
-  completed_plans: 33
-  percent: 97
+  completed_phases: 8
+  total_plans: 37
+  completed_plans: 35
+  percent: 95
 ---
 
 # Project State
@@ -21,13 +21,13 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** One Next.js app at app.tevero.lt. Single Clerk login. AI-Writer content tools + SEO tools as first-class routes. Per-client GSC/GA4 credentials via magic-link invites. Nightly analytics sync across 100 clients.
 
-**Current focus:** Phase 08 in progress — plan 04 complete (AppShell + (shell) layout + API proxy routes)
+**Current focus:** Phase 09 — shared-ui-package-design-system
 
 ## Current Position
 
-Phase: 08
-Plan: 04 complete, 05 next
-Status: In progress — Phase 08
+Phase: 09 (shared-ui-package-design-system) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-17
 
 ## Completed Phases (v1.0)
@@ -85,7 +85,10 @@ Last activity: 2026-04-17
 - router.refresh() after setActiveClient in ClientSwitcherButton and standalone ClientSwitcher — necessary for server components reading cookie to re-render — [08-04]
 - ThemeContext typeof window guard on localStorage initializer to prevent SSR hydration mismatch — [08-04]
 - active-client.ts redirect cast uses AnyRoute=any with eslint-disable-line (matches page.tsx pattern; @typescript-eslint/no-explicit-any not in ESLint config) — [08-04]
+- packages/ui and packages/types bootstrapped as workspace packages with direct TS source exports — no build step; transpilePackages wired in plan 03 — [09-01]
+- Client.is_archived added proactively to @tevero/types (wider than apps/web local type); plan 03 aligns apps/web to use shared type — [09-01]
+- cn() exists in both packages/ui/src/lib/utils.ts and apps/web/src/lib/utils.ts intentionally; plan 03 removes apps/web copy after import rewire — [09-01]
 
 ## Next Up
 
-Phase 08: Next.js Unified Shell — plan 05 next (port client list + client detail pages)
+Phase 09: Shared UI Package + Design System — plan 02 next (migrate 22 components to packages/ui)
