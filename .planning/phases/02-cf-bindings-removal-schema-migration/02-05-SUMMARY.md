@@ -189,3 +189,4 @@ None. The changes reduce attack surface by removing dynamic CF binding access. P
 | `cloudflare:workers` anywhere in src/ | ABSENT (count=0) |
 | `WorkflowEntrypoint` anywhere in src/ | ABSENT (count=0) |
 | `env.KV\|env.R2\|env.SITE_AUDIT_WORKFLOW` anywhere in src/ | ABSENT (count=0) |
+| commit 00dffa5 (SUMMARY) | FOUND |
