@@ -1,9 +1,0 @@
-# Clerk Authentication
-REACT_APP_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
-REACT_APP_CLERK_JWT_TEMPLATE=
-
-# API Configuration
-REACT_APP_API_BASE_URL=http://localhost:8000
-
-# SEO Audit (open-seo-main) — base URL embedded as an iframe on /clients/:clientId/seo
-REACT_APP_SEO_AUDIT_URL=https://app.openseo.so
