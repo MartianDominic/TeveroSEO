@@ -270,7 +270,7 @@ export default function ClientDashboardPage() {
                 </span>
               </div>
               <button
-                onClick={() => router.push(`/clients/${clientId}/settings`)}
+                onClick={() => router.push(`/clients/${clientId}/settings` as Parameters<typeof router.push>[0])}
                 className="text-xs text-primary hover:underline shrink-0"
               >
                 Configure →
@@ -286,7 +286,7 @@ export default function ClientDashboardPage() {
                 </span>
               </div>
               <button
-                onClick={() => router.push(`/clients/${clientId}/calendar`)}
+                onClick={() => router.push(`/clients/${clientId}/calendar` as Parameters<typeof router.push>[0])}
                 className="text-xs text-primary hover:underline shrink-0"
               >
                 Open Calendar →
@@ -355,21 +355,21 @@ export default function ClientDashboardPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(`/clients/${clientId}/calendar`)}
+          onClick={() => router.push(`/clients/${clientId}/calendar` as Parameters<typeof router.push>[0])}
         >
           <Calendar className="h-4 w-4" /> View Calendar
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(`/clients/${clientId}/intelligence`)}
+          onClick={() => router.push(`/clients/${clientId}/intelligence` as Parameters<typeof router.push>[0])}
         >
           <Brain className="h-4 w-4" /> Website Intelligence
         </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push(`/clients/${clientId}/settings`)}
+          onClick={() => router.push(`/clients/${clientId}/settings` as Parameters<typeof router.push>[0])}
         >
           <Settings className="h-4 w-4" /> Settings
         </Button>
@@ -383,14 +383,14 @@ export default function ClientDashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/clients/${clientId}/articles`)}
+              onClick={() => router.push(`/clients/${clientId}/articles` as Parameters<typeof router.push>[0])}
             >
               <FileText className="h-4 w-4" />
               View All Articles
             </Button>
             <Button
               size="sm"
-              onClick={() => router.push(`/clients/${clientId}/articles/new`)}
+              onClick={() => router.push(`/clients/${clientId}/articles/new` as Parameters<typeof router.push>[0])}
             >
               <PlusCircle className="h-4 w-4" />
               New Article
@@ -406,7 +406,7 @@ export default function ClientDashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push(`/clients/${clientId}/articles/new`)}
+            onClick={() => router.push(`/clients/${clientId}/articles/new` as Parameters<typeof router.push>[0])}
           >
             <PlusCircle className="h-4 w-4" />
             New Article
@@ -436,7 +436,7 @@ export default function ClientDashboardPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/clients/${clientId}/calendar`)}
+              onClick={() => router.push(`/clients/${clientId}/calendar` as Parameters<typeof router.push>[0])}
             >
               Open Calendar
             </Button>

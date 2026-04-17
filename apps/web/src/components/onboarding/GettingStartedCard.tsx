@@ -133,7 +133,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
               </p>
               {!step2Done && (
                 <button
-                  onClick={() => router.push("/settings")}
+                  onClick={() => router.push("/settings" as Parameters<typeof router.push>[0])}
                   className="shrink-0 text-xs text-primary hover:underline"
                 >
                   Go to Settings →

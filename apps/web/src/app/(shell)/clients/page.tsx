@@ -43,7 +43,7 @@ export default function ClientsPage() {
 
   const handleCardClick = (id: string) => {
     setActiveClient(id);
-    router.push(`/clients/${id}`);
+    router.push(`/clients/${id}` as Parameters<typeof router.push>[0]);
   };
 
   return (
@@ -114,7 +114,7 @@ export default function ClientsPage() {
       {!isLoading && !error && clients.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map((client) => {
-            const c = client as Record<string, unknown>;
+            const c = client as unknown as Record<string, unknown>;
             return (
               <div
                 key={client.id}
@@ -162,7 +162,7 @@ export default function ClientsPage() {
         onClose={() => setAddModalOpen(false)}
         onCreated={(id) => {
           setAddModalOpen(false);
-          router.push(`/clients/${id}`);
+          router.push(`/clients/${id}` as Parameters<typeof router.push>[0]);
         }}
       />
     </div>

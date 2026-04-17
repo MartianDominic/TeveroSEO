@@ -15,7 +15,7 @@ export default function InitialRouteHandler() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/clients");
+    router.replace("/clients" as Parameters<typeof router.replace>[0]);
   }, [router]);
 
   return null;

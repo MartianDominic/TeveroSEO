@@ -327,7 +327,7 @@ function KeywordsTab({
                       router.push(
                         `/clients/${clientId}/articles/new?keyword=${encodeURIComponent(
                           kw.keyword
-                        )}`
+                        )}` as Parameters<typeof router.push>[0]
                       )
                     }
                   >
@@ -576,7 +576,7 @@ function ContentGapsTab({
                     router.push(
                       `/clients/${clientId}/articles/new?keyword=${encodeURIComponent(
                         topic
-                      )}`
+                      )}` as Parameters<typeof router.push>[0]
                     )
                   }
                 >
@@ -696,7 +696,7 @@ function ContentGapsTab({
                             router.push(
                               `/clients/${clientId}/articles/new?keyword=${encodeURIComponent(
                                 idea.keyword
-                              )}`
+                              )}` as Parameters<typeof router.push>[0]
                             )
                           }
                         >
