@@ -1,0 +1,114 @@
+# deploy-ai-writer.yml — AI-Writer auto-deploy to VPS (CI-06, CI-03, CI-05)
+#
+# Parallel sibling of deploy-vps.yml. Shares the same four repository secrets:
+#   VPS_HOST, VPS_USER, VPS_SSH_PRIVATE_KEY, KNOWN_HOSTS
+# (Same VPS, same `deploy` user, same pinned host key.)
+#
+# No migration step: AI-Writer uses Alembic and migrations are applied manually
+# (`docker compose exec ai-writer-backend alembic upgrade head`) — see Phase 5 CONTEXT.md.
+#
+# Deploy flow on the VPS:
+#   1. git pull origin main
+#   2. docker compose up -d --build ai-writer-backend ai-writer-frontend
+#      (postgres/redis/nginx/open-seo-* untouched -> zero-downtime for the other platform)
+
+name: deploy-ai-writer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "AI-Writer/**"
+      - "docker-compose.vps.yml"
+      - ".github/workflows/deploy-ai-writer.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-vps-ai-writer
+  cancel-in-progress: false
+
+env:
+  VPS_REPO_PATH: /home/deploy/TeveroSEO
+  COMPOSE_FILE: docker-compose.vps.yml
+
+jobs:
+  deploy:
+    name: Deploy AI-Writer to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH client with pinned host key (CI-03, CI-05)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Pinned host key BEFORE any SSH call (CI-03).
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          eval "$(ssh-agent -s)"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | ssh-add -
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+
+      - name: Deploy AI-Writer (pull -> up) (CI-06)
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd "${VPS_REPO_PATH:-/home/deploy/TeveroSEO}"
+
+          echo "[deploy-ai-writer] git pull origin main"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          echo "[deploy-ai-writer] rebuilding ai-writer-backend + ai-writer-frontend"
+          docker compose -f docker-compose.vps.yml up -d --build ai-writer-backend ai-writer-frontend
+
+          echo "[deploy-ai-writer] pruning old images"
+          docker image prune -f
+
+          echo "[deploy-ai-writer] complete"
+          REMOTE
+
+      - name: Verify AI-Writer health
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /home/deploy/TeveroSEO
+          for i in $(seq 1 24); do
+            BACKEND=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose -f docker-compose.vps.yml ps -q ai-writer-backend) 2>/dev/null || echo "missing")
+            FRONTEND=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose -f docker-compose.vps.yml ps -q ai-writer-frontend) 2>/dev/null || echo "missing")
+            echo "[verify] attempt $i: backend=$BACKEND frontend=$FRONTEND"
+            if [ "$BACKEND" = "healthy" ] && [ "$FRONTEND" = "healthy" ]; then
+              echo "[verify] both services healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "[verify] services did not become healthy in 120s"
+          docker compose -f docker-compose.vps.yml logs --tail=100 ai-writer-backend ai-writer-frontend
+          exit 1
+          REMOTE
