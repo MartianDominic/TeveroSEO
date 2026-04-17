@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-status: In progress — Phase 08 plan 02 complete
-last_updated: "2026-04-18T00:28:44Z"
-last_activity: 2026-04-18
+status: executing
+last_updated: "2026-04-17T21:20:40Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 14
   completed_phases: 7
-  total_plans: 30
-  completed_plans: 30
-  percent: 50
+  total_plans: 34
+  completed_plans: 32
+  percent: 94
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** One Next.js app at app.tevero.lt. Single Clerk login. AI-Writer content tools + SEO tools as first-class routes. Per-client GSC/GA4 credentials via magic-link invites. Nightly analytics sync across 100 clients.
 
-**Current focus:** Phase 08 in progress — plan 02 complete (Clerk auth wired)
+**Current focus:** Phase 08 in progress — plan 03 complete (shared infrastructure: clientStore, server-fetch, ui components)
 
 ## Current Position
 
 Phase: 08
-Plan: 02 complete, 03 next
+Plan: 03 complete, 04 next
 Status: In progress — Phase 08
-Last activity: 2026-04-18
+Last activity: 2026-04-17
 
 ## Completed Phases (v1.0)
 
@@ -77,7 +77,11 @@ Last activity: 2026-04-18
 - typedRoutes moved from experimental to top-level (Next.js 15.5 promotes it) — [08-02]
 - Valid-format placeholder key pk_test_Y2xlcmsuZXhhbXBsZS5jb20k used in .env.local so build succeeds without real keys — [08-02]
 - Smoke test gracefully skips with exit 0 when only placeholder Clerk keys present (Clerk validates sk at runtime for all routes) — [08-02]
+- cookieStorage adapter persists only activeClientId (not full clients array) to tevero-active-client-id cookie — [08-03]
+- server-fetch marked server-only to prevent accidental client import; browser api-client calls only same-origin /api/* routes — [08-03]
+- page-header useNavigate replaced with useRouter (next/navigation); backHref cast via Parameters<typeof router.push>[0] for typedRoutes — [08-03]
+- 22 shadcn/ui components ported (plan said 23 — CRA source has 22, plan file list has 22; off-by-one in acceptance criteria) — [08-03]
 
 ## Next Up
 
-Phase 08: Next.js Unified Shell — plan 03 next (client list + layout scaffold)
+Phase 08: Next.js Unified Shell — plan 04 next (AppShell layout + /api/clients route handler)

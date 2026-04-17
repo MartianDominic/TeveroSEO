@@ -147,7 +147,7 @@
 **Plans**: 6 plans
   - [x] 08-01-PLAN.md — pnpm workspace scaffold + Next.js 15 App Router + Tailwind v4 + standalone output (Wave 1)
   - [x] 08-02-PLAN.md — @clerk/nextjs v6 middleware + ClerkProvider + sign-in/sign-up pages + /api/health (Wave 2)
-  - [ ] 08-03-PLAN.md — (Wave 2)
+  - [x] 08-03-PLAN.md — clientStore + server-fetch + 22 shadcn/ui components (Wave 2)
   - [ ] 08-04-PLAN.md — (Wave 2)
   - [ ] 08-05-PLAN.md — (Wave 3)
   - [ ] 08-06-PLAN.md — (Wave 3)
