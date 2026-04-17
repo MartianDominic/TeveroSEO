@@ -1,0 +1,131 @@
+# deploy-vps.yml — open-seo-main auto-deploy to VPS (CI-01, CI-02, CI-03, CI-04, CI-05)
+#
+# REQUIRED GitHub Actions repository secrets (configure under Settings → Secrets → Actions):
+#   VPS_HOST              — IP or hostname of the VPS
+#   VPS_USER              — dedicated Linux user "deploy" (docker group member, CI-04)
+#   VPS_SSH_PRIVATE_KEY   — ed25519 PRIVATE key (public half lives in /home/deploy/.ssh/authorized_keys on the VPS)
+#   KNOWN_HOSTS           — output of `ssh-keyscan -H <VPS_HOST>` — pins the host key (CI-03)
+#
+# VPS setup prerequisites (run once, by hand, as root):
+#   useradd -m -s /bin/bash deploy
+#   usermod -aG docker deploy
+#   mkdir -p /home/deploy/.ssh && chmod 700 /home/deploy/.ssh
+#   echo '<PUBLIC_KEY>' >> /home/deploy/.ssh/authorized_keys
+#   chmod 600 /home/deploy/.ssh/authorized_keys
+#   chown -R deploy:deploy /home/deploy/.ssh
+#   sudo -u deploy git clone git@github.com:<org>/TeveroSEO.git /home/deploy/TeveroSEO
+#
+# Deploy flow on the VPS:
+#   1. git pull origin main
+#   2. docker compose --profile migrate run --rm open-seo-migrate   (CI-02, runs BEFORE container swap)
+#   3. docker compose up -d --build open-seo open-seo-worker        (only these two services rebuild)
+
+name: deploy-vps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "open-seo-main/**"
+      - "docker-compose.vps.yml"
+      - "docker/**"
+      - ".github/workflows/deploy-vps.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-vps-open-seo
+  cancel-in-progress: false
+
+env:
+  VPS_REPO_PATH: /home/deploy/TeveroSEO
+  COMPOSE_FILE: docker-compose.vps.yml
+
+jobs:
+  deploy:
+    name: Deploy open-seo to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH client with pinned host key (CI-03, CI-05)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Write pinned host key BEFORE any SSH call — this is the CI-03 guarantee.
+          # KNOWN_HOSTS secret must be the output of `ssh-keyscan -H <VPS_HOST>`.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          # Load the private key into an ssh-agent (not written to disk).
+          eval "$(ssh-agent -s)"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | ssh-add -
+          # Export agent socket for subsequent steps.
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+
+      - name: Deploy open-seo (pull -> migrate -> up) (CI-01, CI-02)
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          # StrictHostKeyChecking=yes + UserKnownHostsFile= our pinned file (CI-03, NEVER =no).
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd "${VPS_REPO_PATH:-/home/deploy/TeveroSEO}"
+
+          echo "[deploy] git pull origin main"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          echo "[deploy] running migrations BEFORE container swap (CI-02)"
+          docker compose -f docker-compose.vps.yml --profile migrate run --rm open-seo-migrate
+
+          echo "[deploy] rebuilding open-seo + open-seo-worker (zero-downtime for other services)"
+          docker compose -f docker-compose.vps.yml up -d --build open-seo open-seo-worker
+
+          echo "[deploy] pruning old images"
+          docker image prune -f
+
+          echo "[deploy] complete"
+          REMOTE
+
+      - name: Verify open-seo health
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+          # Poll docker healthcheck up to 90s for open-seo + open-seo-worker.
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /home/deploy/TeveroSEO
+          for i in $(seq 1 18); do
+            OPEN_SEO=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose -f docker-compose.vps.yml ps -q open-seo) 2>/dev/null || echo "missing")
+            WORKER=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose -f docker-compose.vps.yml ps -q open-seo-worker) 2>/dev/null || echo "missing")
+            echo "[verify] attempt $i: open-seo=$OPEN_SEO worker=$WORKER"
+            if [ "$OPEN_SEO" = "healthy" ] && [ "$WORKER" = "healthy" ]; then
+              echo "[verify] both services healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "[verify] services did not become healthy in 90s"
+          docker compose -f docker-compose.vps.yml logs --tail=100 open-seo open-seo-worker
+          exit 1
+          REMOTE
