@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-04-17T21:20:40Z"
+last_updated: "2026-04-17T21:35:00Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 14
   completed_phases: 7
   total_plans: 34
-  completed_plans: 32
-  percent: 94
+  completed_plans: 33
+  percent: 97
 ---
 
 # Project State
@@ -21,12 +21,12 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** One Next.js app at app.tevero.lt. Single Clerk login. AI-Writer content tools + SEO tools as first-class routes. Per-client GSC/GA4 credentials via magic-link invites. Nightly analytics sync across 100 clients.
 
-**Current focus:** Phase 08 in progress — plan 03 complete (shared infrastructure: clientStore, server-fetch, ui components)
+**Current focus:** Phase 08 in progress — plan 04 complete (AppShell + (shell) layout + API proxy routes)
 
 ## Current Position
 
 Phase: 08
-Plan: 03 complete, 04 next
+Plan: 04 complete, 05 next
 Status: In progress — Phase 08
 Last activity: 2026-04-17
 
@@ -81,7 +81,11 @@ Last activity: 2026-04-17
 - server-fetch marked server-only to prevent accidental client import; browser api-client calls only same-origin /api/* routes — [08-03]
 - page-header useNavigate replaced with useRouter (next/navigation); backHref cast via Parameters<typeof router.push>[0] for typedRoutes — [08-03]
 - 22 shadcn/ui components ported (plan said 23 — CRA source has 22, plan file list has 22; off-by-one in acceptance criteria) — [08-03]
+- router.push typedRoutes cast: Parameters<typeof router.push>[0] on all dynamic route strings in shell components — [08-04]
+- router.refresh() after setActiveClient in ClientSwitcherButton and standalone ClientSwitcher — necessary for server components reading cookie to re-render — [08-04]
+- ThemeContext typeof window guard on localStorage initializer to prevent SSR hydration mismatch — [08-04]
+- active-client.ts redirect cast uses AnyRoute=any with eslint-disable-line (matches page.tsx pattern; @typescript-eslint/no-explicit-any not in ESLint config) — [08-04]
 
 ## Next Up
 
-Phase 08: Next.js Unified Shell — plan 04 next (AppShell layout + /api/clients route handler)
+Phase 08: Next.js Unified Shell — plan 05 next (port client list + client detail pages)
