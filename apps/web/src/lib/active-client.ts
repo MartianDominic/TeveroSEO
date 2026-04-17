@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ACTIVE_CLIENT_COOKIE } from "./cookies";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRoute = any;
+type AnyRoute = any; // eslint-disable-line
 
 export async function getActiveClientId(): Promise<string | null> {
   const store = await cookies();
