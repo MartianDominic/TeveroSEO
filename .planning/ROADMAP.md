@@ -165,7 +165,10 @@
   3. Storybook (or equivalent) renders all components in isolation
   4. `pnpm build` at monorepo root succeeds with no type errors
 **Estimated effort**: 1 week
-**Plans**: TBD
+**Plans**: 3 plans
+  - [x] 09-01-PLAN.md — Bootstrap packages/ui and packages/types as workspace packages (Wave 1)
+  - [x] 09-02-PLAN.md — Copy 22 components into packages/ui/src/components/ with barrel export (Wave 2)
+  - [ ] 09-03-PLAN.md — Rewire apps/web imports to @tevero/ui; delete local components/ui/ copies (Wave 3)
 
 ---
 

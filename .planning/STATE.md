@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-04-17T22:09:31.802Z"
+last_updated: "2026-04-17T22:20:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 14
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 09 (shared-ui-package-design-system) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -89,6 +89,11 @@ Last activity: 2026-04-17
 - Client.is_archived added proactively to @tevero/types (wider than apps/web local type); plan 03 aligns apps/web to use shared type — [09-01]
 - cn() exists in both packages/ui/src/lib/utils.ts and apps/web/src/lib/utils.ts intentionally; plan 03 removes apps/web copy after import rewire — [09-01]
 
+- next added as peer+dev dep to packages/ui — page-header.tsx uses next/navigation; needed for tsc type resolution in isolation — [09-02]
+- CommandDialog omitted from @tevero/ui barrel — not present in command.tsx source; plan 03 must not import it — [09-02]
+- DialogTrigger, DialogClose, DialogFooter added to dialog.tsx (absent from apps/web source but required by barrel plan) — [09-02]
+- TableFooter, TableCaption added to table.tsx (absent from apps/web source but required by barrel plan) — [09-02]
+
 ## Next Up
 
-Phase 09: Shared UI Package + Design System — plan 02 next (migrate 22 components to packages/ui)
+Phase 09: Shared UI Package + Design System — plan 03 next (rewire apps/web imports to @tevero/ui)
