@@ -7,7 +7,7 @@ A unified agency SEO platform running on a single VPS. Two services — AI-Write
 ## Sub-projects
 
 - `AI-Writer/` — FastAPI + React content platform (phases 1–23 complete, fully operational; Phase 1 Platform Unification complete — legacy backend services cleaned)
-- `open-seo-main/` — TanStack Start + Drizzle SEO audit platform (Phase 2 complete — Node.js/PostgreSQL, no CF deps; Phase 3 wires BullMQ/Redis)
+- `open-seo-main/` — TanStack Start + Drizzle SEO audit platform (Phase 2 complete — Node.js/PostgreSQL, no CF deps; Phase 3 complete — BullMQ/Redis wired; Phase 4 complete — unified Docker infrastructure)
 
 ## Core Value
 
@@ -16,7 +16,7 @@ One platform. Switch to any client, generate content in their voice AND run SEO 
 ## Architecture
 
 - **Frontend**: AI-Writer React shell (shadcn/ui + Tailwind) hosts both tools as nav sections
-- **Backend**: AI-Writer FastAPI (port 8000) + open-seo-main Node.js (port 3000)
+- **Backend**: AI-Writer FastAPI (port 8000) + open-seo-main Node.js (port 3001)
 - **Database**: Shared PostgreSQL — `alwrity` db for AI-Writer, `open_seo` db for open-seo-main
 - **Cache/Queue**: Shared Redis — AI-Writer APScheduler + open-seo-main BullMQ audit queue
 - **Auth**: Clerk (shared tenant, same user pool)
