@@ -105,7 +105,10 @@
   1. Unauthenticated requests to open-seo API return 401; authenticated requests with valid Clerk session succeed
   2. `GET /api/audits?client_id=X` returns only audits for client X
   3. Passing an invalid `client_id` returns 403
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 06-01-PLAN.md — client-context lib + ALWRITY_DATABASE_URL env wiring (Wave 1, AUTH-03 foundation)
+  - [ ] 06-02-PLAN.md — [BLOCKING] Add client_id column + index to audits table via Drizzle migration (Wave 1, AUTH-04 foundation)
+  - [ ] 06-03-PLAN.md — Wire clientId through middleware + AuditService + serverFunctions + docs AUTH-01/02 (Wave 2, checkpoint)
 
 ---
 
@@ -118,4 +121,7 @@
   1. "SEO Audit" nav item visible in AI-Writer sidebar; clicking it loads open-seo pages without a page reload
   2. Switching client in the switcher updates the `client_id` passed to open-seo pages
   3. open-seo pages use the same StatusChip, PageHeader, and CSS tokens as the rest of the shell
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 06-01-PLAN.md — client-context lib + ALWRITY_DATABASE_URL env wiring (Wave 1, AUTH-03 foundation)
+  - [ ] 06-02-PLAN.md — [BLOCKING] Add client_id column + index to audits table via Drizzle migration (Wave 1, AUTH-04 foundation)
+  - [ ] 06-03-PLAN.md — Wire clientId through middleware + AuditService + serverFunctions + docs AUTH-01/02 (Wave 2, checkpoint)
