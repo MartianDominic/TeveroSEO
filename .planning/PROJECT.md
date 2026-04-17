@@ -7,7 +7,7 @@ A unified agency SEO platform running on a single VPS. Two services — AI-Write
 ## Sub-projects
 
 - `AI-Writer/` — FastAPI + React content platform (phases 1–23 complete, fully operational; Phase 1 Platform Unification complete — legacy backend services cleaned)
-- `open-seo-main/` — TanStack Start + Drizzle SEO audit platform (currently Cloudflare-bound, being migrated to Node.js)
+- `open-seo-main/` — TanStack Start + Drizzle SEO audit platform (Phase 2 complete — Node.js/PostgreSQL, no CF deps; Phase 3 wires BullMQ/Redis)
 
 ## Core Value
 
