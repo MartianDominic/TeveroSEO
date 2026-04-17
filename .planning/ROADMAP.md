@@ -149,8 +149,8 @@
   - [x] 08-02-PLAN.md — @clerk/nextjs v6 middleware + ClerkProvider + sign-in/sign-up pages + /api/health (Wave 2)
   - [x] 08-03-PLAN.md — clientStore + server-fetch + 22 shadcn/ui components (Wave 2)
   - [x] 08-04-PLAN.md — AppShell + ClientSwitcher + ThemeContext ported; (shell) route group layout; /api/clients, /api/clients/[id], /api/platform-secrets/status proxy routes (Wave 3)
-  - [ ] 08-05-PLAN.md — (Wave 3)
-  - [ ] 08-06-PLAN.md — (Wave 3)
+  - [x] 08-05-PLAN.md — (Wave 3)
+  - [x] 08-06-PLAN.md — (Wave 3)
 
 ---
 
