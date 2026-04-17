@@ -15,12 +15,7 @@
   1. `grep -r "blog_writer\|podcast\|youtube\|story_writer\|linkedin" AI-Writer/backend/api/` returns zero matches
   2. `ls AI-Writer/backend/services/` shows no legacy directories (blog_writer, podcast, youtube, story_writer, linkedin)
   3. Backend starts without import errors: `docker compose run --rm ai-writer-backend python -c "from main import app"` succeeds
-**Plans**: 5 plans
-  - [x] 01-01-PLAN.md — Strip legacy routers and podcast-only demo mode from entry points, registries, logging, and startup scripts (Wave 1)
-  - [x] 01-02-PLAN.md — Delete wrapper services/routers that bridge to legacy modules; inline exception/retry utilities; neutralize research_engine providers (Wave 1)
-  - [x] 01-03-PLAN.md — Delete legacy scripts and model files; update services/database.py and test fixtures (Wave 1)
-  - [x] 01-04-PLAN.md — Delete legacy service directories, API directories, and linkedin_image_generation.py (Wave 2)
-  - [x] 01-05-PLAN.md — Verification: grep/ls checks, backend import smoke test, pytest run, produce VERIFICATION.md (Wave 3)
+**Plans**: TBD
 
 ---
 
@@ -34,13 +29,7 @@
   2. `pnpm run build` completes with no TypeScript or Rollup errors and produces `.output/server/index.mjs`
   3. `node .output/server/index.mjs` starts an HTTP server and all routes return correct responses
   4. `drizzle-kit migrate` applies all PG-dialect migrations to a fresh PostgreSQL instance without errors
-**Plans**: 6 plans
-  - [x] 02-01-PLAN.md — Package + vite + drizzle + tsconfig + env.d.ts + wrangler removal (Wave 1, foundation)
-  - [x] 02-02-PLAN.md — Migrate Drizzle schema from sqlite-core to pg-core, 14 tables, jsonb + boolean + timestamp tz (Wave 2)
-  - [x] 02-03-PLAN.md — Rewrite src/db/index.ts for node-postgres pool; rewrite runtime-env.ts for process.env + validateEnv (Wave 2)
-  - [x] 02-04-PLAN.md — Remove cloudflare:workers from auth, email, posthog, dataforseo, routes, middleware; swap better-auth to provider pg (Wave 3)
-  - [x] 02-05-PLAN.md — Stub SiteAuditWorkflow + progress-kv (in-memory) + R2 (filesystem); rewrite src/server.ts as Node entry; stub AuditService (Wave 3)
-  - [x] 02-06-PLAN.md — [BLOCKING] Regenerate PG migrations; drizzle-kit migrate against local PG; verify pnpm build + Node runtime (Wave 4, checkpoint)
+**Plans**: TBD
 
 ---
 
@@ -53,11 +42,7 @@
   1. Triggering a site audit enqueues a BullMQ job and the worker executes all steps to completion
   2. Audit crawl progress reads/writes via ioredis with correct TTL semantics (`audit-progress:` prefix, 30-min expiry)
   3. Failed jobs after max retries appear in `failed-audits` dead-letter queue
-**Plans**: 4 plans
-  - [x] 03-01-PLAN.md — Foundation: ioredis singleton + BullMQ Queue/DLQ definitions + REDIS_URL added to REQUIRED_ENV_CORE (Wave 1)
-  - [x] 03-02-PLAN.md — Rewrite progress-kv.ts against ioredis singleton with audit-progress: prefix and 30-min TTL (Wave 2)
-  - [x] 03-03-PLAN.md — BullMQ Worker + sandboxed processor (120s lock, maxStalledCount 2, DLQ on exhausted retries, 25s graceful shutdown) (Wave 2)
-  - [x] 03-04-PLAN.md — Wire AuditService.startAudit/remove to auditQueue; start Worker + SIGTERM/SIGINT shutdown in src/server.ts (Wave 3)
+**Plans**: TBD
 
 ---
 
@@ -71,11 +56,7 @@
   2. `curl https://app.openseo.so/healthz` returns `{ status: "ok" }`
   3. `curl https://<ai-writer-domain>/api/health` returns 200
   4. `docker compose -f docker-compose.vps.yml ps` shows all services as healthy
-**Plans**: 4 plans
-  - [x] 04-01-PLAN.md — Add /healthz route to open-seo-main for container healthcheck (Wave 1)
-  - [x] 04-02-PLAN.md — Multi-stage Dockerfile.vps for open-seo with worker variant support (Wave 1)
-  - [x] 04-03-PLAN.md — Supporting infra config files: postgres init SQL, nginx reverse proxy, redis config (Wave 1)
-  - [x] 04-04-PLAN.md — Unified docker-compose.vps.yml wiring all 7 services with healthchecks + end-to-end smoke verification (Wave 2, checkpoint)
+**Plans**: TBD
 
 ---
 
@@ -89,10 +70,7 @@
   2. GitHub Actions workflow completes green with migration step before container swap
   3. `KNOWN_HOSTS` used; no `StrictHostKeyChecking=no`
   4. AI-Writer auto-deploys via separate parallel workflow
-**Plans**: 3 plans
-  - [x] 05-01-PLAN.md — Add `open-seo-migrate` one-shot service (migrate-entry.ts + Dockerfile.vps esbuild bundle + compose profile) (Wave 1)
-  - [x] 05-02-PLAN.md — `.github/workflows/deploy-vps.yml` — SSH with KNOWN_HOSTS, migrate before container swap, rebuild open-seo + open-seo-worker (Wave 2)
-  - [x] 05-03-PLAN.md — `.github/workflows/deploy-ai-writer.yml` — parallel SSH deploy for ai-writer-backend + ai-writer-frontend, no migration step (Wave 2)
+**Plans**: TBD
 
 ---
 
@@ -105,10 +83,7 @@
   1. Unauthenticated requests to open-seo API return 401; authenticated requests with valid Clerk session succeed
   2. `GET /api/audits?client_id=X` returns only audits for client X
   3. Passing an invalid `client_id` returns 403
-**Plans**: 3 plans
-  - [x] 06-01-PLAN.md — client-context lib + ALWRITY_DATABASE_URL env wiring (Wave 1, AUTH-03 foundation)
-  - [x] 06-02-PLAN.md — [BLOCKING] Add client_id column + index to audits table via Drizzle migration (Wave 1, AUTH-04 foundation)
-  - [x] 06-03-PLAN.md — Wire clientId through middleware + AuditService + serverFunctions + docs AUTH-01/02 (Wave 2, checkpoint)
+**Plans**: TBD
 
 ---
 
@@ -121,4 +96,4 @@
   1. "SEO Audit" nav item visible in AI-Writer sidebar; clicking it loads open-seo pages without a page reload
   2. Switching client in the switcher updates the `client_id` passed to open-seo pages
   3. open-seo pages use the same StatusChip, PageHeader, and CSS tokens as the rest of the shell
-**Plans**: TBD (planning in progress)
+**Plans**: TBD
