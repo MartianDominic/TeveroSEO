@@ -57,7 +57,7 @@
   - [x] 03-01-PLAN.md — Foundation: ioredis singleton + BullMQ Queue/DLQ definitions + REDIS_URL added to REQUIRED_ENV_CORE (Wave 1)
   - [x] 03-02-PLAN.md — Rewrite progress-kv.ts against ioredis singleton with audit-progress: prefix and 30-min TTL (Wave 2)
   - [x] 03-03-PLAN.md — BullMQ Worker + sandboxed processor (120s lock, maxStalledCount 2, DLQ on exhausted retries, 25s graceful shutdown) (Wave 2)
-  - [ ] 03-04-PLAN.md — Wire AuditService.startAudit/remove to auditQueue; start Worker + SIGTERM/SIGINT shutdown in src/server.ts (Wave 3)
+  - [x] 03-04-PLAN.md — Wire AuditService.startAudit/remove to auditQueue; start Worker + SIGTERM/SIGINT shutdown in src/server.ts (Wave 3)
 
 ---
 
@@ -71,7 +71,11 @@
   2. `curl https://app.openseo.so/healthz` returns `{ status: "ok" }`
   3. `curl https://<ai-writer-domain>/api/health` returns 200
   4. `docker compose -f docker-compose.vps.yml ps` shows all services as healthy
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 04-01-PLAN.md — Add /healthz route to open-seo-main for container healthcheck (Wave 1)
+  - [ ] 04-02-PLAN.md — Multi-stage Dockerfile.vps for open-seo with worker variant support (Wave 1)
+  - [ ] 04-03-PLAN.md — Supporting infra config files: postgres init SQL, nginx reverse proxy, redis config (Wave 1)
+  - [ ] 04-04-PLAN.md — Unified docker-compose.vps.yml wiring all 7 services with healthchecks + end-to-end smoke verification (Wave 2, checkpoint)
 
 ---
 
