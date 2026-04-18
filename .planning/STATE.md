@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-04-17T22:20:00.000Z"
-last_activity: 2026-04-17
+last_updated: "2026-04-18T00:00:00.000Z"
+last_activity: 2026-04-18
 progress:
   total_phases: 14
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 37
-  completed_plans: 35
-  percent: 95
+  completed_plans: 38
+  percent: 97
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** One Next.js app at app.tevero.lt. Single Clerk login. AI-Writer content tools + SEO tools as first-class routes. Per-client GSC/GA4 credentials via magic-link invites. Nightly analytics sync across 100 clients.
 
-**Current focus:** Phase 09 — shared-ui-package-design-system
+**Current focus:** Phase 10 — open-seo frontend absorption
 
 ## Current Position
 
-Phase: 09 (shared-ui-package-design-system) — EXECUTING
-Plan: 3 of 3
+Phase: 10 (open-seo-frontend-absorption) — NOT STARTED
+Plan: 1 of N
 Status: Ready to execute
-Last activity: 2026-04-17
+Last activity: 2026-04-18
 
 ## Completed Phases (v1.0)
 
@@ -47,7 +47,7 @@ Last activity: 2026-04-17
 | Phase | Title | Est. Effort | Status |
 |-------|-------|-------------|--------|
 | 08 | Next.js Unified Shell | 3 weeks | 🔲 Not started |
-| 09 | Shared UI Package + Design System | 1 week | 🔲 Not started |
+| 09 | Shared UI Package + Design System | 1 week | ✅ Complete |
 | 10 | open-seo Frontend Absorption | 2–3 weeks | 🔲 Not started |
 | 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | 🔲 Not started |
 | 12 | Per-Client Credentials System | 3 weeks | 🔲 Not started |
@@ -93,7 +93,9 @@ Last activity: 2026-04-17
 - CommandDialog omitted from @tevero/ui barrel — not present in command.tsx source; plan 03 must not import it — [09-02]
 - DialogTrigger, DialogClose, DialogFooter added to dialog.tsx (absent from apps/web source but required by barrel plan) — [09-02]
 - TableFooter, TableCaption added to table.tsx (absent from apps/web source but required by barrel plan) — [09-02]
+- apps/web/src/lib/utils.ts kept as thin re-export of cn from @tevero/ui (not deleted) to avoid second codemod wave for non-UI call sites — [09-03]
+- API route files (api/clients/route.ts, api/clients/[clientId]/route.ts) also imported @/types/client — auto-fixed to @tevero/types (not listed in plan, found by grep) — [09-03]
 
 ## Next Up
 
-Phase 09: Shared UI Package + Design System — plan 03 next (rewire apps/web imports to @tevero/ui)
+Phase 10: open-seo Frontend Absorption — first plan
