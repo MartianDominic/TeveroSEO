@@ -2,15 +2,15 @@
 
 import React, { useState } from "react";
 import {
+  Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Input,
+  Label,
+} from "@tevero/ui";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { useClientStore } from "@/stores/clientStore";
 import { Loader2 } from "lucide-react";

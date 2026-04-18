@@ -28,18 +28,16 @@ import { CommandPalette } from "./CommandPalette";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeveroMark } from "@/components/brand/TeveroLogo";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@tevero/ui";
 import { apiGet } from "@/lib/api-client";
 
 const COLLAPSED_KEY = "appshell_collapsed";

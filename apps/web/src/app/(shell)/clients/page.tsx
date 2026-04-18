@@ -3,10 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useClientStore } from "@/stores/clientStore";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StatusChip } from "@/components/ui/status-chip";
-import { PageHeader } from "@/components/ui/page-header";
+import {
+  Button,
+  PageHeader,
+  Skeleton,
+  StatusChip,
+} from "@tevero/ui";
 import { GettingStartedCard } from "@/components/onboarding/GettingStartedCard";
 import { AddClientModal } from "@/components/onboarding/AddClientModal";
 import { Building2, Globe, ChevronRight, Plus } from "lucide-react";

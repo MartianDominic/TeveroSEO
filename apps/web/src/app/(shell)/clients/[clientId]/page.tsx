@@ -5,20 +5,20 @@ import { useParams, useRouter } from "next/navigation";
 import { useClientStore } from "@/stores/clientStore";
 import { useAnalyticsStore } from "@/stores/analyticsStore";
 import { apiGet, apiPost } from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorBanner } from "@/components/ui/error-banner";
-import { StatusChip } from "@/components/ui/status-chip";
-import { CmsHealthBadge } from "@/components/ui/cms-health-badge";
-import { PageHeader } from "@/components/ui/page-header";
 import {
+  Button,
+  CmsHealthBadge,
+  ErrorBanner,
+  PageHeader,
+  Skeleton,
+  StatusChip,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@tevero/ui";
 import {
   FileText,
   Calendar,

@@ -4,18 +4,16 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Globe, ChevronDown, Plus } from "lucide-react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@tevero/ui";
 import { useClientStore } from "@/stores";
 import { useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";

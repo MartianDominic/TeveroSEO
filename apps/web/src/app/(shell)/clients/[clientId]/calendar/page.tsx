@@ -9,12 +9,15 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "@/styles/calendar.css";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Upload, X, Loader2, ChevronRight, CalendarOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorBanner } from "@/components/ui/error-banner";
-import { StatusChip } from "@/components/ui/status-chip";
-import { PageHeader } from "@/components/ui/page-header";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  ErrorBanner,
+  PageHeader,
+  Skeleton,
+  StatusChip,
+} from "@tevero/ui";
 import { cn } from "@/lib/utils";
 import { useContentCalendarStore, Article } from "@/stores/contentCalendarStore";
 import { useClientStore } from "@/stores/clientStore";

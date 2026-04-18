@@ -5,7 +5,7 @@ import {
   deleteFastApi,
   FastApiError,
 } from "@/lib/server-fetch";
-import type { Client } from "@/types/client";
+import type { Client } from "@tevero/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

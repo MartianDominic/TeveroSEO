@@ -20,30 +20,26 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StatusChip } from "@/components/ui/status-chip";
-import { PageHeader } from "@/components/ui/page-header";
 import {
+  Button,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+  StatusChip,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@tevero/ui";
 import { useArticleLibraryStore } from "@/stores";
 import type { Article, SortField, SortDir } from "@/stores";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";

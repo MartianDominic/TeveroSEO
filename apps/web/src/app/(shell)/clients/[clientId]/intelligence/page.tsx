@@ -16,19 +16,22 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/ui/page-header";
-import { StatusChip } from "@/components/ui/status-chip";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  Button,
+  Input,
+  PageHeader,
+  StatusChip,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@tevero/ui";
 
 import { useClientStore } from "@/stores/clientStore";
 import {

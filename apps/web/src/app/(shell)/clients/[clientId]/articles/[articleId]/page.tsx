@@ -5,25 +5,22 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 
-// shadcn UI primitives
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Button,
+  Input,
+  Label,
+  PageHeader,
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-
-// Shared design-system components
-import { PageHeader } from "@/components/ui/page-header";
-import { StatusChip } from "@/components/ui/status-chip";
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Skeleton,
+  Slider,
+  StatusChip,
+  Textarea,
+} from "@tevero/ui";
 
 // Stores
 import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";

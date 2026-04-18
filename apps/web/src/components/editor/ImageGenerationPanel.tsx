@@ -3,18 +3,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
 
-// shadcn UI primitives
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import {
+  Button,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+  Separator,
+  Textarea,
+} from "@tevero/ui";
 
 // Stores and API
 import { useArticleEditorStore } from "@/stores";

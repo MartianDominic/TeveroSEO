@@ -15,21 +15,21 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import {
+  Button,
+  Input,
+  Label,
+  PageHeader,
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { PageHeader } from "@/components/ui/page-header";
-import { StatusChip } from "@/components/ui/status-chip";
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Slider,
+  StatusChip,
+  Textarea,
+} from "@tevero/ui";
 
 import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
 import type { ArticleStatus } from "@/stores";

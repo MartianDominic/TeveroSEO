@@ -12,7 +12,6 @@ import {
   BarChart3,
   Plus,
 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Command,
   CommandEmpty,
@@ -20,7 +19,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+  Dialog,
+  DialogContent,
+} from "@tevero/ui";
 import { useClientStore } from "@/stores";
 import { cn } from "@/lib/utils";
 

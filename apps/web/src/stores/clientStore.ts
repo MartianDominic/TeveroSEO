@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Client } from "@/types/client";
+import type { Client } from "@tevero/types";
 import { ACTIVE_CLIENT_COOKIE, cookieStorage } from "@/lib/cookies";
 
 interface ClientState {
