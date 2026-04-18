@@ -1,53 +1,69 @@
-"use client";
-
 /**
- * /clients/[clientId]/seo — SEO iframe stub.
+ * /clients/[clientId]/seo — SEO landing page.
  *
- * Renders the open-seo app (app.openseo.so) inside a full-bleed iframe.
- * Passes the active client UUID and Clerk JWT as query params so open-seo
- * can resolve the client context without custom request headers (which
- * cross-origin iframes cannot set).
+ * Server component that fetches the default project for this client
+ * and redirects to the audit page. If no project exists, shows
+ * a setup prompt.
  *
- * TEMPORARY: This iframe stub is replaced in Phase 10 when open-seo routes
- * are absorbed directly into apps/web. At that point, NEXT_PUBLIC_OPEN_SEO_URL
- * and this page file are both deleted.
- *
- * Cross-frame postMessage sync (nav events, theme, etc.) is deferred to
- * Phase 10 — Phase 8 provides a raw embed only.
+ * Phase 10: Replaces the iframe stub from Phase 7.
  */
 
-import { useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { redirect } from "next/navigation";
+import { getOpenSeo } from "@/lib/server-fetch";
+import { Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
+import { Search } from "lucide-react";
 
-export default function SeoAuditPage() {
-  const params = useParams<{ clientId: string }>();
-  const clientId = params.clientId;
-  const { getToken, isLoaded } = useAuth();
-  const [src, setSrc] = useState<string | null>(null);
+interface Project {
+  id: string;
+  name: string;
+}
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    (async () => {
-      const token = await getToken();
-      const base =
-        process.env.NEXT_PUBLIC_OPEN_SEO_URL ?? "https://app.openseo.so";
-      const url = new URL(base);
-      if (clientId) url.searchParams.set("client_id", clientId);
-      if (token) url.searchParams.set("token", token);
-      setSrc(url.toString());
-    })();
-  }, [clientId, getToken, isLoaded]);
+interface PageProps {
+  params: Promise<{ clientId: string }>;
+}
 
-  if (!src) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading SEO tools...</div>;
+export default async function SeoLandingPage({ params }: PageProps) {
+  const { clientId } = await params;
+
+  try {
+    // Fetch default project for this client
+    const query = new URLSearchParams({ client_id: clientId });
+    const project = await getOpenSeo<Project>(
+      `/api/seo/projects?${query.toString()}`
+    );
+
+    if (project?.id) {
+      // Redirect to the audit page for this project
+      // Dynamic route - typedRoutes can't infer projectId at compile time
+      const auditPath = `/clients/${clientId}/seo/${project.id}/audit`;
+      redirect(auditPath as Parameters<typeof redirect>[0]);
+    }
+  } catch (error) {
+    // Log error but show fallback UI
+    console.error("[seo/page] Failed to fetch default project:", error);
   }
 
+  // Fallback: show setup prompt if no project found or API failed
   return (
-    <iframe
-      src={src}
-      title="SEO Audit"
-      className="h-[calc(100vh-4rem)] w-full border-0 block"
-    />
+    <div className="p-6 max-w-2xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            SEO Tools
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">
+            No SEO project found for this client. SEO projects are created
+            automatically when you run your first site audit.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Contact support if you need help setting up SEO tools for this
+            client.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
