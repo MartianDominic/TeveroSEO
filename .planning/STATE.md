@@ -46,7 +46,7 @@ Last activity: 2026-04-18
 
 | Phase | Title | Est. Effort | Status |
 |-------|-------|-------------|--------|
-| 08 | Next.js Unified Shell | 3 weeks | 🔲 Not started |
+| 08 | Next.js Unified Shell | 3 weeks | ✅ Complete |
 | 09 | Shared UI Package + Design System | 1 week | ✅ Complete |
 | 10 | open-seo Frontend Absorption | 2–3 weeks | 🔲 Not started |
 | 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | 🔲 Not started |
@@ -62,8 +62,8 @@ Last activity: 2026-04-18
 | AI-Writer backend (FastAPI) | ✅ Stable | Unchanged in v2.0 |
 | open-seo frontend (TanStack Start) | 🔄 To be absorbed | Phase 10 absorbs into apps/web |
 | open-seo backend (Node.js/Nitro) | ✅ Stable | Unchanged except auth in Phase 11 |
-| apps/web (Next.js) | 🔲 Not yet created | Phase 08 scaffolds this |
-| packages/ui (shared components) | 🔲 Not yet created | Phase 09 extracts this |
+| apps/web (Next.js) | ✅ Scaffolded + wired | Phase 08 complete — AppShell, Clerk, client-store, 33 routes |
+| packages/ui (shared components) | ✅ Complete | Phase 09 complete — 22 components, @tevero/ui + @tevero/types workspace packages |
 
 ## Decisions
 
