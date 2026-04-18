@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 10 (open-seo-frontend-absorption) — NOT STARTED
-Plan: 1 of N
-Status: Ready to execute
+Phase: 11 (clerk-auth-unified-open-seo-backend)
+Plan: 2 of 4 complete
+Status: Executing
 Last activity: 2026-04-18
 
 ## Completed Phases (v1.0)
@@ -48,8 +48,8 @@ Last activity: 2026-04-18
 |-------|-------|-------------|--------|
 | 08 | Next.js Unified Shell | 3 weeks | ✅ Complete |
 | 09 | Shared UI Package + Design System | 1 week | ✅ Complete |
-| 10 | open-seo Frontend Absorption | 2–3 weeks | 🔲 Not started |
-| 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | 🔲 Not started |
+| 10 | open-seo Frontend Absorption | 2–3 weeks | ✅ Complete |
+| 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | 🔄 In progress |
 | 12 | Per-Client Credentials System | 3 weeks | 🔲 Not started |
 | 13 | Analytics Data Layer | 2 weeks | 🔲 Not started |
 | 14 | Analytics UX — Agency Dashboard | 2 weeks | 🔲 Not started |
@@ -96,6 +96,10 @@ Last activity: 2026-04-18
 - apps/web/src/lib/utils.ts kept as thin re-export of cn from @tevero/ui (not deleted) to avoid second codemod wave for non-UI call sites — [09-03]
 - API route files (api/clients/route.ts, api/clients/[clientId]/route.ts) also imported @/types/client — auto-fixed to @tevero/types (not listed in plan, found by grep) — [09-03]
 
+- clerk_user_id as TEXT UNIQUE (not UUID) to match Clerk's user_xxx format — [11-02]
+- CASCADE drop on better-auth tables (session, account, verification) to handle FK constraints cleanly — [11-02]
+- Index on clerk_user_id for efficient JWT lookup queries — [11-02]
+
 ## Next Up
 
-Phase 10: open-seo Frontend Absorption — first plan
+Phase 11: Clerk Auth Unified — plan 03 (middleware rewrite)
