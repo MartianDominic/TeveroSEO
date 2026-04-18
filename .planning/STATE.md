@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 11 (clerk-auth-unified-open-seo-backend)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: Executing
 Last activity: 2026-04-18
 
@@ -102,7 +102,10 @@ Last activity: 2026-04-18
 - clerk_user_id as TEXT UNIQUE (not UUID) to match Clerk's user_xxx format — [11-02]
 - CASCADE drop on better-auth tables (session, account, verification) to handle FK constraints cleanly — [11-02]
 - Index on clerk_user_id for efficient JWT lookup queries — [11-02]
+- organizationId defaults to user ID for single-user case (Clerk Organizations deferred) — [11-03]
+- User auto-created from JWT claims (sub, email, name) on first request — [11-03]
+- emailVerified=true for Clerk-created users (Clerk handles verification) — [11-03]
 
 ## Next Up
 
-Phase 11: Clerk Auth Unified — plan 03 (middleware rewrite)
+Phase 11: Clerk Auth Unified — plan 04 (remove better-auth package)
