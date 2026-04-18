@@ -7,10 +7,10 @@ last_updated: "2026-04-18T00:00:00.000Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 14
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 37
-  completed_plans: 38
-  percent: 97
+  completed_plans: 39
+  percent: 100
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 11 (clerk-auth-unified-open-seo-backend)
-Plan: 3 of 4 complete
-Status: Executing
+Plan: 4 of 4 complete
+Status: Phase Complete
 Last activity: 2026-04-18
 
 ## Completed Phases (v1.0)
@@ -49,7 +49,7 @@ Last activity: 2026-04-18
 | 08 | Next.js Unified Shell | 3 weeks | ✅ Complete |
 | 09 | Shared UI Package + Design System | 1 week | ✅ Complete |
 | 10 | open-seo Frontend Absorption | 2–3 weeks | ✅ Complete |
-| 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | 🔄 In progress |
+| 11 | Clerk Auth Unified — open-seo Backend | 1–2 weeks | ✅ Complete |
 | 12 | Per-Client Credentials System | 3 weeks | 🔲 Not started |
 | 13 | Analytics Data Layer | 2 weeks | 🔲 Not started |
 | 14 | Analytics UX — Agency Dashboard | 2 weeks | 🔲 Not started |
@@ -105,7 +105,9 @@ Last activity: 2026-04-18
 - organizationId defaults to user ID for single-user case (Clerk Organizations deferred) — [11-03]
 - User auto-created from JWT claims (sub, email, name) on first request — [11-03]
 - emailVerified=true for Clerk-created users (Clerk handles verification) — [11-03]
+- better-auth-schema.ts renamed to user-schema.ts (zero better-auth references in codebase) — [11-04]
+- auth-client.ts, auth-mode.ts, auth-session.ts kept as stubs for TanStack frontend backward compatibility — [11-04]
 
 ## Next Up
 
-Phase 11: Clerk Auth Unified — plan 04 (remove better-auth package)
+Phase 12: Per-Client Credentials System

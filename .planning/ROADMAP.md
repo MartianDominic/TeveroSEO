@@ -204,7 +204,7 @@
   - [x] 11-01-PLAN.md — Add Clerk JWT verification library (jose) (Wave 1)
   - [x] 11-02-PLAN.md — Drizzle migration: clerk_user_id column, drop session/account/verification tables (Wave 1)
   - [x] 11-03-PLAN.md — Rewrite auth middleware to use Clerk JWT (Wave 2)
-  - [ ] 11-04-PLAN.md — Remove better-auth package and all references (Wave 3)
+  - [x] 11-04-PLAN.md — Remove better-auth package and all references (Wave 3)
 
 ---
 
