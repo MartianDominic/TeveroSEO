@@ -96,6 +96,9 @@ Last activity: 2026-04-18
 - apps/web/src/lib/utils.ts kept as thin re-export of cn from @tevero/ui (not deleted) to avoid second codemod wave for non-UI call sites — [09-03]
 - API route files (api/clients/route.ts, api/clients/[clientId]/route.ts) also imported @/types/client — auto-fixed to @tevero/types (not listed in plan, found by grep) — [09-03]
 
+- JWKS instance cached at module level (singleton pattern) for clerk-jwt.ts — [11-01]
+- CLERK_PUBLISHABLE_KEY base64 decoded to derive JWKS URL (Clerk pattern) — [11-01]
+- resetJWKSCache() exported for test isolation between test cases — [11-01]
 - clerk_user_id as TEXT UNIQUE (not UUID) to match Clerk's user_xxx format — [11-02]
 - CASCADE drop on better-auth tables (session, account, verification) to handle FK constraints cleanly — [11-02]
 - Index on clerk_user_id for efficient JWT lookup queries — [11-02]
