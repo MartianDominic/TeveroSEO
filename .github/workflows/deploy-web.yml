@@ -1,0 +1,106 @@
+# deploy-web.yml — Tevero Web (apps/web) auto-deploy to VPS
+#
+# Parallel sibling of deploy-vps.yml and deploy-ai-writer.yml.
+# Shares the same four repository secrets:
+#   VPS_HOST, VPS_USER, VPS_SSH_PRIVATE_KEY, KNOWN_HOSTS
+
+name: deploy-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "docker-compose.vps.yml"
+      - "docker/nginx/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-vps-tevero-web
+  cancel-in-progress: false
+
+env:
+  VPS_REPO_PATH: /home/deploy/TeveroSEO
+  COMPOSE_FILE: docker-compose.vps.yml
+
+jobs:
+  deploy:
+    name: Deploy Tevero Web to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH client with pinned host key
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          eval "$(ssh-agent -s)"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | ssh-add -
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+
+      - name: Deploy Tevero Web (pull -> up)
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd "${VPS_REPO_PATH:-/home/deploy/TeveroSEO}"
+
+          echo "[deploy-web] git pull origin main"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          echo "[deploy-web] rebuilding tevero-web"
+          docker compose -f docker-compose.vps.yml up -d --build tevero-web
+
+          echo "[deploy-web] pruning old images"
+          docker image prune -f
+
+          echo "[deploy-web] complete"
+          REMOTE
+
+      - name: Verify Tevero Web health
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s <<'REMOTE'
+          set -euo pipefail
+          cd /home/deploy/TeveroSEO
+          for i in $(seq 1 18); do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' $(docker compose -f docker-compose.vps.yml ps -q tevero-web) 2>/dev/null || echo "missing")
+            echo "[verify] attempt $i: tevero-web=$STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "[verify] service healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "[verify] service did not become healthy in 90s"
+          docker compose -f docker-compose.vps.yml logs --tail=100 tevero-web
+          exit 1
+          REMOTE

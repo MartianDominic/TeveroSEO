@@ -184,6 +184,38 @@ services:
     networks:
       - teveroseo-net
 
+  # ===== TEVERO WEB (apps/web — Next.js 15) =====
+
+  tevero-web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_OPEN_SEO_URL: "https://app.openseo.so"
+        NEXT_PUBLIC_AI_WRITER_URL: "https://app.alwrity.com"
+    image: teveroseo/tevero-web:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      AI_WRITER_BACKEND_URL: "http://ai-writer-backend:8000"
+      OPEN_SEO_URL: "http://open-seo:3001"
+    depends_on:
+      open-seo:
+        condition: service_healthy
+      ai-writer-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - teveroseo-net
+
   # ===== EDGE =====
 
   nginx:
@@ -202,6 +234,8 @@ services:
       ai-writer-frontend:
         condition: service_healthy
       ai-writer-backend:
+        condition: service_healthy
+      tevero-web:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/nginx-health"]
