@@ -60,10 +60,13 @@ services:
       PORT: "3001"
       DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
       REDIS_URL: "redis://redis:6379"
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
-      AUTH_MODE: ${OPEN_SEO_AUTH_MODE:-local_noauth}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
       DATAFORSEO_API_KEY: ${DATAFORSEO_API_KEY:-}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,8 +90,12 @@ services:
       NODE_ENV: production
       DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
       REDIS_URL: "redis://redis:6379"
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,6 +149,10 @@ services:
       DISABLE_AUTH: "false"
       DISABLE_SUBSCRIPTION: ${DISABLE_SUBSCRIPTION:-true}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      OPEN_SEO_WORKER_URL: "http://open-seo-worker:3001"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
