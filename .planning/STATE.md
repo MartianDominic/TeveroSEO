@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agency Intelligence
 status: in_progress
-last_updated: "2026-04-19T13:52:00.000Z"
+last_updated: "2026-04-19T14:02:00.000Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 38
-  completed_plans: 2
-  percent: 5
+  completed_plans: 3
+  percent: 8
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 15 (report-generation-engine)
-Plan: 2 of 4 (complete)
-Status: Plan 15-02 complete
+Plan: 3 of 4 (complete)
+Status: Plan 15-03 complete
 Last activity: 2026-04-19
 
 ## Completed Milestones
@@ -42,7 +42,7 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 | Phase | Title | Est. Effort | Status |
 |-------|-------|-------------|--------|
-| 15 | Report Generation Engine | 2 weeks | ◐ In Progress (2/4 plans) |
+| 15 | Report Generation Engine | 2 weeks | ◐ In Progress (3/4 plans) |
 | 16 | Report Scheduling & White-Label | 2 weeks | ○ Not Started |
 | 17 | Rank Tracking History (Extends Existing) | 1.5 weeks | ○ Not Started |
 | 18 | Monitoring & Alerts | 2 weeks | ○ Not Started |
@@ -65,6 +65,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **15-02:** Content hash uses 16-char hex SHA256 prefix for cache deduplication
 - **15-02:** Report queue uses exponential backoff (10s, 20s, 40s) matching analytics queue pattern
 - **15-02:** Unique index on (clientId, contentHash) prevents duplicate report generation
+- **15-03:** lockDuration 90_000 (60s render + 30s buffer) for PDF generation jobs
+- **15-03:** concurrency 2 to limit concurrent Puppeteer renders
+- **15-03:** Debian-slim base for Puppeteer (not Alpine) to avoid font rendering issues
+- **15-03:** shm_size 1gb for Chromium shared memory
 
 ## Blockers/Concerns
 
@@ -72,4 +76,4 @@ None currently.
 
 ## Next Up
 
-Phase 15 Plan 03: Report Worker — BullMQ worker with Puppeteer PDF generation
+Phase 15 Plan 04: Report UI — Report list page and preview/download actions
