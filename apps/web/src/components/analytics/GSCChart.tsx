@@ -74,7 +74,7 @@ export function GSCChart({ data }: GSCChartProps) {
           yAxisId="right"
           type="monotone"
           dataKey="impressions"
-          stroke="hsl(var(--muted-foreground))"
+          stroke="hsl(var(--chart-2))"
           strokeWidth={2}
           dot={false}
           name="Impressions"

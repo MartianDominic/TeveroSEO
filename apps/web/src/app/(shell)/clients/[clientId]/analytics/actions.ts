@@ -11,8 +11,8 @@ export async function fetchAnalyticsData(
     return await getFastApi<AnalyticsData>(
       `/api/analytics/${clientId}/full?days=${days}`
     );
-  } catch (error) {
-    console.error("Failed to fetch analytics data:", error);
+  } catch {
+    // Return null to signal failure to caller - error already logged by getFastApi
     return null;
   }
 }

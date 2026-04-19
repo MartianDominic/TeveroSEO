@@ -25,7 +25,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
 
   return (
     <Badge variant={config.variant} className="gap-1">
-      <Icon className="h-3 w-3" />
+      <Icon className="h-3 w-3" aria-hidden="true" />
       <span>{config.label}</span>
     </Badge>
   );
