@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 12 (per-client-credentials-system)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: Executing
 Last activity: 2026-04-19
 
@@ -111,7 +111,11 @@ Last activity: 2026-04-19
 ## Decisions (continued from Phase 12)
 
 - TextArray custom TypeDecorator for PostgreSQL ARRAY with SQLite JSON fallback (tests) - [12-01]
+- Combined Google OAuth scopes (GSC + GA4 + GBP) in single flow for better UX - [12-02]
+- OAuth state parameter format "type:identifier:random" for flow routing - [12-02]
+- 256-bit entropy tokens via secrets.token_urlsafe(32) producing 43-char strings - [12-02]
+- Write-only token pattern enforced via ConnectionResponse schema - [12-02]
 
 ## Next Up
 
-Phase 12 Plan 02: ClientOAuthService + API router
+Phase 12 Plan 03: Next.js /connect/[token] page + /clients/[clientId]/connections UI
