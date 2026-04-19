@@ -13,4 +13,5 @@ export type {
   ReportSection,
   ReportTemplate,
   ReportMetadata,
+  ReportStatus,
 } from "./reports";
