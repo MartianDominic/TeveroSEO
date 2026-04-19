@@ -1,0 +1,9 @@
+{
+  "name": "puppeteer-pdf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Puppeteer PDF generation server for TeveroSEO",
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

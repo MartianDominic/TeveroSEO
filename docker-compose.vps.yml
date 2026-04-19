@@ -96,6 +96,10 @@ services:
       AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      PUPPETEER_WS_ENDPOINT: "ws://puppeteer-pdf:9222"
+      REPORTS_DIR: "/data/reports"
+    volumes:
+      - reports_data:/data/reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,12 +107,32 @@ services:
         condition: service_healthy
       open-seo:
         condition: service_started   # not healthy — worker can start in parallel with HTTP server
+      puppeteer-pdf:
+        condition: service_healthy
     healthcheck:
       # Worker has no HTTP surface — check redis reachability as a liveness proxy.
       test: ["CMD-SHELL", "node -e \"const r=require('ioredis');const c=new r(process.env.REDIS_URL);c.ping().then(()=>{c.disconnect();process.exit(0)}).catch(()=>process.exit(1))\""]
       interval: 20s
       timeout: 10s
       retries: 5
+      start_period: 30s
+    networks:
+      - teveroseo-net
+
+  # ===== PUPPETEER PDF GENERATOR =====
+
+  puppeteer-pdf:
+    build:
+      context: ./docker/puppeteer
+    image: teveroseo/puppeteer-pdf:latest
+    restart: unless-stopped
+    # Shared memory for Chromium (per RESEARCH.md pitfall #1)
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
       start_period: 30s
     networks:
       - teveroseo-net
@@ -250,6 +274,7 @@ volumes:
   postgres_data:
   redis_data:
   ai_writer_workspace:
+  reports_data:
   letsencrypt_conf:
   letsencrypt_www:
 
