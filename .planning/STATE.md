@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 17 (rank-tracking-history)
-Plan: 1 of 4 (17-01 complete)
+Plan: 2 of 4 (17-02 complete)
 Status: In Progress
 Last activity: 2026-04-19
 
@@ -83,6 +83,8 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **16-04:** hexToRgb conversion for Puppeteer PDF color compatibility
 - **17-01:** Text ID for keyword_rankings (UUID v7 for time-sortable IDs)
 - **17-01:** Nullable tracking_enabled for backward compatibility with existing rows
+- **17-02:** 100ms rate limit delay between DataForSEO API calls (T-17-03 DoS mitigation)
+- **17-02:** 5-minute lockDuration for ranking worker batch processing
 
 ## Blockers/Concerns
 
