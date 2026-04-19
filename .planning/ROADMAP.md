@@ -239,9 +239,14 @@
   2. BullMQ job `sync-client-analytics` runs nightly at 02:00 UTC; `docker compose logs open-seo-worker` shows successful sync entries
   3. Token expiry within 24h triggers automatic refresh; failure sets `is_active=false` and surfaces in connection status UI
   4. 90-day backfill completes for a new connection within 10 minutes
-  5. `SELECT COUNT(*) FROM gsc_snapshots WHERE client_id = $1` returns ≥ 30 rows after backfill
+  5. `SELECT COUNT(*) FROM gsc_snapshots WHERE client_id = $1` returns >= 30 rows after backfill
 **Estimated effort**: 2 weeks
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 13-01-PLAN.md — Alembic migration 0013 + ORM models + internal API endpoint for token access (Wave 1)
+  - [ ] 13-02-PLAN.md — BullMQ analytics queue + worker infrastructure + aiwriter-api client (Wave 2)
+  - [ ] 13-03-PLAN.md — GSC/GA4 sync processor + google-auth token refresh + internal API token update endpoints (Wave 3)
+  - [ ] 13-04-PLAN.md — Drizzle schema + backfill trigger on OAuth callback (Wave 3)
+  - [ ] 13-05-PLAN.md — Server integration + docker-compose env vars + verification checkpoint (Wave 4)
 
 ---
 
