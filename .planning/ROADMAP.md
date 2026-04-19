@@ -455,11 +455,11 @@
   11. Webhook logs viewer with payload inspection and retry button
 **Estimated effort**: 3 weeks
 **Plans**: 5 plans
-  - [ ] 18.5-01-PLAN.md — Webhook schema + event registry + delivery queue (Wave 1)
-  - [ ] 18.5-02-PLAN.md — Webhook dispatcher: event emission → matching hooks → enqueue (Wave 2)
-  - [ ] 18.5-03-PLAN.md — HMAC signing + idempotency + retry logic + DLQ handling (Wave 2)
-  - [ ] 18.5-04-PLAN.md — Wire Tier 1 events: alerts, reports, rankings, connections (Wave 3)
-  - [ ] 18.5-05-PLAN.md — Configuration UI + logs viewer + test button (Wave 4)
+  - [x] 18.5-01-PLAN.md — Webhook schema + event registry + delivery queue (Wave 1)
+  - [x] 18.5-02-PLAN.md — Webhook dispatcher: event emission → matching hooks → enqueue (Wave 2)
+  - [x] 18.5-03-PLAN.md — HMAC signing + idempotency + retry logic + DLQ handling (Wave 2)
+  - [x] 18.5-04-PLAN.md — Wire Tier 1 events: alerts, reports, rankings, connections (Wave 3)
+  - [x] 18.5-05-PLAN.md — Configuration UI + logs viewer + test button (Wave 4)
 
 ---
 
@@ -620,8 +620,9 @@ CREATE TABLE dashboard_views (
   12. Background job computes `client_dashboard_metrics` every 5 minutes
 **Estimated effort**: 3 weeks
 **Plans**: 5 plans
-  - [ ] 21-01-PLAN.md — Dashboard metrics schema + background computation job (Wave 1)
-  - [ ] 21-02-PLAN.md — Portfolio health summary + needs attention + wins sections (Wave 2)
-  - [ ] 21-03-PLAN.md — Client table with hover popovers + filtering + sorting (Wave 2)
-  - [ ] 21-04-PLAN.md — Activity feed with WebSocket + quick stats cards (Wave 3)
-  - [ ] 21-05-PLAN.md — Saved views + export + mobile responsive + team workload (Wave 4)
+Plans:
+- [ ] 21-01-PLAN.md — Dashboard metrics schema + BullMQ worker for 5-min pre-computation (Wave 1)
+- [ ] 21-02-PLAN.md — Portfolio health summary + needs attention + wins/milestones sections (Wave 2)
+- [ ] 21-03-PLAN.md — Client portfolio table with hover popovers + sorting + filtering (Wave 2)
+- [ ] 21-04-PLAN.md — Real-time activity feed (Socket.IO) + drag-and-drop quick stats cards (Wave 3)
+- [ ] 21-05-PLAN.md — Saved views + CSV export + team workload + mobile responsive layout (Wave 4)
