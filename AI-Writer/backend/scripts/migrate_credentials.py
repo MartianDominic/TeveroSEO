@@ -271,6 +271,7 @@ def migrate_user_credentials(
 def migrate_all_credentials(
     dry_run: bool = False,
     verbose: bool = False,
+    db: Optional[Session] = None,
 ) -> Dict[str, int]:
     """
     Main migration function.
@@ -281,6 +282,7 @@ def migrate_all_credentials(
     Args:
         dry_run: If True, log what would be done without making changes.
         verbose: If True, log detailed progress.
+        db: Optional database session (for testing). If None, creates new session.
 
     Returns:
         dict with counts: {migrated: int, skipped: int, failed: int}
@@ -301,8 +303,10 @@ def migrate_all_credentials(
         logger.info("No user workspaces found. Migration complete.")
         return results
 
-    # Open PostgreSQL session
-    db = SessionLocal()
+    # Use provided session or create new one
+    own_session = db is None
+    if own_session:
+        db = SessionLocal()
 
     try:
         for user_id in user_ids:
@@ -342,7 +346,8 @@ def migrate_all_credentials(
                 results["failed"] += 1
 
     finally:
-        db.close()
+        if own_session:
+            db.close()
 
     logger.info(
         f"Migration complete: {results['migrated']} migrated, "
