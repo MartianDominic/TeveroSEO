@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 17 (rank-tracking-history)
-Plan: 2 of 4 (17-02 complete)
+Plan: 3 of 4 (17-03 complete)
 Status: In Progress
 Last activity: 2026-04-19
 
@@ -85,6 +85,8 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **17-01:** Nullable tracking_enabled for backward compatibility with existing rows
 - **17-02:** 100ms rate limit delay between DataForSEO API calls (T-17-03 DoS mitigation)
 - **17-02:** 5-minute lockDuration for ranking worker batch processing
+- **17-03:** Inverted Y-axis on charts (position 1 at top) for intuitive ranking visualization
+- **17-03:** Router type cast pattern for dynamic routes matching codebase convention
 
 ## Blockers/Concerns
 

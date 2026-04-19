@@ -341,10 +341,11 @@
   5. `/clients/[id]/seo/keywords` extended with position history column and trend sparkline
   6. Keyword detail view shows 30/90-day position chart
 **Estimated effort**: 1.5 weeks
-**Plans**: 3 plans
-  - [ ] 17-01-PLAN.md — Drizzle schema: keyword_rankings table + tracking_enabled column (Wave 1)
-  - [ ] 17-02-PLAN.md — BullMQ ranking worker reusing existing SERP client (Wave 2)
-  - [ ] 17-03-PLAN.md — Rankings history UI: sparklines + detail charts (Wave 3)
+**Plans**: 4 plans (3 complete)
+  - [x] 17-01-PLAN.md — Drizzle schema: keyword_rankings table + tracking_enabled column (Wave 1)
+  - [x] 17-02-PLAN.md — BullMQ ranking worker reusing existing SERP client (Wave 2)
+  - [x] 17-03-PLAN.md — Rankings history UI: sparklines + detail charts (Wave 3)
+  - [ ] 17-04-PLAN.md — Rank drop alerts integration (Wave 4)
 
 ---
 
