@@ -17,8 +17,9 @@ interface GSCChartProps {
 }
 
 export function GSCChart({ data }: GSCChartProps) {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+  const formatDate = (label: unknown) => {
+    if (label == null) return "";
+    const date = new Date(String(label));
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
