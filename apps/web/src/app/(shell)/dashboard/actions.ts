@@ -73,3 +73,31 @@ export async function dismissAttentionItem(itemId: string, action: "snooze" | "d
     method: "POST",
   });
 }
+
+/**
+ * Save card layout to user preferences.
+ */
+export async function saveCardLayout(cardOrder: string[]): Promise<void> {
+  try {
+    await getFastApi("/api/dashboard/layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cardOrder }),
+    });
+  } catch (error) {
+    console.error("Failed to save card layout:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get saved card layout for current user.
+ */
+export async function getCardLayout(): Promise<string[] | null> {
+  try {
+    const result = await getFastApi<{ cardOrder: string[] | null }>("/api/dashboard/layout");
+    return result.cardOrder;
+  } catch {
+    return null;
+  }
+}
