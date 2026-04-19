@@ -45,6 +45,11 @@ export interface ReportTemplate {
 }
 
 /**
+ * Report generation status.
+ */
+export type ReportStatus = "pending" | "generating" | "complete" | "failed";
+
+/**
  * Metadata for a generated report.
  * Stored in database for report management and caching.
  */
@@ -70,4 +75,8 @@ export interface ReportMetadata {
   contentHash: string;
   /** Path to generated PDF file (if exported) */
   pdfPath?: string;
+  /** Report generation status */
+  status: ReportStatus;
+  /** Error message if generation failed */
+  errorMessage?: string;
 }
