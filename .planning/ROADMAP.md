@@ -341,11 +341,11 @@
   5. `/clients/[id]/seo/keywords` extended with position history column and trend sparkline
   6. Keyword detail view shows 30/90-day position chart
 **Estimated effort**: 1.5 weeks
-**Plans**: 4 plans (3 complete)
+**Plans**: 4 plans (4 complete)
   - [x] 17-01-PLAN.md — Drizzle schema: keyword_rankings table + tracking_enabled column (Wave 1)
   - [x] 17-02-PLAN.md — BullMQ ranking worker reusing existing SERP client (Wave 2)
   - [x] 17-03-PLAN.md — Rankings history UI: sparklines + detail charts (Wave 3)
-  - [ ] 17-04-PLAN.md — Rank drop alerts integration (Wave 4)
+  - [x] 17-04-PLAN.md — Rank drop alerts integration (Wave 4)
 
 ---
 
@@ -362,11 +362,11 @@
   5. `/clients/[id]/alerts` shows alert history with acknowledge/dismiss actions
   6. Email notifications sent for high-severity alerts
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans
-  - [ ] 18-01-PLAN.md — Alert schema + rule engine (Wave 1)
-  - [ ] 18-02-PLAN.md — Alert creation in ranking/analytics workers (Wave 2)
-  - [ ] 18-03-PLAN.md — Alert notification service + email integration (Wave 2)
-  - [ ] 18-04-PLAN.md — Alert UI: dashboard badge, alert drawer, history page (Wave 3)
+**Plans**: 4 plans (4 complete)
+  - [x] 18-01-PLAN.md — Alert schema + rule engine (Wave 1)
+  - [x] 18-02-PLAN.md — Alert creation in ranking/analytics workers (Wave 2)
+  - [x] 18-03-PLAN.md — Alert notification service + email integration (Wave 2)
+  - [x] 18-04-PLAN.md — Alert UI: dashboard badge, alert drawer, history page (Wave 3)
 
 ---
 
