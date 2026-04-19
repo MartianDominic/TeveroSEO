@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
-- 🚧 **v3.0 Agency Intelligence** — Phases 15–20 (in progress)
+- 🚧 **v3.0 Agency Intelligence** — Phases 15–20 + 18.5 (in progress)
 
 ## Phases
 
@@ -366,6 +366,39 @@
   - [ ] 18-02-PLAN.md — Alert creation in ranking/analytics workers (Wave 2)
   - [ ] 18-03-PLAN.md — Alert notification service + email integration (Wave 2)
   - [ ] 18-04-PLAN.md — Alert UI: dashboard badge, alert drawer, history page (Wave 3)
+
+---
+
+### Phase 18.5: Webhook Infrastructure
+**Goal**: Multi-tenant webhook system for external integrations. Configure webhooks at global (platform), workspace (agency), or client level. Events cascade down hierarchy with override capability. Reliable delivery with retry and dead-letter handling.
+**Depends on**: Phase 18 (alerts exist to trigger webhooks)
+**Requirements**: HOOK-01 through HOOK-10
+**Working directory**: `apps/web/`, `open-seo-main/`, `AI-Writer/backend/`
+**Multi-tenant hierarchy**:
+  - **Global** — Platform-wide events (new workspace signup, system alerts)
+  - **Workspace** — Agency-level events (all clients' alerts to agency Slack)
+  - **Client** — Per-client events (specific client alerts to their own endpoint)
+**Event types**:
+  - `ranking.drop` / `ranking.gain` — Position changes exceeding threshold
+  - `backlink.new` / `backlink.lost` — Backlink changes detected
+  - `audit.completed` — Site audit finished
+  - `report.generated` — PDF report created
+  - `connection.expired` — OAuth token needs refresh
+  - `alert.triggered` — Any alert rule fired
+**Success Criteria** (what must be TRUE):
+  1. `webhooks` table stores endpoint URL, secret, events array, scope (global/workspace/client), scope_id
+  2. `webhook_deliveries` table logs all delivery attempts with status, response, retry count
+  3. BullMQ `webhook-delivery` queue handles async delivery with exponential backoff (3 retries)
+  4. Failed deliveries after max retries land in DLQ; visible in admin UI
+  5. HMAC signature in `X-Webhook-Signature` header for payload verification
+  6. `/settings/webhooks` (global), `/workspaces/[id]/webhooks`, `/clients/[id]/webhooks` configuration UIs
+  7. Test webhook button sends sample payload and shows response
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 18.5-01-PLAN.md — Webhook schema + delivery queue + signature generation (Wave 1)
+  - [ ] 18.5-02-PLAN.md — Webhook dispatcher service: event → matching hooks → enqueue delivery (Wave 2)
+  - [ ] 18.5-03-PLAN.md — Wire alert/report/audit events to webhook dispatcher (Wave 2)
+  - [ ] 18.5-04-PLAN.md — Webhook configuration UI at all three levels + test button (Wave 3)
 
 ---
 
