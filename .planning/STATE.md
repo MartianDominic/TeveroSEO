@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 13 (analytics-data-layer)
-Plan: 3 of TBD
+Plan: 4 of TBD
 Status: Executing
 Last activity: 2026-04-19
 
@@ -132,7 +132,10 @@ Last activity: 2026-04-19
 - GSC/GA4 date range accounts for 3-day data delay - [13-03]
 - Per-client job fan-out via ALWRITY_DATABASE_URL direct query - [13-03]
 - Drizzle upsert with onConflictDoUpdate for idempotent snapshot writes - [13-03]
+- Manual Drizzle migration (drizzle-kit requires TTY for interactive prompts) - [13-04]
+- Type assertion for TanStack route path (route tree regeneration requires dev server) - [13-04]
+- Backfill trigger calls localhost AI-Writer internal API which forwards to open-seo-worker - [13-04]
 
 ## Next Up
 
-Phase 13: Continue with Plan 04 (if exists) or Phase 14
+Phase 13: Continue with Plan 05 (if exists) or Phase 14
