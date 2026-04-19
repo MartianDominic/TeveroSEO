@@ -221,7 +221,11 @@
   5. Existing per-user GSC/Bing credentials in SQLite migrated to per-client PostgreSQL
   6. `grep -r "gsc_credentials\|bing_oauth_tokens" AI-Writer/backend/services/` — old SQLite-backed credential tables replaced
 **Estimated effort**: 3 weeks
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 12-01-PLAN.md — Alembic migration + ORM models for client_oauth_tokens, client_oauth_properties, client_connect_invites (Wave 1)
+  - [ ] 12-02-PLAN.md — ClientOAuthService + API router: invite generation, OAuth flow, callback handling (Wave 2)
+  - [ ] 12-03-PLAN.md — Next.js /connect/[token] magic link page + /clients/[id]/connections UI (Wave 3, checkpoint)
+  - [ ] 12-04-PLAN.md — Migration script: per-user SQLite credentials to per-client PostgreSQL (Wave 4, checkpoint)
 
 ---
 
