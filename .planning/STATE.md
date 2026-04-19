@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 16 (report-scheduling-white-label)
-Plan: 0 of ? (not started)
-Status: Starting Phase 16
+Plan: 2 of 4 (16-02 complete)
+Status: Executing Phase 16
 Last activity: 2026-04-19
 
 ## Completed Milestones
@@ -69,6 +69,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **15-03:** concurrency 2 to limit concurrent Puppeteer renders
 - **15-03:** Debian-slim base for Puppeteer (not Alpine) to avoid font rendering issues
 - **15-03:** shm_size 1gb for Chromium shared memory
+- **16-02:** Resend API for report email delivery (not Loops.so which handles auth)
+- **16-02:** 10MB attachment threshold with download link fallback for larger PDFs
+- **16-02:** Email failures non-blocking: logged but don't fail report job
 
 ## Blockers/Concerns
 
