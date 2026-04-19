@@ -66,3 +66,52 @@ export interface WinItem {
   achievedAt: string;
   metadata?: Record<string, unknown>;
 }
+
+/**
+ * Sparkline data point for 30-day trends.
+ */
+export interface SparklineDataPoint {
+  value: number;
+  label?: string; // Date or label for tooltip
+}
+
+/**
+ * Extended client metrics with sparkline data for table display.
+ */
+export interface ClientMetricsWithTrends extends ClientMetrics {
+  trafficSparkline: SparklineDataPoint[];
+  keywordsSparkline: SparklineDataPoint[];
+  backlinksTotal: number;
+  backlinksNewMonth: number;
+  addedAt: string; // When client was added to portfolio
+  tags: string[];
+}
+
+/**
+ * Filter options for client table.
+ */
+export interface ClientTableFilters {
+  search: string;
+  healthRange: [number, number]; // [min, max] e.g., [0, 60] for "at risk"
+  connectionStatus: ("connected" | "stale" | "disconnected")[];
+  tags: string[];
+  hasAlerts: boolean | null;
+}
+
+/**
+ * Sort configuration for client table.
+ */
+export interface ClientTableSort {
+  key: ClientSortKey;
+  direction: "asc" | "desc";
+}
+
+export type ClientSortKey =
+  | "clientName"
+  | "healthScore"
+  | "trafficCurrent"
+  | "trafficTrendPct"
+  | "keywordsTotal"
+  | "keywordsTop10"
+  | "alertsOpen"
+  | "addedAt";
