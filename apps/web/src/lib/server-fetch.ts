@@ -69,5 +69,7 @@ export const postOpenSeo = <T>(path: string, body: unknown, init?: RequestInit) 
   request<T>(OPEN_SEO_URL, "POST", path, body, init);
 export const putOpenSeo = <T>(path: string, body: unknown, init?: RequestInit) =>
   request<T>(OPEN_SEO_URL, "PUT", path, body, init);
+export const patchOpenSeo = <T>(path: string, body: unknown, init?: RequestInit) =>
+  request<T>(OPEN_SEO_URL, "PATCH", path, body, init);
 export const deleteOpenSeo = <T>(path: string, init?: RequestInit) =>
   request<T>(OPEN_SEO_URL, "DELETE", path, undefined, init);
