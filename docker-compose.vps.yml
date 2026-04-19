@@ -98,8 +98,10 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       PUPPETEER_WS_ENDPOINT: "ws://puppeteer-pdf:9222"
       REPORTS_DIR: "/data/reports"
+      BRANDING_DIR: "/data/branding"
     volumes:
       - reports_data:/data/reports
+      - branding_data:/data/branding
     depends_on:
       postgres:
         condition: service_healthy
@@ -275,6 +277,7 @@ volumes:
   redis_data:
   ai_writer_workspace:
   reports_data:
+  branding_data:
   letsencrypt_conf:
   letsencrypt_www:
 
