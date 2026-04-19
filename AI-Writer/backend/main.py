@@ -67,6 +67,9 @@ from api.onboarding_utils.step3_routes import router as step3_routes
 # Import per-client OAuth router (Phase 12)
 from api.client_oauth import router as client_oauth_router
 
+# Import internal API router (Phase 13 - service-to-service token access)
+from api.internal import router as internal_router
+
 # Import SEO tools router
 from routers.seo_tools import router as seo_tools_router
 # Import Facebook Writer endpoints
@@ -425,6 +428,10 @@ app.include_router(today_workflow_router)
 # Per-client OAuth routes (Phase 12)
 # NOTE: /api/invites/{token}/validate and /api/auth/google/callback are PUBLIC endpoints
 app.include_router(client_oauth_router, prefix="/api", tags=["client-oauth"])
+
+# Internal API routes (Phase 13 - service-to-service token access)
+# NOTE: /internal/* endpoints require X-Internal-Api-Key header
+app.include_router(internal_router)
 
 # Setup frontend serving using modular utilities
 frontend_serving.setup_frontend_serving()
