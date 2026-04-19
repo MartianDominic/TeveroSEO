@@ -315,9 +315,9 @@
   5. Reports render with client branding when configured; fallback to Tevero branding
   6. `/clients/[id]/settings/branding` UI to upload logo and set colors
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans
-  - [ ] 16-01-PLAN.md — Report scheduler BullMQ queue + worker (Wave 1)
-  - [ ] 16-02-PLAN.md — Email delivery integration with existing email service (Wave 1)
+**Plans**: 4 plans (2 complete)
+  - [x] 16-01-PLAN.md — Report scheduler BullMQ queue + worker (Wave 1)
+  - [x] 16-02-PLAN.md — Email delivery integration with existing email service (Wave 1)
   - [ ] 16-03-PLAN.md — Client branding schema + API + storage (Wave 2)
   - [ ] 16-04-PLAN.md — Branding settings UI + report template branding injection (Wave 3)
 

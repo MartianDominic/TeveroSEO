@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agency Intelligence
 status: in_progress
-last_updated: "2026-04-19T17:15:00.000Z"
+last_updated: "2026-04-19T16:28:37Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 38
-  completed_plans: 4
-  percent: 11
+  completed_plans: 5
+  percent: 13
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 16 (report-scheduling-white-label)
-Plan: 2 of 4 (16-02 complete)
+Plan: 2 of 4 (16-01, 16-02 complete)
 Status: Executing Phase 16
 Last activity: 2026-04-19
 
@@ -72,6 +72,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **16-02:** Resend API for report email delivery (not Loops.so which handles auth)
 - **16-02:** 10MB attachment threshold with download link fallback for larger PDFs
 - **16-02:** Email failures non-blocking: logged but don't fail report job
+- **16-01:** 5-minute repeatable job interval for schedule checking
+- **16-01:** Minimum schedule frequency: daily (T-16-05 DoS mitigation)
+- **16-01:** Max 100 schedules processed per check run
 
 ## Blockers/Concerns
 
