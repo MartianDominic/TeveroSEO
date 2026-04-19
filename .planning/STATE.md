@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 13 (analytics-data-layer)
-Plan: 2 of TBD
+Plan: 3 of TBD
 Status: Executing
 Last activity: 2026-04-19
 
@@ -128,7 +128,11 @@ Last activity: 2026-04-19
 - concurrency:5 for analytics worker (lower than audit to respect Google API rate limits) - [13-02]
 - nightly scheduler at 02:00 UTC via upsertJobScheduler (idempotent cron setup) - [13-02]
 - sandboxed processor pattern for analytics-worker.ts - [13-02]
+- Token refresh triggered when expiry within 1 hour (proactive) - [13-03]
+- GSC/GA4 date range accounts for 3-day data delay - [13-03]
+- Per-client job fan-out via ALWRITY_DATABASE_URL direct query - [13-03]
+- Drizzle upsert with onConflictDoUpdate for idempotent snapshot writes - [13-03]
 
 ## Next Up
 
-Phase 13: Continue with Plan 03 (GSC/GA4 API clients and processor)
+Phase 13: Continue with Plan 04 (if exists) or Phase 14
