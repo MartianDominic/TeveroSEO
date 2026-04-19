@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 11 (clerk-auth-unified-open-seo-backend)
-Plan: 4 of 4 complete
-Status: Phase Complete
-Last activity: 2026-04-18
+Phase: 12 (per-client-credentials-system)
+Plan: 1 of 4 complete
+Status: Executing
+Last activity: 2026-04-19
 
 ## Completed Phases (v1.0)
 
@@ -108,6 +108,10 @@ Last activity: 2026-04-18
 - better-auth-schema.ts renamed to user-schema.ts (zero better-auth references in codebase) — [11-04]
 - auth-client.ts, auth-mode.ts, auth-session.ts kept as stubs for TanStack frontend backward compatibility — [11-04]
 
+## Decisions (continued from Phase 12)
+
+- TextArray custom TypeDecorator for PostgreSQL ARRAY with SQLite JSON fallback (tests) - [12-01]
+
 ## Next Up
 
-Phase 12: Per-Client Credentials System
+Phase 12 Plan 02: ClientOAuthService + API router
