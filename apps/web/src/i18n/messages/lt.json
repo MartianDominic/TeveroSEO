@@ -1,0 +1,20 @@
+{
+  "report": {
+    "title": "Menesiné SEO Ataskaita",
+    "subtitle": "Veiklos Apzvalga",
+    "dateRange": "{startDate, date, medium} - {endDate, date, medium}",
+    "clicks": "Paspaudimai",
+    "impressions": "Rodymai",
+    "ctr": "CTR",
+    "position": "Vid. Pozicija",
+    "sessions": "Sesijos",
+    "users": "Vartotojai",
+    "conversions": "Konversijos",
+    "bounceRate": "Atmetimo rodiklis",
+    "topQueries": "Populiariausios uzklauses",
+    "query": "Uzklausa",
+    "wow": "Sav/Sav",
+    "generatedBy": "Sukurta Tevero",
+    "generatedAt": "Sukurta {date, date, medium}, {time, time, short}"
+  }
+}

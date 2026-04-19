@@ -1,0 +1,20 @@
+{
+  "report": {
+    "title": "Monatlicher SEO-Bericht",
+    "subtitle": "Leistungsubersicht",
+    "dateRange": "{startDate, date, medium} bis {endDate, date, medium}",
+    "clicks": "Klicks",
+    "impressions": "Impressionen",
+    "ctr": "CTR",
+    "position": "Durchschn. Position",
+    "sessions": "Sitzungen",
+    "users": "Nutzer",
+    "conversions": "Conversions",
+    "bounceRate": "Absprungrate",
+    "topQueries": "Top-Suchanfragen",
+    "query": "Suchanfrage",
+    "wow": "WoW",
+    "generatedBy": "Erstellt von Tevero",
+    "generatedAt": "Erstellt am {date, date, medium} um {time, time, short}"
+  }
+}
