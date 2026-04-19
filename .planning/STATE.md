@@ -9,8 +9,8 @@ progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 38
-  completed_plans: 12
-  percent: 32
+  completed_plans: 13
+  percent: 34
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 21 (agency-command-center)
-Plan: 1 of 5 (Plan 21-01 complete)
+Plan: 2 of 5 (Plan 21-02 complete)
 Status: In Progress
 Last activity: 2026-04-19
 
@@ -62,6 +62,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **21-02:** Portfolio health summary displays 4 KPI cards: clients, wins, traffic change, keyword positions
+- **21-02:** Position distribution bar uses 3-color gradient: emerald-500 (#1), emerald-400 (top 3), emerald-300 (top 10)
+- **21-02:** Health score badge uses 4 color tiers: 80+ emerald (Healthy), 60+ yellow (Monitor), 40+ orange (At Risk), <40 red (Critical)
+- **21-02:** Dashboard fetches data in parallel via Promise.all for optimal performance
 - **21-01:** Dashboard metrics computed every 5 minutes via BullMQ worker with 5-min lock duration
 - **21-01:** Health score weights: traffic 30%, rankings 25%, technical 20%, backlinks 15%, content 10%
 - **21-01:** Critical alert penalty: -16 per alert in technical + -5 global to push 2 alerts below 60
