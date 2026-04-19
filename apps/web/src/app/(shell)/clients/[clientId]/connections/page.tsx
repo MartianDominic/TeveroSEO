@@ -160,7 +160,7 @@ export default function ConnectionsPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleDirectConnect = useCallback(
-    (provider: OAuthProvider) => {
+    (_provider: OAuthProvider) => {
       // For direct connect, redirect to OAuth flow with client_id
       const publicUrl =
         process.env.NEXT_PUBLIC_AI_WRITER_URL || "http://localhost:8000";
