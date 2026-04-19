@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agency Intelligence
 status: in_progress
-last_updated: "2026-04-19T19:30:13Z"
+last_updated: "2026-04-19T19:51:24Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 38
-  completed_plans: 14
-  percent: 37
+  completed_plans: 15
+  percent: 39
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 21 (agency-command-center)
-Plan: 4 of 5 (Plan 21-04 complete)
+Plan: 5 of 5 (Plan 21-05 complete - awaiting human verification)
 Status: In Progress
 Last activity: 2026-04-19
 
@@ -62,6 +62,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **21-05:** Default views included as fallback when API fails for graceful degradation
+- **21-05:** CSV export with column selection dialog for flexibility
+- **21-05:** Team workload hidden for solo operators (capacity tracking not relevant)
+- **21-05:** Upcoming items sorted by scheduled time, limited to 5 visible with overflow count
 - **21-04:** WebSocket server runs on port 3002 separate from main HTTP server for cleaner architecture
 - **21-04:** Singleton Socket.IO client with reference counting prevents duplicate connections
 - **21-04:** TouchSensor uses 250ms delay + 5px tolerance to prevent accidental drags while scrolling
