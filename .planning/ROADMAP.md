@@ -295,10 +295,10 @@
   5. `GET /api/reports/{id}/download` returns the PDF with correct Content-Type
 **Estimated effort**: 2 weeks
 **Plans**: 4 plans
-  - [ ] 15-01-PLAN.md — Puppeteer infrastructure + report generation service (Wave 1)
-  - [ ] 15-02-PLAN.md — Report template components: ReportHeader, ReportSection, ReportChart (Wave 1)
-  - [ ] 15-03-PLAN.md — Report API routes + storage layer + database schema (Wave 2)
-  - [ ] 15-04-PLAN.md — Report preview UI at /clients/[id]/reports (Wave 3)
+  - [ ] 15-01-PLAN.md — Report template system and React components (Wave 1)
+  - [ ] 15-02-PLAN.md — Report data layer, BullMQ queue, API routes (Wave 1)
+  - [ ] 15-03-PLAN.md — BullMQ worker and Puppeteer PDF generation (Wave 2)
+  - [ ] 15-04-PLAN.md — Report UI pages at /clients/[clientId]/reports (Wave 3, checkpoint)
 
 ---
 
