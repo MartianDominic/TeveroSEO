@@ -27,14 +27,20 @@ from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from loguru import logger
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from models.client_oauth import (
     ClientConnectInvite,
     ClientOAuthProperty,
     ClientOAuthToken,
+    OAuthStateToken,
 )
 from services.encryption import encrypt_value
+
+
+# OAuth state token TTL in minutes
+OAUTH_STATE_TTL_MINUTES = 10
 
 
 # Reload environment variables to catch runtime .env updates
@@ -214,17 +220,19 @@ class ClientOAuthService:
 
     def get_oauth_url(
         self,
+        db: Session,
         client_id: str,
         invite_token: Optional[str] = None,
     ) -> str:
         """
         Generate Google OAuth authorization URL.
 
-        The OAuth state parameter encodes the flow type:
-        - Invite flow: "invite:{invite_token}:{random}"
-        - Direct flow: "client:{client_id}:{random}"
+        SECURITY: The state token is stored in the database before redirecting
+        to prevent CSRF attacks. On callback, the state is validated against
+        the stored record to ensure it was issued by this server.
 
         Args:
+            db: Database session for storing state token.
             client_id: UUID of the client (used for direct flow).
             invite_token: Optional invite token (for magic link flow).
 
@@ -248,14 +256,25 @@ class ClientOAuthService:
             redirect_uri=redirect_uri,
         )
 
-        # Generate cryptographically random state component
-        random_state = secrets.token_urlsafe(32)
+        # Generate cryptographically random state token (43 chars, 256-bit entropy)
+        state = secrets.token_urlsafe(32)
+        flow_type = "invite" if invite_token else "client"
 
-        # State format: type:identifier:random
-        if invite_token:
-            state = f"invite:{invite_token}:{random_state}"
-        else:
-            state = f"client:{client_id}:{random_state}"
+        # SECURITY: Store state token in database before redirect
+        # This prevents attackers from crafting malicious state parameters
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(minutes=OAUTH_STATE_TTL_MINUTES)
+
+        state_record = OAuthStateToken(
+            state_token=state,
+            client_id=client_id,
+            flow_type=flow_type,
+            invite_token=invite_token,
+            created_at=now,
+            expires_at=expires_at,
+        )
+        db.add(state_record)
+        db.commit()
 
         authorization_url, _ = flow.authorization_url(
             access_type="offline",
@@ -264,10 +283,9 @@ class ClientOAuthService:
             state=state,
         )
 
-        flow_type = "invite" if invite_token else "direct"
         logger.info(
             f"Generated OAuth URL for {flow_type} flow, "
-            f"identifier={invite_token or client_id}"
+            f"client_id={client_id}, state stored with {OAUTH_STATE_TTL_MINUTES}min TTL"
         )
 
         return authorization_url
@@ -282,56 +300,79 @@ class ClientOAuthService:
         """
         Handle Google OAuth callback.
 
-        Parses the state parameter to determine flow type (invite vs direct),
-        validates the invite token if applicable, exchanges the code for
-        credentials, and stores encrypted tokens.
+        SECURITY: Validates the state parameter against the database to prevent
+        CSRF attacks. The state must exist, not be expired, and is deleted after
+        successful use (single-use enforcement).
 
         Args:
             db: Database session.
             code: Authorization code from Google.
-            state: State parameter encoding flow type and identifier.
+            state: State token to validate against stored record.
             connected_by_override: For direct flow, the Clerk user ID.
 
         Returns:
             Dict with success status, client_id, and provider.
 
         Raises:
-            ValueError: If state is invalid or invite is expired/used.
+            ValueError: If state is invalid/expired or invite is expired/used.
         """
         logger.info(f"Handling OAuth callback with state: {state[:20]}...")
 
-        # Parse state to determine flow type
-        parts = state.split(":")
-        if len(parts) < 2:
-            logger.error(f"Invalid state format: {state}")
-            raise ValueError("Invalid OAuth state parameter")
+        # SECURITY: Validate state token against database
+        now = datetime.now(timezone.utc)
+        state_record = (
+            db.query(OAuthStateToken)
+            .filter(
+                OAuthStateToken.state_token == state,
+                OAuthStateToken.expires_at > now,
+            )
+            .first()
+        )
 
-        flow_type = parts[0]
-        identifier = parts[1]
+        if not state_record:
+            logger.error(f"Invalid or expired OAuth state token: {state[:20]}...")
+            raise ValueError("Invalid or expired OAuth state. Please restart the authorization flow.")
+
+        # Extract flow details from stored record (not from user-supplied state)
+        flow_type = state_record.flow_type
+        client_id = state_record.client_id
+        invite_token = state_record.invite_token
+
+        # SECURITY: Delete state token immediately (single-use enforcement)
+        db.delete(state_record)
 
         # Handle flow types
         if flow_type == "invite":
-            # Magic link flow: validate invite token
-            invite = self.validate_invite(db, identifier)
+            # Magic link flow: validate invite token from stored record
+            if not invite_token:
+                logger.error("Invite flow missing invite_token in state record")
+                raise ValueError("Invalid OAuth state configuration")
+
+            invite = self.validate_invite(db, invite_token)
             if not invite:
                 raise ValueError("Invalid or expired invite link")
 
-            client_id = str(invite.client_id)
+            # Verify client_id matches (defense in depth)
+            if str(invite.client_id) != client_id:
+                logger.error(
+                    f"Client ID mismatch: state={client_id}, invite={invite.client_id}"
+                )
+                raise ValueError("OAuth state validation failed")
+
             connected_by = invite.created_by  # Audit: who sent the invite
 
             # Mark invite as used (single-use enforcement)
-            invite.completed_at = datetime.now(timezone.utc)
+            invite.completed_at = now
             db.add(invite)
 
         elif flow_type == "client":
-            # Direct flow: client_id from state, connected_by from override
-            client_id = identifier
+            # Direct flow: client_id from stored state, connected_by from override
             if not connected_by_override:
                 raise ValueError("Direct OAuth flow requires authenticated user")
             connected_by = connected_by_override
 
         else:
-            logger.error(f"Unknown flow type: {flow_type}")
+            logger.error(f"Unknown flow type in state record: {flow_type}")
             raise ValueError(f"Unknown OAuth flow type: {flow_type}")
 
         # Exchange authorization code for credentials
@@ -368,11 +409,56 @@ class ClientOAuthService:
             f"flow_type={flow_type}, connected_by={connected_by}"
         )
 
+        # Trigger backfill for new Google connections (ANALYTICS-10)
+        # This ensures data is available within 2h of connection
+        self._trigger_backfill(client_id)
+
         return {
             "success": True,
             "client_id": client_id,
             "provider": "google",
+            "flow_type": flow_type,
         }
+
+    def _trigger_backfill(self, client_id: str) -> None:
+        """
+        Trigger analytics backfill for a newly connected client.
+
+        Calls the internal API to queue a 90-day backfill job.
+        Per ANALYTICS-10: Data available within 2h of connection.
+
+        Args:
+            client_id: UUID of the client
+
+        Note:
+            Failures are logged but don't fail the OAuth flow.
+            The nightly sync will eventually catch up.
+        """
+        try:
+            import httpx
+
+            internal_api_key = os.getenv("INTERNAL_API_KEY")
+            if not internal_api_key:
+                logger.warning(
+                    f"INTERNAL_API_KEY not set, skipping backfill trigger for {client_id}"
+                )
+                return
+
+            # Call AI-Writer's internal API which forwards to open-seo-worker
+            response = httpx.post(
+                "http://localhost:8000/internal/analytics/backfill/" + client_id,
+                headers={"X-Internal-Api-Key": internal_api_key},
+                timeout=5.0,
+            )
+            if response.status_code in (200, 202):
+                logger.info(f"Analytics backfill triggered for client {client_id}")
+            else:
+                logger.warning(
+                    f"Backfill trigger returned {response.status_code} for {client_id}"
+                )
+        except Exception as e:
+            # Don't fail OAuth if backfill trigger fails
+            logger.warning(f"Failed to trigger backfill for {client_id}: {e}")
 
     def _store_oauth_token(
         self,
@@ -466,12 +552,17 @@ class ClientOAuthService:
             List of connection dicts with metadata and properties.
         """
         client_uuid = uuid.UUID(client_id)
+        now = datetime.now(timezone.utc)
 
         tokens = (
             db.query(ClientOAuthToken)
             .filter(
                 ClientOAuthToken.client_id == client_uuid,
                 ClientOAuthToken.is_active.is_(True),
+                or_(
+                    ClientOAuthToken.token_expiry.is_(None),
+                    ClientOAuthToken.token_expiry > now,
+                ),
             )
             .all()
         )
@@ -551,3 +642,30 @@ class ClientOAuthService:
             f"Revoked OAuth connection for client {client_id}, provider {provider}"
         )
         return True
+
+    def cleanup_expired_state_tokens(self, db: Session) -> int:
+        """
+        Remove expired OAuth state tokens from the database.
+
+        Should be called periodically (e.g., via cron or scheduler) to prevent
+        table bloat from abandoned OAuth flows.
+
+        Args:
+            db: Database session.
+
+        Returns:
+            Number of expired tokens deleted.
+        """
+        now = datetime.now(timezone.utc)
+
+        expired_count = (
+            db.query(OAuthStateToken)
+            .filter(OAuthStateToken.expires_at <= now)
+            .delete(synchronize_session=False)
+        )
+
+        if expired_count > 0:
+            db.commit()
+            logger.info(f"Cleaned up {expired_count} expired OAuth state tokens")
+
+        return expired_count

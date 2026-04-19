@@ -16,7 +16,7 @@ SECURITY RULES:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -114,6 +114,40 @@ def _get_active_client_or_404(client_id: str, db: Session) -> Client:
     return client
 
 
+# Rate limit: maximum invites per client per hour
+INVITE_RATE_LIMIT = 10
+INVITE_RATE_WINDOW_HOURS = 1
+
+
+def _check_invite_rate_limit(client_id: uuid.UUID, db: Session) -> None:
+    """
+    Check if the client has exceeded the invite creation rate limit.
+
+    Raises 429 Too Many Requests if the client has created more than
+    INVITE_RATE_LIMIT invites in the last INVITE_RATE_WINDOW_HOURS hour(s).
+    """
+    window_start = datetime.now(timezone.utc) - timedelta(hours=INVITE_RATE_WINDOW_HOURS)
+
+    invite_count = (
+        db.query(ClientConnectInvite)
+        .filter(
+            ClientConnectInvite.client_id == client_id,
+            ClientConnectInvite.created_at > window_start,
+        )
+        .count()
+    )
+
+    if invite_count >= INVITE_RATE_LIMIT:
+        logger.warning(
+            f"Rate limit exceeded for invite creation: client_id={client_id}, "
+            f"count={invite_count} in last {INVITE_RATE_WINDOW_HOURS} hour(s)"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Maximum {INVITE_RATE_LIMIT} invites per hour allowed.",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Invite Endpoints
 # ---------------------------------------------------------------------------
@@ -135,8 +169,13 @@ def create_invite(
 
     The invite token is valid for 7 days and can only be used once.
     The invite URL format is: https://app.tevero.lt/connect/{token}
+
+    Rate limited to 10 invites per client per hour to prevent abuse.
     """
     client = _get_active_client_or_404(client_id, db)
+
+    # Check rate limit before creating invite
+    _check_invite_rate_limit(client.id, db)
 
     oauth_service = ClientOAuthService()
     invite = oauth_service.create_invite(
@@ -282,6 +321,9 @@ async def start_google_oauth(
     1. Direct flow: Agency staff connects for a client (requires auth + client_id)
     2. Invite flow: Client self-authorizes via magic link (requires token, no auth)
 
+    SECURITY: The OAuth state token is stored in the database before redirecting
+    to prevent CSRF attacks. State is validated on callback.
+
     Returns a redirect to Google's OAuth consent screen.
     """
     oauth_service = ClientOAuthService()
@@ -293,6 +335,7 @@ async def start_google_oauth(
             raise HTTPException(status_code=400, detail="Invalid or expired invite link")
 
         authorization_url = oauth_service.get_oauth_url(
+            db=db,
             client_id=str(invite.client_id),
             invite_token=token,
         )
@@ -309,6 +352,7 @@ async def start_google_oauth(
         _get_active_client_or_404(client_id, db)
 
         authorization_url = oauth_service.get_oauth_url(
+            db=db,
             client_id=client_id,
             invite_token=None,
         )
@@ -325,42 +369,27 @@ async def start_google_oauth(
 @router.get("/auth/google/callback")
 async def google_oauth_callback(
     code: str = Query(..., description="Authorization code from Google"),
-    state: str = Query(..., description="OAuth state parameter"),
+    state: str = Query(..., description="OAuth state token"),
     db: Session = Depends(get_shared_db),
     current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """
     Handle Google OAuth callback (PUBLIC endpoint).
 
-    Validates the state parameter to determine flow type:
-    - Invite flow: validates invite token, stores credentials, marks invite as used
-    - Direct flow: validates client_id, stores credentials
+    SECURITY: The state parameter is validated against the database to prevent
+    CSRF attacks. The state must exist, not be expired, and is deleted after
+    successful use (single-use enforcement). Flow type and client_id are
+    extracted from the stored record, NOT from the state parameter itself.
 
     Redirects to success page after completion.
     """
     oauth_service = ClientOAuthService()
 
-    # Parse state to determine flow type
-    parts = state.split(":")
-    if len(parts) < 2:
-        logger.error(f"Invalid OAuth state format: {state}")
-        raise HTTPException(status_code=400, detail="Invalid OAuth state parameter")
-
-    flow_type = parts[0]
-
-    # For direct flow, extract connected_by from current_user
+    # Pass current_user's clerk_user_id for direct flow authentication
+    # The service layer will validate the state and determine flow type
     connected_by_override = None
-    if flow_type == "client":
-        if not current_user:
-            # This shouldn't happen if start was called correctly,
-            # but handle gracefully
-            logger.warning(
-                "Direct OAuth callback received without authenticated user. "
-                "Using state client_id as fallback."
-            )
-            # We'll let handle_oauth_callback raise ValueError
-        else:
-            connected_by_override = current_user["clerk_user_id"]
+    if current_user:
+        connected_by_override = current_user["clerk_user_id"]
 
     try:
         result = oauth_service.handle_oauth_callback(
@@ -373,7 +402,9 @@ async def google_oauth_callback(
         logger.error(f"OAuth callback error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Redirect to appropriate success page
+    # Redirect based on flow type returned from service
+    # The service determines flow type from stored state record
+    flow_type = result.get("flow_type", "client")
     if flow_type == "invite":
         # Magic link flow: redirect to /connect/success
         return RedirectResponse(url="/connect/success")
