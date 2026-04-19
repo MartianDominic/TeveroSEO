@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 14 (analytics-ux-agency-dashboard)
-Plan: 2 of TBD
+Plan: 4 of TBD
 Status: Executing
 Last activity: 2026-04-19
 
@@ -130,6 +130,7 @@ Last activity: 2026-04-19
 - Default sort by clicks descending (highest traffic first) - [14-02]
 - Attention section shows clients with drop or stale status - [14-02]
 - Inline CTAs: Invite for no_gsc, Reconnect for stale - [14-02]
+- formatDate uses unknown type for Recharts labelFormatter compatibility - [14-03]
 - SQL DELETE used in cascade test to bypass ORM backref handling in SQLite - [13-01]
 - SQLite foreign_keys pragma enabled in test fixture for CASCADE support - [13-01]
 - concurrency:5 for analytics worker (lower than audit to respect Google API rate limits) - [13-02]
