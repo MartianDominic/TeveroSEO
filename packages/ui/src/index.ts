@@ -26,6 +26,8 @@ export {
 } from "./components/chart";
 export type { ChartConfig } from "./components/chart";
 
+export { Checkbox } from "./components/checkbox";
+
 export { CmsHealthBadge } from "./components/cms-health-badge";
 
 export {
