@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agency Intelligence
 status: in_progress
-last_updated: "2026-04-19T16:28:37Z"
+last_updated: "2026-04-19T16:38:30Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 38
-  completed_plans: 5
-  percent: 13
+  completed_plans: 6
+  percent: 16
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 16 (report-scheduling-white-label)
-Plan: 2 of 4 (16-01, 16-02 complete)
+Plan: 3 of 4 (16-01, 16-02, 16-03 complete)
 Status: Executing Phase 16
 Last activity: 2026-04-19
 
@@ -75,6 +75,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **16-01:** 5-minute repeatable job interval for schedule checking
 - **16-01:** Minimum schedule frequency: daily (T-16-05 DoS mitigation)
 - **16-01:** Max 100 schedules processed per check run
+- **16-03:** Client branding stored in branding_data Docker volume at /data/branding
+- **16-03:** Logo max 2MB, PNG/JPG/SVG only, one logo per client (replaces old)
+- **16-03:** Footer HTML sanitized: scripts and event handlers stripped
 
 ## Blockers/Concerns
 
