@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 12 (per-client-credentials-system)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: Executing
 Last activity: 2026-04-19
 
@@ -116,6 +116,10 @@ Last activity: 2026-04-19
 - 256-bit entropy tokens via secrets.token_urlsafe(32) producing 43-char strings - [12-02]
 - Write-only token pattern enforced via ConnectionResponse schema - [12-02]
 
+- Public invite validation uses direct fetch (no auth header); authenticated calls use Clerk JWT via server actions - [12-03]
+- Provider cards rendered for all 5 providers (Google, Bing, WordPress, Shopify, Wix) with availability flags - [12-03]
+- Google OAuth URL constructed from NEXT_PUBLIC_AI_WRITER_URL environment variable for client-side redirect - [12-03]
+
 ## Next Up
 
-Phase 12 Plan 03: Next.js /connect/[token] page + /clients/[clientId]/connections UI
+Phase 12 Plan 04: Migration script for per-user SQLite credentials to per-client PostgreSQL
