@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
-- 🚧 **v2.0 Unified Product** — Phases 8–12 (scoped 2026-04-17)
+- ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 
 ## Phases
 
