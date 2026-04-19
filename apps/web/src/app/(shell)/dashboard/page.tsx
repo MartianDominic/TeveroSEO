@@ -3,21 +3,28 @@ import { ClientPortfolioTable } from "@/components/dashboard/ClientPortfolioTabl
 import { PortfolioHealthSummary } from "@/components/dashboard/PortfolioHealthSummary";
 import { NeedsAttentionSection } from "@/components/dashboard/NeedsAttentionSection";
 import { WinsMilestonesSection } from "@/components/dashboard/WinsMilestonesSection";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
 import {
   getDashboardMetrics,
   getPortfolioSummary,
   getAttentionItems,
-  getWins
+  getWins,
+  getCardLayout
 } from "./actions";
 
 export default async function DashboardPage() {
   // Fetch all dashboard data in parallel
-  const [metrics, summary, attentionItems, wins] = await Promise.all([
+  const [metrics, summary, attentionItems, wins, cardLayout] = await Promise.all([
     getDashboardMetrics(),
     getPortfolioSummary(),
     getAttentionItems(),
     getWins(),
+    getCardLayout(),
   ]);
+
+  // TODO: Get workspace ID from Clerk auth context
+  const workspaceId = "default-workspace";
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -25,6 +32,11 @@ export default async function DashboardPage() {
         title="Agency Command Center"
         subtitle="Portfolio health overview and actionable insights"
       />
+
+      {/* Quick Stats Cards - drag and drop */}
+      <section>
+        <QuickStatsCards summary={summary} initialLayout={cardLayout ?? undefined} />
+      </section>
 
       {/* Portfolio Health Summary */}
       <section>
@@ -37,12 +49,17 @@ export default async function DashboardPage() {
         <WinsMilestonesSection wins={wins} />
       </section>
 
-      {/* Client Portfolio Table */}
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground">
-          Client Portfolio ({metrics.length})
-        </h2>
-        <ClientPortfolioTable clients={metrics} />
+      {/* Client Portfolio Table + Activity Feed (side by side on large screens) */}
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
+          <h2 className="text-lg font-semibold text-foreground mb-3">
+            Client Portfolio ({metrics.length})
+          </h2>
+          <ClientPortfolioTable clients={metrics} />
+        </div>
+        <div>
+          <ActivityFeed workspaceId={workspaceId} />
+        </div>
       </section>
     </div>
   );
