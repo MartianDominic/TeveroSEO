@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
-- 🚧 **v3.0 Agency Intelligence** — Phases 15–20 + 18.5 (in progress)
+- 🚧 **v3.0 Agency Intelligence** — Phases 15–21 + 18.5 (in progress)
 
 ## Phases
 
@@ -372,33 +372,93 @@
 ### Phase 18.5: Webhook Infrastructure
 **Goal**: Multi-tenant webhook system for external integrations. Configure webhooks at global (platform), workspace (agency), or client level. Events cascade down hierarchy with override capability. Reliable delivery with retry and dead-letter handling.
 **Depends on**: Phase 18 (alerts exist to trigger webhooks)
-**Requirements**: HOOK-01 through HOOK-10
+**Requirements**: HOOK-01 through HOOK-12
 **Working directory**: `apps/web/`, `open-seo-main/`, `AI-Writer/backend/`
+
 **Multi-tenant hierarchy**:
   - **Global** — Platform-wide events (new workspace signup, system alerts)
   - **Workspace** — Agency-level events (all clients' alerts to agency Slack)
   - **Client** — Per-client events (specific client alerts to their own endpoint)
-**Event types**:
-  - `ranking.drop` / `ranking.gain` — Position changes exceeding threshold
-  - `backlink.new` / `backlink.lost` — Backlink changes detected
-  - `audit.completed` — Site audit finished
-  - `report.generated` — PDF report created
-  - `connection.expired` — OAuth token needs refresh
-  - `alert.triggered` — Any alert rule fired
+
+**Event Taxonomy (Tiered Rollout)**:
+
+*Tier 1 — Core (Phase 18.5, 25 events):*
+| Category | Events |
+|----------|--------|
+| Ranking | `ranking.drop`, `ranking.gain`, `ranking.entered_top_10`, `ranking.exited_top_10`, `ranking.position_1`, `ranking.lost_position_1` |
+| Backlinks | `backlink.new`, `backlink.lost`, `backlink.high_authority_new`, `backlink.high_authority_lost` |
+| Traffic | `traffic.anomaly_up`, `traffic.anomaly_down` |
+| Technical | `audit.completed`, `audit.critical_found`, `audit.issue_resolved` |
+| Reports | `report.generated`, `report.delivered`, `report.failed` |
+| Connections | `connection.new`, `connection.expired`, `connection.refresh_failed` |
+| Alerts | `alert.triggered`, `alert.acknowledged`, `alert.resolved` |
+| Sync | `sync.completed`, `sync.failed` |
+
+*Tier 2 — Advanced (Future enhancement, ~35 events):*
+| Category | Events |
+|----------|--------|
+| Ranking | `ranking.serp_feature_gained`, `ranking.serp_feature_lost`, `ranking.competitor_overtook`, `ranking.we_overtook`, `ranking.volatility` |
+| Backlinks | `backlink.toxic_detected`, `backlink.velocity_anomaly`, `backlink.broken`, `backlink.anchor_alert` |
+| Traffic | `traffic.milestone`, `traffic.source_shift`, `traffic.conversion_drop`, `traffic.conversion_spike`, `traffic.page_decay` |
+| Technical | `crawl.error_spike`, `crawl.coverage_drop`, `crawl.deindexed`, `page.cwv_degraded`, `page.cwv_improved` |
+| Content | `content.published`, `content.updated`, `content.cannibalization`, `content.decay`, `content.opportunity` |
+| Local SEO | `local.review_new`, `local.review_negative`, `local.review_positive`, `local.listing_changed`, `local.pack_entered`, `local.pack_exited` |
+| Competitor | `competitor.ranking_surge`, `competitor.content_published`, `competitor.backlink_campaign` |
+
+*Tier 3 — Enterprise (Future, ~33 events):*
+| Category | Events |
+|----------|--------|
+| AI Insights | `ai.insight_generated`, `ai.opportunity_detected`, `ai.anomaly_explained`, `ai.recommendation_ready`, `ai.content_ready`, `ai.risk_detected` |
+| Business Ops | `client.onboarded`, `client.status_changed`, `client.health_score_changed`, `workspace.member_added`, `workspace.member_removed` |
+| Team Workflow | `task.assigned`, `task.completed`, `task.overdue` |
+| Infrastructure | `ssl.expiring`, `ssl.expired`, `uptime.down`, `uptime.recovered` |
+| Billing | `billing.payment_failed`, `billing.subscription_renewed` |
+
+**Webhook Payload Structure**:
+```json
+{
+  "id": "evt_2xK9mNp4vR",
+  "type": "ranking.entered_top_10",
+  "version": "2024-04-01",
+  "created_at": "2026-04-19T15:30:00Z",
+  "idempotency_key": "rank-kw123-2026-04-19",
+  "scope": {
+    "level": "client",
+    "workspace_id": "ws_agency123",
+    "client_id": "cli_acme456"
+  },
+  "data": { /* event-specific payload */ },
+  "context": {
+    "project_name": "ACME Corp SEO",
+    "client_name": "ACME Corporation",
+    "workspace_name": "Tevero Agency"
+  },
+  "links": {
+    "dashboard": "https://app.tevero.lt/clients/cli_acme456/seo/keywords",
+    "api": "https://app.tevero.lt/api/keywords/kw_789"
+  }
+}
+```
+
 **Success Criteria** (what must be TRUE):
   1. `webhooks` table stores endpoint URL, secret, events array, scope (global/workspace/client), scope_id
   2. `webhook_deliveries` table logs all delivery attempts with status, response, retry count
-  3. BullMQ `webhook-delivery` queue handles async delivery with exponential backoff (3 retries)
-  4. Failed deliveries after max retries land in DLQ; visible in admin UI
-  5. HMAC signature in `X-Webhook-Signature` header for payload verification
-  6. `/settings/webhooks` (global), `/workspaces/[id]/webhooks`, `/clients/[id]/webhooks` configuration UIs
-  7. Test webhook button sends sample payload and shows response
-**Estimated effort**: 2 weeks
-**Plans**: 4 plans
-  - [ ] 18.5-01-PLAN.md — Webhook schema + delivery queue + signature generation (Wave 1)
-  - [ ] 18.5-02-PLAN.md — Webhook dispatcher service: event → matching hooks → enqueue delivery (Wave 2)
-  - [ ] 18.5-03-PLAN.md — Wire alert/report/audit events to webhook dispatcher (Wave 2)
-  - [ ] 18.5-04-PLAN.md — Webhook configuration UI at all three levels + test button (Wave 3)
+  3. `webhook_events` table defines all available events with category, tier, and schema
+  4. BullMQ `webhook-delivery` queue handles async delivery with exponential backoff (3 retries)
+  5. Failed deliveries after max retries land in DLQ; visible in admin UI
+  6. HMAC signature in `X-Webhook-Signature` header using SHA-256
+  7. Idempotency keys prevent duplicate processing by receivers
+  8. `/settings/webhooks` (global), `/workspaces/[id]/webhooks`, `/clients/[id]/webhooks` configuration UIs
+  9. Event filtering: subscribe to specific events, categories, or wildcards (`ranking.*`)
+  10. Test webhook button sends sample payload and shows response
+  11. Webhook logs viewer with payload inspection and retry button
+**Estimated effort**: 3 weeks
+**Plans**: 5 plans
+  - [ ] 18.5-01-PLAN.md — Webhook schema + event registry + delivery queue (Wave 1)
+  - [ ] 18.5-02-PLAN.md — Webhook dispatcher: event emission → matching hooks → enqueue (Wave 2)
+  - [ ] 18.5-03-PLAN.md — HMAC signing + idempotency + retry logic + DLQ handling (Wave 2)
+  - [ ] 18.5-04-PLAN.md — Wire Tier 1 events: alerts, reports, rankings, connections (Wave 3)
+  - [ ] 18.5-05-PLAN.md — Configuration UI + logs viewer + test button (Wave 4)
 
 ---
 
@@ -441,3 +501,126 @@
   - [ ] 20-02-PLAN.md — Brief generation: analyze competitors, extract structure (Wave 2)
   - [ ] 20-03-PLAN.md — AI-Writer integration: brief → content generation (Wave 2)
   - [ ] 20-04-PLAN.md — Content briefs UI + generation flow (Wave 3)
+
+---
+
+### Phase 21: Agency Command Center
+**Goal**: Transform `/dashboard` into a world-class agency command center with portfolio health overview, interactive hover insights, real-time activity feed, wins tracking, team workload visualization, and configurable views. The single screen where agency owners start their day.
+**Depends on**: Phase 18.5 (events feed into activity stream), Phase 17 (ranking data)
+**Requirements**: CMD-01 through CMD-18
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+
+**Dashboard Sections**:
+
+1. **Portfolio Health Summary** (top row)
+   - Total active clients, clients needing attention, wins this week
+   - Portfolio-wide impressions/clicks totals
+   - Average traffic change vs previous period
+   - Keyword position distribution bars (% in Top 10 / Top 3 / #1)
+
+2. **Needs Attention** (priority section)
+   - Color-coded severity (red = critical, orange = warning, yellow = info)
+   - Inline context (understand issue without clicking)
+   - Quick actions: View, Snooze, Reconnect, Dismiss
+   - Filter by type, client, severity, age
+
+3. **Wins & Milestones**
+   - Celebrate successes: #1 positions, Top 10 entries, traffic milestones
+   - High-authority backlinks acquired
+   - Share/export for team or client presentations
+
+4. **Client Portfolio Table** (main section)
+   | Column | Hover Reveals |
+   |--------|---------------|
+   | Health Score | Breakdown by category (traffic, rankings, technical, backlinks, content) + top issues |
+   | Traffic Trend | 30-day sparkline + drop start date + affected pages |
+   | Keywords Tracked | Category breakdown + recent changes |
+   | Top 10 / Top 3 / #1 | Position distribution histogram + weekly movement |
+   | Backlinks | New this month + quality breakdown |
+   | Added Date | Client timeline/journey + tenure + milestones |
+
+5. **Activity Feed** (real-time)
+   - WebSocket-powered live updates
+   - Filter by event type, client
+   - Pause/resume feed
+
+6. **Quick Stats Cards** (configurable)
+   - Drag-and-drop card arrangement
+   - 20+ metric options to choose from
+   - Add/remove cards per user preference
+
+7. **Team Workload** (for agencies with staff)
+   - Clients per team member with capacity bar
+   - Overload warnings
+
+8. **Upcoming / Scheduled**
+   - Reports due, audits scheduled, SSL expirations
+   - Client calls/meetings (if calendar integrated)
+
+**Data Model Additions**:
+```sql
+-- Pre-computed client metrics (background job updates every 5 min)
+CREATE TABLE client_dashboard_metrics (
+  client_id UUID PRIMARY KEY,
+  health_score INTEGER,
+  health_breakdown JSONB,
+  traffic_current INTEGER,
+  traffic_previous INTEGER,
+  traffic_trend_pct DECIMAL(5,2),
+  keywords_total INTEGER,
+  keywords_top_10 INTEGER,
+  keywords_top_3 INTEGER,
+  keywords_position_1 INTEGER,
+  keywords_distribution JSONB,
+  backlinks_total INTEGER,
+  backlinks_new_month INTEGER,
+  alerts_open INTEGER,
+  alerts_critical INTEGER,
+  last_report_at TIMESTAMPTZ,
+  last_audit_at TIMESTAMPTZ,
+  computed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Activity feed (event sourcing)
+CREATE TABLE portfolio_activity (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  client_id UUID,
+  event_type TEXT NOT NULL,
+  event_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Saved dashboard views
+CREATE TABLE dashboard_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL,
+  user_id UUID,
+  name TEXT NOT NULL,
+  filters JSONB NOT NULL,
+  layout JSONB,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Success Criteria** (what must be TRUE):
+  1. `/dashboard` loads in < 1s for 100+ clients (server-rendered, pre-computed metrics)
+  2. Portfolio health summary shows accurate totals with position distribution bars
+  3. "Needs Attention" section surfaces clients with alerts, health < 60, or connection issues
+  4. "Wins This Week" section shows milestones: #1 hits, Top 10 entries, traffic milestones, high-DA backlinks
+  5. Client table supports sorting by any column + filtering by health/traffic/connection/tags
+  6. Hovering any metric cell shows contextual popup with sparkline/breakdown (no extra click)
+  7. Activity feed updates in real-time via WebSocket; supports filtering and pause
+  8. Quick stats cards are drag-and-drop configurable; preferences persist per user
+  9. Saved views: "My Clients", "Needs Attention", "New This Month", custom filters
+  10. Export client list to CSV with selected columns
+  11. Mobile-responsive: collapses to health summary + needs attention + swipeable client cards
+  12. Background job computes `client_dashboard_metrics` every 5 minutes
+**Estimated effort**: 3 weeks
+**Plans**: 5 plans
+  - [ ] 21-01-PLAN.md — Dashboard metrics schema + background computation job (Wave 1)
+  - [ ] 21-02-PLAN.md — Portfolio health summary + needs attention + wins sections (Wave 2)
+  - [ ] 21-03-PLAN.md — Client table with hover popovers + filtering + sorting (Wave 2)
+  - [ ] 21-04-PLAN.md — Activity feed with WebSocket + quick stats cards (Wave 3)
+  - [ ] 21-05-PLAN.md — Saved views + export + mobile responsive + team workload (Wave 4)
