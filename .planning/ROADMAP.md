@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
+- 🚧 **v3.0 Agency Intelligence** — Phases 15–20 (in progress)
 
 ## Phases
 
@@ -272,3 +273,138 @@
   - [x] 14-02-PLAN.md — Dashboard page with StatusBadge, DashboardTable, needs attention section (Wave 2)
   - [x] 14-03-PLAN.md — Chart components: GSCChart, GA4Chart, QueriesTable, DateRangeSelector, StatCard (Wave 2)
   - [x] 14-04-PLAN.md — Per-client analytics page with server action and human verification (Wave 3, checkpoint)
+
+---
+
+## v3.0 Agency Intelligence
+
+> **Milestone goal**: Transform the platform from a data viewer into an actionable intelligence tool. Automated PDF reports with white-label branding. Daily rank tracking with drop alerts. AI-powered insights that surface opportunities and problems before they become crises. All AI features behind feature flags for controlled rollout.
+
+---
+
+### Phase 15: Report Generation Engine
+**Goal**: Generate PDF reports from analytics data using Puppeteer. Report templates as React components rendered server-side. Reports stored in filesystem with metadata in PostgreSQL.
+**Depends on**: Phase 14 complete
+**Requirements**: RPT-01 through RPT-08
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+**Success Criteria** (what must be TRUE):
+  1. `POST /api/reports/generate` with client_id creates a PDF report within 30 seconds
+  2. Report includes: GSC summary, GA4 summary, top queries table, traffic trend chart
+  3. PDF renders correctly in browser and prints cleanly
+  4. Reports stored at `/data/reports/{client_id}/{date}.pdf` with metadata in `reports` table
+  5. `GET /api/reports/{id}/download` returns the PDF with correct Content-Type
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 15-01-PLAN.md — Puppeteer infrastructure + report generation service (Wave 1)
+  - [ ] 15-02-PLAN.md — Report template components: ReportHeader, ReportSection, ReportChart (Wave 1)
+  - [ ] 15-03-PLAN.md — Report API routes + storage layer + database schema (Wave 2)
+  - [ ] 15-04-PLAN.md — Report preview UI at /clients/[id]/reports (Wave 3)
+
+---
+
+### Phase 16: Report Scheduling & White-Label
+**Goal**: Schedule weekly/monthly reports via BullMQ. Email delivery via existing email service. White-label branding (logo, colors, footer) configurable per client.
+**Depends on**: Phase 15
+**Requirements**: RPT-09 through RPT-16
+**Working directory**: `apps/web/`, `AI-Writer/backend/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. `report_schedules` table stores cron expressions per client
+  2. BullMQ scheduler triggers report generation at configured times
+  3. Generated reports emailed to configured recipients
+  4. `client_branding` table stores logo_url, primary_color, footer_text per client
+  5. Reports render with client branding when configured; fallback to Tevero branding
+  6. `/clients/[id]/settings/branding` UI to upload logo and set colors
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 16-01-PLAN.md — Report scheduler BullMQ queue + worker (Wave 1)
+  - [ ] 16-02-PLAN.md — Email delivery integration with existing email service (Wave 1)
+  - [ ] 16-03-PLAN.md — Client branding schema + API + storage (Wave 2)
+  - [ ] 16-04-PLAN.md — Branding settings UI + report template branding injection (Wave 3)
+
+---
+
+### Phase 17: Rank Tracking History (Extends Existing)
+**Goal**: Add daily rank history to existing `saved_keywords` system. BullMQ worker checks positions for all saved keywords daily. Rank history stored for trend analysis. Extends existing DataForSEO SERP integration.
+**Depends on**: Phase 14 (analytics data layer exists)
+**Requirements**: RANK-01 through RANK-08
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Existing foundation** (already built):
+  - `saved_keywords` table — keywords to track per project
+  - `keyword_metrics` table — cached latest metrics
+  - DataForSEO SERP live API — on-demand position checks
+  - BullMQ infrastructure — audit + analytics workers
+**Success Criteria** (what must be TRUE):
+  1. `keyword_rankings` table stores daily position snapshots (FK to saved_keywords)
+  2. `tracking_enabled` boolean added to `saved_keywords` (default true)
+  3. BullMQ job `check-keyword-rankings` runs daily at 03:00 UTC for all tracking-enabled keywords
+  4. Reuses existing DataForSEO SERP client with rate limiting
+  5. `/clients/[id]/seo/keywords` extended with position history column and trend sparkline
+  6. Keyword detail view shows 30/90-day position chart
+**Estimated effort**: 1.5 weeks
+**Plans**: 3 plans
+  - [ ] 17-01-PLAN.md — Drizzle schema: keyword_rankings table + tracking_enabled column (Wave 1)
+  - [ ] 17-02-PLAN.md — BullMQ ranking worker reusing existing SERP client (Wave 2)
+  - [ ] 17-03-PLAN.md — Rankings history UI: sparklines + detail charts (Wave 3)
+
+---
+
+### Phase 18: Monitoring & Alerts
+**Goal**: Alert system for ranking drops, backlink changes, and technical issues. Notifications via email and in-app. Alert rules configurable per client.
+**Depends on**: Phase 17
+**Requirements**: ALERT-01 through ALERT-10
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. `alert_rules` table stores threshold configs per client (e.g., "notify if rank drops >5")
+  2. `alerts` table stores triggered alerts with severity and status
+  3. Ranking worker checks thresholds and creates alerts automatically
+  4. `/dashboard` shows alert count badge; clicking opens alert drawer
+  5. `/clients/[id]/alerts` shows alert history with acknowledge/dismiss actions
+  6. Email notifications sent for high-severity alerts
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 18-01-PLAN.md — Alert schema + rule engine (Wave 1)
+  - [ ] 18-02-PLAN.md — Alert creation in ranking/analytics workers (Wave 2)
+  - [ ] 18-03-PLAN.md — Alert notification service + email integration (Wave 2)
+  - [ ] 18-04-PLAN.md — Alert UI: dashboard badge, alert drawer, history page (Wave 3)
+
+---
+
+### Phase 19: AI Insights — Report Summaries (Feature-Flagged)
+**Goal**: AI-generated executive summaries for reports. AI-powered audit recommendations. All AI features behind `ai_features_enabled` flag per client.
+**Depends on**: Phase 15 (reports exist), Phase 18 (alerts exist)
+**Requirements**: AI-01 through AI-08
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+**Success Criteria** (what must be TRUE):
+  1. `feature_flags` table with `ai_features_enabled` boolean per client
+  2. `/clients/[id]/settings/features` toggle for AI features
+  3. When enabled: reports include AI-generated "Executive Summary" section
+  4. When enabled: audit findings include AI-generated "Recommended Fix" text
+  5. When disabled: AI sections hidden, no API calls made
+  6. AI calls go to existing AI-Writer LLM infrastructure
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 19-01-PLAN.md — Feature flag schema + API + settings UI (Wave 1)
+  - [ ] 19-02-PLAN.md — AI summary service: report data → executive summary (Wave 2)
+  - [ ] 19-03-PLAN.md — AI audit recommendations: finding → fix suggestion (Wave 2)
+  - [ ] 19-04-PLAN.md — Integrate AI sections into report template + audit UI (Wave 3)
+
+---
+
+### Phase 20: AI Content Briefs (Feature-Flagged)
+**Goal**: Generate content briefs from SERP analysis. Analyze top-ranking pages and suggest outline, word count, headers. Bridge to AI-Writer content generation.
+**Depends on**: Phase 19, Phase 17 (ranking data exists)
+**Requirements**: AI-09 through AI-14
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+**Success Criteria** (what must be TRUE):
+  1. `/clients/[id]/content-briefs` page lists briefs with status
+  2. "Create Brief" button opens keyword selector; generates brief from SERP analysis
+  3. Brief includes: target keyword, suggested H2s, competitor analysis, recommended word count
+  4. "Generate Content" button sends brief to AI-Writer content pipeline
+  5. Generated content appears in AI-Writer with link back to brief
+  6. All functionality gated behind `ai_features_enabled` flag
+**Estimated effort**: 2 weeks
+**Plans**: 4 plans
+  - [ ] 20-01-PLAN.md — Content brief schema + SERP analysis service (Wave 1)
+  - [ ] 20-02-PLAN.md — Brief generation: analyze competitors, extract structure (Wave 2)
+  - [ ] 20-03-PLAN.md — AI-Writer integration: brief → content generation (Wave 2)
+  - [ ] 20-04-PLAN.md — Content briefs UI + generation flow (Wave 3)
