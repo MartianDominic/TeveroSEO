@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 13 (analytics-data-layer)
-Plan: 0 of TBD
-Status: Planning
+Plan: 1 of TBD
+Status: Executing
 Last activity: 2026-04-19
 
 ## Completed Phases (v1.0)
@@ -120,6 +120,12 @@ Last activity: 2026-04-19
 - Provider cards rendered for all 5 providers (Google, Bing, WordPress, Shopify, Wix) with availability flags - [12-03]
 - Google OAuth URL constructed from NEXT_PUBLIC_AI_WRITER_URL environment variable for client-side redirect - [12-03]
 
+## Decisions (continued from Phase 13)
+
+- passive_deletes=True on snapshot relationships for proper CASCADE behavior - [13-01]
+- SQL DELETE used in cascade test to bypass ORM backref handling in SQLite - [13-01]
+- SQLite foreign_keys pragma enabled in test fixture for CASCADE support - [13-01]
+
 ## Next Up
 
-Phase 13: Analytics Data Layer (nightly GSC/GA4 sync, 90-day backfill, token refresh)
+Phase 13: Continue with Plan 02 (BullMQ worker setup)
