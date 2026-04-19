@@ -294,9 +294,9 @@
   4. Reports stored at `/data/reports/{client_id}/{date}.pdf` with metadata in `reports` table
   5. `GET /api/reports/{id}/download` returns the PDF with correct Content-Type
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans
-  - [ ] 15-01-PLAN.md — Report template system and React components (Wave 1)
-  - [ ] 15-02-PLAN.md — Report data layer, BullMQ queue, API routes (Wave 1)
+**Plans**: 4 plans (2 complete)
+  - [x] 15-01-PLAN.md — Report template system and React components (Wave 1)
+  - [x] 15-02-PLAN.md — Report data layer, BullMQ queue, API routes (Wave 1)
   - [ ] 15-03-PLAN.md — BullMQ worker and Puppeteer PDF generation (Wave 2)
   - [ ] 15-04-PLAN.md — Report UI pages at /clients/[clientId]/reports (Wave 3, checkpoint)
 
