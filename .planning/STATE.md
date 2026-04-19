@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 16 (report-scheduling-white-label)
-Plan: 4 of 4 (16-01, 16-02, 16-03, 16-04 complete)
-Status: Phase 16 Complete
+Phase: 17 (rank-tracking-history)
+Plan: 1 of 4 (17-01 complete)
+Status: In Progress
 Last activity: 2026-04-19
 
 ## Completed Milestones
@@ -44,7 +44,7 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 |-------|-------|-------------|--------|
 | 15 | Report Generation Engine | 2 weeks | ✓ Complete (2026-04-19) |
 | 16 | Report Scheduling & White-Label | 2 weeks | ✓ Complete (2026-04-19) |
-| 17 | Rank Tracking History (Extends Existing) | 1.5 weeks | ○ Not Started |
+| 17 | Rank Tracking History (Extends Existing) | 1.5 weeks | ◐ In Progress (1/4) |
 | 18 | Monitoring & Alerts | 2 weeks | ○ Not Started |
 | 18.5 | Webhook Infrastructure | 3 weeks | ○ Not Started |
 | 19 | AI Insights — Report Summaries | 2 weeks | ○ Not Started |
@@ -81,6 +81,8 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **16-04:** Local toast pattern matching existing settings page (no sonner dependency)
 - **16-04:** User-friendly cron templates instead of raw cron input
 - **16-04:** hexToRgb conversion for Puppeteer PDF color compatibility
+- **17-01:** Text ID for keyword_rankings (UUID v7 for time-sortable IDs)
+- **17-01:** Nullable tracking_enabled for backward compatibility with existing rows
 
 ## Blockers/Concerns
 
