@@ -9,8 +9,8 @@ progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 38
-  completed_plans: 13
-  percent: 34
+  completed_plans: 14
+  percent: 37
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 21 (agency-command-center)
-Plan: 2 of 5 (Plan 21-02 complete)
+Plan: 4 of 5 (Plan 21-04 complete)
 Status: In Progress
 Last activity: 2026-04-19
 
@@ -62,6 +62,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **21-04:** WebSocket server runs on port 3002 separate from main HTTP server for cleaner architecture
+- **21-04:** Singleton Socket.IO client with reference counting prevents duplicate connections
+- **21-04:** TouchSensor uses 250ms delay + 5px tolerance to prevent accidental drags while scrolling
+- **21-04:** ActivityFeed in right sidebar, QuickStatsCards at top for optimal workflow
 - **21-02:** Portfolio health summary displays 4 KPI cards: clients, wins, traffic change, keyword positions
 - **21-02:** Position distribution bar uses 3-color gradient: emerald-500 (#1), emerald-400 (top 3), emerald-300 (top 10)
 - **21-02:** Health score badge uses 4 color tiers: 80+ emerald (Healthy), 60+ yellow (Monitor), 40+ orange (At Risk), <40 red (Critical)
