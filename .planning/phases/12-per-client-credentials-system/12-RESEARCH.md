@@ -73,10 +73,10 @@ The magic-link invite flow at `/connect/[token]` allows clients to self-authoriz
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| google-auth | 2.49.2 | Google OAuth2 credential management | [VERIFIED: pip show] Official Google library, handles token refresh |
-| google-auth-oauthlib | 1.3.1 | OAuth2 flow for Google APIs | [VERIFIED: pip show] Provides Flow class for authorization |
-| google-api-python-client | 2.194.0 | Google API service builders | [VERIFIED: pip show] Required for GSC, GA4, GBP API calls |
-| cryptography | 46.0.7 | Fernet symmetric encryption | [VERIFIED: pip show] Already in use for CMS credentials |
+| google-auth | 2.49.2 | Google OAuth2 credential management | [VERIFIED: requirements.txt] Official Google library, handles token refresh |
+| google-auth-oauthlib | 1.3.1 | OAuth2 flow for Google APIs | [VERIFIED: requirements.txt] Provides Flow class for authorization |
+| google-api-python-client | 2.194.0 | Google API service builders | [VERIFIED: requirements.txt] Required for GSC, GA4, GBP API calls |
+| cryptography | 46.0.7 | Fernet symmetric encryption | [VERIFIED: requirements.txt] Already in use for CMS credentials |
 | secrets (stdlib) | 3.x | Cryptographic random token generation | [VERIFIED: Python stdlib] Used in existing `gsc_service.py` |
 
 ### Supporting
@@ -94,6 +94,11 @@ The magic-link invite flow at `/connect/[token]` allows clients to self-authoriz
 | Per-row encryption | Column-level encryption (pgcrypto) | Fernet at app layer is simpler, already implemented |
 
 **Installation:** No new packages needed -- all dependencies already in requirements.txt.
+
+**Version verification:**
+- cryptography 46.0.7 [VERIFIED: 2026-04-19 via requirements.txt]
+- google-auth 2.49.2 [VERIFIED: 2026-04-19 via requirements.txt]
+- google-auth-oauthlib 1.3.1 [VERIFIED: 2026-04-19 via requirements.txt]
 
 ## Architecture Patterns
 
@@ -388,6 +393,13 @@ def store_oauth_token(client_id: str, provider: str, access_token: str,
 **How to avoid:** Check `scopes` column; prompt reconnect if missing required scopes
 **Warning signs:** API returns 403 despite valid token; scope mismatch in error response
 
+### Pitfall 6: Bing Refresh Token Rotation
+**What goes wrong:** Bing rotates refresh tokens on every use; if you reuse the old one, you get `invalid_grant`
+**Why it happens:** Bing's OAuth implementation differs from Google's (which keeps refresh tokens stable)
+**How to avoid:** After every successful Bing token refresh, UPDATE the refresh_token column with the new value
+**Warning signs:** `invalid_grant` errors after previously working refresh
+**Source:** [CITED: Microsoft Bing Webmaster OAuth docs](https://learn.microsoft.com/en-us/bingwebmaster/oauth2)
+
 ## Code Examples
 
 Verified patterns from official sources:
@@ -432,6 +444,9 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("scopes_requested", sa.ARRAY(sa.Text()), nullable=True),
     )
+    
+    # Index for fast token lookup
+    op.create_index("ix_client_connect_invites_token", "client_connect_invites", ["token"])
 ```
 
 ### OAuth Callback Handler (FastAPI)
@@ -576,6 +591,7 @@ export default async function ConnectPage({
 - `google.oauth2.credentials.Credentials` with plain JSON storage: Use encrypted storage
 - SQLite for credentials: Moving to PostgreSQL for all shared data
 - `user_id` based credential lookup: Now `client_id` based
+- `plus.business.manage` scope: Use `business.manage` instead [CITED: Google OAuth docs]
 
 ## Assumptions Log
 
@@ -617,6 +633,44 @@ export default async function ConnectPage({
 
 **Missing dependencies with no fallback:** None -- all dependencies already in place.
 
+**Missing dependencies with fallback:**
+- Bing credentials (BING_CLIENT_ID, BING_CLIENT_SECRET) -- optional; UI hides Bing option if not configured
+
+## Validation Architecture
+
+### Test Framework
+
+| Property | Value |
+|----------|-------|
+| Framework | pytest (Python backend) |
+| Config file | None detected -- see Wave 0 |
+| Quick run command | `pytest AI-Writer/backend/tests/ -x -v` |
+| Full suite command | `pytest AI-Writer/backend/tests/ -v --tb=short` |
+
+### Phase Requirements to Test Map
+
+| Req ID | Behavior | Test Type | Automated Command | File Exists? |
+|--------|----------|-----------|-------------------|-------------|
+| CREDS-01 | client_oauth_tokens table created | integration | `alembic upgrade head && alembic current` | Pending Wave 0 |
+| CREDS-02 | client_connect_invites table created | integration | `alembic upgrade head` | Pending Wave 0 |
+| CREDS-05 | Tokens encrypted before storage | unit | `pytest tests/test_client_oauth.py::test_token_encryption -x` | Pending Wave 0 |
+| CREDS-06 | Magic link token format 32-char URL-safe | unit | `pytest tests/test_client_oauth.py::test_invite_token_format -x` | Pending Wave 0 |
+| CREDS-07 | OAuth callback validates state | integration | `pytest tests/test_client_oauth.py::test_callback_validates_state -x` | Pending Wave 0 |
+| CREDS-12 | Single-use enforcement | integration | `pytest tests/test_client_oauth.py::test_invite_single_use -x` | Pending Wave 0 |
+| CREDS-14 | UNIQUE(client_id, provider) enforced | integration | `pytest tests/test_client_oauth.py::test_unique_constraint -x` | Pending Wave 0 |
+
+### Sampling Rate
+
+- **Per task commit:** `pytest AI-Writer/backend/tests/test_client_oauth.py -x -v`
+- **Per wave merge:** `pytest AI-Writer/backend/tests/ -v --tb=short`
+- **Phase gate:** Full suite green before `/gsd-verify-work`
+
+### Wave 0 Gaps
+
+- [ ] `AI-Writer/backend/tests/test_client_oauth.py` -- covers CREDS-05, CREDS-06, CREDS-07, CREDS-12, CREDS-14
+- [ ] `AI-Writer/backend/tests/conftest.py` -- shared fixtures (test database, mock encryption key)
+- [ ] pytest.ini or pyproject.toml `[tool.pytest.ini_options]` -- test configuration
+
 ## Security Domain
 
 ### Applicable ASVS Categories
@@ -642,7 +696,7 @@ export default async function ConnectPage({
 ## Sources
 
 ### Primary (HIGH confidence)
-- [VERIFIED: pip show] google-auth 2.49.2, google-auth-oauthlib 1.3.1, cryptography 46.0.7
+- [VERIFIED: requirements.txt] google-auth 2.49.2, google-auth-oauthlib 1.3.1, cryptography 46.0.7
 - [VERIFIED: codebase] `AI-Writer/backend/services/encryption.py` -- Fernet pattern
 - [VERIFIED: codebase] `AI-Writer/backend/services/gsc_service.py` -- existing OAuth flow
 - [VERIFIED: codebase] `AI-Writer/backend/services/integrations/bing_oauth.py` -- per-user Bing OAuth
@@ -652,8 +706,8 @@ export default async function ConnectPage({
 - [CITED: https://developers.google.com/identity/protocols/oauth2/scopes] Google OAuth2 scopes documentation
 - [CITED: https://developers.google.com/webmaster-tools/v1/how-tos/authorizing] GSC authorization
 - [CITED: https://developers.google.com/my-business/content/implement-oauth] GBP OAuth implementation
-- [CITED: https://guptadeepak.com/mastering-magic-link-security-a-deep-dive-for-developers/] Magic link security patterns
-- [CITED: https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html] OWASP cryptographic storage
+- [CITED: https://developers.google.com/analytics/devguides/reporting/data/v1] GA4 Data API
+- [CITED: https://learn.microsoft.com/en-us/bingwebmaster/oauth2] Bing Webmaster OAuth2
 
 ### Tertiary (LOW confidence)
 - None -- all critical claims verified against official sources or codebase
