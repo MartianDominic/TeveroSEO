@@ -243,7 +243,7 @@
 **Estimated effort**: 2 weeks
 **Plans**: 5 plans
   - [x] 13-01-PLAN.md — Alembic migration 0013 + ORM models + internal API endpoint for token access (Wave 1)
-  - [ ] 13-02-PLAN.md — BullMQ analytics queue + worker infrastructure + aiwriter-api client (Wave 2)
+  - [x] 13-02-PLAN.md — BullMQ analytics queue + worker infrastructure + aiwriter-api client (Wave 2)
   - [ ] 13-03-PLAN.md — GSC/GA4 sync processor + google-auth token refresh + internal API token update endpoints (Wave 3)
   - [ ] 13-04-PLAN.md — Drizzle schema + backfill trigger on OAuth callback (Wave 3)
   - [ ] 13-05-PLAN.md — Server integration + docker-compose env vars + verification checkpoint (Wave 4)

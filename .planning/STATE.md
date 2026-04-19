@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 13 (analytics-data-layer)
-Plan: 1 of TBD
+Plan: 2 of TBD
 Status: Executing
 Last activity: 2026-04-19
 
@@ -125,7 +125,10 @@ Last activity: 2026-04-19
 - passive_deletes=True on snapshot relationships for proper CASCADE behavior - [13-01]
 - SQL DELETE used in cascade test to bypass ORM backref handling in SQLite - [13-01]
 - SQLite foreign_keys pragma enabled in test fixture for CASCADE support - [13-01]
+- concurrency:5 for analytics worker (lower than audit to respect Google API rate limits) - [13-02]
+- nightly scheduler at 02:00 UTC via upsertJobScheduler (idempotent cron setup) - [13-02]
+- sandboxed processor pattern for analytics-worker.ts - [13-02]
 
 ## Next Up
 
-Phase 13: Continue with Plan 02 (BullMQ worker setup)
+Phase 13: Continue with Plan 03 (GSC/GA4 API clients and processor)
