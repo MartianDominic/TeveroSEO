@@ -9,8 +9,8 @@ progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 38
-  completed_plans: 11
-  percent: 29
+  completed_plans: 12
+  percent: 32
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 18 (monitoring-alerts)
-Plan: 0 of 4 (Phase 17 complete)
-Status: Starting
+Phase: 21 (agency-command-center)
+Plan: 1 of 5 (Plan 21-01 complete)
+Status: In Progress
 Last activity: 2026-04-19
 
 ## Completed Milestones
@@ -62,6 +62,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **21-01:** Dashboard metrics computed every 5 minutes via BullMQ worker with 5-min lock duration
+- **21-01:** Health score weights: traffic 30%, rankings 25%, technical 20%, backlinks 15%, content 10%
+- **21-01:** Critical alert penalty: -16 per alert in technical + -5 global to push 2 alerts below 60
 - **15-02:** Content hash uses 16-char hex SHA256 prefix for cache deduplication
 - **15-02:** Report queue uses exponential backoff (10s, 20s, 40s) matching analytics queue pattern
 - **15-02:** Unique index on (clientId, contentHash) prevents duplicate report generation
