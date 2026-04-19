@@ -184,11 +184,11 @@
   4. open-seo sign-in/sign-up routes (`_auth.sign-in.tsx`, `_auth.sign-up.tsx`) deleted from `open-seo-main/src/routes/`
   5. All open-seo API calls go through Next.js server actions; no cross-origin requests
 **Estimated effort**: 2–3 weeks
-**Plans**: 4 plans
-  - [ ] 14-01-PLAN.md — TypeScript types + FastAPI dashboard endpoint + Dashboard nav item (Wave 1)
-  - [ ] 14-02-PLAN.md — Dashboard page with StatusBadge, DashboardTable, needs attention section (Wave 2)
-  - [ ] 14-03-PLAN.md — Chart components: GSCChart, GA4Chart, QueriesTable, DateRangeSelector, StatCard (Wave 2)
-  - [ ] 14-04-PLAN.md — Per-client analytics page with server action and human verification (Wave 3, checkpoint)
+**Plans**: 4 plans (4 complete)
+  - [x] 10-01-PLAN.md — Server actions and API routes for open-seo backend (Wave 1)
+  - [x] 10-02-PLAN.md — SEO audit page port (Wave 2)
+  - [x] 10-03-PLAN.md — Keywords, backlinks, domain pages port (Wave 2)
+  - [x] 10-04-PLAN.md — Saved items and AI recommendations pages port (Wave 3)
 
 ---
 
@@ -267,8 +267,8 @@
   5. `/clients/[id]/analytics` renders GSC line chart + GA4 summary + top 10 queries table
   6. Recharts used for all charts; no additional charting library added
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans (2 complete)
+**Plans**: 4 plans (4 complete)
   - [x] 14-01-PLAN.md — TypeScript types + FastAPI dashboard endpoint + Dashboard nav item (Wave 1)
   - [x] 14-02-PLAN.md — Dashboard page with StatusBadge, DashboardTable, needs attention section (Wave 2)
-  - [ ] 14-03-PLAN.md — Chart components: GSCChart, GA4Chart, QueriesTable, DateRangeSelector, StatCard (Wave 2)
-  - [ ] 14-04-PLAN.md — Per-client analytics page with server action and human verification (Wave 3, checkpoint)
+  - [x] 14-03-PLAN.md — Chart components: GSCChart, GA4Chart, QueriesTable, DateRangeSelector, StatCard (Wave 2)
+  - [x] 14-04-PLAN.md — Per-client analytics page with server action and human verification (Wave 3, checkpoint)
