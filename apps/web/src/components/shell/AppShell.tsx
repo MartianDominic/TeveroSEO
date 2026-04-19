@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
+  LayoutGrid,
   Calendar,
   Brain,
   Settings,
@@ -41,6 +42,14 @@ import {
 import { apiGet } from "@/lib/api-client";
 
 const COLLAPSED_KEY = "appshell_collapsed";
+
+// Agency Dashboard nav item (global, not client-scoped)
+const DASHBOARD_NAV: NavItem = {
+  label: "Dashboard",
+  icon: LayoutGrid,
+  href: () => "/dashboard",
+  clientScoped: false,
+};
 
 // ---------------------------------------------------------------------------
 // usePlatformHealth — fetches /api/platform-secrets/status and derives health
@@ -516,8 +525,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
         {/* Client nav */}
         <nav className="flex-1 overflow-y-auto p-3">
+          {/* Agency Dashboard — global, not client-scoped */}
+          <div className="mb-2">
+            {renderNavItem(DASHBOARD_NAV, -1)}
+          </div>
+
           {!collapsed && (
-            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-5">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
               Client
             </p>
           )}

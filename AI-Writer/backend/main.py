@@ -72,6 +72,9 @@ from api.internal import router as internal_router
 
 # Import SEO tools router
 from routers.seo_tools import router as seo_tools_router
+
+# Import SEO analytics router (Phase 14 - dashboard aggregation)
+from routers.seo_analytics import router as seo_analytics_router
 # Import Facebook Writer endpoints
 from api.facebook_writer.routers import facebook_router
 from api.brainstorm import router as brainstorm_router
@@ -432,6 +435,9 @@ app.include_router(client_oauth_router, prefix="/api", tags=["client-oauth"])
 # Internal API routes (Phase 13 - service-to-service token access)
 # NOTE: /internal/* endpoints require X-Internal-Api-Key header
 app.include_router(internal_router)
+
+# SEO Analytics routes (Phase 14 - dashboard aggregation)
+app.include_router(seo_analytics_router)
 
 # Setup frontend serving using modular utilities
 frontend_serving.setup_frontend_serving()
