@@ -8,3 +8,9 @@ export type {
   InviteValidation,
   InviteCreate,
 } from "./oauth";
+export type {
+  ReportSectionType,
+  ReportSection,
+  ReportTemplate,
+  ReportMetadata,
+} from "./reports";
