@@ -22,9 +22,11 @@ import {
 import {
   researchKeywords,
   saveKeywords,
-  getSavedKeywords,
+  getSavedKeywordsWithRankings,
   removeSavedKeyword,
 } from "@/actions/seo/keywords";
+import { RankSparkline } from "@/components/keywords/RankSparkline";
+import { PositionBadge } from "@/components/keywords/PositionBadge";
 
 interface KeywordResult {
   keyword: string;
@@ -40,6 +42,12 @@ interface SavedKeyword {
   searchVolume: number;
   competition: number;
   savedAt: string;
+  trackingEnabled: boolean;
+  rankings: Array<{
+    date: string;
+    position: number;
+    previousPosition: number | null;
+  }>;
 }
 
 export default function KeywordsPage() {
@@ -56,10 +64,10 @@ export default function KeywordsPage() {
     new Set()
   );
 
-  // Saved keywords query
+  // Saved keywords query with rankings for sparklines
   const savedQuery = useQuery({
     queryKey: ["saved-keywords", projectId, clientId],
-    queryFn: () => getSavedKeywords({ projectId, clientId }),
+    queryFn: () => getSavedKeywordsWithRankings({ projectId, clientId }),
   });
 
   // Research mutation
@@ -260,27 +268,63 @@ export default function KeywordsPage() {
               </p>
             ) : (
               <div className="space-y-1">
-                {saved.map((kw) => (
-                  <div
-                    key={kw.id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-muted/50"
-                  >
-                    <div>
-                      <span className="font-medium">{kw.keyword}</span>
-                      <span className="ml-4 text-sm text-muted-foreground">
-                        {kw.searchVolume.toLocaleString()} vol
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeMutation.mutate(kw.id)}
-                      disabled={removeMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                {/* Header row */}
+                <div className="flex items-center justify-between p-2 text-sm text-muted-foreground border-b mb-2">
+                  <span>Keyword</span>
+                  <div className="flex items-center gap-4">
+                    <span className="w-24 text-center">Trend</span>
+                    <span className="w-20 text-center">Position</span>
+                    <span className="w-8"></span>
                   </div>
-                ))}
+                </div>
+                {saved.map((kw) => {
+                  const latestRanking = kw.rankings?.[kw.rankings.length - 1];
+                  const change = latestRanking?.previousPosition
+                    ? latestRanking.previousPosition - latestRanking.position
+                    : null;
+
+                  return (
+                    <div
+                      key={kw.id}
+                      className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() =>
+                        router.push(
+                          `/clients/${clientId}/seo/${projectId}/keywords/${kw.id}` as Parameters<typeof router.push>[0],
+                        )
+                      }
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="font-medium">{kw.keyword}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {kw.searchVolume.toLocaleString()} vol
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <RankSparkline
+                          data={(kw.rankings ?? []).map((r) => ({
+                            date: r.date,
+                            position: r.position,
+                          }))}
+                        />
+                        <PositionBadge
+                          position={latestRanking?.position ?? null}
+                          change={change}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeMutation.mutate(kw.id);
+                          }}
+                          disabled={removeMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
