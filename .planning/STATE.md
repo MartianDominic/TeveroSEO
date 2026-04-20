@@ -69,6 +69,11 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **25-04:** Priority matrix uses 9-point scale (high impact + low effort = 9, best opportunity)
 - **25-04:** CTR gap threshold of 2% avoids noise from minor variations
 - **25-04:** Ranking gap detection targets positions 11-20 (almost page 1)
+- **25-03:** Linear regression for trend prediction with R-squared confidence scoring
+- **25-03:** 7+ data points required for meaningful projections (otherwise low confidence)
+- **25-03:** Traffic decline alert when >10% decline predicted over 2 weeks
+- **25-03:** Goal at-risk when declining trend or >90 days to target
+- **25-03:** Workspace predictions cached 5 minutes in Redis
 - **22-01:** 9 default goal templates covering keywords (top 10/3/1), clicks, CTR, growth, impressions, custom
 - **22-01:** hasDenominator flag enables "X out of Y" goals (e.g., 7/10 keywords in Top 10)
 - **22-01:** Seed script in migrate-entry.ts for automatic template seeding on deploy
