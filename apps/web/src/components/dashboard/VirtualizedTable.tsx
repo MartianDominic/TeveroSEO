@@ -35,6 +35,14 @@ interface VirtualizedTableProps<TData> {
   selectedRowKey?: string;
   /** Empty state content */
   emptyContent?: ReactNode;
+  /** Currently focused row index for keyboard navigation */
+  focusedIndex?: number;
+  /** Props to spread on the table container for keyboard navigation */
+  tableProps?: {
+    tabIndex?: number;
+    onKeyDown?: (e: React.KeyboardEvent) => void;
+    "aria-activedescendant"?: string;
+  };
 }
 
 export function VirtualizedTable<TData>({
@@ -47,6 +55,8 @@ export function VirtualizedTable<TData>({
   onRowClick,
   selectedRowKey,
   emptyContent,
+  focusedIndex = -1,
+  tableProps,
 }: VirtualizedTableProps<TData>) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -99,8 +109,9 @@ export function VirtualizedTable<TData>({
   return (
     <div
       ref={parentRef}
-      className="overflow-auto relative rounded-lg border border-border"
+      className="overflow-auto relative rounded-lg border border-border focus:outline-none"
       style={{ maxHeight }}
+      {...tableProps}
     >
       <table className="w-full border-collapse">
         <thead className="sticky top-0 z-10 bg-background border-b">
@@ -126,18 +137,24 @@ export function VirtualizedTable<TData>({
             const row = data[virtualRow.index]!;
             const rowKey = getRowKey(row, virtualRow.index);
             const isSelected = selectedRowKey === rowKey;
+            const isFocused = virtualRow.index === focusedIndex;
 
             return (
               <tr
                 key={rowKey}
+                id={`table-row-${virtualRow.index}`}
                 data-index={virtualRow.index}
+                data-focused={isFocused}
                 onClick={onRowClick ? () => onRowClick(row, virtualRow.index) : undefined}
                 className={cn(
                   "border-b transition-colors hover:bg-muted/50",
                   isSelected && "bg-muted",
+                  isFocused && "ring-2 ring-primary ring-inset bg-primary/5",
                   onRowClick && "cursor-pointer"
                 )}
                 style={{ height: `${rowHeight}px` }}
+                tabIndex={isFocused ? 0 : -1}
+                aria-selected={isSelected}
               >
                 {columns.map((col) => (
                   <td key={col.id} className={cn("px-4 py-2", col.className)}>

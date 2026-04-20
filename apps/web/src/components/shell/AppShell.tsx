@@ -26,6 +26,7 @@ import { useClientStore } from "@/stores";
 import { useAuth } from "@clerk/nextjs";
 import { TopBar } from "./TopBar";
 import { CommandPalette } from "./CommandPalette";
+import { KeyboardShortcutsHelp } from "@/components/dashboard/KeyboardShortcutsHelp";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeveroMark } from "@/components/brand/TeveroLogo";
 import {
@@ -630,6 +631,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
+      <KeyboardShortcutsHelp />
     </div>
   );
 };

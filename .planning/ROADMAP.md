@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
-- 🚧 **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (in progress)
+- ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
 - 📋 **v4.0 Prospecting & Sales** — Phases 26–30 (planned)
 
 ## Phases
@@ -295,11 +295,11 @@
   4. Reports stored at `/data/reports/{client_id}/{date}.pdf` with metadata in `reports` table
   5. `GET /api/reports/{id}/download` returns the PDF with correct Content-Type
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans (2 complete)
+**Plans**: 4 plans (4 complete)
   - [x] 15-01-PLAN.md — Report template system and React components (Wave 1)
   - [x] 15-02-PLAN.md — Report data layer, BullMQ queue, API routes (Wave 1)
-  - [ ] 15-03-PLAN.md — BullMQ worker and Puppeteer PDF generation (Wave 2)
-  - [ ] 15-04-PLAN.md — Report UI pages at /clients/[clientId]/reports (Wave 3, checkpoint)
+  - [x] 15-03-PLAN.md — BullMQ worker and Puppeteer PDF generation (Wave 2)
+  - [x] 15-04-PLAN.md — Report UI pages at /clients/[clientId]/reports (Wave 3, checkpoint)
 
 ---
 
@@ -316,11 +316,11 @@
   5. Reports render with client branding when configured; fallback to Tevero branding
   6. `/clients/[id]/settings/branding` UI to upload logo and set colors
 **Estimated effort**: 2 weeks
-**Plans**: 4 plans (2 complete)
+**Plans**: 4 plans (4 complete)
   - [x] 16-01-PLAN.md — Report scheduler BullMQ queue + worker (Wave 1)
   - [x] 16-02-PLAN.md — Email delivery integration with existing email service (Wave 1)
-  - [ ] 16-03-PLAN.md — Client branding schema + API + storage (Wave 2)
-  - [ ] 16-04-PLAN.md — Branding settings UI + report template branding injection (Wave 3)
+  - [x] 16-03-PLAN.md — Client branding schema + API + storage (Wave 2)
+  - [x] 16-04-PLAN.md — Branding settings UI + report template branding injection (Wave 3)
 
 ---
 
@@ -642,12 +642,12 @@ Plans:
   4. Dashboard displays goal attainment percentage instead of health score
   5. Priority score computed for attention queue sorting (alerts × 1000 + goal gaps × 50 + traffic drops × 200)
 **Estimated effort**: 3 days
-**Plans**: 5 plans (1 complete)
+**Plans**: 5 plans (5 complete)
   - [x] 22-01-PLAN.md — Schema & Templates: goal_templates, client_goals, goal_snapshots tables + seed data (Wave 1)
-  - [ ] 22-02-PLAN.md — Goal Computation Worker: BullMQ job, computation methods per template type (Wave 2)
-  - [ ] 22-03-PLAN.md — Goal Management API: CRUD endpoints, server actions (Wave 2)
-  - [ ] 22-04-PLAN.md — Goal Configuration UI: template selector, config form, wizard (Wave 3)
-  - [ ] 22-05-PLAN.md — Dashboard Integration: replace health score with goal attainment, update components (Wave 4)
+  - [x] 22-02-PLAN.md — Goal Computation Worker: BullMQ job, computation methods per template type (Wave 2)
+  - [x] 22-03-PLAN.md — Goal Management API: CRUD endpoints, server actions (Wave 2)
+  - [x] 22-04-PLAN.md — Goal Configuration UI: template selector, config form, wizard (Wave 3)
+  - [x] 22-05-PLAN.md — Dashboard Integration: replace health score with goal attainment, update components (Wave 4)
 
 ---
 
