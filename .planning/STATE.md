@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 23 (performance-scale)
-Plan: 4 of 4 (23-04 complete)
-Status: Complete
+Phase: 24 (power-user-features)
+Plan: 4 of 4
+Status: In Progress
 Last activity: 2026-04-20
 
 ## Completed Milestones
@@ -51,8 +51,8 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 | 20 | AI Content Briefs | 2 weeks | ○ Not Started |
 | 21 | Agency Command Center | 3 weeks | ◐ In Progress |
 | 22 | Goal-Based Metrics System | 3 days | ✓ Complete (2026-04-20) |
-| 23 | Performance & Scale | 2 days | ◐ In Progress |
-| 24 | Power User Features | 2 days | ○ Not Started |
+| 23 | Performance & Scale | 2 days | ✓ Complete (2026-04-20) |
+| 24 | Power User Features | 2 days | ◐ In Progress |
 | 25 | Team & Intelligence | 2 days | ○ Not Started |
 
 ## Sub-project Status
@@ -127,6 +127,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **23-03:** Optimistic updates use QueryClient pattern (not global singleton)
 - **23-04:** Portfolio aggregates computed per-workspace from client_dashboard_metrics
 - **23-04:** PortfolioHealthSummary supports both aggregates hook and legacy summary prop
+- **24-04:** Print-to-PDF approach via browser print dialog (no jspdf dependency)
+- **24-04:** BOM prefix for Excel UTF-8 CSV compatibility
+- **24-04:** Blob URL for secure PDF window (avoids unsafe DOM manipulation)
 
 ## Blockers/Concerns
 
@@ -134,4 +137,4 @@ None currently.
 
 ## Next Up
 
-Phase 23 Plan 04: Query Debouncing & Prefetch
+Phase 24 complete. Continue with Phase 25: Team & Intelligence.
