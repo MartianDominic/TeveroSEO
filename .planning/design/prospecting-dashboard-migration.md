@@ -66,6 +66,16 @@ CREATE TABLE prospects (
   domain TEXT NOT NULL,
   name TEXT,                    -- Company name
   
+  -- Brand info (extracted from scrape, migrates to client)
+  brand_name TEXT,              -- "Helsinki Saunas" (display name)
+  brand_logo_url TEXT,          -- Logo if found on site
+  brand_primary_color TEXT,     -- "#2563eb" (extracted from site)
+  brand_industry TEXT,          -- "Sauna Retail"
+  brand_products JSONB,         -- ["barrel saunas", "cabin saunas", "infrared saunas"]
+  brand_services JSONB,         -- ["installation", "delivery", "maintenance"]
+  brand_location TEXT,          -- "Helsinki, Finland"
+  brand_target_market TEXT,     -- "residential", "commercial", "both"
+  
   -- CRM fields
   contact_name TEXT,
   contact_email TEXT,
@@ -158,11 +168,16 @@ async function convertProspectToClient(prospectId: string): Promise<Client> {
       orderBy: desc(prospectAnalyses.createdAt),
     });
 
-    // 2. Create client record
+    // 2. Create client record (with brand info from prospect)
     const [client] = await tx.insert(clients).values({
       workspaceId: prospect.workspaceId,
-      name: prospect.name || prospect.domain,
+      name: prospect.name || prospect.brandName || prospect.domain,
       websiteUrl: `https://${prospect.domain}`,
+      // Brand fields migrate directly
+      brandName: prospect.brandName,
+      brandLogoUrl: prospect.brandLogoUrl,
+      brandPrimaryColor: prospect.brandPrimaryColor,
+      industry: prospect.brandIndustry,
     }).returning();
 
     // 3. Create default project for tracking
@@ -172,19 +187,19 @@ async function convertProspectToClient(prospectId: string): Promise<Client> {
       domain: prospect.domain,
     }).returning();
 
-    // 4. Import top 20 opportunity keywords for tracking
+    // 4. Import ALL opportunity keywords (tracking enabled for top 20 only)
     if (latestAnalysis?.opportunityKeywords?.length) {
-      const topKeywords = latestAnalysis.opportunityKeywords
-        .slice(0, 20)
-        .map(kw => ({
-          projectId: project.id,
-          keyword: kw.keyword,
-          locationCode: kw.locationCode || 2840,
-          languageCode: kw.languageCode || 'en',
-          trackingEnabled: true,
-        }));
+      const allKeywords = latestAnalysis.opportunityKeywords.map((kw, index) => ({
+        projectId: project.id,
+        keyword: kw.keyword,
+        locationCode: kw.locationCode || 2840,
+        languageCode: kw.languageCode || 'en',
+        trackingEnabled: index < 20,  // Only top 20 tracked by default (API costs)
+        opportunityScore: kw.score,   // Preserve analysis score
+        opportunitySource: kw.source, // 'gap', 'ai_suggested', 'expansion'
+      }));
       
-      await tx.insert(savedKeywords).values(topKeywords);
+      await tx.insert(savedKeywords).values(allKeywords);
     }
 
     // 5. Store analysis insights in client intelligence
@@ -219,7 +234,8 @@ async function convertProspectToClient(prospectId: string): Promise<Client> {
 | `domain` | `website_url`, `project.domain` | Used for tracking |
 | `name` | `name` | Company name |
 | `workspace_id` | `workspace_id` | Same workspace |
-| Top 20 opportunity keywords | `saved_keywords` | Start tracking immediately |
+| ALL opportunity keywords | `saved_keywords` | Top 20 tracked, rest saved |
+| Brand info | `client.brand_*` fields | For reports, white-label |
 | Analysis insights | `client_intelligence` | Reference for onboarding |
 
 ### What Gets Created Fresh
@@ -371,6 +387,138 @@ POST   /api/prospects/:id/convert        # Convert to client
 | Prospect storage | Separate table | Don't pollute client metrics |
 | Analysis storage | JSONB columns | Flexible, no schema per type |
 | Conversion | Single transaction | Atomic, consistent state |
-| Keyword import | Top 20 opportunities | Start tracking best chances |
+| Keyword import | ALL keywords | Full data preserved, tracking selective |
+| Tracking default | Top 20 enabled | Control API costs, user can enable more |
+| Brand migration | Direct field copy | Prospect brand → Client brand |
 | Prospect after conversion | Keep, mark converted | History + traceability |
 | Client intelligence | Optional table | Store imported insights |
+
+---
+
+## AI Keyword Verification
+
+Before importing keywords to a client, AI verifies each keyword actually matches the brand/business.
+
+### Why Verification is Needed
+
+The opportunity discovery might include keywords that:
+- Are tangentially related but not brand-appropriate
+- Were suggested based on competitor data but don't fit this specific business
+- Are technically relevant but off-brand (e.g., "cheap saunas" for a premium brand)
+
+### Verification Flow
+
+```typescript
+async function verifyKeywordsForBrand(
+  keywords: OpportunityKeyword[],
+  brandContext: BrandContext
+): Promise<VerifiedKeyword[]> {
+  
+  const prompt = `
+You are verifying if keywords match a brand.
+
+Brand: ${brandContext.brandName}
+Products: ${brandContext.products.join(', ')}
+Services: ${brandContext.services.join(', ')}
+Target market: ${brandContext.targetMarket}
+Location: ${brandContext.location}
+Positioning: ${brandContext.positioning || 'not specified'}
+
+For each keyword, score 1-10 how well it matches this brand:
+- 10: Perfect fit, exactly what they should target
+- 7-9: Good fit, relevant to their business
+- 4-6: Marginal fit, might work but not ideal
+- 1-3: Poor fit, off-brand or irrelevant
+
+Keywords to verify:
+${keywords.map(k => `- "${k.keyword}"`).join('\n')}
+
+Output JSON: { "verified": [{ "keyword": string, "score": number, "reason": string }] }
+`;
+
+  const result = await ai.generate(prompt);
+  
+  return keywords.map(kw => {
+    const verification = result.verified.find(v => v.keyword === kw.keyword);
+    return {
+      ...kw,
+      brandFitScore: verification?.score || 5,
+      brandFitReason: verification?.reason || 'Not verified',
+      verified: (verification?.score || 5) >= 6,
+    };
+  });
+}
+```
+
+### Example Verification
+
+```
+Brand: Helsinki Saunas (premium home saunas)
+Products: barrel saunas, cabin saunas, Harvia heaters
+Target: residential, premium
+
+Keyword: "barrel sauna prices"
+→ Score: 9/10 - "Direct product search, high intent"
+
+Keyword: "cheap sauna deals"  
+→ Score: 3/10 - "Off-brand, they position as premium not budget"
+
+Keyword: "sauna health benefits"
+→ Score: 8/10 - "Educational content, builds authority, attracts target audience"
+
+Keyword: "commercial sauna installation"
+→ Score: 4/10 - "They focus on residential, not commercial"
+```
+
+### Integration in Migration
+
+```typescript
+// 4. Import ALL keywords with brand verification
+if (latestAnalysis?.opportunityKeywords?.length) {
+  // Verify keywords match the brand
+  const verifiedKeywords = await verifyKeywordsForBrand(
+    latestAnalysis.opportunityKeywords,
+    {
+      brandName: prospect.brandName,
+      products: prospect.brandProducts,
+      services: prospect.brandServices,
+      targetMarket: prospect.brandTargetMarket,
+      location: prospect.brandLocation,
+    }
+  );
+  
+  // Import all, but flag low-fit keywords
+  const allKeywords = verifiedKeywords.map((kw, index) => ({
+    projectId: project.id,
+    keyword: kw.keyword,
+    locationCode: kw.locationCode || 2840,
+    languageCode: kw.languageCode || 'en',
+    // Only track verified keywords by default
+    trackingEnabled: kw.verified && index < 50,
+    opportunityScore: kw.score,
+    opportunitySource: kw.source,
+    brandFitScore: kw.brandFitScore,
+    brandFitReason: kw.brandFitReason,
+  }));
+  
+  await tx.insert(savedKeywords).values(allKeywords);
+}
+```
+
+### UI Display
+
+```
+Keywords (487 imported, 312 verified, 50 tracking)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Keyword                  Volume   Diff   Brand Fit   Tracking   │
+│ ─────────────────────────────────────────────────────────────── │
+│ barrel sauna prices      1,200    25     ●●●●●●●●●○  [✓]        │
+│ Harvia sauna heater        800    32     ●●●●●●●●●○  [✓]        │
+│ sauna health benefits    2,400    45     ●●●●●●●●○○  [✓]        │
+│ cheap sauna deals          900    20     ●●●○○○○○○○  [ ]        │
+│ commercial sauna install   300    38     ●●●●○○○○○○  [ ]        │
+└─────────────────────────────────────────────────────────────────┘
+
+Filter: [All] [Verified Only] [Tracking] [Low Fit]
+```
