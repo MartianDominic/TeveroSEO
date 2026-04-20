@@ -82,7 +82,7 @@ export function OpportunitiesPanel({ clientId }: OpportunitiesPanelProps) {
 
         {opportunities.length > 5 && (
           <Button variant="outline" className="w-full" asChild>
-            <Link href={`/clients/${clientId}/opportunities`}>
+            <Link href={`/clients/${clientId}/opportunities` as Parameters<typeof Link>[0]["href"]}>
               View All {opportunities.length} Opportunities
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>

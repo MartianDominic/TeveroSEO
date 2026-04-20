@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
   Badge,
-  Progress,
 } from "@tevero/ui";
 import { Users, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
 import type { TeamMetrics, TeamMemberWithAssignments } from "@/types/team";
