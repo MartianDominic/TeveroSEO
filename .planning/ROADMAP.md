@@ -928,10 +928,19 @@ Client record created
     ↓
 Latest analysis imported to client intelligence
     ↓
-Project created with top opportunity keywords
+Project created with ALL opportunity keywords
+    ↓
+GSC connected → FREE daily ranking updates
+    ↓
+Keywords show "ranked" or "not ranked yet" based on GSC
     ↓
 Prospect marked as converted (linked)
 ```
+
+**Key Data Flow**:
+- **Prospects**: DataForSEO one-time analysis ($0.50-0.80) for opportunity discovery
+- **Clients**: GSC (FREE!) provides ongoing ranking truth
+- If keyword not in GSC → status: "not ranked yet"
 
 **Sales Tools**:
 - PDF report with opportunities + executive summary

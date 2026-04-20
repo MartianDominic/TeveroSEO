@@ -249,6 +249,94 @@ async function convertProspectToClient(prospectId: string): Promise<Client> {
 | OAuth connections | Client needs to connect GSC/GA4 |
 | Goals | User sets up based on opportunity analysis |
 
+---
+
+## Ranking Data Sources
+
+### The Key Insight: GSC is the Source of Truth
+
+```
+PROSPECT (pre-conversion):
+├── DataForSEO: One-time analysis ($0.50-0.80)
+│   └── Shows what they currently rank for (snapshot)
+│   └── Generates opportunity keywords
+│
+CLIENT (post-conversion):
+├── GSC (Google Search Console): FREE, ongoing
+│   └── Daily ranking data for all connected properties
+│   └── Keywords they actually rank for
+│   └── If not in GSC → "Not ranked yet"
+```
+
+### Keyword Status Flow
+
+When opportunity keywords are imported to a client:
+
+```typescript
+// Keyword states after import
+interface ImportedKeyword {
+  keyword: string;
+  trackingEnabled: true;
+  
+  // From prospect analysis (snapshot)
+  opportunityScore: number;
+  opportunitySource: 'gap' | 'ai_discovered' | 'expansion';
+  
+  // From GSC (live truth)
+  gscPosition: number | null;      // null = not ranked yet
+  gscClicks: number | null;
+  gscImpressions: number | null;
+  
+  // Display status
+  rankingStatus: 'ranked' | 'not_ranked_yet';
+}
+
+// GSC sync determines status
+function updateRankingStatus(keyword: ImportedKeyword, gscData: GSCData | null) {
+  if (gscData && gscData.position) {
+    keyword.rankingStatus = 'ranked';
+    keyword.gscPosition = gscData.position;
+    keyword.gscClicks = gscData.clicks;
+    keyword.gscImpressions = gscData.impressions;
+  } else {
+    keyword.rankingStatus = 'not_ranked_yet';
+    keyword.gscPosition = null;
+    keyword.gscClicks = null;
+    keyword.gscImpressions = null;
+  }
+}
+```
+
+### UI Display
+
+```
+Keywords (487 imported, 156 ranking, 331 not ranked yet)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Keyword                  GSC Position   Status         Actions  │
+│ ─────────────────────────────────────────────────────────────── │
+│ barrel sauna prices      #12            ● Ranked       [View]   │
+│ Harvia sauna heater      #8             ● Ranked       [View]   │
+│ sauna health benefits    —              ○ Not yet      [Track]  │
+│ home spa installation    —              ○ Not yet      [Track]  │
+│ barrel sauna delivery    #45            ● Ranked       [View]   │
+└─────────────────────────────────────────────────────────────────┘
+
+Filter: [All] [Ranked] [Not Ranked Yet] [Top 10] [Top 3]
+```
+
+### Why This Matters
+
+| Data Source | Cost | Purpose | Freshness |
+|-------------|------|---------|-----------|
+| DataForSEO (prospects) | $0.50-0.80/analysis | Discover opportunities | One-time snapshot |
+| GSC (clients) | FREE | Track actual rankings | Daily updates |
+
+**For prospects:** DataForSEO shows what they COULD rank for.
+**For clients:** GSC shows what they ACTUALLY rank for.
+
+Keywords imported as opportunities may initially show "Not ranked yet" — this is expected. As the client's SEO improves, GSC will start showing rankings for these keywords.
+
 ### What Stays on Prospect
 
 | Field | Status |
