@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Agency Intelligence
-status: complete
-last_updated: "2026-04-20T22:45:00Z"
+milestone: v4.0
+milestone_name: Prospecting & Sales
+status: in_progress
+last_updated: "2026-04-20T22:50:00Z"
 last_activity: 2026-04-20
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 55
-  completed_plans: 55
-  percent: 100
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 25 (team-intelligence)
-Plan: 4 of 4
+Phase: 26 (prospect-data-model)
+Plan: 1 of 4
 Status: Complete
-Last activity: 2026-04-20
+Last activity: 2026-04-21
 
 ## Completed Milestones
 
@@ -66,6 +66,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **26-01:** Domain normalization strips protocol, www, path, port before storage
+- **26-01:** Unique index on (workspace_id, domain) prevents duplicate prospects
+- **26-01:** PROSPECT_STATUS as const array for type-safe status validation
+- **26-01:** Page size max 100 for DoS prevention in findByWorkspace
 - **25-04:** Priority matrix uses 9-point scale (high impact + low effort = 9, best opportunity)
 - **25-04:** CTR gap threshold of 2% avoids noise from minor variations
 - **25-04:** Ranking gap detection targets positions 11-20 (almost page 1)
