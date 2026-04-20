@@ -775,8 +775,8 @@ CREATE TABLE prospect_analyses (
 **Estimated effort**: 1 week
 **Plans**: 4 plans
   - [x] 26-01-PLAN.md — Prospect schema + migrations + basic CRUD API (Wave 1)
-  - [ ] 26-02-PLAN.md — DataForSEO integration: keywordsForSite, competitorsDomain, domainRankOverview (Wave 2)
-  - [ ] 26-03-PLAN.md — BullMQ prospect-analysis queue + worker with rate limiting (Wave 2)
+  - [x] 26-02-PLAN.md — DataForSEO integration: keywordsForSite, competitorsDomain, domainRankOverview (Wave 2)
+  - [x] 26-03-PLAN.md — BullMQ prospect-analysis queue + worker with rate limiting (Wave 2)
   - [ ] 26-04-PLAN.md — Prospects UI: list, detail, analyze button, results display (Wave 3)
 
 ---
