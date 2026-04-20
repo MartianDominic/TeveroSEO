@@ -187,16 +187,18 @@ async function convertProspectToClient(prospectId: string): Promise<Client> {
       domain: prospect.domain,
     }).returning();
 
-    // 4. Import ALL opportunity keywords (tracking enabled for top 20 only)
+    // 4. Import ALL opportunity keywords (GSC tracking is FREE!)
+    // Note: Prospects = one-time DataForSEO analysis (paid once)
+    //       Clients = GSC provides ranking data for FREE
     if (latestAnalysis?.opportunityKeywords?.length) {
-      const allKeywords = latestAnalysis.opportunityKeywords.map((kw, index) => ({
+      const allKeywords = latestAnalysis.opportunityKeywords.map((kw) => ({
         projectId: project.id,
         keyword: kw.keyword,
         locationCode: kw.locationCode || 2840,
         languageCode: kw.languageCode || 'en',
-        trackingEnabled: index < 20,  // Only top 20 tracked by default (API costs)
-        opportunityScore: kw.score,   // Preserve analysis score
-        opportunitySource: kw.source, // 'gap', 'ai_suggested', 'expansion'
+        trackingEnabled: true,  // ALL keywords tracked - GSC is free!
+        opportunityScore: kw.score,
+        opportunitySource: kw.source,
       }));
       
       await tx.insert(savedKeywords).values(allKeywords);
@@ -387,8 +389,9 @@ POST   /api/prospects/:id/convert        # Convert to client
 | Prospect storage | Separate table | Don't pollute client metrics |
 | Analysis storage | JSONB columns | Flexible, no schema per type |
 | Conversion | Single transaction | Atomic, consistent state |
-| Keyword import | ALL keywords | Full data preserved, tracking selective |
-| Tracking default | Top 20 enabled | Control API costs, user can enable more |
+| Keyword import | ALL keywords | Full data preserved |
+| Client tracking | ALL via GSC | GSC is FREE - no cost concern! |
+| Prospect analysis | One-time only | DataForSEO cost paid once per prospect |
 | Brand migration | Direct field copy | Prospect brand → Client brand |
 | Prospect after conversion | Keep, mark converted | History + traceability |
 | Client intelligence | Optional table | Store imported insights |
