@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 24 (power-user-features)
+Phase: 25 (team-intelligence)
 Plan: 4 of 4
-Status: In Progress
+Status: Complete
 Last activity: 2026-04-20
 
 ## Completed Milestones
@@ -52,7 +52,7 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 | 21 | Agency Command Center | 3 weeks | ◐ In Progress |
 | 22 | Goal-Based Metrics System | 3 days | ✓ Complete (2026-04-20) |
 | 23 | Performance & Scale | 2 days | ✓ Complete (2026-04-20) |
-| 24 | Power User Features | 2 days | ◐ In Progress |
+| 24 | Power User Features | 2 days | ✓ Complete (2026-04-20) |
 | 25 | Team & Intelligence | 2 days | ○ Not Started |
 
 ## Sub-project Status
@@ -66,6 +66,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **25-04:** Priority matrix uses 9-point scale (high impact + low effort = 9, best opportunity)
+- **25-04:** CTR gap threshold of 2% avoids noise from minor variations
+- **25-04:** Ranking gap detection targets positions 11-20 (almost page 1)
 - **22-01:** 9 default goal templates covering keywords (top 10/3/1), clicks, CTR, growth, impressions, custom
 - **22-01:** hasDenominator flag enables "X out of Y" goals (e.g., 7/10 keywords in Top 10)
 - **22-01:** Seed script in migrate-entry.ts for automatic template seeding on deploy
@@ -137,4 +140,4 @@ None currently.
 
 ## Next Up
 
-Phase 24 complete. Continue with Phase 25: Team & Intelligence.
+Phase 25 complete. All Team & Intelligence plans executed.
