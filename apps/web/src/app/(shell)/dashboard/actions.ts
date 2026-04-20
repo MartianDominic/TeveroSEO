@@ -42,6 +42,14 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
       keywordsTop10: 0,
       keywordsTop3: 0,
       keywordsPosition1: 0,
+      // Goal-based metrics
+      avgGoalAttainment: 0,
+      avgGoalAttainmentTrend: 0,
+      clientsOnTrack: 0,
+      clientsWatching: 0,
+      clientsCritical: 0,
+      goalsMet: 0,
+      goalsTotal: 0,
     };
   }
 }

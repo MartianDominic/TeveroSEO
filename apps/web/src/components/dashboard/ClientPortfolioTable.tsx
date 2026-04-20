@@ -17,6 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Checkbox,
 } from "@tevero/ui";
 import { ArrowUpDown, Search, ChevronRight, Loader2 } from "lucide-react";
 import { FilterBar } from "./FilterBar";
@@ -32,6 +33,8 @@ import {
 } from "./ClientTableHoverPopover";
 import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
 import { LazySparkline } from "./LazySparkline";
+import { BulkActionBar } from "./BulkActionBar";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import type {
   ClientMetrics,
   ClientSortKey,
@@ -49,6 +52,8 @@ interface ClientPortfolioTableProps {
   usePagination?: boolean;
   /** Workspace ID for paginated mode */
   workspaceId?: string;
+  /** Enable row selection with checkboxes */
+  enableSelection?: boolean;
 }
 
 const DEFAULT_FILTERS: ClientTableFilters = {
@@ -66,6 +71,7 @@ export function ClientPortfolioTable({
   showSparklines = false,
   usePagination = false,
   workspaceId,
+  enableSelection = false,
 }: ClientPortfolioTableProps) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<ClientSortKey>("healthScore");
@@ -100,6 +106,19 @@ export function ClientPortfolioTable({
 
   // Source clients: use paginated data in pagination mode, props otherwise
   const sourceClients = usePagination ? paginatedClients : clients;
+
+  // Row selection hook for bulk actions
+  const {
+    selectedIds,
+    selectedCount,
+    handleClick: handleSelectionClick,
+    clearSelection,
+    selectAllProps,
+    getRowCheckboxProps,
+  } = useRowSelection({
+    items: sourceClients,
+    getItemId: (client) => client.clientId,
+  });
 
   // Filter clients (only applies in non-pagination mode)
   const filtered = useMemo(() => {
@@ -432,6 +451,15 @@ export function ClientPortfolioTable({
           <Table>
             <TableHeader>
               <TableRow>
+                {enableSelection && (
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectAllProps.indeterminate ? "indeterminate" : selectAllProps.checked}
+                      onCheckedChange={selectAllProps.onChange}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-[200px]">
                   <SortButton column="clientName">Client</SortButton>
                 </TableHead>
@@ -457,7 +485,7 @@ export function ClientPortfolioTable({
             <TableBody>
               {sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={enableSelection ? 9 : 8} className="text-center py-8 text-muted-foreground">
                     No clients match your filters
                   </TableCell>
                 </TableRow>
@@ -465,9 +493,29 @@ export function ClientPortfolioTable({
                 sorted.map((client) => (
                   <TableRow
                     key={client.id}
-                    onClick={() => handleRowClick(client.clientId)}
-                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={(e) => {
+                      // Don't navigate if clicking on checkbox
+                      if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                      handleRowClick(client.clientId);
+                    }}
+                    className={`cursor-pointer hover:bg-muted/50 ${
+                      selectedIds.has(client.clientId) ? "bg-muted/30" : ""
+                    }`}
                   >
+                    {enableSelection && (
+                      <TableCell
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectionClick(client.clientId, e);
+                        }}
+                      >
+                        <Checkbox
+                          checked={getRowCheckboxProps(client.clientId).checked}
+                          onCheckedChange={getRowCheckboxProps(client.clientId).onChange}
+                          aria-label={`Select ${client.clientName}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <span className="truncate">{client.clientName}</span>
@@ -586,6 +634,15 @@ export function ClientPortfolioTable({
             )}
           </Button>
         </div>
+      )}
+
+      {/* Bulk Action Bar - shown when items are selected */}
+      {enableSelection && (
+        <BulkActionBar
+          selectedCount={selectedCount}
+          selectedIds={selectedIds}
+          onClearSelection={clearSelection}
+        />
       )}
     </div>
   );

@@ -106,3 +106,29 @@
 | CI-01 to CI-06 | Phase 5 | Pending |
 | AUTH-01 to AUTH-04 | Phase 6 | Pending |
 | SHELL-01 to SHELL-05 | Phase 7 | Pending |
+| CMD-01 to CMD-18 | Phase 21 | Pending |
+
+---
+
+## v3 Requirements — Agency Intelligence
+
+### Agency Command Center (Phase 21)
+
+- [ ] **CMD-01**: `client_dashboard_metrics` table pre-computes health scores, traffic trends, keyword distribution per client
+- [ ] **CMD-02**: Health score algorithm uses weighted scoring (traffic 30%, rankings 25%, technical 20%, backlinks 15%, content 10%)
+- [ ] **CMD-03**: Portfolio Health Summary section shows total clients, clients needing attention, wins this week, portfolio-wide totals
+- [ ] **CMD-04**: Needs Attention section shows color-coded severity alerts (red=critical, orange=warning, yellow=info)
+- [ ] **CMD-05**: Wins & Milestones section celebrates successes (#1 positions, Top 10 entries, traffic milestones, high-DA backlinks)
+- [ ] **CMD-06**: Quick actions available inline: View, Snooze, Reconnect, Dismiss
+- [ ] **CMD-07**: Client Portfolio Table supports sorting by any column + filtering by health/traffic/connection/tags
+- [ ] **CMD-08**: Hovering any metric cell shows contextual popup with sparkline/breakdown (no extra click)
+- [ ] **CMD-09**: Sparklines use Recharts, render on hover (lazy), show 30-day trend
+- [ ] **CMD-10**: Activity Feed displays real-time workspace events
+- [ ] **CMD-11**: Activity Feed uses WebSocket (Socket.IO) with workspace-level rooms for multi-tenant isolation
+- [ ] **CMD-12**: BullMQ repeatable job computes `client_dashboard_metrics` every 5 minutes
+- [ ] **CMD-13**: Quick Stats Cards show configurable metrics with 20+ options
+- [ ] **CMD-14**: Quick Stats Cards are drag-and-drop rearrangeable using @dnd-kit
+- [ ] **CMD-15**: Saved Views store filter configurations per user ("My Clients", "Needs Attention", custom filters)
+- [ ] **CMD-16**: Export client list to CSV with selected columns
+- [ ] **CMD-17**: Team Workload section shows clients per team member with capacity bar (for agencies with staff)
+- [ ] **CMD-18**: Dashboard is mobile-responsive: collapses to health summary + needs attention + swipeable client cards

@@ -5,6 +5,7 @@
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 - 🚧 **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (in progress)
+- 📋 **v4.0 Prospecting & Sales** — Phases 26–30 (planned)
 
 ## Phases
 
@@ -621,11 +622,11 @@ CREATE TABLE dashboard_views (
 **Estimated effort**: 3 weeks
 **Plans**: 5 plans
 Plans:
-- [ ] 21-01-PLAN.md — Dashboard metrics schema + BullMQ worker for 5-min pre-computation (Wave 1)
-- [ ] 21-02-PLAN.md — Portfolio health summary + needs attention + wins/milestones sections (Wave 2)
-- [ ] 21-03-PLAN.md — Client portfolio table with hover popovers + sorting + filtering (Wave 2)
-- [ ] 21-04-PLAN.md — Real-time activity feed (Socket.IO) + drag-and-drop quick stats cards (Wave 3)
-- [ ] 21-05-PLAN.md — Saved views + CSV export + team workload + mobile responsive layout (Wave 4)
+- [x] 21-01-PLAN.md — Dashboard metrics schema + BullMQ worker for 5-min pre-computation (Wave 1)
+- [x] 21-02-PLAN.md — Portfolio health summary + needs attention + wins/milestones sections (Wave 2)
+- [x] 21-03-PLAN.md — Client portfolio table with hover popovers + sorting + filtering (Wave 2)
+- [x] 21-04-PLAN.md — Real-time activity feed (Socket.IO) + drag-and-drop quick stats cards (Wave 3)
+- [x] 21-05-PLAN.md — Saved views + CSV export + team workload + mobile responsive layout (Wave 4)
 
 ---
 
@@ -662,11 +663,11 @@ Plans:
   4. No memory growth on scroll (lazy sparklines)
   5. Redis caching with tag-based invalidation
 **Estimated effort**: 2 days
-**Plans**: 4 plans
-  - [ ] 23-01-PLAN.md — TanStack Virtual + Lazy Sparklines: VirtualizedTable, IntersectionObserver loading (Wave 1)
-  - [ ] 23-02-PLAN.md — Cursor Pagination + Server Filters: cursor encoding, FilterBar, usePaginatedClients hook (Wave 2)
-  - [ ] 23-03-PLAN.md — Redis Caching + Optimistic Updates: cacheGet/cacheSet/invalidateByTag, withCache wrapper (Wave 2)
-  - [ ] 23-04-PLAN.md — Portfolio Aggregates Table: pre-computed metrics, BullMQ worker, 5-min schedule (Wave 3)
+**Plans**: 4 plans (4 complete)
+  - [x] 23-01-PLAN.md — TanStack Virtual + Lazy Sparklines: VirtualizedTable, IntersectionObserver loading (Wave 1)
+  - [x] 23-02-PLAN.md — Cursor Pagination + Server Filters: cursor encoding, FilterBar, usePaginatedClients hook (Wave 2)
+  - [x] 23-03-PLAN.md — Redis Caching + Optimistic Updates: cacheGet/cacheSet/invalidateByTag, withCache wrapper (Wave 2)
+  - [x] 23-04-PLAN.md — Portfolio Aggregates Table: pre-computed metrics, BullMQ worker, 5-min schedule (Wave 3)
 
 ---
 
@@ -682,11 +683,11 @@ Plans:
   4. Saved views persist across sessions per user
   5. Export works for filtered data (CSV + PDF)
 **Estimated effort**: 2 days
-**Plans**: 4 plans
-  - [ ] 24-01-PLAN.md — Keyboard Navigation + Command Palette: useTableKeyboardNav hook, cmdk integration (Wave 1)
-  - [ ] 24-02-PLAN.md — Bulk Operations: useRowSelection hook, shift-click range, BulkActionBar (Wave 2)
-  - [ ] 24-03-PLAN.md — Saved Views + Column Customization: saved_views schema, drag-and-drop columns (Wave 2)
-  - [ ] 24-04-PLAN.md — CSV/PDF Export: generateCSV, jspdf integration, ExportButton (Wave 3)
+**Plans**: 4 plans (4 complete)
+  - [x] 24-01-PLAN.md — Keyboard Navigation + Command Palette: useTableKeyboardNav hook, cmdk integration (Wave 1)
+  - [x] 24-02-PLAN.md — Bulk Operations: useRowSelection hook, shift-click range, BulkActionBar (Wave 2)
+  - [x] 24-03-PLAN.md — Saved Views + Column Customization: saved_views schema, drag-and-drop columns (Wave 2)
+  - [x] 24-04-PLAN.md — CSV/PDF Export: generateCSV, jspdf integration, ExportButton (Wave 3)
 
 ---
 
@@ -702,8 +703,251 @@ Plans:
   4. Goal projections show estimated completion with trend analysis
   5. Opportunities surface actionable insights (CTR improvements, ranking gaps, quick wins)
 **Estimated effort**: 2 days
+**Plans**: 4 plans (4 complete)
+  - [x] 25-01-PLAN.md — Team Dashboard + Workload Balancing: clientAssignments, teamMemberMetrics schemas, TeamDashboard component (Wave 1)
+  - [x] 25-02-PLAN.md — Cross-Client Pattern Detection: detectedPatterns schema, linearRegression, PatternsPanel (Wave 2)
+  - [x] 25-03-PLAN.md — Predictive Alerts + Goal Projection: predictTrafficDecline, projectGoal, GoalProjectionCard (Wave 2)
+  - [x] 25-04-PLAN.md — Opportunity Identification: CTR improvements, ranking gaps, quick wins algorithms (Wave 3)
+
+---
+
+## v4.0 Prospecting & Sales
+
+Transform the platform from client-only analytics into a full sales pipeline tool. Analyze prospects BEFORE they become clients to demonstrate value and win deals.
+
+---
+
+### Phase 26: Prospect Data Model & Basic Analysis
+**Goal**: Store prospects by domain (separate from clients), run basic keyword analysis to show what they currently rank for and their competitive landscape.
+**Depends on**: Phase 21 (dashboard infrastructure), Phase 17 (ranking data patterns)
+**Requirements**: PROSP-01 through PROSP-08
+**Working directory**: `apps/web/`, `open-seo-main/`
+
+**Example Use Case**:
+> "helsinkisaunas.com sells saunas. Show me what keywords they rank for and who their competitors are."
+
+**Data Model**:
+```sql
+-- Prospects: potential clients (not yet paying)
+CREATE TABLE prospects (
+  id UUID PRIMARY KEY,
+  workspace_id UUID NOT NULL,
+  domain TEXT NOT NULL,
+  company_name TEXT,
+  contact_email TEXT,
+  contact_name TEXT,
+  industry TEXT,
+  notes TEXT,
+  status TEXT DEFAULT 'new',  -- new, analyzing, analyzed, converted, archived
+  source TEXT,                -- referral, cold_outreach, inbound, etc.
+  assigned_to UUID,
+  converted_client_id UUID,   -- links to clients.id after conversion
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Analysis results (one per analysis run)
+CREATE TABLE prospect_analyses (
+  id UUID PRIMARY KEY,
+  prospect_id UUID NOT NULL REFERENCES prospects(id),
+  analysis_type TEXT NOT NULL,  -- 'quick_scan', 'deep_dive', 'opportunity_discovery'
+  status TEXT DEFAULT 'pending',
+  target_region TEXT,           -- "EU", "US", "UK"
+  target_language TEXT,         -- "en", "de", "fi"
+  competitor_domains JSONB,
+  domain_metrics JSONB,         -- authority, traffic, age
+  organic_keywords JSONB,       -- what they currently rank for
+  competitor_keywords JSONB,    -- competitor gap analysis
+  cost_cents INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+```
+
+**Success Criteria** (what must be TRUE):
+  1. `prospects` and `prospect_analyses` tables exist with proper indexes
+  2. `/prospects` page lists prospects with status badges and domain
+  3. "Add Prospect" creates prospect record with domain validation
+  4. "Analyze" triggers BullMQ job that calls DataForSEO
+  5. Analysis shows: domain metrics, current keywords, top competitors
+  6. Results cached in `prospect_analyses` with cost tracking
+  7. Rate limiting: max 10 analyses/day per workspace
+**Estimated effort**: 1 week
 **Plans**: 4 plans
-  - [ ] 25-01-PLAN.md — Team Dashboard + Workload Balancing: clientAssignments, teamMemberMetrics schemas, TeamDashboard component (Wave 1)
-  - [ ] 25-02-PLAN.md — Cross-Client Pattern Detection: detectedPatterns schema, linearRegression, PatternsPanel (Wave 2)
-  - [ ] 25-03-PLAN.md — Predictive Alerts + Goal Projection: predictTrafficDecline, projectGoal, GoalProjectionCard (Wave 2)
-  - [ ] 25-04-PLAN.md — Opportunity Identification: CTR improvements, ranking gaps, quick wins algorithms (Wave 3)
+  - [ ] 26-01-PLAN.md — Prospect schema + migrations + basic CRUD API (Wave 1)
+  - [ ] 26-02-PLAN.md — DataForSEO integration: keywordsForSite, competitorsDomain, domainRankOverview (Wave 2)
+  - [ ] 26-03-PLAN.md — BullMQ prospect-analysis queue + worker with rate limiting (Wave 2)
+  - [ ] 26-04-PLAN.md — Prospects UI: list, detail, analyze button, results display (Wave 3)
+
+---
+
+### Phase 27: Website Scraping & Business Understanding
+**Goal**: Scrape prospect's website to understand what they actually sell. Works even when they have zero keyword rankings.
+**Depends on**: Phase 26
+**Requirements**: PROSP-09 through PROSP-14
+**Working directory**: `apps/web/`, `open-seo-main/`
+
+**Example Use Case**:
+> "helsinkisaunas.com has zero rankings. Scrape their site → they sell barrel saunas, cabin saunas, Harvia heaters, offer installation in Helsinki."
+
+**Scraping Strategy**:
+```
+Layer 1: Cheerio (free, fast, ~80% of sites)
+Layer 2: DataForSEO On-Page API (JS sites, bot protection, ~$0.02/page)
+Layer 3: User input fallback ("What do they sell?")
+
+Pages to scrape:
+1. Homepage - main value prop
+2. /products or /shop - actual product list
+3. /about - business description  
+4. /services - what services offered
+5. 1 category page - specific products
+```
+
+**AI Extraction**:
+```json
+{
+  "products": ["barrel saunas", "cabin saunas", "infrared saunas"],
+  "brands": ["Harvia", "Tylö", "Narvi"],
+  "services": ["installation", "delivery", "maintenance"],
+  "location": "Helsinki, Finland",
+  "target": "residential"
+}
+```
+
+**Success Criteria** (what must be TRUE):
+  1. Cheerio scraper extracts title, meta, headings, content, links from static sites
+  2. DataForSEO On-Page fallback handles JS-rendered sites
+  3. Smart link detection finds /products, /about, /services pages
+  4. AI extracts: products, brands, services, location, target market
+  5. Scrape results stored in `prospect_analyses.scraped_content`
+  6. Works for zero-ranking prospects (scraping doesn't need rankings)
+  7. User input fallback when scraping fails completely
+**Estimated effort**: 1 week
+**Plans**: 3 plans
+  - [ ] 27-01-PLAN.md — Cheerio scraper + smart link detection + content extraction (Wave 1)
+  - [ ] 27-02-PLAN.md — DataForSEO On-Page fallback + hybrid scrape flow (Wave 1)
+  - [ ] 27-03-PLAN.md — AI business extraction prompt + user input fallback UI (Wave 2)
+
+---
+
+### Phase 28: Keyword Gap & Opportunity Analysis
+**Goal**: Show keywords competitors rank for that the prospect doesn't (gap analysis). Filter by achievability based on prospect's domain authority.
+**Depends on**: Phase 27
+**Requirements**: PROSP-15 through PROSP-20
+**Working directory**: `apps/web/`, `open-seo-main/`
+
+**Example Use Case**:
+> "helsinkisaunas.com has DA 25. Show keywords their competitors rank for that they don't, but only ones they could realistically rank for (difficulty < 45)."
+
+**Analysis Types**:
+- **Competitor Gap**: Keywords competitors have, prospect doesn't
+- **Achievability Filter**: difficulty <= (domainAuthority + 20)
+- **Quick Wins**: Low difficulty + decent volume + not ranking
+
+**Success Criteria** (what must be TRUE):
+  1. DataForSEO `domainIntersection` integration working
+  2. Gap analysis shows: keyword, volume, difficulty, which competitors rank
+  3. Achievability score calculated: `100 - max(0, difficulty - DA)`
+  4. Filter controls: min volume, max difficulty, competitor selection
+  5. "Quick Wins" tab highlights low-effort opportunities
+  6. Export gap analysis to CSV
+**Estimated effort**: 1 week
+**Plans**: 3 plans
+  - [ ] 28-01-PLAN.md — DataForSEO domainIntersection + achievability scoring algorithm (Wave 1)
+  - [ ] 28-02-PLAN.md — Gap analysis UI: keyword table, filters, competitor selector (Wave 2)
+  - [ ] 28-03-PLAN.md — Quick wins identification + CSV export (Wave 2)
+
+---
+
+### Phase 29: AI Opportunity Discovery ("Could Rank For")
+**Goal**: Use AI + scraped content to generate keywords the prospect SHOULD target — even with zero existing rankings.
+**Depends on**: Phase 27 (scraping), Phase 28 (gap analysis)
+**Requirements**: PROSP-21 through PROSP-28
+**Working directory**: `apps/web/`, `open-seo-main/`, `AI-Writer/backend/`
+
+**Example Use Case**:
+> "helsinkisaunas.com sells barrel saunas, cabin saunas, Harvia heaters (from scrape). AI generates: 'barrel sauna prices', 'Harvia vs Tylö', 'sauna health benefits', 'sauna installation Helsinki', 'home spa ideas'."
+
+**The AI Discovery Pipeline**:
+```
+1. BUSINESS CONTEXT (from Phase 27 scrape)
+   - Products: barrel saunas, cabin saunas, infrared saunas
+   - Brands: Harvia, Tylö, Narvi
+   - Services: installation, delivery
+   - Location: Helsinki, Finland
+
+2. AI KEYWORD GENERATION (from actual products)
+   - Product keywords: "buy barrel sauna", "cabin sauna prices"
+   - Brand keywords: "Harvia sauna heater", "Tylö vs Harvia"
+   - Service keywords: "sauna installation Helsinki"
+   - Problem keywords: "home relaxation ideas", "muscle recovery"
+   - Educational: "sauna health benefits", "how to use sauna"
+
+3. VALIDATION (DataForSEO)
+   - Get real volume/difficulty for AI suggestions
+   - Filter by achievability (DA-based)
+
+4. SCORING
+   - achievability × value × relevance
+   - Classify: quick_win, strategic, long_tail
+
+5. SYNTHESIS
+   - Executive summary for sales
+   - Top opportunities with rationale
+```
+
+**Success Criteria** (what must be TRUE):
+  1. AI generates keywords from scraped products/brands/services (not templates)
+  2. Keywords are specific to THIS business (e.g., "Harvia" not generic "sauna brand")
+  3. DataForSEO validates AI suggestions with real metrics
+  4. Combined opportunity score: achievability × value × relevance
+  5. Works for zero-ranking prospects (uses scrape data, not rankings)
+  6. "Opportunity Discovery" tab shows AI-found keywords with rationale
+  7. Executive summary generated for sales use
+**Estimated effort**: 1.5 weeks
+**Plans**: 4 plans
+  - [ ] 29-01-PLAN.md — AI keyword generation from scraped business context (Wave 1)
+  - [ ] 29-02-PLAN.md — DataForSEO validation + achievability filtering (Wave 2)
+  - [ ] 29-03-PLAN.md — Opportunity scoring + classification algorithm (Wave 2)
+  - [ ] 29-04-PLAN.md — Opportunity Discovery UI + executive summary generation (Wave 3)
+
+---
+
+### Phase 30: Prospect Conversion & Sales Tools
+**Goal**: Convert prospects to clients with one click (migrate data). Generate sales reports/presentations from analysis.
+**Depends on**: Phase 29
+**Requirements**: PROSP-29 through PROSP-34
+**Working directory**: `apps/web/`, `open-seo-main/`
+
+**Conversion Flow**:
+```
+Prospect (helsinkisaunas.com)
+    ↓ "Convert to Client"
+Client record created
+    ↓
+Latest analysis imported to client intelligence
+    ↓
+Project created with top opportunity keywords
+    ↓
+Prospect marked as converted (linked)
+```
+
+**Sales Tools**:
+- PDF report with opportunities + executive summary
+- Shareable link (read-only, expires in 7 days)
+- Email template with key findings
+
+**Success Criteria** (what must be TRUE):
+  1. "Convert to Client" creates client + project + imports analysis
+  2. Top opportunity keywords auto-added to new project for tracking
+  3. PDF export with: domain metrics, top opportunities, AI insights
+  4. Shareable analysis link with expiration
+  5. Email template generator for outreach
+  6. Conversion tracking: which prospects became clients
+**Estimated effort**: 1 week
+**Plans**: 4 plans
+  - [ ] 30-01-PLAN.md — Prospect → Client conversion logic + data migration (Wave 1)
+  - [ ] 30-02-PLAN.md — PDF report generation with opportunities + AI summary (Wave 2)
+  - [ ] 30-03-PLAN.md — Shareable links with expiration + access tracking (Wave 2)
+  - [ ] 30-04-PLAN.md — Email templates + conversion analytics dashboard (Wave 3)

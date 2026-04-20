@@ -29,6 +29,14 @@ export interface ClientMetrics {
   lastAuditAt: string | null;
   computedAt: string;
   connectionStatus: "connected" | "stale" | "disconnected";
+  // Goal-based metrics (Phase 22)
+  goalAttainmentPct: number | null;
+  goalsMetCount: number;
+  goalsTotalCount: number;
+  primaryGoalName: string | null;
+  primaryGoalPct: number | null;
+  primaryGoalTrend: "up" | "down" | "flat" | null;
+  priorityScore: number;
 }
 
 export interface PortfolioSummary {
@@ -42,6 +50,14 @@ export interface PortfolioSummary {
   keywordsTop10: number;
   keywordsTop3: number;
   keywordsPosition1: number;
+  // Goal-based metrics (Phase 22)
+  avgGoalAttainment: number;
+  avgGoalAttainmentTrend: number;
+  clientsOnTrack: number;
+  clientsWatching: number;
+  clientsCritical: number;
+  goalsMet: number;
+  goalsTotal: number;
 }
 
 export interface AttentionItem {

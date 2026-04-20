@@ -13,7 +13,6 @@ import {
   Input,
   Label,
   Badge,
-  cn,
 } from "@tevero/ui";
 import type { Webhook, WebhookEvent } from "@/actions/webhooks";
 import { createWebhook, updateWebhook } from "@/actions/webhooks";
@@ -115,7 +114,7 @@ export function WebhookForm({
           <DialogHeader>
             <DialogTitle>Webhook Created</DialogTitle>
             <DialogDescription>
-              Save this secret - it won't be shown again.
+              Save this secret - it won&apos;t be shown again.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
