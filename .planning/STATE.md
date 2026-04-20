@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 23 (performance-scale)
-Plan: 3 of 4 (23-03 complete)
-Status: In Progress
+Plan: 4 of 4 (23-04 complete)
+Status: Complete
 Last activity: 2026-04-20
 
 ## Completed Milestones
@@ -125,6 +125,8 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **23-03:** Tag-based invalidation allows clearing related caches together
 - **23-03:** Cache TTL 60s for paginated data (short for data freshness)
 - **23-03:** Optimistic updates use QueryClient pattern (not global singleton)
+- **23-04:** Portfolio aggregates computed per-workspace from client_dashboard_metrics
+- **23-04:** PortfolioHealthSummary supports both aggregates hook and legacy summary prop
 
 ## Blockers/Concerns
 
