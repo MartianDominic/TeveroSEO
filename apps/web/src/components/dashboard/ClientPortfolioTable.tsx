@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -19,12 +19,15 @@ import {
 } from "@tevero/ui";
 import { ArrowUpDown, Search, ChevronRight } from "lucide-react";
 import { HealthScoreBadge } from "./HealthScoreBadge";
+import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 import { PositionDistributionBar } from "./PositionDistributionBar";
 import {
   HealthHoverPopover,
   TrafficHoverPopover,
   KeywordsHoverPopover,
 } from "./ClientTableHoverPopover";
+import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
+import { LazySparkline } from "./LazySparkline";
 import type {
   ClientMetrics,
   ClientSortKey,
@@ -34,6 +37,10 @@ import type {
 interface ClientPortfolioTableProps {
   clients: ClientMetrics[];
   onClientClick?: (clientId: string) => void;
+  /** Enable row virtualization for large datasets (500+ clients) */
+  useVirtualization?: boolean;
+  /** Show lazy-loaded sparklines in the trend column */
+  showSparklines?: boolean;
 }
 
 const DEFAULT_FILTERS: ClientTableFilters = {
@@ -44,10 +51,15 @@ const DEFAULT_FILTERS: ClientTableFilters = {
   hasAlerts: null,
 };
 
-export function ClientPortfolioTable({ clients, onClientClick }: ClientPortfolioTableProps) {
+export function ClientPortfolioTable({
+  clients,
+  onClientClick,
+  useVirtualization = false,
+  showSparklines = false,
+}: ClientPortfolioTableProps) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<ClientSortKey>("healthScore");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc"); // Default descending for priority
   const [filters, setFilters] = useState<ClientTableFilters>(DEFAULT_FILTERS);
 
   // Filter clients
@@ -141,6 +153,141 @@ export function ClientPortfolioTable({ clients, onClientClick }: ClientPortfolio
     </button>
   );
 
+  // Column definitions for VirtualizedTable
+  const virtualizedColumns: VirtualizedColumnDef<ClientMetrics>[] = useMemo(() => [
+    {
+      id: "clientName",
+      header: <SortButton column="clientName">Client</SortButton>,
+      width: 200,
+      cell: (client) => (
+        <div className="flex items-center gap-2 font-medium">
+          <span className="truncate">{client.clientName}</span>
+          {client.connectionStatus === "stale" && (
+            <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800">
+              Stale
+            </Badge>
+          )}
+          {client.connectionStatus === "disconnected" && (
+            <Badge variant="outline" className="text-xs bg-red-100 text-red-800">
+              No GSC
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "health",
+      header: <SortButton column="healthScore">Health</SortButton>,
+      width: 100,
+      cell: (client) => client.goalsTotalCount > 0 ? (
+        <div className="flex flex-col gap-0.5">
+          <GoalAttainmentBadge
+            attainmentPct={client.goalAttainmentPct}
+            goalsMet={client.goalsMetCount}
+            goalsTotal={client.goalsTotalCount}
+            trend={client.primaryGoalTrend}
+            size="sm"
+          />
+          {client.primaryGoalName && (
+            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+              {client.primaryGoalName}
+            </span>
+          )}
+        </div>
+      ) : (
+        <HealthHoverPopover data={{
+          score: client.healthScore,
+          breakdown: client.healthBreakdown,
+        }}>
+          <HealthScoreBadge score={client.healthScore} showLabel={false} size="sm" />
+        </HealthHoverPopover>
+      ),
+    },
+    {
+      id: "traffic",
+      header: <SortButton column="trafficCurrent">Traffic (30d)</SortButton>,
+      cell: (client) => (
+        <TrafficHoverPopover data={{
+          current: client.trafficCurrent,
+          previous: client.trafficPrevious,
+          trendPct: client.trafficTrendPct,
+          dailyData: [],
+        }}>
+          {client.trafficCurrent.toLocaleString()}
+        </TrafficHoverPopover>
+      ),
+      className: "text-right tabular-nums",
+    },
+    {
+      id: "trend",
+      header: <SortButton column="trafficTrendPct">Trend</SortButton>,
+      width: showSparklines ? 120 : undefined,
+      cell: (client) => showSparklines ? (
+        <div className="flex items-center justify-end gap-2">
+          <LazySparkline clientId={client.clientId} metric="traffic" width={60} height={20} />
+          {formatTrend(client.trafficTrendPct)}
+        </div>
+      ) : formatTrend(client.trafficTrendPct),
+      className: "text-right tabular-nums",
+    },
+    {
+      id: "keywords",
+      header: <SortButton column="keywordsTotal">Keywords</SortButton>,
+      cell: (client) => (
+        <KeywordsHoverPopover data={{
+          total: client.keywordsTotal,
+          top10: client.keywordsTop10,
+          top3: client.keywordsTop3,
+          position1: client.keywordsPosition1,
+        }}>
+          {client.keywordsTotal.toLocaleString()}
+        </KeywordsHoverPopover>
+      ),
+      className: "text-right tabular-nums",
+    },
+    {
+      id: "positions",
+      header: "Positions",
+      width: 150,
+      cell: (client) => (
+        <PositionDistributionBar
+          top10={client.keywordsTop10}
+          top3={client.keywordsTop3}
+          position1={client.keywordsPosition1}
+          total={client.keywordsTotal}
+          showLabels={false}
+        />
+      ),
+    },
+    {
+      id: "alerts",
+      header: <SortButton column="alertsOpen">Alerts</SortButton>,
+      cell: (client) => client.alertsOpen > 0 ? (
+        <Badge
+          variant="secondary"
+          className={client.alertsCritical > 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}
+        >
+          {client.alertsOpen}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      ),
+      className: "text-right",
+    },
+    {
+      id: "arrow",
+      header: "",
+      width: 50,
+      cell: () => <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+    },
+  ], [showSparklines, sortKey]);
+
+  const handleVirtualizedRowClick = useCallback((row: ClientMetrics) => {
+    handleRowClick(row.clientId);
+  }, []);
+
+  const getRowKey = useCallback((row: ClientMetrics) => row.id, []);
+
   return (
     <div className="space-y-4">
       {/* Search and Filters */}
@@ -196,123 +343,157 @@ export function ClientPortfolioTable({ clients, onClientClick }: ClientPortfolio
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">
-                <SortButton column="clientName">Client</SortButton>
-              </TableHead>
-              <TableHead className="w-[100px]">
-                <SortButton column="healthScore">Health</SortButton>
-              </TableHead>
-              <TableHead className="text-right">
-                <SortButton column="trafficCurrent">Traffic (30d)</SortButton>
-              </TableHead>
-              <TableHead className="text-right">
-                <SortButton column="trafficTrendPct">Trend</SortButton>
-              </TableHead>
-              <TableHead className="text-right">
-                <SortButton column="keywordsTotal">Keywords</SortButton>
-              </TableHead>
-              <TableHead className="w-[150px]">Positions</TableHead>
-              <TableHead className="text-right">
-                <SortButton column="alertsOpen">Alerts</SortButton>
-              </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.length === 0 ? (
+      {/* Table - Virtualized or Standard based on prop */}
+      {useVirtualization ? (
+        <VirtualizedTable
+          data={sorted}
+          columns={virtualizedColumns}
+          getRowKey={getRowKey}
+          onRowClick={handleVirtualizedRowClick}
+          rowHeight={64}
+          overscan={10}
+          emptyContent="No clients match your filters"
+        />
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  No clients match your filters
-                </TableCell>
+                <TableHead className="w-[200px]">
+                  <SortButton column="clientName">Client</SortButton>
+                </TableHead>
+                <TableHead className="w-[100px]">
+                  <SortButton column="healthScore">Health</SortButton>
+                </TableHead>
+                <TableHead className="text-right">
+                  <SortButton column="trafficCurrent">Traffic (30d)</SortButton>
+                </TableHead>
+                <TableHead className="text-right">
+                  <SortButton column="trafficTrendPct">Trend</SortButton>
+                </TableHead>
+                <TableHead className="text-right">
+                  <SortButton column="keywordsTotal">Keywords</SortButton>
+                </TableHead>
+                <TableHead className="w-[150px]">Positions</TableHead>
+                <TableHead className="text-right">
+                  <SortButton column="alertsOpen">Alerts</SortButton>
+                </TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
-            ) : (
-              sorted.map((client) => (
-                <TableRow
-                  key={client.id}
-                  onClick={() => handleRowClick(client.clientId)}
-                  className="cursor-pointer hover:bg-muted/50"
-                >
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{client.clientName}</span>
-                      {client.connectionStatus === "stale" && (
-                        <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800">
-                          Stale
-                        </Badge>
-                      )}
-                      {client.connectionStatus === "disconnected" && (
-                        <Badge variant="outline" className="text-xs bg-red-100 text-red-800">
-                          No GSC
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <HealthHoverPopover data={{
-                      score: client.healthScore,
-                      breakdown: client.healthBreakdown,
-                    }}>
-                      <HealthScoreBadge score={client.healthScore} showLabel={false} size="sm" />
-                    </HealthHoverPopover>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    <TrafficHoverPopover data={{
-                      current: client.trafficCurrent,
-                      previous: client.trafficPrevious,
-                      trendPct: client.trafficTrendPct,
-                      dailyData: [], // Would be populated from extended data
-                    }}>
-                      {client.trafficCurrent.toLocaleString()}
-                    </TrafficHoverPopover>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatTrend(client.trafficTrendPct)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    <KeywordsHoverPopover data={{
-                      total: client.keywordsTotal,
-                      top10: client.keywordsTop10,
-                      top3: client.keywordsTop3,
-                      position1: client.keywordsPosition1,
-                    }}>
-                      {client.keywordsTotal.toLocaleString()}
-                    </KeywordsHoverPopover>
-                  </TableCell>
-                  <TableCell>
-                    <PositionDistributionBar
-                      top10={client.keywordsTop10}
-                      top3={client.keywordsTop3}
-                      position1={client.keywordsPosition1}
-                      total={client.keywordsTotal}
-                      showLabels={false}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {client.alertsOpen > 0 ? (
-                      <Badge
-                        variant="secondary"
-                        className={client.alertsCritical > 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}
-                      >
-                        {client.alertsOpen}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </TableHeader>
+            <TableBody>
+              {sorted.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    No clients match your filters
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                sorted.map((client) => (
+                  <TableRow
+                    key={client.id}
+                    onClick={() => handleRowClick(client.clientId)}
+                    className="cursor-pointer hover:bg-muted/50"
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{client.clientName}</span>
+                        {client.connectionStatus === "stale" && (
+                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800">
+                            Stale
+                          </Badge>
+                        )}
+                        {client.connectionStatus === "disconnected" && (
+                          <Badge variant="outline" className="text-xs bg-red-100 text-red-800">
+                            No GSC
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {client.goalsTotalCount > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          <GoalAttainmentBadge
+                            attainmentPct={client.goalAttainmentPct}
+                            goalsMet={client.goalsMetCount}
+                            goalsTotal={client.goalsTotalCount}
+                            trend={client.primaryGoalTrend}
+                            size="sm"
+                          />
+                          {client.primaryGoalName && (
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                              {client.primaryGoalName}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <HealthHoverPopover data={{
+                          score: client.healthScore,
+                          breakdown: client.healthBreakdown,
+                        }}>
+                          <HealthScoreBadge score={client.healthScore} showLabel={false} size="sm" />
+                        </HealthHoverPopover>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <TrafficHoverPopover data={{
+                        current: client.trafficCurrent,
+                        previous: client.trafficPrevious,
+                        trendPct: client.trafficTrendPct,
+                        dailyData: [], // Would be populated from extended data
+                      }}>
+                        {client.trafficCurrent.toLocaleString()}
+                      </TrafficHoverPopover>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {showSparklines ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <LazySparkline clientId={client.clientId} metric="traffic" width={60} height={20} />
+                          {formatTrend(client.trafficTrendPct)}
+                        </div>
+                      ) : formatTrend(client.trafficTrendPct)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <KeywordsHoverPopover data={{
+                        total: client.keywordsTotal,
+                        top10: client.keywordsTop10,
+                        top3: client.keywordsTop3,
+                        position1: client.keywordsPosition1,
+                      }}>
+                        {client.keywordsTotal.toLocaleString()}
+                      </KeywordsHoverPopover>
+                    </TableCell>
+                    <TableCell>
+                      <PositionDistributionBar
+                        top10={client.keywordsTop10}
+                        top3={client.keywordsTop3}
+                        position1={client.keywordsPosition1}
+                        total={client.keywordsTotal}
+                        showLabels={false}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {client.alertsOpen > 0 ? (
+                        <Badge
+                          variant="secondary"
+                          className={client.alertsCritical > 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}
+                        >
+                          {client.alertsOpen}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
