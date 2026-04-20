@@ -70,6 +70,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **25-04:** CTR gap threshold of 2% avoids noise from minor variations
 - **25-04:** Ranking gap detection targets positions 11-20 (almost page 1)
 - **25-03:** Linear regression for trend prediction with R-squared confidence scoring
+- **25-02:** Pattern thresholds: 20% change, 3+ clients, 30% ratio, 70% confidence
+- **25-02:** Cache TTL 1 hour for patterns (slow-changing data)
+- **25-02:** Simple button accordion instead of Collapsible (not in @tevero/ui)
 - **25-03:** 7+ data points required for meaningful projections (otherwise low confidence)
 - **25-03:** Traffic decline alert when >10% decline predicted over 2 weeks
 - **25-03:** Goal at-risk when declining trend or >90 days to target
