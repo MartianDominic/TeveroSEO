@@ -11,13 +11,17 @@ import {
   TableRow,
   Input,
   Badge,
+  Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { ArrowUpDown, Search, ChevronRight } from "lucide-react";
+import { ArrowUpDown, Search, ChevronRight, Loader2 } from "lucide-react";
+import { FilterBar } from "./FilterBar";
+import { usePaginatedClients } from "@/hooks/usePaginatedClients";
+import type { FilterParams } from "@/types/pagination";
 import { HealthScoreBadge } from "./HealthScoreBadge";
 import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 import { PositionDistributionBar } from "./PositionDistributionBar";
@@ -35,12 +39,16 @@ import type {
 } from "@/lib/dashboard/types";
 
 interface ClientPortfolioTableProps {
-  clients: ClientMetrics[];
+  clients?: ClientMetrics[];
   onClientClick?: (clientId: string) => void;
   /** Enable row virtualization for large datasets (500+ clients) */
   useVirtualization?: boolean;
   /** Show lazy-loaded sparklines in the trend column */
   showSparklines?: boolean;
+  /** Enable server-side pagination mode (ignores clients prop) */
+  usePagination?: boolean;
+  /** Workspace ID for paginated mode */
+  workspaceId?: string;
 }
 
 const DEFAULT_FILTERS: ClientTableFilters = {
@@ -52,19 +60,51 @@ const DEFAULT_FILTERS: ClientTableFilters = {
 };
 
 export function ClientPortfolioTable({
-  clients,
+  clients = [],
   onClientClick,
   useVirtualization = false,
   showSparklines = false,
+  usePagination = false,
+  workspaceId,
 }: ClientPortfolioTableProps) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<ClientSortKey>("healthScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc"); // Default descending for priority
   const [filters, setFilters] = useState<ClientTableFilters>(DEFAULT_FILTERS);
+  const [paginationFilters, setPaginationFilters] = useState<FilterParams>({});
 
-  // Filter clients
+  // Pagination mode hook
+  const {
+    data: paginatedData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isPaginationLoading,
+  } = usePaginatedClients({
+    workspaceId,
+    sortBy: sortKey,
+    sortDir,
+    limit: 50,
+    ...paginationFilters,
+    enabled: usePagination,
+  });
+
+  // Get clients from pagination or props
+  const paginatedClients = useMemo(() => {
+    if (!usePagination) return [];
+    return paginatedData?.pages.flatMap((page) => page.data) ?? [];
+  }, [usePagination, paginatedData]);
+
+  const totalCount = paginatedData?.pages[0]?.totalCount ?? 0;
+  const activeFilterCount = Object.values(paginationFilters).filter(Boolean).length;
+
+  // Source clients: use paginated data in pagination mode, props otherwise
+  const sourceClients = usePagination ? paginatedClients : clients;
+
+  // Filter clients (only applies in non-pagination mode)
   const filtered = useMemo(() => {
-    return clients.filter((client) => {
+    if (usePagination) return sourceClients; // Server handles filtering
+    return sourceClients.filter((client) => {
       // Search filter
       if (filters.search) {
         const query = filters.search.toLowerCase();
@@ -89,10 +129,11 @@ export function ClientPortfolioTable({
 
       return true;
     });
-  }, [clients, filters]);
+  }, [sourceClients, filters, usePagination]);
 
-  // Sort clients
+  // Sort clients (only applies in non-pagination mode)
   const sorted = useMemo(() => {
+    if (usePagination) return filtered; // Server handles sorting
     return [...filtered].sort((a, b) => {
       let aVal: string | number;
       let bVal: string | number;
@@ -116,7 +157,7 @@ export function ClientPortfolioTable({
       const bNum = bVal as number;
       return sortDir === "asc" ? aNum - bNum : bNum - aNum;
     });
-  }, [filtered, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir, usePagination]);
 
   const toggleSort = (key: ClientSortKey) => {
     if (sortKey === key) {
@@ -288,9 +329,40 @@ export function ClientPortfolioTable({
 
   const getRowKey = useCallback((row: ClientMetrics) => row.id, []);
 
+  // Handle infinite scroll load more
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Loading state for pagination mode
+  if (usePagination && isPaginationLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Search and Filters */}
+      {/* Pagination mode: FilterBar */}
+      {usePagination && (
+        <>
+          <FilterBar
+            filters={paginationFilters}
+            onFiltersChange={setPaginationFilters}
+            activeFilterCount={activeFilterCount}
+          />
+          <div className="text-sm text-muted-foreground">
+            Showing {sorted.length} of {totalCount} clients
+          </div>
+        </>
+      )}
+
+      {/* Non-pagination mode: Search and Filters */}
+      {!usePagination && (
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -342,6 +414,7 @@ export function ClientPortfolioTable({
           {filtered.length} of {clients.length} clients
         </div>
       </div>
+      )}
 
       {/* Table - Virtualized or Standard based on prop */}
       {useVirtualization ? (
@@ -492,6 +565,26 @@ export function ClientPortfolioTable({
               )}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Load More button for pagination mode */}
+      {usePagination && hasNextPage && (
+        <div className="text-center py-4">
+          <Button
+            variant="outline"
+            onClick={handleLoadMore}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More"
+            )}
+          </Button>
         </div>
       )}
     </div>
