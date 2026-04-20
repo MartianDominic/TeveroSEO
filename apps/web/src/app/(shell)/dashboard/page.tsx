@@ -5,18 +5,18 @@ import { NeedsAttentionSection } from "@/components/dashboard/NeedsAttentionSect
 import { WinsMilestonesSection } from "@/components/dashboard/WinsMilestonesSection";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
-import { SavedViewSelector } from "@/components/dashboard/SavedViewSelector";
+import { TableControls } from "@/components/dashboard/TableControls";
 import { ExportButton } from "@/components/dashboard/ExportButton";
 import { TeamWorkloadSection } from "@/components/dashboard/TeamWorkloadSection";
 import { UpcomingScheduledSection } from "@/components/dashboard/UpcomingScheduledSection";
 import { PowerUserFeatures } from "@/components/dashboard/PowerUserFeatures";
+import { DashboardViewProvider } from "@/components/dashboard/DashboardViewProvider";
 import {
   getDashboardMetrics,
   getPortfolioSummary,
   getAttentionItems,
   getWins,
   getCardLayout,
-  getSavedViews,
   getTeamWorkload,
   getUpcomingScheduled
 } from "./actions";
@@ -29,7 +29,6 @@ export default async function DashboardPage() {
     attentionItems,
     wins,
     cardLayout,
-    savedViews,
     teamWorkload,
     upcomingScheduled,
   ] = await Promise.all([
@@ -38,7 +37,6 @@ export default async function DashboardPage() {
     getAttentionItems(),
     getWins(),
     getCardLayout(),
-    getSavedViews(),
     getTeamWorkload(),
     getUpcomingScheduled(),
   ]);
@@ -46,38 +44,22 @@ export default async function DashboardPage() {
   // TODO: Get workspace ID from Clerk auth context
   const workspaceId = "default-workspace";
 
-  // Default filters for SavedViewSelector
-  const defaultFilters = {
-    search: "",
-    healthRange: [0, 100] as [number, number],
-    connectionStatus: [] as ("connected" | "stale" | "disconnected")[],
-    tags: [],
-    hasAlerts: null,
-  };
-
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       {/* Power user keyboard features (Cmd+K, ?) */}
       <PowerUserFeatures clients={metrics} />
 
-      {/* Header with title, saved views, and export */}
+      {/* Header with title and export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <PageHeader
           title="Agency Command Center"
           subtitle="Portfolio health overview and actionable insights"
         />
-        <div className="flex items-center gap-2">
-          <SavedViewSelector
-            views={savedViews}
-            currentViewId={null}
-            currentFilters={defaultFilters}
-            onViewChange={() => {
-              // TODO: Implement filter application in client component wrapper
-            }}
-          />
-          <ExportButton />
-        </div>
+        <ExportButton />
       </div>
+
+      {/* Table controls with saved views, filters, and column customization */}
+      <DashboardViewProvider workspaceId={workspaceId} />
 
       {/* Quick Stats Cards - drag and drop */}
       <section>

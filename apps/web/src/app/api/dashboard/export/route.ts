@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const columnsParam = searchParams.get("columns");
+    const format = searchParams.get("format") || "csv";
 
     // Default columns if not specified
     const columns: ExportColumn[] = columnsParam
@@ -15,6 +16,11 @@ export async function GET(request: NextRequest) {
 
     // Fetch metrics (would include filters in production)
     const metrics = await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
+
+    // Return JSON for client-side export (PDF uses this)
+    if (format === "json") {
+      return NextResponse.json(metrics);
+    }
 
     // Build CSV
     const headers = columns.map(col => EXPORT_COLUMN_LABELS[col]);
@@ -60,7 +66,11 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Export failed:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.error("Export failed:", error);
+    }
     return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }
 }

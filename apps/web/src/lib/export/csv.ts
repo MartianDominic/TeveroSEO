@@ -54,7 +54,7 @@ function getNestedValue<T>(obj: T, path: string): unknown {
 /**
  * Generates CSV content from data array.
  */
-export function generateCSVContent<T extends Record<string, unknown>>(
+export function generateCSVContent<T extends object>(
   data: T[],
   columns: CSVColumn<T>[]
 ): string {
@@ -80,7 +80,7 @@ export function generateCSVContent<T extends Record<string, unknown>>(
 /**
  * Generates a CSV file and triggers browser download.
  */
-export function generateCSV<T extends Record<string, unknown>>(
+export function generateCSV<T extends object>(
   data: T[],
   columns: CSVColumn<T>[],
   filename: string

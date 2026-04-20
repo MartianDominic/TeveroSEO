@@ -60,7 +60,7 @@ function escapeHTML(text: string): string {
 /**
  * Generates the print-friendly HTML document as a data URL.
  */
-function generatePrintHTML<T extends Record<string, unknown>>(
+function generatePrintHTML<T extends object>(
   data: T[],
   columns: PDFColumn<T>[],
   options: PDFOptions
@@ -313,7 +313,7 @@ function generatePrintHTML<T extends Record<string, unknown>>(
  *
  * Uses data URL instead of document.write() for security.
  */
-export function generatePDF<T extends Record<string, unknown>>(
+export function generatePDF<T extends object>(
   data: T[],
   columns: PDFColumn<T>[],
   options: PDFOptions
