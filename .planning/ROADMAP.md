@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
-- 🚧 **v3.0 Agency Intelligence** — Phases 15–21 + 18.5 (in progress)
+- 🚧 **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (in progress)
 
 ## Phases
 
@@ -626,3 +626,84 @@ Plans:
 - [ ] 21-03-PLAN.md — Client portfolio table with hover popovers + sorting + filtering (Wave 2)
 - [ ] 21-04-PLAN.md — Real-time activity feed (Socket.IO) + drag-and-drop quick stats cards (Wave 3)
 - [ ] 21-05-PLAN.md — Saved views + CSV export + team workload + mobile responsive layout (Wave 4)
+
+---
+
+### Phase 22: Goal-Based Metrics System
+**Goal**: Replace arbitrary health score with goal-based tracking. Agencies select goal templates (e.g., "Keywords in Top 10"), configure target values per client, and the system tracks progress automatically.
+**Depends on**: Phase 21
+**Requirements**: GOAL-01 through GOAL-08
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Goal templates seeded in database (9 standard templates)
+  2. Per-client goal configuration UI working at `/clients/[id]/settings/goals`
+  3. Goals computed automatically by BullMQ worker every 5 minutes
+  4. Dashboard displays goal attainment percentage instead of health score
+  5. Priority score computed for attention queue sorting (alerts × 1000 + goal gaps × 50 + traffic drops × 200)
+**Estimated effort**: 3 days
+**Plans**: 5 plans (1 complete)
+  - [x] 22-01-PLAN.md — Schema & Templates: goal_templates, client_goals, goal_snapshots tables + seed data (Wave 1)
+  - [ ] 22-02-PLAN.md — Goal Computation Worker: BullMQ job, computation methods per template type (Wave 2)
+  - [ ] 22-03-PLAN.md — Goal Management API: CRUD endpoints, server actions (Wave 2)
+  - [ ] 22-04-PLAN.md — Goal Configuration UI: template selector, config form, wizard (Wave 3)
+  - [ ] 22-05-PLAN.md — Dashboard Integration: replace health score with goal attainment, update components (Wave 4)
+
+---
+
+### Phase 23: Performance & Scale
+**Goal**: Optimize dashboard for 500-client portfolios with virtualization, server-side operations, and caching.
+**Depends on**: Phase 22
+**Requirements**: PERF-01 through PERF-08
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Table renders 500 rows at 60fps using TanStack Virtual
+  2. Initial load < 500ms with server-side filtering
+  3. Filter/sort operations < 200ms via cursor pagination
+  4. No memory growth on scroll (lazy sparklines)
+  5. Redis caching with tag-based invalidation
+**Estimated effort**: 2 days
+**Plans**: 4 plans
+  - [ ] 23-01-PLAN.md — TanStack Virtual + Lazy Sparklines: VirtualizedTable, IntersectionObserver loading (Wave 1)
+  - [ ] 23-02-PLAN.md — Cursor Pagination + Server Filters: cursor encoding, FilterBar, usePaginatedClients hook (Wave 2)
+  - [ ] 23-03-PLAN.md — Redis Caching + Optimistic Updates: cacheGet/cacheSet/invalidateByTag, withCache wrapper (Wave 2)
+  - [ ] 23-04-PLAN.md — Portfolio Aggregates Table: pre-computed metrics, BullMQ worker, 5-min schedule (Wave 3)
+
+---
+
+### Phase 24: Power User Features
+**Goal**: Add keyboard navigation, command palette, bulk operations, saved views, and export capabilities for power users managing large portfolios.
+**Depends on**: Phase 23
+**Requirements**: POWER-01 through POWER-10
+**Working directory**: `apps/web/`
+**Success Criteria** (what must be TRUE):
+  1. Full keyboard navigation (j/k/Enter/Space//)
+  2. Command palette with fuzzy search (Cmd+K)
+  3. Bulk actions on 50+ selected clients work correctly
+  4. Saved views persist across sessions per user
+  5. Export works for filtered data (CSV + PDF)
+**Estimated effort**: 2 days
+**Plans**: 4 plans
+  - [ ] 24-01-PLAN.md — Keyboard Navigation + Command Palette: useTableKeyboardNav hook, cmdk integration (Wave 1)
+  - [ ] 24-02-PLAN.md — Bulk Operations: useRowSelection hook, shift-click range, BulkActionBar (Wave 2)
+  - [ ] 24-03-PLAN.md — Saved Views + Column Customization: saved_views schema, drag-and-drop columns (Wave 2)
+  - [ ] 24-04-PLAN.md — CSV/PDF Export: generateCSV, jspdf integration, ExportButton (Wave 3)
+
+---
+
+### Phase 25: Team & Intelligence
+**Goal**: Add team management features (workload balancing, assignments) and intelligent insights (pattern detection, predictions, opportunity identification).
+**Depends on**: Phase 24
+**Requirements**: TEAM-01 through TEAM-12
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Team dashboard shows member workloads with capacity utilization bars
+  2. Workload balancing suggestions work via generateReassignmentSuggestions algorithm
+  3. Pattern detection finds industry-wide trends (traffic drops, ranking changes)
+  4. Goal projections show estimated completion with trend analysis
+  5. Opportunities surface actionable insights (CTR improvements, ranking gaps, quick wins)
+**Estimated effort**: 2 days
+**Plans**: 4 plans
+  - [ ] 25-01-PLAN.md — Team Dashboard + Workload Balancing: clientAssignments, teamMemberMetrics schemas, TeamDashboard component (Wave 1)
+  - [ ] 25-02-PLAN.md — Cross-Client Pattern Detection: detectedPatterns schema, linearRegression, PatternsPanel (Wave 2)
+  - [ ] 25-03-PLAN.md — Predictive Alerts + Goal Projection: predictTrafficDecline, projectGoal, GoalProjectionCard (Wave 2)
+  - [ ] 25-04-PLAN.md — Opportunity Identification: CTR improvements, ranking gaps, quick wins algorithms (Wave 3)

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Agency Intelligence
 status: in_progress
-last_updated: "2026-04-19T19:51:24Z"
-last_activity: 2026-04-19
+last_updated: "2026-04-20T11:48:30Z"
+last_activity: 2026-04-20
 progress:
-  total_phases: 8
+  total_phases: 12
   completed_phases: 3
-  total_plans: 38
-  completed_plans: 15
-  percent: 39
+  total_plans: 55
+  completed_plans: 16
+  percent: 29
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 21 (agency-command-center)
-Plan: 5 of 5 (Plan 21-05 complete - awaiting human verification)
+Phase: 22 (goal-based-metrics)
+Plan: 1 of 4 (Plan 22-01 complete)
 Status: In Progress
-Last activity: 2026-04-19
+Last activity: 2026-04-20
 
 ## Completed Milestones
 
@@ -49,7 +49,11 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 | 18.5 | Webhook Infrastructure | 3 weeks | ○ Not Started |
 | 19 | AI Insights — Report Summaries | 2 weeks | ○ Not Started |
 | 20 | AI Content Briefs | 2 weeks | ○ Not Started |
-| 21 | Agency Command Center | 3 weeks | ○ Not Started |
+| 21 | Agency Command Center | 3 weeks | ◐ In Progress |
+| 22 | Goal-Based Metrics System | 3 days | ○ Not Started |
+| 23 | Performance & Scale | 2 days | ○ Not Started |
+| 24 | Power User Features | 2 days | ○ Not Started |
+| 25 | Team & Intelligence | 2 days | ○ Not Started |
 
 ## Sub-project Status
 
@@ -62,6 +66,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **22-01:** 9 default goal templates covering keywords (top 10/3/1), clicks, CTR, growth, impressions, custom
+- **22-01:** hasDenominator flag enables "X out of Y" goals (e.g., 7/10 keywords in Top 10)
+- **22-01:** Seed script in migrate-entry.ts for automatic template seeding on deploy
+- **22-01:** priorityScore column enables sorting clients by goal urgency in dashboard
 - **21-05:** Default views included as fallback when API fails for graceful degradation
 - **21-05:** CSV export with column selection dialog for flexibility
 - **21-05:** Team workload hidden for solo operators (capacity tracking not relevant)
