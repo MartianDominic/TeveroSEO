@@ -4,6 +4,8 @@ import { getFastApi } from "@/lib/server-fetch";
 import type { CursorPaginationParams, CursorPaginationResult, FilterParams } from "@/types/pagination";
 import { encodeCursor } from "@/types/pagination";
 import type { ClientMetrics } from "@/lib/dashboard/types";
+import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
+import { hashParams } from "@/lib/cache/with-cache";
 
 interface GetClientsPaginatedInput extends CursorPaginationParams, FilterParams {
   workspaceId?: string;
@@ -12,6 +14,7 @@ interface GetClientsPaginatedInput extends CursorPaginationParams, FilterParams 
 /**
  * Fetch paginated clients with server-side filtering and sorting.
  * Uses cursor-based pagination for efficient large dataset handling.
+ * Results are cached for 60 seconds with workspace tag for invalidation.
  */
 export async function getClientsPaginated(
   input: GetClientsPaginatedInput
@@ -29,7 +32,19 @@ export async function getClientsPaginated(
     alertSeverity,
     ownerId,
     tags,
+    workspaceId,
   } = input;
+
+  // Generate cache key from query params
+  const queryParams = { cursor, limit, sortBy, sortDir, search, status, goalAttainmentMin, goalAttainmentMax, hasAlerts, alertSeverity, ownerId, tags };
+  const paramsHash = hashParams(queryParams);
+  const cacheKey = cacheKeys.clientsPaginated(workspaceId ?? "default", paramsHash);
+
+  // Check cache first
+  const cached = await cacheGet<CursorPaginationResult<ClientMetrics>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
   // Build query params
   const params = new URLSearchParams();
@@ -73,7 +88,7 @@ export async function getClientsPaginated(
       return (row[key] as string | number) ?? 0;
     };
 
-    return {
+    const result: CursorPaginationResult<ClientMetrics> = {
       data,
       nextCursor: hasMore && lastRow
         ? encodeCursor(lastRow.clientId, getSortValue(lastRow))
@@ -84,6 +99,14 @@ export async function getClientsPaginated(
       hasMore,
       totalCount,
     };
+
+    // Cache result for 60 seconds with workspace tag
+    await cacheSet(cacheKey, result, {
+      ttl: 60,
+      tags: workspaceId ? [cacheTags.workspace(workspaceId)] : [],
+    });
+
+    return result;
   } catch (error) {
     // Return empty result on error for graceful degradation
     return {
