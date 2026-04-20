@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 22 (goal-based-metrics)
-Plan: 1 of 4 (Plan 22-01 complete)
+Plan: 2 of 4 (Plan 22-02 complete)
 Status: In Progress
 Last activity: 2026-04-20
 
@@ -70,6 +70,9 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **22-01:** hasDenominator flag enables "X out of Y" goals (e.g., 7/10 keywords in Top 10)
 - **22-01:** Seed script in migrate-entry.ts for automatic template seeding on deploy
 - **22-01:** priorityScore column enables sorting clients by goal urgency in dashboard
+- **22-02:** Computation methods as registry pattern for extensibility
+- **22-02:** Daily snapshots via upsert to prevent duplicates
+- **22-02:** Priority score uses tiered formula (alerts > goals > traffic > neglect)
 - **21-05:** Default views included as fallback when API fails for graceful degradation
 - **21-05:** CSV export with column selection dialog for flexibility
 - **21-05:** Team workload hidden for solo operators (capacity tracking not relevant)
