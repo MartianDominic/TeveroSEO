@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 23 (performance-scale)
-Plan: 2 of 4 (23-02 complete)
+Plan: 3 of 4 (23-03 complete)
 Status: In Progress
 Last activity: 2026-04-20
 
@@ -121,6 +121,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **23-02:** FilterBar uses Slider for goal attainment range (dual-thumb)
 - **23-02:** Pagination mode is opt-in via usePagination prop for backward compatibility
 - **23-02:** Cursor encoding uses base64url for URL-safe transmission
+- **23-03:** Redis lazyConnect enabled for serverless-friendly initialization
+- **23-03:** Tag-based invalidation allows clearing related caches together
+- **23-03:** Cache TTL 60s for paginated data (short for data freshness)
+- **23-03:** Optimistic updates use QueryClient pattern (not global singleton)
 
 ## Blockers/Concerns
 
@@ -128,4 +132,4 @@ None currently.
 
 ## Next Up
 
-Phase 23 Plan 02: Query Caching & Debouncing
+Phase 23 Plan 04: Query Debouncing & Prefetch
