@@ -157,10 +157,16 @@ export function ClientPortfolioTable({
       let aVal: string | number;
       let bVal: string | number;
 
-      // Handle optional fields that may not exist on ClientMetrics
+      // Handle optional fields that may not exist on ClientMetrics or can be null
       if (sortKey === "addedAt") {
         aVal = 0;
         bVal = 0;
+      } else if (sortKey === "goalAttainmentPct") {
+        aVal = a.goalAttainmentPct ?? 0;
+        bVal = b.goalAttainmentPct ?? 0;
+      } else if (sortKey === "priorityScore") {
+        aVal = a.priorityScore ?? 0;
+        bVal = b.priorityScore ?? 0;
       } else {
         aVal = a[sortKey];
         bVal = b[sortKey];

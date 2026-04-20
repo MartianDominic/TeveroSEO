@@ -2,6 +2,8 @@
 
 import { ReactNode, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
+import { Target } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SparklineChart, getTrend } from "./SparklineChart";
 import type { SparklineDataPoint } from "./SparklineChart";
 import type { HealthBreakdown } from "@/lib/dashboard/types";
@@ -194,5 +196,106 @@ export function KeywordsHoverPopover({
     >
       {children}
     </ClientTableHoverPopover>
+  );
+}
+
+// Goals Preview Popover
+export interface GoalPreviewItem {
+  id: string;
+  name: string;
+  attainmentPct: number;
+  trend?: "up" | "down" | "flat" | null;
+}
+
+export interface GoalsPopoverData {
+  goals: GoalPreviewItem[];
+  overallAttainment: number | null;
+  goalsMet: number;
+  goalsTotal: number;
+}
+
+export function GoalsHoverPopover({
+  children,
+  data,
+}: {
+  children: ReactNode;
+  data: GoalsPopoverData;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (data.goalsTotal === 0) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          className="cursor-help hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+        >
+          {children}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="p-4 w-[280px]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onPointerDownOutside={() => setOpen(false)}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <h4 className="font-medium text-sm">Goal Progress</h4>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Overall Attainment</span>
+            <span className="font-medium">
+              {data.overallAttainment?.toFixed(0) ?? 0}%
+            </span>
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Goals Met</span>
+            <span className="font-medium">
+              {data.goalsMet} / {data.goalsTotal}
+            </span>
+          </div>
+
+          {data.goals.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              {data.goals.slice(0, 3).map((goal) => (
+                <div key={goal.id} className="flex items-center justify-between text-sm">
+                  <span className="truncate max-w-[150px] text-muted-foreground">
+                    {goal.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-medium tabular-nums",
+                      goal.attainmentPct >= 100
+                        ? "text-green-600"
+                        : goal.attainmentPct >= 80
+                          ? "text-yellow-600"
+                          : "text-muted-foreground"
+                    )}
+                  >
+                    {goal.attainmentPct.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+              {data.goals.length > 3 && (
+                <p className="text-xs text-muted-foreground">
+                  +{data.goals.length - 3} more goals
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

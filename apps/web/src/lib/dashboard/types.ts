@@ -64,12 +64,17 @@ export interface AttentionItem {
   id: string;
   clientId: string;
   clientName: string;
-  type: "alert" | "health" | "connection";
+  type: "alert" | "health" | "connection" | "goal_gap";
   severity: "critical" | "warning" | "info";
   title: string;
   message: string;
   createdAt: string;
   metadata?: Record<string, unknown>;
+  // Goal-related fields (Phase 22)
+  goalAttainmentPct?: number | null;
+  goalsMetCount?: number;
+  goalsTotalCount?: number;
+  primaryGoalTrend?: "up" | "down" | "flat" | null;
 }
 
 export interface WinItem {
@@ -130,7 +135,32 @@ export type ClientSortKey =
   | "keywordsTotal"
   | "keywordsTop10"
   | "alertsOpen"
-  | "addedAt";
+  | "addedAt"
+  | "goalAttainmentPct"
+  | "priorityScore";
+
+/**
+ * Portfolio-level metrics for goal tracking.
+ * Phase 22: Goal-Based Metrics System
+ */
+export interface PortfolioMetrics {
+  totalClients: number;
+  avgGoalAttainment: number;
+  avgGoalAttainmentTrend: number;
+  clientsOnTrack: number;
+  clientsWatching: number;
+  clientsCritical: number;
+  goalsMet: number;
+  goalsTotal: number;
+  // Additional aggregate metrics
+  totalClicks30d: number;
+  totalImpressions30d: number;
+  avgTrafficChange: number;
+  keywordsTotal: number;
+  keywordsTop10: number;
+  keywordsTop3: number;
+  keywordsPosition1: number;
+}
 
 /**
  * Saved dashboard view configuration.

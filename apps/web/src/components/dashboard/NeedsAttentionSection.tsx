@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@tevero/ui";
-import { AlertTriangle, Eye, Clock, RefreshCcw, X, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, Eye, Clock, RefreshCcw, X, ChevronDown, ChevronUp, Target } from "lucide-react";
 import type { AttentionItem } from "@/lib/dashboard/types";
 import { dismissAttentionItem } from "@/app/(shell)/dashboard/actions";
+import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 
 interface NeedsAttentionSectionProps {
   items: AttentionItem[];
@@ -29,6 +30,7 @@ export function NeedsAttentionSection({ items }: NeedsAttentionSectionProps) {
       case "alert": return <AlertTriangle className="h-4 w-4" />;
       case "health": return <AlertTriangle className="h-4 w-4" />;
       case "connection": return <RefreshCcw className="h-4 w-4" />;
+      case "goal_gap": return <Target className="h-4 w-4" />;
     }
   };
 
@@ -101,13 +103,29 @@ export function NeedsAttentionSection({ items }: NeedsAttentionSectionProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-medium truncate">{item.clientName}</span>
                   <Badge variant="outline" className="text-xs">
-                    {item.type}
+                    {item.type === "goal_gap" ? "goal" : item.type}
                   </Badge>
                 </div>
                 <p className="text-sm mt-1">{item.title}</p>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                   {item.message}
                 </p>
+                {/* Goal gap indicator */}
+                {item.goalAttainmentPct !== undefined &&
+                 item.goalAttainmentPct !== null &&
+                 item.goalsTotalCount !== undefined &&
+                 item.goalsTotalCount > 0 && (
+                  <div className="mt-2">
+                    <GoalAttainmentBadge
+                      attainmentPct={item.goalAttainmentPct}
+                      goalsMet={item.goalsMetCount ?? 0}
+                      goalsTotal={item.goalsTotalCount}
+                      trend={item.primaryGoalTrend}
+                      showDetails={false}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Button

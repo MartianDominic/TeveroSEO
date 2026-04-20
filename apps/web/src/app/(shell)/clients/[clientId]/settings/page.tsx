@@ -43,6 +43,7 @@ import {
 } from "@/lib/clientSettings";
 
 import { useClientStore } from "@/stores/clientStore";
+import { ClientGoalsManager } from "@/components/goals";
 import {
   useContentCalendarStore,
   type PublishingSettings,
@@ -571,6 +572,7 @@ export default function ClientSettingsPage() {
           <TabsTrigger value="brand">Brand &amp; AI</TabsTrigger>
           <TabsTrigger value="cms">CMS Integration</TabsTrigger>
           <TabsTrigger value="publishing">Publishing</TabsTrigger>
+          <TabsTrigger value="goals">Goals</TabsTrigger>
         </TabsList>
 
         {/* ══════════════════════════════════════════════════════════════
@@ -1324,6 +1326,26 @@ export default function ClientSettingsPage() {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════
+            Tab: Goals
+        ══════════════════════════════════════════════════════════════ */}
+        <TabsContent value="goals">
+          <div className="rounded-lg border border-border bg-card p-6">
+            <h3 className="text-sm font-medium text-foreground mb-1">
+              Goals
+            </h3>
+            <p className="text-xs text-muted-foreground mb-6">
+              Track progress toward specific targets for this client. Goals help measure SEO success and identify areas needing attention.
+            </p>
+            {clientId && (
+              <ClientGoalsManager
+                clientId={clientId}
+                workspaceId="default-workspace"
+              />
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 

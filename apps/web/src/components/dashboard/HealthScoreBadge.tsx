@@ -6,6 +6,12 @@ interface HealthScoreBadgeProps {
   size?: "sm" | "md" | "lg";
 }
 
+/**
+ * @deprecated Use GoalAttainmentBadge instead.
+ * Health scores are being replaced with goal-based tracking (Phase 22).
+ * This component is maintained for backwards compatibility with clients
+ * that don't have goals configured.
+ */
 export function HealthScoreBadge({ score, showLabel = true, size = "md" }: HealthScoreBadgeProps) {
   const getColor = (s: number) => {
     if (s >= 80) return "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
