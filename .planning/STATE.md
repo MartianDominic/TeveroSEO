@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 23 (performance-scale)
-Plan: 1 of 4 (23-01 complete)
+Plan: 2 of 4 (23-02 complete)
 Status: In Progress
 Last activity: 2026-04-20
 
@@ -117,6 +117,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 - **23-01:** LazySparkline wraps SparklineChart with IntersectionObserver lazy loading
 - **23-01:** Sparkline API proxies to analytics backend, extracts time-series from existing endpoint
 - **23-01:** Virtualization and sparklines are opt-in via props to preserve backward compatibility
+- **23-02:** Server action proxies to backend API rather than direct DB access (BFF pattern)
+- **23-02:** FilterBar uses Slider for goal attainment range (dual-thumb)
+- **23-02:** Pagination mode is opt-in via usePagination prop for backward compatibility
+- **23-02:** Cursor encoding uses base64url for URL-safe transmission
 
 ## Blockers/Concerns
 
