@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 26 (prospect-data-model)
-Plan: 3 of 4
+Plan: 2 of 4
 Status: Complete
 Last activity: 2026-04-21
 
@@ -66,6 +66,10 @@ All 7 phases complete. Next.js unified shell, shared UI package, open-seo fronte
 
 ## Decisions
 
+- **26-02:** keywordsForSite and competitorsDomain map to domain_overview credit feature
+- **26-02:** exclude_top_domains enabled for competitorsDomain to filter generic sites
+- **26-02:** Zod schemas use passthrough() for forward compatibility with new fields
+- **26-02:** Default limit 100 for keywordsForSite, 20 for competitorsDomain
 - **26-03:** Rate limit 10 analyses per day per workspace (MAX_ANALYSES_PER_DAY)
 - **26-03:** 100ms API_RATE_LIMIT_MS between DataForSEO calls
 - **26-03:** Analysis limits: quick_scan (50/10), deep_dive (200/20), opportunity_discovery (500/30)

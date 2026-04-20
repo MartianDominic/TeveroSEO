@@ -773,10 +773,10 @@ CREATE TABLE prospect_analyses (
   6. Results cached in `prospect_analyses` with cost tracking
   7. Rate limiting: max 10 analyses/day per workspace
 **Estimated effort**: 1 week
-**Plans**: 4 plans
+**Plans**: 4 plans (2 complete)
   - [x] 26-01-PLAN.md — Prospect schema + migrations + basic CRUD API (Wave 1)
   - [x] 26-02-PLAN.md — DataForSEO integration: keywordsForSite, competitorsDomain, domainRankOverview (Wave 2)
-  - [x] 26-03-PLAN.md — BullMQ prospect-analysis queue + worker with rate limiting (Wave 2)
+  - [ ] 26-03-PLAN.md — BullMQ prospect-analysis queue + worker with rate limiting (Wave 2)
   - [ ] 26-04-PLAN.md — Prospects UI: list, detail, analyze button, results display (Wave 3)
 
 ---
