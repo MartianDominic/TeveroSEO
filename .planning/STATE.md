@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Autonomous SEO Pipeline
-status: ready_to_plan
-last_updated: "2026-04-22T19:45:00Z"
+milestone: v2.0
+milestone_name: Unified Product
+status: planning
+last_updated: "2026-04-22T20:56:43.934Z"
 last_activity: 2026-04-22
 progress:
-  total_phases: 9
-  completed_phases: 1
-  total_plans: 38
-  completed_plans: 0
-  percent: 11
+  total_phases: 41
+  completed_phases: 29
+  total_plans: 119
+  completed_plans: 125
+  percent: 100
 ---
 
 # Project State
@@ -80,6 +80,10 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **32-04:** Tier 3 runs after Lighthouse, Tier 4 runs after Tier 3 (once with SiteContext)
+- **32-04:** BFS click depth calculation with DoS limits (max 10 depth, 10k iterations)
+- **32-04:** Link graph capped at 50k entries per threat model T-32-08
+- **32-04:** Checks gracefully skip when data unavailable (severity: info)
 - **32-03:** Tier 2 checks run after crawl completes (all HTML available) but before Lighthouse
 - **32-03:** HTML accumulated across crawl batches and passed via CrawlPhaseResult
 - **32-03:** currentPhase set to "analyzing" during Tier 2 execution
