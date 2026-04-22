@@ -80,6 +80,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **32-02:** Modified crawlPage to return HTML alongside analysis for check execution
+- **32-02:** Tier 1 checks run as separate workflow step after each crawl batch
+- **32-02:** Check failures are logged but non-blocking - crawl continues
 - **30-05:** Use existing Puppeteer PDF infrastructure from Phase 15
 - **30-05:** RGB colors for Puppeteer compatibility (no hex values)
 - **30-05:** VALIDATION_ERROR for invalid state (matches shared error-codes.ts)

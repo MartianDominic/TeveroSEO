@@ -1115,8 +1115,8 @@ priorityScore = (
   8. Check results visible at `/clients/[id]/seo/audit/[pageId]`
 **Estimated effort**: 2 weeks
 **Plans**: 5 plans
-  - [ ] 32-01-PLAN.md — runAllChecks facade, FindingsRepository, CheckService (Wave 1)
-  - [ ] 32-02-PLAN.md — Tier 1 checks integration into crawl phase (Wave 2)
+  - [x] 32-01-PLAN.md — runAllChecks facade, FindingsRepository, CheckService (Wave 1)
+  - [x] 32-02-PLAN.md — Tier 1 checks integration into crawl phase (Wave 2)
   - [ ] 32-03-PLAN.md — Tier 2 checks integration into finalize phase (Wave 2)
   - [ ] 32-04-PLAN.md — Tier 3+4 checks with Lighthouse data and SiteContext (Wave 3)
   - [ ] 32-05-PLAN.md — Findings UI at /clients/[id]/seo/audit/[pageId] + CSV export (Wave 4)
