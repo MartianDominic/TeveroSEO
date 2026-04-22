@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -27,6 +28,9 @@ import {
   createInvite,
   revokeConnection,
 } from "@/lib/clientOAuth";
+import { ConnectionWizard, SiteConnectionList } from "@/components/connections";
+import { getSiteConnections } from "@/lib/siteConnections";
+import type { SiteConnection } from "@/lib/siteConnections";
 
 // ── Provider configuration ───────────────────────────────────────────────────
 
@@ -107,11 +111,13 @@ export default function ConnectionsPage() {
 
   // ── State ────────────────────────────────────────────────────────────────
   const [connections, setConnections] = useState<OAuthConnection[]>([]);
+  const [siteConnections, setSiteConnections] = useState<SiteConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   // ── Toast ────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<ToastState>({
@@ -144,9 +150,21 @@ export default function ConnectionsPage() {
     }
   }, [clientId]);
 
+  // ── Load CMS site connections ───────────────────────────────────────────
+  const loadSiteConnections = useCallback(async () => {
+    if (!clientId) return;
+    try {
+      const data = await getSiteConnections(clientId);
+      setSiteConnections(data);
+    } catch {
+      // Silent fail - OAuth connections still work
+    }
+  }, [clientId]);
+
   useEffect(() => {
     loadConnections();
-  }, [loadConnections]);
+    loadSiteConnections();
+  }, [loadConnections, loadSiteConnections]);
 
   // ── Get connection for provider ──────────────────────────────────────────
   const getConnection = useCallback(
@@ -293,7 +311,29 @@ export default function ConnectionsPage() {
         backHref={clientId ? `/clients/${clientId}` : "/clients"}
       />
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-6">
+        {/* CMS Connections Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">CMS Connections</h2>
+            <Button size="sm" onClick={() => setShowWizard(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add CMS Connection
+            </Button>
+          </div>
+          <SiteConnectionList
+            connections={siteConnections}
+            onRefresh={loadSiteConnections}
+          />
+        </div>
+
+        {/* Separator */}
+        <div className="border-t border-border" />
+
+        {/* OAuth Providers Section */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">OAuth Connections</h2>
+          <div className="space-y-4">
         {PROVIDERS.map((provider) => {
           const connection = getConnection(provider.id);
           const isConnected = !!connection;
@@ -427,7 +467,23 @@ export default function ConnectionsPage() {
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
+
+      {/* Connection Wizard Dialog */}
+      {showWizard && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <ConnectionWizard
+            clientId={clientId}
+            onSuccess={() => {
+              setShowWizard(false);
+              loadSiteConnections();
+            }}
+            onCancel={() => setShowWizard(false)}
+          />
+        </div>
+      )}
 
       {/* Toast notification */}
       {toast.open && (
