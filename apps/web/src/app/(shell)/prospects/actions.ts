@@ -71,6 +71,18 @@ export interface ScrapedContent {
   scrapedAt: string;
 }
 
+export interface OpportunityKeyword {
+  keyword: string;
+  category: "product" | "brand" | "service" | "commercial" | "informational";
+  searchVolume: number;
+  cpc: number;
+  difficulty: number;
+  opportunityScore: number;
+  achievability?: number;
+  classification?: "quick_win" | "strategic" | "long_tail";
+  source: "ai_generated";
+}
+
 export interface ProspectAnalysis {
   id: string;
   prospectId: string;
@@ -81,6 +93,7 @@ export interface ProspectAnalysis {
   competitorDomains: string[] | null;
   domainMetrics: DomainMetrics | null;
   organicKeywords: OrganicKeywordItem[] | null;
+  opportunityKeywords: OpportunityKeyword[] | null;
   scrapedContent: ScrapedContent | null;
   costCents: number | null;
   createdAt: string;
@@ -203,4 +216,39 @@ export async function getRemainingAnalyses(): Promise<number> {
   } catch {
     return 10;
   }
+}
+
+/**
+ * Bulk queue analysis for multiple prospects.
+ * Respects daily quota - queues up to remaining limit.
+ */
+export async function bulkAnalyzeAction(
+  prospectIds: string[],
+  options?: {
+    analysisType?: "quick_scan" | "deep_dive" | "opportunity_discovery";
+    targetRegion?: string;
+    targetLanguage?: string;
+  },
+): Promise<{
+  queuedCount: number;
+  skippedCount: number;
+  queuedIds: string[];
+  skippedIds: string[];
+  remainingQuota: number;
+}> {
+  const result = await postOpenSeo<{
+    queuedCount: number;
+    skippedCount: number;
+    queuedIds: string[];
+    skippedIds: string[];
+    remainingQuota: number;
+  }>("/api/prospects/bulk-analyze", {
+    prospectIds,
+    analysisType: options?.analysisType ?? "quick_scan",
+    targetRegion: options?.targetRegion ?? "US",
+    targetLanguage: options?.targetLanguage ?? "en",
+  });
+
+  revalidatePath("/prospects");
+  return result;
 }

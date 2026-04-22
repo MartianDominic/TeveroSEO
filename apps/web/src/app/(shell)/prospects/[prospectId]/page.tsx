@@ -13,6 +13,7 @@ import {
 import { AnalysisResults } from "@/components/prospects/AnalysisResults";
 import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisplay";
 import { BusinessInfoFormWrapper } from "@/components/prospects/BusinessInfoFormWrapper";
+import { OpportunityKeywordsSection } from "@/components/prospects/OpportunityKeywordsSection";
 import { getProspectDetail } from "./actions";
 
 interface ProspectDetailPageProps {
@@ -158,6 +159,15 @@ export default async function ProspectDetailPage({
           )}
 
           <AnalysisResults analysis={latestAnalysis} />
+
+          {/* AI Opportunity Keywords */}
+          {latestAnalysis.opportunityKeywords &&
+            latestAnalysis.opportunityKeywords.length > 0 && (
+              <OpportunityKeywordsSection
+                keywords={latestAnalysis.opportunityKeywords}
+                domain={prospect.domain}
+              />
+            )}
         </div>
       )}
 
