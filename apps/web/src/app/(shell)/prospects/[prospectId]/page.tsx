@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
 import {
   ArrowLeft,
   Globe,
@@ -9,6 +9,7 @@ import {
   Mail,
   Calendar,
   Loader2,
+  FileDown,
 } from "lucide-react";
 import { AnalysisResults } from "@/components/prospects/AnalysisResults";
 import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisplay";
@@ -79,6 +80,18 @@ export default async function ProspectDetailPage({
             </p>
           )}
         </div>
+        {latestAnalysis && latestAnalysis.status === "completed" && (
+          <Button asChild variant="outline">
+            <a
+              href={`/api/prospects/${prospectId}/report`}
+              download
+              className="flex items-center gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Export PDF
+            </a>
+          </Button>
+        )}
       </div>
 
       <Card>
