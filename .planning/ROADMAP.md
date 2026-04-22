@@ -5,7 +5,7 @@
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 - ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
-- 🔄 **v4.0 Prospecting & Sales** — Phases 26–30.5 (in progress)
+- ✅ **v4.0 Prospecting & Sales** — Phases 26–30.5 (complete 2026-04-22)
 - 📋 **v5.0 Autonomous SEO Pipeline** — Phases 31–39 (planned)
 
 ## Phases
@@ -926,7 +926,7 @@ Pages to scrape:
 **Depends on**: Phase 29
 **Requirements**: PROSP-29 through PROSP-34
 **Working directory**: `apps/web/`, `open-seo-main/`
-**Current state**: 75% — Conversion logic exists, shareable links exist, email templates exist; missing keyword import, analysis PDF
+**Current state**: 100% — Complete (conversion, shareable links, email templates, keyword import, analysis PDF)
 
 **Conversion Flow**:
 ```
@@ -967,8 +967,8 @@ Prospect marked as converted (linked)
   - [x] 30-01-PLAN.md — Prospect → Client conversion logic (onboarding.ts) ✅ DONE
   - [x] 30-02-PLAN.md — Shareable links with expiration (proposal token) ✅ DONE
   - [x] 30-03-PLAN.md — Conversion analytics dashboard ✅ DONE
-  - [ ] 30-04-PLAN.md — **Import opportunity keywords to saved_keywords on conversion** (Wave 1) ⚠️ GAP
-  - [ ] 30-05-PLAN.md — Analysis PDF export (domain metrics, opportunities, AI insights) (Wave 2) ⚠️ GAP
+  - [x] 30-04-PLAN.md — Import opportunity keywords to saved_keywords on conversion ✅ DONE
+  - [x] 30-05-PLAN.md — Analysis PDF export (domain metrics, opportunities, AI insights) ✅ DONE
 
 ---
 
@@ -1038,11 +1038,11 @@ priorityScore = (
   8. Daily digest email: new high-score prospects, stale prospects
 **Estimated effort**: 1.5 weeks
 **Plans**: 5 plans
-  - [ ] 30.5-01-PLAN.md — CSV import + validation + batch prospect creation (Wave 1)
-  - [ ] 30.5-02-PLAN.md — Bulk analysis queueing with quota management (Wave 1)
-  - [ ] 30.5-03-PLAN.md — Priority scoring algorithm + auto-compute after analysis (Wave 2)
-  - [ ] 30.5-04-PLAN.md — Pipeline stages schema + automation rules engine (Wave 2)
-  - [ ] 30.5-05-PLAN.md — Bulk actions UI + pipeline distribution chart + daily digest (Wave 3)
+  - [x] 30.5-01-PLAN.md — CSV import + validation + batch prospect creation ✅ DONE
+  - [x] 30.5-02-PLAN.md — Bulk analysis queueing with quota management ✅ DONE
+  - [x] 30.5-03-PLAN.md — Priority scoring algorithm + auto-compute after analysis ✅ DONE
+  - [x] 30.5-04-PLAN.md — Pipeline stages schema + automation rules engine ✅ DONE
+  - [x] 30.5-05-PLAN.md — Bulk actions UI + pipeline distribution chart ✅ DONE
 
 ---
 
@@ -1079,7 +1079,8 @@ priorityScore = (
 **Depends on**: Phase 12 (per-client credentials system exists)
 **Design doc**: `.planning/design/site-connection-audit-autoedit-revert-system.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
-**Current state**: 20% — WordPress adapter exists for publishing only, no unified model
+**Current state**: 70% — Schema, adapters (WP, Shopify), detection service, encryption exist; missing Wix/Squarespace/Webflow adapters, API routes, UI wizard
+**Requirements**: SC-01, SC-02, SC-04, SC-06
 **Success Criteria** (what must be TRUE):
   1. `site_connections` table with: clientId, platform, credentials (encrypted), capabilities, status
   2. `detectPlatform(domain)` auto-detects WordPress, Shopify, Wix from headers/HTML
@@ -1089,10 +1090,10 @@ priorityScore = (
   6. Platform adapters support: read content, write content, read meta, write meta
 **Estimated effort**: 1.5 weeks
 **Plans**: 4 plans
-  - [ ] 31-01-PLAN.md — site_connections schema + platform detection service (Wave 1)
-  - [ ] 31-02-PLAN.md — Platform adapters: WordPress REST, Shopify GraphQL, Wix API (Wave 2)
-  - [ ] 31-03-PLAN.md — Connection wizard UI + OAuth flows (Wave 2)
-  - [ ] 31-04-PLAN.md — Write permission verification + capability detection (Wave 3)
+  - [ ] 31-01-PLAN.md — Complete Wix, Squarespace, Webflow adapters + wire into ConnectionService (Wave 1)
+  - [ ] 31-02-PLAN.md — Create siteConnections.ts client library + Next.js API proxy routes (Wave 1)
+  - [ ] 31-03-PLAN.md — ConnectionWizard UI + PlatformCredentialsForm + SiteConnectionList (Wave 2)
+  - [ ] 31-04-PLAN.md — open-seo-main API routes for connections + platform detection (Wave 2)
 
 ---
 
