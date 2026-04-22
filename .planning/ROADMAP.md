@@ -6,7 +6,7 @@
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 - ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
 - 🔄 **v4.0 Prospecting & Sales** — Phases 26–30 (in progress)
-- 📋 **v5.0 Autonomous SEO Pipeline** — Phases 31–38 (planned)
+- 📋 **v5.0 Autonomous SEO Pipeline** — Phases 31–39 (planned)
 
 ## Phases
 
@@ -1183,3 +1183,96 @@ Prospect marked as converted (linked)
   - [ ] 38-02-PLAN.md — Triggered actions: drop detection, competitor alerts (Wave 2)
   - [ ] 38-03-PLAN.md — Autonomous dashboard + activity log (Wave 2)
   - [ ] 38-04-PLAN.md — Token budget tracking + pause/resume controls (Wave 3)
+
+---
+
+### Phase 39: AI-Writer Autonomous Integration
+**Goal**: Wire all autonomous SEO systems INTO the AI-Writer content generation pipeline. Pre-generation brief enrichment, post-generation SEO validation, auto internal link insertion, 107 checks before publish.
+**Depends on**: Phase 32 (107 checks), Phase 35 (internal linking), Phase 36 (briefs), Phase 37 (voice)
+**Design doc**: NEW — Create `AI-WRITER-AUTONOMOUS-INTEGRATION.md`
+**Working directory**: `AI-Writer/backend/`, `apps/web/`
+**Current state**: See audit below
+
+**AI-Writer Audit (2026-04-22):**
+| Feature | Exists | Missing |
+|---------|--------|---------|
+| Brand voice injection | ✅ | - |
+| Voice templates | ✅ | - |
+| ICP psychology | ✅ | - |
+| Basic keyword targeting | ✅ | - |
+| Word count control | ✅ | - |
+| Structural elements (TOC, FAQ) | ✅ | - |
+| CMS adapters (WP, Shopify, Wix) | ✅ | - |
+| Auto-publish with retry | ✅ | - |
+| SERP analysis before writing | - | ❌ MISSING |
+| Competitor content analysis | - | ❌ MISSING |
+| H2/H3 outline from SERP | - | ❌ MISSING |
+| Auto internal link insertion | - | ❌ MISSING |
+| Post-gen SEO validation | - | ❌ MISSING |
+| Readability scoring | - | ❌ MISSING |
+| Content brief model | - | ❌ MISSING |
+
+**Integration Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AI-WRITER AUTONOMOUS CONTENT PIPELINE                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  PHASE A: Pre-Generation (NEW)                                               │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
+│  │ Content Brief│───▶│ SERP Analysis│───▶│ H2 Outline   │                   │
+│  │ (Phase 36)   │    │ (DataForSEO) │    │ Generation   │                   │
+│  └──────────────┘    └──────────────┘    └──────────────┘                   │
+│         │                                       │                            │
+│         ▼                                       ▼                            │
+│  ┌──────────────┐                       ┌──────────────┐                    │
+│  │ Voice Profile│                       │ PAA Questions│                    │
+│  │ (Phase 37)   │                       │ Integration  │                    │
+│  └──────────────┘                       └──────────────┘                    │
+│                                                                              │
+│  PHASE B: Generation (EXISTS - Enhanced)                                     │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │ article_generation_service.generate_article()                         │   │
+│  │  + Enhanced prompt with: outline, PAA, entity targets, link targets  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  PHASE C: Post-Generation (NEW)                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
+│  │ 107 SEO      │───▶│ Internal Link│───▶│ Quality Gate │                   │
+│  │ Checks       │    │ Auto-Insert  │    │ (Score ≥80)  │                   │
+│  │ (Phase 32)   │    │ (Phase 35)   │    │              │                   │
+│  └──────────────┘    └──────────────┘    └──────────────┘                   │
+│         │                   │                   │                            │
+│         ▼                   ▼                   ▼                            │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
+│  │ Auto-Fix     │    │ Link Graph   │    │ Approve or   │                   │
+│  │ Safe Issues  │    │ Update       │    │ Flag Review  │                   │
+│  └──────────────┘    └──────────────┘    └──────────────┘                   │
+│                                                                              │
+│  PHASE D: Publishing (EXISTS - Enhanced)                                     │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │ auto_publish_executor.py                                              │   │
+│  │  + Pre-publish validation (score check)                               │   │
+│  │  + Post-publish sitemap ping                                          │   │
+│  │  + GSC URL submission                                                 │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Success Criteria** (what must be TRUE):
+  1. Content brief data flows into `_build_article_prompt()` — outline, PAA, entities
+  2. Generated content runs through 107 checks before status changes to `generated`
+  3. Internal links auto-inserted into generated HTML (3-10 contextual links)
+  4. SEO score ≥80 required for auto-publish; lower scores flagged for review
+  5. Voice profile (Phase 37) used instead of basic `style_instructions`
+  6. Post-publish: sitemap ping, GSC URL submission via API
+  7. Link graph updated when new content published
+  8. Token usage tracked per generation for budget monitoring
+**Estimated effort**: 2 weeks
+**Plans**: 5 plans
+  - [ ] 39-01-PLAN.md — ContentBrief model + pre-generation enrichment service (Wave 1)
+  - [ ] 39-02-PLAN.md — Enhanced prompt builder: outline, PAA, entities, link targets (Wave 2)
+  - [ ] 39-03-PLAN.md — Post-generation 107 checks + auto-fix integration (Wave 2)
+  - [ ] 39-04-PLAN.md — Internal link auto-insertion into generated content (Wave 3)
+  - [ ] 39-05-PLAN.md — Quality gate + GSC submission + link graph update (Wave 4)
