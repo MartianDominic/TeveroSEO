@@ -133,7 +133,7 @@ describe('edit-recipes', () => {
     describe('addAltText', () => {
       it('adds alt text to image without existing alt', async () => {
         vi.mocked(mockAdapter.readField).mockResolvedValue(null);
-        vi.mocked(mockAdapter.updateImageAlt).mockResolvedValue({ success: true });
+        vi.mocked(mockAdapter.updateImageAlt!).mockResolvedValue({ success: true });
 
         const context = {
           ...baseContext,
@@ -177,7 +177,7 @@ describe('edit-recipes', () => {
     describe('addLazyLoading', () => {
       it('adds lazy loading attribute', async () => {
         vi.mocked(mockAdapter.readField).mockResolvedValue(null);
-        vi.mocked(mockAdapter.updateImageAttributes).mockResolvedValue({ success: true });
+        vi.mocked(mockAdapter.updateImageAttributes!).mockResolvedValue({ success: true });
 
         const result = await SAFE_RECIPES['add-lazy-loading'](mockAdapter, baseContext);
 

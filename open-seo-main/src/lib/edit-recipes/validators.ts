@@ -19,7 +19,7 @@ export const recipeContextSchema = z.object({
   resourceId: z.string().min(1, 'resourceId is required'),
   resourceUrl: z.string().url('resourceUrl must be a valid URL'),
   resourceType: z.enum(['post', 'page', 'product', 'collection', 'image', 'setting']),
-  findingDetails: z.record(z.unknown()).default({}),
+  findingDetails: z.record(z.string(), z.unknown()).default({}),
   suggestedValue: z.string().optional(),
   currentValue: z.string().nullable().optional(),
   targetKeyword: z.string().optional(),
