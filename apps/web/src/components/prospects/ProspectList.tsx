@@ -47,11 +47,8 @@ export function ProspectList({
   };
 
   const handleAnalyzeSelected = async (ids: string[]) => {
-    for (const id of ids) {
-      if (remaining <= 0) break;
-      await triggerAnalysisAction(id);
-      setRemaining((prev) => Math.max(0, prev - 1));
-    }
+    const result = await bulkAnalyzeAction(ids);
+    setRemaining(result.remainingQuota);
   };
 
   const handleArchiveSelected = async (ids: string[]) => {
