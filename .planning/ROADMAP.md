@@ -809,7 +809,7 @@ Pages to scrape:
 ```json
 {
   "products": ["barrel saunas", "cabin saunas", "infrared saunas"],
-  "brands": ["Harvia", "Tylö", "Narvi"],
+  "brands": ["Harvia", "Tylo", "Narvi"],
   "services": ["installation", "delivery", "maintenance"],
   "location": "Helsinki, Finland",
   "target": "residential"
@@ -873,19 +873,19 @@ Pages to scrape:
 **CRITICAL GAP**: `OpportunityDiscoveryService` exists but is NEVER called in `prospect-analysis-processor.ts`. The `opportunity_discovery` analysis type does nothing.
 
 **Example Use Case**:
-> "helsinkisaunas.com sells barrel saunas, cabin saunas, Harvia heaters (from scrape). AI generates: 'barrel sauna prices', 'Harvia vs Tylö', 'sauna health benefits', 'sauna installation Helsinki', 'home spa ideas'."
+> "helsinkisaunas.com sells barrel saunas, cabin saunas, Harvia heaters (from scrape). AI generates: 'barrel sauna prices', 'Harvia vs Tylo', 'sauna health benefits', 'sauna installation Helsinki', 'home spa ideas'."
 
 **The AI Discovery Pipeline**:
 ```
 1. BUSINESS CONTEXT (from Phase 27 scrape)
    - Products: barrel saunas, cabin saunas, infrared saunas
-   - Brands: Harvia, Tylö, Narvi
+   - Brands: Harvia, Tylo, Narvi
    - Services: installation, delivery
    - Location: Helsinki, Finland
 
 2. AI KEYWORD GENERATION (from actual products)
    - Product keywords: "buy barrel sauna", "cabin sauna prices"
-   - Brand keywords: "Harvia sauna heater", "Tylö vs Harvia"
+   - Brand keywords: "Harvia sauna heater", "Tylo vs Harvia"
    - Service keywords: "sauna installation Helsinki"
    - Problem keywords: "home relaxation ideas", "muscle recovery"
    - Educational: "sauna health benefits", "how to use sauna"
@@ -1140,11 +1140,11 @@ priorityScore = (
   8. Automatic revert triggers: traffic drop >20%, ranking drop >5 positions
 **Estimated effort**: 2 weeks
 **Plans**: 5 plans
-  - [ ] 33-01-PLAN.md — site_changes + change_backups schema (Wave 1)
-  - [ ] 33-02-PLAN.md — Edit recipes: safe fixes (alt, dimensions, canonical, lazy) (Wave 2)
-  - [ ] 33-03-PLAN.md — Platform adapter write methods + change tracking (Wave 2)
-  - [ ] 33-04-PLAN.md — Revert system: single, page, category, batch, date_range (Wave 3)
-  - [ ] 33-05-PLAN.md — Auto-revert triggers + changes UI (Wave 4)
+  - [ ] 33-01-PLAN.md — site_changes + change_backups + rollback_triggers schema (Wave 1)
+  - [ ] 33-02-PLAN.md — Edit recipe registry + safe recipes (alt, dimensions, canonical, lazy) (Wave 2)
+  - [ ] 33-03-PLAN.md — Platform adapter write methods + ChangeService with before/after tracking (Wave 2)
+  - [ ] 33-04-PLAN.md — RevertService + DependencyResolver: single, page, category, batch, date_range (Wave 3)
+  - [ ] 33-05-PLAN.md — Auto-revert triggers (BullMQ worker) + changes UI (Wave 4)
 
 ---
 
