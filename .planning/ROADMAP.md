@@ -5,7 +5,7 @@
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 - ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
-- 🔄 **v4.0 Prospecting & Sales** — Phases 26–30 (in progress)
+- 🔄 **v4.0 Prospecting & Sales** — Phases 26–30.5 (in progress)
 - 📋 **v5.0 Autonomous SEO Pipeline** — Phases 31–39 (planned)
 
 ## Phases
@@ -837,6 +837,7 @@ Pages to scrape:
 **Depends on**: Phase 27
 **Requirements**: PROSP-15 through PROSP-20
 **Working directory**: `apps/web/`, `open-seo-main/`
+**Current state**: 60% — domainIntersection API, gap table, CSV export exist; missing DA-based achievability, filters, Quick Wins
 
 **Example Use Case**:
 > "helsinkisaunas.com has DA 25. Show keywords their competitors rank for that they don't, but only ones they could realistically rank for (difficulty < 45)."
@@ -854,10 +855,11 @@ Pages to scrape:
   5. "Quick Wins" tab highlights low-effort opportunities
   6. Export gap analysis to CSV
 **Estimated effort**: 1 week
-**Plans**: 3 plans
-  - [ ] 28-01-PLAN.md — DataForSEO domainIntersection + achievability scoring algorithm (Wave 1)
-  - [ ] 28-02-PLAN.md — Gap analysis UI: keyword table, filters, competitor selector (Wave 2)
-  - [ ] 28-03-PLAN.md — Quick wins identification + CSV export (Wave 2)
+**Plans**: 4 plans
+  - [x] 28-01-PLAN.md — DataForSEO domainIntersection + basic scoring (Wave 1) ✅ DONE
+  - [ ] 28-02-PLAN.md — DA-based achievability formula: `100 - max(0, difficulty - DA)` (Wave 2) ⚠️ GAP
+  - [ ] 28-03-PLAN.md — Gap analysis UI: filters (min volume, max difficulty, competitor selector) (Wave 2) ⚠️ GAP
+  - [ ] 28-04-PLAN.md — Quick Wins tab + classification algorithm (Wave 3) ⚠️ GAP
 
 ---
 
@@ -866,6 +868,9 @@ Pages to scrape:
 **Depends on**: Phase 27 (scraping), Phase 28 (gap analysis)
 **Requirements**: PROSP-21 through PROSP-28
 **Working directory**: `apps/web/`, `open-seo-main/`, `AI-Writer/backend/`
+**Current state**: 55% — Services exist but NOT wired to processor; UI components in open-seo-main but NOT in apps/web
+
+**CRITICAL GAP**: `OpportunityDiscoveryService` exists but is NEVER called in `prospect-analysis-processor.ts`. The `opportunity_discovery` analysis type does nothing.
 
 **Example Use Case**:
 > "helsinkisaunas.com sells barrel saunas, cabin saunas, Harvia heaters (from scrape). AI generates: 'barrel sauna prices', 'Harvia vs Tylö', 'sauna health benefits', 'sauna installation Helsinki', 'home spa ideas'."
@@ -907,11 +912,12 @@ Pages to scrape:
   6. "Opportunity Discovery" tab shows AI-found keywords with rationale
   7. Executive summary generated for sales use
 **Estimated effort**: 1.5 weeks
-**Plans**: 4 plans
-  - [ ] 29-01-PLAN.md — AI keyword generation from scraped business context (Wave 1)
-  - [ ] 29-02-PLAN.md — DataForSEO validation + achievability filtering (Wave 2)
-  - [ ] 29-03-PLAN.md — Opportunity scoring + classification algorithm (Wave 2)
-  - [ ] 29-04-PLAN.md — Opportunity Discovery UI + executive summary generation (Wave 3)
+**Plans**: 5 plans
+  - [x] 29-01-PLAN.md — AI keyword generation service (keywordGenerator.ts) ✅ DONE
+  - [x] 29-02-PLAN.md — DataForSEO validation (volumeValidator.ts, dataforseoVolume.ts) ✅ DONE
+  - [ ] 29-03-PLAN.md — **Wire OpportunityDiscoveryService into processor** (Wave 1) 🚨 CRITICAL
+  - [ ] 29-04-PLAN.md — Keyword classification: quick_win, strategic, long_tail (Wave 2) ⚠️ GAP
+  - [ ] 29-05-PLAN.md — Opportunity Discovery UI in apps/web + executive summary (Wave 3) ⚠️ GAP
 
 ---
 
@@ -920,6 +926,7 @@ Pages to scrape:
 **Depends on**: Phase 29
 **Requirements**: PROSP-29 through PROSP-34
 **Working directory**: `apps/web/`, `open-seo-main/`
+**Current state**: 75% — Conversion logic exists, shareable links exist, email templates exist; missing keyword import, analysis PDF
 
 **Conversion Flow**:
 ```
@@ -956,11 +963,86 @@ Prospect marked as converted (linked)
   5. Email template generator for outreach
   6. Conversion tracking: which prospects became clients
 **Estimated effort**: 1 week
-**Plans**: 4 plans
-  - [ ] 30-01-PLAN.md — Prospect → Client conversion logic + data migration (Wave 1)
-  - [ ] 30-02-PLAN.md — PDF report generation with opportunities + AI summary (Wave 2)
-  - [ ] 30-03-PLAN.md — Shareable links with expiration + access tracking (Wave 2)
-  - [ ] 30-04-PLAN.md — Email templates + conversion analytics dashboard (Wave 3)
+**Plans**: 5 plans
+  - [x] 30-01-PLAN.md — Prospect → Client conversion logic (onboarding.ts) ✅ DONE
+  - [x] 30-02-PLAN.md — Shareable links with expiration (proposal token) ✅ DONE
+  - [x] 30-03-PLAN.md — Conversion analytics dashboard ✅ DONE
+  - [ ] 30-04-PLAN.md — **Import opportunity keywords to saved_keywords on conversion** (Wave 1) ⚠️ GAP
+  - [ ] 30-05-PLAN.md — Analysis PDF export (domain metrics, opportunities, AI insights) (Wave 2) ⚠️ GAP
+
+---
+
+### Phase 30.5: Prospect Pipeline Automation
+**Goal**: Operational automation for agencies managing 500+ prospects. Batch operations, queue-based bulk analysis, automated scoring, pipeline stage progression.
+**Depends on**: Phase 30
+**Requirements**: PROSP-35 through PROSP-42
+**Working directory**: `apps/web/`, `open-seo-main/`
+
+**The Problem**:
+Phases 26-30 focus on single-prospect features. An agency with 500 prospects needs:
+- Batch import (not one-by-one)
+- Bulk analysis (queue all, not click each)
+- Automated scoring and prioritization
+- Pipeline stages with automatic progression
+- Bulk actions (archive, tag, assign)
+
+**Batch Operations**:
+```
+CSV Import → Parse → Validate → Create Prospects → Queue All for Analysis
+           ↓
+     500 prospects imported in 30 seconds
+           ↓
+     BullMQ processes analyses overnight
+           ↓
+     Morning: Sorted by opportunity score, ready to work
+```
+
+**Pipeline Stages & Automation**:
+| Stage | Auto-Trigger | Actions |
+|-------|--------------|---------|
+| **new** | On creation | Queue for analysis |
+| **analyzing** | Analysis started | Show progress |
+| **scored** | Analysis complete | Calculate priority score |
+| **qualified** | Score > threshold | Move to outreach queue |
+| **contacted** | Email sent | Track response |
+| **negotiating** | Response received | Manual stage |
+| **converted** | Deal closed | Trigger conversion |
+| **archived** | 30 days no activity | Auto-archive |
+
+**Bulk Actions UI**:
+- Select all / select by filter
+- Bulk analyze (queue selected)
+- Bulk tag / assign
+- Bulk archive
+- Bulk export to CSV
+
+**Priority Scoring Algorithm**:
+```typescript
+priorityScore = (
+  domainAuthority * 0.2 +           // Higher DA = more valuable
+  organicTraffic * 0.15 +           // Traffic = money
+  opportunityCount * 0.25 +         // More opportunities = more potential
+  avgOpportunityScore * 0.25 +      // Quality of opportunities
+  recencyBonus * 0.15               // Recent activity = warmer lead
+)
+```
+
+**Success Criteria** (what must be TRUE):
+  1. CSV import handles 500+ prospects with validation errors report
+  2. "Analyze All" queues selected prospects with rate limiting (respects daily quota)
+  3. Priority score computed automatically after analysis
+  4. Pipeline stage progression based on configurable rules
+  5. Bulk actions work on 100+ selected prospects
+  6. `/prospects` list shows pipeline stage distribution chart
+  7. Automated stage transitions logged for audit trail
+  8. Daily digest email: new high-score prospects, stale prospects
+**Estimated effort**: 1.5 weeks
+**Plans**: 5 plans
+  - [ ] 30.5-01-PLAN.md — CSV import + validation + batch prospect creation (Wave 1)
+  - [ ] 30.5-02-PLAN.md — Bulk analysis queueing with quota management (Wave 1)
+  - [ ] 30.5-03-PLAN.md — Priority scoring algorithm + auto-compute after analysis (Wave 2)
+  - [ ] 30.5-04-PLAN.md — Pipeline stages schema + automation rules engine (Wave 2)
+  - [ ] 30.5-05-PLAN.md — Bulk actions UI + pipeline distribution chart + daily digest (Wave 3)
 
 ---
 
