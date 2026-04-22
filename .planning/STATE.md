@@ -80,6 +80,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **32-03:** Tier 2 checks run after crawl completes (all HTML available) but before Lighthouse
+- **32-03:** HTML accumulated across crawl batches and passed via CrawlPhaseResult
+- **32-03:** currentPhase set to "analyzing" during Tier 2 execution
 - **32-02:** Modified crawlPage to return HTML alongside analysis for check execution
 - **32-02:** Tier 1 checks run as separate workflow step after each crawl batch
 - **32-02:** Check failures are logged but non-blocking - crawl continues
