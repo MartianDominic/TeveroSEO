@@ -377,17 +377,17 @@ export function ConnectionWizard({ clientId }: { clientId: string }) {
 
 **If this table is empty:** Most claims verified from codebase and official docs.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Squarespace API availability**
+1. **Squarespace API availability** ✅ RESOLVED
    - What we know: Squarespace has Commerce API, unclear on content/SEO API
    - What's unclear: Whether third-party apps can update page meta without full Developer Mode
-   - Recommendation: Research Squarespace API scope before building adapter; may need "pixel mode" fallback
+   - **Decision:** Build Squarespace adapter with read-only capabilities initially. Mark `canWriteMeta: false` in capabilities. If Squarespace adds SEO API in future, upgrade adapter. This allows connection + auditing without write functionality.
 
-2. **Unifying AI-Writer WordPress with open-seo adapter**
+2. **Unifying AI-Writer WordPress with open-seo adapter** ✅ RESOLVED
    - What we know: AI-Writer has `WordPressService` for publishing, open-seo has `WordPressAdapter` for SEO
    - What's unclear: Whether to migrate AI-Writer to use open-seo adapter or keep separate
-   - Recommendation: Keep separate for now; AI-Writer publishes content, open-seo reads/audits
+   - **Decision:** Keep separate. AI-Writer publishes content (different auth flow, different API endpoints). open-seo reads/audits/edits SEO fields. No migration needed — they serve different purposes.
 
 ## Environment Availability
 
