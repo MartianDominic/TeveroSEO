@@ -41,6 +41,36 @@ export interface OrganicKeywordItem {
   url?: string;
 }
 
+export interface BusinessInfo {
+  products: string[];
+  brands: string[];
+  services: string[];
+  location: string | null;
+  targetMarket: "residential" | "commercial" | "both" | null;
+  summary: string;
+  confidence: number;
+}
+
+export interface ScrapedContent {
+  pages: Array<{
+    url: string;
+    title: string;
+    metaDescription: string;
+    h1s: string[];
+    wordCount: number;
+  }>;
+  businessLinks: {
+    products: string | null;
+    about: string | null;
+    services: string | null;
+    contact: string | null;
+    categories: string[];
+  } | null;
+  businessInfo: BusinessInfo | null;
+  totalCostCents: number;
+  scrapedAt: string;
+}
+
 export interface ProspectAnalysis {
   id: string;
   prospectId: string;
@@ -51,6 +81,7 @@ export interface ProspectAnalysis {
   competitorDomains: string[] | null;
   domainMetrics: DomainMetrics | null;
   organicKeywords: OrganicKeywordItem[] | null;
+  scrapedContent: ScrapedContent | null;
   costCents: number | null;
   createdAt: string;
   completedAt: string | null;

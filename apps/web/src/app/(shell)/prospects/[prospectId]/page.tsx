@@ -11,6 +11,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { AnalysisResults } from "@/components/prospects/AnalysisResults";
+import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisplay";
+import { BusinessInfoFormWrapper } from "@/components/prospects/BusinessInfoFormWrapper";
 import { getProspectDetail } from "./actions";
 
 interface ProspectDetailPageProps {
@@ -137,6 +139,24 @@ export default async function ProspectDetailPage({
                 : ""}
             </span>
           </div>
+
+          {/* Business Information from Scraping */}
+          {latestAnalysis.scrapedContent?.businessInfo &&
+            latestAnalysis.scrapedContent.businessInfo.confidence >= 0.5 && (
+              <ScrapedContentDisplay
+                scrapedContent={latestAnalysis.scrapedContent}
+              />
+            )}
+
+          {/* Manual entry form if scraping failed or low confidence */}
+          {(!latestAnalysis.scrapedContent?.businessInfo ||
+            latestAnalysis.scrapedContent.businessInfo.confidence < 0.5) && (
+            <BusinessInfoFormWrapper
+              prospectId={prospectId}
+              analysisId={latestAnalysis.id}
+            />
+          )}
+
           <AnalysisResults analysis={latestAnalysis} />
         </div>
       )}
