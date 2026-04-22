@@ -7,7 +7,6 @@ import { PipelineDistributionChart } from "./PipelineDistributionChart";
 import { Badge, Checkbox } from "@tevero/ui";
 import type { Prospect } from "@/app/(shell)/prospects/actions";
 import {
-  triggerAnalysisAction,
   updateProspectAction,
   bulkAnalyzeAction,
 } from "@/app/(shell)/prospects/actions";
@@ -78,8 +77,7 @@ export function ProspectList({
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-3">
           <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
+            checked={allSelected || (someSelected ? "indeterminate" : false)}
             onCheckedChange={handleSelectAll}
             aria-label="Select all"
           />
