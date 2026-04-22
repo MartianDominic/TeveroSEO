@@ -5,7 +5,8 @@
 - ✅ **v1.0 Platform Unification** — Phases 1–7 (complete)
 - ✅ **v2.0 Unified Product** — Phases 8–14 (complete 2026-04-19)
 - ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
-- 📋 **v4.0 Prospecting & Sales** — Phases 26–30 (planned)
+- 🔄 **v4.0 Prospecting & Sales** — Phases 26–30 (in progress)
+- 📋 **v5.0 Autonomous SEO Pipeline** — Phases 31–38 (planned)
 
 ## Phases
 
@@ -960,3 +961,225 @@ Prospect marked as converted (linked)
   - [ ] 30-02-PLAN.md — PDF report generation with opportunities + AI summary (Wave 2)
   - [ ] 30-03-PLAN.md — Shareable links with expiration + access tracking (Wave 2)
   - [ ] 30-04-PLAN.md — Email templates + conversion analytics dashboard (Wave 3)
+
+---
+
+## v5.0 Autonomous SEO Pipeline
+
+> **Milestone goal**: Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization. Auto-fix technical SEO, run 107 checks, apply safe fixes, flag complex issues. Internal linking automation. Brand voice preservation. Granular revert capability.
+>
+> **Revenue target**: 100 agencies × $500/month = $50k MRR → 1000 agencies = $500k MRR
+>
+> **Key insight**: 90% of pipeline is token-free. AI only for content generation and complex rewrites.
+
+**Implementation Audit Summary** (2026-04-22):
+| Component | Current | Target | Gap |
+|-----------|---------|--------|-----|
+| Site Connection & Platform Detection | 20% | 100% | No unified model, no auto-fix |
+| 107 SEO Checks | 5% | 100% | Only Cheerio parsing exists |
+| Auto-Fix System | 0% | 100% | Zero implementation |
+| Keyword-to-Page Mapping | 55% | 100% | No mapping table |
+| Internal Linking | 0% | 100% | Zero implementation |
+| Content Brief Generation | 45% | 100% | No brief UI/API |
+| Brand Voice Management | 20% | 100% | Basic templates only |
+
+**Design Documents** (completed):
+- `open-seo-main/docs/V1-SEO-IMPLEMENTATION-SPEC.md` — Full autonomous pipeline spec
+- `open-seo-main/docs/MICRO-OPTIMIZATIONS-80-PERCENT.md` — 107 checks by tier
+- `.planning/design/site-connection-audit-autoedit-revert-system.md` — Platform adapters + revert
+- `.planning/design/brand-voice-management-system.md` — Voice modes + learning
+- `.planning/design/internal-linking-automation-system.md` — Link graph + auto-link
+
+---
+
+### Phase 31: Site Connection & Platform Detection
+**Goal**: Unified site connection model with platform auto-detection. Connects to WordPress, Shopify, Wix, Squarespace, Webflow, custom sites. Write permission verification. Encrypted credential storage.
+**Depends on**: Phase 12 (per-client credentials system exists)
+**Design doc**: `.planning/design/site-connection-audit-autoedit-revert-system.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Current state**: 20% — WordPress adapter exists for publishing only, no unified model
+**Success Criteria** (what must be TRUE):
+  1. `site_connections` table with: clientId, platform, credentials (encrypted), capabilities, status
+  2. `detectPlatform(domain)` auto-detects WordPress, Shopify, Wix from headers/HTML
+  3. Connection wizard guides user through OAuth or API key setup per platform
+  4. Write permission verified before marking connection as active
+  5. `/clients/[id]/connections` shows all connected platforms with status
+  6. Platform adapters support: read content, write content, read meta, write meta
+**Estimated effort**: 1.5 weeks
+**Plans**: 4 plans
+  - [ ] 31-01-PLAN.md — site_connections schema + platform detection service (Wave 1)
+  - [ ] 31-02-PLAN.md — Platform adapters: WordPress REST, Shopify GraphQL, Wix API (Wave 2)
+  - [ ] 31-03-PLAN.md — Connection wizard UI + OAuth flows (Wave 2)
+  - [ ] 31-04-PLAN.md — Write permission verification + capability detection (Wave 3)
+
+---
+
+### Phase 32: 107 SEO Checks Implementation
+**Goal**: Implement all 107 SEO checks from MICRO-OPTIMIZATIONS-80-PERCENT.md. Organized by tier: Tier 1 (66 DOM/regex), Tier 2 (21 calculation), Tier 3 (13 API), Tier 4 (7 crawl). Check runner with scoring.
+**Depends on**: Phase 31 (site connection for content access)
+**Design doc**: `open-seo-main/docs/MICRO-OPTIMIZATIONS-80-PERCENT.md`
+**Working directory**: `open-seo-main/`
+**Current state**: 5% — Only Cheerio parsing and ~25 implicit checks in health score
+**Success Criteria** (what must be TRUE):
+  1. `audit_findings` table with: checkId, severity, autoEditable, editRecipe, field, value
+  2. All 66 Tier 1 checks implemented (DOM/regex — instant, free)
+  3. All 21 Tier 2 checks implemented (light calculation)
+  4. All 13 Tier 3 checks implemented (API required — DataForSEO, GSC)
+  5. All 7 Tier 4 checks implemented (crawl required)
+  6. `runAllChecks(url, keyword)` returns findings with scores
+  7. On-page score calculated: 100-point scale with category breakdown
+  8. Check results visible at `/clients/[id]/seo/audit/[pageId]`
+**Estimated effort**: 2 weeks
+**Plans**: 5 plans
+  - [ ] 32-01-PLAN.md — audit_findings schema + check runner infrastructure (Wave 1)
+  - [ ] 32-02-PLAN.md — Tier 1 checks: 66 DOM/regex checks (Wave 2)
+  - [ ] 32-03-PLAN.md — Tier 2 checks: 21 calculation checks (Wave 2)
+  - [ ] 32-04-PLAN.md — Tier 3+4 checks: API + crawl checks (Wave 3)
+  - [ ] 32-05-PLAN.md — Scoring system + findings UI + export (Wave 4)
+
+---
+
+### Phase 33: Auto-Fix System with Granular Revert
+**Goal**: Apply safe SEO fixes automatically. Track all changes with before/after snapshots. Granular revert by: single item, field, page, category, batch, date range, full site.
+**Depends on**: Phase 31 (platform adapters), Phase 32 (check findings)
+**Design doc**: `.planning/design/site-connection-audit-autoedit-revert-system.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Current state**: 0% — Zero auto-fix implementation
+**Success Criteria** (what must be TRUE):
+  1. `site_changes` table with: before_value, after_value, field, status, revertedAt
+  2. `change_backups` table stores full resource state for complex reverts
+  3. Edit recipes defined for each auto-fixable check
+  4. Safe fixes auto-applied: alt text, image dimensions, heading hierarchy, canonical, lazy loading
+  5. Complex fixes flagged for review: content expansion, title rewrites, H1 changes
+  6. Revert UI at `/clients/[id]/changes` with filter by category, date, status
+  7. One-click revert for: single change, page, category, batch, date range
+  8. Automatic revert triggers: traffic drop >20%, ranking drop >5 positions
+**Estimated effort**: 2 weeks
+**Plans**: 5 plans
+  - [ ] 33-01-PLAN.md — site_changes + change_backups schema (Wave 1)
+  - [ ] 33-02-PLAN.md — Edit recipes: safe fixes (alt, dimensions, canonical, lazy) (Wave 2)
+  - [ ] 33-03-PLAN.md — Platform adapter write methods + change tracking (Wave 2)
+  - [ ] 33-04-PLAN.md — Revert system: single, page, category, batch, date_range (Wave 3)
+  - [ ] 33-05-PLAN.md — Auto-revert triggers + changes UI (Wave 4)
+
+---
+
+### Phase 34: Keyword-to-Page Mapping
+**Goal**: Map keywords to target pages. Calculate relevance between keywords and existing pages. Flag keywords that need new content.
+**Depends on**: Phase 26 (keyword data exists), Phase 10 (page inventory exists)
+**Design doc**: `open-seo-main/docs/V1-SEO-IMPLEMENTATION-SPEC.md` (Phase 3)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Current state**: 55% — DataForSEO APIs complete, but no mapping table or relevance calculation
+**Success Criteria** (what must be TRUE):
+  1. `keyword_page_mapping` table with: keyword, targetUrl, action (optimize/create), relevance
+  2. `calculateRelevance(keyword, page)` scores title/H1/content overlap
+  3. `mapKeywordToPage()` implements decision logic: already ranking? best match? new content?
+  4. Keyword aggregation service merges: GSC, DataForSEO, competitor analysis, prospect data
+  5. `/clients/[id]/seo/keyword-mapping` shows all mappings with actions
+  6. "Suggest Mapping" button auto-maps unmapped keywords
+  7. Manual override: reassign keyword to different page
+**Estimated effort**: 1 week
+**Plans**: 4 plans
+  - [ ] 34-01-PLAN.md — keyword_page_mapping schema + relevance algorithm (Wave 1)
+  - [ ] 34-02-PLAN.md — mapKeywordToPage() decision logic (Wave 2)
+  - [ ] 34-03-PLAN.md — Keyword aggregation service (Wave 2)
+  - [ ] 34-04-PLAN.md — Mapping UI + suggest + manual override (Wave 3)
+
+---
+
+### Phase 35: Internal Linking Automation
+**Goal**: Build link graph from crawl data. Detect opportunities (orphans, low links, missing exact-match). Auto-insert safe links. Velocity control. Cannibalization detection.
+**Depends on**: Phase 32 (crawl data exists), Phase 33 (auto-fix infrastructure)
+**Design doc**: `.planning/design/internal-linking-automation-system.md`
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Current state**: 0% — Zero implementation
+**Success Criteria** (what must be TRUE):
+  1. `link_graph` table with: sourceUrl, targetUrl, anchorText, position, paragraphIndex
+  2. `page_links` table with: inbound counts, click depth, opportunity score
+  3. `orphan_pages` table detects pages with zero inbound links
+  4. `link_opportunities` table stores detected opportunities with scoring
+  5. Click depth computed via BFS from homepage; flag if >3
+  6. Anchor text selection follows 50% exact / 25% branded / 25% misc
+  7. Auto-insert when: wrap_existing, confidence ≥85%, <10 links on page
+  8. Velocity control: max 3 links/page/day, 50/site/day
+  9. Cannibalization detection prevents linking competing pages
+  10. `/clients/[id]/seo/links` shows link health dashboard
+**Estimated effort**: 2 weeks
+**Plans**: 5 plans
+  - [ ] 35-01-PLAN.md — Link graph schema + extraction from crawl data (Wave 1)
+  - [ ] 35-02-PLAN.md — Opportunity detection: orphans, velocity, anchors, depth (Wave 2)
+  - [ ] 35-03-PLAN.md — Target selection + anchor text selection algorithms (Wave 2)
+  - [ ] 35-04-PLAN.md — Auto-insert integration + velocity control (Wave 3)
+  - [ ] 35-05-PLAN.md — Cannibalization detection + link health UI (Wave 4)
+
+---
+
+### Phase 36: Content Brief Generation
+**Goal**: Generate content briefs from SERP analysis. Include target keyword, required H2s, competitor word counts, PAA questions. Voice mode selection.
+**Depends on**: Phase 34 (keyword mapping shows what needs content)
+**Design doc**: `open-seo-main/docs/V1-SEO-IMPLEMENTATION-SPEC.md` (Phase 5)
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+**Current state**: 45% — AI generation exists, but no brief generation UI/API
+**Success Criteria** (what must be TRUE):
+  1. `content_briefs` table with: keyword, targetWordCount, requiredH2s, paaQuestions, voiceMode
+  2. SERP analysis extracts: competitor word counts, common H2s, PAA questions
+  3. Brief generator creates constraints from SERP analysis
+  4. Voice mode selector: preservation, application, best_practices
+  5. `/clients/[id]/content-briefs` lists briefs with status
+  6. "Create Brief" opens wizard: keyword → SERP analysis → brief preview → save
+  7. "Generate Content" sends brief to AI-Writer pipeline
+  8. Generated content runs 107 checks before flagging ready
+**Estimated effort**: 1.5 weeks
+**Plans**: 4 plans
+  - [ ] 36-01-PLAN.md — content_briefs schema + SERP analysis service (Wave 1)
+  - [ ] 36-02-PLAN.md — Brief generation: competitor analysis, H2 extraction, PAA (Wave 2)
+  - [ ] 36-03-PLAN.md — Brief wizard UI + voice mode selection (Wave 2)
+  - [ ] 36-04-PLAN.md — AI-Writer integration + 107 checks on generated content (Wave 3)
+
+---
+
+### Phase 37: Brand Voice Management
+**Goal**: Full brand voice system with three modes: preservation (protect brand text), application (write in client voice), best_practices (use defaults). Voice learning from existing content.
+**Depends on**: Phase 36 (content generation uses voice)
+**Design doc**: `.planning/design/brand-voice-management-system.md`
+**Working directory**: `apps/web/`, `AI-Writer/backend/`
+**Current state**: 20% — Basic voice templates with style_instructions only
+**Success Criteria** (what must be TRUE):
+  1. `voice_profiles` table with: tone, formality, personality, vocabulary, writingMechanics
+  2. `voice_analysis` table stores AI analysis of existing content
+  3. Voice learning: analyze 5-10 pages → extract 40+ dimensions → create profile
+  4. Preservation mode: protect tagged content (`<!-- voice:protected -->`)
+  5. Application mode: generate in client voice using profile
+  6. Best practices mode: use default SEO-optimized voice
+  7. `/clients/[id]/settings/voice` shows voice profile with edit
+  8. "Learn Voice" button triggers analysis of existing content
+  9. Voice preview: test generation before applying to real content
+**Estimated effort**: 1.5 weeks
+**Plans**: 4 plans
+  - [ ] 37-01-PLAN.md — voice_profiles + voice_analysis schema (Wave 1)
+  - [ ] 37-02-PLAN.md — Voice learning: content analysis → profile extraction (Wave 2)
+  - [ ] 37-03-PLAN.md — Three voice modes implementation (Wave 2)
+  - [ ] 37-04-PLAN.md — Voice settings UI + learning + preview (Wave 3)
+
+---
+
+### Phase 38: Autonomous Pipeline Orchestration
+**Goal**: Wire all components into the autonomous loop. Daily/weekly/monthly triggers. Monitoring dashboard. Token budget tracking.
+**Depends on**: Phases 31-37 (all components ready)
+**Design doc**: `open-seo-main/docs/V1-SEO-IMPLEMENTATION-SPEC.md` (Autonomous Loop)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Success Criteria** (what must be TRUE):
+  1. Daily loop: check GSC rankings, run 107 checks on top 10 pages, auto-fix safe issues
+  2. Weekly loop: expand to next 50 pages, update keyword rankings, generate briefs for gaps
+  3. Monthly loop: full site re-scan (<500 pages), competitor tracking, content freshness
+  4. Triggered: traffic drop → investigate, ranking drop → check + suggest, new competitor → gap analysis
+  5. `/dashboard` shows autonomous activity: fixes applied, issues flagged, content generated
+  6. Token budget tracker: show AI spend per client, alert on unusual usage
+  7. Pause/resume autonomy per client
+  8. Activity log with all autonomous actions
+**Estimated effort**: 1 week
+**Plans**: 4 plans
+  - [ ] 38-01-PLAN.md — BullMQ scheduled jobs: daily, weekly, monthly loops (Wave 1)
+  - [ ] 38-02-PLAN.md — Triggered actions: drop detection, competitor alerts (Wave 2)
+  - [ ] 38-03-PLAN.md — Autonomous dashboard + activity log (Wave 2)
+  - [ ] 38-04-PLAN.md — Token budget tracking + pause/resume controls (Wave 3)

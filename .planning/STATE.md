@@ -161,3 +161,15 @@ None currently.
 ## Next Up
 
 v3.0 milestone phases 15-18, 18.5, 21-25 complete. AI phases 19-20 skipped per user request.
+
+**v5.0 Autonomous SEO Pipeline** planned (Phases 31-38):
+- Phase 31: Site Connection & Platform Detection
+- Phase 32: 107 SEO Checks Implementation
+- Phase 33: Auto-Fix System with Granular Revert
+- Phase 34: Keyword-to-Page Mapping
+- Phase 35: Internal Linking Automation
+- Phase 36: Content Brief Generation
+- Phase 37: Brand Voice Management
+- Phase 38: Autonomous Pipeline Orchestration
+
+Design docs complete. Ready for execution.
