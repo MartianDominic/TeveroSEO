@@ -1090,10 +1090,10 @@ priorityScore = (
   6. Platform adapters support: read content, write content, read meta, write meta
 **Estimated effort**: 1.5 weeks
 **Plans**: 4 plans
-  - [ ] 31-01-PLAN.md — Complete Wix, Squarespace, Webflow adapters + wire into ConnectionService (Wave 1)
-  - [ ] 31-02-PLAN.md — Create siteConnections.ts client library + Next.js API proxy routes (Wave 1)
-  - [ ] 31-03-PLAN.md — ConnectionWizard UI + PlatformCredentialsForm + SiteConnectionList (Wave 2)
-  - [ ] 31-04-PLAN.md — open-seo-main API routes for connections + platform detection (Wave 2)
+  - [x] 31-01-PLAN.md — Complete Wix, Squarespace, Webflow adapters + wire into ConnectionService (Wave 1)
+  - [x] 31-02-PLAN.md — Create siteConnections.ts client library + Next.js API proxy routes (Wave 1)
+  - [x] 31-03-PLAN.md — ConnectionWizard UI + PlatformCredentialsForm + SiteConnectionList (Wave 2)
+  - [x] 31-04-PLAN.md — open-seo-main API routes for connections + platform detection (Wave 2)
 
 ---
 
