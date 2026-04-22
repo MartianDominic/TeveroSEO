@@ -1058,7 +1058,7 @@ priorityScore = (
 | Component | Current | Target | Gap |
 |-----------|---------|--------|-----|
 | Site Connection & Platform Detection | 20% | 100% | No unified model, no auto-fix |
-| 107 SEO Checks | 5% | 100% | Only Cheerio parsing exists |
+| 107 SEO Checks | 60% | 100% | Checks exist; missing workflow integration, persistence, UI |
 | Auto-Fix System | 0% | 100% | Zero implementation |
 | Keyword-to-Page Mapping | 55% | 100% | No mapping table |
 | Internal Linking | 0% | 100% | Zero implementation |
@@ -1098,27 +1098,28 @@ priorityScore = (
 ---
 
 ### Phase 32: 107 SEO Checks Implementation
-**Goal**: Implement all 107 SEO checks from MICRO-OPTIMIZATIONS-80-PERCENT.md. Organized by tier: Tier 1 (66 DOM/regex), Tier 2 (21 calculation), Tier 3 (13 API), Tier 4 (7 crawl). Check runner with scoring.
+**Goal**: Integrate all 107 SEO checks into the audit workflow. Checks already exist by tier: Tier 1 (66 DOM/regex), Tier 2 (21 calculation), Tier 3 (13 API), Tier 4 (7 crawl). Need: runner infrastructure, workflow integration, findings persistence, UI.
 **Depends on**: Phase 31 (site connection for content access)
 **Design doc**: `open-seo-main/docs/MICRO-OPTIMIZATIONS-80-PERCENT.md`
-**Working directory**: `open-seo-main/`
-**Current state**: 5% — Only Cheerio parsing and ~25 implicit checks in health score
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Current state**: 60% — All 107 checks implemented; missing workflow integration, persistence, and UI
+**Requirements**: SC-01, SC-02, SC-03, SC-04, SC-05, SC-06, SC-07, SC-08
 **Success Criteria** (what must be TRUE):
   1. `audit_findings` table with: checkId, severity, autoEditable, editRecipe, field, value
-  2. All 66 Tier 1 checks implemented (DOM/regex — instant, free)
-  3. All 21 Tier 2 checks implemented (light calculation)
-  4. All 13 Tier 3 checks implemented (API required — DataForSEO, GSC)
-  5. All 7 Tier 4 checks implemented (crawl required)
+  2. All 66 Tier 1 checks run during crawl phase (instant, free)
+  3. All 21 Tier 2 checks run during finalize phase (light calculation)
+  4. All 13 Tier 3 checks run with Lighthouse data
+  5. All 7 Tier 4 checks run with site-wide crawl context
   6. `runAllChecks(url, keyword)` returns findings with scores
   7. On-page score calculated: 100-point scale with category breakdown
   8. Check results visible at `/clients/[id]/seo/audit/[pageId]`
 **Estimated effort**: 2 weeks
 **Plans**: 5 plans
-  - [ ] 32-01-PLAN.md — audit_findings schema + check runner infrastructure (Wave 1)
-  - [ ] 32-02-PLAN.md — Tier 1 checks: 66 DOM/regex checks (Wave 2)
-  - [ ] 32-03-PLAN.md — Tier 2 checks: 21 calculation checks (Wave 2)
-  - [ ] 32-04-PLAN.md — Tier 3+4 checks: API + crawl checks (Wave 3)
-  - [ ] 32-05-PLAN.md — Scoring system + findings UI + export (Wave 4)
+  - [ ] 32-01-PLAN.md — runAllChecks facade, FindingsRepository, CheckService (Wave 1)
+  - [ ] 32-02-PLAN.md — Tier 1 checks integration into crawl phase (Wave 2)
+  - [ ] 32-03-PLAN.md — Tier 2 checks integration into finalize phase (Wave 2)
+  - [ ] 32-04-PLAN.md — Tier 3+4 checks with Lighthouse data and SiteContext (Wave 3)
+  - [ ] 32-05-PLAN.md — Findings UI at /clients/[id]/seo/audit/[pageId] + CSV export (Wave 4)
 
 ---
 
