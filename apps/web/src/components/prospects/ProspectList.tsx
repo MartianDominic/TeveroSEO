@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 import { ProspectCard } from "./ProspectCard";
-import { Badge } from "@tevero/ui";
+import { BulkActionBar } from "./BulkActionBar";
+import { PipelineDistributionChart } from "./PipelineDistributionChart";
+import { Badge, Checkbox } from "@tevero/ui";
 import type { Prospect } from "@/app/(shell)/prospects/actions";
+import {
+  triggerAnalysisAction,
+  updateProspectAction,
+  bulkAnalyzeAction,
+} from "@/app/(shell)/prospects/actions";
 
 interface ProspectListProps {
   prospects: Prospect[];
@@ -15,9 +22,42 @@ export function ProspectList({
   remainingAnalyses,
 }: ProspectListProps) {
   const [remaining, setRemaining] = useState(remainingAnalyses);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleAnalyzeStart = () => {
     setRemaining((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === prospects.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(prospects.map((p) => p.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  const handleAnalyzeSelected = async (ids: string[]) => {
+    for (const id of ids) {
+      if (remaining <= 0) break;
+      await triggerAnalysisAction(id);
+      setRemaining((prev) => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleArchiveSelected = async (ids: string[]) => {
+    for (const id of ids) {
+      await updateProspectAction(id, { status: "archived" });
+    }
   };
 
   if (prospects.length === 0) {
@@ -31,12 +71,25 @@ export function ProspectList({
     );
   }
 
+  const allSelected = selectedIds.length === prospects.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
+
   return (
     <div className="space-y-4">
+      <PipelineDistributionChart prospects={prospects} />
+
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">
-          Showing {prospects.length} prospect{prospects.length !== 1 ? "s" : ""}
-        </span>
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected}
+            onCheckedChange={handleSelectAll}
+            aria-label="Select all"
+          />
+          <span className="text-muted-foreground">
+            Showing {prospects.length} prospect{prospects.length !== 1 ? "s" : ""}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">
             Analyses remaining today:
@@ -62,9 +115,19 @@ export function ProspectList({
             prospect={prospect}
             canAnalyze={remaining > 0}
             onAnalyzeStart={handleAnalyzeStart}
+            selected={selectedIds.includes(prospect.id)}
+            onToggleSelect={() => handleToggleSelect(prospect.id)}
           />
         ))}
       </div>
+
+      <BulkActionBar
+        selectedIds={selectedIds}
+        onClearSelection={handleClearSelection}
+        onAnalyzeSelected={handleAnalyzeSelected}
+        onArchiveSelected={handleArchiveSelected}
+        disabled={remaining <= 0}
+      />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   Trash2,
   ExternalLink,
   Loader2,
+  Check,
 } from "lucide-react";
 import type { Prospect } from "@/app/(shell)/prospects/actions";
 import {
@@ -37,6 +38,8 @@ interface ProspectCardProps {
   prospect: Prospect;
   canAnalyze: boolean;
   onAnalyzeStart?: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 const STATUS_BADGES: Record<
@@ -54,6 +57,8 @@ export function ProspectCard({
   prospect,
   canAnalyze,
   onAnalyzeStart,
+  selected = false,
+  onToggleSelect,
 }: ProspectCardProps) {
   const router = useRouter();
   const [analyzing, setAnalyzing] = useState(false);
@@ -92,7 +97,14 @@ export function ProspectCard({
   const isAnalyzing = prospect.status === "analyzing" || analyzing;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={`hover:shadow-md transition-shadow ${selected ? "ring-2 ring-primary" : ""}`} onClick={onToggleSelect}>
+      {onToggleSelect && (
+        <div className="absolute top-3 left-3 z-10">
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 bg-background"}`}>
+            {selected && <Check className="h-3 w-3" />}
+          </div>
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
