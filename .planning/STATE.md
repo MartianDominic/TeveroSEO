@@ -80,6 +80,8 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **32-05:** ScoreCard uses 4-tier breakdown matching check runner scoring system
+- **32-05:** FindingsTable filters by severity, tier, category, pass/fail with CSV export
 - **32-04:** Tier 3 runs after Lighthouse, Tier 4 runs after Tier 3 (once with SiteContext)
 - **32-04:** BFS click depth calculation with DoS limits (max 10 depth, 10k iterations)
 - **32-04:** Link graph capped at 50k entries per threat model T-32-08
