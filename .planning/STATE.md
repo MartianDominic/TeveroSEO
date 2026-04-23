@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 ## Current Position
 
-Phase: 34 (keyword-page-mapping) — EXECUTING
-Plan: 2 of 4
-Status: Plan 34-02 complete (MappingService decision logic)
-Last activity: 2026-04-23 Completed 34-02: mapKeywordToPage decision logic and MappingRepository
+Phase: 35 (internal-linking) — EXECUTING
+Plan: 1 of 5
+Status: Plan 35-01 complete (Link graph schema + extraction)
+Last activity: 2026-04-23 Completed 35-01: linkGraph/pageLinks/orphanPages schema, link extractor, graph builder
 
 ### v4.0 Completion Summary (2026-04-22)
 
@@ -81,6 +81,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **35-01:** Link position classification via tag name + class patterns; DoS limits 1000/page, 50000/audit
 - **34-02:** Decision tree: position <= 20 -> optimize, relevance >= 60 -> optimize, else create
 - **34-02:** Lazy-load repository to enable pure function testing without DB connection
 - **34-01:** Relevance scoring weights: title=35, h1=25, first100=15, url=15, frequency=10 (Kyle Roof research)
