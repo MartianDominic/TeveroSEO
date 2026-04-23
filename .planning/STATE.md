@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-status: planning
-last_updated: "2026-04-22T20:56:43.934Z"
-last_activity: 2026-04-22
+status: executing
+last_updated: "2026-04-22T21:43:57.791Z"
+last_activity: 2026-04-22 -- Phase --phase execution started
 progress:
-  total_phases: 41
-  completed_phases: 29
-  total_plans: 119
-  completed_plans: 125
+  total_phases: 14
+  completed_phases: 14
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -21,13 +21,14 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Transform the platform from a data viewer into an actionable intelligence tool. Automated PDF reports with white-label branding. Daily rank tracking with drop alerts. AI-powered insights. Multi-tenant webhook infrastructure. Agency command center dashboard.
 
-**Current focus:** v5.0 Autonomous SEO Pipeline — Phase 31 (Site Connection)
+**Current focus:** Phase 34 — Keyword-to-Page Mapping
 
 ## Current Position
 
-Phase: 32
-Status: Ready to plan
-Last activity: 2026-04-22
+Phase: 34 (keyword-page-mapping) — EXECUTING
+Plan: 1 of 4
+Status: Plan 34-01 complete (schema + relevance algorithm)
+Last activity: 2026-04-23 Completed 34-01: keyword_page_mapping schema and calculateRelevance
 
 ### v4.0 Completion Summary (2026-04-22)
 
@@ -80,6 +81,8 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **34-01:** Relevance scoring weights: title=35, h1=25, first100=15, url=15, frequency=10 (Kyle Roof research)
+- **34-01:** Good match threshold: 60+ points
 - **32-05:** ScoreCard uses 4-tier breakdown matching check runner scoring system
 - **32-05:** FindingsTable filters by severity, tier, category, pass/fail with CSV export
 - **32-04:** Tier 3 runs after Lighthouse, Tier 4 runs after Tier 3 (once with SiteContext)
@@ -131,3 +134,5 @@ None currently.
 | 39 | AI-Writer Integration | Brief enrichment, post-gen validation |
 
 Design docs complete. Ready for execution.
+
+**Planned Phase:** 33 (auto-fix-system) — 5 plans — 2026-04-22T21:43:17.294Z
