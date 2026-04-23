@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 34 (keyword-page-mapping) — EXECUTING
-Plan: 1 of 4
-Status: Plan 34-01 complete (schema + relevance algorithm)
-Last activity: 2026-04-23 Completed 34-01: keyword_page_mapping schema and calculateRelevance
+Plan: 2 of 4
+Status: Plan 34-02 complete (MappingService decision logic)
+Last activity: 2026-04-23 Completed 34-02: mapKeywordToPage decision logic and MappingRepository
 
 ### v4.0 Completion Summary (2026-04-22)
 
@@ -81,6 +81,8 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **34-02:** Decision tree: position <= 20 -> optimize, relevance >= 60 -> optimize, else create
+- **34-02:** Lazy-load repository to enable pure function testing without DB connection
 - **34-01:** Relevance scoring weights: title=35, h1=25, first100=15, url=15, frequency=10 (Kyle Roof research)
 - **34-01:** Good match threshold: 60+ points
 - **32-05:** ScoreCard uses 4-tier breakdown matching check runner scoring system
