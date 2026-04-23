@@ -1128,23 +1128,25 @@ priorityScore = (
 **Depends on**: Phase 31 (platform adapters), Phase 32 (check findings)
 **Design doc**: `.planning/design/site-connection-audit-autoedit-revert-system.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
-**Current state**: 0% — Zero auto-fix implementation
+**Current state**: 75% — Backend complete (6/8 criteria), UI gaps remain
+**Verification**: `gaps_found` (6/8) — Missing revert UI route and components
 **Success Criteria** (what must be TRUE):
-  1. `site_changes` table with: before_value, after_value, field, status, revertedAt
-  2. `change_backups` table stores full resource state for complex reverts
-  3. Edit recipes defined for each auto-fixable check
-  4. Safe fixes auto-applied: alt text, image dimensions, heading hierarchy, canonical, lazy loading
-  5. Complex fixes flagged for review: content expansion, title rewrites, H1 changes
-  6. Revert UI at `/clients/[id]/changes` with filter by category, date, status
-  7. One-click revert for: single change, page, category, batch, date range
-  8. Automatic revert triggers: traffic drop >20%, ranking drop >5 positions
+  1. ✅ `site_changes` table with: before_value, after_value, field, status, revertedAt
+  2. ✅ `change_backups` table stores full resource state for complex reverts
+  3. ✅ Edit recipes defined for each auto-fixable check
+  4. ✅ Safe fixes auto-applied: alt text, image dimensions, heading hierarchy, canonical, lazy loading
+  5. ✅ Complex fixes flagged for review: content expansion, title rewrites, H1 changes
+  6. ❌ Revert UI at `/clients/[id]/changes` with filter by category, date, status
+  7. ❌ One-click revert for: single change, page, category, batch, date range
+  8. ✅ Automatic revert triggers: traffic drop >20%, ranking drop >5 positions
 **Estimated effort**: 2 weeks
-**Plans**: 5 plans
-  - [ ] 33-01-PLAN.md — site_changes + change_backups + rollback_triggers schema (Wave 1)
-  - [ ] 33-02-PLAN.md — Edit recipe registry + safe recipes (alt, dimensions, canonical, lazy) (Wave 2)
-  - [ ] 33-03-PLAN.md — Platform adapter write methods + ChangeService with before/after tracking (Wave 2)
-  - [ ] 33-04-PLAN.md — RevertService + DependencyResolver: single, page, category, batch, date_range (Wave 3)
-  - [ ] 33-05-PLAN.md — Auto-revert triggers (BullMQ worker) + changes UI (Wave 4)
+**Plans**: 6 plans
+  - [x] 33-01-PLAN.md — site_changes + change_backups + rollback_triggers schema (Wave 1)
+  - [x] 33-02-PLAN.md — Edit recipe registry + safe recipes (alt, dimensions, canonical, lazy) (Wave 2)
+  - [x] 33-03-PLAN.md — Platform adapter write methods + ChangeService with before/after tracking (Wave 2)
+  - [x] 33-04-PLAN.md — RevertService + DependencyResolver: single, page, category, batch, date_range (Wave 3)
+  - [~] 33-05-PLAN.md — Auto-revert triggers (BullMQ worker) + changes UI (Wave 4) — triggers done, UI gaps
+  - [ ] 33-06-PLAN.md — Gap closure: API routes + server action fixes + connection fetching (Wave 1)
 
 ---
 
