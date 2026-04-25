@@ -26,11 +26,11 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 41 (Production Hardening) — IN PROGRESS
-Current Plan: 41-04 (CMS Polish & E2E)
-Plans: 3/4 complete (41-01, 41-02, 41-03 done; 41-04 ready)
-Status: v5.1 Production Hardening milestone in progress
-Last activity: 2026-04-25 -- 41-02 completed (Pattern Detection with Real GSC Data)
+Phase: 41 (Production Hardening) — COMPLETE
+Current Plan: 41-04 (CMS Integration Polish)
+Plans: 4/4 complete (all plans done)
+Status: v5.1 Production Hardening milestone COMPLETE
+Last activity: 2026-04-26 -- 41-04 completed (CMS Integration Polish)
 
 ### Phase 41 Focus
 Based on 10-agent architecture audit (SYSTEM-ARCHITECTURE-AUDIT.md):
@@ -91,6 +91,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **41-04:** Wix categories API already implemented via WixBlogService.list_categories(); Connection test uses platform dispatch pattern; Workspace opportunities aggregates up to 20 per client
 - **41-02:** Traffic status thresholds: dropped <= -20%, growing >= 10%, stable in between; ranking positive change = improvement (lower position is better)
 - **41-03:** Use auto_publish as proxy for auto_optimize; CTR opportunity threshold 50% of expected; 3 AM UTC daily cycle with 5s rate limit between clients
 - **41-01:** Agent framework fallback replaced with RuntimeError; startup validation rejects DISABLE_AUTH/SKIP_AUTH/DEBUG_MODE in production
@@ -150,7 +151,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 | Phase | Title | Status |
 |-------|-------|--------|
-| 41 | Production Hardening | ○ In Progress |
+| 41 | Production Hardening | ✓ Complete |
 
 ### Phase 40 Gap Closure Summary (2026-04-25)
 

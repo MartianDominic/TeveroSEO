@@ -7,7 +7,7 @@
 - ✅ **v3.0 Agency Intelligence** — Phases 15–25 + 18.5 (complete 2026-04-20)
 - ✅ **v4.0 Prospecting & Sales** — Phases 26–30.5 (complete 2026-04-22)
 - ✅ **v5.0 Autonomous SEO Pipeline** — Phases 31–40 (complete 2026-04-25)
-- 📋 **v5.1 Production Hardening** — Phase 41 (planned)
+- ✅ **v5.1 Production Hardening** — Phase 41 (complete 2026-04-26)
 
 ## Phases
 
@@ -1461,8 +1461,8 @@ priorityScore = (
   4. Wix publishing shows real categories from API
   5. CMS connection test button works for WordPress/Shopify/Wix
   6. Dashboard errors throw instead of returning zeros
-**Plans**: 4 plans
-  - [ ] 41-01-PLAN.md — Dead code removal + factory fixes (Wave 1)
-  - [ ] 41-02-PLAN.md — Pattern detection with real GSC data (Wave 2)
-  - [ ] 41-03-PLAN.md — Autonomous pipeline wiring (Wave 2)
-  - [ ] 41-04-PLAN.md — CMS integration polish (Wave 3)
+**Plans**: 4 plans (4 complete)
+  - [x] 41-01-PLAN.md — Dead code removal + factory fixes (Wave 1)
+  - [x] 41-02-PLAN.md — Pattern detection with real GSC data (Wave 2)
+  - [x] 41-03-PLAN.md — Autonomous pipeline wiring (Wave 2)
+  - [x] 41-04-PLAN.md — CMS integration polish (Wave 3)
