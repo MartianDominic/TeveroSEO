@@ -262,3 +262,21 @@ export function createApiFindingsRepository(
 ): FindingsRepository {
   return new ApiFindingsRepository(baseUrl);
 }
+
+/**
+ * Create the appropriate findings repository based on environment.
+ * In production, ALWAYS returns API repository.
+ * InMemory is ONLY used in test environment.
+ */
+export function createFindingsRepository(baseUrl?: string): FindingsRepository {
+  if (process.env.NODE_ENV === "test") {
+    return new InMemoryFindingsRepository();
+  }
+  // ALWAYS use API repository in production/development
+  if (!baseUrl) {
+    throw new Error(
+      "baseUrl is required for FindingsRepository in non-test environments"
+    );
+  }
+  return new ApiFindingsRepository(baseUrl);
+}
