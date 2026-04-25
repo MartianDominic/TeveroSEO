@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 41 (Production Hardening) — IN PROGRESS
-Current Plan: 41-02 (Pattern Detection & GSC Wiring)
-Plans: 1/4 complete (41-01 done, 41-02 through 41-04 ready)
+Current Plan: 41-04 (CMS Polish & E2E)
+Plans: 2/4 complete (41-01, 41-03 done; 41-02, 41-04 ready)
 Status: v5.1 Production Hardening milestone in progress
-Last activity: 2026-04-25 -- 41-01 completed (dead code removal, factory fixes, startup validation)
+Last activity: 2026-04-25 -- 41-03 completed (autonomous pipeline wiring)
 
 ### Phase 41 Focus
 Based on 10-agent architecture audit (SYSTEM-ARCHITECTURE-AUDIT.md):
@@ -91,6 +91,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **41-03:** Use auto_publish as proxy for auto_optimize; CTR opportunity threshold 50% of expected; 3 AM UTC daily cycle with 5s rate limit between clients
 - **41-01:** Agent framework fallback replaced with RuntimeError; startup validation rejects DISABLE_AUTH/SKIP_AUTH/DEBUG_MODE in production
 - **35-01:** Link position classification via tag name + class patterns; DoS limits 1000/page, 50000/audit
 - **34-02:** Decision tree: position <= 20 -> optimize, relevance >= 60 -> optimize, else create
