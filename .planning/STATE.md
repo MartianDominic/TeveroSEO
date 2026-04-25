@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Production Hardening
 status: in_progress
-last_updated: "2026-04-25T20:48:00.000Z"
-last_activity: 2026-04-25 -- Phase 41-01 completed (Dead Code Removal + Factory Fixes)
+last_updated: "2026-04-25T21:01:00.000Z"
+last_activity: 2026-04-25 -- Phase 41-02 completed (Pattern Detection with Real GSC Data)
 progress:
   total_phases: 43
   completed_phases: 42
@@ -28,9 +28,9 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 Phase: 41 (Production Hardening) — IN PROGRESS
 Current Plan: 41-04 (CMS Polish & E2E)
-Plans: 2/4 complete (41-01, 41-03 done; 41-02, 41-04 ready)
+Plans: 3/4 complete (41-01, 41-02, 41-03 done; 41-04 ready)
 Status: v5.1 Production Hardening milestone in progress
-Last activity: 2026-04-25 -- 41-03 completed (autonomous pipeline wiring)
+Last activity: 2026-04-25 -- 41-02 completed (Pattern Detection with Real GSC Data)
 
 ### Phase 41 Focus
 Based on 10-agent architecture audit (SYSTEM-ARCHITECTURE-AUDIT.md):
@@ -91,6 +91,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **41-02:** Traffic status thresholds: dropped <= -20%, growing >= 10%, stable in between; ranking positive change = improvement (lower position is better)
 - **41-03:** Use auto_publish as proxy for auto_optimize; CTR opportunity threshold 50% of expected; 3 AM UTC daily cycle with 5s rate limit between clients
 - **41-01:** Agent framework fallback replaced with RuntimeError; startup validation rejects DISABLE_AUTH/SKIP_AUTH/DEBUG_MODE in production
 - **35-01:** Link position classification via tag name + class patterns; DoS limits 1000/page, 50000/audit
