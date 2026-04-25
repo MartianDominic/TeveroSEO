@@ -25,6 +25,8 @@ interface PageProps {
 export default async function SeoLandingPage({ params }: PageProps) {
   const { clientId } = await params;
 
+  let fetchError: string | null = null;
+
   try {
     // Fetch default project for this client
     const query = new URLSearchParams({ client_id: clientId });
@@ -39,8 +41,13 @@ export default async function SeoLandingPage({ params }: PageProps) {
       redirect(auditPath as Parameters<typeof redirect>[0]);
     }
   } catch (error) {
-    // Log error but show fallback UI
-    console.error("[seo/page] Failed to fetch default project:", error);
+    // Log error with context for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[seo/page] Failed to fetch default project:", {
+      clientId,
+      error: errorMessage,
+    });
+    fetchError = errorMessage;
   }
 
   // Fallback: show setup prompt if no project found or API failed
@@ -54,14 +61,27 @@ export default async function SeoLandingPage({ params }: PageProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-muted-foreground">
-            No SEO project found for this client. SEO projects are created
-            automatically when you run your first site audit.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Contact support if you need help setting up SEO tools for this
-            client.
-          </p>
+          {fetchError ? (
+            <>
+              <p className="text-destructive">
+                Failed to load SEO project data. Please try again later.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Error: {fetchError}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                No SEO project found for this client. SEO projects are created
+                automatically when you run your first site audit.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Contact support if you need help setting up SEO tools for this
+                client.
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
