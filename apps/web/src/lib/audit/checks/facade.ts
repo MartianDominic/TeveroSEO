@@ -2,15 +2,18 @@
  * SEO Checks Facade
  *
  * Main entry point for running all 107 SEO checks.
- * Combines the check runner and scoring modules.
+ * Phase 40-04: Proxies to open-seo-main for actual check execution.
  */
 
-import type { CheckOptions, AllChecksResult } from "./types";
-import { runChecks } from "./runner";
-import { calculateOnPageScore } from "./scoring";
+import type { CheckOptions, AllChecksResult, CheckResult, ScoreResult } from "./types";
+
+const OPEN_SEO_URL = process.env.OPEN_SEO_URL ?? "http://localhost:3001";
 
 /**
  * Run all SEO checks against HTML content
+ *
+ * Proxies to open-seo-main which has the full 107 check implementation.
+ * Falls back to empty results on error to avoid blocking.
  *
  * @param html - The HTML content to analyze
  * @param url - The URL of the page
@@ -33,15 +36,45 @@ export async function runAllChecks(
   url: string,
   options: CheckOptions = {}
 ): Promise<AllChecksResult> {
-  // Run all checks (or filtered by tier)
-  const results = runChecks(html, url, options);
+  try {
+    const response = await fetch(`${OPEN_SEO_URL}/api/audit/run-checks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        html,
+        url,
+        keyword: options.keyword,
+        tiers: options.tiers ?? [1, 2, 3, 4],
+      }),
+    });
 
-  // Calculate overall score
-  const score = calculateOnPageScore(results);
+    if (!response.ok) {
+      console.error(`Check execution failed: ${response.status}`);
+      return getEmptyResult();
+    }
 
+    const data = await response.json();
+
+    return {
+      results: data.findings as CheckResult[],
+      score: data.score as ScoreResult,
+    };
+  } catch (error) {
+    console.error("Failed to run checks via open-seo-main:", error);
+    return getEmptyResult();
+  }
+}
+
+function getEmptyResult(): AllChecksResult {
   return {
-    results,
-    score,
+    results: [],
+    score: {
+      score: 0,
+      gates: [],
+      breakdown: { tier1: 0, tier2: 0, tier3: 0, tier4: 0 },
+    },
   };
 }
 

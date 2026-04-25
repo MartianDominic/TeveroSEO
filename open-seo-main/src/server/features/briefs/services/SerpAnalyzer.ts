@@ -11,6 +11,7 @@ import {
   setCachedSerp,
 } from "@/server/lib/cache/serp-cache";
 import type { SerpAnalysisData } from "@/db/brief-schema";
+import { analyzeSerpContent } from "./SerpContentAnalyzer";
 
 /**
  * Extract "People Also Ask" questions from SERP items.
@@ -97,7 +98,7 @@ export function calculateMetaLengths(items: SerpLiveItem[]): {
 
 /**
  * Analyze SERP for a keyword with caching.
- * Extracts competitor patterns: PAA questions, meta lengths.
+ * Extracts competitor patterns: PAA questions, meta lengths, H2s, word counts.
  *
  * @param mappingId - Keyword mapping ID for cache key
  * @param keyword - Target keyword
@@ -116,23 +117,24 @@ export async function analyzeSerpForKeyword(
     return cached;
   }
 
-  // Fetch from DataForSEO
+  // Fetch SERP data from DataForSEO
   const response = await fetchLiveSerpItemsRaw(keyword, locationCode, "en");
+  const items = response.data;
 
-  const task = response.tasks[0];
-  if (!task || task.status_code !== 20000) {
-    throw new Error(
-      `DataForSEO SERP task failed: ${task?.status_message || "Unknown error"}`
-    );
-  }
+  // Get organic URLs for content analysis
+  const organicUrls = items
+    .filter((item) => item.type === "organic" && item.url)
+    .slice(0, 5)
+    .map((item) => item.url as string);
 
-  const items = task.result?.[0]?.items ?? [];
+  // Analyze competitor content (H2s and word counts)
+  const contentAnalysis = await analyzeSerpContent(organicUrls);
 
   // Extract patterns
   const analysis: SerpAnalysisData = {
-    commonH2s: extractCommonH2s(items),
+    commonH2s: contentAnalysis.commonH2s,
     paaQuestions: extractPAAQuestions(items),
-    competitorWordCounts: [], // TODO: Implement via OnPage API
+    competitorWordCounts: contentAnalysis.wordCounts,
     metaLengths: calculateMetaLengths(items),
     analyzedAt: new Date().toISOString(),
     location: getLocationName(locationCode),
