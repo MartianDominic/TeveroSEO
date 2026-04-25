@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Autonomous SEO Pipeline
-status: complete
-last_updated: "2026-04-25T16:45:00.000Z"
-last_activity: 2026-04-25 -- Phase 40 Gap Closure complete
+milestone: v5.1
+milestone_name: Production Hardening
+status: in_progress
+last_updated: "2026-04-25T22:30:00.000Z"
+last_activity: 2026-04-25 -- Phase 41 Production Hardening created
 progress:
-  total_phases: 42
+  total_phases: 43
   completed_phases: 42
-  total_plans: 152
+  total_plans: 156
   completed_plans: 152
-  percent: 100
+  percent: 97
 ---
 
 # Project State
@@ -26,10 +26,18 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 40 (Gap Closure) — COMPLETE
-Plans: All 4 plans (40-01, 40-02, 40-03, 40-04) executed
-Status: v5.0 Autonomous SEO Pipeline milestone complete
-Last activity: 2026-04-25 -- Phase 40 Gap Closure complete
+Phase: 41 (Production Hardening) — IN PROGRESS
+Plans: 4 plans (41-01, 41-02, 41-03, 41-04) ready
+Status: v5.1 Production Hardening milestone started
+Last activity: 2026-04-25 -- Phase 41 created from architecture audit
+
+### Phase 41 Focus
+Based on 10-agent architecture audit (SYSTEM-ARCHITECTURE-AUDIT.md):
+- Remove dead code (research_utilities.py, legacy SERP files)
+- Fix factory patterns (InMemoryFindingsRepository)
+- Wire pattern detection to real GSC data
+- Complete autonomous pipeline wiring
+- Polish CMS integrations (Wix categories, connection test)
 
 ### v4.0 Completion Summary (2026-04-22)
 
@@ -133,6 +141,12 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 | 38 | Autonomous Orchestration | ✓ Complete |
 | 39 | AI-Writer Integration | ✓ Complete |
 | 40 | Gap Closure | ✓ Complete |
+
+## v5.1 Phases Summary
+
+| Phase | Title | Status |
+|-------|-------|--------|
+| 41 | Production Hardening | ○ In Progress |
 
 ### Phase 40 Gap Closure Summary (2026-04-25)
 
