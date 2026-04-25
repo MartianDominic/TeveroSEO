@@ -3,12 +3,14 @@
 /**
  * Server action for cross-client pattern detection.
  * Phase 25: Team & Intelligence
+ * Phase 41-02: Updated to use real GSC data endpoints
  *
  * Runs pattern detection on workspace data and caches results.
  * Patterns update slowly (hourly) so we cache aggressively.
  */
 
-import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
+import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
+import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
 import type { PatternWithClients, PatternStatus } from "@/types/patterns";
 import {
   detectAllPatterns,
@@ -24,69 +26,66 @@ const patternCacheKey = (workspaceId: string) =>
   `patterns:detected:${workspaceId}`;
 
 /**
- * Mock data generator for demonstration.
- * In production, this would fetch from the backend API.
+ * Response from workspace traffic-data endpoint.
  */
-function generateMockTrafficData(clientCount: number): ClientTrafficData[] {
-  const clients: ClientTrafficData[] = [];
-  const baseClicks = [500, 600, 550, 580]; // 4 weeks of data
-
-  for (let i = 0; i < clientCount; i++) {
-    const clientId = `client_${i + 1}`;
-    const variance = Math.random() * 0.4 - 0.2; // -20% to +20%
-
-    // Some clients get hit by a "drop"
-    const hasDropped = i < Math.floor(clientCount * 0.35);
-    const dropFactor = hasDropped ? 0.65 + Math.random() * 0.1 : 1;
-
-    const weeklyClicks = baseClicks.map((base) =>
-      Math.round(base * (1 + variance) * (1 + Math.random() * 0.1))
-    );
-
-    const currentWeek = Math.round(weeklyClicks[3] * dropFactor);
-    const previousWeek = weeklyClicks[2];
-    const changePercent =
-      previousWeek > 0
-        ? ((currentWeek - previousWeek) / previousWeek) * 100
-        : 0;
-
-    clients.push({
-      clientId,
-      clientName: `Client ${i + 1}`,
-      weeklyClicks: [...weeklyClicks.slice(0, 3), currentWeek],
-      currentWeekTotal: currentWeek,
-      previousWeekTotal: previousWeek,
-      changePercent,
-    });
-  }
-
-  return clients;
+interface TrafficDataResponse {
+  clientId: string;
+  clientName: string;
+  weeklyClicks: number[];
+  currentWeekTotal: number;
+  previousWeekTotal: number;
+  changePercent: number;
+  status: "dropped" | "growing" | "stable";
 }
 
 /**
- * Mock ranking data generator.
+ * Response from workspace ranking-data endpoint.
  */
-function generateMockRankingData(clientCount: number): ClientRankingData[] {
+interface RankingDataResponse {
+  clientId: string;
+  clientName: string;
+  topKeywords: Array<{
+    keyword: string;
+    currentPosition: number | null;
+    previousPosition: number | null;
+    change: number;
+  }>;
+  improvedCount: number;
+  droppedCount: number;
+}
+
+/**
+ * Transform API response to ClientTrafficData format.
+ */
+function transformTrafficData(data: TrafficDataResponse[]): ClientTrafficData[] {
+  return data.map((item) => ({
+    clientId: item.clientId,
+    clientName: item.clientName,
+    weeklyClicks: item.weeklyClicks,
+    currentWeekTotal: item.currentWeekTotal,
+    previousWeekTotal: item.previousWeekTotal,
+    changePercent: item.changePercent,
+  }));
+}
+
+/**
+ * Transform API response to ClientRankingData format.
+ */
+function transformRankingData(data: RankingDataResponse[]): ClientRankingData[] {
   const rankings: ClientRankingData[] = [];
-  const keywords = ["seo services", "digital marketing", "web design"];
 
-  for (let i = 0; i < clientCount; i++) {
-    for (const keyword of keywords) {
-      const prevPos = Math.floor(Math.random() * 20) + 1;
-      // Some clients get hit by same keyword shift
-      const hasShift = i < Math.floor(clientCount * 0.4) && keyword === "seo services";
-      const posChange = hasShift
-        ? Math.floor(Math.random() * 10) - 15 // Drop 5-15 positions
-        : Math.floor(Math.random() * 6) - 3; // -3 to +3
-
-      rankings.push({
-        clientId: `client_${i + 1}`,
-        clientName: `Client ${i + 1}`,
-        keyword,
-        currentPosition: Math.max(1, prevPos - posChange),
-        previousPosition: prevPos,
-        positionChange: posChange,
-      });
+  for (const client of data) {
+    for (const kw of client.topKeywords) {
+      if (kw.currentPosition !== null && kw.previousPosition !== null) {
+        rankings.push({
+          clientId: client.clientId,
+          clientName: client.clientName,
+          keyword: kw.keyword,
+          currentPosition: kw.currentPosition,
+          previousPosition: kw.previousPosition,
+          positionChange: kw.change,
+        });
+      }
     }
   }
 
@@ -112,18 +111,19 @@ export async function detectPatterns(
   }
 
   try {
-    // TODO: Replace with actual API call to fetch client data
-    // const trafficData = await getOpenSeo<ClientTrafficData[]>(
-    //   `/api/workspaces/${workspaceId}/traffic-data`
-    // );
-    // const rankingData = await getOpenSeo<ClientRankingData[]>(
-    //   `/api/workspaces/${workspaceId}/ranking-data`
-    // );
+    // Fetch real data from open-seo endpoints
+    const [trafficResponse, rankingResponse] = await Promise.all([
+      getOpenSeo<TrafficDataResponse[]>(
+        `/api/workspaces/${workspaceId}/traffic-data`
+      ),
+      getOpenSeo<RankingDataResponse[]>(
+        `/api/workspaces/${workspaceId}/ranking-data`
+      ),
+    ]);
 
-    // Using mock data for now
-    const clientCount = 10;
-    const trafficData = generateMockTrafficData(clientCount);
-    const rankingData = generateMockRankingData(clientCount);
+    // Transform API responses to detection algorithm formats
+    const trafficData = transformTrafficData(trafficResponse);
+    const rankingData = transformRankingData(rankingResponse);
 
     // Run detection algorithms
     const patterns = detectAllPatterns(trafficData, rankingData, workspaceId);
