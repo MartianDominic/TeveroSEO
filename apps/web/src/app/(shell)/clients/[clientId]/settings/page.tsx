@@ -41,6 +41,7 @@ import {
   fetchVoiceTemplates,
   type VoiceTemplate,
 } from "@/lib/clientSettings";
+import { testCmsConnection, type CmsPlatform } from "@/actions/cms/test-connection";
 
 import { useClientStore } from "@/stores/clientStore";
 import { ClientGoalsManager } from "@/components/goals";
@@ -138,6 +139,9 @@ export default function ClientSettingsPage() {
     message: "",
     severity: "success",
   });
+
+  // CMS connection test state
+  const [isTesting, setIsTesting] = useState(false);
 
   const showToast = useCallback(
     (message: string, severity: "success" | "error" = "success") => {
@@ -493,8 +497,55 @@ export default function ClientSettingsPage() {
 
   // ── Test CMS connection ──────────────────────────────────────────────────
   const handleTestConnection = useCallback(async () => {
-    showToast("CMS connection test not yet implemented", "error");
-  }, [showToast]);
+    if (!clientId) return;
+
+    // Determine which platform to test based on available credentials
+    let platform: CmsPlatform | null = null;
+    let credentials: Record<string, string> = {};
+
+    if (wpUrl && wpUsername) {
+      platform = "wordpress";
+      credentials = {
+        wp_url: wpUrl,
+        wp_username: wpUsername,
+        wp_app_password: wpPassword || "", // Use current input or empty
+      };
+    } else if (shopifyUrl) {
+      platform = "shopify";
+      credentials = {
+        shopify_store_url: shopifyUrl,
+        shopify_api_key: shopifyKey || "",
+      };
+    } else if (webhookUrlDraft) {
+      platform = "webhook";
+      credentials = {
+        webhook_url: webhookUrlDraft,
+      };
+    }
+
+    if (!platform) {
+      showToast("Please configure at least one CMS platform first", "error");
+      return;
+    }
+
+    setIsTesting(true);
+    try {
+      const result = await testCmsConnection(clientId, { platform, credentials });
+
+      if (result.success) {
+        showToast(result.message || "Connection successful!", "success");
+      } else {
+        showToast(result.error || "Connection failed", "error");
+      }
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Connection test failed",
+        "error"
+      );
+    } finally {
+      setIsTesting(false);
+    }
+  }, [clientId, wpUrl, wpUsername, wpPassword, shopifyUrl, shopifyKey, webhookUrlDraft, showToast]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -1030,10 +1081,16 @@ export default function ClientSettingsPage() {
               <Button
                 variant="outline"
                 onClick={handleTestConnection}
-                disabled
-                title="Not yet implemented"
+                disabled={isTesting}
               >
-                Test Connection
+                {isTesting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  "Test Connection"
+                )}
               </Button>
             </div>
           </div>
