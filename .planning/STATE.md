@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Production Hardening
 status: in_progress
-last_updated: "2026-04-25T22:30:00.000Z"
-last_activity: 2026-04-25 -- Phase 41 Production Hardening created
+last_updated: "2026-04-25T20:48:00.000Z"
+last_activity: 2026-04-25 -- Phase 41-01 completed (Dead Code Removal + Factory Fixes)
 progress:
   total_phases: 43
   completed_phases: 42
   total_plans: 156
-  completed_plans: 152
-  percent: 97
+  completed_plans: 153
+  percent: 98
 ---
 
 # Project State
@@ -27,9 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 41 (Production Hardening) — IN PROGRESS
-Plans: 4 plans (41-01, 41-02, 41-03, 41-04) ready
-Status: v5.1 Production Hardening milestone started
-Last activity: 2026-04-25 -- Phase 41 created from architecture audit
+Current Plan: 41-02 (Pattern Detection & GSC Wiring)
+Plans: 1/4 complete (41-01 done, 41-02 through 41-04 ready)
+Status: v5.1 Production Hardening milestone in progress
+Last activity: 2026-04-25 -- 41-01 completed (dead code removal, factory fixes, startup validation)
 
 ### Phase 41 Focus
 Based on 10-agent architecture audit (SYSTEM-ARCHITECTURE-AUDIT.md):
@@ -90,6 +91,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **41-01:** Agent framework fallback replaced with RuntimeError; startup validation rejects DISABLE_AUTH/SKIP_AUTH/DEBUG_MODE in production
 - **35-01:** Link position classification via tag name + class patterns; DoS limits 1000/page, 50000/audit
 - **34-02:** Decision tree: position <= 20 -> optimize, relevance >= 60 -> optimize, else create
 - **34-02:** Lazy-load repository to enable pure function testing without DB connection
