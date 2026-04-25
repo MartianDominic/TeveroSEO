@@ -175,25 +175,32 @@ export async function getPatterns(
 
 /**
  * Dismiss a pattern (mark as dismissed).
- * In production, this would update the database.
+ * Persists status change to database via API.
  */
 export async function dismissPattern(patternId: string): Promise<void> {
-  // TODO: Implement with database update
-  // await patchOpenSeo(`/api/patterns/${patternId}`, { status: "dismissed" });
-  console.log(`[dismiss-pattern] Dismissed pattern: ${patternId}`);
+  if (!patternId) {
+    throw new Error("patternId is required");
+  }
+
+  await patchOpenSeo(`/api/patterns/${patternId}`, {
+    status: "dismissed",
+    dismissedAt: new Date().toISOString(),
+  });
 }
 
 /**
  * Resolve a pattern (mark as resolved).
- * In production, this would update the database.
+ * Persists status change to database via API.
  */
 export async function resolvePattern(patternId: string): Promise<void> {
-  // TODO: Implement with database update
-  // await patchOpenSeo(`/api/patterns/${patternId}`, {
-  //   status: "resolved",
-  //   resolvedAt: new Date().toISOString(),
-  // });
-  console.log(`[resolve-pattern] Resolved pattern: ${patternId}`);
+  if (!patternId) {
+    throw new Error("patternId is required");
+  }
+
+  await patchOpenSeo(`/api/patterns/${patternId}`, {
+    status: "resolved",
+    resolvedAt: new Date().toISOString(),
+  });
 }
 
 /**
