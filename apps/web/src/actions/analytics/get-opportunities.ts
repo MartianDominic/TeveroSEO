@@ -10,6 +10,7 @@ import {
   findOpportunities,
   prioritizeOpportunities,
 } from "@/lib/analytics/opportunities";
+import { getOpenSeo } from "@/lib/server-fetch";
 import type { Opportunity, OpportunityFilter } from "@/types/opportunities";
 
 /**
@@ -71,13 +72,49 @@ export async function getTopOpportunities(
     throw new Error("Unauthorized");
   }
 
-  // For workspace-level aggregation, we would need to:
-  // 1. Fetch all clients in the workspace
-  // 2. Get opportunities for each client
-  // 3. Merge and re-prioritize
-  // This is left as a placeholder for when workspace-level queries are added
-  // For now, return empty array - clients should use getClientOpportunities
-  return [];
+  try {
+    // Get all clients in workspace
+    const clients = await getOpenSeo<{ id: string; name: string }[]>(
+      `/api/workspaces/${workspaceId}/clients`
+    );
+
+    if (!clients || clients.length === 0) {
+      return [];
+    }
+
+    // Aggregate opportunities from all clients
+    const allOpportunities: Opportunity[] = [];
+
+    await Promise.all(
+      clients.map(async (client) => {
+        try {
+          // Fetch up to 20 opportunities per client to get good coverage
+          const clientOpportunities = await findOpportunities(client.id);
+          allOpportunities.push(
+            ...clientOpportunities.slice(0, 20).map((opp) => ({
+              ...opp,
+              clientId: client.id,
+              clientName: client.name,
+            }))
+          );
+        } catch (error) {
+          // Log but don't fail the whole request if one client fails
+          console.warn(
+            `Failed to fetch opportunities for client ${client.id}:`,
+            error
+          );
+        }
+      })
+    );
+
+    // Sort by potential impact (potentialClicks) and return top N
+    return allOpportunities
+      .sort((a, b) => (b.potentialClicks ?? 0) - (a.potentialClicks ?? 0))
+      .slice(0, limit);
+  } catch (error) {
+    console.error("Failed to fetch workspace opportunities:", error);
+    return [];
+  }
 }
 
 /**
