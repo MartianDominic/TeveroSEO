@@ -97,6 +97,9 @@ importers:
       react-dom:
         specifier: 19.1.6
         version: 19.1.6(react@19.1.6)
+      react-dropzone:
+        specifier: ^15.0.0
+        version: 15.0.0(react@19.1.6)
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@19.1.6)(react-dom@19.1.6(react@19.1.6))(react-is@17.0.2)(react@19.1.6)(redux@5.0.1)
@@ -3859,6 +3862,10 @@ packages:
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
 
+  attr-accept@2.2.5:
+    resolution: {integrity: sha512-0bDNnY/u6pPwHDMoF0FieU354oBi0a8rD9FcsLwzcGWbc8KS8KPIi7y+s13OlVY+gMWc/9xEMUgNE6Qm8ZllYQ==}
+    engines: {node: '>=4'}
+
   autumn-js@1.2.11:
     resolution: {integrity: sha512-cMA4QDsD4q80m+3XerGFWvD9pAb2Lu5VZ+nEeAbPGMyEosUaC0oGh4D5QGfsd3H2NdDc2SCdzGDYjYeJE0h3cg==}
     peerDependencies:
@@ -4975,6 +4982,10 @@ packages:
   file-entry-cache@8.0.0:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
     engines: {node: '>=16.0.0'}
+
+  file-selector@2.1.2:
+    resolution: {integrity: sha512-QgXo+mXTe8ljeqUFaX3QVHc5osSItJ/Km+xpocx0aSqWGMSCf6qYs/VnzZgS864Pjn5iceMRFigeAV7AfTlaig==}
+    engines: {node: '>= 12'}
 
   file-uri-to-path@1.0.0:
     resolution: {integrity: sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==}
@@ -6401,6 +6412,12 @@ packages:
     resolution: {integrity: sha512-oBnyV4xf0DWU7/iIFFjwS8CD/AL9MaXywTDpdKjq03d8JSNmvRbTUrHHm2nRpuOhXRMvzFSlWnGKJjyxwg903Q==}
     peerDependencies:
       react: ^19.1.6
+
+  react-dropzone@15.0.0:
+    resolution: {integrity: sha512-lGjYV/EoqEjEWPnmiSvH4v5IoIAwQM2W4Z1C0Q/Pw2xD0eVzKPS359BQTUMum+1fa0kH2nrKjuavmTPOGhpLPg==}
+    engines: {node: '>= 10.13'}
+    peerDependencies:
+      react: '>= 16.8 || 18.0.0'
 
   react-error-boundary@3.1.4:
     resolution: {integrity: sha512-uM9uPzZJTF6wRQORmSrvOIgt4lJ9MC1sNgEOj2XGsDTRE4kmpWxg7ENK9EWNKJRMAOY9z0MuF4yIfl6gp4sotA==}
@@ -10729,6 +10746,8 @@ snapshots:
 
   async@3.2.6: {}
 
+  attr-accept@2.2.5: {}
+
   autumn-js@1.2.11(next@15.5.15(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(react@19.1.6):
     dependencies:
       query-string: 9.3.1
@@ -11931,6 +11950,10 @@ snapshots:
   file-entry-cache@8.0.0:
     dependencies:
       flat-cache: 4.0.1
+
+  file-selector@2.1.2:
+    dependencies:
+      tslib: 2.8.1
 
   file-uri-to-path@1.0.0: {}
 
@@ -13548,6 +13571,13 @@ snapshots:
     dependencies:
       react: 19.1.6
       scheduler: 0.26.0
+
+  react-dropzone@15.0.0(react@19.1.6):
+    dependencies:
+      attr-accept: 2.2.5
+      file-selector: 2.1.2
+      prop-types: 15.8.1
+      react: 19.1.6
 
   react-error-boundary@3.1.4(react@19.1.6):
     dependencies:
