@@ -1510,10 +1510,10 @@ priorityScore = (
   7. jina-v3 embeddings achieve >0.85 AUC-ROC on Lithuanian similarity
 **Estimated effort**: 20 hours
 **Plans**: 4 plans
-  - [ ] 42-01-PLAN.md — FalkorDB setup + product catalog graph schema (4h)
-  - [ ] 42-02-PLAN.md — LightRAG integration + entity extraction pipeline (6h)
-  - [ ] 42-03-PLAN.md — Hierarchical embeddings (jina-v3 @ 384-dim) + DiskANN (5h)
-  - [ ] 42-04-PLAN.md — Crawler (Crawlee + aiohttp) + delta sync (5h)
+  - [x] 42-01-PLAN.md — FalkorDB setup + product catalog graph schema (4h)
+  - [x] 42-02-PLAN.md — LightRAG integration + entity extraction pipeline (6h)
+  - [x] 42-03-PLAN.md — Hierarchical embeddings (jina-v3 @ 384-dim) + DiskANN (5h)
+  - [x] 42-04-PLAN.md — Crawler (Crawlee + aiohttp) + delta sync (5h)
 
 ---
 
