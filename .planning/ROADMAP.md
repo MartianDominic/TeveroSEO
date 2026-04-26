@@ -1573,11 +1573,12 @@ compositeScore = (
   7. Full flow works: prospect → keywords → mapping → komercinis
   8. Cost per prospect < $0.10 at 95% cache hit rate
 **Estimated effort**: 40 hours
-**Plans**: 4 plans
-  - [ ] 43-01-PLAN.md — Multi-source keyword input + schema (6h)
-  - [ ] 43-02-PLAN.md — CSV Export + Basic Prioritization (5h)
-  - [ ] 43-03-PLAN.md — Prioritization UI: keyword table, tiers, quick wins (8h)
-  - [ ] 43-04-PLAN.md — Page Mapping: graph-powered matching + cannibalization (12h)
-  - [ ] 43-05-PLAN.md — Proposal Scenarios + Generation (9h)
+**Plans**: 6 plans
+  - [ ] 43-01-PLAN.md — Foundation: Entry Point Architecture + Keyword Schema (Wave 1)
+  - [ ] 43-02-PLAN.md — Quick Check + Competitor Spy Modes (Wave 2)
+  - [ ] 43-03-PLAN.md — CSV Import + Metric Detection (Wave 2)
+  - [ ] 43-04-PLAN.md — Prioritization Engine + UI (Wave 3)
+  - [ ] 43-05-PLAN.md — Scraping Customization + AI Extraction (Wave 3)
+  - [ ] 43-06-PLAN.md — Proposal Generation + Copywriting AI (Wave 4)
 
 ---
