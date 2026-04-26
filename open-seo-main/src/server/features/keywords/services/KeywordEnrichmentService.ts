@@ -1,0 +1,223 @@
+/**
+ * KeywordEnrichmentService
+ *
+ * Batched DataForSEO enrichment with 7-day Redis cache.
+ * Handles keyword metrics enrichment from DataForSEO API with:
+ * - Batch processing (up to 1000 keywords per API call)
+ * - 7-day Redis caching to reduce API costs
+ * - Skip logic for CSV imports that already have metrics
+ * - Cost tracking per batch
+ */
+
+import { db } from "@/db";
+import {
+  prospectKeywords,
+  type ProspectKeywordSelect,
+} from "@/db/prospect-keyword-schema";
+import { redis } from "@/server/lib/redis";
+import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
+import { eq, inArray } from "drizzle-orm";
+
+// Constants - exported for testing
+export const CACHE_PREFIX = "kw-metrics:";
+export const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+export const BATCH_SIZE = 1000;
+export const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
+
+export interface EnrichmentResult {
+  enriched: number;
+  cached: number;
+  skipped: number;
+  failed: number;
+  totalCostCents: number;
+}
+
+interface CachedMetrics {
+  searchVolume: number;
+  keywordDifficulty: number;
+  cpc: number;
+  competition: number;
+}
+
+export class KeywordEnrichmentService {
+  private locationCode: number;
+  private languageCode: string;
+  private BATCH_SIZE = BATCH_SIZE;
+
+  constructor(locationCode: number = 2440, languageCode: string = "lt") {
+    this.locationCode = locationCode;
+    this.languageCode = languageCode;
+  }
+
+  /**
+   * Enrich keywords that need metrics.
+   * - Checks Redis cache first (7-day TTL)
+   * - Skips keywords with existing metrics from source
+   * - Batches API calls (max 1000 per call)
+   */
+  async enrichBatch(keywordIds: string[]): Promise<EnrichmentResult> {
+    const result: EnrichmentResult = {
+      enriched: 0,
+      cached: 0,
+      skipped: 0,
+      failed: 0,
+      totalCostCents: 0,
+    };
+
+    if (keywordIds.length === 0) {
+      return result;
+    }
+
+    // Fetch keywords from DB
+    const keywords = await db
+      .select()
+      .from(prospectKeywords)
+      .where(inArray(prospectKeywords.id, keywordIds));
+
+    // Separate by enrichment need
+    const needsEnrichment: ProspectKeywordSelect[] = [];
+    const fromCache: Array<ProspectKeywordSelect & CachedMetrics> = [];
+    const skip: ProspectKeywordSelect[] = [];
+
+    for (const kw of keywords) {
+      // Skip if metrics already present from source (CSV with metrics)
+      if (kw.searchVolume !== null && kw.source === "csv_upload") {
+        skip.push(kw);
+        continue;
+      }
+
+      // Check cache
+      const cached = await this.getCached(kw.normalizedKeyword);
+      if (cached) {
+        fromCache.push({ ...kw, ...cached });
+        continue;
+      }
+
+      needsEnrichment.push(kw);
+    }
+
+    // Update skipped
+    result.skipped = skip.length;
+    if (skip.length > 0) {
+      await db
+        .update(prospectKeywords)
+        .set({ enrichmentStatus: "skipped" })
+        .where(
+          inArray(
+            prospectKeywords.id,
+            skip.map((k) => k.id)
+          )
+        );
+    }
+
+    // Update cached
+    result.cached = fromCache.length;
+    for (const kw of fromCache) {
+      await db
+        .update(prospectKeywords)
+        .set({
+          searchVolume: kw.searchVolume,
+          keywordDifficulty: kw.keywordDifficulty,
+          cpc: kw.cpc,
+          competition: kw.competition,
+          enrichmentStatus: "cached",
+          enrichedAt: new Date(),
+        })
+        .where(eq(prospectKeywords.id, kw.id));
+    }
+
+    // Batch API calls
+    const batches = this.chunkArray(needsEnrichment, this.BATCH_SIZE);
+    for (const batch of batches) {
+      try {
+        const keywordStrings = batch.map((k) => k.normalizedKeyword);
+        const metrics = await fetchKeywordMetrics(
+          keywordStrings,
+          this.locationCode,
+          this.languageCode
+        );
+
+        // Map metrics to keywords
+        const metricsMap = new Map(
+          metrics.map((m) => [m.keyword.toLowerCase(), m])
+        );
+
+        for (const kw of batch) {
+          const metric = metricsMap.get(kw.normalizedKeyword);
+          if (metric) {
+            // Update DB
+            await db
+              .update(prospectKeywords)
+              .set({
+                searchVolume: metric.searchVolume,
+                keywordDifficulty: metric.competition * 100, // Convert to 0-100 scale
+                cpc: metric.cpc,
+                competition: metric.competition,
+                enrichmentStatus: "enriched",
+                enrichmentCostCents: COST_PER_KEYWORD_CENTS,
+                enrichedAt: new Date(),
+              })
+              .where(eq(prospectKeywords.id, kw.id));
+
+            // Cache the result
+            await this.setCache(kw.normalizedKeyword, {
+              searchVolume: metric.searchVolume,
+              keywordDifficulty: metric.competition * 100,
+              cpc: metric.cpc,
+              competition: metric.competition,
+            });
+
+            result.enriched++;
+          } else {
+            // Mark as failed (keyword not found in API response)
+            await db
+              .update(prospectKeywords)
+              .set({ enrichmentStatus: "failed" })
+              .where(eq(prospectKeywords.id, kw.id));
+            result.failed++;
+          }
+        }
+
+        result.totalCostCents += batch.length * COST_PER_KEYWORD_CENTS;
+      } catch {
+        // Mark entire batch as failed on error
+        await db
+          .update(prospectKeywords)
+          .set({ enrichmentStatus: "failed" })
+          .where(
+            inArray(
+              prospectKeywords.id,
+              batch.map((k) => k.id)
+            )
+          );
+        result.failed += batch.length;
+      }
+    }
+
+    return result;
+  }
+
+  private async getCached(keyword: string): Promise<CachedMetrics | null> {
+    const key = `${CACHE_PREFIX}${keyword}`;
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    return null;
+  }
+
+  private async setCache(keyword: string, metrics: CachedMetrics): Promise<void> {
+    const key = `${CACHE_PREFIX}${keyword}`;
+    await redis.setex(key, CACHE_TTL_SECONDS, JSON.stringify(metrics));
+  }
+
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  }
+}
+
+export const keywordEnrichmentService = new KeywordEnrichmentService();
