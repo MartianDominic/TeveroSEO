@@ -127,6 +127,11 @@ export class FalkorDBClient {
     await graph.query("CREATE INDEX FOR (p:Product) ON (p.sku)");
     await graph.query("CREATE INDEX FOR (c:Category) ON (c.slug)");
     await graph.query("CREATE INDEX FOR (b:Brand) ON (b.name)");
+
+    // Create vector index for embeddings (384-dim cosine per ADR-002)
+    await graph.query(
+      "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:384, similarityFunction:'cosine'}"
+    );
   }
 
   /**
@@ -179,6 +184,33 @@ export class FalkorDBClient {
   ): Promise<{ data: T[] }> {
     const graph = this.getTenantGraph(tenantId);
     return await graph.query(cypher, { params });
+  }
+
+  /**
+   * Check if a vector index exists for a node label and property.
+   *
+   * @param tenantId - Tenant identifier
+   * @param nodeLabel - Node label (e.g., "Product")
+   * @param property - Property name (e.g., "embedding")
+   * @returns True if the vector index exists
+   */
+  async hasVectorIndex(
+    tenantId: string,
+    nodeLabel: string,
+    property: string
+  ): Promise<boolean> {
+    const graph = this.getTenantGraph(tenantId);
+
+    // Query FalkorDB for vector index info
+    const result = await graph.query(
+      `CALL db.idx.vector.info()
+       YIELD label, property
+       WHERE label = $nodeLabel AND property = $property
+       RETURN count(*) > 0 AS exists`,
+      { params: { nodeLabel, property } }
+    );
+
+    return result.data?.[0]?.[0] ?? false;
   }
 }
 

@@ -153,6 +153,26 @@ describe("Product Catalog Schema", () => {
       expect(CATALOG_QUERIES.getChangedProducts).toContain("seoContentHash");
       expect(CATALOG_QUERIES.getChangedProducts).toContain("inventoryHash");
     });
+
+    it("hybridSimilarProducts uses vector search with category filter", () => {
+      expect(CATALOG_QUERIES.hybridSimilarProducts).toContain(
+        "db.idx.vector.queryNodes"
+      );
+      expect(CATALOG_QUERIES.hybridSimilarProducts).toContain("vecf32($queryVector)");
+      expect(CATALOG_QUERIES.hybridSimilarProducts).toContain(":IN_CATEGORY");
+      expect(CATALOG_QUERIES.hybridSimilarProducts).toContain("$categorySlug");
+      expect(CATALOG_QUERIES.hybridSimilarProducts).toContain("score");
+    });
+
+    it("semanticCategoryMatch aggregates vector matches by category", () => {
+      expect(CATALOG_QUERIES.semanticCategoryMatch).toContain(
+        "db.idx.vector.queryNodes"
+      );
+      expect(CATALOG_QUERIES.semanticCategoryMatch).toContain("vecf32($queryVector)");
+      expect(CATALOG_QUERIES.semanticCategoryMatch).toContain("AVG(score)");
+      expect(CATALOG_QUERIES.semanticCategoryMatch).toContain("$minMatches");
+      expect(CATALOG_QUERIES.semanticCategoryMatch).toContain("$topCategories");
+    });
   });
 
   describe("createProductCatalogSchema", () => {

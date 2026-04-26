@@ -185,6 +185,44 @@ describe("FalkorDBClient", () => {
         );
       });
     });
+
+    describe("createTenantGraph vector index", () => {
+      it("creates 384-dim cosine vector index for embeddings", async () => {
+        await client.createTenantGraph("tenant-123");
+
+        expect(mockGraph.query).toHaveBeenCalledWith(
+          "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:384, similarityFunction:'cosine'}"
+        );
+      });
+    });
+
+    describe("hasVectorIndex", () => {
+      it("returns true when vector index exists", async () => {
+        mockGraph.query.mockResolvedValueOnce({
+          data: [[true]],
+        });
+
+        const exists = await client.hasVectorIndex("tenant-123", "Product", "embedding");
+
+        expect(exists).toBe(true);
+        expect(mockGraph.query).toHaveBeenCalledWith(
+          expect.stringContaining("db.idx.vector.info"),
+          expect.objectContaining({
+            params: { nodeLabel: "Product", property: "embedding" },
+          })
+        );
+      });
+
+      it("returns false when vector index does not exist", async () => {
+        mockGraph.query.mockResolvedValueOnce({
+          data: [[false]],
+        });
+
+        const exists = await client.hasVectorIndex("tenant-123", "Product", "embedding");
+
+        expect(exists).toBe(false);
+      });
+    });
   });
 });
 

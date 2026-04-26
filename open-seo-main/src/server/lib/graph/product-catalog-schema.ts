@@ -234,6 +234,38 @@ export const CATALOG_QUERIES = {
     SET c.productCount = cnt
     RETURN c
   `,
+
+  /**
+   * Hybrid graph + vector search: find similar products in category.
+   *
+   * Uses vector similarity to find products similar to query embedding,
+   * then filters by category using graph traversal.
+   */
+  hybridSimilarProducts: `
+    CALL db.idx.vector.queryNodes('Product', 'embedding', $k, vecf32($queryVector))
+      YIELD node AS p, score
+    MATCH (p)-[:IN_CATEGORY]->(c:Category {slug: $categorySlug})
+    RETURN p.sku, p.name, score
+    ORDER BY score DESC
+    LIMIT $limit
+  `,
+
+  /**
+   * Semantic category routing: find best category for keyword embedding.
+   *
+   * Uses vector similarity to find products matching the query,
+   * then aggregates by category to find the best semantic match.
+   */
+  semanticCategoryMatch: `
+    CALL db.idx.vector.queryNodes('Product', 'embedding', $k, vecf32($queryVector))
+      YIELD node AS p, score
+    MATCH (p)-[:IN_CATEGORY]->(c:Category)
+    WITH c, AVG(score) AS avgScore, COUNT(*) AS matchCount
+    WHERE matchCount >= $minMatches
+    RETURN c.slug, c.name, avgScore, matchCount
+    ORDER BY avgScore DESC
+    LIMIT $topCategories
+  `,
 };
 
 /**
