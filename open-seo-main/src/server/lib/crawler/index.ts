@@ -6,4 +6,5 @@
  */
 
 export * from "./sitemap-parser";
-// Note: delta-sync and hybrid-crawler will be added as Task 2 and 3 complete
+export * from "./delta-sync";
+export * from "./hybrid-crawler";
