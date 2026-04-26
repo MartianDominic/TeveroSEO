@@ -157,13 +157,11 @@ export class FalkorDBClient {
   async getGraphMemoryUsage(tenantId: string): Promise<number> {
     const graph = this.getTenantGraph(tenantId);
 
-    // FalkorDB provides memory info via CALL db.info()
-    // or we can query directly
-    const result = await graph.query("CALL db.info() YIELD memory RETURN memory");
-
-    // Extract bytes from result
-    const memory = result.data?.[0]?.[0] ?? 0;
-    return typeof memory === "number" ? memory : 0;
+    // Use FalkorDB's built-in memoryUsage method
+    // Returns array format, extract first numeric value as bytes
+    const memoryInfo = await graph.memoryUsage();
+    const bytes = memoryInfo.find((v): v is number => typeof v === "number");
+    return bytes ?? 0;
   }
 
   /**
@@ -180,10 +178,11 @@ export class FalkorDBClient {
   async query<T = unknown>(
     tenantId: string,
     cypher: string,
-    params: Record<string, unknown>
+    params: Record<string, string | number | boolean | null>
   ): Promise<{ data: T[] }> {
     const graph = this.getTenantGraph(tenantId);
-    return await graph.query(cypher, { params });
+    const result = await graph.query<T>(cypher, { params });
+    return { data: result.data ?? [] };
   }
 
   /**
@@ -202,7 +201,7 @@ export class FalkorDBClient {
     const graph = this.getTenantGraph(tenantId);
 
     // Query FalkorDB for vector index info
-    const result = await graph.query(
+    const result = await graph.query<{ exists: boolean }>(
       `CALL db.idx.vector.info()
        YIELD label, property
        WHERE label = $nodeLabel AND property = $property
@@ -210,7 +209,8 @@ export class FalkorDBClient {
       { params: { nodeLabel, property } }
     );
 
-    return result.data?.[0]?.[0] ?? false;
+    const firstRow = result.data?.[0];
+    return firstRow?.exists ?? false;
   }
 }
 
