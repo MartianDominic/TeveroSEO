@@ -1,0 +1,118 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@tevero/ui";
+import { Search, FileText, Zap, BarChart3, Eye } from "lucide-react";
+
+interface EntryOption {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  route: string;
+  cost: string;
+  workspace: boolean;
+}
+
+const ENTRY_OPTIONS: EntryOption[] = [
+  {
+    id: "quick-check",
+    title: "Quick Check",
+    description: "Check 1-20 keywords instantly",
+    icon: <Zap className="h-8 w-8" />,
+    route: "/prospects/keywords/quick-check",
+    cost: "~$0.005/kw",
+    workspace: false,
+  },
+  {
+    id: "csv-import",
+    title: "Import CSV",
+    description: "Upload from Ahrefs, SEMrush, or Moz",
+    icon: <FileText className="h-8 w-8" />,
+    route: "/prospects/[id]/keywords/import",
+    cost: "$0 if metrics present",
+    workspace: true,
+  },
+  {
+    id: "full-discovery",
+    title: "Full Discovery",
+    description: "Complete keyword research",
+    icon: <Search className="h-8 w-8" />,
+    route: "/prospects/[id]/analysis",
+    cost: "~$0.04",
+    workspace: true,
+  },
+  {
+    id: "gap-analysis",
+    title: "Gap Analysis",
+    description: "Find missing keywords vs competitors",
+    icon: <BarChart3 className="h-8 w-8" />,
+    route: "/prospects/[id]/gap-analysis",
+    cost: "~$0.04",
+    workspace: true,
+  },
+  {
+    id: "competitor-spy",
+    title: "Competitor Spy",
+    description: "See what competitors rank for",
+    icon: <Eye className="h-8 w-8" />,
+    route: "/prospects/keywords/competitor-spy",
+    cost: "~$0.02",
+    workspace: false,
+  },
+];
+
+interface EntrySelectorProps {
+  prospectId?: string;
+}
+
+export function EntrySelector({ prospectId }: EntrySelectorProps) {
+  const router = useRouter();
+
+  const handleSelect = (option: EntryOption) => {
+    if (option.workspace && !prospectId) {
+      // Redirect to create prospect first
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      router.push(`/prospects/new?next=${encodeURIComponent(option.route)}` as any);
+      return;
+    }
+
+    const route = option.route.replace("[id]", prospectId || "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    router.push(route as any);
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {ENTRY_OPTIONS.map((option) => (
+        <Card
+          key={option.id}
+          className="cursor-pointer hover:border-primary transition-colors"
+          onClick={() => handleSelect(option)}
+        >
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="p-2 rounded-lg bg-muted">{option.icon}</div>
+            <div>
+              <CardTitle className="text-lg">{option.title}</CardTitle>
+              <CardDescription>{option.description}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>
+                {option.workspace ? "Requires prospect" : "No workspace needed"}
+              </span>
+              <span>{option.cost}</span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
