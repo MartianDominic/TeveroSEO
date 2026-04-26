@@ -377,3 +377,11 @@ const results = await classifier.classifyBatch(keywords);
 | Business Priority | Layered temporal scope + Lithuanian variant expansion |
 
 All prompts are designed for Claude Sonnet 4.6 or GPT-4, optimized for Lithuanian language handling and e-commerce domain specificity.
+
+---
+
+## Related Documents
+
+| Document | Purpose |
+|----------|---------|
+| [PROPOSAL-XML-PROMPTS.md](PROPOSAL-XML-PROMPTS.md) | Proposal & Agreement generation (Schwartz/Halbert/Kennedy) |

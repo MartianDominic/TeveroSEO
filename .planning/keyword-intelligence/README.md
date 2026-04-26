@@ -1,7 +1,7 @@
 # Keyword Intelligence System
 
 > **Location:** `.planning/keyword-intelligence/`  
-> **Status:** Research Complete — **10 Gaps Identified + Solved** (see [IMPLEMENTATION-FIXES.md](IMPLEMENTATION-FIXES.md))  
+> **Status:** Research Complete — **Architectural Decisions Made** (see [ARCHITECTURE-DECISIONS.md](ARCHITECTURE-DECISIONS.md))  
 > **Last Updated:** 2026-04-26  
 > **Estimated Fix Time:** ~20 hours
 
@@ -37,8 +37,10 @@ This system analyzes keywords from DataForSEO and matches them to client's:
 | File | Purpose |
 |------|---------|
 | [README.md](README.md) | This index |
+| [ARCHITECTURE-DECISIONS.md](ARCHITECTURE-DECISIONS.md) | **ADR format: Graph storage, embeddings, task routing** |
+| [COST-MODEL.md](COST-MODEL.md) | **Detailed cost breakdown: onboarding, ongoing, cache flywheel** |
 | [GAPS-AND-CONTRADICTIONS.md](GAPS-AND-CONTRADICTIONS.md) | 10 issues identified from infra docs |
-| [IMPLEMENTATION-FIXES.md](IMPLEMENTATION-FIXES.md) | **Concrete solutions for all 10 gaps (~20h work)** |
+| [IMPLEMENTATION-FIXES.md](IMPLEMENTATION-FIXES.md) | Concrete solutions for all 10 gaps (~20h work) |
 | [ARCHITECTURE.md](KEYWORD-INTELLIGENCE-COMPLETE-ARCHITECTURE.md) | Full system design |
 | [AI-SYSTEM.md](AI-KEYWORD-INTELLIGENCE-SYSTEM.md) | Multi-pass AI pipeline |
 | [MODEL-SELECTION.md](WORLD-CLASS-AI-ARCHITECTURE.md) | Model costs and selection |
@@ -51,7 +53,8 @@ This system analyzes keywords from DataForSEO and matches them to client's:
 | [PRODUCT-MATCHING.md](PRODUCT-MATCHING.md) | Keyword-to-product assignment |
 | [GAP-DETECTION.md](GAP-DETECTION.md) | Category opportunity detection |
 | [USER-FOCUS.md](USER-FOCUS.md) | Business priority integration |
-| [XML-PROMPTS.md](XML-PROMPTS.md) | Production LLM prompts (4 templates) |
+| [XML-PROMPTS.md](XML-PROMPTS.md) | Production LLM prompts (4 keyword templates) |
+| [PROPOSAL-XML-PROMPTS.md](PROPOSAL-XML-PROMPTS.md) | Proposal & Agreement prompts (7 templates) |
 
 ### Infrastructure (Opus Deep-Dives)
 | File | Purpose |
@@ -85,22 +88,33 @@ Client Website → Crawlee + aiohttp → FalkorDB Graph (per-tenant)
 
 ### Cost Summary
 
-| Operation | Cost |
-|-----------|------|
-| Crawl 10k pages | $0.048 |
-| Keyword classification (per keyword) | $0.00008 (cached) |
-| LightRAG indexing (10k pages) | $9.20 |
-| Monthly (100 clients, shared cache) | <$50 |
+See [COST-MODEL.md](COST-MODEL.md) for detailed breakdown and cache flywheel analysis.
+
+| Cost Type | Operation | Cost |
+|-----------|-----------|------|
+| **One-Time** | Site crawl (500 products) | $0.024 |
+| **One-Time** | LightRAG indexing (500 products) | $4.60 |
+| **One-Time** | Cache warming (first in vertical) | $0.50 |
+| **Ongoing** | Keyword classification (95% cache hit) | $0.00008/kw |
+| **Ongoing** | 500 keywords analysis (mature cache) | $0.04/run |
+| **Ongoing** | Delta crawl (weekly) | $0.005 |
+| **Monthly** | 100 clients, shared cache | ~$350 |
+| **Monthly** | 1000 clients, cache flywheel | ~$850 |
 
 ### Key Decisions
 
-1. **Crawler:** Crawlee 1.6 + aiohttp hybrid (83 pages/sec)
-2. **Graph DB:** FalkorDB 4.14 (Redis module, HNSW vectors)
-3. **GraphRAG:** LightRAG v1.4.10 (100 tokens/query)
-4. **Embeddings:** multilingual-e5-base INT8 ONNX (80 docs/sec)
-5. **Vector DB:** PostgreSQL 17 + pgvector + DiskANN (100M vectors)
-6. **LLM:** Claude Sonnet 4.6 for classification (no Opus in production)
-7. **Morphology:** Stanza + domain-specific stemming for Lithuanian
+See [ARCHITECTURE-DECISIONS.md](ARCHITECTURE-DECISIONS.md) for full ADR documentation.
+
+| Decision | Choice | ADR Reference |
+|----------|--------|---------------|
+| Graph Storage | FalkorDB (product catalog) + NetworkX (LightRAG) | [ADR-001](ARCHITECTURE-DECISIONS.md#adr-001-graph-storage-strategy) |
+| Embeddings | jina-embeddings-v3 @ 384-dim (Matryoshka) | [ADR-002](ARCHITECTURE-DECISIONS.md#adr-002-embedding-model-selection) |
+| Task Routing | 60-70% to DataForSEO APIs, crawl only client sites | [ADR-003](ARCHITECTURE-DECISIONS.md#adr-003-task-routing-strategy) |
+| Crawler | Crawlee 1.6 + aiohttp hybrid (83 pages/sec) | Infrastructure doc |
+| GraphRAG | LightRAG v1.4.10 (100 tokens/query) | Infrastructure doc |
+| Vector DB | PostgreSQL 17 + pgvector + DiskANN (100M vectors) | Infrastructure doc |
+| LLM | Claude Sonnet 4.6 for classification | Infrastructure doc |
+| Morphology | Stanza + domain-specific stemming for Lithuanian | Fix 3 |
 
 ## Research Status
 
