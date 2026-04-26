@@ -31,3 +31,20 @@ export {
   type AddKeywordsInput,
   type AddKeywordsResult,
 } from "./KeywordInputService";
+
+// Quick Check (no-workspace keyword validation)
+export {
+  QuickCheckService,
+  quickCheckService,
+  type QuickCheckKeyword,
+  type QuickCheckResult,
+  type ShareableResult,
+} from "./QuickCheckService";
+
+// Competitor Spy (keyword extraction)
+export {
+  CompetitorSpyService,
+  competitorSpyService,
+  type CompetitorKeyword,
+  type CompetitorSpyResult,
+} from "./CompetitorSpyService";
