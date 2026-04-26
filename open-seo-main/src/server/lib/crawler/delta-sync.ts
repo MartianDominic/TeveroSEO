@@ -31,7 +31,7 @@ function getDb(): typeof import("@/db").db {
   return _db!;
 }
 
-const log = createLogger({ module: "delta-sync" });
+const _log = createLogger({ module: "delta-sync" }); // TODO: Add logging in Phase 43
 
 /**
  * Change types for delta sync decision making.

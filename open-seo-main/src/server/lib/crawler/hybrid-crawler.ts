@@ -127,11 +127,11 @@ class Semaphore {
  */
 export class HybridCrawler {
   private options: Required<CrawlOptions>;
-  private deltaSync: DeltaSyncService;
+  private _deltaSync: DeltaSyncService; // TODO: Wire up in Phase 43
 
   constructor(options?: CrawlOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
-    this.deltaSync = new DeltaSyncService();
+    this._deltaSync = new DeltaSyncService();
   }
 
   /**
@@ -142,7 +142,7 @@ export class HybridCrawler {
    * @param onProgress - Optional progress callback
    */
   async crawlSite(
-    tenantId: string,
+    _tenantId: string, // TODO: Use for delta sync in Phase 43
     sitemapUrl: string,
     onProgress?: (progress: {
       crawled: number;

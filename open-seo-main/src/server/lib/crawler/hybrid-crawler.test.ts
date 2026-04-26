@@ -6,13 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  HybridCrawler,
-  crawlSite,
-  type CrawlOptions,
-  type CrawlResult,
-} from "./hybrid-crawler";
-import { ChangeType } from "./delta-sync";
+import { HybridCrawler, crawlSite } from "./hybrid-crawler";
 
 // Mock the sitemap-parser module
 vi.mock("./sitemap-parser", () => ({
