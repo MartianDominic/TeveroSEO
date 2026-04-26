@@ -48,3 +48,21 @@ export {
   type CompetitorKeyword,
   type CompetitorSpyResult,
 } from "./CompetitorSpyService";
+
+// Column detection
+export {
+  ColumnDetector,
+  columnDetector,
+  type DetectedFormat,
+  type ColumnMapping,
+  type CsvColumnDetection,
+} from "./ColumnDetector";
+
+// CSV import
+export {
+  CsvImportService,
+  csvImportService,
+  type CsvImportOptions,
+  type CsvImportResult,
+  type CsvPreviewResult,
+} from "./CsvImportService";
