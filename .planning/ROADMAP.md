@@ -20,7 +20,7 @@
   1. `grep -r "blog_writer\|podcast\|youtube\|story_writer\|linkedin" AI-Writer/backend/api/` returns zero matches
   2. `ls AI-Writer/backend/services/` shows no legacy directories (blog_writer, podcast, youtube, story_writer, linkedin)
   3. Backend starts without import errors: `docker compose run --rm ai-writer-backend python -c "from main import app"` succeeds
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 01-01-PLAN.md — Strip legacy routers and podcast-only demo mode from entry points, registries, logging, and startup scripts (Wave 1)
   - [x] 01-02-PLAN.md — Delete wrapper services/routers that bridge to legacy modules; inline exception/retry utilities; neutralize research_engine providers (Wave 1)
   - [x] 01-03-PLAN.md — Delete legacy scripts and model files; update services/database.py and test fixtures (Wave 1)
@@ -249,7 +249,7 @@
   4. 90-day backfill completes for a new connection within 10 minutes
   5. `SELECT COUNT(*) FROM gsc_snapshots WHERE client_id = $1` returns >= 30 rows after backfill
 **Estimated effort**: 2 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 13-01-PLAN.md — Alembic migration 0013 + ORM models + internal API endpoint for token access (Wave 1)
   - [x] 13-02-PLAN.md — BullMQ analytics queue + worker infrastructure + aiwriter-api client (Wave 2)
   - [x] 13-03-PLAN.md — GSC/GA4 sync processor + google-auth token refresh + internal API token update endpoints (Wave 3)
@@ -457,7 +457,7 @@
   10. Test webhook button sends sample payload and shows response
   11. Webhook logs viewer with payload inspection and retry button
 **Estimated effort**: 3 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 18.5-01-PLAN.md — Webhook schema + event registry + delivery queue (Wave 1)
   - [x] 18.5-02-PLAN.md — Webhook dispatcher: event emission → matching hooks → enqueue (Wave 2)
   - [x] 18.5-03-PLAN.md — HMAC signing + idempotency + retry logic + DLQ handling (Wave 2)
@@ -622,7 +622,7 @@ CREATE TABLE dashboard_views (
   11. Mobile-responsive: collapses to health summary + needs attention + swipeable client cards
   12. Background job computes `client_dashboard_metrics` every 5 minutes
 **Estimated effort**: 3 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
 Plans:
 - [x] 21-01-PLAN.md — Dashboard metrics schema + BullMQ worker for 5-min pre-computation (Wave 1)
 - [x] 21-02-PLAN.md — Portfolio health summary + needs attention + wins/milestones sections (Wave 2)
@@ -644,7 +644,7 @@ Plans:
   4. Dashboard displays goal attainment percentage instead of health score
   5. Priority score computed for attention queue sorting (alerts × 1000 + goal gaps × 50 + traffic drops × 200)
 **Estimated effort**: 3 days
-**Plans**: 5 plans (5 complete)
+**Plans**: 4 plans (5 complete)
   - [x] 22-01-PLAN.md — Schema & Templates: goal_templates, client_goals, goal_snapshots tables + seed data (Wave 1)
   - [x] 22-02-PLAN.md — Goal Computation Worker: BullMQ job, computation methods per template type (Wave 2)
   - [x] 22-03-PLAN.md — Goal Management API: CRUD endpoints, server actions (Wave 2)
@@ -913,7 +913,7 @@ Pages to scrape:
   6. "Opportunity Discovery" tab shows AI-found keywords with rationale
   7. Executive summary generated for sales use
 **Estimated effort**: 1.5 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 29-01-PLAN.md — AI keyword generation service (keywordGenerator.ts) ✅ DONE
   - [x] 29-02-PLAN.md — DataForSEO validation (volumeValidator.ts, dataforseoVolume.ts) ✅ DONE
   - [ ] 29-03-PLAN.md — **Wire OpportunityDiscoveryService into processor** (Wave 1) 🚨 CRITICAL
@@ -964,7 +964,7 @@ Prospect marked as converted (linked)
   5. Email template generator for outreach
   6. Conversion tracking: which prospects became clients
 **Estimated effort**: 1 week
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 30-01-PLAN.md — Prospect → Client conversion logic (onboarding.ts) ✅ DONE
   - [x] 30-02-PLAN.md — Shareable links with expiration (proposal token) ✅ DONE
   - [x] 30-03-PLAN.md — Conversion analytics dashboard ✅ DONE
@@ -1038,7 +1038,7 @@ priorityScore = (
   7. Automated stage transitions logged for audit trail
   8. Daily digest email: new high-score prospects, stale prospects
 **Estimated effort**: 1.5 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 30.5-01-PLAN.md — CSV import + validation + batch prospect creation ✅ DONE
   - [x] 30.5-02-PLAN.md — Bulk analysis queueing with quota management ✅ DONE
   - [x] 30.5-03-PLAN.md — Priority scoring algorithm + auto-compute after analysis ✅ DONE
@@ -1120,7 +1120,7 @@ priorityScore = (
   7. On-page score calculated: 100-point scale with category breakdown
   8. Check results visible at `/clients/[id]/seo/audit/[pageId]`
 **Estimated effort**: 2 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 32-01-PLAN.md — runAllChecks facade, FindingsRepository, CheckService (Wave 1)
   - [x] 32-02-PLAN.md — Tier 1 checks integration into crawl phase (Wave 2)
   - [x] 32-03-PLAN.md — Tier 2 checks integration into analyzing phase (Wave 2)
@@ -1200,7 +1200,7 @@ priorityScore = (
   9. Cannibalization detection prevents linking competing pages
   10. `/clients/[id]/seo/links` shows link health dashboard
 **Estimated effort**: 2 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 35-01-PLAN.md — Link graph schema + extraction from crawl data (Wave 1)
   - [x] 35-02-PLAN.md — Opportunity detection: orphans, velocity, anchors, depth (Wave 2)
   - [x] 35-03-PLAN.md — Target selection + anchor text selection algorithms (Wave 2)
@@ -1259,7 +1259,7 @@ priorityScore = (
   8. ✅ "Learn Voice" button triggers analysis of existing content
   9. ⚠️ Voice preview: test generation before applying — UI exists, API endpoint missing
 **Estimated effort**: 1.5 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [x] 37-01-PLAN.md — voice_profiles + voice_analysis schema (Wave 1)
   - [x] 37-02-PLAN.md — Voice learning: content analysis → profile extraction (Wave 2)
   - [x] 37-03-PLAN.md — Three voice modes implementation (Wave 2)
@@ -1396,7 +1396,7 @@ priorityScore = (
   7. Link graph updated when new content published
   8. Token usage tracked per generation for budget monitoring
 **Estimated effort**: 2 weeks
-**Plans**: 5 plans
+**Plans**: 4 plans
   - [ ] 39-01-PLAN.md — ContentBrief model + pre-generation enrichment service (Wave 1)
   - [ ] 39-02-PLAN.md — Enhanced prompt builder: outline, PAA, entities, link targets (Wave 2)
   - [ ] 39-03-PLAN.md — Post-generation 107 checks + auto-fix integration (Wave 2)
@@ -1466,3 +1466,118 @@ priorityScore = (
   - [x] 41-02-PLAN.md — Pattern detection with real GSC data (Wave 2)
   - [x] 41-03-PLAN.md — Autonomous pipeline wiring (Wave 2)
   - [x] 41-04-PLAN.md — CMS integration polish (Wave 3)
+
+---
+
+## v5.2 Keyword Intelligence
+
+### Phase 42: Keyword Intelligence Infrastructure
+**Goal**: Build foundational infrastructure for intelligent keyword-to-page matching using knowledge graphs, GraphRAG, and hierarchical embeddings.
+**Depends on**: Phase 41 (Production Hardening complete)
+**Design docs**: `.planning/keyword-intelligence/` (18 documents)
+**Working directory**: `open-seo-main/`
+**Current state**: Research complete, architectural decisions made
+
+**Technical Decisions (ADRs):**
+| Decision | Choice | Reference |
+|----------|--------|-----------|
+| Graph Storage | FalkorDB (product catalog) + NetworkX (LightRAG) | ADR-001 |
+| Embeddings | jina-embeddings-v3 @ 384-dim (Matryoshka) | ADR-002 |
+| Task Routing | 60-70% to DataForSEO APIs, crawl only client sites | ADR-003 |
+
+**Key Capabilities:**
+| Component | Technology | Benefit |
+|-----------|------------|---------|
+| Product Catalog Graph | FalkorDB 4.14 | Sub-10ms traversals, graph-per-tenant |
+| Entity Extraction | LightRAG v1.4.10 | 100 tokens/query GraphRAG |
+| Semantic Matching | jina-v3 + DiskANN | 95%+ accuracy on Lithuanian |
+| High-Speed Crawler | Crawlee + aiohttp | 83 pages/sec, delta sync |
+
+**Cost Model:**
+| Scenario | Cost/Prospect | Notes |
+|----------|---------------|-------|
+| Cold start (0% cache) | $0.50 | First in vertical |
+| Mature cache (95% hit) | $0.025 | Cache flywheel engaged |
+| Infrastructure | $49/mo | Hetzner CPX32 + CX52 |
+
+**Success Criteria** (what must be TRUE):
+  1. FalkorDB graph queries return in <10ms for 10k-node graphs
+  2. LightRAG extracts entities from 500-page site in <5 minutes
+  3. Embedding similarity search returns in <50ms for 100k vectors
+  4. Crawler processes 500 products in <2 minutes
+  5. Delta sync skips 80%+ unchanged pages (using seo_content_hash)
+  6. Multi-tenant isolation verified (no cross-tenant data leakage)
+  7. jina-v3 embeddings achieve >0.85 AUC-ROC on Lithuanian similarity
+**Estimated effort**: 20 hours
+**Plans**: 4 plans
+  - [ ] 42-01-PLAN.md — FalkorDB setup + product catalog graph schema (4h)
+  - [ ] 42-02-PLAN.md — LightRAG integration + entity extraction pipeline (6h)
+  - [ ] 42-03-PLAN.md — Hierarchical embeddings (jina-v3 @ 384-dim) + DiskANN (5h)
+  - [ ] 42-04-PLAN.md — Crawler (Crawlee + aiohttp) + delta sync (5h)
+
+---
+
+### Phase 43: Prospect Keyword Pipeline
+**Goal**: Complete the prospect → komercinis → sutartele flow with intelligent keyword prioritization, page mapping, and recommendation generation.
+**Depends on**: Phase 42 (42-01, 42-02, 42-03 required for page mapping)
+**Design docs**: `.planning/PROSPECT-KEYWORD-PIPELINE-ANALYSIS.md`
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Current state**: 60-70% exists (DataForSEO, prospect schema, proposal system)
+
+**User Flow:**
+```
+Create Prospect → Analyze Keywords → View Priorities → Map Pages → Generate Proposal → Export CSV
+```
+
+**Prioritization Algorithm:**
+```
+compositeScore = (
+  volumeScore * 0.15 +      // Search demand
+  competitionScore * 0.10 + // Easier = higher
+  relevanceScore * 0.25 +   // Product/category match
+  focusScore * 0.35 +       // Business priorities (HIGHEST)
+  positionScore * 0.15      // Current ranking opportunity
+) * quickWinMultiplier
+```
+
+**Quick Win Detection:**
+| Type | Criteria | Multiplier |
+|------|----------|------------|
+| Striking Distance | Position 11-30, volume >= 200, competition <= 0.7 | 1.3x |
+| Low Hanging Fruit | Position 4-10, competition <= 0.5, volume >= 100 | 1.2x |
+| Fresh Opportunity | Not ranking, relevance >= 0.9, volume >= 500, competition <= 0.4 | 1.15x |
+
+**Tier Thresholds:**
+| Tier | Score Range | Action |
+|------|-------------|--------|
+| Must-Do | 0.75 - 1.0 | Immediate |
+| Should-Do | 0.50 - 0.749 | This Quarter |
+| Nice-to-Have | 0.25 - 0.499 | Backlog |
+| Ignore | < 0.25 | Skip |
+
+**Existing Code (no work needed):**
+| Component | Location | Status |
+|-----------|----------|--------|
+| DataForSEO integration | `open-seo-main/src/server/lib/dataforseo*.ts` | EXISTS |
+| Prospect schema | `open-seo-main/src/db/prospect-schema.ts` | EXISTS |
+| Proposal system | `open-seo-main/src/db/proposal-schema.ts` | EXISTS |
+| Prospect UI | `apps/web/src/app/(shell)/prospects/` | EXISTS |
+
+**Success Criteria** (what must be TRUE):
+  1. CSV export works with Lithuanian headers (keyword, volume, tier, matched_page)
+  2. Keywords display with tier badges in UI (must-do, should-do, nice-to-have)
+  3. Quick wins highlighted with visual indicators (striking-distance, low-hanging-fruit)
+  4. Page mapping shows keyword → URL matches with confidence scores
+  5. Cannibalization warnings appear when multiple pages target same keyword
+  6. Recommendations generate with clustered action steps and executive summary
+  7. Full flow works: prospect → keywords → mapping → komercinis
+  8. Cost per prospect < $0.10 at 95% cache hit rate
+**Estimated effort**: 40 hours
+**Plans**: 4 plans
+  - [ ] 43-01-PLAN.md — Multi-source keyword input + schema (6h)
+  - [ ] 43-02-PLAN.md — CSV Export + Basic Prioritization (5h)
+  - [ ] 43-03-PLAN.md — Prioritization UI: keyword table, tiers, quick wins (8h)
+  - [ ] 43-04-PLAN.md — Page Mapping: graph-powered matching + cannibalization (12h)
+  - [ ] 43-05-PLAN.md — Proposal Scenarios + Generation (9h)
+
+---
