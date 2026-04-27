@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
 
 interface BacklinksParams {
@@ -29,6 +33,9 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
  * Get backlinks overview for a target.
  */
 export async function getBacklinksOverview(params: BacklinksOverviewParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/backlinks?${query}`, {
     action: "overview",
@@ -43,6 +50,9 @@ export async function getBacklinksOverview(params: BacklinksOverviewParams): Pro
  * Get referring domains for a target.
  */
 export async function getBacklinksReferringDomains(params: BacklinksParams): Promise<unknown[]> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<unknown[]>(`/api/seo/backlinks?${query}`, {
     action: "referring-domains",
@@ -55,6 +65,9 @@ export async function getBacklinksReferringDomains(params: BacklinksParams): Pro
  * Get top pages for a target.
  */
 export async function getBacklinksTopPages(params: BacklinksParams): Promise<unknown[]> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<unknown[]>(`/api/seo/backlinks?${query}`, {
     action: "top-pages",

@@ -1,5 +1,6 @@
 "use server";
 
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
 import type { CursorPaginationParams, CursorPaginationResult, FilterParams } from "@/types/pagination";
 import { encodeCursor } from "@/types/pagination";
@@ -19,6 +20,8 @@ interface GetClientsPaginatedInput extends CursorPaginationParams, FilterParams 
 export async function getClientsPaginated(
   input: GetClientsPaginatedInput
 ): Promise<CursorPaginationResult<ClientMetrics>> {
+  await requireActionAuth();
+
   const {
     cursor,
     limit = 50,

@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo, patchOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 
 export interface Webhook {
@@ -37,6 +41,8 @@ export interface WebhookEvent {
  * Get all webhooks for a client.
  */
 export async function getClientWebhooks(clientId: string): Promise<Webhook[]> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
   return getOpenSeo<Webhook[]>(
     `/api/webhooks?scope=client&scope_id=${clientId}`,
   );
@@ -44,11 +50,13 @@ export async function getClientWebhooks(clientId: string): Promise<Webhook[]> {
 
 /**
  * Get webhook by ID with optional deliveries.
+ * Note: Webhook ownership is validated by the backend based on scope.
  */
 export async function getWebhook(
   webhookId: string,
   includeDeliveries = false,
 ): Promise<Webhook & { deliveries?: WebhookDelivery[] }> {
+  await requireActionAuth();
   const query = includeDeliveries ? "?deliveries=true" : "";
   return getOpenSeo(`/api/webhooks/${webhookId}${query}`);
 }
@@ -60,6 +68,7 @@ export async function getEventRegistry(): Promise<{
   events: WebhookEvent[];
   categories: string[];
 }> {
+  await requireActionAuth();
   return getOpenSeo("/api/webhooks?events=true");
 }
 
@@ -73,6 +82,8 @@ export async function createWebhook(params: {
   events: string[];
   headers?: Record<string, string>;
 }): Promise<{ id: string; secret: string }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
   return postOpenSeo("/api/webhooks", {
     scope: "client",
     scopeId: params.clientId,
@@ -85,6 +96,7 @@ export async function createWebhook(params: {
 
 /**
  * Update a webhook.
+ * Note: Backend validates webhook ownership.
  */
 export async function updateWebhook(
   webhookId: string,
@@ -97,24 +109,29 @@ export async function updateWebhook(
     regenerateSecret?: boolean;
   },
 ): Promise<{ success: boolean; secret?: string }> {
+  await requireActionAuth();
   return patchOpenSeo(`/api/webhooks/${webhookId}`, params);
 }
 
 /**
  * Delete a webhook.
+ * Note: Backend validates webhook ownership.
  */
 export async function deleteWebhookAction(
   webhookId: string,
 ): Promise<{ success: boolean }> {
+  await requireActionAuth();
   return deleteOpenSeo(`/api/webhooks/${webhookId}`);
 }
 
 /**
  * Get webhook deliveries.
+ * Note: Backend validates webhook ownership.
  */
 export async function getWebhookDeliveries(
   webhookId: string,
 ): Promise<WebhookDelivery[]> {
+  await requireActionAuth();
   const result = await getOpenSeo<Webhook & { deliveries: WebhookDelivery[] }>(
     `/api/webhooks/${webhookId}?deliveries=true`,
   );

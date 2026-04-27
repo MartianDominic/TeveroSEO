@@ -1,7 +1,8 @@
 "use server";
 
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
-import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
+import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
 import type {
   TeamMetrics,
   TeamMemberWithAssignments,
@@ -21,6 +22,8 @@ const teamMetricsCacheKey = (workspaceId: string) =>
 export async function getTeamMetrics(
   workspaceId: string
 ): Promise<TeamMetrics> {
+  await requireActionAuth();
+
   // Check cache first
   const cacheKey = teamMetricsCacheKey(workspaceId);
   const cached = await cacheGet<TeamMetrics>(cacheKey);
@@ -125,6 +128,8 @@ export async function reassignClient(
   toMemberId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireActionAuth();
+
     await getFastApi<void>(
       `/api/workspaces/${workspaceId}/clients/${clientId}/reassign`,
       {

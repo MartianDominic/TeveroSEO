@@ -7,7 +7,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { openSeoFetch } from '~/lib/api/open-seo';
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from '@/lib/auth/action-auth';
+import { getOpenSeo, postOpenSeo } from '@/lib/server-fetch';
 
 /**
  * Change record from the API.
@@ -81,7 +85,11 @@ export async function getChanges(
   filters: ChangeFilters = {}
 ): Promise<{ success: boolean; data?: Change[]; error?: string }> {
   try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(clientId, auth);
+
     const params = new URLSearchParams();
+    params.set('clientId', clientId);
     if (filters.status) params.set('status', filters.status);
     if (filters.category) params.set('category', filters.category);
     if (filters.resourceType) params.set('resourceType', filters.resourceType);
@@ -92,9 +100,9 @@ export async function getChanges(
     if (filters.offset) params.set('offset', String(filters.offset));
 
     const queryString = params.toString();
-    const url = `/api/changes/${clientId}${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/changes${queryString ? `?${queryString}` : ''}`;
 
-    const response = await openSeoFetch<{ success: boolean; data: Change[] }>(url);
+    const response = await getOpenSeo<{ success: boolean; data: Change[] }>(url);
 
     if (!response.success) {
       return { success: false, error: 'Failed to fetch changes' };
@@ -108,13 +116,16 @@ export async function getChanges(
 
 /**
  * Get a single change by ID.
+ * Note: Backend validates change ownership via clientId association.
  */
 export async function getChange(
   changeId: string
 ): Promise<{ success: boolean; data?: Change; error?: string }> {
   try {
-    const response = await openSeoFetch<{ success: boolean; data: Change }>(
-      `/api/changes/single/${changeId}`
+    await requireActionAuth();
+
+    const response = await getOpenSeo<{ success: boolean; data: Change }>(
+      `/api/changes/${changeId}`
     );
 
     if (!response.success) {
@@ -129,18 +140,18 @@ export async function getChange(
 
 /**
  * Preview a revert operation.
+ * Note: Backend validates scope ownership.
  */
 export async function previewRevert(
   scope: Record<string, unknown>,
   cascadeMode: 'warn' | 'cascade' | 'force' = 'warn'
 ): Promise<{ success: boolean; data?: RevertPreview; error?: string }> {
   try {
-    const response = await openSeoFetch<{ success: boolean; data: RevertPreview }>(
+    await requireActionAuth();
+
+    const response = await postOpenSeo<{ success: boolean; data: RevertPreview }>(
       '/api/reverts/preview',
-      {
-        method: 'POST',
-        body: JSON.stringify({ scope, cascadeMode }),
-      }
+      { scope, cascadeMode }
     );
 
     if (!response.success) {
@@ -155,6 +166,7 @@ export async function previewRevert(
 
 /**
  * Execute a revert operation.
+ * Note: Backend validates scope and connection ownership.
  */
 export async function executeRevert(
   scope: Record<string, unknown>,
@@ -162,12 +174,11 @@ export async function executeRevert(
   cascadeMode: 'warn' | 'cascade' | 'force' = 'warn'
 ): Promise<{ success: boolean; data?: RevertResult; error?: string }> {
   try {
-    const response = await openSeoFetch<{ success: boolean; data: RevertResult }>(
+    await requireActionAuth();
+
+    const response = await postOpenSeo<{ success: boolean; data: RevertResult }>(
       '/api/reverts/execute',
-      {
-        method: 'POST',
-        body: JSON.stringify({ scope, connectionId, cascadeMode }),
-      }
+      { scope, connectionId, cascadeMode }
     );
 
     // Revalidate changes pages

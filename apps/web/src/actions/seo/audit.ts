@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 
 interface AuditParams {
@@ -34,6 +38,9 @@ function buildQuery(params: AuditParams, extra?: Record<string, string>): string
  * Start a new site audit.
  */
 export async function startAudit(params: StartAuditParams): Promise<{ auditId: string }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<{ auditId: string }>(`/api/seo/audits?${query}`, {
     action: "start",
@@ -57,6 +64,9 @@ export async function getAuditStatus(params: AuditIdParams): Promise<{
   startUrl: string;
   startedAt: string;
 }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params, { audit_id: params.auditId, action: "status" });
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
@@ -65,6 +75,9 @@ export async function getAuditStatus(params: AuditIdParams): Promise<{
  * Get the results of a completed audit.
  */
 export async function getAuditResults(params: AuditIdParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params, { audit_id: params.auditId, action: "results" });
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
@@ -73,6 +86,9 @@ export async function getAuditResults(params: AuditIdParams): Promise<unknown> {
  * Get audit history for a project.
  */
 export async function getAuditHistory(params: AuditParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
@@ -88,6 +104,9 @@ export async function getCrawlProgress(params: AuditIdParams): Promise<
     crawledAt: number;
   }>
 > {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params, { audit_id: params.auditId, action: "progress" });
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
@@ -96,6 +115,9 @@ export async function getCrawlProgress(params: AuditIdParams): Promise<
  * Delete an audit.
  */
 export async function deleteAudit(params: AuditIdParams): Promise<{ success: boolean }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<{ success: boolean }>(`/api/seo/audits?${query}`, {
     action: "delete",

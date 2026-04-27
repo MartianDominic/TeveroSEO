@@ -1,3 +1,26 @@
+# ============================================================
+# SECURITY: Environment validation MUST run before any other imports
+# This ensures the app fails fast if required secrets are missing
+# ============================================================
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables FIRST (before validation)
+backend_dir = Path(__file__).parent
+project_root = backend_dir.parent
+load_dotenv(backend_dir / '.env')  # backend/.env (higher priority)
+load_dotenv(project_root / '.env')  # root .env (fallback)
+load_dotenv()  # CWD .env (fallback)
+
+# Validate environment variables - fails fast if required secrets are missing
+from config.env_validator import validate_env, log_env_status, is_configured
+validate_env()
+
+# ============================================================
+# Standard imports (after environment validation passes)
+# ============================================================
+
 # Ensure typing constructs and models are available globally for FastAPI type annotation evaluation
 import typing
 import builtins
@@ -19,9 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
-import os
 from loguru import logger
-from dotenv import load_dotenv
 import asyncio
 from datetime import datetime
 
@@ -37,23 +58,14 @@ from models import APIKey, WebsiteAnalysis, ResearchPreferences, PersonaData, Co
 from alwrity_utils import HealthChecker, RateLimiter, FrontendServing, RouterManager
 from alwrity_utils import OnboardingManager
 
-# Load environment variables
-# Try multiple locations for .env file
-from pathlib import Path
-backend_dir = Path(__file__).parent
-project_root = backend_dir.parent
-
-# Load from backend/.env first (higher priority), then root .env
-load_dotenv(backend_dir / '.env')  # backend/.env
-load_dotenv(project_root / '.env')  # root .env (fallback)
-load_dotenv()  # CWD .env (fallback)
-
 # Set up clean logging for end users
 from logging_config import setup_clean_logging
 setup_clean_logging()
 
 # Import middleware
 from middleware.auth_middleware import get_current_user
+from middleware.security_headers import SecurityHeadersMiddleware
+from middleware.rate_limit import RateLimitMiddleware
 
 # Import component logic endpoints (needs OnboardingSession, so import after models)
 from api.component_logic import router as component_logic_router
@@ -139,6 +151,40 @@ from api.seo_dashboard import (
     get_sif_indexing_health,
 )
 
+def validate_production_config():
+    """
+    Reject dangerous configurations in production.
+    Raises ValueError if dangerous flags are enabled in production.
+    """
+    env = os.getenv("ENV", "development").lower()
+    if env != "production":
+        return  # Only validate in production
+
+    dangerous_flags = {
+        "DISABLE_AUTH": "Authentication bypass is not allowed in production",
+        "SKIP_AUTH": "Authentication bypass is not allowed in production",
+        "DEBUG_MODE": "Debug mode must be disabled in production",
+        "QUALITY_GATE_ENABLED": None,  # Special check: must be true or unset
+    }
+
+    for flag, error_msg in dangerous_flags.items():
+        value = os.getenv(flag, "").lower()
+
+        if flag == "QUALITY_GATE_ENABLED":
+            # Quality gate must be enabled (true or unset) in production
+            if value == "false":
+                raise ValueError(
+                    f"{flag}=false is not allowed in production. "
+                    "Quality gate must be enabled to prevent low-quality content publishing."
+                )
+        else:
+            # These flags must be false or unset in production
+            if value == "true":
+                raise ValueError(f"{flag}=true is not allowed in production. {error_msg}")
+
+    logger.info("Production config validation passed")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="ALwrity Backend API",
@@ -146,32 +192,59 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
-# Build allowed origins list with env overrides to support dynamic tunnels (e.g., ngrok)
-default_allowed_origins = [
-    "http://localhost:3000",  # React dev server
-    "http://localhost:8000",  # Backend dev server
-    "http://localhost:3001",  # Alternative React port
-    "https://alwrity-ai.vercel.app",  # Vercel frontend
+# Add CORS middleware with proper security configuration
+# SECURITY: Never use wildcard "*" with credentials=True
+# Production origins are explicitly defined for TeveroSEO platform
+PRODUCTION_ORIGINS = [
+    "https://app.teveroseo.com",
+    "https://teveroseo.com",
+    "https://api.teveroseo.com",
+    "https://alwrity-ai.vercel.app",
 ]
 
-# Optional dynamic origins from environment (comma-separated)
-env_origins = os.getenv("ALWRITY_ALLOWED_ORIGINS", "").split(",") if os.getenv("ALWRITY_ALLOWED_ORIGINS") else []
-env_origins = [o.strip() for o in env_origins if o.strip()]
+# Development origins (only used when NODE_ENV != production)
+DEVELOPMENT_ORIGINS = [
+    "http://localhost:3000",  # React dev server
+    "http://localhost:8000",  # Backend dev server
+    "http://localhost:3001",  # Alternative React port / Next.js
+]
 
-# Convenience: NGROK_URL env var (single origin)
-ngrok_origin = os.getenv("NGROK_URL")
-if ngrok_origin:
-    env_origins.append(ngrok_origin.strip())
+# Build allowed origins based on environment
+is_production = os.getenv("NODE_ENV", "").lower() == "production"
 
-allowed_origins = list(dict.fromkeys(default_allowed_origins + env_origins))  # de-duplicate, keep order
+if is_production:
+    # Production: only allow explicit production origins
+    allowed_origins = PRODUCTION_ORIGINS.copy()
+else:
+    # Development: allow both production and development origins
+    allowed_origins = PRODUCTION_ORIGINS + DEVELOPMENT_ORIGINS
+
+    # Optional dynamic origins from environment (comma-separated)
+    env_origins = os.getenv("ALWRITY_ALLOWED_ORIGINS", "").split(",") if os.getenv("ALWRITY_ALLOWED_ORIGINS") else []
+    env_origins = [o.strip() for o in env_origins if o.strip()]
+
+    # Convenience: NGROK_URL env var (single origin for tunneling)
+    ngrok_origin = os.getenv("NGROK_URL")
+    if ngrok_origin:
+        env_origins.append(ngrok_origin.strip())
+
+    allowed_origins.extend(env_origins)
+
+# De-duplicate while preserving order
+allowed_origins = list(dict.fromkeys(allowed_origins))
+
+# Log CORS configuration on startup
+logger.info(f"CORS configured for {'production' if is_production else 'development'} mode")
+logger.info(f"Allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=allowed_origins,  # Explicit origins, NEVER "*"
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
+    max_age=86400,  # Cache preflight for 24 hours
 )
 
 # Initialize modular utilities
@@ -183,10 +256,18 @@ router_manager = RouterManager(app)
 onboarding_manager = OnboardingManager(app)
 
 # Middleware Order (FastAPI executes in REVERSE order of registration - LIFO):
-# Registration order:  1. Monitoring  2. Rate Limit  3. API Key Injection
-# Execution order:     1. API Key Injection (sets user_id)  2. Rate Limit  3. Monitoring (uses user_id)
+# Registration order:  1. Security Headers  2. Rate Limit (new)  3. Monitoring  4. Rate Limit (legacy)  5. API Key Injection
+# Execution order:     1. API Key Injection  2. Rate Limit (legacy)  3. Monitoring  4. Rate Limit (new)  5. Security Headers (adds headers last)
 
-# 1. FIRST REGISTERED (runs LAST) - Monitoring middleware
+# 1. FIRST REGISTERED (runs LAST) - Security headers middleware
+# Adds OWASP security headers to all responses
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. Rate limiting middleware (endpoint-specific rate limits)
+# Applies sliding window rate limits based on path patterns
+app.add_middleware(RateLimitMiddleware)
+
+# 2. SECOND REGISTERED (runs THIRD) - Monitoring middleware
 app.middleware("http")(monitoring_middleware)
 
 # 2. SECOND REGISTERED (runs SECOND) - Rate limiting
@@ -261,17 +342,17 @@ router_manager.include_optional_routers()
 
 # SEO Dashboard endpoints
 @app.get("/api/seo-dashboard/data")
-async def seo_dashboard_data():
+async def seo_dashboard_data(current_user: dict = Depends(get_current_user)):
     """Get complete SEO dashboard data."""
     return await get_seo_dashboard_data()
 
 @app.get("/api/seo-dashboard/health-score")
-async def seo_health_score():
+async def seo_health_score(current_user: dict = Depends(get_current_user)):
     """Get SEO health score."""
     return await get_seo_health_score()
 
 @app.get("/api/seo-dashboard/metrics")
-async def seo_metrics():
+async def seo_metrics(current_user: dict = Depends(get_current_user)):
     """Get SEO metrics."""
     return await get_seo_metrics()
 
@@ -281,7 +362,7 @@ async def seo_platforms(current_user: dict = Depends(get_current_user)):
     return await get_platform_status(current_user)
 
 @app.get("/api/seo-dashboard/insights")
-async def seo_insights():
+async def seo_insights(current_user: dict = Depends(get_current_user)):
     """Get AI insights."""
     return await get_ai_insights()
 
@@ -363,27 +444,42 @@ async def sif_indexing_health_endpoint(current_user: dict = Depends(get_current_
 
 # Comprehensive SEO Analysis endpoints
 @app.post("/api/seo-dashboard/analyze-comprehensive")
-async def analyze_seo_comprehensive_endpoint(request: SEOAnalysisRequest):
+async def analyze_seo_comprehensive_endpoint(
+    request: SEOAnalysisRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """Analyze a URL for comprehensive SEO performance."""
     return await analyze_seo_comprehensive(request)
 
 @app.post("/api/seo-dashboard/analyze-full")
-async def analyze_seo_full_endpoint(request: SEOAnalysisRequest):
+async def analyze_seo_full_endpoint(
+    request: SEOAnalysisRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """Analyze a URL for comprehensive SEO performance."""
     return await analyze_seo_full(request)
 
 @app.get("/api/seo-dashboard/metrics-detailed")
-async def seo_metrics_detailed(url: str):
+async def seo_metrics_detailed(
+    url: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get detailed SEO metrics for a URL."""
     return await get_seo_metrics_detailed(url)
 
 @app.get("/api/seo-dashboard/analysis-summary")
-async def seo_analysis_summary(url: str):
+async def seo_analysis_summary(
+    url: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get a quick summary of SEO analysis for a URL."""
     return await get_analysis_summary(url)
 
 @app.post("/api/seo-dashboard/batch-analyze")
-async def batch_analyze_urls_endpoint(urls: list[str]):
+async def batch_analyze_urls_endpoint(
+    urls: list[str],
+    current_user: dict = Depends(get_current_user),
+):
     """Analyze multiple URLs in batch."""
     return await batch_analyze_urls(urls)
 
@@ -453,6 +549,9 @@ async def serve_frontend():
 async def startup_event():
     """Initialize services on startup."""
     try:
+        # Validate production config before anything else
+        validate_production_config()
+
         # Initialize database
         init_database()
         
@@ -460,13 +559,15 @@ async def startup_event():
         from services.scheduler import get_scheduler
         await get_scheduler().start()
         
-        # Check Wix API key configuration
-        wix_api_key = os.getenv('WIX_API_KEY')
-        if wix_api_key:
-            logger.warning(f"âœ… WIX_API_KEY loaded ({len(wix_api_key)} chars, starts with '{wix_api_key[:10]}...')")
+        # Log environment configuration status (SECURE: never log actual values)
+        log_env_status()
+
+        # Check optional integrations
+        if is_configured('WIX_API_KEY'):
+            logger.info("WIX_API_KEY: configured - Wix publishing enabled")
         else:
-            logger.warning("âš ï¸ WIX_API_KEY not found in environment - Wix publishing may fail")
-        
+            logger.warning("WIX_API_KEY: not configured - Wix publishing disabled")
+
         logger.info("ALwrity backend started successfully")
     except Exception as e:
         logger.error(f"Error during startup: {e}")

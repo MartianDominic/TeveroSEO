@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
 import type {
   SavedView,
@@ -51,15 +51,14 @@ function transformView(raw: SavedViewApiResponse): SavedView {
  * Get all saved views for a workspace (user's own + shared views).
  */
 export async function getSavedViewsWithConfig(workspaceId: string): Promise<SavedView[]> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  await requireActionAuth();
 
   try {
     const response = await getFastApi<SavedViewApiResponse[]>(
       `/api/dashboard/views?workspaceId=${workspaceId}`
     );
     return response.map(transformView);
-  } catch (error) {
+  } catch {
     // Return empty array on error for graceful degradation
     return [];
   }
@@ -72,8 +71,7 @@ export async function createSavedViewWithConfig(
   workspaceId: string,
   input: CreateSavedViewInput
 ): Promise<SavedView> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  await requireActionAuth();
 
   const body = {
     name: input.name,
@@ -97,13 +95,13 @@ export async function createSavedViewWithConfig(
 
 /**
  * Update an existing saved view.
+ * Note: Backend validates view ownership.
  */
 export async function updateSavedViewWithConfig(
   viewId: string,
   input: UpdateSavedViewInput
 ): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  await requireActionAuth();
 
   const body: Record<string, unknown> = {};
 
@@ -126,10 +124,10 @@ export async function updateSavedViewWithConfig(
 
 /**
  * Delete a saved view.
+ * Note: Backend validates view ownership.
  */
 export async function deleteSavedViewById(viewId: string): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  await requireActionAuth();
 
   await getFastApi(`/api/dashboard/views/${viewId}`, {
     method: "DELETE",
@@ -140,8 +138,7 @@ export async function deleteSavedViewById(viewId: string): Promise<void> {
  * Set a view as the default for the user in the workspace.
  */
 export async function setDefaultViewById(viewId: string, workspaceId: string): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized");
+  await requireActionAuth();
 
   await getFastApi(`/api/dashboard/views/${viewId}/default`, {
     method: "POST",

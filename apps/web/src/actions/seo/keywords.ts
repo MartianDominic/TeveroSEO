@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 
 interface KeywordParams {
@@ -44,6 +48,9 @@ function buildQuery(params: KeywordParams): string {
  * Research keywords using DataForSEO.
  */
 export async function researchKeywords(params: ResearchKeywordsParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "research",
@@ -60,6 +67,9 @@ export async function researchKeywords(params: ResearchKeywordsParams): Promise<
  * Save keywords to the project.
  */
 export async function saveKeywords(params: SaveKeywordsParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "save",
@@ -71,6 +81,9 @@ export async function saveKeywords(params: SaveKeywordsParams): Promise<unknown>
  * Get saved keywords for a project.
  */
 export async function getSavedKeywords(params: KeywordParams): Promise<{ rows: unknown[] }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return getOpenSeo<{ rows: unknown[] }>(`/api/seo/keywords?${query}`);
 }
@@ -79,6 +92,9 @@ export async function getSavedKeywords(params: KeywordParams): Promise<{ rows: u
  * Remove a saved keyword.
  */
 export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "remove",
@@ -90,6 +106,9 @@ export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Prom
  * Get SERP analysis for a keyword.
  */
 export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "serp",
@@ -127,6 +146,9 @@ export async function getKeywordHistory({
     serpFeatures: string[] | null;
   }>;
 }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
+
   const query = new URLSearchParams({
     client_id: clientId,
     keyword_id: keywordId,
@@ -150,6 +172,9 @@ export async function getKeywordLatestRanking({
   serpFeatures: string[] | null;
   date: string | null;
 }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
+
   const query = new URLSearchParams({
     client_id: clientId,
     keyword_id: keywordId,
@@ -178,6 +203,9 @@ export async function getSavedKeywordsWithRankings(
     }>;
   }>;
 }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = new URLSearchParams({
     client_id: params.clientId,
     project_id: params.projectId,

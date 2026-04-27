@@ -6,6 +6,51 @@ import type { ActivityEvent, ActivityEventType } from "./socket-events";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3002";
 
+/**
+ * Bounded Set with automatic eviction of oldest entries.
+ * Prevents unbounded memory growth in long-running sessions.
+ */
+class BoundedSet<T> {
+  private items: T[] = [];
+  private itemSet: Set<T> = new Set();
+  private maxSize: number;
+
+  constructor(maxSize: number = 1000) {
+    this.maxSize = maxSize;
+  }
+
+  add(item: T): boolean {
+    if (this.itemSet.has(item)) {
+      return false;
+    }
+
+    // Evict oldest if at capacity
+    while (this.items.length >= this.maxSize) {
+      const oldest = this.items.shift();
+      if (oldest !== undefined) {
+        this.itemSet.delete(oldest);
+      }
+    }
+
+    this.items.push(item);
+    this.itemSet.add(item);
+    return true;
+  }
+
+  has(item: T): boolean {
+    return this.itemSet.has(item);
+  }
+
+  clear(): void {
+    this.items = [];
+    this.itemSet.clear();
+  }
+
+  get size(): number {
+    return this.items.length;
+  }
+}
+
 // Singleton socket instance
 let socket: Socket | null = null;
 let connectionCount = 0;
@@ -50,8 +95,8 @@ export function useActivityFeed({
   const [isConnected, setIsConnected] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Track seen event IDs for deduplication
-  const seenIds = useRef(new Set<string>());
+  // Track seen event IDs for deduplication (bounded to prevent memory leaks)
+  const seenIds = useRef(new BoundedSet<string>(1000));
   const isPausedRef = useRef(isPaused);
   isPausedRef.current = isPaused;
 

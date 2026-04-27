@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import {
   getFastApi,
   patchFastApi,
@@ -15,9 +16,13 @@ type Params = { params: Promise<{ clientId: string }> };
 export async function GET(_: Request, { params }: Params) {
   const { clientId } = await params;
   try {
+    await requireClientAccess(clientId);
     const data = await getFastApi<Client>(`/api/clients/${clientId}`);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -30,10 +35,14 @@ export async function GET(_: Request, { params }: Params) {
 export async function PATCH(req: Request, { params }: Params) {
   const { clientId } = await params;
   try {
+    await requireClientAccess(clientId);
     const body = await req.json();
     const data = await patchFastApi<Client>(`/api/clients/${clientId}`, body);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -46,9 +55,13 @@ export async function PATCH(req: Request, { params }: Params) {
 export async function DELETE(_: Request, { params }: Params) {
   const { clientId } = await params;
   try {
+    await requireClientAccess(clientId);
     await deleteFastApi(`/api/clients/${clientId}`);
     return new NextResponse(null, { status: 204 });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

@@ -5,9 +5,12 @@
  * Phase 25: Team & Intelligence - Predictive Alerts + Goal Projection
  */
 
-import { auth } from "@clerk/nextjs/server";
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
-import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
+import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
 import {
   projectGoalCompletion,
   predictTrafficDecline,
@@ -38,10 +41,8 @@ interface ClientAnalytics {
 export async function getGoalProjections(
   clientId: string
 ): Promise<GoalProjection[]> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
 
   try {
     // Fetch client goals
@@ -100,10 +101,8 @@ export async function getGoalProjections(
 export async function getClientPredictions(
   clientId: string
 ): Promise<PredictiveAlert[]> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
 
   const alerts: PredictiveAlert[] = [];
 
@@ -215,10 +214,7 @@ export async function getClientPredictions(
 export async function getWorkspacePredictions(
   workspaceId: string
 ): Promise<PredictiveAlert[]> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
+  await requireActionAuth();
 
   // Check cache first
   const cacheKey = `predictions:workspace:${workspaceId}`;
@@ -285,12 +281,8 @@ export async function getWorkspacePredictions(
 export async function getPredictionCounts(
   workspaceId: string
 ): Promise<{ critical: number; warning: number; total: number }> {
-  const { userId } = await auth();
-  if (!userId) {
-    return { critical: 0, warning: 0, total: 0 };
-  }
-
   try {
+    await requireActionAuth();
     const predictions = await getWorkspacePredictions(workspaceId);
     const critical = predictions.filter((p) => p.severity === "critical").length;
     const warning = predictions.filter((p) => p.severity === "warning").length;

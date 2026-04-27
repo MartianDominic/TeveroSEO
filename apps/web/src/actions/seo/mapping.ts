@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 
 interface MappingParams {
@@ -79,6 +83,9 @@ function buildQuery(params: MappingParams, extra?: Record<string, string>): stri
 export async function getMappings(
   params: MappingParams & { action?: "optimize" | "create" }
 ): Promise<GetMappingsResponse> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const extra = params.action ? { action: params.action } : undefined;
   const query = buildQuery(params, extra);
   return getOpenSeo<GetMappingsResponse>(`/api/seo/keyword-mapping?${query}`);
@@ -90,6 +97,9 @@ export async function getMappings(
 export async function suggestMappings(
   params: SuggestMappingsParams
 ): Promise<SuggestMappingsResponse> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<SuggestMappingsResponse>(`/api/seo/keyword-mapping?${query}`, {
     action: "suggest",
@@ -105,6 +115,9 @@ export async function suggestMappings(
 export async function overrideMapping(
   params: OverrideMappingParams
 ): Promise<OverrideMappingResponse> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo<OverrideMappingResponse>(`/api/seo/keyword-mapping?${query}`, {
     action: "override",

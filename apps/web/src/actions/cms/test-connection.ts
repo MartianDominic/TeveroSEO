@@ -5,7 +5,10 @@
  * Phase 41-04: CMS Integration Polish
  */
 
-import { auth } from "@clerk/nextjs/server";
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { postFastApi } from "@/lib/server-fetch";
 
 export type CmsPlatform = "wordpress" | "shopify" | "wix" | "webhook";
@@ -31,15 +34,10 @@ export async function testCmsConnection(
   clientId: string,
   params: TestConnectionParams
 ): Promise<TestConnectionResult> {
-  const { userId } = await auth();
-  if (!userId) {
-    return {
-      success: false,
-      error: "Unauthorized",
-    };
-  }
-
   try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(clientId, auth);
+
     const result = await postFastApi<TestConnectionResult>(
       `/api/clients/${clientId}/test-connection`,
       params

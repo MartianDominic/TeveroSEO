@@ -5,10 +5,12 @@
  * Phase 25: Team & Intelligence - Opportunity Identification
  */
 
-import { auth } from "@clerk/nextjs/server";
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import {
   findOpportunities,
-  prioritizeOpportunities,
 } from "@/lib/analytics/opportunities";
 import { getOpenSeo } from "@/lib/server-fetch";
 import type { Opportunity, OpportunityFilter } from "@/types/opportunities";
@@ -23,16 +25,15 @@ export async function getClientOpportunities(
   clientId: string,
   filter?: OpportunityFilter
 ): Promise<Opportunity[]> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
 
   let opportunities = await findOpportunities(clientId);
 
   // Apply type filter
   if (filter?.types?.length) {
-    opportunities = opportunities.filter((o) => filter.types!.includes(o.type));
+    const filterTypes = filter.types;
+    opportunities = opportunities.filter((o) => filterTypes.includes(o.type));
   }
 
   // Apply impact filter
@@ -67,10 +68,7 @@ export async function getTopOpportunities(
   workspaceId: string,
   limit = 10
 ): Promise<Opportunity[]> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
+  await requireActionAuth();
 
   try {
     // Get all clients in workspace
@@ -123,12 +121,10 @@ export async function getTopOpportunities(
  * @returns Count of high-priority opportunities
  */
 export async function getOpportunityCount(clientId: string): Promise<number> {
-  const { userId } = await auth();
-  if (!userId) {
-    return 0;
-  }
-
   try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(clientId, auth);
+
     const opportunities = await findOpportunities(clientId);
     // Count high-impact opportunities
     return opportunities.filter((o) => o.impact === "high").length;

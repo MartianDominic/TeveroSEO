@@ -1,5 +1,6 @@
 "use server";
 
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
 import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
 
@@ -44,6 +45,8 @@ export interface PortfolioAggregates {
 export async function getPortfolioAggregates(
   workspaceId: string
 ): Promise<PortfolioAggregates | null> {
+  await requireActionAuth();
+
   if (!workspaceId) return null;
 
   // Check cache first

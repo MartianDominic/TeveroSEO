@@ -13,7 +13,11 @@ export * from "./schema";
 // Database connection
 const connectionString = process.env.DATABASE_URL || "postgresql://localhost:5432/open_seo";
 
-const pool = new pg.Pool({
+/**
+ * PostgreSQL connection pool.
+ * Exported for graceful shutdown and direct pool access when needed.
+ */
+export const pool = new pg.Pool({
   connectionString,
   max: 10,
 });

@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
 
 interface DomainOverviewParams {
@@ -28,6 +32,9 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
  * Get domain overview from DataForSEO.
  */
 export async function getDomainOverview(params: DomainOverviewParams): Promise<unknown> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params);
   return postOpenSeo(`/api/seo/domain?${query}`, {
     domain: params.domain,

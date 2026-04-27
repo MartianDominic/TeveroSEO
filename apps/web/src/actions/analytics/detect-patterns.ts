@@ -9,6 +9,7 @@
  * Patterns update slowly (hourly) so we cache aggressively.
  */
 
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
 import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
 import type { PatternWithClients, PatternStatus } from "@/types/patterns";
@@ -99,6 +100,8 @@ function transformRankingData(data: RankingDataResponse[]): ClientRankingData[] 
 export async function detectPatterns(
   workspaceId: string
 ): Promise<PatternWithClients[]> {
+  await requireActionAuth();
+
   if (!workspaceId) {
     return [];
   }
@@ -178,6 +181,8 @@ export async function getPatterns(
  * Persists status change to database via API.
  */
 export async function dismissPattern(patternId: string): Promise<void> {
+  await requireActionAuth();
+
   if (!patternId) {
     throw new Error("patternId is required");
   }
@@ -193,6 +198,8 @@ export async function dismissPattern(patternId: string): Promise<void> {
  * Persists status change to database via API.
  */
 export async function resolvePattern(patternId: string): Promise<void> {
+  await requireActionAuth();
+
   if (!patternId) {
     throw new Error("patternId is required");
   }
@@ -209,6 +216,8 @@ export async function resolvePattern(patternId: string): Promise<void> {
 export async function refreshPatterns(
   workspaceId: string
 ): Promise<PatternWithClients[]> {
+  await requireActionAuth();
+
   // Invalidate cache
   const cacheKey = patternCacheKey(workspaceId);
   await cacheSet(cacheKey, null, { ttl: 0 });

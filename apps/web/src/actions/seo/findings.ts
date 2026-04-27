@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  requireActionAuth,
+  validateClientOwnership,
+} from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
 import type { ScoreResult } from "@/lib/audit/checks/types";
 
@@ -57,6 +61,9 @@ function buildQuery(
 export async function getPageFindings(
   params: PageFindingsParams
 ): Promise<PageFindingsResponse> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params, {
     page_id: params.pageId,
     action: "page-findings",
@@ -70,6 +77,9 @@ export async function getPageFindings(
 export async function getAuditFindings(
   params: FindingsParams
 ): Promise<{ findings: AuditFinding[] }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(params.clientId, auth);
+
   const query = buildQuery(params, { action: "all-findings" });
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
@@ -81,6 +91,7 @@ export async function getAuditFindings(
 export async function exportFindingsCSV(
   params: FindingsParams
 ): Promise<string> {
+  // Auth is checked in getAuditFindings
   const { findings } = await getAuditFindings(params);
 
   // Build CSV header
