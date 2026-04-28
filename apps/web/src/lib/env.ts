@@ -84,14 +84,12 @@ export type ClientEnv = z.infer<typeof clientEnvSchema>;
 /**
  * Validate environment variables and return typed config.
  * Logs detailed errors and throws on validation failure.
+ *
+ * SECURITY: Environment validation is ALWAYS performed.
+ * The SKIP_ENV_VALIDATION bypass has been removed to prevent
+ * accidental deployment without required security configuration.
  */
 function validateEnv(): Env {
-  // Skip validation during build time when env vars may not be available
-  if (process.env.SKIP_ENV_VALIDATION === 'true') {
-    console.warn('[env] Skipping environment validation (SKIP_ENV_VALIDATION=true)');
-    return process.env as unknown as Env;
-  }
-
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
@@ -113,6 +111,16 @@ function validateEnv(): Env {
     console.error('===============================================');
 
     throw new Error('Invalid environment configuration. See console for details.');
+  }
+
+  // SECURITY: Warn about localhost URLs in production
+  if (process.env.NODE_ENV === 'production') {
+    if (result.data.AI_WRITER_URL?.includes('localhost')) {
+      console.warn('WARNING: AI_WRITER_URL contains localhost in production!');
+    }
+    if (result.data.OPEN_SEO_URL?.includes('localhost')) {
+      console.warn('WARNING: OPEN_SEO_URL contains localhost in production!');
+    }
   }
 
   return result.data;

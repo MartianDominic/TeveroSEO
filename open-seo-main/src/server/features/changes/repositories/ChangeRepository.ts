@@ -4,7 +4,7 @@
  *
  * CRUD operations for site_changes table.
  */
-import { eq, and, inArray, desc } from 'drizzle-orm';
+import { eq, and, inArray, desc, gte, lte } from 'drizzle-orm';
 import { db } from '@/db';
 import { siteChanges, type SiteChangeInsert, type SiteChangeSelect } from '@/db/change-schema';
 
@@ -37,13 +37,18 @@ export async function getChangeById(changeId: string): Promise<SiteChangeSelect 
 }
 
 /**
- * Get all changes for a client.
+ * Get changes for a client with filters.
+ * All filters are applied at the database level to avoid in-memory filtering.
  */
 export async function getChangesByClient(
   clientId: string,
   options?: {
     status?: string;
     category?: string;
+    resourceType?: string;
+    triggeredBy?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
     limit?: number;
     offset?: number;
   }
@@ -56,6 +61,25 @@ export async function getChangesByClient(
 
   if (options?.category) {
     conditions.push(eq(siteChanges.category, options.category));
+  }
+
+  // FIX: Push resourceType filter to database instead of in-memory filtering
+  if (options?.resourceType) {
+    conditions.push(eq(siteChanges.resourceType, options.resourceType));
+  }
+
+  // FIX: Push triggeredBy filter to database instead of in-memory filtering
+  if (options?.triggeredBy) {
+    conditions.push(eq(siteChanges.triggeredBy, options.triggeredBy));
+  }
+
+  // FIX: Push date range filters to database instead of in-memory filtering
+  if (options?.dateFrom) {
+    conditions.push(gte(siteChanges.createdAt, options.dateFrom));
+  }
+
+  if (options?.dateTo) {
+    conditions.push(lte(siteChanges.createdAt, options.dateTo));
   }
 
   return await db

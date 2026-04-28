@@ -51,33 +51,23 @@ export const Route = createFileRoute("/api/changes/")({
           const category = url.searchParams.get("category") ?? undefined;
           const resourceType = url.searchParams.get("resourceType") ?? undefined;
           const triggeredBy = url.searchParams.get("triggeredBy") ?? undefined;
-          const dateFrom = url.searchParams.get("dateFrom") ?? undefined;
-          const dateTo = url.searchParams.get("dateTo") ?? undefined;
+          const dateFromStr = url.searchParams.get("dateFrom");
+          const dateToStr = url.searchParams.get("dateTo");
           const limit = url.searchParams.get("limit");
           const offset = url.searchParams.get("offset");
 
-          let changes = await getChangesByClient(clientIdParam, {
+          // FIX: All filters now pushed to database layer to avoid in-memory filtering
+          // This improves performance and ensures pagination works correctly with filters
+          const changes = await getChangesByClient(clientIdParam, {
             status,
             category,
+            resourceType,
+            triggeredBy,
+            dateFrom: dateFromStr ? new Date(dateFromStr) : undefined,
+            dateTo: dateToStr ? new Date(dateToStr) : undefined,
             limit: limit ? parseInt(limit, 10) : 100,
             offset: offset ? parseInt(offset, 10) : 0,
           });
-
-          // Apply additional filters that repository doesn't support
-          if (resourceType) {
-            changes = changes.filter((c) => c.resourceType === resourceType);
-          }
-          if (triggeredBy) {
-            changes = changes.filter((c) => c.triggeredBy === triggeredBy);
-          }
-          if (dateFrom) {
-            const fromDate = new Date(dateFrom);
-            changes = changes.filter((c) => c.createdAt >= fromDate);
-          }
-          if (dateTo) {
-            const toDate = new Date(dateTo);
-            changes = changes.filter((c) => c.createdAt <= toDate);
-          }
 
           return Response.json({ success: true, data: changes });
         } catch (error) {

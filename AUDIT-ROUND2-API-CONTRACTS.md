@@ -559,3 +559,56 @@ if (webhook.scope === "client" && webhook.scopeId) {
 6. `apps/web/src/lib/voiceApi.ts` - CRITICAL: Verify voice mode enum values
 7. `apps/web/src/actions/seo/keywords.ts` - HIGH: Add proper return types
 8. `apps/web/src/actions/webhooks.ts` - MEDIUM: Add workspace scope validation
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Enum Standardization
+
+1. **OpportunityType filter schema** (`get-opportunities.ts` line 25-26)
+   - Changed from: `["quick-win", "growth", "defensive", "technical", "content"]`
+   - Changed to: `["ctr_improvement", "ranking_gap", "quick_win", "content_opportunity"]`
+   - Now aligned with `OpportunityType` in `types/opportunities.ts`
+
+2. **Voice profile mode enum** (`voiceApi.ts`)
+   - Added Zod validation schema: `voiceModeSchema = z.enum(["preservation", "application", "best_practices"])`
+   - Added `voiceStatusSchema` and `ruleTypeSchema` for complete validation
+
+### Response Shape Fixes
+
+1. **Dashboard cursor encoding** (`get-clients-paginated.ts` lines 111-136)
+   - Added null checks: `const lastRow = data.length > 0 ? data[data.length - 1] : null`
+   - Enhanced cursor encoding: `nextCursor: hasMore && lastRow && lastRow.clientId ? ...`
+   - Prevents undefined access on empty arrays
+
+2. **Portfolio aggregates numeric parsing** (`get-portfolio-aggregates.ts` lines 93-113)
+   - Added `safeParseNum()` and `safeParseNumOrNull()` helper functions
+   - Handles: null, undefined, NaN strings, and Decimal type coercion
+   - Returns fallback values instead of NaN
+
+3. **Predictions GSC data endpoint** (`get-predictions.ts` lines 180-193)
+   - Changed from: `getFastApi<ClientAnalytics>('/api/clients/${clientId}/analytics')`
+   - Changed to: `getFastApi<GscDailyResponse>('/api/clients/${clientId}/gsc/daily?days=30')`
+   - Added `GscDailyResponse` interface for proper typing
+   - Gracefully handles missing GSC connection
+
+### Schema Validation Added
+
+1. **Voice API responses** (`voiceApi.ts`)
+   - `voiceProfileResponseSchema` - validates mode, voiceStatus fields
+   - `protectionRulesResponseSchema` - validates ruleType field
+   - Both use `.passthrough()` to allow additional fields
+   - Logs validation errors before throwing
+
+### Already Correct (Verified)
+
+1. **TeamMetrics error field** - Already defined in `types/team.ts` line 48
+2. **Changes API response wrapper** - Already expects `{ success: boolean; data: Change[] }`
+3. **CursorPaginationResult error field** - Already defined in `types/pagination.ts` line 19
+
+### Remaining Items (Not Fixed)
+
+1. **Keywords action `unknown` return types** - Requires defining backend response schemas
+2. **Webhook workspace scope validation** - Requires backend endpoint verification
+3. **Pattern detection endpoints** - Requires backend implementation check

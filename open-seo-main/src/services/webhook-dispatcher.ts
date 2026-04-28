@@ -159,11 +159,11 @@ export async function emitEvent(
       }
 
       // Enqueue delivery job
+      // SECURITY: Secret is NOT included in job payload - fetched at delivery time via webhookId
       await enqueueWebhookDelivery({
         deliveryId,
         webhookId: webhook.id,
         url: webhook.url,
-        secret: webhook.secret,
         headers: (webhook.headers as Record<string, string>) ?? {},
         payload,
         attempt: 0,

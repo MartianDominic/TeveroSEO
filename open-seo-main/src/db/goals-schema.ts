@@ -10,6 +10,7 @@ import {
   numeric,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
 
@@ -73,6 +74,8 @@ export const clientGoals = pgTable(
     index("idx_client_goals_client").on(table.clientId),
     index("idx_client_goals_workspace").on(table.workspaceId),
     index("idx_client_goals_template").on(table.templateId),
+    // C-07: Prevent duplicate goals of same type per client
+    uniqueIndex("uq_client_goals_client_template").on(table.clientId, table.templateId),
   ]
 );
 

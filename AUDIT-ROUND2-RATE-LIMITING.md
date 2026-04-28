@@ -411,3 +411,144 @@ No issue found - headers are consistent across services.
 | SIGNUP | 5 | 300s |
 | CONTENT_GENERATE | 20 | 60s |
 | SERP_ANALYZE | 20 | 60s |
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Auth Rate Limiting Added (C01 RESOLVED)
+
+**New file:** `apps/web/src/lib/rate-limit/auth-limiter.ts`
+
+Added Redis-backed sliding window rate limiting for all authentication endpoints:
+
+| Endpoint Type | Limit | Window | Purpose |
+|--------------|-------|--------|---------|
+| Sign-in | 5 | 15 min | Prevents brute force |
+| Sign-up | 5 | 15 min | Prevents mass account creation |
+| Password Reset | 3 | 1 hour | Prevents email bombing |
+| Email Verification | 5 | 15 min | Prevents abuse |
+
+### IP Spoofing Protection Added (H03 RESOLVED)
+
+The `getClientIp()` function now implements secure IP detection:
+
+1. **Proxy Secret Verification**: Only trusts `X-Forwarded-For` if request includes valid `X-Proxy-Secret` header matching `PROXY_SECRET` env var
+2. **Cloudflare Support**: Trusts `CF-Connecting-IP` when `TRUST_CLOUDFLARE=true`
+3. **Vercel Support**: Auto-detects Vercel environment and uses `x-vercel-forwarded-for`
+4. **Fallback Chain**: Uses secure fallback order when headers can't be verified
+5. **Warning Logs**: Logs suspicious header combinations in production
+
+### Fail-Closed for Auth Endpoints
+
+Unlike other rate limiters that fail-open on Redis errors, auth rate limiting **fails closed** in production:
+- If Redis is unavailable, auth requests are blocked with 429
+- In development, requests are allowed with warning logs
+- This prevents attackers from exploiting Redis outages
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/src/lib/rate-limit/auth-limiter.ts` | **NEW** - Auth-specific rate limiter with IP spoofing protection |
+| `apps/web/src/lib/rate-limit/index.ts` | Added exports for auth limiter |
+| `apps/web/src/middleware.ts` | Integrated auth rate limiting before Clerk processing |
+| `apps/web/.env.example` | Added `PROXY_SECRET` and `TRUST_CLOUDFLARE` documentation |
+
+### Environment Variables Added
+
+```bash
+# Required for secure IP detection behind reverse proxy
+PROXY_SECRET=<generate with: openssl rand -hex 32>
+
+# Set to "true" if behind Cloudflare
+TRUST_CLOUDFLARE=false
+```
+
+### Remaining Items
+
+The following items from the audit were NOT addressed in this fix:
+- H02: AI-Writer exempt paths (AI-Writer codebase)
+- M01-M04: Various medium-priority issues (planned for future)
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28 (Server Actions & File Upload)
+
+### C02 RESOLVED: File Upload Rate Limiting
+
+**File:** `apps/web/src/app/api/clients/[clientId]/branding/logo/route.ts`
+
+Added rate limiting to logo upload endpoint:
+- Limit: 10 uploads per hour per user
+- Returns 429 with proper headers (X-RateLimit-*, Retry-After)
+
+### H01 RESOLVED: Server Action Rate Limiting
+
+**New file:** `apps/web/src/lib/rate-limit/action-limiters.ts`
+
+Created comprehensive action-specific rate limiters based on operation cost:
+
+| Limiter | Limit | Window | Used By |
+|---------|-------|--------|---------|
+| `externalApi` | 20 | 1 hour | Generic external API calls |
+| `keywords` | 20 | 1 hour | DataForSEO keyword research |
+| `domainAnalysis` | 30 | 1 hour | DataForSEO domain analysis |
+| `upload` | 10 | 1 hour | File uploads |
+| `revert` | 30 | 1 hour | CMS content reverts |
+| `alertConfig` | 50 | 1 hour | Alert rule CRUD |
+| `savedViews` | 60 | 1 hour | Saved views CRUD |
+| `teamMetrics` | 60 | 1 minute | Team metrics & assignments |
+| `opportunities` | 30 | 1 minute | Opportunity analysis |
+| `crud` | 100 | 1 minute | Standard CRUD operations |
+| `read` | 200 | 1 minute | Read-only operations |
+| `dashboard` | 60 | 1 minute | Dashboard aggregations |
+| `export` | 30 | 1 minute | Data exports |
+| `mapping` | 50 | 1 minute | Keyword-URL mappings |
+
+### Actions Rate Limited (17 Total)
+
+| File | Functions | Limiter |
+|------|-----------|---------|
+| `seo/keywords.ts` | `researchKeywords`, `getSerpAnalysis` | keywords (20/hr) |
+| `seo/domain.ts` | `getDomainOverview` | domainAnalysis (30/hr) |
+| `alerts.ts` | `updateAlertConfig`, `createAlertRule`, `deleteAlertRule` | alertConfig (50/hr) |
+| `changes.ts` | `executeRevert` | revert (30/hr) |
+| `views/saved-views.ts` | `createSavedViewWithConfig`, `updateSavedViewWithConfig`, `deleteSavedViewById` | savedViews (60/hr) |
+| `team/get-team-metrics.ts` | `getTeamMetrics`, `reassignClient` | teamMetrics (60/min) |
+| `analytics/get-opportunities.ts` | `getClientOpportunities`, `getTopOpportunities` | opportunities (30/min) |
+| `seo/mapping.ts` | `suggestMappings`, `overrideMapping` | mapping (50/min) |
+| `seo/findings.ts` | `exportFindingsCSV` | export (30/min) |
+| `dashboard/get-clients-paginated.ts` | `getClientsPaginated` | dashboard (60/min) |
+| `dashboard/get-portfolio-aggregates.ts` | `getPortfolioAggregates` | dashboard (60/min) |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/src/lib/rate-limit/action-limiters.ts` | **NEW** - Action-specific rate limiters |
+| `apps/web/src/lib/rate-limit/index.ts` | Added exports for action limiters |
+| `apps/web/src/actions/seo/keywords.ts` | Added rate limiting to researchKeywords, getSerpAnalysis |
+| `apps/web/src/actions/seo/domain.ts` | Added rate limiting to getDomainOverview |
+| `apps/web/src/actions/alerts.ts` | Added rate limiting to CRUD operations |
+| `apps/web/src/actions/changes.ts` | Added rate limiting to executeRevert |
+| `apps/web/src/actions/views/saved-views.ts` | Added rate limiting to CRUD operations |
+| `apps/web/src/actions/team/get-team-metrics.ts` | Added rate limiting to getTeamMetrics, reassignClient |
+| `apps/web/src/actions/analytics/get-opportunities.ts` | Added rate limiting to opportunity fetches |
+| `apps/web/src/actions/seo/mapping.ts` | Added rate limiting to suggestMappings, overrideMapping |
+| `apps/web/src/actions/seo/findings.ts` | Added rate limiting to exportFindingsCSV |
+| `apps/web/src/actions/dashboard/get-clients-paginated.ts` | Added rate limiting |
+| `apps/web/src/actions/dashboard/get-portfolio-aggregates.ts` | Added rate limiting |
+| `apps/web/src/app/api/clients/[clientId]/branding/logo/route.ts` | Added upload rate limiting with proper headers |
+
+### Audit Status Summary
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| C01 - Auth rate limiting | CRITICAL | RESOLVED |
+| C02 - File upload rate limiting | CRITICAL | RESOLVED |
+| H01 - Server action rate limiting | HIGH | RESOLVED |
+| H02 - AI-Writer exempt paths | HIGH | NOT ADDRESSED (different codebase) |
+| H03 - IP spoofing | HIGH | RESOLVED |
+| M01-M04 | MEDIUM | PLANNED |
+| L01-L03 | LOW | PLANNED |

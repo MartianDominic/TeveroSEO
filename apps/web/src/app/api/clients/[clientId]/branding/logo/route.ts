@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
+import { actionLimiters } from "@/lib/rate-limit/action-limiters";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,28 @@ export async function POST(
 ) {
   try {
     const { clientId } = await params;
-    const { getToken } = await auth();
+    const { getToken, userId } = await auth();
+
+    // Rate limit: 10 uploads per hour per user
+    if (userId) {
+      const result = await actionLimiters.upload.limit(userId);
+      if (!result.success) {
+        const resetInMinutes = Math.ceil((result.resetAt - Date.now()) / 60000);
+        return NextResponse.json(
+          { error: `Upload rate limit exceeded. Try again in ${resetInMinutes} minute(s).` },
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Limit": String(result.limit),
+              "X-RateLimit-Remaining": String(result.remaining),
+              "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
+              "Retry-After": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+            },
+          }
+        );
+      }
+    }
+
     const token = await getToken();
 
     // Forward multipart form data directly to open-seo

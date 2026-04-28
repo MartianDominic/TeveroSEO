@@ -26,8 +26,25 @@ export async function buildCacheKey(
 }
 
 function keyToPath(key: string): string {
-  const safe = key.replace(/[\0]/g, "_").replace(/\.\.\//g, "_").replace(/[/:]/g, "__");
-  return path.join(CACHE_ROOT, `${safe}.json`);
+  let safe = key.replace(/[\0]/g, "_");
+
+  // Recursively remove path traversal sequences (handles ....// -> ../ cases)
+  let prev = "";
+  while (prev !== safe) {
+    prev = safe;
+    safe = safe.replace(/\.\.\//g, "_").replace(/\.\.\\/g, "_");
+  }
+
+  // Replace remaining path separators and colons
+  safe = safe.replace(/[/:\\]/g, "__");
+
+  // Final validation: resolve and check it stays within CACHE_ROOT
+  const resolved = path.resolve(CACHE_ROOT, `${safe}.json`);
+  if (!resolved.startsWith(path.resolve(CACHE_ROOT))) {
+    throw new Error("Path traversal detected in cache key");
+  }
+
+  return resolved;
 }
 
 async function ensureDir(): Promise<void> {

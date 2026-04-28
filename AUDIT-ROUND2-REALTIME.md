@@ -437,3 +437,68 @@ The `BoundedSet` class (lines 15-54) prevents unbounded memory growth by evictin
 - `/open-seo-main/src/server.ts`
 - `/open-seo-main/src/server/lib/clerk-jwt.ts`
 - `/docker/puppeteer/browser-server.js`
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Connection Limits (HIGH-WS-004)
+- Max 5 connections per authenticated user
+- Connection tracking with cleanup on disconnect
+- Implemented in `/open-seo-main/src/server/websocket/connection-manager.ts`
+- Integrated in socket-server.ts authentication middleware
+
+### Message Rate Limiting (HIGH-WS-005)
+- Max 100 messages per minute per user
+- Sliding window implementation with automatic cleanup
+- Applied to join-workspace, leave-workspace, and sync events
+- Implemented in `/open-seo-main/src/server/websocket/connection-manager.ts`
+
+### Catch-up Mechanism (HIGH-WS-006)
+- lastEventId tracking via new "sync" client event
+- Server buffers last 100 events per workspace in Redis (5 min TTL)
+- Server sends missed events on reconnect via getEventsSince()
+- New SyncRequest type in types.ts
+
+### Puppeteer WebSocket Security (HIGH-WS-007)
+- /ws endpoint now requires INTERNAL_API_KEY header
+- Set via INTERNAL_API_KEY environment variable
+- Unauthorized requests logged and rejected with 401
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28 (Client Authentication)
+
+### WebSocket Authentication Added (CRITICAL-WS-001, WS-002, WS-003)
+
+**use-websocket.ts:**
+- Added `useAuth` from `@clerk/nextjs` for JWT token retrieval
+- JWT token passed in URL query parameter (`?token=...`)
+- Authentication check before connection attempt
+- Custom close code 4001 handling for auth failures
+- `onAuthError` callback for auth failure notifications
+- `isAuthenticated` state tracking
+
+**socket-client.ts:**
+- Added `useAuth` integration for Socket.IO connections
+- JWT token passed via Socket.IO `auth` option
+- `updateSocketAuth()` function for token updates
+- `isAuthenticated` state in `UseActivityFeedReturn`
+- `connect_error` handler for auth-related errors
+
+**realtime-metrics.tsx:**
+- Added `useAuth` for JWT token retrieval
+- JWT token passed in URL query parameter
+- `isAuthenticated` state tracking
+- Auth failure handling on close code 4001
+
+### Token Refresh for Long Connections (LOW-WS-013)
+- 5-minute refresh interval (`TOKEN_REFRESH_INTERVAL`)
+- `auth_refresh` message type sent to server
+- Token refresh cleared on disconnect/cleanup
+- Prevents reconnection flood after token expiry
+
+### Files Modified
+- `/apps/web/src/hooks/use-websocket.ts`
+- `/apps/web/src/lib/websocket/socket-client.ts`
+- `/apps/web/src/components/seo/realtime-metrics.tsx`

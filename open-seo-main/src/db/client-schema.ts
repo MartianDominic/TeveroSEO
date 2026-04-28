@@ -12,8 +12,10 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { prospects } from "./prospect-schema";
 import { projects } from "./app.schema";
@@ -91,6 +93,8 @@ export const clients = pgTable(
     index("ix_clients_status").on(table.status),
     uniqueIndex("ix_clients_workspace_domain").on(table.workspaceId, table.domain),
     index("ix_clients_converted_prospect").on(table.convertedFromProspectId),
+    // H-01: Client status must be valid enum value
+    check("chk_client_status_valid", sql`status IN ('onboarding', 'active', 'paused', 'churned')`),
   ],
 );
 

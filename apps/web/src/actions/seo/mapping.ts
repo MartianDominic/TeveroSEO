@@ -6,6 +6,7 @@ import {
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 
 // Validation schemas
 const mappingParamsSchema = z.object({
@@ -116,6 +117,7 @@ export async function getMappings(
 
 /**
  * Suggest mappings for all unmapped keywords.
+ * Rate limited: 50 operations per minute.
  */
 export async function suggestMappings(
   params: SuggestMappingsParams
@@ -123,6 +125,9 @@ export async function suggestMappings(
   const validated = suggestMappingsParamsSchema.parse(params);
   const auth = await requireActionAuth();
   await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: suggestion can be CPU-intensive
+  await checkActionRateLimit("mapping", auth.userId);
 
   const query = buildQuery(validated);
   return postOpenSeo<SuggestMappingsResponse>(`/api/seo/keyword-mapping?${query}`, {
@@ -135,6 +140,7 @@ export async function suggestMappings(
 
 /**
  * Override a mapping to point to a different URL.
+ * Rate limited: 50 operations per minute.
  */
 export async function overrideMapping(
   params: OverrideMappingParams
@@ -142,6 +148,9 @@ export async function overrideMapping(
   const validated = overrideMappingParamsSchema.parse(params);
   const auth = await requireActionAuth();
   await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: prevent bulk override abuse
+  await checkActionRateLimit("mapping", auth.userId);
 
   const query = buildQuery(validated);
   return postOpenSeo<OverrideMappingResponse>(`/api/seo/keyword-mapping?${query}`, {

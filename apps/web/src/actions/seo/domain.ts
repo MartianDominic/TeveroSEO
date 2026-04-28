@@ -6,6 +6,7 @@ import {
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");
@@ -48,11 +49,15 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
 
 /**
  * Get domain overview from DataForSEO.
+ * Rate limited: 30 requests per hour (external API cost).
  */
 export async function getDomainOverview(params: DomainOverviewParams): Promise<unknown> {
   const validated = domainOverviewParamsSchema.parse(params);
   const auth = await requireActionAuth();
   await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: DataForSEO domain analysis has direct cost
+  await checkActionRateLimit("domainAnalysis", auth.userId);
 
   const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/domain?${query}`, {

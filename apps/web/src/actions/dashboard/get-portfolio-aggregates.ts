@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
 
 // Validation schema
@@ -53,6 +54,7 @@ export interface PortfolioAggregatesResult {
 /**
  * Fetch pre-computed portfolio aggregates for a workspace.
  * Uses Redis caching with 60s TTL (aggregates update every 5 min).
+ * Rate limited: 60 operations per minute.
  *
  * SECURITY: Returns explicit error shape instead of silent null to help
  * callers distinguish between "no data" and "error occurred".
@@ -67,6 +69,9 @@ export async function getPortfolioAggregates(
   }
 
   const auth = await requireActionAuth();
+
+  // Rate limit: dashboard aggregation queries
+  await checkActionRateLimit("dashboard", auth.userId);
 
   // Validate workspace membership to prevent IDOR
   await validateWorkspaceMembership(validatedWorkspaceId.data, auth);
@@ -89,20 +94,27 @@ export async function getPortfolioAggregates(
       return { data: null };
     }
 
-    // Parse numeric fields from strings
+    // FIX: Parse numeric fields from strings with robust NaN handling
+    // Backend may return Decimal/Numeric types as strings, or null/undefined
+    const safeParseNum = (val: unknown, fallback: number = 0): number => {
+      if (val === null || val === undefined) return fallback;
+      const parsed = parseFloat(String(val));
+      return Number.isNaN(parsed) ? fallback : parsed;
+    };
+
+    const safeParseNumOrNull = (val: unknown): number | null => {
+      if (val === null || val === undefined) return null;
+      const parsed = parseFloat(String(val));
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+
     const aggregates: PortfolioAggregates = {
       ...response.data,
-      avgGoalAttainment: Number(response.data.avgGoalAttainment ?? 0),
-      avgGoalAttainmentTrend: response.data.avgGoalAttainmentTrend
-        ? Number(response.data.avgGoalAttainmentTrend)
-        : null,
-      avgCtr: Number(response.data.avgCtr ?? 0),
-      totalClicksTrend: response.data.totalClicksTrend
-        ? Number(response.data.totalClicksTrend)
-        : null,
-      avgDaysSinceTouch: response.data.avgDaysSinceTouch
-        ? Number(response.data.avgDaysSinceTouch)
-        : null,
+      avgGoalAttainment: safeParseNum(response.data.avgGoalAttainment, 0),
+      avgGoalAttainmentTrend: safeParseNumOrNull(response.data.avgGoalAttainmentTrend),
+      avgCtr: safeParseNum(response.data.avgCtr, 0),
+      totalClicksTrend: safeParseNumOrNull(response.data.totalClicksTrend),
+      avgDaysSinceTouch: safeParseNumOrNull(response.data.avgDaysSinceTouch),
     };
 
     // Cache for 60 seconds with workspace tag

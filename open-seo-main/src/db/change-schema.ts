@@ -13,8 +13,10 @@ import {
   timestamp,
   jsonb,
   index,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { siteConnections } from "./connection-schema";
 
@@ -81,6 +83,8 @@ export const siteChanges = pgTable(
     index("ix_site_changes_batch").on(table.batchId),
     index("ix_site_changes_created").on(table.createdAt),
     index("ix_site_changes_reverted").on(table.revertedAt),
+    // H-02: Site change status must be valid enum value
+    check("chk_site_change_status_valid", sql`status IN ('pending', 'applied', 'verified', 'reverted', 'failed')`),
   ]
 );
 

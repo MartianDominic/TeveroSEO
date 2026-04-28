@@ -24,6 +24,7 @@ import { Undo2, ExternalLink, Loader2 } from 'lucide-react';
 import type { Change } from '@/actions/changes';
 import { RevertDialog } from './RevertDialog';
 import { BatchRevertDialog } from './BatchRevertDialog';
+import { safeGetPathname } from '@/lib/utils/safe-parse';
 
 interface ChangeListProps {
   changes: Change[];
@@ -234,7 +235,7 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
               <TableCell className="max-w-[200px]">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium" title={change.resourceUrl}>
-                    {new URL(change.resourceUrl).pathname || '/'}
+                    {safeGetPathname(change.resourceUrl)}
                   </span>
                   <a
                     href={change.resourceUrl}

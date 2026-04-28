@@ -361,3 +361,73 @@ ON alert_rules(client_id);
 | HIGH | `AI-Writer/backend/services/ai_analytics_service.py` | Unbounded analytics |
 | MEDIUM | `open-seo-main/src/routes/api/changes/index.ts` | In-memory filtering |
 | MEDIUM | `apps/web/src/actions/analytics/detect-patterns.ts` | In-memory pagination |
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### N+1 Patterns Fixed
+
+1. **`apps/web/src/actions/analytics/get-predictions.ts`** - Goal Projections
+   - Changed from sequential per-goal snapshot fetches to batch endpoint
+   - Now fetches all snapshots in single request: `/api/clients/{id}/goals/snapshots/batch?goalIds=...`
+   - Fallback to individual fetches for backwards compatibility
+   - **Impact**: Reduced from N+1 queries to 1 query (or N fallback)
+
+2. **`AI-Writer/backend/services/monitoring_data_service.py`** - Execution Logs
+   - Added `joinedload(TaskExecutionLog.task)` for eager loading
+   - Task details now fetched in single JOIN query instead of N+1
+   - Added max limit enforcement (100 records)
+   - **Impact**: Reduced from N+1 queries to 1 query
+
+### Unbounded Queries Fixed
+
+3. **`apps/web/src/actions/analytics/get-opportunities.ts`** - Workspace Clients
+   - Added `?limit=50` to workspace clients endpoint
+   - Processes in batches of 10 to avoid API overwhelm
+   - **Impact**: Bounded to 50 clients max, processed in controlled batches
+
+4. **`AI-Writer/backend/services/content_planning_db.py`** - Multiple Methods
+   - `get_user_content_strategies()` - Added limit/offset params, default 100
+   - `get_strategy_calendar_events()` - Added limit/offset params, default 100
+   - `get_user_content_gap_analyses()` - Added limit/offset params, default 100
+   - `get_user_content_recommendations()` - Added limit/offset params, default 100
+   - **Impact**: All queries now bounded with pagination support
+
+5. **`open-seo-main/src/services/alerts.ts`** - Alert Rules
+   - `getClientAlertRules()` - Added limit/offset params, default 100
+   - **Impact**: Query now bounded with pagination support
+
+6. **`AI-Writer/backend/services/ai_analytics_service.py`** - Analytics Queries
+   - `_get_analytics_data()` - Added LIMIT 1000 with ORDER BY recorded_at DESC
+   - `_get_performance_data()` - Added LIMIT 1000, proper session cleanup
+   - `_get_historical_performance_data()` - Added LIMIT 1000
+   - **Impact**: All analytics queries now bounded to 1000 records
+
+### In-Memory Filtering Fixed
+
+7. **`open-seo-main/src/routes/api/changes/index.ts`** - Changes Filtering
+   - Pushed all filters to repository layer (resourceType, triggeredBy, dateFrom, dateTo)
+   - Updated `ChangeRepository.getChangesByClient()` to accept new filter params
+   - Added `gte`/`lte` imports for date range queries
+   - **Impact**: All filtering now at database level, pagination accurate
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/src/actions/analytics/get-predictions.ts` | Batch snapshot fetch with fallback |
+| `apps/web/src/actions/analytics/get-opportunities.ts` | Bounded clients fetch with batching |
+| `AI-Writer/backend/services/monitoring_data_service.py` | Eager loading + max limit |
+| `AI-Writer/backend/services/content_planning_db.py` | Pagination on 4 methods |
+| `AI-Writer/backend/services/ai_analytics_service.py` | LIMIT on 3 query methods |
+| `open-seo-main/src/services/alerts.ts` | Pagination on alert rules |
+| `open-seo-main/src/server/features/changes/repositories/ChangeRepository.ts` | Extended filter support |
+| `open-seo-main/src/routes/api/changes/index.ts` | Database-level filtering |
+
+### Remaining Items (MEDIUM priority - acceptable for now)
+
+- `apps/web/src/actions/analytics/detect-patterns.ts` - In-memory pagination
+  - Patterns are computed/cached, not stored in DB
+  - Total patterns typically <100, acceptable for in-memory operations
+  - Consider caching filtered results if pattern volume grows

@@ -405,3 +405,92 @@ The audit identified several well-implemented security patterns:
 ### Supporting Files
 - apps/web/src/lib/rate-limit.ts
 - apps/web/src/lib/auth/action-auth.ts
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### 1. Article Generation Idempotency (CRITICAL - Fixed)
+
+**File:** `AI-Writer/backend/api/articles.py`
+
+**Fix:** Added atomic status transition using `SELECT FOR UPDATE` with `skip_locked=True`. The generate endpoint now:
+1. Locks the article row with `with_for_update(skip_locked=True)`
+2. Only selects articles in `draft` or `failed` status
+3. Atomically sets status to `generating` before spawning background task
+4. Returns 409 if article is already in `generating` status
+
+This prevents duplicate generation tasks from concurrent requests.
+
+### 2. Webhook TOCTOU (HIGH - Fixed)
+
+**Files:**
+- `open-seo-main/src/services/webhooks.ts`
+- `apps/web/src/actions/webhooks.ts`
+
+**Fix:** Modified `updateWebhook` and `deleteWebhook` functions to accept optional `expectedScope` and `expectedScopeId` parameters. These are included in the WHERE clause of the update/delete query, providing atomic ownership validation. The frontend now passes the scope info to the backend for atomic validation within the same query.
+
+### 3. Intelligence Scrape Deduplication (HIGH - Fixed)
+
+**File:** `AI-Writer/backend/api/intelligence.py`
+
+**Fix:** Added `with_for_update()` to the intelligence record query and checks for `pending` or `in_progress` status. Returns 409 if a scrape is already in progress for the client.
+
+### 4. Client Creation Limits (HIGH - Fixed)
+
+**File:** `AI-Writer/backend/api/clients.py`
+
+**Fix:** Added `MAX_CLIENTS_PER_USER = 100` limit. The `create_client` endpoint now checks the user's current client count before allowing creation. Returns 429 if limit is reached.
+
+### 5. Saved View Limits (HIGH - Fixed)
+
+**File:** `apps/web/src/actions/views/saved-views.ts`
+
+**Fix:** Added `MAX_SAVED_VIEWS_PER_USER = 50` limit. The `createSavedViewWithConfig` function now checks the user's view count per workspace before allowing creation.
+
+### 6. Article State Machine Transitions (MEDIUM - Fixed)
+
+**File:** `AI-Writer/backend/api/articles.py`
+
+**Fix:** Added `VALID_MANUAL_TRANSITIONS` dictionary defining allowed state transitions:
+- `draft` -> `pending_review`
+- `generated` -> `pending_review`
+- `pending_review` -> `approved`, `draft`
+- `approved` -> `draft`
+- `failed` -> `draft`
+
+The PATCH endpoint now validates that the requested status transition is allowed, preventing workflow bypass (e.g., jumping from `draft` directly to `approved`).
+
+### 7. Revert Idempotency (MEDIUM - Fixed)
+
+**File:** `apps/web/src/actions/changes.ts`
+
+**Fix:** Added `generateRevertIdempotencyKey` function that creates a hash of the scope, connectionId, and a 30-second time window. This key is passed to the backend with revert requests to enable deduplication of rapid double-submissions.
+
+### 8. CSV Row Limits (MEDIUM - Fixed)
+
+**Files:**
+- `AI-Writer/backend/api/csv_import.py`
+- `AI-Writer/backend/services/csv_import.py`
+
+**Fix:** Added `_MAX_CSV_ROWS = 500` limit. The CSV import service now raises a ValueError if the row count exceeds the limit, preventing resource exhaustion from large imports.
+
+### Summary of Resource Limits Added
+
+| Resource | Limit | Location |
+|----------|-------|----------|
+| Clients per user | 100 | `AI-Writer/backend/api/clients.py` |
+| Saved views per user per workspace | 50 | `apps/web/src/actions/views/saved-views.ts` |
+| CSV import rows | 500 | `AI-Writer/backend/services/csv_import.py` |
+
+### Remaining Items (Not Addressed)
+
+The following lower-priority items from the audit were not addressed in this fix:
+- #9 Alert Rule Limits (MEDIUM)
+- #10 Protection Rule Limits (MEDIUM)
+- #11 Keyword Save Total Limits (MEDIUM)
+- #12 Rate Limit Fail-Closed Option (LOW)
+- #13 Webhook Event Validation (LOW)
+- #14 Goals API Synthetic Data (LOW)
+
+These should be addressed in a follow-up remediation effort.

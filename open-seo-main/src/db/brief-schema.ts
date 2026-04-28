@@ -5,7 +5,9 @@ import {
   jsonb,
   timestamp,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { keywordPageMapping } from "./mapping-schema";
 
 // Brief status workflow: draft → ready → generating → published
@@ -58,6 +60,12 @@ export const contentBriefs = pgTable(
   (table) => [
     index("ix_briefs_mapping").on(table.mappingId),
     index("ix_briefs_status").on(table.status),
+    // M-18: Target word count must be reasonable (100-50000)
+    check("chk_target_word_count_range", sql`target_word_count >= 100 AND target_word_count <= 50000`),
+    // M-19: Voice mode must be valid enum value
+    check("chk_voice_mode_valid", sql`voice_mode IN ('preservation', 'application', 'best_practices')`),
+    // Brief status must be valid enum value
+    check("chk_brief_status_valid", sql`status IN ('draft', 'ready', 'generating', 'published')`),
   ],
 );
 

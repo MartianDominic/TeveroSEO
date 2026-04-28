@@ -38,8 +38,17 @@ interface GoalSnapshot {
   currentValue: string;
 }
 
+// FIX: ClientAnalytics from main /analytics endpoint doesn't include gsc_daily.
+// The backend ClientAnalyticsResponse has: client_id, articles_published_this_month,
+// total_word_count_this_month, failed_count_this_month, last_published_at, cms_type.
+// GSC data must be fetched from a separate endpoint.
 interface ClientAnalytics {
   gsc_daily?: Array<{ date: string; clicks: number; impressions: number }>;
+}
+
+// Response shape from dedicated GSC daily endpoint
+interface GscDailyResponse {
+  data?: Array<{ date: string; clicks: number; impressions: number }>;
 }
 
 /**
@@ -66,23 +75,55 @@ export async function getGoalProjections(
       return [];
     }
 
-    // Fetch goal snapshots for historical data (last 30 days)
+    // BATCH FETCH: Get all goal snapshots in a single request
+    // This prevents N+1 queries (1 request for N goals instead of N requests)
+    const goalIds = goals.map(({ goal }) => goal.id);
+    let snapshotsByGoalId: Map<string, { date: string; value: number }[]> = new Map();
+
+    try {
+      // Batch endpoint: fetch snapshots for all goals at once
+      const batchSnapshots = await getFastApi<{
+        snapshots: { goalId: string; snapshotDate: string; currentValue: string }[];
+      }>(`/api/clients/${clientId}/goals/snapshots/batch?goalIds=${goalIds.join(",")}&days=30`);
+
+      // Group snapshots by goalId
+      for (const snapshot of batchSnapshots.snapshots ?? []) {
+        const existing = snapshotsByGoalId.get(snapshot.goalId) ?? [];
+        existing.push({
+          date: snapshot.snapshotDate,
+          value: Number(snapshot.currentValue ?? 0),
+        });
+        snapshotsByGoalId.set(snapshot.goalId, existing);
+      }
+    } catch {
+      // Fallback: If batch endpoint unavailable, fetch individually (legacy support)
+      // This is slower but ensures backwards compatibility
+      for (const { goal } of goals) {
+        try {
+          const snapshots = await getFastApi<{ snapshots: GoalSnapshot[] }>(
+            `/api/clients/${clientId}/goals/${goal.id}/snapshots?days=30`
+          );
+          snapshotsByGoalId.set(
+            goal.id,
+            (snapshots.snapshots ?? []).map((s) => ({
+              date: s.snapshotDate,
+              value: Number(s.currentValue ?? 0),
+            }))
+          );
+        } catch {
+          // Individual goal fetch failed, will use synthetic history
+        }
+      }
+    }
+
+    // Build projections using batched snapshot data
     const projections: GoalProjection[] = [];
 
     for (const { goal, template } of goals) {
-      // Fetch goal history from snapshots endpoint
-      let history: { date: string; value: number }[] = [];
-      try {
-        const snapshots = await getFastApi<{ snapshots: GoalSnapshot[] }>(
-          `/api/clients/${clientId}/goals/${goal.id}/snapshots?days=30`
-        );
-        history = (snapshots.snapshots ?? []).map((s) => ({
-          date: s.snapshotDate,
-          value: Number(s.currentValue ?? 0),
-        }));
-      } catch {
-        // If no snapshots endpoint, create synthetic history from current value
-        // This ensures we can still show projections even without historical data
+      let history = snapshotsByGoalId.get(goal.id) ?? [];
+
+      // If no snapshots available, create synthetic history from current value
+      if (history.length === 0) {
         const currentValue = Number(goal.currentValue ?? 0);
         const today = new Date();
         history = Array.from({ length: 7 }, (_, i) => ({
@@ -140,13 +181,21 @@ async function executeClientPredictions(clientId: string): Promise<PredictiveAle
   const alerts: PredictiveAlert[] = [];
 
   try {
-    // Fetch traffic data for decline detection
-    const analytics = await getFastApi<ClientAnalytics>(
-      `/api/clients/${clientId}/analytics`
-    );
+    // FIX: Fetch GSC daily data from dedicated endpoint, not /analytics
+    // The main /analytics endpoint doesn't include gsc_daily field.
+    let gscDaily: Array<{ date: string; clicks: number; impressions: number }> = [];
+    try {
+      const gscResponse = await getFastApi<GscDailyResponse>(
+        `/api/clients/${clientId}/gsc/daily?days=30`
+      );
+      gscDaily = gscResponse.data ?? [];
+    } catch {
+      // GSC endpoint may not exist or client may not have GSC connected
+      // Gracefully continue without traffic predictions
+    }
 
-    if (analytics.gsc_daily && analytics.gsc_daily.length >= 7) {
-      const trafficHistory: TrafficDataPoint[] = analytics.gsc_daily.map((d) => ({
+    if (gscDaily.length >= 7) {
+      const trafficHistory: TrafficDataPoint[] = gscDaily.map((d) => ({
         date: d.date,
         clicks: d.clicks,
         impressions: d.impressions,

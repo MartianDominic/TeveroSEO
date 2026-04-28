@@ -167,6 +167,10 @@ export async function createWebhook(params: {
 /**
  * Update a webhook.
  * Validates client ownership if webhook is client-scoped.
+ *
+ * TOCTOU FIX: Passes expectedScope and expectedScopeId to backend for atomic
+ * ownership validation within the update query. This prevents race conditions
+ * where ownership could change between the frontend check and backend mutation.
  */
 export async function updateWebhook(
   webhookId: string,
@@ -185,18 +189,28 @@ export async function updateWebhook(
   // Rate limit: 20 updates per minute
   await rateLimitAction("webhook:update", auth.userId, WEBHOOK_RATE_LIMITS.update);
 
-  // Fetch webhook first to validate ownership
+  // Fetch webhook first to validate ownership and get scope info
   const webhook = await getOpenSeo<Webhook>(`/api/webhooks/${validated.webhookId}`);
   if (webhook.scope === "client" && webhook.scopeId) {
     await validateClientOwnership(webhook.scopeId, auth);
   }
 
-  return patchOpenSeo(`/api/webhooks/${validated.webhookId}`, validated.params);
+  // TOCTOU FIX: Pass scope info to backend for atomic ownership validation
+  return patchOpenSeo(`/api/webhooks/${validated.webhookId}`, {
+    ...validated.params,
+    // Backend will validate these atomically in the WHERE clause
+    expectedScope: webhook.scope,
+    expectedScopeId: webhook.scopeId,
+  });
 }
 
 /**
  * Delete a webhook.
  * Validates client ownership if webhook is client-scoped.
+ *
+ * TOCTOU FIX: Passes expectedScope and expectedScopeId to backend for atomic
+ * ownership validation within the delete query. This prevents race conditions
+ * where ownership could change between the frontend check and backend mutation.
  */
 export async function deleteWebhookAction(
   webhookId: string,
@@ -207,13 +221,21 @@ export async function deleteWebhookAction(
   // Rate limit: 10 deletes per minute
   await rateLimitAction("webhook:delete", auth.userId, WEBHOOK_RATE_LIMITS.delete);
 
-  // Fetch webhook first to validate ownership
+  // Fetch webhook first to validate ownership and get scope info
   const webhook = await getOpenSeo<Webhook>(`/api/webhooks/${validated}`);
   if (webhook.scope === "client" && webhook.scopeId) {
     await validateClientOwnership(webhook.scopeId, auth);
   }
 
-  return deleteOpenSeo(`/api/webhooks/${validated}`);
+  // TOCTOU FIX: Pass scope info to backend for atomic ownership validation
+  // Backend will validate these atomically in the WHERE clause
+  const queryParams = new URLSearchParams();
+  queryParams.set("expectedScope", webhook.scope);
+  if (webhook.scopeId) {
+    queryParams.set("expectedScopeId", webhook.scopeId);
+  }
+
+  return deleteOpenSeo(`/api/webhooks/${validated}?${queryParams.toString()}`);
 }
 
 /**

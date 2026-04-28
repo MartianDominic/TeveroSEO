@@ -15,14 +15,16 @@ import {
   findOpportunities,
 } from "@/lib/analytics/opportunities";
 import { getOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type { Opportunity, OpportunityFilter } from "@/types/opportunities";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID");
 const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
 
+// FIX: Align filter schema with OpportunityType enum (snake_case, not hyphenated)
 const opportunityFilterSchema = z.object({
-  types: z.array(z.enum(["quick-win", "growth", "defensive", "technical", "content"])).optional(),
+  types: z.array(z.enum(["ctr_improvement", "ranking_gap", "quick_win", "content_opportunity"])).optional(),
   minImpact: z.enum(["low", "medium", "high"]).optional(),
   maxEffort: z.enum(["low", "medium", "high"]).optional(),
 }).strict();
@@ -54,6 +56,7 @@ export interface PaginatedResponse<T> {
 
 /**
  * Get opportunities for a specific client with pagination.
+ * Rate limited: 30 operations per minute.
  * @param clientId - The client ID to fetch opportunities for
  * @param filter - Optional filter for types, impact, and effort
  * @param pagination - Optional pagination parameters (page, limit)
@@ -72,6 +75,10 @@ export async function getClientOpportunities(
   const { page, limit } = paginationSchema.parse(pagination ?? {});
 
   const auth = await requireActionAuth();
+
+  // Rate limit: opportunity analysis can be expensive
+  await checkActionRateLimit("opportunities", auth.userId);
+
   await validateClientOwnership(validatedClientId, auth);
 
   let opportunities = await findOpportunities(clientId);
@@ -121,6 +128,7 @@ export async function getClientOpportunities(
  * Get top opportunities across a workspace with pagination.
  * Aggregates opportunities from all clients in the workspace.
  * Validates workspace membership before fetching.
+ * Rate limited: 30 operations per minute.
  * @param workspaceId - The workspace ID
  * @param options - Pagination options (page, limit)
  * @returns Paginated array of top opportunities across all clients
@@ -135,13 +143,18 @@ export async function getTopOpportunities(
 
   const auth = await requireActionAuth();
 
+  // Rate limit: workspace aggregation is expensive
+  await checkActionRateLimit("opportunities", auth.userId);
+
   // Validate workspace membership before accessing workspace data
   await validateWorkspaceMembership(validatedWorkspaceId, auth);
 
   try {
-    // Get all clients in workspace
+    // Get clients in workspace with LIMIT to prevent unbounded queries
+    // Maximum 50 clients for workspace aggregation to bound memory usage
+    const MAX_CLIENTS = 50;
     const clients = await getOpenSeo<{ id: string; name: string }[]>(
-      `/api/workspaces/${workspaceId}/clients`
+      `/api/workspaces/${workspaceId}/clients?limit=${MAX_CLIENTS}`
     );
 
     if (!clients || clients.length === 0) {
@@ -151,30 +164,36 @@ export async function getTopOpportunities(
       };
     }
 
-    // Aggregate opportunities from all clients
+    // Aggregate opportunities from clients (bounded to MAX_CLIENTS)
     const allOpportunities: Opportunity[] = [];
+    const MAX_OPPS_PER_CLIENT = 20;
 
-    await Promise.all(
-      clients.map(async (client) => {
-        try {
-          // Fetch up to 20 opportunities per client to get good coverage
-          const clientOpportunities = await findOpportunities(client.id);
-          allOpportunities.push(
-            ...clientOpportunities.slice(0, 20).map((opp) => ({
-              ...opp,
-              clientId: client.id,
-              clientName: client.name,
-            }))
-          );
-        } catch (error) {
-          // Log but don't fail the whole request if one client fails
-          console.warn(
-            `Failed to fetch opportunities for client ${client.id}:`,
-            error
-          );
-        }
-      })
-    );
+    // Process in batches of 10 to avoid overwhelming the API
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < clients.length; i += BATCH_SIZE) {
+      const batch = clients.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map(async (client) => {
+          try {
+            // Fetch up to 20 opportunities per client to get good coverage
+            const clientOpportunities = await findOpportunities(client.id);
+            allOpportunities.push(
+              ...clientOpportunities.slice(0, MAX_OPPS_PER_CLIENT).map((opp) => ({
+                ...opp,
+                clientId: client.id,
+                clientName: client.name,
+              }))
+            );
+          } catch (error) {
+            // Log but don't fail the whole request if one client fails
+            console.warn(
+              `Failed to fetch opportunities for client ${client.id}:`,
+              error
+            );
+          }
+        })
+      );
+    }
 
     // Sort by potential impact (estimated gain)
     const sortedOpportunities = allOpportunities.sort(

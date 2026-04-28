@@ -65,13 +65,37 @@ export async function createWebhook(
 }
 
 /**
- * Update an existing webhook.
+ * Update an existing webhook with optional ownership validation.
+ *
+ * TOCTOU FIX: When expectedScope/expectedScopeId are provided, the function
+ * validates ownership atomically within the same query by including the scope
+ * conditions in the WHERE clause. This prevents race conditions where ownership
+ * could change between a check and the actual update.
+ *
+ * @param webhookId - The webhook ID to update
+ * @param params - Update parameters
+ * @param expectedScope - If provided, webhook must match this scope
+ * @param expectedScopeId - If provided, webhook must match this scopeId
+ * @returns true if update succeeded, false if webhook not found or scope mismatch
  */
 export async function updateWebhook(
   webhookId: string,
   params: UpdateWebhookParams,
-): Promise<void> {
-  await db
+  expectedScope?: WebhookScope,
+  expectedScopeId?: string,
+): Promise<boolean> {
+  // Build WHERE conditions - always include webhookId
+  const conditions = [eq(webhooks.id, webhookId)];
+
+  // TOCTOU FIX: Add scope conditions to WHERE clause for atomic ownership validation
+  if (expectedScope !== undefined) {
+    conditions.push(eq(webhooks.scope, expectedScope));
+  }
+  if (expectedScopeId !== undefined) {
+    conditions.push(eq(webhooks.scopeId, expectedScopeId));
+  }
+
+  const result = await db
     .update(webhooks)
     .set({
       ...(params.name !== undefined && { name: params.name }),
@@ -81,22 +105,60 @@ export async function updateWebhook(
       ...(params.enabled !== undefined && { enabled: params.enabled }),
       updatedAt: new Date(),
     })
-    .where(eq(webhooks.id, webhookId));
+    .where(and(...conditions))
+    .returning({ id: webhooks.id });
+
+  // Return false if no rows updated (webhook not found or scope mismatch)
+  return result.length > 0;
 }
 
 /**
  * Delete a webhook and all its deliveries.
  * Uses transaction to ensure atomic cascade delete.
+ *
+ * TOCTOU FIX: When expectedScope/expectedScopeId are provided, the function
+ * validates ownership atomically within the transaction. This prevents race
+ * conditions where ownership could change between a check and the actual delete.
+ *
+ * @param webhookId - The webhook ID to delete
+ * @param expectedScope - If provided, webhook must match this scope
+ * @param expectedScopeId - If provided, webhook must match this scopeId
+ * @returns true if delete succeeded, false if webhook not found or scope mismatch
  */
-export async function deleteWebhook(webhookId: string): Promise<void> {
+export async function deleteWebhook(
+  webhookId: string,
+  expectedScope?: WebhookScope,
+  expectedScopeId?: string,
+): Promise<boolean> {
   try {
+    let deleted = false;
+
     await db.transaction(async (tx) => {
+      // Build WHERE conditions for atomic ownership validation
+      const conditions = [eq(webhooks.id, webhookId)];
+
+      // TOCTOU FIX: Add scope conditions to WHERE clause for atomic ownership validation
+      if (expectedScope !== undefined) {
+        conditions.push(eq(webhooks.scope, expectedScope));
+      }
+      if (expectedScopeId !== undefined) {
+        conditions.push(eq(webhooks.scopeId, expectedScopeId));
+      }
+
       // Delete deliveries first (even though schema has onDelete: cascade,
       // explicit deletion provides better control and logging)
       await tx.delete(webhookDeliveries).where(eq(webhookDeliveries.webhookId, webhookId));
-      // Then delete webhook
-      await tx.delete(webhooks).where(eq(webhooks.id, webhookId));
+
+      // Delete webhook with ownership validation in WHERE clause
+      const result = await tx
+        .delete(webhooks)
+        .where(and(...conditions))
+        .returning({ id: webhooks.id });
+
+      deleted = result.length > 0;
     });
+
+    return deleted;
   } catch (error) {
     logger.error("Failed to delete webhook", error instanceof Error ? error : undefined, {
       webhookId,

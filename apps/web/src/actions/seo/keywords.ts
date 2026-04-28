@@ -6,6 +6,7 @@ import {
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");
@@ -80,11 +81,15 @@ function buildQuery(params: KeywordParams): string {
 
 /**
  * Research keywords using DataForSEO.
+ * Rate limited: 20 requests per hour (external API cost).
  */
 export async function researchKeywords(params: ResearchKeywordsParams): Promise<unknown> {
   const validated = researchKeywordsParamsSchema.parse(params);
   const auth = await requireActionAuth();
   await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: DataForSEO calls have direct cost
+  await checkActionRateLimit("keywords", auth.userId);
 
   const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
@@ -142,11 +147,15 @@ export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Prom
 
 /**
  * Get SERP analysis for a keyword.
+ * Rate limited: 20 requests per hour (external API cost).
  */
 export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<unknown> {
   const validated = serpAnalysisParamsSchema.parse(params);
   const auth = await requireActionAuth();
   await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: DataForSEO SERP analysis has direct cost
+  await checkActionRateLimit("keywords", auth.userId);
 
   const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {

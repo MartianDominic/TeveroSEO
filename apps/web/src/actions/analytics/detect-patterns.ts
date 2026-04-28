@@ -147,53 +147,50 @@ export async function detectPatterns(
 
   const cacheKey = patternCacheKey(validatedWorkspaceId.data);
 
-  try {
-    // Use singleflight to prevent cache stampede:
-    // Multiple concurrent requests for the same workspace will share
-    // a single backend fetch instead of all hitting the API
-    return await getCachedWithSingleflight<PatternWithClients[]>(
-      cacheKey,
-      PATTERNS_CACHE_TTL,
-      async () => {
-        // Fetch real data from open-seo endpoints
-        const [trafficResponse, rankingResponse] = await Promise.all([
-          getOpenSeo<TrafficDataResponse[]>(
-            `/api/workspaces/${validatedWorkspaceId.data}/traffic-data`
-          ),
-          getOpenSeo<RankingDataResponse[]>(
-            `/api/workspaces/${validatedWorkspaceId.data}/ranking-data`
-          ),
-        ]);
+  // Use singleflight to prevent cache stampede:
+  // Multiple concurrent requests for the same workspace will share
+  // a single backend fetch instead of all hitting the API
+  return await getCachedWithSingleflight<PatternWithClients[]>(
+    cacheKey,
+    PATTERNS_CACHE_TTL,
+    async () => {
+      // Fetch real data from open-seo endpoints
+      const [trafficResponse, rankingResponse] = await Promise.all([
+        getOpenSeo<TrafficDataResponse[]>(
+          `/api/workspaces/${validatedWorkspaceId.data}/traffic-data`
+        ),
+        getOpenSeo<RankingDataResponse[]>(
+          `/api/workspaces/${validatedWorkspaceId.data}/ranking-data`
+        ),
+      ]);
 
-        // Transform API responses to detection algorithm formats
-        const trafficData = transformTrafficData(trafficResponse);
-        const rankingData = transformRankingData(rankingResponse);
+      // Transform API responses to detection algorithm formats
+      const trafficData = transformTrafficData(trafficResponse);
+      const rankingData = transformRankingData(rankingResponse);
 
-        // Run detection algorithms
-        const patterns = detectAllPatterns(trafficData, rankingData, validatedWorkspaceId.data);
+      // Run detection algorithms
+      const patterns = detectAllPatterns(trafficData, rankingData, validatedWorkspaceId.data);
 
-        // Enrich with client names
-        const patternsWithClients: PatternWithClients[] = patterns.map((p) => ({
-          ...p,
-          affectedClients: p.affectedClientIds.map((id) => {
-            const traffic = trafficData.find((t) => t.clientId === id);
-            return {
-              id,
-              name: traffic?.clientName ?? `Client ${id}`,
-            };
-          }),
-        }));
+      // Enrich with client names
+      const patternsWithClients: PatternWithClients[] = patterns.map((p) => ({
+        ...p,
+        affectedClients: p.affectedClientIds.map((id) => {
+          const traffic = trafficData.find((t) => t.clientId === id);
+          return {
+            id,
+            name: traffic?.clientName ?? `Client ${id}`,
+          };
+        }),
+      }));
 
-        return patternsWithClients;
-      },
-      cacheGet,
-      cacheSet,
-      [cacheTags.workspace(validatedWorkspaceId.data)]
-    );
-  } catch (error) {
-    console.error("[detect-patterns] Error detecting patterns:", error);
-    return [];
-  }
+      return patternsWithClients;
+    },
+    cacheGet,
+    cacheSet,
+    [cacheTags.workspace(validatedWorkspaceId.data)]
+  );
+  // MEDIUM-ERR-004 FIX: Removed catch block that swallowed errors and returned empty array.
+  // Errors now propagate to caller for proper handling. UI should handle errors gracefully.
 }
 
 /**

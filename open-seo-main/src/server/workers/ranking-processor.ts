@@ -9,9 +9,11 @@
  * - Transaction-safe: database operations use proper error handling
  * - Rate limited: respects DataForSEO API limits
  * - Batch processing: handles large keyword sets efficiently
+ * - Input validation: Zod schemas prevent injection attacks
  */
 
 import type { Job } from "bullmq";
+import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { savedKeywords, projects } from "@/db/app.schema";
@@ -26,6 +28,27 @@ const log = createLogger({ module: "ranking-processor" });
 
 const BATCH_SIZE = 100;
 const RATE_LIMIT_DELAY_MS = 100; // 100ms between API calls to respect rate limits
+
+/**
+ * Zod schema for ranking job data validation.
+ * Validates job payloads to prevent injection attacks and malformed data.
+ */
+const RankingJobDataSchema = z.object({
+  triggeredAt: z.string().datetime({ message: "triggeredAt must be a valid ISO datetime string" }),
+  offset: z.number().int().min(0).optional(),
+});
+
+/**
+ * Validate job data and throw descriptive error if invalid.
+ */
+function validateRankingJobData(data: unknown): z.infer<typeof RankingJobDataSchema> {
+  const result = RankingJobDataSchema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.issues.map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`).join("; ");
+    throw new Error(`Invalid ranking job data: ${errors}`);
+  }
+  return result.data;
+}
 
 /**
  * Extract position from SERP results for a target domain.
@@ -280,16 +303,20 @@ async function processBatch(
  *
  * This processor is idempotent - running multiple times on the same day
  * will skip already-processed keywords and only process new ones.
+ * Validates job data before processing to prevent injection attacks.
  */
 export default async function processor(job: Job<RankingJobData>): Promise<void> {
   const jobLogger = createLogger({ module: "ranking-processor", jobId: job.id });
 
+  // Validate job data before processing
+  const validatedData = validateRankingJobData(job.data);
+
   // Resume from checkpoint offset if this is a retry
-  let offset = job.data.offset ?? 0;
+  let offset = validatedData.offset ?? 0;
   const isRetry = job.attemptsMade > 0;
 
   jobLogger.info("Starting ranking check", {
-    triggeredAt: job.data.triggeredAt,
+    triggeredAt: validatedData.triggeredAt,
     attempt: job.attemptsMade + 1,
     resumeOffset: isRetry ? offset : undefined,
   });

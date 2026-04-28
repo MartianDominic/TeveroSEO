@@ -326,3 +326,100 @@ Current: Node.js v20.20.2
 - 33 affected packages
 - 15+ critical severity
 - Multiple packages with unfixed vulnerabilities in system Python
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Python Packages Updated
+
+| Package | Old Version | New Version | CVEs Fixed | Severity |
+|---------|-------------|-------------|------------|----------|
+| aiohttp | 3.9.1 | 3.13.5 | 24 | CRITICAL |
+| jinja2 | 3.1.2 | 3.1.6 | 5 | HIGH |
+| werkzeug | 3.0.1 | >=3.1.6 | 6 | HIGH |
+| starlette | 0.46.2 | >=0.49.1 | 2 | HIGH |
+| python-multipart | 0.0.20 | 0.0.26 | 2 | HIGH |
+| flask | 3.0.0 | >=3.1.3 | 1 | MODERATE |
+| flask-cors | 4.0.0 | >=6.0.0 | 5 | HIGH |
+| pillow | 10.4.0 | >=12.2.0 | 2 | MODERATE |
+| urllib3 | 2.5.0 | 2.6.3 | 3 | MODERATE |
+| paramiko | 2.9.3 | >=3.4.0 | 1 | HIGH |
+| pyjwt | 2.10.1 | 2.12.1 | 1 | MODERATE |
+| oauthlib | 3.2.0 | >=3.2.1 | 1 | MODERATE |
+
+### Files Modified
+
+- `AI-Writer/backend/requirements.txt` - Added security-pinned transitive dependencies
+- `AI-Writer/backend/constraints.txt` - **NEW** - Minimum security versions for pip
+
+### Installation Command
+
+```bash
+cd AI-Writer/backend
+pip install -r requirements.txt -c constraints.txt
+```
+
+### Verification
+
+```bash
+# Test app imports correctly
+python -c "from main import app; print('OK')"
+
+# Run test suite
+pytest tests/ -v
+
+# Re-audit for remaining vulnerabilities
+pip-audit
+```
+
+### Remaining Work
+
+1. ~~**npm vulnerabilities** - Add pnpm overrides for postcss, uuid, @eslint/plugin-kit~~ DONE
+2. **Node.js upgrade** - Upgrade to Node.js v22 LTS for @tanstack/react-start compatibility
+3. **Scrapy** - No fix available for PYSEC-2017-83 (evaluate if package is needed)
+
+---
+
+## NPM VULNERABILITIES FIXED - 2026-04-28
+
+### Overrides Added to Root package.json
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10",
+      "esbuild": ">=0.25.0",
+      "uuid": ">=14.0.0",
+      "@eslint/plugin-kit": ">=0.3.4"
+    }
+  }
+}
+```
+
+### NPM Vulnerabilities Fixed
+
+| Package | Issue | CVE/Advisory | Fix |
+|---------|-------|--------------|-----|
+| postcss | XSS via unescaped `</style>` | GHSA-qx2v-qp2m-jg93 | Override to >=8.5.10 |
+| esbuild | Dev server CORS bypass | GHSA-67mh-4wv8-2f99 | Override to >=0.25.0 |
+| uuid | Buffer overflow in v3/v5/v6 | GHSA-w5hq-g745-h8pq | Override to >=14.0.0 |
+| @eslint/plugin-kit | ReDoS in ConfigCommentParser | GHSA-xffm-g5w8-qvg7 | Override to >=0.3.4 |
+
+### Dependencies Added
+
+- `apps/web`: zod ^4.3.6 (was used but undeclared)
+
+### Audit Results After Fix
+
+```
+$ pnpm audit
+No known vulnerabilities found
+```
+
+### Files Modified
+
+- `/package.json` - Added pnpm overrides section
+- `/apps/web/package.json` - Added zod dependency
+- `/pnpm-lock.yaml` - Updated lockfile with patched versions

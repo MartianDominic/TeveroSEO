@@ -32,8 +32,12 @@ from middleware.authorization import require_client_access, grant_creator_access
 from models.client import Client, ClientSettings
 from services.shared_db import get_shared_db
 from services.encryption import encrypt_value, decrypt_value
+from sqlalchemy import func
 
 router = APIRouter()
+
+# Resource limits to prevent abuse
+MAX_CLIENTS_PER_USER = 100  # Maximum clients a single user can create
 
 
 # ---------------------------------------------------------------------------
@@ -215,14 +219,25 @@ def create_client(
     """Create a new client. Name is required; website_url is optional.
 
     The creating user is automatically granted admin access to the new client.
+
+    RESOURCE LIMIT: Users are limited to MAX_CLIENTS_PER_USER clients to prevent abuse.
     """
+    clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
+
+    # RESOURCE LIMIT FIX: Check user's current client count before allowing creation
+    current_client_count = len(get_user_clients(db, clerk_user_id))
+    if current_client_count >= MAX_CLIENTS_PER_USER:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Client limit reached. Maximum {MAX_CLIENTS_PER_USER} clients allowed per user."
+        )
+
     client = Client(name=payload.name, website_url=payload.website_url)
     db.add(client)
     db.commit()
     db.refresh(client)
 
     # Grant creator admin access to the new client
-    clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
     grant_creator_access(db, client.id, clerk_user_id)
 
     return _client_to_response(client)

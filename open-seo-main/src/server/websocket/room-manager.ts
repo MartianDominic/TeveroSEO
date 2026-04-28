@@ -16,6 +16,7 @@ import type {
   ServerToClientEvents,
   ClientToServerEvents,
 } from "./types";
+import { checkMessageLimit, getEventsSince } from "./connection-manager";
 
 const log = createLogger({ module: "room-manager" });
 
@@ -131,6 +132,12 @@ export function handleSocketConnection(socket: TypedSocket): void {
   log.info("Client connected", { socketId: socket.id });
 
   socket.on("join-workspace", async (workspaceId) => {
+    // SECURITY: Check message rate limit
+    const joinUserId = socket.data.userId;
+    if (joinUserId && !checkMessageLimit(joinUserId)) {
+      socket.emit("error", { message: "Rate limit exceeded", code: "RATE_LIMITED" });
+      return;
+    }
     // SECURITY: Validate workspaceId format
     // Cast to unknown first since Socket.IO guarantees string type but we want to validate
     const rawWorkspaceId = workspaceId as unknown;
@@ -149,7 +156,7 @@ export function handleSocketConnection(socket: TypedSocket): void {
     const validWorkspaceId = rawWorkspaceId;
 
     // SECURITY: Verify user has access to this workspace
-    const userId = socket.data.userId;
+    const userId = joinUserId;
     if (!userId) {
       log.warn("No userId in socket data", { socketId: socket.id });
       socket.emit("error", { message: "Authentication required", code: "UNAUTHENTICATED" });
@@ -187,7 +194,56 @@ export function handleSocketConnection(socket: TypedSocket): void {
     socket.emit("workspace-joined", { workspaceId: validWorkspaceId });
   });
 
+  // Handle sync request for catch-up after reconnect
+  socket.on("sync", async (request) => {
+    const userId = socket.data.userId;
+    if (!userId) {
+      socket.emit("error", { message: "Authentication required", code: "UNAUTHENTICATED" });
+      return;
+    }
+
+    // Rate limit sync requests
+    if (!checkMessageLimit(userId)) {
+      socket.emit("error", { message: "Rate limit exceeded", code: "RATE_LIMITED" });
+      return;
+    }
+
+    const { workspaceId, lastEventId } = request;
+
+    // Validate workspaceId
+    if (!isValidWorkspaceId(workspaceId)) {
+      socket.emit("error", { message: "Invalid workspace ID", code: "INVALID_WORKSPACE_ID" });
+      return;
+    }
+
+    // Verify membership
+    const hasAccess = await verifyWorkspaceMembership(userId, workspaceId);
+    if (!hasAccess) {
+      socket.emit("error", { message: "Access denied to workspace", code: "FORBIDDEN" });
+      return;
+    }
+
+    // Get missed events and send them
+    const missedEvents = await getEventsSince(workspaceId, lastEventId);
+    for (const event of missedEvents) {
+      socket.emit("activity:new", event);
+    }
+
+    log.debug("Sync completed", {
+      socketId: socket.id,
+      userId,
+      workspaceId,
+      missedEventCount: missedEvents.length,
+    });
+  });
+
   socket.on("leave-workspace", (workspaceId: string) => {
+    // Rate limit leave requests
+    const userId = socket.data.userId;
+    if (userId && !checkMessageLimit(userId)) {
+      socket.emit("error", { message: "Rate limit exceeded", code: "RATE_LIMITED" });
+      return;
+    }
     const roomName = `workspace:${workspaceId}`;
     socket.leave(roomName);
 
@@ -206,7 +262,8 @@ export function handleSocketConnection(socket: TypedSocket): void {
 
   socket.on("disconnect", (reason: string) => {
     // Clean up all workspace memberships
-    for (const [workspaceId, sockets] of workspaceConnections.entries()) {
+    const entries = Array.from(workspaceConnections.entries());
+    for (const [workspaceId, sockets] of entries) {
       sockets.delete(socket.id);
       if (sockets.size === 0) {
         workspaceConnections.delete(workspaceId);

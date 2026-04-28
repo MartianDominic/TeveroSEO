@@ -521,3 +521,46 @@ These files demonstrate good defensive coding:
 
 **Audit completed by:** Claude Code Security Audit  
 **Next Steps:** Address CRITICAL issues immediately, then HIGH priority within 1 sprint.
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Utilities Created
+
+**File:** `apps/web/src/lib/utils/safe-parse.ts`
+
+- `safeUrl(urlString)` - Safely parse URL, returns null on failure
+- `safeGetPathname(urlString, fallback)` - Extract pathname safely with fallback
+- `safeArrayAccess(arr, index)` - Bounds-checked array access
+- `safeFirst(arr)` - Safe first element access
+- `safeLast(arr)` - Safe last element access
+- `safeFormatDate(dateStr, fallback)` - Safe date formatting to locale date
+- `safeFormatTime(dateStr, fallback)` - Safe date formatting to locale time
+- `safeFormatIso(dateStr, fallback)` - Safe date formatting to ISO string
+- `isObject(value)` - Type guard for non-null objects
+- `isNonEmptyArray(value)` - Type guard for non-empty arrays
+- `safeNumber(value, fallback)` - Safe number coercion
+
+### Components Fixed
+
+1. **ChangeList.tsx:237** - CRITICAL
+   - Before: `{new URL(change.resourceUrl).pathname || '/'}`
+   - After: `{safeGetPathname(change.resourceUrl)}`
+   - Import added: `safeGetPathname` from safe-parse
+
+2. **audit/page.tsx:576** - CRITICAL
+   - Before: `{new Date(crawledUrls[0].crawledAt).toLocaleTimeString()}`
+   - After: `{safeFormatTime(safeFirst(crawledUrls)?.crawledAt)}`
+   - Imports added: `safeFirst`, `safeFormatTime` from safe-parse
+
+3. **keywords/page.tsx:281-284** - CRITICAL
+   - Before: `latestRanking.previousPosition - latestRanking.position`
+   - After: Uses `safeLast()` and adds optional chaining on `latestRanking?.position`
+   - Import added: `safeLast` from safe-parse
+
+### Remaining HIGH Priority Items (for future sprint)
+
+- audit/page.tsx:407 - Add type guard before using statusQuery.data
+- get-team-metrics.ts:226 - Add `(response.members ?? [])` guard
+- Replace `.parse()` with `.safeParse()` for user-facing Zod validations

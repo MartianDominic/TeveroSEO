@@ -3,7 +3,34 @@
  * Phase 37-02: Voice API Layer
  */
 
+import { z } from "zod";
 import { fetchWithTimeout } from "./fetch-with-timeout";
+
+// FIX: Add Zod schema for voice profile mode validation
+// Standardized to snake_case: preservation, application, best_practices
+const voiceModeSchema = z.enum(["preservation", "application", "best_practices"]);
+const voiceStatusSchema = z.enum(["draft", "active", "archived"]);
+const ruleTypeSchema = z.enum(["page", "section", "pattern"]);
+
+// Validation schema for VoiceProfile API response
+const voiceProfileResponseSchema = z.object({
+  data: z.object({
+    id: z.string(),
+    clientId: z.string(),
+    mode: voiceModeSchema,
+    voiceStatus: voiceStatusSchema,
+  }).passthrough().nullable(),
+});
+
+// Validation schema for ProtectionRule response
+const protectionRulesResponseSchema = z.object({
+  data: z.array(z.object({
+    id: z.string(),
+    profileId: z.string(),
+    ruleType: ruleTypeSchema,
+    target: z.string(),
+  }).passthrough()),
+});
 
 const OPEN_SEO_API = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:3001";
 
@@ -86,7 +113,13 @@ export async function fetchVoiceProfile(clientId: string): Promise<VoiceProfile 
     throw new Error(`Failed to fetch voice profile: ${res.status}`);
   }
   const json = await res.json();
-  return json.data;
+  // FIX: Validate response shape and mode enum with Zod
+  const parsed = voiceProfileResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    console.error("[voiceApi] Invalid voice profile response:", parsed.error);
+    throw new Error("Invalid voice profile response from backend");
+  }
+  return parsed.data.data as VoiceProfile | null;
 }
 
 export async function updateVoiceProfile(
@@ -134,7 +167,14 @@ export async function fetchProtectionRules(clientId: string): Promise<Protection
     throw new Error(`Failed to fetch protection rules: ${res.status}`);
   }
   const json = await res.json();
-  return json.data;
+  // FIX: Validate response shape and ruleType enum with Zod
+  const parsed = protectionRulesResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    console.error("[voiceApi] Invalid protection rules response:", parsed.error);
+    throw new Error("Invalid protection rules response from backend");
+  }
+  // Use unknown intermediate cast since Zod passthrough includes extra fields
+  return parsed.data.data as unknown as ProtectionRule[];
 }
 
 export async function createProtectionRule(

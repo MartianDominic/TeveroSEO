@@ -8,6 +8,7 @@
  *   - sync-client-analytics: Actual GSC/GA4 sync for one client
  */
 import type { Job } from "bullmq";
+import { z } from "zod";
 import type {
   AnalyticsSyncJobData,
   SyncAllClientsJobData,
@@ -45,6 +46,42 @@ import { alwrityPool } from "@/server/lib/alwrity-db";
  * between performance and memory usage.
  */
 const BATCH_CHUNK_SIZE = 100;
+
+/**
+ * Zod schemas for job data validation.
+ * Validates job payloads to prevent injection attacks and malformed data.
+ */
+const SyncProgressSchema = z.object({
+  stage: z.enum(["gsc", "queries", "ga4", "complete"]),
+  chunksCompleted: z.number().int().min(0),
+}).optional();
+
+const AnalyticsSyncJobDataSchema = z.object({
+  clientId: z.string().uuid(),
+  provider: z.literal("google"),
+  mode: z.enum(["incremental", "backfill"]),
+  progress: SyncProgressSchema,
+});
+
+const SyncAllClientsJobDataSchema = z.object({
+  mode: z.enum(["incremental", "backfill"]),
+});
+
+/**
+ * Validate job data and throw descriptive error if invalid.
+ */
+function validateJobData<T>(
+  data: unknown,
+  schema: z.ZodSchema<T>,
+  jobName: string,
+): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.issues.map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`).join("; ");
+    throw new Error(`Invalid ${jobName} job data: ${errors}`);
+  }
+  return result.data;
+}
 
 /**
  * Process an array in chunks with checkpoint-based progress tracking.
@@ -101,6 +138,7 @@ async function processChunksWithCheckpoint<T>(
 
 /**
  * Main processor function - exported as default for BullMQ sandboxed worker.
+ * Validates job data before processing to prevent injection attacks.
  */
 export default async function processAnalyticsJob(
   job: Job<AnalyticsSyncJobData | SyncAllClientsJobData>,
@@ -111,12 +149,15 @@ export default async function processAnalyticsJob(
   });
 
   if (job.name === "sync-all-clients") {
-    const data = job.data as SyncAllClientsJobData;
+    // Validate job data before processing
+    const data = validateJobData(job.data, SyncAllClientsJobDataSchema, "sync-all-clients");
     await fanOutToClients(data.mode, logger);
     return;
   }
 
   if (job.name === "sync-client-analytics") {
+    // Validate job data before processing
+    validateJobData(job.data, AnalyticsSyncJobDataSchema, "sync-client-analytics");
     await syncClientAnalytics(job as Job<AnalyticsSyncJobData>, logger);
     return;
   }

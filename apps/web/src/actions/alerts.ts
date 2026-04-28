@@ -5,7 +5,8 @@ import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
+import { getOpenSeo, patchOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");
@@ -106,6 +107,7 @@ const alertRuleUpdateSchema = z.object({
 /**
  * Update an alert rule configuration.
  * SECURITY: Validates that the user owns the client before allowing updates.
+ * Rate limited: 50 changes per hour.
  */
 export async function updateAlertConfig(
   clientId: string,
@@ -123,6 +125,9 @@ export async function updateAlertConfig(
 
   const auth = await requireActionAuth();
 
+  // Rate limit: prevent alert config abuse
+  await checkActionRateLimit("alertConfig", auth.userId);
+
   // SECURITY: Verify user has access to this client before updating alert config
   await validateClientOwnership(validatedClientId, auth);
 
@@ -132,6 +137,7 @@ export async function updateAlertConfig(
 /**
  * Create a new alert rule for a client.
  * SECURITY: Validates that the user owns the client before allowing creation.
+ * Rate limited: 50 changes per hour.
  */
 export async function createAlertRule(
   clientId: string,
@@ -154,13 +160,14 @@ export async function createAlertRule(
 
   const auth = await requireActionAuth();
 
+  // Rate limit: prevent alert rule spam
+  await checkActionRateLimit("alertConfig", auth.userId);
+
   // SECURITY: Verify user has access to this client before creating alert rule
   await validateClientOwnership(validatedClientId, auth);
 
-  const response = await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, {
-    method: "POST",
-    ...validatedRule,
-  });
+  // HIGH-TXN-004 FIX: Use correct HTTP method (POST) for create operation
+  const response = await postOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, validatedRule);
 
   return response as AlertRule;
 }
@@ -168,6 +175,7 @@ export async function createAlertRule(
 /**
  * Delete an alert rule.
  * SECURITY: Validates that the user owns the client before allowing deletion.
+ * Rate limited: 50 changes per hour.
  */
 export async function deleteAlertRule(
   clientId: string,
@@ -178,12 +186,14 @@ export async function deleteAlertRule(
 
   const auth = await requireActionAuth();
 
+  // Rate limit: prevent mass deletion abuse
+  await checkActionRateLimit("alertConfig", auth.userId);
+
   // SECURITY: Verify user has access to this client before deleting alert rule
   await validateClientOwnership(validatedClientId, auth);
 
-  await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, {
-    method: "DELETE",
-  });
+  // HIGH-TXN-004 FIX: Use correct HTTP method (DELETE) for delete operation
+  await deleteOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`);
 
   return { success: true };
 }

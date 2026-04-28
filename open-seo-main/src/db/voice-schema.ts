@@ -17,8 +17,10 @@ import {
   boolean,
   real,
   pgEnum,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { VOICE_MODES, type VoiceMode } from "./brief-schema";
 
@@ -205,6 +207,14 @@ export const voiceProfiles = pgTable(
   },
   (table) => [
     index("ix_voice_profiles_client").on(table.clientId),
+    // H-04: Voice blend weight must be 0.0-1.0
+    check("chk_voice_blend_weight_range", sql`voice_blend_weight IS NULL OR (voice_blend_weight >= 0 AND voice_blend_weight <= 1)`),
+    // H-05: Formality level 1-10 (constraint in migration 0032)
+    check("chk_formality_level_range", sql`formality_level IS NULL OR (formality_level >= 1 AND formality_level <= 10)`),
+    // H-13: Keyword density tolerance 1-20 percent
+    check("chk_keyword_density_tolerance_range", sql`keyword_density_tolerance IS NULL OR (keyword_density_tolerance >= 1 AND keyword_density_tolerance <= 20)`),
+    // H-14: SEO vs voice priority 1-10 (constraint in migration 0032)
+    check("chk_seo_voice_priority_range", sql`seo_vs_voice_priority IS NULL OR (seo_vs_voice_priority >= 1 AND seo_vs_voice_priority <= 10)`),
   ],
 );
 

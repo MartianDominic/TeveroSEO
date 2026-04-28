@@ -6,6 +6,7 @@ import {
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type { ScoreResult } from "@/lib/audit/checks/types";
 
 // Validation schemas
@@ -101,13 +102,19 @@ export async function getAuditFindings(
 /**
  * Export findings as CSV.
  * Returns CSV string for client-side download.
+ * Rate limited: 30 exports per minute.
  */
 export async function exportFindingsCSV(
   params: FindingsParams
 ): Promise<string> {
   // Validation is done in getAuditFindings, but validate here for early failure
   const validated = findingsParamsSchema.parse(params);
-  // Auth is checked in getAuditFindings
+
+  // Rate limit export operations (auth is checked in getAuditFindings)
+  const auth = await requireActionAuth();
+  await checkActionRateLimit("export", auth.userId);
+
+  // Auth is checked again in getAuditFindings but we need it for rate limiting
   const { findings } = await getAuditFindings(validated);
 
   // Build CSV header

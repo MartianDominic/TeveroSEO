@@ -303,3 +303,36 @@ The codebase has comprehensive safe query utilities (`sanitize_identifier`, `saf
 
 5. `AI-Writer/backend/services/cache/persistent_*.py` (3 files)
    - Use proper parameter binding for IN clauses
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### CRITICAL-1: Dynamic Code Execution Removed (RCE Prevention)
+- **File:** `AI-Writer/backend/services/calendar_generation_datasource_framework/prompt_chaining/steps/phase4/step10_performance_optimization/content_quality_optimizer.py`
+- **Lines Fixed:** 394, 433, 472 (three instances)
+- **Fix:** Replaced dangerous `eval()` calls with safe `json.loads()` for parsing AI responses
+- **Added:** `import json` at top of file
+- **Fallback:** On JSON parse failure, returns safe default scores `{"readability": 0.5, "engagement": 0.5, "uniqueness": 0.5, "relevance": 0.5}`
+
+### HIGH-1: Path Traversal Fixed
+- **File:** `AI-Writer/backend/api/video_studio/handlers/avatar.py`
+- **Lines Fixed:** 173-184 (download_video endpoint)
+- **Fix:** Added `os.path.basename()` validation to sanitize filename parameter
+- **Validation:** Rejects filenames containing `..`, absolute paths, or path separators
+- **Added:** `import os` at top of file
+
+### CRITICAL-3: FFmpeg Text Escaping Fixed (Command Injection Prevention)
+- **File:** `AI-Writer/backend/services/video_studio/edit_service.py`
+- **Lines Fixed:** 267 (add_text_overlay function)
+- **Fix:** Comprehensive escaping for FFmpeg drawtext filter:
+  - Backslash (`\`) -> `\\`
+  - Single quote (`'`) -> `'\''`
+  - Colon (`:`) -> `\:`
+  - Semicolon (`;`) -> `\;` (FFmpeg command separator)
+  - Newline (`\n`) -> `\n` (escaped)
+  - Carriage return (`\r`) -> removed
+
+### Remaining Items (Lower Priority)
+- CRITICAL-2 (migration script): Low actual risk - table names are hardcoded
+- HIGH-2 (IN clause): Low actual risk - IDs come from database, not user input

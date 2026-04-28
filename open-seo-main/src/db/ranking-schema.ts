@@ -12,7 +12,9 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { savedKeywords } from "./app.schema";
 
 /**
@@ -42,6 +44,8 @@ export const keywordRankings = pgTable(
     index("ix_rankings_date").on(table.date),
     // Index for querying by keyword
     index("ix_rankings_keyword_id").on(table.keywordId),
+    // Position must be 0-100 (0 = not ranking, 1-100 = actual position)
+    check("chk_position_range", sql`position >= 0 AND position <= 100`),
   ],
 );
 

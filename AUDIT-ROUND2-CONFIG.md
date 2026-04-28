@@ -313,3 +313,19 @@ Based on git status, the following config-related files have pending changes:
 - `AI-Writer/backend/main.py` (M)
 
 These should be reviewed to ensure no new configuration issues were introduced.
+
+---
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Timing Attack Fixed (HIGH-1)
+- DLQ API key comparison in `open-seo-main/src/routes/api/admin/dlq/$jobId.ts` now uses `timingSafeEqual`
+- Added `secureCompare()` helper function with length check before comparison
+- Consistent with existing patterns in `dlq.ts`, `webhook-auth.ts`, and `auth.ts`
+
+### Env Validation Hardened (HIGH-2)
+- Removed `SKIP_ENV_VALIDATION` bypass capability entirely from `apps/web/src/lib/env.ts`
+- Environment validation is now ALWAYS performed, preventing accidental deployment without required secrets
+
+### Localhost URL Warnings (MEDIUM-1)
+- Added production warnings for localhost URLs in `AI_WRITER_URL` and `OPEN_SEO_URL`
+- Warnings logged at startup if localhost detected in production mode

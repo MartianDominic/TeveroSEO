@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type { CursorPaginationParams, CursorPaginationResult, FilterParams } from "@/types/pagination";
 import { encodeCursor } from "@/types/pagination";
 import type { ClientMetrics } from "@/lib/dashboard/types";
@@ -34,6 +35,7 @@ interface GetClientsPaginatedInput extends CursorPaginationParams, FilterParams 
  * Fetch paginated clients with server-side filtering and sorting.
  * Uses cursor-based pagination for efficient large dataset handling.
  * Results are cached for 60 seconds with workspace tag for invalidation.
+ * Rate limited: 60 operations per minute.
  *
  * SECURITY: workspaceId is REQUIRED to prevent IDOR - users can only
  * access clients within workspaces they are members of.
@@ -45,6 +47,9 @@ export async function getClientsPaginated(
   const validatedInput = paginationInputSchema.parse(input);
 
   const auth = await requireActionAuth();
+
+  // Rate limit: dashboard queries can be expensive
+  await checkActionRateLimit("dashboard", auth.userId);
 
   // SECURITY: workspaceId is required to prevent IDOR across workspaces
   // Users can only access clients within workspaces they are members of
@@ -108,8 +113,9 @@ export async function getClientsPaginated(
         const { data, hasMore, totalCount } = response;
 
         // Generate cursors from response data
-        const lastRow = data[data.length - 1];
-        const firstRow = data[0];
+        // FIX: Add null checks to prevent undefined access on empty arrays
+        const lastRow = data.length > 0 ? data[data.length - 1] : null;
+        const firstRow = data.length > 0 ? data[0] : null;
 
         const getSortValue = (row: ClientMetrics): string | number => {
           const sortKeyMap: Record<string, keyof ClientMetrics> = {
@@ -126,10 +132,12 @@ export async function getClientsPaginated(
 
         const result: CursorPaginationResult<ClientMetrics> = {
           data,
-          nextCursor: hasMore && lastRow
+          // FIX: Verify lastRow exists AND has clientId before encoding cursor
+          nextCursor: hasMore && lastRow && lastRow.clientId
             ? encodeCursor(lastRow.clientId, getSortValue(lastRow))
             : null,
-          prevCursor: cursor && firstRow
+          // FIX: Verify firstRow exists AND has clientId before encoding cursor
+          prevCursor: cursor && firstRow && firstRow.clientId
             ? encodeCursor(firstRow.clientId, getSortValue(firstRow))
             : null,
           hasMore,

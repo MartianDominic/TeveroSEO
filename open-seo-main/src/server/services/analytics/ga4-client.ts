@@ -21,13 +21,86 @@ export interface GA4DateMetrics {
   revenue: number;
 }
 
+export class GA4Error extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly statusCode?: number,
+    public readonly retryable: boolean = false,
+  ) {
+    super(message);
+    this.name = "GA4Error";
+  }
+}
+
+// Configuration
+const GA4_CONFIG = {
+  timeoutMs: 30000, // 30 second timeout
+  maxRetries: 3,
+  baseDelayMs: 1000, // 1 second base delay for exponential backoff
+  maxDelayMs: 60000, // 60 second max delay
+} as const;
+
 /**
- * Fetch daily GA4 metrics for a property.
+ * Sleep for a given number of milliseconds.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate exponential backoff delay with jitter.
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    GA4_CONFIG.baseDelayMs * Math.pow(2, attempt),
+    GA4_CONFIG.maxDelayMs,
+  );
+  // Add jitter (0-25% of delay)
+  return delay + Math.random() * delay * 0.25;
+}
+
+/**
+ * Type guard for GaxiosError-like objects.
+ */
+function isGaxiosError(
+  error: unknown,
+): error is { response?: { status?: number }; code?: string; message: string } {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  );
+}
+
+/**
+ * Check if an error is retryable.
+ */
+function isRetryableError(error: unknown): boolean {
+  if (isGaxiosError(error)) {
+    const status = error.response?.status;
+    // Retry on rate limits (429), server errors (5xx), and network errors
+    if (status === 429 || (status && status >= 500 && status < 600)) {
+      return true;
+    }
+    // Network errors (no status code)
+    if (!status && error.code === "ECONNRESET") {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Fetch daily GA4 metrics for a property with retry logic.
  *
  * @param accessToken - Valid OAuth2 access token
  * @param propertyId - GA4 property ID (numeric, e.g., "123456789")
  * @param startDate - Start date (YYYY-MM-DD)
  * @param endDate - End date (YYYY-MM-DD)
+ *
+ * @throws GA4Error on unrecoverable errors or after max retries
  */
 export async function fetchGA4Metrics(
   accessToken: string,
@@ -38,36 +111,120 @@ export async function fetchGA4Metrics(
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
 
-  const analyticsdata = google.analyticsdata({ version: "v1beta", auth });
-
-  const response = await analyticsdata.properties.runReport({
-    // IMPORTANT: Property ID must be prefixed with "properties/"
-    property: `properties/${propertyId}`,
-    requestBody: {
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: "date" }],
-      metrics: [
-        { name: "sessions" },
-        { name: "totalUsers" },
-        { name: "newUsers" },
-        { name: "bounceRate" },
-        { name: "averageSessionDuration" },
-        { name: "conversions" },
-        { name: "totalRevenue" },
-      ],
-    },
+  const analyticsdata = google.analyticsdata({
+    version: "v1beta",
+    auth,
+    // Configure timeout
+    timeout: GA4_CONFIG.timeoutMs,
   });
 
-  return (response.data.rows || []).map((row) => ({
-    date: row.dimensionValues![0].value!,
-    sessions: parseInt(row.metricValues![0].value || "0", 10),
-    users: parseInt(row.metricValues![1].value || "0", 10),
-    newUsers: parseInt(row.metricValues![2].value || "0", 10),
-    bounceRate: parseFloat(row.metricValues![3].value || "0"),
-    avgSessionDuration: parseFloat(row.metricValues![4].value || "0"),
-    conversions: parseInt(row.metricValues![5].value || "0", 10),
-    revenue: parseFloat(row.metricValues![6].value || "0"),
-  }));
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < GA4_CONFIG.maxRetries; attempt++) {
+    try {
+      const response = await analyticsdata.properties.runReport({
+        // IMPORTANT: Property ID must be prefixed with "properties/"
+        property: `properties/${propertyId}`,
+        requestBody: {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: "date" }],
+          metrics: [
+            { name: "sessions" },
+            { name: "totalUsers" },
+            { name: "newUsers" },
+            { name: "bounceRate" },
+            { name: "averageSessionDuration" },
+            { name: "conversions" },
+            { name: "totalRevenue" },
+          ],
+        },
+      });
+
+      return (response.data.rows || []).map((row) => ({
+        date: row.dimensionValues![0].value!,
+        sessions: parseInt(row.metricValues![0].value || "0", 10),
+        users: parseInt(row.metricValues![1].value || "0", 10),
+        newUsers: parseInt(row.metricValues![2].value || "0", 10),
+        bounceRate: parseFloat(row.metricValues![3].value || "0"),
+        avgSessionDuration: parseFloat(row.metricValues![4].value || "0"),
+        conversions: parseInt(row.metricValues![5].value || "0", 10),
+        revenue: parseFloat(row.metricValues![6].value || "0"),
+      }));
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if error is retryable
+      if (isRetryableError(error) && attempt < GA4_CONFIG.maxRetries - 1) {
+        const delay = getBackoffDelay(attempt);
+        console.warn(
+          `[GA4] Request failed (attempt ${attempt + 1}/${GA4_CONFIG.maxRetries}), ` +
+            `retrying in ${Math.round(delay)}ms: ${lastError.message}`,
+        );
+        await sleep(delay);
+        continue;
+      }
+
+      // Non-retryable error or max retries reached
+      if (isGaxiosError(error)) {
+        const status = error.response?.status;
+        const code = error.code;
+
+        // Auth errors
+        if (status === 401 || status === 403) {
+          throw new GA4Error(
+            `GA4 authentication failed: ${error.message}`,
+            code,
+            status,
+            false,
+          );
+        }
+
+        // Rate limit after retries exhausted
+        if (status === 429) {
+          throw new GA4Error(
+            `GA4 rate limit exceeded after ${GA4_CONFIG.maxRetries} retries`,
+            code,
+            status,
+            true,
+          );
+        }
+
+        // Server errors after retries exhausted
+        if (status && status >= 500) {
+          throw new GA4Error(
+            `GA4 server error after ${GA4_CONFIG.maxRetries} retries: ${error.message}`,
+            code,
+            status,
+            true,
+          );
+        }
+
+        // Other errors
+        throw new GA4Error(
+          `GA4 request failed: ${error.message}`,
+          code,
+          status,
+          false,
+        );
+      }
+
+      // Unknown error type
+      throw new GA4Error(
+        `GA4 request failed: ${lastError.message}`,
+        undefined,
+        undefined,
+        false,
+      );
+    }
+  }
+
+  // Should not reach here, but handle edge case
+  throw new GA4Error(
+    `GA4 request failed after ${GA4_CONFIG.maxRetries} retries: ${lastError?.message}`,
+    undefined,
+    undefined,
+    true,
+  );
 }
 
 /**

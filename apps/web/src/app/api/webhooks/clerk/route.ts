@@ -94,11 +94,10 @@ async function handleUserCreated(data: WebhookEvent['data']) {
   const firstName = 'first_name' in data ? data.first_name : undefined;
   const lastName = 'last_name' in data ? data.last_name : undefined;
 
-  // Log user creation for monitoring
-  console.log('[ClerkWebhook] New user details:', {
-    userId,
-    email,
-    name: [firstName, lastName].filter(Boolean).join(' ') || undefined,
+  // Log user creation for monitoring (PII redacted for compliance)
+  console.log('[ClerkWebhook] New user created:', {
+    userId: userId.substring(0, 8) + '***',
+    eventType: 'user.created',
     createdAt: new Date().toISOString(),
   });
 

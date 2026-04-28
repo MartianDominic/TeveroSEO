@@ -27,6 +27,7 @@ import {
 } from "@/actions/seo/keywords";
 import { RankSparkline } from "@/components/keywords/RankSparkline";
 import { PositionBadge } from "@/components/keywords/PositionBadge";
+import { safeLast } from "@/lib/utils/safe-parse";
 
 interface KeywordResult {
   keyword: string;
@@ -278,8 +279,8 @@ export default function KeywordsPage() {
                   </div>
                 </div>
                 {saved.map((kw) => {
-                  const latestRanking = kw.rankings?.[kw.rankings.length - 1];
-                  const change = latestRanking?.previousPosition
+                  const latestRanking = safeLast(kw.rankings);
+                  const change = latestRanking?.previousPosition && latestRanking?.position
                     ? latestRanking.previousPosition - latestRanking.position
                     : null;
 

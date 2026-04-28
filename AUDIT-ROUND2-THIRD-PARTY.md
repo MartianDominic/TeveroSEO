@@ -607,4 +607,30 @@ The codebase has an excellent `ResilientHttpClient` class with:
 
 ---
 
+## FIXES IMPLEMENTED - 2026-04-28
+
+### DataForSEO (`AI-Writer/backend/services/scraping/dataforseo_client.py`)
+
+- **Added 429 rate limit handling**: The `_post()` function now detects HTTP 429 responses and automatically waits based on the `Retry-After` header (or uses exponential backoff as fallback)
+- **Added retry logic**: Up to 3 retries with exponential backoff for rate limits and transient network errors
+- **Added global rate limit state**: Tracks `_rate_limit_until` timestamp to proactively wait before making requests when rate limited
+- **Added response schema validation**: New `DataForSEOResponse` Pydantic model validates API responses against expected structure
+- **Added `RateLimitError` exception**: Custom exception class for rate limit scenarios with `retry_after` attribute
+
+### Stripe (`AI-Writer/backend/api/subscription/routes/payment.py`)
+
+- **Moved rate limiting from in-memory to Redis**: Replaced `_checkout_attempts_by_user` dict with the existing `_rate_limiter` from `middleware/rate_limit.py`
+- **Works across multiple server instances**: Uses Redis-backed sliding window algorithm (falls back to in-memory if Redis unavailable)
+- **Added rate limit headers**: Response now includes `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers on 429 responses
+
+### GA4 (`open-seo-main/src/server/services/analytics/ga4-client.ts`)
+
+- **Added 30s timeout**: Configured via `GA4_CONFIG.timeoutMs` constant
+- **Added retry with exponential backoff**: Up to 3 attempts with jitter (configurable via `GA4_CONFIG`)
+- **Added `GA4Error` class**: Custom error class with `code`, `statusCode`, and `retryable` properties for better error handling
+- **Retry on transient errors**: Automatically retries on 429, 5xx, and network errors (`ECONNRESET`)
+- **Proper error categorization**: Distinguishes between auth errors (401/403), rate limits (429), server errors (5xx), and other failures
+
+---
+
 *End of Audit Report*

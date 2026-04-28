@@ -39,11 +39,20 @@ export interface ServerToClientEvents {
 }
 
 /**
+ * Sync request for catch-up after reconnect.
+ */
+export interface SyncRequest {
+  workspaceId: string;
+  lastEventId: string | null;
+}
+
+/**
  * Events emitted by the client.
  */
 export interface ClientToServerEvents {
   "join-workspace": (workspaceId: string) => void;
   "leave-workspace": (workspaceId: string) => void;
+  "sync": (request: SyncRequest) => void;
 }
 
 /**

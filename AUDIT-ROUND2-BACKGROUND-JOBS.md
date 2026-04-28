@@ -341,3 +341,69 @@ The following security/reliability patterns were properly implemented:
 
 **AI-Writer:**
 - `backend/services/background_jobs.py` - Background job service
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### C1/H3: Secrets Removed from Job Payloads (CRITICAL)
+
+**Files Modified:**
+- `open-seo-main/src/server/queues/webhookQueue.ts` - Removed `secret` field from `WebhookDeliveryJobData` interface
+- `open-seo-main/src/services/webhook-dispatcher.ts` - Stopped including secret in job payload
+- `open-seo-main/src/server/workers/webhook-processor.ts` - Now fetches secret at delivery time via `getWebhookById(webhookId)`
+- `open-seo-main/src/server/workers/webhook-worker.ts` - DLQ entries now use sanitized data structure that excludes secrets; stack traces only included in development
+
+**Security Impact:**
+- Webhook HMAC secrets are no longer stored in Redis job payloads
+- Secrets are fetched at delivery time from the database
+- DLQ entries contain sanitized job data with no sensitive fields
+- Stack traces in DLQ are only included in development mode
+
+### H1/M1: Persistent Job Storage + Stalled Job Detection (AI-Writer)
+
+**Files Created:**
+- `AI-Writer/backend/services/job_storage.py` - Redis-backed persistent job storage
+
+**Files Modified:**
+- `AI-Writer/backend/services/background_jobs.py` - Integrated persistent storage and stalled job detection
+
+**Features:**
+- Jobs are persisted to Redis hashes for atomic operations
+- Jobs survive process restarts - recovered on startup
+- Stalled job detection runs every 60 seconds
+- Jobs running longer than 10 minutes are automatically marked as stalled/failed
+- Graceful degradation to in-memory if Redis unavailable
+
+**Redis Keys:**
+- `ai_writer:jobs:pending` - Pending jobs hash
+- `ai_writer:jobs:running` - Running jobs hash
+- `ai_writer:jobs:completed` - Completed jobs (24hr TTL)
+- `ai_writer:jobs:failed` - Failed jobs (7 day TTL)
+
+### H2: Zod Validation Added to Processors
+
+**Files Modified:**
+- `open-seo-main/src/server/workers/analytics-processor.ts` - Added `AnalyticsSyncJobDataSchema` and `SyncAllClientsJobDataSchema`
+- `open-seo-main/src/server/workers/ranking-processor.ts` - Added `RankingJobDataSchema` with datetime validation
+- `open-seo-main/src/server/workers/voice-analysis-processor.ts` - Added `VoiceAnalysisJobDataSchema` with URL array limit (max 100)
+- `open-seo-main/src/server/workers/prospect-analysis-processor.ts` - Added `ProspectAnalysisJobDataSchema`
+
+**Validation Rules:**
+- All UUIDs validated
+- ISO datetime strings validated
+- Enum values restricted to allowed options
+- URL arrays limited to prevent memory exhaustion (max 100 URLs for voice analysis)
+- Optional fields properly handled
+- Descriptive error messages for invalid payloads
+
+### Summary of Changes
+
+| Issue | Status | Files Changed |
+|-------|--------|---------------|
+| C1 - Webhook secret in payload | FIXED | webhookQueue.ts, webhook-dispatcher.ts, webhook-processor.ts |
+| H3 - Secret in DLQ | FIXED | webhook-worker.ts |
+| H2 - Missing validation | FIXED | analytics-processor.ts, ranking-processor.ts, voice-analysis-processor.ts, prospect-analysis-processor.ts |
+| H1 - In-memory storage | FIXED | job_storage.py (new), background_jobs.py |
+| M1 - Stalled job detection | FIXED | background_jobs.py |
+| M3 - Unbounded URL array | FIXED | voice-analysis-processor.ts (max 100 URLs)

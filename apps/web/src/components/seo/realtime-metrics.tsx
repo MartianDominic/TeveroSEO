@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 /**
  * WebSocket URL for metrics - uses NEXT_PUBLIC_WS_URL or falls back to relative path.
@@ -8,6 +9,9 @@ import { useEffect, useRef, useCallback, useState } from 'react';
  */
 const METRICS_WS_URL = process.env.NEXT_PUBLIC_METRICS_WS_URL ||
   (typeof window !== 'undefined' ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/metrics` : '');
+
+/** Token refresh interval for long-lived connections (5 minutes) */
+const TOKEN_REFRESH_INTERVAL = 5 * 60 * 1000;
 
 export interface MetricsData {
   timestamp: number;
@@ -25,13 +29,16 @@ export interface RealtimeMetricsProps {
 }
 
 /**
- * RealtimeMetrics component with proper WebSocket cleanup.
+ * RealtimeMetrics component with proper WebSocket cleanup and JWT authentication.
  *
  * Addresses CRITICAL-MEM-003: Event listener accumulation.
+ * Addresses CRITICAL-WS-003: RealtimeMetrics Using Raw WebSocket Without Auth.
  * - Properly cleans up WebSocket on unmount or clientId change
  * - Uses refs to avoid stale closure issues
  * - Implements reconnection with exponential backoff
  * - Clears all timeouts on cleanup
+ * - JWT authentication via URL token parameter
+ * - Token refresh for long-lived connections
  */
 export function RealtimeMetrics({
   clientId,
@@ -39,11 +46,14 @@ export function RealtimeMetrics({
   reconnectDelay = 5000,
   maxReconnectAttempts = 5,
 }: RealtimeMetricsProps) {
+  const { getToken, isSignedIn } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const isCleaningUpRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [lastMetrics, setLastMetrics] = useState<MetricsData | null>(null);
 
   // Store callback in ref to avoid stale closures
@@ -57,6 +67,12 @@ export function RealtimeMetrics({
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+
+    // Clear token refresh interval
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current);
+      tokenRefreshIntervalRef.current = null;
     }
 
     // Close WebSocket connection
@@ -75,13 +91,37 @@ export function RealtimeMetrics({
     }
 
     setIsConnected(false);
+    setIsAuthenticated(false);
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     // Don't connect if cleaning up or if we've exceeded max attempts
     if (isCleaningUpRef.current) return;
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.warn(`[RealtimeMetrics] Max reconnect attempts (${maxReconnectAttempts}) reached for client ${clientId}`);
+      return;
+    }
+
+    // Require authentication
+    if (!isSignedIn) {
+      console.warn('[RealtimeMetrics] Not authenticated, skipping connection');
+      setIsAuthenticated(false);
+      return;
+    }
+
+    // Get JWT token
+    let token: string | null = null;
+    try {
+      token = await getToken();
+    } catch (err) {
+      console.error('[RealtimeMetrics] Failed to get auth token:', err);
+      setIsAuthenticated(false);
+      return;
+    }
+
+    if (!token) {
+      console.warn('[RealtimeMetrics] No auth token available');
+      setIsAuthenticated(false);
       return;
     }
 
@@ -98,8 +138,19 @@ export function RealtimeMetrics({
       wsRef.current = null;
     }
 
+    // Clear existing token refresh interval
+    if (tokenRefreshIntervalRef.current) {
+      clearInterval(tokenRefreshIntervalRef.current);
+      tokenRefreshIntervalRef.current = null;
+    }
+
     try {
-      const ws = new WebSocket(`${METRICS_WS_URL}?clientId=${encodeURIComponent(clientId)}`);
+      // Build authenticated WebSocket URL with token
+      const wsUrl = new URL(METRICS_WS_URL, window.location.origin);
+      wsUrl.searchParams.set('clientId', clientId);
+      wsUrl.searchParams.set('token', token);
+
+      const ws = new WebSocket(wsUrl.toString());
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -108,7 +159,21 @@ export function RealtimeMetrics({
           return;
         }
         setIsConnected(true);
+        setIsAuthenticated(true);
         reconnectAttemptsRef.current = 0; // Reset on successful connection
+
+        // Set up token refresh for long-lived connections
+        tokenRefreshIntervalRef.current = setInterval(async () => {
+          if (isCleaningUpRef.current) return;
+          try {
+            const newToken = await getToken();
+            if (newToken && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'auth_refresh', token: newToken }));
+            }
+          } catch (err) {
+            console.error('[RealtimeMetrics] Token refresh failed:', err);
+          }
+        }, TOKEN_REFRESH_INTERVAL);
       };
 
       ws.onmessage = (event) => {
@@ -128,8 +193,21 @@ export function RealtimeMetrics({
 
         setIsConnected(false);
 
+        // Clear token refresh interval on disconnect
+        if (tokenRefreshIntervalRef.current) {
+          clearInterval(tokenRefreshIntervalRef.current);
+          tokenRefreshIntervalRef.current = null;
+        }
+
         // Don't reconnect for normal closure
         if (event.code === 1000) return;
+
+        // Don't reconnect on auth failure (custom close code 4001)
+        if (event.code === 4001) {
+          console.warn('[RealtimeMetrics] Authentication failed');
+          setIsAuthenticated(false);
+          return;
+        }
 
         // Exponential backoff for reconnection
         reconnectAttemptsRef.current++;
@@ -149,22 +227,24 @@ export function RealtimeMetrics({
     } catch (e) {
       console.error('[RealtimeMetrics] Failed to create WebSocket:', e);
     }
-  }, [clientId, reconnectDelay, maxReconnectAttempts]);
+  }, [clientId, reconnectDelay, maxReconnectAttempts, isSignedIn, getToken]);
 
   useEffect(() => {
     // Reset state for new client
     isCleaningUpRef.current = false;
     reconnectAttemptsRef.current = 0;
 
-    connect();
+    if (isSignedIn) {
+      connect();
+    }
 
     // Cleanup on unmount or clientId change
     return () => {
       cleanup();
     };
-  }, [clientId, connect, cleanup]);
+  }, [clientId, connect, cleanup, isSignedIn]);
 
-  return { isConnected, lastMetrics };
+  return { isConnected, isAuthenticated, lastMetrics };
 }
 
 /**

@@ -36,20 +36,47 @@ function getJWKS(): ReturnType<typeof createRemoteJWKSet> {
 }
 
 /**
+ * Get the Clerk issuer URL from the publishable key.
+ */
+function getClerkIssuerUrl(): string {
+  const publishableKey = process.env.CLERK_PUBLISHABLE_KEY?.trim();
+  if (!publishableKey) {
+    throw new Error("CLERK_PUBLISHABLE_KEY is not configured");
+  }
+
+  const match = publishableKey.match(/^pk_(test|live)_(.+)$/);
+  if (!match) {
+    throw new Error("Invalid CLERK_PUBLISHABLE_KEY format");
+  }
+
+  const instanceUrl = Buffer.from(match[2], "base64").toString("utf-8");
+  return `https://${instanceUrl}`;
+}
+
+/**
  * Verify a Clerk JWT and return the decoded payload.
  *
  * @param token - The JWT string from the Authorization header
  * @returns ClerkJWTPayload with userId, email, and optional name
  * @throws AppError("UNAUTHENTICATED") if the token is invalid or expired
  * @throws Error if CLERK_PUBLISHABLE_KEY is not configured or invalid
+ *
+ * SECURITY: This function validates:
+ * - RS256 algorithm to prevent algorithm confusion attacks
+ * - Token issuer to ensure tokens come from expected Clerk instance
+ * - Maximum token age (24h) to limit token lifetime
+ * - Standard exp claim (handled by jose library)
  */
 export async function verifyClerkJWT(token: string): Promise<ClerkJWTPayload> {
   // Get JWKS before try-catch so configuration errors propagate directly
   const jwks = getJWKS();
+  const issuer = getClerkIssuerUrl();
 
   try {
     const { payload } = await jwtVerify(token, jwks, {
       algorithms: ["RS256"],
+      issuer, // Validate token issuer
+      maxTokenAge: "24h", // Explicit maximum token age
     });
 
     // Clerk JWT claims: sub = user ID, email, name (optional)

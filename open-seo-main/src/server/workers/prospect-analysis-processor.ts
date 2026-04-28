@@ -3,8 +3,10 @@
  *
  * Runs in a separate Node.js process via BullMQ sandboxed worker.
  * Calls DataForSEO APIs with rate limiting (100ms between calls).
+ * Validates job data with Zod to prevent injection attacks.
  */
 import type { Job } from "bullmq";
+import { z } from "zod";
 import { db } from "@/db/index";
 import { eq } from "drizzle-orm";
 import { prospects } from "@/db/prospect-schema";
@@ -37,6 +39,33 @@ const log = createLogger({ module: "prospect-analysis-processor" });
 // Rate limit delay between DataForSEO API calls (100ms)
 const API_RATE_LIMIT_MS = 100;
 
+/**
+ * Zod schema for prospect analysis job data validation.
+ * Validates all fields to prevent injection attacks and malformed data.
+ */
+const ProspectAnalysisJobDataSchema = z.object({
+  prospectId: z.string().uuid(),
+  workspaceId: z.string().uuid(),
+  analysisType: z.enum(["quick_scan", "deep_dive", "opportunity_discovery"]),
+  analysisId: z.string().uuid(),
+  targetRegion: z.string().max(10).optional(),
+  targetLanguage: z.string().max(10).optional(),
+  triggeredAt: z.string().datetime({ message: "triggeredAt must be a valid ISO datetime string" }),
+  triggeredBy: z.string().uuid(),
+});
+
+/**
+ * Validate job data and throw descriptive error if invalid.
+ */
+function validateProspectAnalysisJobData(data: unknown): z.infer<typeof ProspectAnalysisJobDataSchema> {
+  const result = ProspectAnalysisJobDataSchema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.issues.map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`).join("; ");
+    throw new Error(`Invalid prospect analysis job data: ${errors}`);
+  }
+  return result.data;
+}
+
 // Limits per analysis type
 const ANALYSIS_LIMITS = {
   quick_scan: { keywords: 50, competitors: 10 },
@@ -53,12 +82,15 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Process a prospect analysis job.
+ * Validates job data before processing to prevent injection attacks.
  */
 export default async function processProspectAnalysis(
   job: Job<ProspectAnalysisJobData>,
 ): Promise<void> {
+  // Validate job data before processing
+  const validatedData = validateProspectAnalysisJobData(job.data);
   const { prospectId, analysisId, analysisType, targetRegion, targetLanguage } =
-    job.data;
+    validatedData;
 
   log.info("Starting prospect analysis", {
     jobId: job.id,

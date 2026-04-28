@@ -566,3 +566,47 @@ def cleanup_user_engine(user_id: str) -> None:
 - content_planning_service.py
 - database.py
 - wix_service.py
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### Transactions Added
+
+1. **CRITICAL-TXN-001** - `open-seo-main/src/server/workers/schedule-processor.ts`
+   - Wrapped report creation + schedule update in `db.transaction()` block
+   - Report insert and schedule update now atomic - both succeed or both rollback
+   - Queue enqueue moved AFTER transaction commits (recoverable if enqueue fails)
+
+### Session Cleanup Fixed
+
+1. **HIGH-TXN-002** - `AI-Writer/backend/services/content_planning_service.py`
+   - Added `_get_db_service_context()` context manager method
+   - Ensures session commit on success, rollback on error, close in finally
+   - Legacy `_get_db_service()` preserved for backward compatibility with warning
+
+### HTTP Methods Fixed
+
+1. **HIGH-TXN-004** - `apps/web/src/actions/alerts.ts`
+   - `createAlertRule()`: Changed from `patchOpenSeo` with `method: "POST"` body param to proper `postOpenSeo()`
+   - `deleteAlertRule()`: Changed from `patchOpenSeo` with `method: "DELETE"` body param to proper `deleteOpenSeo()`
+
+### Article Recovery Extended
+
+1. **HIGH-CRASH-002** - `AI-Writer/backend/services/article_recovery_service.py`
+   - Added `orphaned_approved_recovery_sweep()` function
+   - Finds approved articles with `publish_date` > 1 hour past and never claimed
+   - Re-queues by setting `publish_date` to now for next publish cycle
+
+### Error Handling Improved
+
+1. **MEDIUM-ERR-004** - `apps/web/src/actions/analytics/detect-patterns.ts`
+   - Removed catch block that swallowed errors and returned empty array
+   - Errors now propagate to caller for proper handling
+   - UI components should handle errors gracefully (show error state vs empty state)
+
+### Remaining Items (Not Implemented)
+
+- **HIGH-TXN-003**: Auto-publish three-phase commit - existing `with_for_update(skip_locked=True)` mitigates most races; optimistic locking deferred
+- **MEDIUM-CRASH-004**: Link graph retry queue - fire-and-forget has done callback; persistent retry deferred
+- **HIGH-ERR-001**: ContentPlanningService typed errors - requires broader refactor of return types

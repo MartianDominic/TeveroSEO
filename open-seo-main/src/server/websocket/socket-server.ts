@@ -12,6 +12,12 @@ import { createLogger } from "@/server/lib/logger";
 import { verifyClerkJWT } from "@/server/lib/clerk-jwt";
 import { handleSocketConnection } from "./room-manager";
 import { redis } from "@/server/lib/redis";
+import {
+  canConnect,
+  addConnection,
+  removeConnection,
+  bufferEvent,
+} from "./connection-manager";
 import type {
   AuthenticatedSocketData,
   ServerToClientEvents,
@@ -175,10 +181,22 @@ export function initSocketServer(httpServer: HttpServer): TypedServer {
       // Verify JWT with Clerk
       const user = await verifyClerkJWT(token);
 
+      // SECURITY: Check per-user connection limit
+      if (!canConnect(user.userId)) {
+        log.warn("WebSocket connection rejected: user connection limit", {
+          socketId: socket.id,
+          userId: user.userId,
+        });
+        return next(new Error("Connection limit exceeded. Close other tabs and try again."));
+      }
+
       // Attach user context to socket for use in room-manager
       socket.data.userId = user.userId;
       socket.data.email = user.email;
       socket.data.name = user.name;
+
+      // Register connection for tracking
+      addConnection(user.userId, socket.id);
 
       log.info("WebSocket connection authenticated", {
         socketId: socket.id,
@@ -196,7 +214,15 @@ export function initSocketServer(httpServer: HttpServer): TypedServer {
     }
   });
 
-  io.on("connection", handleSocketConnection);
+  io.on("connection", (socket: TypedSocket) => {
+    // Handle disconnect to clean up connection tracking
+    socket.on("disconnect", () => {
+      removeConnection(socket.id);
+    });
+
+    // Delegate to room manager for workspace handling
+    handleSocketConnection(socket);
+  });
 
   log.info("Socket.IO server initialized", { allowedOrigins });
 
@@ -215,6 +241,11 @@ export function emitActivityEvent(workspaceId: string, event: ActivityEvent): vo
 
   const roomName = `workspace:${workspaceId}`;
   io.to(roomName).emit("activity:new", event);
+
+  // Buffer event for catch-up on reconnect
+  bufferEvent(workspaceId, event).catch(() => {
+    // Error already logged in bufferEvent
+  });
 
   log.debug("Emitted activity event", {
     workspaceId,

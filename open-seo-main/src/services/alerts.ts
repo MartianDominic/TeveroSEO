@@ -166,13 +166,21 @@ export async function getAlertRule(
 }
 
 /**
- * Get all alert rules for a client.
+ * Get alert rules for a client with pagination.
+ * Includes a default limit of 100 as a safety net.
  */
-export async function getClientAlertRules(clientId: string) {
+export async function getClientAlertRules(
+  clientId: string,
+  options?: { limit?: number; offset?: number }
+) {
+  const { limit = 100, offset = 0 } = options ?? {};
+
   return db
     .select()
     .from(alertRules)
-    .where(eq(alertRules.clientId, clientId));
+    .where(eq(alertRules.clientId, clientId))
+    .limit(limit)
+    .offset(offset);
 }
 
 /**

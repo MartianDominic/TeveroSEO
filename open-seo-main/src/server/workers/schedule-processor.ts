@@ -107,21 +107,41 @@ export default async function processScheduleJob(
         schedule.locale,
       );
 
-      // Create report record in pending status
-      const [newReport] = await db
-        .insert(reports)
-        .values({
-          clientId: schedule.clientId,
-          reportType: schedule.reportType,
-          dateRangeStart: dateRange.start,
-          dateRangeEnd: dateRange.end,
-          locale: schedule.locale,
-          contentHash,
-          status: "pending",
-        })
-        .returning();
+      // Calculate next run time
+      const nextRun = calculateNextRun(schedule.cronExpression, schedule.timezone);
 
-      // Enqueue report generation
+      // CRITICAL-TXN-001 FIX: Wrap report creation + schedule update in transaction
+      // This ensures atomicity - either both succeed or both rollback
+      const [newReport] = await db.transaction(async (tx) => {
+        // Create report record in pending status
+        const [report] = await tx
+          .insert(reports)
+          .values({
+            clientId: schedule.clientId,
+            reportType: schedule.reportType,
+            dateRangeStart: dateRange.start,
+            dateRangeEnd: dateRange.end,
+            locale: schedule.locale,
+            contentHash,
+            status: "pending",
+          })
+          .returning();
+
+        // Update schedule: lastRun = now, nextRun = calculateNextRun()
+        await tx
+          .update(reportSchedules)
+          .set({
+            lastRun: now,
+            nextRun,
+            updatedAt: now,
+          })
+          .where(eq(reportSchedules.id, schedule.id));
+
+        return [report];
+      });
+
+      // Enqueue AFTER transaction commits successfully
+      // If enqueue fails, report exists but job won't run - recoverable state
       await enqueueReportGeneration(newReport.id, {
         clientId: schedule.clientId,
         reportType: schedule.reportType,
@@ -134,18 +154,6 @@ export default async function processScheduleJob(
         reportId: newReport.id,
         reportType: schedule.reportType,
       });
-
-      // Update schedule: lastRun = now, nextRun = calculateNextRun()
-      const nextRun = calculateNextRun(schedule.cronExpression, schedule.timezone);
-
-      await db
-        .update(reportSchedules)
-        .set({
-          lastRun: now,
-          nextRun,
-          updatedAt: now,
-        })
-        .where(eq(reportSchedules.id, schedule.id));
 
       scheduleLogger.info("Schedule updated", {
         lastRun: now.toISOString(),

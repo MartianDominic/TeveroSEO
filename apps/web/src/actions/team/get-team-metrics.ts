@@ -11,6 +11,7 @@ import {
 import { getFastApi } from "@/lib/server-fetch";
 import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
 import { env } from "@/lib/env";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type {
   TeamMetrics,
   TeamMemberWithAssignments,
@@ -176,6 +177,7 @@ function filterMetricsByRole(metrics: TeamMetrics, role: string, userId: string)
 /**
  * Fetch team metrics including member workloads and assignments.
  * Results are cached for 60 seconds with workspace tag for invalidation.
+ * Rate limited: 60 operations per minute.
  *
  * SECURITY: Role-based filtering ensures users only see metrics appropriate
  * for their permission level:
@@ -190,6 +192,9 @@ export async function getTeamMetrics(
   const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
 
   const auth = await requireActionAuth();
+
+  // Rate limit: prevent excessive metric fetches
+  await checkActionRateLimit("teamMetrics", auth.userId);
 
   // Validate workspace membership to prevent IDOR
   await validateWorkspaceMembership(validatedWorkspaceId, auth);
@@ -300,6 +305,7 @@ export async function getTeamMetrics(
 /**
  * Reassign a client to a different team member.
  * Requires owner or admin role in the workspace.
+ * Rate limited: 60 operations per minute.
  */
 export async function reassignClient(
   workspaceId: string,
@@ -313,6 +319,9 @@ export async function reassignClient(
     const validatedMemberId = memberIdSchema.parse(toMemberId);
 
     const auth = await requireActionAuth();
+
+    // Rate limit: prevent bulk reassignment abuse
+    await checkActionRateLimit("teamMetrics", auth.userId);
 
     // Validate workspace membership AND admin/owner role
     await validateReassignmentPermission(validatedWorkspaceId, auth);

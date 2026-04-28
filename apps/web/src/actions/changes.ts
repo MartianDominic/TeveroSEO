@@ -13,6 +13,19 @@ import {
   validateClientOwnership,
 } from '@/lib/auth/action-auth';
 import { getOpenSeo, postOpenSeo } from '@/lib/server-fetch';
+import { checkActionRateLimit } from '@/lib/rate-limit/action-limiters';
+import { createHash } from 'crypto';
+
+/**
+ * Generate an idempotency key for revert operations.
+ * Combines scope details with a short time window to prevent rapid duplicate submissions.
+ */
+function generateRevertIdempotencyKey(scope: Record<string, unknown>, connectionId: string): string {
+  // Use a 30-second time window for idempotency
+  const timeWindow = Math.floor(Date.now() / 30000);
+  const data = JSON.stringify({ scope, connectionId, timeWindow });
+  return createHash('sha256').update(data).digest('hex').slice(0, 16);
+}
 
 // Validation schemas
 const clientIdSchema = z.string().uuid('Invalid client ID format');
@@ -241,6 +254,10 @@ export async function previewRevert(
 /**
  * Execute a revert operation.
  * Validates client ownership from scope before proceeding.
+ * Rate limited: 30 reverts per hour.
+ *
+ * IDEMPOTENCY: Includes an idempotency key in the request to prevent duplicate
+ * revert operations from rapid double-submissions or network retries.
  */
 export async function executeRevert(
   scope: Record<string, unknown>,
@@ -253,11 +270,23 @@ export async function executeRevert(
     const validatedCascadeMode = cascadeModeSchema.parse(cascadeMode);
 
     const auth = await requireActionAuth();
+
+    // Rate limit: reverts modify CMS content - prevent abuse
+    await checkActionRateLimit('revert', auth.userId);
+
     await validateClientOwnership(validatedScope.clientId, auth);
+
+    // IDEMPOTENCY FIX: Generate idempotency key to prevent duplicate reverts
+    const idempotencyKey = generateRevertIdempotencyKey(validatedScope, validatedConnectionId);
 
     const response = await postOpenSeo<{ success: boolean; data: RevertResult }>(
       '/api/reverts/execute',
-      { scope: validatedScope, connectionId: validatedConnectionId, cascadeMode: validatedCascadeMode }
+      {
+        scope: validatedScope,
+        connectionId: validatedConnectionId,
+        cascadeMode: validatedCascadeMode,
+        idempotencyKey,  // Backend should use this to deduplicate
+      }
     );
 
     // Revalidate changes pages

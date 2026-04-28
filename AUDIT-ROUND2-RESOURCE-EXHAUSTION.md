@@ -267,3 +267,41 @@ The TeveroSEO codebase demonstrates **mature resource management practices** wit
 The identified issues are localized and do not represent systemic problems. The three MEDIUM findings should be addressed to prevent potential resource exhaustion under adversarial conditions.
 
 **Overall Security Posture:** GOOD - Minor improvements recommended.
+
+---
+
+## FIXES IMPLEMENTED - 2026-04-28
+
+### 1. CSV Import (`AI-Writer/backend/services/csv_import.py`)
+- Added `MAX_CSV_SIZE_MB = 10` constant
+- Added `MAX_CSV_ROWS = 10000` constant (increased from 500)
+- File size validation before parsing (prevents memory exhaustion from large files)
+- Row count validation after parsing (prevents processing excessive rows)
+
+### 2. File Upload Size Validation (`AI-Writer/backend/services/stability_service.py`)
+- Added `MAX_UPLOAD_SIZE_MB = 50` constant
+- `_prepare_image_file()`: Now reads in 1MB chunks with size validation
+- `_prepare_audio_file()`: Now reads in 1MB chunks with size validation
+- Both methods raise `ValueError` if file exceeds limit before loading entire file
+
+### 3. Query Limits (`AI-Writer/backend/services/`)
+**enhanced_strategy_db_service.py:**
+- Added `MAX_QUERY_LIMIT = 1000` constant
+- `get_enhanced_strategies_by_user()`: Added `.limit(MAX_QUERY_LIMIT)`
+- `get_enhanced_strategies_with_analytics()`: Added `.limit(MAX_QUERY_LIMIT)`
+- `search_enhanced_strategies()`: Added `.limit(MAX_QUERY_LIMIT)`
+
+**persona_analysis_service.py:**
+- Added `MAX_QUERY_LIMIT = 1000` constant
+- `get_user_personas()`: Added `.limit(MAX_QUERY_LIMIT)` to both queries
+
+**ai_analytics_service.py:** (already fixed)
+- `_get_analytics_data()`: Has `MAX_ANALYTICS_RECORDS = 1000`
+- `_get_performance_data()`: Has `MAX_PERFORMANCE_RECORDS = 1000`
+- `_get_historical_performance_data()`: Has `MAX_HISTORICAL_RECORDS = 1000`
+
+### Summary
+All MEDIUM severity findings have been addressed:
+- CSV imports now bounded by both file size (10MB) and row count (10,000)
+- File uploads validated with chunked reading (50MB max)
+- All `.all()` queries now have LIMIT clauses (1000 records max)

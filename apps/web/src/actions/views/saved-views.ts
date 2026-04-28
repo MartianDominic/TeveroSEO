@@ -3,12 +3,16 @@
 import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
+import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type {
   SavedView,
   ViewConfig,
   CreateSavedViewInput,
   UpdateSavedViewInput,
 } from "@/types/saved-views";
+
+// Resource limits to prevent abuse
+const MAX_SAVED_VIEWS_PER_USER = 50;
 
 // Validation schemas
 const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
@@ -169,6 +173,9 @@ export async function getSavedViewsWithConfig(workspaceId: string): Promise<Save
 /**
  * Create a new saved view with column configuration.
  * Validates workspace membership before creating.
+ * Rate limited: 60 operations per hour.
+ *
+ * RESOURCE LIMIT: Users are limited to MAX_SAVED_VIEWS_PER_USER views per workspace.
  */
 export async function createSavedViewWithConfig(
   workspaceId: string,
@@ -180,8 +187,22 @@ export async function createSavedViewWithConfig(
 
   const auth = await requireActionAuth();
 
+  // Rate limit: prevent spam creation
+  await checkActionRateLimit("savedViews", auth.userId);
+
   // Validate workspace membership before creating view
   await validateWorkspaceMembership(validatedWorkspaceId, auth);
+
+  // RESOURCE LIMIT FIX: Check user's current view count before allowing creation
+  const existingViews = await getFastApi<SavedViewApiResponse[]>(
+    `/api/dashboard/views?workspaceId=${validatedWorkspaceId}`
+  );
+  const userViewCount = existingViews.filter(v => v.userId === auth.userId).length;
+  if (userViewCount >= MAX_SAVED_VIEWS_PER_USER) {
+    throw new Error(
+      `View limit reached. Maximum ${MAX_SAVED_VIEWS_PER_USER} saved views allowed per user per workspace.`
+    );
+  }
 
   const body = {
     name: validatedInput.name,
@@ -206,6 +227,7 @@ export async function createSavedViewWithConfig(
 /**
  * Update an existing saved view.
  * Validates that the current user owns the view before updating.
+ * Rate limited: 60 operations per hour.
  */
 export async function updateSavedViewWithConfig(
   viewId: string,
@@ -216,6 +238,9 @@ export async function updateSavedViewWithConfig(
   const validatedInput = updateViewInputSchema.parse(input);
 
   const auth = await requireActionAuth();
+
+  // Rate limit: prevent spam updates
+  await checkActionRateLimit("savedViews", auth.userId);
 
   // Fetch view to verify ownership - only view owner can update
   const view = await getFastApi<SavedViewApiResponse & { workspaceId?: string }>(
@@ -247,12 +272,16 @@ export async function updateSavedViewWithConfig(
 /**
  * Delete a saved view.
  * Validates that the current user owns the view before deleting.
+ * Rate limited: 60 operations per hour.
  */
 export async function deleteSavedViewById(viewId: string): Promise<void> {
   // Validate viewId format
   const validatedViewId = viewIdSchema.parse(viewId);
 
   const auth = await requireActionAuth();
+
+  // Rate limit: prevent spam deletions
+  await checkActionRateLimit("savedViews", auth.userId);
 
   // Fetch view to verify ownership - only view owner can delete
   const view = await getFastApi<SavedViewApiResponse>(

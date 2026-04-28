@@ -14,8 +14,10 @@ import {
   index,
   uniqueIndex,
   real,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 
 // Status enum values
@@ -192,6 +194,12 @@ export const prospects = pgTable(
       table.workspaceId,
       table.domain,
     ),
+    // Status must be valid enum value
+    check("chk_prospect_status_valid", sql`status IN ('new', 'analyzing', 'analyzed', 'converted', 'archived')`),
+    // Pipeline stage must be valid enum value
+    check("chk_pipeline_stage_valid", sql`pipeline_stage IN ('new', 'analyzing', 'scored', 'qualified', 'contacted', 'negotiating', 'converted', 'archived')`),
+    // Priority score constraint (already in migration 0032)
+    check("chk_prospect_priority_range", sql`priority_score IS NULL OR (priority_score >= 0 AND priority_score <= 100)`),
   ],
 );
 
@@ -229,6 +237,10 @@ export const prospectAnalyses = pgTable(
   (table) => [
     index("ix_analyses_prospect").on(table.prospectId),
     index("ix_analyses_status").on(table.status),
+    // Analysis status must be valid enum value
+    check("chk_analysis_status_valid", sql`status IN ('pending', 'running', 'completed', 'failed')`),
+    // Analysis type must be valid enum value
+    check("chk_analysis_type_valid", sql`analysis_type IN ('quick_scan', 'deep_dive', 'opportunity_discovery')`),
   ],
 );
 

@@ -7,6 +7,7 @@
  * These endpoints are NOT exposed to public - internal network only.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { timingSafeEqual } from "crypto";
 import { createLogger } from "@/server/lib/logger";
 import {
   analyticsQueue,
@@ -30,7 +31,17 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Timing-safe comparison of two strings.
+ * Returns false if lengths differ (before comparison) to avoid timing leaks.
+ */
+function secureCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+}
+
+/**
  * Verify internal API key header for service-to-service auth.
+ * SECURITY: Uses timing-safe comparison to prevent timing attacks.
  */
 function verifyInternalApiKey(request: Request): boolean {
   const apiKey = request.headers.get("X-Internal-Api-Key");
@@ -38,7 +49,10 @@ function verifyInternalApiKey(request: Request): boolean {
     dlqLogger.error("INTERNAL_API_KEY not configured");
     return false;
   }
-  return apiKey === INTERNAL_API_KEY;
+  if (!apiKey) {
+    return false;
+  }
+  return secureCompare(apiKey, INTERNAL_API_KEY);
 }
 
 /**

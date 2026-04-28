@@ -39,7 +39,8 @@ export interface WebhookDeliveryJobData {
   deliveryId: string;
   webhookId: string;
   url: string;
-  secret: string;
+  /** @deprecated Use webhookId to fetch secret at delivery time. Removed for security. */
+  secret?: never;
   headers: Record<string, string>;
   payload: WebhookPayload;
   attempt: number;

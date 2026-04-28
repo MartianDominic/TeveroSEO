@@ -12,12 +12,25 @@ const log = createLogger({ module: "webhook-worker" });
 const SHUTDOWN_TIMEOUT_MS = 25_000;
 
 /**
+ * Sanitized job data for DLQ (secrets removed).
+ */
+interface SanitizedWebhookJobData {
+  deliveryId: string;
+  webhookId: string;
+  url: string;
+  headers: Record<string, string>;
+  payload: unknown;
+  attempt: number;
+}
+
+/**
  * Dead-letter queue job data for failed webhook deliveries.
+ * SECURITY: Uses sanitized data - secrets are never stored in DLQ.
  */
 interface WebhookDLQJobData {
   originalJobId: string | undefined;
   originalJobName: string;
-  data: WebhookDeliveryJobData;
+  data: SanitizedWebhookJobData;
   error: string;
   stack: string | undefined;
   failedAt: string;
@@ -83,12 +96,23 @@ export async function startWebhookWorker(): Promise<void> {
     // Move to DLQ after max retries, skip DLQ jobs
     if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
       try {
+        // SECURITY: Sanitize job data before storing in DLQ - remove any secrets
+        const sanitizedData: SanitizedWebhookJobData = {
+          deliveryId: job.data.deliveryId,
+          webhookId: job.data.webhookId,
+          url: job.data.url,
+          headers: job.data.headers,
+          payload: job.data.payload,
+          attempt: job.data.attempt,
+          // Note: secret field is intentionally NOT included
+        };
         const dlqData: WebhookDLQJobData = {
           originalJobId: job.id,
           originalJobName: job.name,
-          data: job.data,
+          data: sanitizedData,
           error: err.message,
-          stack: err.stack,
+          // Only include stack in non-production to prevent info leakage
+          stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
           failedAt: new Date().toISOString(),
           attemptsMade: job.attemptsMade,
         };

@@ -252,3 +252,12 @@ Uses Node.js `timingSafeEqual` correctly.
 1. Implement secrets rotation policy
 2. Consider HashiCorp Vault or AWS Secrets Manager for production
 3. Add security scanning to CI/CD pipeline
+
+---
+## FIXES IMPLEMENTED - 2026-04-28
+
+### JWT Verification Enhanced (MEDIUM)
+- Added `maxTokenAge: "24h"` to JWT verification in `open-seo-main/src/server/lib/clerk-jwt.ts`
+- Added `issuer` validation to ensure tokens originate from expected Clerk instance
+- Added `getClerkIssuerUrl()` helper to derive issuer URL from publishable key
+- Documents security contract in function docstring

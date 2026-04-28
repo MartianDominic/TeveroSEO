@@ -38,6 +38,7 @@ import {
   formatStartedAt,
   SUPPORT_URL,
 } from "@/lib/seo/shared";
+import { safeFirst, safeFormatTime } from "@/lib/utils/safe-parse";
 
 interface AuditStatus {
   status: string;
@@ -573,7 +574,7 @@ function ProgressCard({
               Crawled Pages ({crawledUrls.length})
             </h3>
             <p className="text-xs text-foreground/50">
-              Updated {new Date(crawledUrls[0].crawledAt).toLocaleTimeString()}
+              Updated {safeFormatTime(safeFirst(crawledUrls)?.crawledAt)}
             </p>
             <div className="max-h-[400px] overflow-y-auto -mx-1">
               {crawledUrls.map((entry, i) => (

@@ -8,6 +8,7 @@ const puppeteer = require("puppeteer-core");
 const http = require("http");
 
 const PORT = process.env.PORT || 3100;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 async function startBrowser() {
   console.log("Starting Puppeteer browser...");
@@ -36,6 +37,14 @@ async function startBrowser() {
       res.writeHead(200);
       res.end("ok");
     } else if (req.url === "/ws") {
+      // SECURITY: Require INTERNAL_API_KEY for WebSocket endpoint discovery
+      const authHeader = req.headers["x-internal-api-key"] || req.headers["authorization"];
+      if (INTERNAL_API_KEY && authHeader !== INTERNAL_API_KEY) {
+        console.warn("Unauthorized /ws request from:", req.socket.remoteAddress);
+        res.writeHead(401);
+        res.end("Unauthorized");
+        return;
+      }
       // Return the WebSocket endpoint for discovery
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ wsEndpoint }));

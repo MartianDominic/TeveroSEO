@@ -1,12 +1,15 @@
 /**
  * Sandboxed processor for webhook delivery.
  * Phase 18.5: Delivers webhooks with HMAC signing.
+ *
+ * SECURITY: Webhook secrets are fetched at delivery time via webhookId,
+ * NOT stored in job payloads to prevent exposure via Redis dumps or DLQ.
  */
 import { createHmac } from "crypto";
 import type { Job } from "bullmq";
 import { createLogger } from "@/server/lib/logger";
 import type { WebhookDeliveryJobData } from "@/server/queues/webhookQueue";
-import { updateDeliveryStatus } from "@/services/webhooks";
+import { updateDeliveryStatus, getWebhookById } from "@/services/webhooks";
 import { validateWebhookUrl } from "@/server/lib/webhook-url-policy";
 
 const log = createLogger({ module: "webhook-processor" });
@@ -27,11 +30,20 @@ function generateSignature(
 
 /**
  * Deliver a webhook with retry handling.
+ * SECURITY: Fetches secret at delivery time instead of storing in job payload.
  */
 async function deliverWebhook(
   job: Job<WebhookDeliveryJobData>,
 ): Promise<{ success: boolean; statusCode?: number; error?: string }> {
-  const { deliveryId, url, secret, headers, payload } = job.data;
+  const { deliveryId, webhookId, url, headers, payload } = job.data;
+
+  // SECURITY: Fetch secret at delivery time - never stored in job payload
+  const webhook = await getWebhookById(webhookId);
+  if (!webhook) {
+    log.error("Webhook not found for delivery", undefined, { deliveryId, webhookId });
+    return { success: false, error: "Webhook not found - may have been deleted" };
+  }
+  const secret = webhook.secret;
 
   // SECURITY: Re-validate URL at delivery time to prevent SSRF
   // This catches any bypass from webhook URL being modified after creation
