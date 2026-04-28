@@ -31,3 +31,27 @@ export {
   type ActionAuthContext,
   type ActionResult,
 } from './action-auth';
+
+// Authorization Errors
+export {
+  AuthorizationError,
+  ClientOwnershipError,
+  ResourceNotFoundError,
+  InsufficientPermissionsError,
+  AuthServiceUnavailableError,
+  AuthErrorCode,
+  isAuthorizationError,
+  isClientOwnershipError,
+  isResourceNotFoundError,
+  toSafeErrorResponse,
+} from './errors';
+
+// Client Ownership Validation (with caching)
+export {
+  checkClientOwnership,
+  invalidateOwnershipCache,
+  invalidateClientCaches,
+  invalidateUserCaches,
+  batchCheckOwnership,
+  type OwnershipCheckResult,
+} from './client-ownership';

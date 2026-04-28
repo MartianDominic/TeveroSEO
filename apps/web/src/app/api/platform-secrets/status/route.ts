@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFastApi, FastApiError } from "@/lib/server-fetch";
+import { requireAuth, AuthError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,11 +13,17 @@ interface SecretStatus {
 
 export async function GET() {
   try {
+    // Authentication required - platform secrets are sensitive
+    await requireAuth();
+
     const data = await getFastApi<SecretStatus[]>(
       "/api/platform-secrets/status"
     );
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

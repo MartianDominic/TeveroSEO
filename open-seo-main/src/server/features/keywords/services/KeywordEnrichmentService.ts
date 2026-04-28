@@ -16,10 +16,11 @@ import {
 } from "@/db/prospect-keyword-schema";
 import { redis } from "@/server/lib/redis";
 import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
+import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { eq, inArray } from "drizzle-orm";
 
 // Constants - exported for testing
-export const CACHE_PREFIX = "kw-metrics:";
+export const CACHE_PREFIX = CACHE_NS.KEYWORD;
 export const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 export const BATCH_SIZE = 1000;
 export const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
@@ -201,7 +202,13 @@ export class KeywordEnrichmentService {
     const key = `${CACHE_PREFIX}${keyword}`;
     const cached = await redis.get(key);
     if (cached) {
-      return JSON.parse(cached);
+      const data = safeJsonParse<CachedMetrics>(cached, key);
+      if (!data) {
+        // Corrupted cache - delete and treat as miss
+        await redis.del(key);
+        return null;
+      }
+      return data;
     }
     return null;
   }

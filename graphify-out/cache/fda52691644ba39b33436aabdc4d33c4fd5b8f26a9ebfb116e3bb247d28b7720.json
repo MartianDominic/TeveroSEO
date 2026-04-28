@@ -1,0 +1,1 @@
+{"nodes": [{"id": "alwrity_db", "label": "alwrity-db.ts", "file_type": "code", "source_file": "open-seo-main/src/server/lib/alwrity-db.ts", "source_location": "L1"}], "edges": [{"source": "alwrity_db", "target": "pg", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "open-seo-main/src/server/lib/alwrity-db.ts", "source_location": "L1", "weight": 1.0}]}

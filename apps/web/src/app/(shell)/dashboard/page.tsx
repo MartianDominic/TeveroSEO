@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { PageHeader } from "@tevero/ui";
 import { ClientPortfolioTable } from "@/components/dashboard/ClientPortfolioTable";
 import { PortfolioHealthSummary } from "@/components/dashboard/PortfolioHealthSummary";
@@ -21,8 +22,43 @@ import {
   getUpcomingScheduled
 } from "./actions";
 
+// Default fallback values for graceful degradation
+const defaultSummary = {
+  totalClients: 0,
+  clientsNeedingAttention: 0,
+  winsThisWeek: 0,
+  totalClicks30d: 0,
+  totalImpressions30d: 0,
+  avgTrafficChange: 0,
+  keywordsTotal: 0,
+  keywordsTop10: 0,
+  keywordsTop3: 0,
+  keywordsPosition1: 0,
+  avgGoalAttainment: 0,
+  avgGoalAttainmentTrend: 0,
+  clientsOnTrack: 0,
+  clientsWatching: 0,
+  clientsCritical: 0,
+  goalsMet: 0,
+  goalsTotal: 0,
+};
+
+const defaultCardLayout = [
+  "totalClients",
+  "avgGoalAttainment",
+  "keywordsTop10",
+  "winsThisWeek",
+];
+
 export default async function DashboardPage() {
-  // Fetch all dashboard data in parallel
+  // Get workspace ID from Clerk auth context
+  const { userId, orgId } = await auth();
+
+  // Use organization ID as workspace, falling back to user ID for personal workspace
+  const workspaceId = orgId || userId || "default-workspace";
+
+  // Fetch all dashboard data in parallel with individual fallbacks
+  // Each call handles its own errors to prevent one failure from crashing the entire page
   const [
     metrics,
     summary,
@@ -32,17 +68,35 @@ export default async function DashboardPage() {
     teamWorkload,
     upcomingScheduled,
   ] = await Promise.all([
-    getDashboardMetrics(),
-    getPortfolioSummary(),
-    getAttentionItems(),
-    getWins(),
-    getCardLayout(),
-    getTeamWorkload(),
-    getUpcomingScheduled(),
+    getDashboardMetrics().catch((error) => {
+      console.error("[DashboardPage] getDashboardMetrics failed:", error);
+      return [];
+    }),
+    getPortfolioSummary().catch((error) => {
+      console.error("[DashboardPage] getPortfolioSummary failed:", error);
+      return defaultSummary;
+    }),
+    getAttentionItems().catch((error) => {
+      console.error("[DashboardPage] getAttentionItems failed:", error);
+      return [];
+    }),
+    getWins().catch((error) => {
+      console.error("[DashboardPage] getWins failed:", error);
+      return [];
+    }),
+    getCardLayout().catch((error) => {
+      console.error("[DashboardPage] getCardLayout failed:", error);
+      return defaultCardLayout;
+    }),
+    getTeamWorkload().catch((error) => {
+      console.error("[DashboardPage] getTeamWorkload failed:", error);
+      return [];
+    }),
+    getUpcomingScheduled().catch((error) => {
+      console.error("[DashboardPage] getUpcomingScheduled failed:", error);
+      return [];
+    }),
   ]);
-
-  // TODO: Get workspace ID from Clerk auth context
-  const workspaceId = "default-workspace";
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">

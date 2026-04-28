@@ -13,11 +13,12 @@
 import { nanoid } from "nanoid";
 import { redis } from "@/server/lib/redis";
 import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
+import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 
 // Constants
 const MAX_KEYWORDS = 20;
-const CACHE_PREFIX = "kw-metrics:";
-const SHARE_PREFIX = "quick-check:";
+const CACHE_PREFIX = CACHE_NS.KEYWORD;
+const SHARE_PREFIX = CACHE_NS.QUICK_CHECK_SHARE;
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const SHARE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
@@ -201,8 +202,14 @@ export class QuickCheckService {
       return null;
     }
 
-    const { result } = JSON.parse(cached);
-    return result;
+    const parsed = safeJsonParse<{ result: QuickCheckResult }>(cached, key);
+    if (!parsed) {
+      // Corrupted share link - delete it
+      await redis.del(key);
+      return null;
+    }
+
+    return parsed.result;
   }
 
   private getCompetitionLevel(competition: number): "low" | "medium" | "high" {
@@ -215,7 +222,13 @@ export class QuickCheckService {
     const key = `${CACHE_PREFIX}${keyword}`;
     const cached = await redis.get(key);
     if (cached) {
-      return JSON.parse(cached);
+      const data = safeJsonParse<CachedMetrics>(cached, key);
+      if (!data) {
+        // Corrupted cache - delete and treat as miss
+        await redis.del(key);
+        return null;
+      }
+      return data;
     }
     return null;
   }

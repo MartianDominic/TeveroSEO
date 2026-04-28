@@ -1,0 +1,142 @@
+/**
+ * REST API wrapper for audit serverFunctions.
+ * Phase 10: Exposed for Next.js server actions to call.
+ */
+import { createFileRoute } from "@tanstack/react-router";
+import { AuditService } from "@/server/features/audit/services/AuditService";
+import { resolveClientId } from "@/server/lib/client-context";
+import { AppError } from "@/server/lib/errors";
+import {
+  deleteAuditSchema,
+  getAuditHistorySchema,
+  startAuditSchema,
+} from "@/types/schemas/audit";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { createLogger } from "@/server/lib/logger";
+import { rateLimit, RATE_LIMITS, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
+
+const log = createLogger({ module: "api/seo/audits" });
+
+/** Rate limit config for audit operations: 3 audits per hour per user */
+const AUDIT_RATE_LIMIT = {
+  limit: 3,
+  window: 3600, // 1 hour in seconds
+};
+
+// Helper to extract project context from request
+async function getProjectContext(request: Request) {
+  const auth = await requireApiAuth(request);
+  const url = new URL(request.url);
+  const projectId = url.searchParams.get("project_id");
+  const clientId = await resolveClientId(request.headers, request.url);
+
+  if (!projectId) {
+    throw new AppError("VALIDATION_ERROR", "project_id query parameter required");
+  }
+
+  return { ...auth, projectId, clientId };
+}
+
+export const Route = createFileRoute("/api/seo/audits")({
+  server: {
+    handlers: {
+      // GET /api/seo/audits - Get audit history
+      GET: async ({ request }: { request: Request }) => {
+        try {
+          const ctx = await getProjectContext(request);
+          const url = new URL(request.url);
+          const auditId = url.searchParams.get("audit_id");
+
+          // If audit_id is provided, get status or results
+          if (auditId) {
+            const action = url.searchParams.get("action") ?? "status";
+            if (action === "results") {
+              const results = await AuditService.getResults(auditId, ctx.projectId);
+              return Response.json(results);
+            }
+            if (action === "progress") {
+              const progress = await AuditService.getCrawlProgress(auditId, ctx.projectId);
+              return Response.json(progress);
+            }
+            // Default: status
+            const status = await AuditService.getStatus(auditId, ctx.projectId);
+            return Response.json(status);
+          }
+
+          // No audit_id: get history
+          const parsed = getAuditHistorySchema.safeParse({ clientId: ctx.clientId });
+          if (!parsed.success) {
+            return Response.json({ error: parsed.error.message }, { status: 400 });
+          }
+          const history = await AuditService.getHistory(ctx.projectId, { clientId: ctx.clientId });
+          return Response.json(history);
+        } catch (error) {
+          if (error instanceof AppError) {
+            const status = error.code === "NOT_FOUND" ? 404 : error.code === "FORBIDDEN" ? 403 : 400;
+            return Response.json({ error: error.message }, { status });
+          }
+          log.error("GET error", error instanceof Error ? error : new Error(String(error)));
+          return Response.json({ error: "Internal server error" }, { status: 500 });
+        }
+      },
+
+      // POST /api/seo/audits - Start audit or delete audit
+      POST: async ({ request }: { request: Request }) => {
+        try {
+          const ctx = await getProjectContext(request);
+          const body = (await request.json()) as Record<string, unknown>;
+          const action = (body.action as string) ?? "start";
+
+          // Rate limit audit start operations (heavy operation)
+          if (action === "start") {
+            const rateLimitResult = await rateLimit({
+              key: `audit:start:${ctx.userId}`,
+              ...AUDIT_RATE_LIMIT,
+            });
+            if (!rateLimitResult.allowed) {
+              return rateLimitExceededResponse(rateLimitResult);
+            }
+          }
+
+          if (action === "delete") {
+            const parsed = deleteAuditSchema.safeParse(body);
+            if (!parsed.success) {
+              return Response.json({ error: parsed.error.message }, { status: 400 });
+            }
+            await AuditService.remove(parsed.data.auditId, ctx.projectId);
+            return Response.json({ success: true });
+          }
+
+          // Default: start audit
+          const parsed = startAuditSchema.safeParse(body);
+          if (!parsed.success) {
+            return Response.json({ error: parsed.error.message }, { status: 400 });
+          }
+
+          const result = await AuditService.startAudit({
+            actorUserId: ctx.userId,
+            billingCustomer: {
+              organizationId: ctx.organizationId,
+              userEmail: ctx.userEmail,
+              userId: ctx.userId,
+            },
+            projectId: ctx.projectId,
+            startUrl: parsed.data.startUrl,
+            maxPages: parsed.data.maxPages,
+            lighthouseStrategy: parsed.data.lighthouseStrategy,
+            clientId: ctx.clientId,
+          });
+
+          return Response.json(result);
+        } catch (error) {
+          if (error instanceof AppError) {
+            const status = error.code === "NOT_FOUND" ? 404 : error.code === "FORBIDDEN" ? 403 : 400;
+            return Response.json({ error: error.message }, { status });
+          }
+          log.error("POST error", error instanceof Error ? error : new Error(String(error)));
+          return Response.json({ error: "Internal server error" }, { status: 500 });
+        }
+      },
+    },
+  },
+});

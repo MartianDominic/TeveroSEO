@@ -1,1 +1,9 @@
-{"workflow":{"auto_advance":true}}
+{
+  "workflow": {
+    "auto_advance": true,
+    "_auto_chain_active": false
+  },
+  "graphify": {
+    "enabled": true
+  }
+}

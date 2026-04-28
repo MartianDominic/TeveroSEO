@@ -57,7 +57,8 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
     try {
       const data = await apiGet<PublishingLogEntry[]>(`/api/analytics/${clientId}/publishing-logs`);
       set({ publishingLogs: data, logsLoading: false });
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch publishing logs:", err);
       set({ logsLoading: false });
     }
   },

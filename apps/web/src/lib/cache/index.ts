@@ -7,6 +7,8 @@ export {
   cacheSet,
   cacheInvalidate,
   cacheInvalidateByTag,
+  cacheInvalidatePattern,
+  invalidateClientCache,
   cacheKeys,
   cacheTags,
   type CacheOptions,
@@ -26,3 +28,11 @@ export {
   stopCacheCleanup,
   getCacheStats,
 } from "./cache-cleanup";
+
+// Singleflight utilities for cache stampede prevention
+export {
+  singleflight,
+  getCachedWithSingleflight,
+  getInFlightCount,
+  getInFlightKeys,
+} from "./singleflight";

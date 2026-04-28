@@ -27,6 +27,7 @@ import { TonePersonalityTab } from "./components/TonePersonalityTab";
 import { VocabularyTab } from "./components/VocabularyTab";
 import { WritingMechanicsTab } from "./components/WritingMechanicsTab";
 import { ProtectionRulesTab } from "./components/ProtectionRulesTab";
+import { VoicePreviewPanel } from "./components/VoicePreviewPanel";
 
 export default function VoiceSettingsPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -198,10 +199,7 @@ export default function VoiceSettingsPage() {
             </TabsContent>
 
             <TabsContent value="preview">
-              {/* Preview tab content - implemented in 37-04 */}
-              <div className="text-center py-20 text-muted-foreground">
-                Voice preview coming soon
-              </div>
+              <VoicePreviewPanel profile={profile} clientId={clientId ?? ""} />
             </TabsContent>
           </Tabs>
         </div>

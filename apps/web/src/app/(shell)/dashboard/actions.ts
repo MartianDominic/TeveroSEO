@@ -20,6 +20,7 @@ export async function getDashboardMetrics(): Promise<ClientMetrics[]> {
     // Call open-seo API endpoint that queries client_dashboard_metrics
     return await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
   } catch (error) {
+    console.error("[getDashboardMetrics] Failed to fetch metrics:", error);
     return [];
   }
 }
@@ -31,6 +32,7 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   try {
     return await getFastApi<PortfolioSummary>("/api/dashboard/summary");
   } catch (error) {
+    console.error("[getPortfolioSummary] Failed to fetch summary:", error);
     return {
       totalClients: 0,
       clientsNeedingAttention: 0,
@@ -61,6 +63,7 @@ export async function getAttentionItems(): Promise<AttentionItem[]> {
   try {
     return await getFastApi<AttentionItem[]>("/api/dashboard/attention");
   } catch (error) {
+    console.error("[getAttentionItems] Failed to fetch attention items:", error);
     return [];
   }
 }
@@ -72,6 +75,7 @@ export async function getWins(): Promise<WinItem[]> {
   try {
     return await getFastApi<WinItem[]>("/api/dashboard/wins");
   } catch (error) {
+    console.error("[getWins] Failed to fetch wins:", error);
     return [];
   }
 }
@@ -109,7 +113,8 @@ export async function getCardLayout(): Promise<string[] | null> {
   try {
     const result = await getFastApi<{ cardOrder: string[] | null }>("/api/dashboard/layout");
     return result.cardOrder;
-  } catch {
+  } catch (error) {
+    console.error("[getCardLayout] Failed to fetch card layout:", error);
     return null;
   }
 }
@@ -120,7 +125,8 @@ export async function getCardLayout(): Promise<string[] | null> {
 export async function getSavedViews(): Promise<SavedView[]> {
   try {
     return await getFastApi<SavedView[]>("/api/dashboard/views");
-  } catch {
+  } catch (error) {
+    console.error("[getSavedViews] Failed to fetch saved views:", error);
     // Return default views on error
     return [
       {
@@ -180,7 +186,8 @@ export async function setDefaultView(viewId: string): Promise<void> {
 export async function getTeamWorkload(): Promise<TeamMember[]> {
   try {
     return await getFastApi<TeamMember[]>("/api/dashboard/team-workload");
-  } catch {
+  } catch (error) {
+    console.error("[getTeamWorkload] Failed to fetch team workload:", error);
     return [];
   }
 }
@@ -191,7 +198,8 @@ export async function getTeamWorkload(): Promise<TeamMember[]> {
 export async function getUpcomingScheduled(): Promise<ScheduledItem[]> {
   try {
     return await getFastApi<ScheduledItem[]>("/api/dashboard/upcoming");
-  } catch {
+  } catch (error) {
+    console.error("[getUpcomingScheduled] Failed to fetch upcoming items:", error);
     return [];
   }
 }

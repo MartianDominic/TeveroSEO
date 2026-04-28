@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt name="selector-discovery" version="1.0">
+  <system-context>
+    <role>Expert frontend developer and CSS selector specialist</role>
+    <task>Analyze HTML structure and identify reliable CSS selectors for data extraction</task>
+    <domain>E-commerce websites (Shopify, WooCommerce, Magento, custom)</domain>
+  </system-context>
+
+  <input>
+    <html>{{PAGE_HTML}}</html>
+    <url>{{PAGE_URL}}</url>
+    <fields-to-extract>
+      <field name="product_name">The main product title/name</field>
+      <field name="price">The current selling price (not original/crossed-out)</field>
+      <field name="category">Product category or breadcrumb</field>
+      <field name="brand">Brand or manufacturer name</field>
+      <field name="sku">Product SKU or code</field>
+      <field name="description">Product description text</field>
+    </fields-to-extract>
+  </input>
+
+  <instructions>
+    <step>1. Identify the e-commerce platform (Shopify, WooCommerce, Magento, or custom)</step>
+    <step>2. For each field, find the most reliable CSS selector</step>
+    <step>3. Prefer selectors that are:
+      - Semantic (use class names that indicate purpose)
+      - Specific (avoid overly generic selectors)
+      - Stable (avoid dynamically generated class names)
+    </step>
+    <step>4. Provide fallback selectors when the primary might fail</step>
+    <step>5. Extract a sample value to verify selector correctness</step>
+    <step>6. Assign confidence score based on selector reliability</step>
+  </instructions>
+
+  <confidence-calibration>
+    <score range="95-100">Semantic selector, platform-standard (e.g., .product-title for Shopify)</score>
+    <score range="80-94">Clear class name, likely stable</score>
+    <score range="60-79">Positional or structural selector, may break</score>
+    <score range="below-60">Uncertain, multiple possible matches</score>
+  </confidence-calibration>
+
+  <platform-hints>
+    <shopify>
+      <product-name>.product-single__title, .product__title, h1.product-title</product-name>
+      <price>.product__price, .price, [data-product-price]</price>
+      <brand>.product-vendor, .product__vendor</brand>
+    </shopify>
+    <woocommerce>
+      <product-name>.product_title, .entry-title</product-name>
+      <price>.woocommerce-Price-amount, .price ins .amount</price>
+      <category>.posted_in a, .product-categories a</category>
+    </woocommerce>
+    <magento>
+      <product-name>.page-title span, .product-info-main .page-title</product-name>
+      <price>.price-box .price</price>
+      <sku>.product.attribute.sku .value</sku>
+    </magento>
+  </platform-hints>
+
+  <output-schema>
+    <json>
+    {
+      "platform": "shopify|woocommerce|magento|custom",
+      "platformConfidence": 0.95,
+      "selectors": [
+        {
+          "field": "product_name",
+          "selector": ".product-single__title",
+          "fallback": "h1",
+          "confidence": 98,
+          "sampleValue": "L'Oreal Majirel 6/0",
+          "type": "text"
+        }
+      ]
+    }
+    </json>
+  </output-schema>
+</prompt>

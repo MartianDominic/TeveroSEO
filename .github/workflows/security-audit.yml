@@ -1,0 +1,33 @@
+name: Security Audit
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 1'
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm audit --audit-level=high
+        continue-on-error: true
+
+  python-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AI-Writer/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install safety pip-audit
+      - run: safety check -r requirements.txt || true
+      - run: pip-audit -r requirements.txt || true

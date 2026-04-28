@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from middleware.auth_middleware import get_current_user, get_optional_user
+from middleware.authorization import require_client_access
 from models.client import Client
 from models.client_oauth import ClientConnectInvite
 from services.client_oauth_service import ClientOAuthService
@@ -163,6 +164,7 @@ def create_invite(
     payload: InviteCreate,
     db: Session = Depends(get_shared_db),
     current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """
     Create a magic link invite for client self-authorization.
@@ -232,6 +234,7 @@ def list_connections(
     client_id: str,
     db: Session = Depends(get_shared_db),
     current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """
     List all active OAuth connections for a client.
@@ -270,6 +273,7 @@ def revoke_connection(
     provider: str,
     db: Session = Depends(get_shared_db),
     current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """
     Revoke (disconnect) an OAuth connection.

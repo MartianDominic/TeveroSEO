@@ -55,6 +55,16 @@ export {
 } from "./security-headers";
 
 /**
+ * Request ID middleware.
+ * Extracts or generates request IDs for distributed tracing.
+ */
+export {
+  withRequestId,
+  getRequestId,
+  getClientIP,
+} from "./request-id";
+
+/**
  * Rate limiting middleware.
  * Protects endpoints from abuse with sliding window rate limits.
  */

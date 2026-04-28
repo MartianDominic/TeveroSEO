@@ -142,7 +142,10 @@ function secureCompareSignatures(actual: string, expected: string): boolean {
       Buffer.from(actual, "hex"),
       Buffer.from(expected, "hex"),
     );
-  } catch {
+  } catch (error) {
+    log.warn("Webhook signature comparison failed", {
+      error: error instanceof Error ? error.message : "Unknown",
+    });
     return false;
   }
 }
@@ -233,7 +236,10 @@ function verifySvixSignature(
         sigBuffer.length === expectedBuffer.length &&
         timingSafeEqual(sigBuffer, expectedBuffer)
       );
-    } catch {
+    } catch (error) {
+      log.warn("Svix signature verification failed", {
+        error: error instanceof Error ? error.message : "Unknown",
+      });
       return false;
     }
   });

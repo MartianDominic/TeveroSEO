@@ -72,9 +72,9 @@ export class KeywordDeduplicator {
 
         // Merge if new has better metrics
         const shouldMerge =
-          (kw.searchVolume !== null && existingKw.searchVolume === null) ||
-          (kw.searchVolume !== null &&
-            existingKw.searchVolume !== null &&
+          (kw.searchVolume != null && existingKw.searchVolume == null) ||
+          (kw.searchVolume != null &&
+            existingKw.searchVolume != null &&
             kw.searchVolume > existingKw.searchVolume);
 
         if (shouldMerge) {

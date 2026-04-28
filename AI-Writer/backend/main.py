@@ -87,6 +87,9 @@ from routers.seo_tools import router as seo_tools_router
 
 # Import SEO analytics router (Phase 14 - dashboard aggregation)
 from routers.seo_analytics import router as seo_analytics_router
+
+# Import dashboard API router (metrics + saved views)
+from api.dashboard import router as dashboard_router
 # Import Facebook Writer endpoints
 from api.facebook_writer.routers import facebook_router
 from api.brainstorm import router as brainstorm_router
@@ -192,6 +195,41 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+# ============================================================
+# SECURITY: Global exception handler to prevent information leakage
+# Catches all unhandled exceptions and returns generic error message
+# ============================================================
+from fastapi.responses import JSONResponse
+import traceback
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler for unhandled exceptions.
+
+    SECURITY: Prevents sensitive information leakage by:
+    - Logging full error details server-side for debugging
+    - Returning generic error message to client
+    - Never exposing stack traces or internal details in responses
+    """
+    # Log full error details for debugging (server-side only)
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True
+    )
+
+    # SECURITY: Return generic error message to client
+    # Never expose internal error details, stack traces, or sensitive info
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An internal error occurred. Please try again.",
+            "error_id": str(id(exc))[:8]  # Short ID for support reference
+        }
+    )
+
 # Add CORS middleware with proper security configuration
 # SECURITY: Never use wildcard "*" with credentials=True
 # Production origins are explicitly defined for TeveroSEO platform
@@ -242,7 +280,14 @@ app.add_middleware(
     allow_origins=allowed_origins,  # Explicit origins, NEVER "*"
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-Id",
+        "X-Client-Id",
+        "Accept",
+        "Origin",
+    ],  # Explicit headers - never use "*" with credentials=True
     expose_headers=["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
     max_age=86400,  # Cache preflight for 24 hours
 )
@@ -298,39 +343,46 @@ async def comprehensive_health():
 
 # Rate limiting management endpoints
 @app.get("/api/rate-limit/status")
-async def rate_limit_status(request: Request):
-    """Get current rate limit status for the requesting client."""
+async def rate_limit_status(request: Request, current_user: dict = Depends(get_current_user)):
+    """Get current rate limit status for the requesting client. Requires authentication."""
     client_ip = request.client.host if request.client else "unknown"
     return rate_limiter.get_rate_limit_status(client_ip)
 
 @app.post("/api/rate-limit/reset")
-async def reset_rate_limit(request: Request, client_ip: Optional[str] = None):
-    """Reset rate limit for a specific client or all clients."""
+async def reset_rate_limit(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    client_ip: Optional[str] = None
+):
+    """Reset rate limit for a specific client or all clients. Requires admin role."""
+    # SECURITY: Only admins can reset rate limits
+    if not current_user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
     if client_ip is None:
         client_ip = request.client.host if request.client else "unknown"
     return rate_limiter.reset_rate_limit(client_ip)
 
 # Frontend serving management endpoints
 @app.get("/api/frontend/status")
-async def frontend_status():
-    """Get frontend serving status."""
+async def frontend_status(current_user: dict = Depends(get_current_user)):
+    """Get frontend serving status. Requires authentication."""
     return frontend_serving.get_frontend_status()
 
 # Router management endpoints
 @app.get("/api/routers/status")
-async def router_status():
-    """Get router inclusion status."""
+async def router_status(current_user: dict = Depends(get_current_user)):
+    """Get router inclusion status. Requires authentication."""
     return router_manager.get_router_status()
 
 @app.get("/api/feature-profile/status")
-async def feature_profile_status():
-    """Get feature profile status and enabled modules."""
+async def feature_profile_status(current_user: dict = Depends(get_current_user)):
+    """Get feature profile status and enabled modules. Requires authentication."""
     return router_manager.get_feature_profile_status()
 
 # Onboarding management endpoints
 @app.get("/api/onboarding/status")
-async def onboarding_status():
-    """Get onboarding manager status."""
+async def onboarding_status(current_user: dict = Depends(get_current_user)):
+    """Get onboarding manager status. Requires authentication."""
     return onboarding_manager.get_onboarding_status()
 
 # Include routers using modular utilities
@@ -534,6 +586,9 @@ app.include_router(internal_router)
 
 # SEO Analytics routes (Phase 14 - dashboard aggregation)
 app.include_router(seo_analytics_router)
+
+# Dashboard API routes (metrics + saved views)
+app.include_router(dashboard_router)
 
 # Setup frontend serving using modular utilities
 frontend_serving.setup_frontend_serving()

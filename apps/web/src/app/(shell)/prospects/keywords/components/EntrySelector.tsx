@@ -78,14 +78,13 @@ export function EntrySelector({ prospectId }: EntrySelectorProps) {
   const handleSelect = (option: EntryOption) => {
     if (option.workspace && !prospectId) {
       // Redirect to create prospect first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      router.push(`/prospects/new?next=${encodeURIComponent(option.route)}` as any);
+      const newProspectRoute = `/prospects/new?next=${encodeURIComponent(option.route)}`;
+      router.push(newProspectRoute as Parameters<typeof router.push>[0]);
       return;
     }
 
     const route = option.route.replace("[id]", prospectId || "");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    router.push(route as any);
+    router.push(route as Parameters<typeof router.push>[0]);
   };
 
   return (

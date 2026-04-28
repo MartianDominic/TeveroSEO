@@ -41,7 +41,7 @@ export async function spyOnCompetitor(
 ): Promise<CompetitorSpyResponse> {
   const input = CompetitorSpySchema.parse({ domain, limit });
 
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(`${openSeoUrl}/api/keywords/competitor-spy`, {
     method: "POST",

@@ -1,0 +1,188 @@
+import { Loader2 } from "lucide-react";
+import {
+  MAX_PAGES_LIMIT,
+  MIN_PAGES,
+} from "@/client/features/audit/launch/types";
+import type { useLaunchController } from "@/client/features/audit/launch/useLaunchController";
+import { getFieldError, getFormError } from "@/client/lib/forms";
+import { Button } from "@/client/components/ui/button";
+import { Card, CardContent, CardTitle } from "@/client/components/ui/card";
+import { Input } from "@/client/components/ui/input";
+
+type Props = {
+  launchForm: ReturnType<typeof useLaunchController>["launchForm"];
+  commitMaxPagesInput: () => number;
+};
+
+export function LaunchFormCard({ commitMaxPagesInput, launchForm }: Props) {
+  return (
+    <Card>
+      <CardContent className="gap-4">
+        <CardTitle className="text-base">Start New Audit</CardTitle>
+
+        <form
+          className="grid grid-cols-1 gap-3 lg:grid-cols-12 lg:items-center"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void launchForm.handleSubmit();
+          }}
+        >
+          <launchForm.Field name="url">
+            {(field) => {
+              const urlError = getFieldError(field.state.meta.errors);
+
+              return (
+                <div className="w-full lg:col-span-9">
+                  <Input
+                    placeholder="https://example.com"
+                    value={field.state.value}
+                    className={urlError ? "border-destructive" : ""}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value);
+                      if (launchForm.state.errorMap.onSubmit) {
+                        launchForm.setErrorMap({ onSubmit: undefined });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            }}
+          </launchForm.Field>
+
+          <launchForm.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button
+                type="submit"
+                size="sm"
+                className="w-full lg:col-span-3"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Starting...
+                  </>
+                ) : (
+                  "Start Audit"
+                )}
+              </Button>
+            )}
+          </launchForm.Subscribe>
+
+          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:col-span-12 lg:items-start">
+            <LaunchOptions
+              launchForm={launchForm}
+              commitMaxPagesInput={commitMaxPagesInput}
+            />
+            <LighthouseOptions launchForm={launchForm} />
+          </div>
+        </form>
+
+        <LaunchErrors launchForm={launchForm} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function LaunchOptions({ launchForm, commitMaxPagesInput }: Props) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Crawl limit
+      </label>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-foreground/70">Max pages</span>
+        <launchForm.Field name="maxPagesInput">
+          {(field) => (
+            <Input
+              type="number"
+              min={MIN_PAGES}
+              max={MAX_PAGES_LIMIT}
+              className="h-8 text-sm w-28"
+              value={field.state.value}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (!/^\d*$/.test(next)) return;
+                field.handleChange(next);
+                if (launchForm.state.errorMap.onSubmit) {
+                  launchForm.setErrorMap({ onSubmit: undefined });
+                }
+              }}
+              onBlur={commitMaxPagesInput}
+            />
+          )}
+        </launchForm.Field>
+      </div>
+      <p className="text-xs text-foreground/50">
+        Enter any value from {MIN_PAGES} to {MAX_PAGES_LIMIT}.
+      </p>
+    </div>
+  );
+}
+
+function LighthouseOptions({ launchForm }: Pick<Props, "launchForm">) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+      <label className="label cursor-pointer justify-start gap-2 p-0">
+        <launchForm.Field name="runLighthouse">
+          {(field) => (
+            <input
+              type="checkbox"
+              className="toggle toggle-sm toggle-primary"
+              checked={Boolean(field.state.value)}
+              onChange={(event) => field.handleChange(event.target.checked)}
+            />
+          )}
+        </launchForm.Field>
+        <span
+          className="text-sm font-medium text-foreground/80"
+          title="Lighthouse measures the performance of your pages and identifies issues."
+        >
+          Include Lighthouse
+        </span>
+      </label>
+
+      <launchForm.Subscribe
+        selector={(snapshot) => snapshot.values.runLighthouse}
+      >
+        {(runLighthouse) =>
+          runLighthouse ? (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                We choose a sample of 20 pages to audit, removing pages from
+                duplicate templates.
+              </p>
+            </div>
+          ) : null
+        }
+      </launchForm.Subscribe>
+    </div>
+  );
+}
+
+function LaunchErrors({ launchForm }: Pick<Props, "launchForm">) {
+  return (
+    <div className="space-y-2">
+      <launchForm.Field name="url">
+        {(field) => {
+          const urlError = getFieldError(field.state.meta.errors);
+
+          return urlError ? (
+            <p className="text-sm text-destructive">{urlError}</p>
+          ) : null;
+        }}
+      </launchForm.Field>
+
+      <launchForm.Subscribe selector={(state) => state.errorMap.onSubmit}>
+        {(submitError) => {
+          const errorMessage = getFormError(submitError);
+
+          return errorMessage ? (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 py-2 px-3">
+              <span className="text-sm text-destructive">{errorMessage}</span>
+            </div>
+          ) : null;
+        }}
+      </launchForm.Subscribe>
+    </div>
+  );
+}

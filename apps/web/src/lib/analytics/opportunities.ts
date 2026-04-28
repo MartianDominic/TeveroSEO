@@ -6,8 +6,12 @@
  * - CTR improvements: High impressions, low CTR
  * - Ranking gaps: Keywords in position 11-20 (almost page 1)
  * - Quick wins: Recently dropped rankings to recover
+ *
+ * SECURITY: Internal detection functions are private (not exported).
+ * All external access must go through findOpportunities() which handles auth.
  */
 
+import { requireActionAuth, validateClientOwnership } from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
 import type {
   Opportunity,
@@ -81,8 +85,10 @@ interface KeywordRanking {
 /**
  * Detect CTR improvement opportunities.
  * Finds queries with high impressions but below-expected CTR.
+ *
+ * INTERNAL: Not exported - must be called through findOpportunities() which handles auth.
  */
-export async function detectCTROpportunities(
+async function _detectCTROpportunities(
   clientId: string
 ): Promise<Opportunity[]> {
   const opportunities: Opportunity[] = [];
@@ -143,8 +149,10 @@ export async function detectCTROpportunities(
 /**
  * Detect ranking gap opportunities.
  * Finds keywords ranking 11-20 (almost on page 1).
+ *
+ * INTERNAL: Not exported - must be called through findOpportunities() which handles auth.
  */
-export async function detectRankingGaps(
+async function _detectRankingGaps(
   clientId: string
 ): Promise<Opportunity[]> {
   const opportunities: Opportunity[] = [];
@@ -190,8 +198,10 @@ export async function detectRankingGaps(
 /**
  * Detect quick win opportunities.
  * Finds keywords that recently dropped from good positions.
+ *
+ * INTERNAL: Not exported - must be called through findOpportunities() which handles auth.
  */
-export async function detectQuickWins(
+async function _detectQuickWins(
   clientId: string
 ): Promise<Opportunity[]> {
   const opportunities: Opportunity[] = [];
@@ -237,14 +247,21 @@ export async function detectQuickWins(
 /**
  * Find all opportunities for a client.
  * Aggregates and prioritizes across all detection methods.
+ *
+ * This is the only public entry point for opportunity detection.
+ * All internal detection functions require this auth check.
  */
 export async function findOpportunities(
   clientId: string
 ): Promise<Opportunity[]> {
+  // SECURITY: Verify user is authenticated and has access to this client
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
+
   const [ctrOpps, rankingGaps, quickWins] = await Promise.all([
-    detectCTROpportunities(clientId),
-    detectRankingGaps(clientId),
-    detectQuickWins(clientId),
+    _detectCTROpportunities(clientId),
+    _detectRankingGaps(clientId),
+    _detectQuickWins(clientId),
   ]);
 
   const allOpportunities = [...ctrOpps, ...rankingGaps, ...quickWins];

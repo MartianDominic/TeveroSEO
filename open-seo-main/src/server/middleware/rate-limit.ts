@@ -161,16 +161,82 @@ function buildRedisKey(key: string): string {
 // --- Sliding Window Rate Limiter ---
 
 /**
+ * Lua script for atomic rate limiting.
+ * Performs cleanup, count check, and conditional add in a single atomic operation.
+ *
+ * KEYS[1] = rate limit key
+ * ARGV[1] = current timestamp (ms)
+ * ARGV[2] = window size (ms)
+ * ARGV[3] = limit
+ * ARGV[4] = unique entry ID
+ *
+ * Returns: [allowed (0/1), current_count, limit, oldest_timestamp_or_0]
+ *
+ * Note: redis.call('eval', ...) is the standard Redis Lua script execution method,
+ * NOT JavaScript eval(). Lua scripts execute atomically on the Redis server.
+ */
+const RATE_LIMIT_LUA_SCRIPT = `
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local limit = tonumber(ARGV[3])
+local entry_id = ARGV[4]
+
+-- Remove expired entries
+redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+
+-- Count current entries
+local count = redis.call('ZCARD', key)
+
+-- Check if at or over limit
+if count >= limit then
+  -- Get oldest entry for retry-after calculation
+  local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+  local oldest_ts = 0
+  if oldest and #oldest >= 2 then
+    oldest_ts = tonumber(oldest[2])
+  end
+  return {0, count, limit, oldest_ts}
+end
+
+-- Under limit - add new entry atomically
+redis.call('ZADD', key, now, entry_id)
+redis.call('EXPIRE', key, math.ceil(window / 1000) + 10)
+
+return {1, count + 1, limit, 0}
+`;
+
+/**
+ * Execute the rate limit Lua script atomically on Redis.
+ * This wrapper provides type safety and handles the Redis eval call.
+ */
+async function executeRateLimitScript(
+  redisKey: string,
+  now: number,
+  windowMs: number,
+  limit: number,
+  entryId: string
+): Promise<[number, number, number, number]> {
+  // Redis eval executes Lua scripts atomically on the server
+  // This is NOT JavaScript eval - it's the standard ioredis method for Lua scripts
+  const result = await redis.eval(
+    RATE_LIMIT_LUA_SCRIPT,
+    1,
+    redisKey,
+    now.toString(),
+    windowMs.toString(),
+    limit.toString(),
+    entryId
+  );
+  return result as [number, number, number, number];
+}
+
+/**
  * Check and update rate limit using sliding window algorithm.
  *
- * Uses Redis sorted sets to track request timestamps within the window.
- * This provides more accurate rate limiting than fixed windows.
- *
- * Algorithm:
- * 1. Remove expired entries (older than window)
- * 2. Count current entries
- * 3. If under limit, add new entry with current timestamp
- * 4. Return result with remaining capacity
+ * Uses a Lua script for atomic operations to prevent race conditions
+ * where multiple concurrent requests could all pass the count check
+ * before any of them add their entry.
  *
  * @param options - Rate limit configuration
  * @returns Rate limit result with allowed status and remaining capacity
@@ -181,48 +247,28 @@ export async function rateLimit(
   const { key, limit, window } = options;
   const redisKey = buildRedisKey(key);
   const now = Date.now();
-  const windowStart = now - window * 1000;
+  const windowMs = window * 1000;
+
+  // Generate unique entry ID with timestamp and random suffix
+  const entryId = `${now}:${crypto.randomUUID()}`;
 
   try {
-    // Use a pipeline for atomic operations
-    const pipeline = redis.pipeline();
+    // Execute Lua script for atomic rate limiting
+    const [allowed, currentCount, maxLimit, oldestTimestamp] =
+      await executeRateLimitScript(redisKey, now, windowMs, limit, entryId);
 
-    // 1. Remove entries older than the window
-    pipeline.zremrangebyscore(redisKey, 0, windowStart);
-
-    // 2. Count current entries
-    pipeline.zcard(redisKey);
-
-    // Execute the pipeline
-    const results = await pipeline.exec();
-
-    if (!results) {
-      throw new Error("Redis pipeline returned null");
-    }
-
-    // Extract count from results: [error, result][]
-    const countResult = results[1];
-    if (countResult[0]) {
-      throw countResult[0];
-    }
-    const currentCount = (countResult[1] as number) ?? 0;
-
-    // 3. Check if request is allowed
-    if (currentCount >= limit) {
-      // Get the oldest entry to calculate retry-after
-      const oldestEntries = await redis.zrange(redisKey, 0, 0, "WITHSCORES");
+    if (allowed === 0) {
+      // Calculate retry-after from oldest entry
       let retryAfter = window;
-
-      if (oldestEntries.length >= 2) {
-        const oldestTimestamp = parseInt(oldestEntries[1], 10);
-        retryAfter = Math.ceil((oldestTimestamp + window * 1000 - now) / 1000);
+      if (oldestTimestamp > 0) {
+        retryAfter = Math.ceil((oldestTimestamp + windowMs - now) / 1000);
         retryAfter = Math.max(1, Math.min(retryAfter, window));
       }
 
       log.warn("Rate limit exceeded", {
         key: redisKey,
         current: currentCount,
-        limit,
+        limit: maxLimit,
         retryAfter,
       });
 
@@ -230,34 +276,25 @@ export async function rateLimit(
         allowed: false,
         remaining: 0,
         retryAfter,
-        limit,
+        limit: maxLimit,
         current: currentCount,
       };
     }
 
-    // 4. Add new entry with current timestamp as score
-    // Use timestamp + random suffix to avoid collisions
-    const entryId = `${now}:${Math.random().toString(36).slice(2, 8)}`;
-    await redis.zadd(redisKey, now, entryId);
-
-    // 5. Set TTL on the key to auto-cleanup
-    await redis.expire(redisKey, window + 10);
-
-    const newCount = currentCount + 1;
-    const remaining = Math.max(0, limit - newCount);
+    const remaining = Math.max(0, maxLimit - currentCount);
 
     log.debug("Rate limit check passed", {
       key: redisKey,
-      current: newCount,
+      current: currentCount,
       remaining,
-      limit,
+      limit: maxLimit,
     });
 
     return {
       allowed: true,
       remaining,
-      limit,
-      current: newCount,
+      limit: maxLimit,
+      current: currentCount,
     };
   } catch (error) {
     // On Redis errors, fail open (allow the request) but log the error

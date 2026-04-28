@@ -44,6 +44,8 @@ export interface TeamMetrics {
   availableMembers: number;
   /** Team members with their assignments */
   members: TeamMemberWithAssignments[];
+  /** Error message for graceful degradation */
+  error?: string;
 }
 
 /**

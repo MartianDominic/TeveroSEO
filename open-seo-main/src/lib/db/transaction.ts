@@ -63,13 +63,15 @@ export interface IdempotencyResult<T> {
  * Execute operation with idempotency key.
  * Prevents duplicate operations with the same key.
  *
- * If an operation with the same key was already executed (within TTL),
- * returns the cached result instead of executing again.
+ * Uses atomic INSERT ON CONFLICT DO NOTHING to claim the key,
+ * preventing race conditions where multiple concurrent requests
+ * could execute the same operation.
  *
  * @param idempotencyKey - Unique key identifying this operation
  * @param operation - Async function to execute if not cached
  * @param ttlSeconds - Time-to-live for the cached result (default: 24 hours)
  * @returns Promise resolving to the result and cache status
+ * @throws Error if operation is already in progress by another request
  *
  * @example
  * const { result, cached } = await withIdempotency(
@@ -87,38 +89,63 @@ export async function withIdempotency<T>(
   operation: () => Promise<T>,
   ttlSeconds: number = 86400 // 24 hours
 ): Promise<IdempotencyResult<T>> {
-  // Check if operation was already executed
-  const existing = await db.execute<{ result: string }>(sql`
-    SELECT result FROM idempotency_keys
-    WHERE key = ${idempotencyKey}
-    AND expires_at > NOW()
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+  // Try to atomically claim the key with INSERT ON CONFLICT DO NOTHING
+  // This prevents race conditions where multiple requests could both
+  // pass a SELECT check and execute the operation
+  const insertResult = await db.execute<{ key: string }>(sql`
+    INSERT INTO idempotency_keys (key, expires_at, status)
+    VALUES (${idempotencyKey}, ${expiresAt}, 'processing')
+    ON CONFLICT (key) WHERE expires_at > NOW()
+    DO NOTHING
+    RETURNING key
   `);
 
-  if (existing.rows.length > 0) {
-    return {
-      result: JSON.parse(existing.rows[0].result) as T,
-      cached: true,
-    };
+  // If no row returned, key already exists (either completed or processing)
+  if (insertResult.rows.length === 0) {
+    // Check the status of the existing operation
+    const existing = await db.execute<{ result: string; status: string }>(sql`
+      SELECT result, status FROM idempotency_keys
+      WHERE key = ${idempotencyKey} AND expires_at > NOW()
+    `);
+
+    if (existing.rows.length > 0) {
+      const { result: storedResult, status } = existing.rows[0];
+
+      if (status === "completed" && storedResult) {
+        return { result: JSON.parse(storedResult) as T, cached: true };
+      }
+
+      // Still processing by another request
+      throw new Error(
+        `Operation with key '${idempotencyKey}' is already in progress`
+      );
+    }
+
+    // Key expired between our INSERT and SELECT, retry
+    return withIdempotency(idempotencyKey, operation, ttlSeconds);
   }
 
-  // Execute operation
-  const result = await operation();
+  // We successfully claimed the key - execute the operation
+  try {
+    const result = await operation();
 
-  // Store result with TTL
-  // Using parameterized interval for safety
-  await db.execute(sql`
-    INSERT INTO idempotency_keys (key, result, expires_at)
-    VALUES (
-      ${idempotencyKey},
-      ${JSON.stringify(result)}::jsonb,
-      NOW() + (${ttlSeconds} || ' seconds')::interval
-    )
-    ON CONFLICT (key) DO UPDATE SET
-      result = EXCLUDED.result,
-      expires_at = EXCLUDED.expires_at
-  `);
+    // Store the result and mark as completed
+    await db.execute(sql`
+      UPDATE idempotency_keys
+      SET result = ${JSON.stringify(result)}::jsonb, status = 'completed'
+      WHERE key = ${idempotencyKey}
+    `);
 
-  return { result, cached: false };
+    return { result, cached: false };
+  } catch (error) {
+    // On failure, delete the key so the operation can be retried
+    await db.execute(sql`
+      DELETE FROM idempotency_keys WHERE key = ${idempotencyKey}
+    `);
+    throw error;
+  }
 }
 
 /**

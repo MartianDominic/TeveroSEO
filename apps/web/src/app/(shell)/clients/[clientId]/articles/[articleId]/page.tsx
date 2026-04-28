@@ -7,6 +7,12 @@ import dynamic from "next/dynamic";
 
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   PageHeader,
@@ -92,18 +98,12 @@ function blendLabel(weight: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// sanitizeHtml — strips <script> and <iframe> from AI-generated HTML
-// This content comes exclusively from our own AI pipeline (/api/articles/generate)
-// and is never user-supplied. The backend already strips these tags; this is
-// a client-side defence-in-depth layer only.
+// HTML Sanitization
+// Uses DOMPurify for robust XSS protection. Regex-based sanitization is
+// insufficient as it can be bypassed via img onerror, SVG scripts, etc.
 // ---------------------------------------------------------------------------
 
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/\son\w+\s*=/gi, " data-removed=");
-}
+import { sanitizeHtml } from "@/lib/sanitize";
 
 // ---------------------------------------------------------------------------
 // ArticleHtmlPreview — renders AI-generated article HTML safely
@@ -114,8 +114,7 @@ function ArticleHtmlPreview({ html }: { html: string }) {
   return (
     <div
       className="prose prose-sm max-w-none p-6 text-foreground"
-      // Safe: AI-generated content from our own pipeline, sanitized above
-      // nosec - intentional dangerouslySetInnerHTML with sanitized content
+      // SECURITY: Content sanitized by DOMPurify - all dangerous elements removed
       dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
@@ -162,6 +161,9 @@ export default function ArticleEditorPage() {
   const [approving, setApproving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [sidebarError, setSidebarError] = useState<string | null>(null);
+
+  // Regeneration confirmation dialog
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   // Local toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -341,6 +343,20 @@ export default function ArticleEditorPage() {
       setGenerating(false);
     }
   }, [clientId, currentArticle, patchArticle, setGenerating, setGenerationStatus]);
+
+  // ---------------------------------------------------------------------------
+  // Handle generate button click with confirmation for regeneration
+  // ---------------------------------------------------------------------------
+
+  const handleGenerateClick = useCallback(() => {
+    if (currentArticle.htmlContent) {
+      // Content already exists - show confirmation dialog
+      setShowRegenerateConfirm(true);
+    } else {
+      // No existing content - generate directly
+      handleGenerate();
+    }
+  }, [currentArticle.htmlContent, handleGenerate]);
 
   // ---------------------------------------------------------------------------
   // Approve article
@@ -624,7 +640,7 @@ export default function ArticleEditorPage() {
             className="w-full"
             size="lg"
             disabled={isGenerating || !currentArticle.title.trim()}
-            onClick={handleGenerate}
+            onClick={handleGenerateClick}
           >
             {isGenerating ? (
               <>
@@ -634,10 +650,28 @@ export default function ArticleEditorPage() {
             ) : (
               <>
                 <FileText className="h-4 w-4" />
-                Generate Article
+                {currentArticle.htmlContent ? "Regenerate" : "Generate"} Article
               </>
             )}
           </Button>
+
+          {/* Regeneration confirmation dialog */}
+          <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Regenerate Article?</DialogTitle>
+                <DialogDescription>
+                  This will overwrite your existing content. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowRegenerateConfirm(false)}>Cancel</Button>
+                <Button onClick={() => { handleGenerate(); setShowRegenerateConfirm(false); }}>
+                  Regenerate
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* HTML Preview pane */}
           {currentArticle.htmlContent && (

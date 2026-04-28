@@ -113,7 +113,7 @@ async function verifyClientAccess(
   orgId?: string
 ): Promise<boolean> {
   // Get backend URL from environment
-  const backendUrl = process.env.AI_WRITER_BACKEND_URL ?? 'http://ai-writer-backend:8000';
+  const backendUrl = process.env.AI_WRITER_URL ?? 'http://localhost:8000';
 
   try {
     // Verify ownership through the backend

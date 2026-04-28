@@ -9,7 +9,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { quickCheckService } from "@/server/features/keywords/services/QuickCheckService";
+import { QuickCheckService } from "@/server/features/keywords/services/QuickCheckService";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "api/keywords/quick-check" });
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/keywords/quick-check")({
           const input = QuickCheckSchema.parse(body);
 
           // Create service with location/language if provided
-          const service = new quickCheckService.constructor(
+          const service = new QuickCheckService(
             input.locationCode,
             input.languageCode
           );
@@ -61,12 +61,12 @@ export const Route = createFileRoute("/api/keywords/quick-check")({
           });
         } catch (error) {
           if (error instanceof z.ZodError) {
-            log.warn("Quick check validation error", { errors: error.errors });
+            log.warn("Quick check validation error", { errors: error.issues });
             return Response.json(
               {
                 success: false,
                 error: "Invalid input",
-                details: error.errors,
+                details: error.issues,
               },
               { status: 400 }
             );

@@ -1,10 +1,25 @@
 "use server";
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
+import { apiCostLimiter, checkRateLimit } from "@/lib/rate-limit";
+
+// Validation schemas
+const backlinksParamsSchema = z.object({
+  projectId: z.string().uuid("Invalid project ID format"),
+  clientId: z.string().uuid("Invalid client ID format"),
+  target: z.string().url("Invalid target URL").max(2048, "Target URL too long"),
+  scope: z.enum(["domain", "subdomain", "page"]),
+});
+
+const backlinksOverviewParamsSchema = backlinksParamsSchema.extend({
+  hideSpam: z.boolean().optional(),
+  spamThreshold: z.number().int().min(0).max(100).optional(),
+});
 
 interface BacklinksParams {
   projectId: string;
@@ -33,16 +48,20 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
  * Get backlinks overview for a target.
  */
 export async function getBacklinksOverview(params: BacklinksOverviewParams): Promise<unknown> {
+  const validated = backlinksOverviewParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  // Rate limit: 100 API calls per hour (DataForSEO costs money)
+  await checkRateLimit(apiCostLimiter, auth.userId);
+
+  const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/backlinks?${query}`, {
     action: "overview",
-    target: params.target,
-    scope: params.scope,
-    hideSpam: params.hideSpam,
-    spamThreshold: params.spamThreshold,
+    target: validated.target,
+    scope: validated.scope,
+    hideSpam: validated.hideSpam,
+    spamThreshold: validated.spamThreshold,
   });
 }
 
@@ -50,14 +69,15 @@ export async function getBacklinksOverview(params: BacklinksOverviewParams): Pro
  * Get referring domains for a target.
  */
 export async function getBacklinksReferringDomains(params: BacklinksParams): Promise<unknown[]> {
+  const validated = backlinksParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo<unknown[]>(`/api/seo/backlinks?${query}`, {
     action: "referring-domains",
-    target: params.target,
-    scope: params.scope,
+    target: validated.target,
+    scope: validated.scope,
   });
 }
 
@@ -65,13 +85,14 @@ export async function getBacklinksReferringDomains(params: BacklinksParams): Pro
  * Get top pages for a target.
  */
 export async function getBacklinksTopPages(params: BacklinksParams): Promise<unknown[]> {
+  const validated = backlinksParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo<unknown[]>(`/api/seo/backlinks?${query}`, {
     action: "top-pages",
-    target: params.target,
-    scope: params.scope,
+    target: validated.target,
+    scope: validated.scope,
   });
 }

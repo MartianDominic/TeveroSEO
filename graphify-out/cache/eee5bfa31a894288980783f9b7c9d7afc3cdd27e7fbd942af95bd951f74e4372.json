@@ -1,0 +1,1 @@
+{"nodes": [{"id": "projects", "label": "projects.ts", "file_type": "code", "source_file": "open-seo-main/src/types/schemas/projects.ts", "source_location": "L1"}], "edges": [{"source": "projects", "target": "zod", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "open-seo-main/src/types/schemas/projects.ts", "source_location": "L1", "weight": 1.0}]}

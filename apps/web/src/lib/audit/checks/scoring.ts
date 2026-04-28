@@ -2,32 +2,36 @@
  * SEO Score Calculator
  *
  * Calculates overall SEO score from check results.
- * Uses weighted scoring by tier and severity.
+ * Aligns with open-seo-main scoring formula.
  */
 
 import type { CheckResult, ScoreResult, ScoreBreakdown, CheckTier } from "./types";
-import { getTierFromCheckId, CHECK_COUNTS } from "./definitions";
 
 /**
- * Severity weights for score calculation
- */
-const SEVERITY_WEIGHTS = {
-  critical: 10,
-  high: 5,
-  medium: 3,
-  low: 1,
-  info: 0,
-};
-
-/**
- * Tier weights for score calculation
+ * Tier weights for score calculation (points per passed check)
+ * Aligns with open-seo-main scoring formula
  */
 const TIER_WEIGHTS = {
-  1: 1.5, // T1 checks are most important
-  2: 1.2, // T2 checks are important
-  3: 1.0, // T3 checks are standard
-  4: 0.8, // T4 checks are advanced
+  1: 0.3, // T1: max 20 points
+  2: 0.5, // T2: max 10 points
+  3: 0.8, // T3: max 10 points
+  4: 0.0, // T4: gates only, no direct score contribution
 };
+
+/**
+ * Tier maximums for score contribution
+ */
+const TIER_MAXES = {
+  1: 20,
+  2: 10,
+  3: 10,
+  4: 0,
+};
+
+/**
+ * Base score for fundamentals
+ */
+const BASE_SCORE = 60;
 
 /**
  * Gates that block a good score if failed
@@ -44,50 +48,16 @@ const GATE_CHECKS = [
 ];
 
 /**
- * Calculate score breakdown by tier
+ * Calculate tier points (capped at tier max)
  */
-function calculateTierScore(results: CheckResult[], tier: CheckTier): number {
-  const tierResults = results.filter(
-    (r) => getTierFromCheckId(r.checkId) === tier
-  );
+function calculateTierPoints(results: CheckResult[], tier: CheckTier): number {
+  const tierPrefix = `T${tier}-`;
+  const passed = results.filter(
+    (r) => r.checkId.startsWith(tierPrefix) && r.passed
+  ).length;
 
-  if (tierResults.length === 0) {
-    return 100;
-  }
-
-  const passed = tierResults.filter((r) => r.passed).length;
-  return Math.round((passed / tierResults.length) * 100);
-}
-
-/**
- * Calculate weighted score from results
- */
-function calculateWeightedScore(results: CheckResult[]): number {
-  if (results.length === 0) {
-    return 100;
-  }
-
-  let totalWeight = 0;
-  let earnedWeight = 0;
-
-  for (const result of results) {
-    const tier = getTierFromCheckId(result.checkId);
-    const severityWeight = SEVERITY_WEIGHTS[result.severity];
-    const tierWeight = TIER_WEIGHTS[tier];
-    const checkWeight = severityWeight * tierWeight;
-
-    totalWeight += checkWeight;
-
-    if (result.passed) {
-      earnedWeight += checkWeight;
-    }
-  }
-
-  if (totalWeight === 0) {
-    return 100;
-  }
-
-  return Math.round((earnedWeight / totalWeight) * 100);
+  const points = passed * TIER_WEIGHTS[tier];
+  return Math.min(TIER_MAXES[tier], points);
 }
 
 /**
@@ -126,31 +96,74 @@ function checkIdToGateName(checkId: string): string {
 
 /**
  * Calculate overall SEO score from check results
+ * Aligns with open-seo-main scoring formula:
+ * - Base: 60 points (fundamentals present)
+ * - Tier 1: +0.3 per pass, max 20 points
+ * - Tier 2: +0.5 per pass, max 10 points
+ * - Tier 3: +0.8 per pass, max 10 points
  */
 export function calculateOnPageScore(results: CheckResult[]): ScoreResult {
-  // Calculate score breakdown by tier
+  const gates: string[] = [];
+
+  // Calculate tier contributions
+  const tier1Points = calculateTierPoints(results, 1);
+  const tier2Points = calculateTierPoints(results, 2);
+  const tier3Points = calculateTierPoints(results, 3);
+  const tier4Points = calculateTierPoints(results, 4);
+
   const breakdown: ScoreBreakdown = {
-    tier1: calculateTierScore(results, 1),
-    tier2: calculateTierScore(results, 2),
-    tier3: calculateTierScore(results, 3),
-    tier4: calculateTierScore(results, 4),
+    base: BASE_SCORE,
+    tier1: tier1Points,
+    tier2: tier2Points,
+    tier3: tier3Points,
+    tier4: tier4Points,
   };
 
-  // Calculate weighted overall score
-  let score = calculateWeightedScore(results);
+  // Raw score before gates
+  let score = BASE_SCORE + tier1Points + tier2Points + tier3Points;
 
-  // Get failed gates
-  const gates = getFailedGates(results);
+  // Apply hard gates
 
-  // Apply gate penalties
-  // Each gate failure reduces max possible score
-  if (gates.length > 0) {
-    const gatePenalty = gates.length * 5;
-    score = Math.max(0, score - gatePenalty);
+  // Gate 1: noindex (T1-55 fail) -> cap at 0
+  const noindexCheck = results.find((r) => r.checkId === "T1-55");
+  if (noindexCheck && !noindexCheck.passed) {
+    return { score: 0, gates: ["noindex"], breakdown };
+  }
+
+  // Gate 2: Duplicate content >60% -> cap at 50
+  const duplicateCheck = results.find((r) => r.checkId === "T4-06");
+  if (duplicateCheck && !duplicateCheck.passed) {
+    const details = duplicateCheck.details as { duplicatePercent?: number } | undefined;
+    if (details?.duplicatePercent && details.duplicatePercent > 60) {
+      score = Math.min(50, score);
+      gates.push("duplicate-content");
+    }
+  }
+
+  // Gate 3: No author on YMYL -> cap at 60
+  const ymylAuthorCheck = results.find((r) => r.checkId === "T2-17");
+  if (ymylAuthorCheck && !ymylAuthorCheck.passed) {
+    score = Math.min(60, score);
+    gates.push("ymyl-no-author");
+  }
+
+  // Gate 4: CWV Poor (T3-01/02/03 critical fail) -> cap at 75
+  const cwvChecks = results.filter((r) => ["T3-01", "T3-02", "T3-03"].includes(r.checkId));
+  if (cwvChecks.some((r) => !r.passed && r.severity === "critical")) {
+    score = Math.min(75, score);
+    gates.push("cwv-poor");
+  }
+
+  // Add legacy gate checks for backwards compatibility
+  const legacyGates = getFailedGates(results);
+  for (const gate of legacyGates) {
+    if (!gates.includes(gate)) {
+      gates.push(gate);
+    }
   }
 
   return {
-    score,
+    score: Math.round(score),
     gates,
     breakdown,
   };

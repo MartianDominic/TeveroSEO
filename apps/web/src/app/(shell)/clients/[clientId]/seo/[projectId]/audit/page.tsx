@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Loader2, Play, Trash2, Eye } from "lucide-react";
+import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX } from "lucide-react";
 import {
   Button,
   Card,
@@ -27,6 +27,7 @@ import {
   getCrawlProgress,
   deleteAudit,
 } from "@/actions/seo/audit";
+import { getProject } from "@/actions/seo/projects";
 import {
   StatusBadge,
   HttpStatusBadge,
@@ -65,6 +66,21 @@ export default function SiteAuditPage() {
   const auditId = searchParams.get("auditId");
   const tab = searchParams.get("tab") ?? "overview";
 
+  // Project existence validation state
+  const [projectExists, setProjectExists] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function validateProject() {
+      try {
+        const project = await getProject({ projectId, clientId });
+        setProjectExists(project !== null);
+      } catch {
+        setProjectExists(false);
+      }
+    }
+    validateProject();
+  }, [projectId, clientId]);
+
   const setSearchParams = useCallback(
     (updates: Record<string, string | undefined>) => {
       const newParams = new URLSearchParams(searchParams.toString());
@@ -79,6 +95,33 @@ export default function SiteAuditPage() {
     },
     [router, searchParams]
   );
+
+  // Show loading state while validating project
+  if (projectExists === null) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Show error state if project doesn't exist
+  if (projectExists === false) {
+    return (
+      <div className="px-4 py-6 md:px-6">
+        <div className="mx-auto max-w-3xl flex flex-col items-center justify-center min-h-[400px] text-center">
+          <FolderX className="h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            The SEO project you are looking for does not exist or you do not have access to it.
+          </p>
+          <Button onClick={() => router.push(`/clients/${clientId}/seo` as never)}>
+            Back to Projects
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!auditId) {
     return (
@@ -132,10 +175,10 @@ function LaunchView({
         clientId,
         startUrl,
         maxPages: parseInt(maxPages, 10),
-        lighthouseStrategy,
+        lighthouseStrategy: lighthouseStrategy === "none" ? undefined : lighthouseStrategy as "mobile" | "desktop",
       }),
     onSuccess: (result) => {
-      if (result.auditId) {
+      if ("auditId" in result) {
         onAuditStarted(result.auditId);
       }
     },

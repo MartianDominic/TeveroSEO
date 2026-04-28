@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt name="agreement-generator" version="1.0">
+  <system-context>
+    <role>Legal document specialist (Lithuanian civil law)</role>
+    <language>Lithuanian (formal legal)</language>
+
+    <legal-constraints>
+      <constraint>Must follow Lithuanian Civil Code</constraint>
+      <constraint>AES signatures valid for B2B</constraint>
+      <constraint>IP transfer requires explicit clause</constraint>
+      <constraint>DPA annex for GDPR compliance</constraint>
+    </legal-constraints>
+  </system-context>
+
+  <input-schema>
+    <provider>
+      <company_name>{{PROVIDER_COMPANY}}</company_name>
+      <company_code>{{PROVIDER_CODE}}</company_code>
+      <vat_code>{{PROVIDER_VAT}}</vat_code>
+      <address>{{PROVIDER_ADDRESS}}</address>
+      <representative>{{PROVIDER_REP}}</representative>
+      <representative_title>{{PROVIDER_REP_TITLE}}</representative_title>
+    </provider>
+    <client>
+      <company_name>{{CLIENT_COMPANY}}</company_name>
+      <company_code>{{CLIENT_CODE}}</company_code>
+      <vat_code>{{CLIENT_VAT}}</vat_code>
+      <address>{{CLIENT_ADDRESS}}</address>
+      <representative>{{CLIENT_REP}}</representative>
+      <representative_title>{{CLIENT_REP_TITLE}}</representative_title>
+    </client>
+    <services>
+      {{SERVICES_JSON}}
+    </services>
+    <pricing>
+      <setup_fee>{{SETUP_FEE}}</setup_fee>
+      <monthly_fee>{{MONTHLY_FEE}}</monthly_fee>
+      <contract_months>{{CONTRACT_MONTHS}}</contract_months>
+      <payment_terms_days>{{PAYMENT_DAYS}}</payment_terms_days>
+    </pricing>
+    <deliverables>
+      {{DELIVERABLES_JSON}}
+    </deliverables>
+    <kpis>
+      {{KPIS_JSON}}
+    </kpis>
+    <domain>{{DOMAIN}}</domain>
+    <company_name>{{COMPANY_NAME}}</company_name>
+    <agency_name>{{AGENCY_NAME}}</agency_name>
+  </input-schema>
+
+  <contract-sections>
+    <section number="1" name="SUTARTIES DALYKAS">
+      <description>Subject of the contract - SEO services scope</description>
+    </section>
+    <section number="2" name="KAINA IR ATSISKAITYMO TVARKA">
+      <description>Pricing and payment terms</description>
+    </section>
+    <section number="3" name="SALIU TEISES IR PAREIGOS">
+      <description>Rights and obligations of both parties</description>
+    </section>
+    <section number="4" name="INTELEKTINE NUOSAVYBE">
+      <description>Intellectual property rights transfer</description>
+    </section>
+    <section number="5" name="KONFIDENCIALUMAS">
+      <description>Confidentiality obligations</description>
+    </section>
+    <section number="6" name="SUTARTIES NUTRAUKIMAS">
+      <description>Contract termination conditions</description>
+    </section>
+    <section number="7" name="ATSAKOMYBE">
+      <description>Liability limitations and disclaimers</description>
+    </section>
+    <section number="8" name="BAIGIAMOSIOS NUOSTATOS">
+      <description>Final provisions, governing law, dispute resolution</description>
+    </section>
+  </contract-sections>
+
+  <appendices>
+    <appendix number="1" name="PASLAUGU APRASYMAS">
+      <description>Detailed service description with deliverables</description>
+    </appendix>
+    <appendix number="2" name="DUOMENU TVARKYMO SUTARTIS (DPA)">
+      <description>GDPR compliant data processing agreement</description>
+    </appendix>
+  </appendices>
+
+  <instructions>
+    Generate a complete SEO service agreement (sutartis) in Lithuanian.
+    Follow Lithuanian Civil Code requirements for B2B contracts.
+
+    Include all 8 mandatory sections:
+    1. Subject of contract
+    2. Pricing and payment
+    3. Rights and obligations
+    4. Intellectual property
+    5. Confidentiality
+    6. Termination
+    7. Liability
+    8. Final provisions
+
+    Include appendices:
+    1. Service description with KPIs
+    2. Data processing agreement (GDPR)
+
+    Generate signature blocks for both parties.
+    Use formal legal Lithuanian language.
+    Reference provided pricing and service details.
+  </instructions>
+
+  <output-schema>
+    <json-structure>
+      {
+        "agreement": {
+          "document_type": "sutartis",
+          "version": "1.0",
+          "generated_date": "ISO date",
+          "sections": [
+            {
+              "number": "string",
+              "title": "string",
+              "content": "string (filled template)"
+            }
+          ],
+          "appendices": [
+            {
+              "number": "string",
+              "title": "string",
+              "content": "structured content"
+            }
+          ],
+          "signatures": {
+            "provider": {
+              "company": "string",
+              "representative": "string",
+              "title": "string"
+            },
+            "client": {
+              "company": "string",
+              "representative": "string",
+              "title": "string"
+            }
+          }
+        }
+      }
+    </json-structure>
+  </output-schema>
+</prompt>

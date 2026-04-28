@@ -1,10 +1,64 @@
 "use server";
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo, patchOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+import { rateLimitAction } from "@/lib/middleware/rate-limit";
+
+/** Rate limit configs for webhook mutations */
+const WEBHOOK_RATE_LIMITS = {
+  create: { limit: 10, windowMs: 60000 },  // 10 per minute
+  update: { limit: 20, windowMs: 60000 },  // 20 per minute
+  delete: { limit: 10, windowMs: 60000 },  // 10 per minute
+};
+
+// Validation schemas
+const clientIdSchema = z.string().uuid("Invalid client ID format");
+const webhookIdSchema = z.string().uuid("Invalid webhook ID format");
+
+const webhookUrlSchema = z
+  .string()
+  .url("Must be a valid URL")
+  .max(2048, "URL too long")
+  .refine(
+    (url) => url.startsWith("https://"),
+    "Webhook URL must use HTTPS"
+  );
+
+const webhookEventsSchema = z
+  .array(z.string().min(1).max(100))
+  .min(1, "At least one event is required")
+  .max(50, "Maximum 50 events allowed");
+
+const webhookHeadersSchema = z
+  .record(
+    z.string().max(100, "Header name too long"),
+    z.string().max(1000, "Header value too long")
+  )
+  .optional();
+
+const createWebhookSchema = z.object({
+  clientId: clientIdSchema,
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  url: webhookUrlSchema,
+  events: webhookEventsSchema,
+  headers: webhookHeadersSchema,
+});
+
+const updateWebhookSchema = z.object({
+  webhookId: webhookIdSchema,
+  params: z.object({
+    name: z.string().min(1).max(100, "Name too long").optional(),
+    url: webhookUrlSchema.optional(),
+    events: webhookEventsSchema.optional(),
+    headers: webhookHeadersSchema,
+    enabled: z.boolean().optional(),
+    regenerateSecret: z.boolean().optional(),
+  }),
+});
 
 export interface Webhook {
   id: string;
@@ -41,24 +95,35 @@ export interface WebhookEvent {
  * Get all webhooks for a client.
  */
 export async function getClientWebhooks(clientId: string): Promise<Webhook[]> {
+  const validated = clientIdSchema.parse(clientId);
   const auth = await requireActionAuth();
-  await validateClientOwnership(clientId, auth);
+  await validateClientOwnership(validated, auth);
   return getOpenSeo<Webhook[]>(
-    `/api/webhooks?scope=client&scope_id=${clientId}`,
+    `/api/webhooks?scope=client&scope_id=${validated}`,
   );
 }
 
 /**
  * Get webhook by ID with optional deliveries.
- * Note: Webhook ownership is validated by the backend based on scope.
+ * Validates client ownership if webhook is client-scoped.
  */
 export async function getWebhook(
   webhookId: string,
   includeDeliveries = false,
 ): Promise<Webhook & { deliveries?: WebhookDelivery[] }> {
-  await requireActionAuth();
+  const validated = webhookIdSchema.parse(webhookId);
+  const auth = await requireActionAuth();
   const query = includeDeliveries ? "?deliveries=true" : "";
-  return getOpenSeo(`/api/webhooks/${webhookId}${query}`);
+  const webhook = await getOpenSeo<Webhook & { deliveries?: WebhookDelivery[] }>(
+    `/api/webhooks/${validated}${query}`
+  );
+
+  // Validate ownership for client-scoped webhooks
+  if (webhook.scope === "client" && webhook.scopeId) {
+    await validateClientOwnership(webhook.scopeId, auth);
+  }
+
+  return webhook;
 }
 
 /**
@@ -82,21 +147,26 @@ export async function createWebhook(params: {
   events: string[];
   headers?: Record<string, string>;
 }): Promise<{ id: string; secret: string }> {
+  const validated = createWebhookSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
+
+  // Rate limit: 10 creates per minute
+  await rateLimitAction("webhook:create", auth.userId, WEBHOOK_RATE_LIMITS.create);
+
   return postOpenSeo("/api/webhooks", {
     scope: "client",
-    scopeId: params.clientId,
-    name: params.name,
-    url: params.url,
-    events: params.events,
-    headers: params.headers,
+    scopeId: validated.clientId,
+    name: validated.name,
+    url: validated.url,
+    events: validated.events,
+    headers: validated.headers,
   });
 }
 
 /**
  * Update a webhook.
- * Note: Backend validates webhook ownership.
+ * Validates client ownership if webhook is client-scoped.
  */
 export async function updateWebhook(
   webhookId: string,
@@ -109,31 +179,60 @@ export async function updateWebhook(
     regenerateSecret?: boolean;
   },
 ): Promise<{ success: boolean; secret?: string }> {
-  await requireActionAuth();
-  return patchOpenSeo(`/api/webhooks/${webhookId}`, params);
+  const validated = updateWebhookSchema.parse({ webhookId, params });
+  const auth = await requireActionAuth();
+
+  // Rate limit: 20 updates per minute
+  await rateLimitAction("webhook:update", auth.userId, WEBHOOK_RATE_LIMITS.update);
+
+  // Fetch webhook first to validate ownership
+  const webhook = await getOpenSeo<Webhook>(`/api/webhooks/${validated.webhookId}`);
+  if (webhook.scope === "client" && webhook.scopeId) {
+    await validateClientOwnership(webhook.scopeId, auth);
+  }
+
+  return patchOpenSeo(`/api/webhooks/${validated.webhookId}`, validated.params);
 }
 
 /**
  * Delete a webhook.
- * Note: Backend validates webhook ownership.
+ * Validates client ownership if webhook is client-scoped.
  */
 export async function deleteWebhookAction(
   webhookId: string,
 ): Promise<{ success: boolean }> {
-  await requireActionAuth();
-  return deleteOpenSeo(`/api/webhooks/${webhookId}`);
+  const validated = webhookIdSchema.parse(webhookId);
+  const auth = await requireActionAuth();
+
+  // Rate limit: 10 deletes per minute
+  await rateLimitAction("webhook:delete", auth.userId, WEBHOOK_RATE_LIMITS.delete);
+
+  // Fetch webhook first to validate ownership
+  const webhook = await getOpenSeo<Webhook>(`/api/webhooks/${validated}`);
+  if (webhook.scope === "client" && webhook.scopeId) {
+    await validateClientOwnership(webhook.scopeId, auth);
+  }
+
+  return deleteOpenSeo(`/api/webhooks/${validated}`);
 }
 
 /**
  * Get webhook deliveries.
- * Note: Backend validates webhook ownership.
+ * Validates client ownership if webhook is client-scoped.
  */
 export async function getWebhookDeliveries(
   webhookId: string,
 ): Promise<WebhookDelivery[]> {
-  await requireActionAuth();
+  const validated = webhookIdSchema.parse(webhookId);
+  const auth = await requireActionAuth();
   const result = await getOpenSeo<Webhook & { deliveries: WebhookDelivery[] }>(
-    `/api/webhooks/${webhookId}?deliveries=true`,
+    `/api/webhooks/${validated}?deliveries=true`,
   );
+
+  // Validate ownership for client-scoped webhooks
+  if (result.scope === "client" && result.scopeId) {
+    await validateClientOwnership(result.scopeId, auth);
+  }
+
   return result.deliveries ?? [];
 }

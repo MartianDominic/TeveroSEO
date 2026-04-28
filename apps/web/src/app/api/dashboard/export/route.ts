@@ -1,18 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 import { getFastApi } from "@/lib/server-fetch";
+import { exportLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import type { ClientMetrics, ExportColumn } from "@/lib/dashboard/types";
 import { EXPORT_COLUMN_LABELS } from "@/lib/dashboard/types";
 
+/**
+ * Valid export columns - derived from ExportColumn type.
+ * Used for runtime validation of query string parameters.
+ */
+const validColumns = [
+  "clientName",
+  "healthScore",
+  "trafficCurrent",
+  "trafficTrendPct",
+  "keywordsTotal",
+  "keywordsTop10",
+  "keywordsTop3",
+  "keywordsPosition1",
+  "alertsOpen",
+  "connectionStatus",
+  "lastReportAt",
+  "lastAuditAt",
+] as const;
+
+const columnsSchema = z.array(z.enum(validColumns));
+const formatSchema = z.enum(["csv", "json"]).default("csv");
+
 export async function GET(request: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit: 10 exports per minute (prevents DoS)
+  const rateLimitResult = await exportLimiter.limit(userId);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again later." },
+      { status: 429, headers: rateLimitHeaders(rateLimitResult) }
+    );
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const columnsParam = searchParams.get("columns");
-    const format = searchParams.get("format") || "csv";
+    const formatParam = searchParams.get("format");
 
-    // Default columns if not specified
-    const columns: ExportColumn[] = columnsParam
-      ? (columnsParam.split(",") as ExportColumn[])
-      : ["clientName", "healthScore", "trafficCurrent", "trafficTrendPct", "keywordsTotal", "alertsOpen"];
+    // Validate format parameter
+    const formatResult = formatSchema.safeParse(formatParam ?? "csv");
+    if (!formatResult.success) {
+      return NextResponse.json(
+        { error: "Invalid format. Must be 'csv' or 'json'" },
+        { status: 400 }
+      );
+    }
+    const format = formatResult.data;
+
+    // Validate and parse columns parameter
+    let columns: ExportColumn[];
+    if (columnsParam) {
+      const columnsList = columnsParam.split(",").map(c => c.trim());
+      const columnsResult = columnsSchema.safeParse(columnsList);
+      if (!columnsResult.success) {
+        return NextResponse.json(
+          { error: "Invalid columns. Valid values: " + validColumns.join(", ") },
+          { status: 400 }
+        );
+      }
+      columns = columnsResult.data as ExportColumn[];
+    } else {
+      // Default columns if not specified
+      columns = ["clientName", "healthScore", "trafficCurrent", "trafficTrendPct", "keywordsTotal", "alertsOpen"];
+    }
 
     // Fetch metrics (would include filters in production)
     const metrics = await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");

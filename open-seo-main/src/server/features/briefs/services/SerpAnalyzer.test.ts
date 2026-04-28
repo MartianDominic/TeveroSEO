@@ -11,7 +11,7 @@ vi.mock("@/server/lib/dataforseo", () => ({
 }));
 
 vi.mock("@/server/lib/cache/serp-cache", () => ({
-  buildSerpCacheKey: vi.fn((mappingId, keyword) => `serp:${mappingId}:${keyword}`),
+  buildSerpCacheKey: vi.fn((clientId, mappingId, keyword) => `serp:${clientId}:${mappingId}:${keyword}`),
   getCachedSerp: vi.fn(),
   setCachedSerp: vi.fn(),
 }));
@@ -154,33 +154,12 @@ describe("SerpAnalyzer", () => {
       vi.mocked(getCachedSerp).mockResolvedValue(null);
       vi.mocked(setCachedSerp).mockResolvedValue(undefined);
       vi.mocked(fetchLiveSerpItemsRaw).mockResolvedValue({
-        version: "0.1.0",
-        status_code: 20000,
-        status_message: "Ok.",
-        time: "1.234",
-        cost: 0.005,
-        tasks_count: 1,
-        tasks_error: 0,
-        tasks: [
-          {
-            id: "test-task-id",
-            status_code: 20000,
-            status_message: "Ok.",
-            time: "1.234",
-            cost: 0.005,
-            result_count: 1,
-            path: [],
-            data: {},
-            result: [
-              {
-                keyword: "seo tools",
-                location_code: 2840,
-                language_code: "en",
-                items: mockSerpItems,
-              },
-            ],
-          },
-        ],
+        data: mockSerpItems,
+        billing: {
+          path: ["serp", "google", "organic", "live", "advanced"],
+          costUsd: 0.005,
+          resultCount: mockSerpItems.length,
+        },
       });
     });
 
@@ -199,10 +178,10 @@ describe("SerpAnalyzer", () => {
 
       vi.mocked(getCachedSerp).mockResolvedValue(cachedData);
 
-      const result = await analyzeSerpForKeyword("mapping_123", "seo tools");
+      const result = await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools");
 
       expect(result).toEqual(cachedData);
-      expect(getCachedSerp).toHaveBeenCalledWith("serp:mapping_123:seo tools");
+      expect(getCachedSerp).toHaveBeenCalledWith("serp:client_abc:mapping_123:seo tools");
     });
 
     it("should fetch from DataForSEO when cache misses", async () => {
@@ -214,7 +193,7 @@ describe("SerpAnalyzer", () => {
 
       vi.mocked(getCachedSerp).mockResolvedValue(null);
 
-      await analyzeSerpForKeyword("mapping_123", "seo tools");
+      await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools");
 
       expect(getCachedSerp).toHaveBeenCalled();
       expect(fetchLiveSerpItemsRaw).toHaveBeenCalledWith(
@@ -228,10 +207,10 @@ describe("SerpAnalyzer", () => {
       const { setCachedSerp } = await import("@/server/lib/cache/serp-cache");
       const { analyzeSerpForKeyword } = await import("./SerpAnalyzer");
 
-      await analyzeSerpForKeyword("mapping_123", "seo tools");
+      await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools");
 
       expect(setCachedSerp).toHaveBeenCalledWith(
-        "serp:mapping_123:seo tools",
+        "serp:client_abc:mapping_123:seo tools",
         expect.objectContaining({
           paaQuestions: expect.any(Array),
           metaLengths: expect.any(Object),
@@ -244,7 +223,7 @@ describe("SerpAnalyzer", () => {
     it("should include analyzed timestamp in result", async () => {
       const { analyzeSerpForKeyword } = await import("./SerpAnalyzer");
 
-      const result = await analyzeSerpForKeyword("mapping_123", "seo tools");
+      const result = await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools");
 
       expect(result.analyzedAt).toBeDefined();
       expect(new Date(result.analyzedAt).getTime()).toBeGreaterThan(0);
@@ -256,7 +235,7 @@ describe("SerpAnalyzer", () => {
       );
       const { analyzeSerpForKeyword } = await import("./SerpAnalyzer");
 
-      await analyzeSerpForKeyword("mapping_123", "seo tools");
+      await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools");
 
       expect(fetchLiveSerpItemsRaw).toHaveBeenCalledWith(
         "seo tools",
@@ -271,7 +250,7 @@ describe("SerpAnalyzer", () => {
       );
       const { analyzeSerpForKeyword } = await import("./SerpAnalyzer");
 
-      await analyzeSerpForKeyword("mapping_123", "seo tools", 2826); // UK
+      await analyzeSerpForKeyword("client_abc", "mapping_123", "seo tools", 2826); // UK
 
       expect(fetchLiveSerpItemsRaw).toHaveBeenCalledWith(
         "seo tools",

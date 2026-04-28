@@ -3,10 +3,12 @@
  * Phase 33: Auto-Fix System
  *
  * Filter controls for the changes list.
+ * Fixed: HIGH-STATE-002 (race conditions), HIGH-STATE-004 (loading states),
+ * HIGH-STATE-006 (debouncing)
  */
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import {
@@ -18,6 +20,8 @@ import {
 } from '@tevero/ui';
 import { Input } from '@tevero/ui';
 import { Label } from '@tevero/ui';
+import { Loader2 } from 'lucide-react';
+import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 
 interface ChangeFiltersProps {
   clientId: string;
@@ -57,11 +61,49 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
+  // Track the latest filter request to prevent race conditions (HIGH-STATE-002)
+  const latestRequestRef = useRef(0);
+
   const [category, setCategory] = useState(searchParams.get('category') ?? 'all');
   const [status, setStatus] = useState(searchParams.get('status') ?? 'all');
   const [triggeredBy, setTriggeredBy] = useState(searchParams.get('triggeredBy') ?? 'all');
   const [dateFrom, setDateFrom] = useState(searchParams.get('dateFrom') ?? '');
   const [dateTo, setDateTo] = useState(searchParams.get('dateTo') ?? '');
+
+  // Sync local state with URL params on mount and when params change
+  useEffect(() => {
+    setCategory(searchParams.get('category') ?? 'all');
+    setStatus(searchParams.get('status') ?? 'all');
+    setTriggeredBy(searchParams.get('triggeredBy') ?? 'all');
+    setDateFrom(searchParams.get('dateFrom') ?? '');
+    setDateTo(searchParams.get('dateTo') ?? '');
+  }, [searchParams]);
+
+  const navigateWithFilters = (params: URLSearchParams) => {
+    const requestId = ++latestRequestRef.current;
+    const queryString = params.toString();
+    const url = queryString
+      ? `/clients/${clientId}/changes?${queryString}`
+      : `/clients/${clientId}/changes`;
+
+    startTransition(() => {
+      // Only navigate if this is still the latest request (prevents race conditions)
+      if (requestId === latestRequestRef.current) {
+        router.push(url as Parameters<typeof router.push>[0]);
+      }
+    });
+  };
+
+  // Debounced filter application for date inputs (HIGH-STATE-006)
+  const debouncedApplyFilters = useDebouncedCallback(() => {
+    const params = new URLSearchParams();
+    if (category && category !== 'all') params.set('category', category);
+    if (status && status !== 'all') params.set('status', status);
+    if (triggeredBy && triggeredBy !== 'all') params.set('triggeredBy', triggeredBy);
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    navigateWithFilters(params);
+  }, 300);
 
   const applyFilters = () => {
     const params = new URLSearchParams();
@@ -70,10 +112,7 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
     if (triggeredBy && triggeredBy !== 'all') params.set('triggeredBy', triggeredBy);
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
-
-    startTransition(() => {
-      router.push(`/clients/${clientId}/changes?${params.toString()}`);
-    });
+    navigateWithFilters(params);
   };
 
   const clearFilters = () => {
@@ -84,8 +123,19 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
     setDateTo('');
 
     startTransition(() => {
-      router.push(`/clients/${clientId}/changes`);
+      router.push(`/clients/${clientId}/changes` as Parameters<typeof router.push>[0]);
     });
+  };
+
+  // Handle date changes with debouncing
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value);
+    debouncedApplyFilters();
+  };
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value);
+    debouncedApplyFilters();
   };
 
   const hasActiveFilters =
@@ -96,7 +146,14 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
     dateTo;
 
   return (
-    <div className="bg-card rounded-lg border p-4 mb-6">
+    <div className={`bg-card rounded-lg border p-4 mb-6 transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+      {/* Loading indicator (HIGH-STATE-004) */}
+      {isPending && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Updating filters...</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Category Filter */}
         <div className="space-y-2">
@@ -156,7 +213,8 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
             id="dateFrom"
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(e) => handleDateFromChange(e.target.value)}
+            disabled={isPending}
           />
         </div>
 
@@ -167,7 +225,8 @@ export function ChangeFilters({ clientId }: ChangeFiltersProps) {
             id="dateTo"
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(e) => handleDateToChange(e.target.value)}
+            disabled={isPending}
           />
         </div>
       </div>

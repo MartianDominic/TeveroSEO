@@ -1,0 +1,117 @@
+/**
+ * Client alert rules API route.
+ * Phase 18: Configure alert rules per client.
+ *
+ * GET /api/clients/:clientId/alert-rules - List alert rules
+ * PUT /api/clients/:clientId/alert-rules - Upsert alert rule
+ */
+import { createFileRoute } from "@tanstack/react-router";
+import { createLogger } from "@/server/lib/logger";
+import { AppError } from "@/server/lib/errors";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { getClientAlertRules, upsertAlertRule } from "@/services/alerts";
+
+const log = createLogger({ module: "api/clients/:clientId/alert-rules" });
+
+export const Route = createFileRoute("/api/clients/$clientId/alert-rules")({
+  server: {
+    handlers: {
+      // GET /api/clients/:clientId/alert-rules - List alert rules
+      GET: async ({
+        request,
+        params,
+      }: {
+        request: Request;
+        params: { clientId: string };
+      }) => {
+        try {
+          await requireApiAuth(request);
+
+          const { clientId } = params;
+          const rules = await getClientAlertRules(clientId);
+
+          return Response.json(
+            rules.map((r) => ({
+              id: r.id,
+              clientId: r.clientId,
+              alertType: r.alertType,
+              enabled: r.enabled,
+              threshold: r.threshold,
+              severity: r.severity,
+              emailNotify: r.emailNotify,
+              createdAt: r.createdAt.toISOString(),
+              updatedAt: r.updatedAt.toISOString(),
+            })),
+          );
+        } catch (err) {
+          if (err instanceof AppError) {
+            const status =
+              err.code === "UNAUTHENTICATED"
+                ? 401
+                : err.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return Response.json({ error: err.message }, { status });
+          }
+          log.error(
+            "List alert rules failed",
+            err instanceof Error ? err : new Error(String(err)),
+          );
+          return Response.json({ error: "Internal error" }, { status: 500 });
+        }
+      },
+
+      // PUT /api/clients/:clientId/alert-rules - Upsert alert rule
+      PUT: async ({
+        request,
+        params,
+      }: {
+        request: Request;
+        params: { clientId: string };
+      }) => {
+        try {
+          await requireApiAuth(request);
+
+          const { clientId } = params;
+          const body = (await request.json()) as {
+            alertType: "ranking_drop" | "sync_failure" | "connection_expiry";
+            enabled?: boolean;
+            threshold?: number;
+            severity?: "info" | "warning" | "critical";
+            emailNotify?: boolean;
+          };
+
+          if (!body.alertType) {
+            throw new AppError("VALIDATION_ERROR", "alertType required");
+          }
+
+          await upsertAlertRule({
+            clientId,
+            alertType: body.alertType,
+            enabled: body.enabled,
+            threshold: body.threshold,
+            severity: body.severity,
+            emailNotify: body.emailNotify,
+          });
+
+          return Response.json({ success: true });
+        } catch (err) {
+          if (err instanceof AppError) {
+            const status =
+              err.code === "UNAUTHENTICATED"
+                ? 401
+                : err.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return Response.json({ error: err.message }, { status });
+          }
+          log.error(
+            "Upsert alert rule failed",
+            err instanceof Error ? err : new Error(String(err)),
+          );
+          return Response.json({ error: "Internal error" }, { status: 500 });
+        }
+      },
+    },
+  },
+});

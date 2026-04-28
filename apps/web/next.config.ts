@@ -51,21 +51,26 @@ const securityHeaders = [
     ].join(", "),
   },
   // Content Security Policy - Comprehensive CSP for Next.js apps
+  // SECURITY: unsafe-eval is only allowed in development for HMR/hot-reload
+  // Production uses strict CSP without unsafe-eval to prevent arbitrary JS execution
   {
     key: "Content-Security-Policy",
     value: [
       // Default: only allow same-origin resources
       "default-src 'self'",
-      // Scripts: self, inline (for Next.js), and eval (for dev/HMR)
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      // Scripts: self, inline (for Next.js hydration)
+      // unsafe-eval is conditionally added only in development (see below)
+      process.env.NODE_ENV === "development"
+        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-inline'",
       // Styles: self and inline (required for styled-jsx, Tailwind)
       "style-src 'self' 'unsafe-inline'",
       // Images: self, data URIs, HTTPS, and blob (for image previews)
       "img-src 'self' data: https: blob:",
       // Fonts: self and data URIs
       "font-src 'self' data:",
-      // API/WebSocket connections
-      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev wss://*.clerk.accounts.dev https://api.teveroseo.com",
+      // API/WebSocket connections (includes local dev WebSocket and production endpoints)
+      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev wss://*.clerk.accounts.dev https://api.teveroseo.com wss://ws.teveroseo.com ws://localhost:* wss://localhost:*",
       // Prevent embedding in frames
       "frame-ancestors 'none'",
       // Form submissions only to self

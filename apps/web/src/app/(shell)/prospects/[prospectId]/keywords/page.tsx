@@ -160,7 +160,7 @@ export default function KeywordListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/prospects/${prospectId}`}>
+          <Link href={`/prospects/${prospectId}` as Parameters<typeof Link>[0]["href"]}>
             <Button variant="ghost" size="sm">
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back
@@ -175,7 +175,7 @@ export default function KeywordListPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={`/prospects/${prospectId}/keywords/import`}>
+          <Link href={`/prospects/${prospectId}/keywords/import` as Parameters<typeof Link>[0]["href"]}>
             <Button variant="outline" size="sm">
               <Upload className="h-4 w-4 mr-2" />
               Import CSV
@@ -298,7 +298,7 @@ export default function KeywordListPage() {
             <p className="text-muted-foreground mb-4">
               Import keywords from a CSV or run a keyword discovery.
             </p>
-            <Link href={`/prospects/${prospectId}/keywords/import`}>
+            <Link href={`/prospects/${prospectId}/keywords/import` as Parameters<typeof Link>[0]["href"]}>
               <Button>
                 <Upload className="h-4 w-4 mr-2" />
                 Import Keywords

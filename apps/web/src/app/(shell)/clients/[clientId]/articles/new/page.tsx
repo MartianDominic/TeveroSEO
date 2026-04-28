@@ -34,6 +34,7 @@ import {
 import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
 import type { ArticleStatus } from "@/stores";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const ImageGenerationPanel = dynamic(
   () => import("@/components/editor/ImageGenerationPanel").then((m) => m.ImageGenerationPanel),
@@ -70,24 +71,17 @@ function blendLabel(weight: number): string {
 }
 
 /**
- * Strips script/iframe/inline-event-handler tags from AI-generated HTML.
- * Content comes exclusively from our own AI pipeline — never from user input.
- * The backend already sanitises; this is a client-side defence-in-depth layer.
+ * ArticleHtmlPreview — renders AI-generated article HTML safely.
+ * Uses DOMPurify for robust XSS protection. Regex-based sanitization is
+ * insufficient as it can be bypassed via img onerror, SVG scripts, etc.
  */
-function sanitizeAiHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/\son\w+\s*=/gi, " data-removed=");
-}
-
 function ArticleHtmlPreview({ html }: { html: string }) {
-  // sanitizeAiHtml strips all executable content before rendering
-  const safeHtml = sanitizeAiHtml(html);
+  const sanitized = sanitizeHtml(html);
   return (
     <div
       className="prose prose-sm max-w-none p-6 text-foreground"
-      dangerouslySetInnerHTML={{ __html: safeHtml }} // safe: AI-generated + sanitized
+      // SECURITY: Content sanitized by DOMPurify - all dangerous elements removed
+      dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
 }
@@ -144,7 +138,9 @@ export default function NewArticlePage() {
           setOrganicKeywords(sorted.map((k) => k.keyword));
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Failed to fetch organic keywords:", err);
+      });
   }, [clientId]);
 
   useEffect(() => {

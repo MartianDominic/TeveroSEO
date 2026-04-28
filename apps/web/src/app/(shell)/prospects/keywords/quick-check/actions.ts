@@ -45,7 +45,7 @@ export async function quickCheckKeywords(
 ): Promise<QuickCheckResponse> {
   const input = QuickCheckSchema.parse({ keywords, generateShareLink });
 
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(`${openSeoUrl}/api/keywords/quick-check`, {
     method: "POST",

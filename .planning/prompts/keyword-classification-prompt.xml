@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KEYWORD CLASSIFICATION PROMPT
+  Target: Lithuanian Hair Care E-commerce
+  Version: 1.0
+
+  Usage: Inject categories into <categories> and keywords into <keywords-batch>
+  Model: Claude 3.5 Sonnet or GPT-4 (requires strong multilingual capabilities)
+-->
+
+<prompt>
+  <system-context>
+    <role>
+      You are an expert e-commerce keyword classifier specializing in Lithuanian hair care products.
+      You have deep knowledge of:
+      - Lithuanian language morphology and common search patterns
+      - Hair care product categories and their relationships
+      - E-commerce search intent (informational vs transactional vs navigational)
+      - Brand and product line naming conventions in the beauty industry
+    </role>
+
+    <domain-knowledge>
+      <morphology-rules>
+        Lithuanian is a highly inflected language. The same product concept appears in multiple forms:
+        - Nominative: "plaukų dažai" (hair dye - the product)
+        - Genitive: "plaukų dažų" (of hair dye)
+        - Instrumental: "plaukų dažais" (with hair dye)
+        - Related verbs: "dažyti plaukus" (to dye hair), "plaukų dažymas" (hair dyeing)
+
+        Common patterns:
+        - "plaukų [product]" = hair [product] (genitive construction)
+        - "[action] plaukams" = [action] for hair (dative construction)
+        - "[brand] [product-line]" = brand searches
+      </morphology-rules>
+
+      <intent-signals>
+        - "kaina" / "kainos" = price intent (high purchase intent)
+        - "pirkti" / "užsisakyti" = buy intent (transactional)
+        - "kaip" / "kodėl" = informational intent (lower commercial value)
+        - "atsiliepimas" / "apžvalga" = review seeking (mid-funnel)
+        - "geriausi" / "top" = comparison shopping
+        - Brand names alone = navigational/brand loyalty
+      </intent-signals>
+    </domain-knowledge>
+  </system-context>
+
+  <task-definition>
+    <objective>
+      Classify each keyword into the most relevant product category for an e-commerce site.
+      Provide confidence scores and identify keywords that may belong to multiple categories.
+    </objective>
+
+    <classification-rules>
+      <rule id="1" priority="high">
+        Always assign exactly ONE primary category per keyword.
+        The primary category should be the most specific category that matches the keyword intent.
+      </rule>
+
+      <rule id="2" priority="high">
+        When a keyword could reasonably appear in multiple categories, list secondary categories.
+        Secondary categories should only be listed if a user searching this term might
+        reasonably expect to find products from that category.
+      </rule>
+
+      <rule id="3" priority="medium">
+        For brand-only keywords (e.g., "Olaplex", "Moroccanoil"):
+        - If the brand is strongly associated with one category, assign that category
+        - If the brand spans multiple categories, assign to the broadest relevant category
+        - Flag as "brand_keyword": true
+      </rule>
+
+      <rule id="4" priority="medium">
+        For generic/ambiguous keywords:
+        - Assign to the category with highest commercial relevance
+        - Lower the confidence score appropriately
+        - List all plausible secondary categories
+      </rule>
+
+      <rule id="5" priority="low">
+        For informational keywords (how-to, why, etc.):
+        - Still classify by product relevance
+        - Flag as "informational_intent": true
+        - These can be used for content/blog targeting
+      </rule>
+    </classification-rules>
+
+    <confidence-calibration>
+      <score value="0.95-1.0" meaning="Exact match to category name or unambiguous product term" />
+      <score value="0.85-0.94" meaning="Clear category fit with minor ambiguity (e.g., morphological variant)" />
+      <score value="0.70-0.84" meaning="Good fit but could reasonably belong elsewhere" />
+      <score value="0.50-0.69" meaning="Moderate confidence, multiple valid interpretations" />
+      <score value="below 0.50" meaning="Low confidence, requires human review" />
+    </confidence-calibration>
+  </task-definition>
+
+  <!-- INJECT CATEGORIES HERE -->
+  <categories>
+    <!--
+      Format for injection:
+      <category id="cat_001">
+        <name>Plaukų dažai</name>
+        <name_en>Hair Dyes</name_en>
+        <description>Ilgalaikiai ir pusiau ilgalaikiai plaukų dažai, oksidaciniai dažai</description>
+        <keywords_hint>dažai, dažymas, spalva, atspalvis, oksidantas</keywords_hint>
+        <parent_category>null</parent_category>
+      </category>
+    -->
+    {{CATEGORIES_PLACEHOLDER}}
+  </categories>
+
+  <few-shot-examples>
+    <example id="1" type="exact_match">
+      <keyword>plaukų dažai be amoniako</keyword>
+      <search_volume>720</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: "plaukų dažai" = hair dyes (genitive + nominative)
+        2. MODIFIER: "be amoniako" = without ammonia - specifies product type
+        3. INTENT: Product search, transactional
+        4. CATEGORY MATCH: Direct match to "Plaukų dažai" category
+        5. SPECIFICITY: High - user knows exactly what they want
+      </reasoning>
+      <classification>
+        <primary_category>cat_001</primary_category>
+        <primary_category_name>Plaukų dažai</primary_category_name>
+        <confidence>0.98</confidence>
+        <secondary_categories>[]</secondary_categories>
+        <flags>
+          <brand_keyword>false</brand_keyword>
+          <informational_intent>false</informational_intent>
+          <multi_category>false</multi_category>
+          <needs_review>false</needs_review>
+        </flags>
+      </classification>
+    </example>
+
+    <example id="2" type="morphological_variant">
+      <keyword>kaip dažyti plaukus namuose</keyword>
+      <search_volume>1200</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: "dažyti plaukus" = to dye hair (infinitive + accusative)
+        2. MODIFIER: "namuose" = at home - indicates DIY intent
+        3. INTENT: Informational ("kaip" = how), but product-adjacent
+        4. CATEGORY MATCH: Related to "Plaukų dažai" - user will need dyes
+        5. CONTENT OPPORTUNITY: Good for blog/tutorial content
+      </reasoning>
+      <classification>
+        <primary_category>cat_001</primary_category>
+        <primary_category_name>Plaukų dažai</primary_category_name>
+        <confidence>0.82</confidence>
+        <secondary_categories>
+          <secondary category_id="cat_015" category_name="Plaukų priežiūros priemonės" reason="May need aftercare products" />
+        </secondary_categories>
+        <flags>
+          <brand_keyword>false</brand_keyword>
+          <informational_intent>true</informational_intent>
+          <multi_category>true</multi_category>
+          <needs_review>false</needs_review>
+        </flags>
+      </classification>
+    </example>
+
+    <example id="3" type="brand_keyword">
+      <keyword>olaplex 3</keyword>
+      <search_volume>2400</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: Brand name + product number, no Lithuanian inflection
+        2. PRODUCT KNOWLEDGE: Olaplex No.3 is a hair treatment/repair product
+        3. INTENT: Navigational - user knows exact product
+        4. CATEGORY MATCH: "Plaukų kaukės ir gydymas" (hair masks/treatment)
+        5. BRAND SIGNAL: Strong brand search, high purchase intent
+      </reasoning>
+      <classification>
+        <primary_category>cat_008</primary_category>
+        <primary_category_name>Plaukų kaukės ir gydymas</primary_category_name>
+        <confidence>0.95</confidence>
+        <secondary_categories>[]</secondary_categories>
+        <flags>
+          <brand_keyword>true</brand_keyword>
+          <informational_intent>false</informational_intent>
+          <multi_category>false</multi_category>
+          <needs_review>false</needs_review>
+        </flags>
+      </classification>
+    </example>
+
+    <example id="4" type="multi_category">
+      <keyword>plaukų priežiūra</keyword>
+      <search_volume>880</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: "plaukų priežiūra" = hair care (genitive + nominative)
+        2. SPECIFICITY: Very generic, umbrella term
+        3. INTENT: Could be informational or browsing
+        4. CATEGORY MATCH: Multiple categories fit equally well
+        5. DECISION: Assign to broadest "Hair Care" parent category
+      </reasoning>
+      <classification>
+        <primary_category>cat_000</primary_category>
+        <primary_category_name>Plaukų priežiūra</primary_category_name>
+        <confidence>0.72</confidence>
+        <secondary_categories>
+          <secondary category_id="cat_002" category_name="Šampūnai" reason="Core hair care product" />
+          <secondary category_id="cat_003" category_name="Kondicionieriai" reason="Core hair care product" />
+          <secondary category_id="cat_008" category_name="Plaukų kaukės" reason="Treatment category" />
+        </secondary_categories>
+        <flags>
+          <brand_keyword>false</brand_keyword>
+          <informational_intent>false</informational_intent>
+          <multi_category>true</multi_category>
+          <needs_review>true</needs_review>
+        </flags>
+      </classification>
+    </example>
+
+    <example id="5" type="product_line">
+      <keyword>kerastase nutritive kaukė</keyword>
+      <search_volume>320</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: Brand + product line + product type
+        2. PRODUCT KNOWLEDGE: Kerastase Nutritive = line for dry hair
+        3. INTENT: Specific product search, high purchase intent
+        4. CATEGORY MATCH: "kaukė" = mask, clearly "Plaukų kaukės"
+        5. SPECIFICITY: High - brand + line + category
+      </reasoning>
+      <classification>
+        <primary_category>cat_008</primary_category>
+        <primary_category_name>Plaukų kaukės ir gydymas</primary_category_name>
+        <confidence>0.97</confidence>
+        <secondary_categories>[]</secondary_categories>
+        <flags>
+          <brand_keyword>true</brand_keyword>
+          <informational_intent>false</informational_intent>
+          <multi_category>false</multi_category>
+          <needs_review>false</needs_review>
+        </flags>
+      </classification>
+    </example>
+
+    <example id="6" type="edge_case_ambiguous">
+      <keyword>riebiems plaukams</keyword>
+      <search_volume>1600</search_volume>
+      <reasoning>
+        1. MORPHOLOGY: "riebiems plaukams" = for oily hair (dative)
+        2. SPECIFICITY: Describes hair type, not product
+        3. INTENT: User seeking ANY product for oily hair
+        4. CATEGORY MATCH: Multiple categories have oily-hair products
+        5. DECISION: Assign to most common product type (shampoo) with secondaries
+      </reasoning>
+      <classification>
+        <primary_category>cat_002</primary_category>
+        <primary_category_name>Šampūnai</primary_category_name>
+        <confidence>0.65</confidence>
+        <secondary_categories>
+          <secondary category_id="cat_003" category_name="Kondicionieriai" reason="Oily hair conditioners exist" />
+          <secondary category_id="cat_008" category_name="Plaukų kaukės" reason="Scalp treatment masks" />
+          <secondary category_id="cat_012" category_name="Galvos odos priežiūra" reason="Oiliness is scalp issue" />
+        </secondary_categories>
+        <flags>
+          <brand_keyword>false</brand_keyword>
+          <informational_intent>false</informational_intent>
+          <multi_category>true</multi_category>
+          <needs_review>true</needs_review>
+        </flags>
+      </classification>
+    </example>
+  </few-shot-examples>
+
+  <!-- INJECT KEYWORDS HERE -->
+  <keywords-batch>
+    <!--
+      Format for injection:
+      <keyword id="kw_001">
+        <term>plaukų dažai</term>
+        <search_volume>2400</search_volume>
+        <cpc>0.45</cpc>
+        <competition>0.67</competition>
+      </keyword>
+    -->
+    {{KEYWORDS_PLACEHOLDER}}
+  </keywords-batch>
+
+  <output-schema>
+    <format>JSON</format>
+    <structure>
+      ```json
+      {
+        "batch_id": "{{BATCH_ID}}",
+        "processed_at": "ISO8601 timestamp",
+        "model_version": "classifier_v1",
+        "statistics": {
+          "total_keywords": 0,
+          "high_confidence": 0,
+          "medium_confidence": 0,
+          "low_confidence": 0,
+          "needs_review": 0,
+          "multi_category": 0
+        },
+        "classifications": [
+          {
+            "keyword_id": "kw_001",
+            "keyword": "original keyword text",
+            "search_volume": 2400,
+            "primary_category": {
+              "id": "cat_001",
+              "name": "Category Name",
+              "name_en": "Category Name English"
+            },
+            "confidence": 0.95,
+            "secondary_categories": [
+              {
+                "id": "cat_002",
+                "name": "Category Name",
+                "reason": "Why this is a secondary match"
+              }
+            ],
+            "reasoning_summary": "Brief explanation of classification decision",
+            "flags": {
+              "brand_keyword": false,
+              "informational_intent": false,
+              "multi_category": false,
+              "needs_review": false
+            },
+            "morphological_root": "Normalized form if different from input"
+          }
+        ],
+        "unclassified": [
+          {
+            "keyword_id": "kw_099",
+            "keyword": "unrecognized term",
+            "reason": "No matching category found",
+            "suggested_action": "create_category | manual_review | ignore"
+          }
+        ]
+      }
+      ```
+    </structure>
+  </output-schema>
+
+  <execution-instructions>
+    <step order="1">
+      Read all provided categories carefully. Note parent-child relationships and keyword hints.
+    </step>
+
+    <step order="2">
+      For each keyword in the batch:
+      a) Identify the morphological root (normalize Lithuanian inflections)
+      b) Determine search intent (transactional, informational, navigational)
+      c) Match against category names, descriptions, and keyword hints
+      d) Apply classification rules in priority order
+      e) Calculate confidence score using calibration guidelines
+      f) Document reasoning in reasoning_summary field
+    </step>
+
+    <step order="3">
+      For ambiguous keywords (confidence below 0.70):
+      - List all plausible categories as secondaries
+      - Set needs_review flag to true
+      - Provide detailed reasoning for human reviewer
+    </step>
+
+    <step order="4">
+      For keywords that don't match any category:
+      - Add to unclassified array
+      - Suggest appropriate action (create new category, manual review, or ignore)
+    </step>
+
+    <step order="5">
+      Calculate batch statistics and return complete JSON response.
+    </step>
+  </execution-instructions>
+
+  <quality-checks>
+    <check id="1">Every keyword must appear in either classifications or unclassified</check>
+    <check id="2">Confidence scores must be between 0.0 and 1.0</check>
+    <check id="3">Primary category must be a valid category_id from the provided list</check>
+    <check id="4">Secondary categories must not duplicate the primary category</check>
+    <check id="5">Reasoning summary must be non-empty for confidence below 0.85</check>
+    <check id="6">Multi_category flag must be true if secondary_categories is non-empty</check>
+  </quality-checks>
+</prompt>

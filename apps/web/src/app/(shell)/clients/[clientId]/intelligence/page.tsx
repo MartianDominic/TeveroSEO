@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Loader2,
@@ -14,6 +14,8 @@ import {
   ChevronUp,
   Search,
   ExternalLink,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 
 import {
@@ -41,6 +43,7 @@ import {
   type IntelligenceData,
 } from "@/stores/intelligenceStore";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -172,7 +175,7 @@ function OverviewTab({
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             )}
             Technical Issues{" "}
-            {hasIssues ? `(${intelligence.technical_issues!.length})` : ""}
+            {hasIssues && intelligence.technical_issues ? `(${intelligence.technical_issues.length})` : ""}
           </span>
           {issuesOpen ? (
             <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -182,9 +185,9 @@ function OverviewTab({
         </button>
         {issuesOpen && (
           <div className="border-t border-border px-4 pb-4 pt-3">
-            {hasIssues ? (
+            {hasIssues && intelligence.technical_issues ? (
               <div className="flex flex-wrap gap-2">
-                {intelligence.technical_issues!.map((issue) => (
+                {intelligence.technical_issues.map((issue) => (
                   <span
                     key={issue}
                     className="inline-flex items-center rounded-md bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400"
@@ -414,9 +417,9 @@ function BrandVoiceTab({
         {/* Core Fears */}
         <div className="mb-3">
           <p className="text-xs text-muted-foreground mb-1">Core Fears</p>
-          {Array.isArray(icp?.core_fears) && icp!.core_fears.length > 0 ? (
+          {Array.isArray(icp?.core_fears) && icp.core_fears.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {icp!.core_fears.map((f) => (
+              {icp.core_fears.map((f) => (
                 <span
                   key={f}
                   className="inline-flex rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400"
@@ -436,9 +439,9 @@ function BrandVoiceTab({
             Identity Aspirations
           </p>
           {Array.isArray(icp?.identity_aspirations) &&
-          icp!.identity_aspirations.length > 0 ? (
+          icp.identity_aspirations.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {icp!.identity_aspirations.map((a) => (
+              {icp.identity_aspirations.map((a) => (
                 <span
                   key={a}
                   className="inline-flex rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
@@ -458,9 +461,9 @@ function BrandVoiceTab({
             Content Implications
           </p>
           {Array.isArray(icp?.content_implications) &&
-          icp!.content_implications.length > 0 ? (
+          icp.content_implications.length > 0 ? (
             <ul className="space-y-1 text-sm text-foreground list-disc list-inside">
-              {icp!.content_implications.map((item) => (
+              {icp.content_implications.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
@@ -723,7 +726,8 @@ function ContentGapsTab({
 // ---------------------------------------------------------------------------
 
 export default function ClientIntelligencePage() {
-  const { clientId } = useParams<{ clientId: string }>();
+  const params = useParams<{ clientId: string }>();
+  const clientId = params.clientId;
   const { activeClient, clients, setActiveClient } = useClientStore();
   const { intelligence, loading, error, fetchIntelligence } =
     useIntelligenceStore();
@@ -732,6 +736,37 @@ export default function ClientIntelligencePage() {
   const [rerunError, setRerunError] = useState<string | null>(null);
 
   const client = activeClient ?? clients.find((c) => c.id === clientId) ?? null;
+
+  // WebSocket for live intelligence updates (HIGH-STATE-008)
+  const wsUrl = typeof window !== 'undefined' && clientId
+    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/intelligence?clientId=${clientId}`
+    : '';
+
+  const handleWebSocketMessage = useCallback((data: unknown) => {
+    // Handle intelligence update messages
+    if (data && typeof data === 'object' && 'type' in data) {
+      const message = data as { type: string; payload?: unknown };
+      if (message.type === 'intelligence_update' && clientId) {
+        // Refetch intelligence data when we receive an update
+        fetchIntelligence(clientId);
+      }
+    }
+  }, [clientId, fetchIntelligence]);
+
+  const {
+    isConnected: wsConnected,
+    isConnecting: wsConnecting,
+    error: wsError,
+    reconnectAttempt,
+    reconnect: wsReconnect,
+  } = useWebSocket({
+    url: wsUrl,
+    onMessage: handleWebSocketMessage,
+    reconnectInterval: 3000,
+    maxReconnectAttempts: 5,
+    // Only enable when scrape is in progress
+    enabled: Boolean(clientId && intelligence?.scrape_status === 'in_progress'),
+  });
 
   // Sync active client from URL param
   useEffect(() => {
@@ -754,6 +789,15 @@ export default function ClientIntelligencePage() {
     };
   }, []);
 
+  // Early return if clientId is not available (should not happen in this route)
+  if (!clientId) {
+    return (
+      <div className="min-h-screen p-8 md:p-10 flex items-center justify-center">
+        <p className="text-muted-foreground">Invalid client ID</p>
+      </div>
+    );
+  }
+
   const handleRunIntelligence = async () => {
     if (!clientId) return;
     setRerunning(true);
@@ -774,6 +818,41 @@ export default function ClientIntelligencePage() {
 
   return (
     <div className="min-h-screen p-8 md:p-10">
+      {/* WebSocket connection status banner (HIGH-STATE-008) */}
+      {intelligence?.scrape_status === 'in_progress' && (
+        <div className="mb-4">
+          {wsConnected && (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 px-4 py-3">
+              <Wifi className="h-4 w-4 text-green-600 shrink-0" />
+              <span className="text-sm text-green-800 dark:text-green-400">
+                Connected to live feed. Updates will appear automatically.
+              </span>
+            </div>
+          )}
+          {wsConnecting && (
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 px-4 py-3">
+              <Loader2 className="h-4 w-4 text-blue-600 animate-spin shrink-0" />
+              <span className="text-sm text-blue-800 dark:text-blue-400">
+                {reconnectAttempt > 0
+                  ? `Reconnecting... (attempt ${reconnectAttempt})`
+                  : 'Connecting to live feed...'}
+              </span>
+            </div>
+          )}
+          {!wsConnected && !wsConnecting && wsError && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <WifiOff className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">Connection lost. Some data may be stale.</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={wsReconnect}>
+                Reconnect
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <PageHeader
@@ -867,7 +946,7 @@ export default function ClientIntelligencePage() {
                   ? intelligence.organic_keywords
                   : []
               }
-              clientId={clientId!}
+              clientId={clientId}
             />
           </TabsContent>
 
@@ -876,7 +955,7 @@ export default function ClientIntelligencePage() {
           </TabsContent>
 
           <TabsContent value="gaps">
-            <ContentGapsTab intelligence={intelligence} clientId={clientId!} />
+            <ContentGapsTab intelligence={intelligence} clientId={clientId} />
           </TabsContent>
         </Tabs>
       )}

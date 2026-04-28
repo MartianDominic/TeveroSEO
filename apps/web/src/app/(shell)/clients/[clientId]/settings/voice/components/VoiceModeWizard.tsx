@@ -69,7 +69,7 @@ export function VoiceModeWizard({
       {/* Mode question */}
       <div>
         <h3 className="text-sm font-medium mb-1">
-          How should AI handle this client's content?
+          How should AI handle this client&apos;s content?
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
           Choose how the system should approach content generation and
@@ -102,7 +102,7 @@ export function VoiceModeWizard({
           <div>
             <Label className="text-sm font-medium">Industry Template</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Select a template that matches your client's industry
+              Select a template that matches your client&apos;s industry
             </p>
             <Select
               value={templateId ?? ""}

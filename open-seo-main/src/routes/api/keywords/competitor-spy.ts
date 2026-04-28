@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { competitorSpyService } from "@/server/features/keywords/services/CompetitorSpyService";
+import { CompetitorSpyService } from "@/server/features/keywords/services/CompetitorSpyService";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "api/keywords/competitor-spy" });
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/api/keywords/competitor-spy")({
           const input = CompetitorSpySchema.parse(body);
 
           // Create service with location/language if provided
-          const service = new competitorSpyService.constructor(
+          const service = new CompetitorSpyService(
             input.locationCode,
             input.languageCode
           );
@@ -57,12 +57,12 @@ export const Route = createFileRoute("/api/keywords/competitor-spy")({
           });
         } catch (error) {
           if (error instanceof z.ZodError) {
-            log.warn("Competitor spy validation error", { errors: error.errors });
+            log.warn("Competitor spy validation error", { errors: error.issues });
             return Response.json(
               {
                 success: false,
                 error: "Invalid input",
-                details: error.errors,
+                details: error.issues,
               },
               { status: 400 }
             );

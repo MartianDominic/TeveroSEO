@@ -1,0 +1,235 @@
+import { ChevronDown, Download, ExternalLink } from "lucide-react";
+import {
+  extractPathname,
+  HttpStatusBadge,
+  LighthouseScoreBadge,
+} from "@/client/features/audit/shared";
+import type { AuditResultsData } from "@/client/features/audit/results/types";
+import { Badge } from "@/client/components/ui/badge";
+import { Button } from "@/client/components/ui/button";
+
+type LighthouseFailureFields = {
+  errorMessage: string | null;
+  performanceScore: number | null;
+  accessibilityScore: number | null;
+  bestPracticesScore: number | null;
+  seoScore: number | null;
+};
+
+function hasMissingLighthouseScores(row: LighthouseFailureFields) {
+  return (
+    row.performanceScore == null &&
+    row.accessibilityScore == null &&
+    row.bestPracticesScore == null &&
+    row.seoScore == null
+  );
+}
+
+export function isLighthouseFailure(row: LighthouseFailureFields) {
+  return !!row.errorMessage || hasMissingLighthouseScores(row);
+}
+
+function getLighthouseFailureMessage(row: LighthouseFailureFields) {
+  return row.errorMessage ?? "Lighthouse returned no category scores";
+}
+
+export function PagesTable({ pages }: { pages: AuditResultsData["pages"] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="table table-sm">
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Title</th>
+            <th>H1</th>
+            <th>Words</th>
+            <th>Images</th>
+            <th>Speed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pages.map((page: AuditResultsData["pages"][number]) => (
+            <tr key={page.id}>
+              <td className="max-w-[200px] truncate">
+                <a
+                  href={page.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link link-primary text-xs inline-flex items-center gap-1"
+                >
+                  {extractPathname(page.url)}
+                  <ExternalLink className="size-3" />
+                </a>
+              </td>
+              <td>
+                <HttpStatusBadge code={page.statusCode} />
+              </td>
+              <td className="max-w-[180px] truncate" title={page.title ?? ""}>
+                {page.title || (
+                  <span className="text-destructive text-xs">missing</span>
+                )}
+              </td>
+              <td>{page.h1Count}</td>
+              <td>{page.wordCount}</td>
+              <td>
+                {page.imagesMissingAlt > 0 ? (
+                  <span className="text-warning">
+                    {page.imagesMissingAlt}/{page.imagesTotal}
+                  </span>
+                ) : (
+                  page.imagesTotal
+                )}
+              </td>
+              <td className="text-xs">
+                {page.responseTimeMs ? `${page.responseTimeMs}ms` : "-"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function PerformanceTable({
+  auditId,
+  projectId,
+  lighthouse,
+  pages,
+}: {
+  auditId: string;
+  projectId: string;
+  lighthouse: AuditResultsData["lighthouse"];
+  pages: AuditResultsData["pages"];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="table table-sm">
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Device</th>
+            <th>Status</th>
+            <th>Perf</th>
+            <th>A11y</th>
+            <th>SEO</th>
+            <th>LCP</th>
+            <th>CLS</th>
+            <th>INP</th>
+            <th>TTFB</th>
+            <th>Issues</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lighthouse.map((result: AuditResultsData["lighthouse"][number]) => (
+            <PerformanceRow
+              key={result.id}
+              auditId={auditId}
+              projectId={projectId}
+              result={result}
+              page={pages.find(
+                (candidate: AuditResultsData["pages"][number]) =>
+                  candidate.id === result.pageId,
+              )}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PerformanceRow({
+  auditId,
+  projectId,
+  result,
+  page,
+}: {
+  auditId: string;
+  projectId: string;
+  result: AuditResultsData["lighthouse"][number];
+  page: AuditResultsData["pages"][number] | undefined;
+}) {
+  const isFailed = isLighthouseFailure(result);
+  const failureMessage = getLighthouseFailureMessage(result);
+
+  return (
+    <tr>
+      <td className="max-w-[160px] truncate text-xs">
+        {page ? extractPathname(page.url) : "-"}
+      </td>
+      <td className="capitalize text-xs">{result.strategy}</td>
+      <td>
+        {isFailed ? (
+          <Badge variant="destructive" className="text-xs" title={failureMessage}>
+            failed
+          </Badge>
+        ) : (
+          <Badge className="bg-success/20 text-green-700 dark:text-green-400 text-xs border-success/30">ok</Badge>
+        )}
+      </td>
+      <td>
+        <LighthouseScoreBadge score={result.performanceScore} />
+      </td>
+      <td>
+        <LighthouseScoreBadge score={result.accessibilityScore} />
+      </td>
+      <td>
+        <LighthouseScoreBadge score={result.seoScore} />
+      </td>
+      <td className="text-xs">
+        {result.lcpMs ? `${(result.lcpMs / 1000).toFixed(1)}s` : "-"}
+      </td>
+      <td className="text-xs">
+        {result.cls != null ? result.cls.toFixed(3) : "-"}
+      </td>
+      <td className="text-xs">
+        {result.inpMs ? `${Math.round(result.inpMs)}ms` : "-"}
+      </td>
+      <td className="text-xs">
+        {result.ttfbMs ? `${Math.round(result.ttfbMs)}ms` : "-"}
+      </td>
+      <td>
+        {result.r2Key && !isFailed ? (
+          <Button size="sm" asChild>
+            <a
+              href={`/p/${projectId}/audit/issues/${result.id}?auditId=${auditId}&category=performance`}
+            >
+              View issues
+            </a>
+          </Button>
+        ) : (
+          <span className="text-xs text-foreground/40">-</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+export function ExportDropdown({
+  onExport,
+}: {
+  onExport: (format: "csv" | "json") => void;
+}) {
+  return (
+    <div className="dropdown dropdown-end">
+      <div tabIndex={0} role="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-accent hover:text-accent-foreground h-9 px-3 gap-1">
+        <Download className="size-4" />
+        Export
+        <ChevronDown className="size-3 opacity-60" />
+      </div>
+      <ul
+        tabIndex={0}
+        className="dropdown-content z-10 menu p-2 shadow-lg bg-background border border-border rounded-lg w-40"
+      >
+        <li>
+          <button onClick={() => onExport("csv")}>CSV</button>
+        </li>
+        <li>
+          <button onClick={() => onExport("json")}>JSON</button>
+        </li>
+      </ul>
+    </div>
+  );
+}

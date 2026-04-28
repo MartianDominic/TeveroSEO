@@ -28,21 +28,21 @@ export function PortfolioHealthSummary({ summary, workspaceId }: PortfolioHealth
   };
 
   // Prefer aggregates when available, fall back to summary
-  const data = aggregates
+  const data = aggregates?.data
     ? {
-        totalClients: aggregates.totalClients,
-        clientsOnTrack: aggregates.clientsOnTrack,
-        clientsCritical: aggregates.clientsCritical,
-        avgGoalAttainment: aggregates.avgGoalAttainment,
-        avgGoalAttainmentTrend: aggregates.avgGoalAttainmentTrend ?? 0,
-        goalsMet: aggregates.goalsMet,
-        goalsTotal: aggregates.totalGoals,
-        avgTrafficChange: aggregates.totalClicksTrend ?? 0,
-        totalClicks30d: aggregates.totalClicks30d,
-        keywordsTotal: aggregates.totalKeywordsTracked,
-        keywordsTop10: aggregates.keywordsTop10,
-        keywordsTop3: aggregates.keywordsTop3,
-        keywordsPosition1: aggregates.keywordsPosition1,
+        totalClients: aggregates.data.totalClients,
+        clientsOnTrack: aggregates.data.clientsOnTrack,
+        clientsCritical: aggregates.data.clientsCritical,
+        avgGoalAttainment: aggregates.data.avgGoalAttainment,
+        avgGoalAttainmentTrend: aggregates.data.avgGoalAttainmentTrend ?? 0,
+        goalsMet: aggregates.data.goalsMet,
+        goalsTotal: aggregates.data.totalGoals,
+        avgTrafficChange: aggregates.data.totalClicksTrend ?? 0,
+        totalClicks30d: aggregates.data.totalClicks30d,
+        keywordsTotal: aggregates.data.totalKeywordsTracked,
+        keywordsTop10: aggregates.data.keywordsTop10,
+        keywordsTop3: aggregates.data.keywordsTop3,
+        keywordsPosition1: aggregates.data.keywordsPosition1,
       }
     : summary
       ? {

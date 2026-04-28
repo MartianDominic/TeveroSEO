@@ -33,7 +33,7 @@ describe("QuickCheckService", () => {
   describe("keyword limit validation", () => {
     it("should accept 1-20 keywords", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -84,7 +84,7 @@ describe("QuickCheckService", () => {
   describe("result metrics", () => {
     it("should return keyword metrics including volume, difficulty, CPC, competition", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -121,7 +121,7 @@ describe("QuickCheckService", () => {
   describe("caching", () => {
     it("should cache results in Redis for 7 days", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -155,7 +155,7 @@ describe("QuickCheckService", () => {
 
     it("should return cached results without API call", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -187,7 +187,7 @@ describe("QuickCheckService", () => {
   describe("share link generation", () => {
     it("should generate share link with unique token", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -222,7 +222,7 @@ describe("QuickCheckService", () => {
 
     it("should store share data with 30-day TTL", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -254,7 +254,7 @@ describe("QuickCheckService", () => {
   describe("retrieve shared results", () => {
     it("should retrieve shared results by token", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -292,7 +292,7 @@ describe("QuickCheckService", () => {
 
     it("should return null for invalid token", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -311,7 +311,7 @@ describe("QuickCheckService", () => {
   describe("competition level calculation", () => {
     it("should calculate competition level correctly", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };

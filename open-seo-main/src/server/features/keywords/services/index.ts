@@ -66,3 +66,23 @@ export {
   type CsvImportResult,
   type CsvPreviewResult,
 } from "./CsvImportService";
+
+// Quick Win Detection (Phase 43-04)
+export {
+  QuickWinDetector,
+  quickWinDetector,
+  DEFAULT_QUICK_WIN_CRITERIA,
+  type QuickWinCriteria,
+  type QuickWinResult,
+} from "./QuickWinDetector";
+
+// Prioritization (Phase 43-04)
+export {
+  PrioritizationService,
+  prioritizationService,
+  DEFAULT_WEIGHTS,
+  DEFAULT_THRESHOLDS,
+  type ScoreWeights,
+  type TierThresholds,
+  type PrioritizationResult,
+} from "./PrioritizationService";

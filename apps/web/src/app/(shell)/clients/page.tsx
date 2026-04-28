@@ -15,6 +15,30 @@ import { Building2, Globe, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
+// Client type definition for type-safe property access
+// ---------------------------------------------------------------------------
+interface ClientData {
+  id: string;
+  name: string;
+  website_url?: string | null;
+  cms_type?: string | null;
+  last_published_at?: string | null;
+}
+
+/**
+ * Type guard to safely access optional client properties.
+ */
+function getClientProperty<K extends keyof ClientData>(
+  client: unknown,
+  key: K
+): ClientData[K] | undefined {
+  if (typeof client === 'object' && client !== null && key in client) {
+    return (client as ClientData)[key];
+  }
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // CMS display label helper
 // ---------------------------------------------------------------------------
 const CMS_LABELS: Record<string, string> = {
@@ -116,7 +140,8 @@ export default function ClientsPage() {
       {!isLoading && !error && clients.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map((client) => {
-            const c = client as unknown as Record<string, unknown>;
+            const cmsType = getClientProperty(client, 'cms_type');
+            const lastPublishedAt = getClientProperty(client, 'last_published_at');
             return (
               <div
                 key={client.id}
@@ -141,14 +166,12 @@ export default function ClientsPage() {
                 )}
                 <div className="flex items-center justify-between mt-auto pt-2">
                   <StatusChip
-                    status={(c.cms_type as string) || "draft"}
-                    label={getCmsLabel(c.cms_type as string | null)}
+                    status={cmsType ?? "draft"}
+                    label={getCmsLabel(cmsType)}
                   />
                   <span className="text-xs text-muted-foreground">
-                    {c.last_published_at
-                      ? `Published ${new Date(
-                          c.last_published_at as string
-                        ).toLocaleDateString()}`
+                    {lastPublishedAt
+                      ? `Published ${new Date(lastPublishedAt).toLocaleDateString()}`
                       : "Never published"}
                   </span>
                 </div>

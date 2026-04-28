@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFastApi, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import type { AnalyticsData } from "@/lib/analytics/types";
 
 export const runtime = "nodejs";
@@ -26,6 +27,7 @@ export async function GET(_: Request, { params }: Params) {
   }
 
   try {
+    await requireClientAccess(clientId);
     // Fetch analytics data for last 30 days
     const analytics = await getFastApi<AnalyticsData>(
       `/api/analytics/${clientId}/full?days=30`
@@ -58,6 +60,9 @@ export async function GET(_: Request, { params }: Params) {
 
     return NextResponse.json({ data, labels });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       // Return empty data on 404 (client not found or no data)
       if (err.status === 404) {

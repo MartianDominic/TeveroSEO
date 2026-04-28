@@ -151,7 +151,10 @@ const ApiIntegrationsTab: React.FC = () => {
     setLoading(true);
     apiGet<SecretStatus[]>("/api/platform-secrets/status")
       .then((data) => setSecrets(data))
-      .catch(() => setSecrets([]))
+      .catch((error) => {
+        console.error("[ApiIntegrationsTab] Failed to load secrets:", error);
+        setSecrets([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -180,7 +183,8 @@ const ApiIntegrationsTab: React.FC = () => {
         {}
       );
       setVerifyResult((prev) => ({ ...prev, [keyName]: data }));
-    } catch {
+    } catch (error) {
+      console.error("[ApiIntegrationsTab] Verification failed for", keyName, ":", error);
       setVerifyResult((prev) => ({
         ...prev,
         [keyName]: { ok: false, error: "Verification request failed" },
@@ -204,7 +208,8 @@ const ApiIntegrationsTab: React.FC = () => {
         setEditValue("");
         loadSecrets();
         setTimeout(() => handleVerify(keyName), 500);
-      } catch {
+      } catch (error) {
+        console.error("[ApiIntegrationsTab] Failed to save secret:", error);
         setSaveError("Failed to save. Please try again.");
       } finally {
         setSaving(false);
@@ -224,8 +229,8 @@ const ApiIntegrationsTab: React.FC = () => {
           return next;
         });
         loadSecrets();
-      } catch {
-        // silent — user can retry
+      } catch (err) {
+        console.error("Failed to delete secret:", err);
       }
     },
     [loadSecrets]
@@ -513,7 +518,10 @@ const VoiceTemplatesTab: React.FC = () => {
     setTemplatesLoading(true);
     apiGet<VoiceTemplate[]>("/api/voice-templates")
       .then((data) => setTemplates(data))
-      .catch(() => setTemplates([]))
+      .catch((error) => {
+        console.error("[VoiceTemplatesTab] Failed to load templates:", error);
+        setTemplates([]);
+      })
       .finally(() => setTemplatesLoading(false));
   }, []);
 
@@ -538,7 +546,8 @@ const VoiceTemplatesTab: React.FC = () => {
       setForm(EMPTY_FORM);
       loadTemplates();
       showToast("Voice template created.");
-    } catch {
+    } catch (error) {
+      console.error("[VoiceTemplatesTab] Failed to create template:", error);
       setFormError("Failed to create template. Please try again.");
     } finally {
       setFormSaving(false);
@@ -572,7 +581,8 @@ const VoiceTemplatesTab: React.FC = () => {
       setEditingTemplate(null);
       loadTemplates();
       showToast("Voice template updated.");
-    } catch {
+    } catch (error) {
+      console.error("[VoiceTemplatesTab] Failed to update template:", error);
       setEditError("Failed to update template. Please try again.");
     } finally {
       setEditSaving(false);
@@ -586,7 +596,8 @@ const VoiceTemplatesTab: React.FC = () => {
         await apiDelete(`/api/voice-templates/${templateId}`);
         loadTemplates();
         showToast("Voice template deleted.");
-      } catch {
+      } catch (error) {
+        console.error("[VoiceTemplatesTab] Failed to delete template:", error);
         showToast("Failed to delete template.", "error");
       } finally {
         setDeletingId(null);
@@ -839,7 +850,9 @@ const ModelDefaultsTab: React.FC = () => {
     setLoading(true);
     apiGet<GlobalSettings>("/api/settings/global")
       .then((data) => setSettings(data))
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to load global settings:", err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -854,7 +867,8 @@ const ModelDefaultsTab: React.FC = () => {
       });
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 3000);
-    } catch {
+    } catch (error) {
+      console.error("[ModelDefaultsTab] Failed to save model defaults:", error);
       setSaveError("Failed to save model defaults. Please try again.");
     } finally {
       setSaving(false);

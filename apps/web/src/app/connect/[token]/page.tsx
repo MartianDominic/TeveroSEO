@@ -17,7 +17,7 @@ type PageProps = {
 };
 
 const BACKEND_URL =
-  process.env.AI_WRITER_BACKEND_URL || "http://ai-writer-backend:8000";
+  process.env.AI_WRITER_URL || "http://localhost:8000";
 
 /**
  * Validate invite token - server-side fetch (no auth required).

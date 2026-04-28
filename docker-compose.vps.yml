@@ -58,6 +58,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
+      APP_URL: ${APP_URL:-https://app.tevero.lt}
       DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
       REDIS_URL: "redis://redis:6379"
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
@@ -88,6 +89,7 @@ services:
     command: ["node", ".output/worker-entry.mjs"]
     environment:
       NODE_ENV: production
+      APP_URL: ${APP_URL:-https://app.tevero.lt}
       DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
       REDIS_URL: "redis://redis:6379"
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
@@ -176,7 +178,7 @@ services:
       DISABLE_SUBSCRIPTION: ${DISABLE_SUBSCRIPTION:-true}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      OPEN_SEO_WORKER_URL: "http://open-seo-worker:3001"
+      OPEN_SEO_URL: "http://open-seo:3001"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
@@ -220,13 +222,16 @@ services:
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_OPEN_SEO_URL: "https://app.openseo.so"
         NEXT_PUBLIC_AI_WRITER_URL: "https://app.alwrity.com"
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://app.tevero.lt}
     image: teveroseo/tevero-web:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: "3002"
+      DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
+      REDIS_URL: "redis://redis:6379"
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
-      AI_WRITER_BACKEND_URL: "http://ai-writer-backend:8000"
+      AI_WRITER_URL: "http://ai-writer-backend:8000"
       OPEN_SEO_URL: "http://open-seo:3001"
     depends_on:
       open-seo:

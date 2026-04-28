@@ -1,0 +1,45 @@
+"use client";
+
+import { useEffect } from "react";
+import { Button } from "@tevero/ui";
+
+// SECURITY: Never expose raw error messages to users in production
+const USER_FRIENDLY_MESSAGE = "Something went wrong. Please try again.";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    // Log error details for debugging/monitoring
+    // In production, send to error tracking service (Sentry, etc.)
+    console.error("[app-error]", {
+      digest: error.digest,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <h2 className="text-xl font-semibold">Something went wrong</h2>
+      <p className="text-muted-foreground mt-2">{USER_FRIENDLY_MESSAGE}</p>
+      {error.digest && (
+        <p className="text-muted-foreground text-xs mt-1">
+          Error ID: {error.digest}
+        </p>
+      )}
+      {process.env.NODE_ENV === "development" && (
+        <pre className="text-xs text-muted-foreground mt-2 max-w-md overflow-auto p-2 bg-muted rounded">
+          {error.message}
+        </pre>
+      )}
+      <Button onClick={reset} className="mt-4">
+        Try again
+      </Button>
+    </div>
+  );
+}

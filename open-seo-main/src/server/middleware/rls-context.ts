@@ -12,6 +12,7 @@
 
 import { db, pool } from "@/db";
 import { sql } from "drizzle-orm";
+import type { PoolClient } from "pg";
 
 /**
  * RLS context configuration.
@@ -86,23 +87,28 @@ export async function withRLSContext<T>(
  * Execute a database operation with RLS context in a transaction.
  * The context is set within the transaction and automatically cleared on commit/rollback.
  *
+ * IMPORTANT: The operation callback receives the connected client (PoolClient) with
+ * RLS context already set. All queries within the operation MUST use this client
+ * to ensure RLS policies are enforced.
+ *
  * @param ctx - The RLS context
- * @param operation - The async operation to execute within the transaction
+ * @param operation - The async operation to execute within the transaction (receives PoolClient)
  * @returns The result of the operation
  *
  * @example
  * const result = await withRLSTransaction(
  *   { userId: auth.userId, orgId: auth.orgId },
- *   async (tx) => {
- *     await tx.insert(clients).values(data);
- *     await tx.insert(auditLogs).values(auditEntry);
+ *   async (client) => {
+ *     // Use client.query() for all database operations
+ *     await client.query('INSERT INTO clients (name) VALUES ($1)', [data.name]);
+ *     await client.query('INSERT INTO audit_logs (action) VALUES ($1)', ['insert']);
  *     return data;
  *   }
  * );
  */
 export async function withRLSTransaction<T>(
   ctx: RLSContext,
-  operation: (client: typeof pool) => Promise<T>
+  operation: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await pool.connect();
 
@@ -116,7 +122,8 @@ export async function withRLSTransaction<T>(
       ctx.isAdmin ?? false,
     ]);
 
-    const result = await operation(pool);
+    // CRITICAL: Pass `client` (with RLS context set), NOT `pool`
+    const result = await operation(client);
 
     await client.query("COMMIT");
     return result;

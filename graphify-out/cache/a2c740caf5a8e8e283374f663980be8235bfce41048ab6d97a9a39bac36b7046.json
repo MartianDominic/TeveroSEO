@@ -1,0 +1,1 @@
+{"nodes": [{"id": "cookies", "label": "cookies.ts", "file_type": "code", "source_file": "apps/web/src/lib/cookies.ts", "source_location": "L1"}], "edges": [{"source": "cookies", "target": "js_cookie", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "apps/web/src/lib/cookies.ts", "source_location": "L3", "weight": 1.0}]}

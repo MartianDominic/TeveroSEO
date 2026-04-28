@@ -18,6 +18,10 @@ import { withAudit, type AuditContext } from "@/db/audit";
 import { AppError } from "@/server/lib/errors";
 import { nanoid } from "nanoid";
 import { isEnumValue } from "@/lib/type-guards";
+import { invalidateAllClientAccessCaches } from "@/server/middleware/authz";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "ClientService" });
 
 // Domain validation regex
 const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
@@ -267,6 +271,20 @@ export const ClientService = {
     await audit.logDelete(id, client, {
       reason: "user_requested",
     });
+
+    // CRITICAL: Invalidate all authorization caches for this client.
+    // This ensures users who had access can no longer access the deleted client.
+    try {
+      await invalidateAllClientAccessCaches(id);
+      log.info("Invalidated auth cache after client deletion", { clientId: id });
+    } catch (cacheErr) {
+      // Cache invalidation failure is logged but not fatal.
+      // The cache has a 5-minute TTL so stale entries will expire.
+      log.warn("Failed to invalidate auth cache after client deletion", {
+        clientId: id,
+        error: cacheErr instanceof Error ? cacheErr.message : String(cacheErr),
+      });
+    }
   },
 
   /**

@@ -8,6 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { getOpenSeo, putOpenSeo, deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,10 +33,23 @@ export async function GET(
   { params }: { params: Promise<{ clientId: string; scheduleId: string }> },
 ) {
   try {
-    const { scheduleId } = await params;
+    const { clientId, scheduleId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const data = await getOpenSeo<ScheduleResponse>(`/api/schedules/${scheduleId}`);
+
+    // Double-check the schedule belongs to the client from URL
+    if (data.clientId !== clientId) {
+      return NextResponse.json({ error: "Forbidden: Schedule does not belong to this client" }, { status: 403 });
+    }
+
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -50,11 +64,24 @@ export async function PUT(
   { params }: { params: Promise<{ clientId: string; scheduleId: string }> },
 ) {
   try {
-    const { scheduleId } = await params;
+    const { clientId, scheduleId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
+    // Verify schedule belongs to this client before update
+    const existingSchedule = await getOpenSeo<ScheduleResponse>(`/api/schedules/${scheduleId}`);
+    if (existingSchedule.clientId !== clientId) {
+      return NextResponse.json({ error: "Forbidden: Schedule does not belong to this client" }, { status: 403 });
+    }
+
     const body = (await req.json()) as Record<string, unknown>;
     const data = await putOpenSeo<ScheduleResponse>(`/api/schedules/${scheduleId}`, body);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -69,10 +96,23 @@ export async function DELETE(
   { params }: { params: Promise<{ clientId: string; scheduleId: string }> },
 ) {
   try {
-    const { scheduleId } = await params;
+    const { clientId, scheduleId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
+    // Verify schedule belongs to this client before deletion
+    const existingSchedule = await getOpenSeo<ScheduleResponse>(`/api/schedules/${scheduleId}`);
+    if (existingSchedule.clientId !== clientId) {
+      return NextResponse.json({ error: "Forbidden: Schedule does not belong to this client" }, { status: 403 });
+    }
+
     const data = await deleteOpenSeo<{ success: boolean }>(`/api/schedules/${scheduleId}`);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

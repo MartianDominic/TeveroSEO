@@ -17,23 +17,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@tevero/ui';
-import { Alert, AlertDescription } from '@tevero/ui';
-import { RadioGroup, RadioGroupItem } from '@tevero/ui';
 import { Label } from '@tevero/ui';
 import { AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import type { Change, RevertPreview } from '~/actions/changes';
-import { previewRevert, executeRevert } from '~/actions/changes';
+import type { Change, RevertPreview } from '@/actions/changes';
+import { previewRevert, executeRevert } from '@/actions/changes';
 
 interface RevertDialogProps {
   isOpen: boolean;
   onClose: () => void;
   change: Change;
   connectionId: string;
+  onRevertStart?: () => void;
+  onRevertSuccess?: () => void;
+  onRevertError?: (error: string) => void;
 }
 
 type CascadeMode = 'warn' | 'cascade' | 'force';
 
-export function RevertDialog({ isOpen, onClose, change, connectionId }: RevertDialogProps) {
+export function RevertDialog({ isOpen, onClose, change, connectionId, onRevertStart, onRevertSuccess, onRevertError }: RevertDialogProps) {
   const router = useRouter();
   const [preview, setPreview] = useState<RevertPreview | null>(null);
   const [cascadeMode, setCascadeMode] = useState<CascadeMode>('warn');
@@ -42,7 +43,6 @@ export function RevertDialog({ isOpen, onClose, change, connectionId }: RevertDi
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Fetch preview when dialog opens
   useEffect(() => {
     if (isOpen && change) {
       fetchPreview();
@@ -68,21 +68,28 @@ export function RevertDialog({ isOpen, onClose, change, connectionId }: RevertDi
     setIsReverting(true);
     setError(null);
 
+    // Notify parent of revert start for optimistic update (HIGH-STATE-001)
+    onRevertStart?.();
+
     const result = await executeRevert(
-      { type: 'single', changeId: change.id },
+      { type: 'single', changeId: change.id, clientId: change.clientId },
       connectionId,
       cascadeMode
     );
 
     if (result.success && result.data) {
       setSuccess(true);
-      // Refresh the page after a short delay
+      // Notify parent of successful revert (HIGH-STATE-001)
+      onRevertSuccess?.();
       setTimeout(() => {
         router.refresh();
         onClose();
       }, 1500);
     } else {
-      setError(result.error ?? 'Failed to execute revert');
+      const errorMessage = result.error ?? 'Failed to execute revert';
+      setError(errorMessage);
+      // Rollback optimistic update on error (HIGH-STATE-001)
+      onRevertError?.(errorMessage);
     }
 
     setIsReverting(false);
@@ -135,21 +142,23 @@ export function RevertDialog({ isOpen, onClose, change, connectionId }: RevertDi
 
           {/* Dependency Warnings */}
           {preview?.hasOrphanedDependencies && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <p className="font-medium">Dependent changes detected</p>
-                <p className="text-sm mt-1">
-                  Later changes reference this value. Choose how to handle them:
-                </p>
-              </AlertDescription>
-            </Alert>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-800">Dependent changes detected</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    Later changes reference this value. Choose how to handle them:
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Preview Warnings */}
           {preview?.warnings && preview.warnings.length > 0 && (
-            <div className="text-sm text-muted-foreground">
-              {preview.warnings.map((warning, i) => (
+            <div className="text-sm text-muted-foreground space-y-1">
+              {preview.warnings.map((warning: string, i: number) => (
                 <p key={i} className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
                   {warning}
@@ -162,45 +171,62 @@ export function RevertDialog({ isOpen, onClose, change, connectionId }: RevertDi
           {preview?.hasOrphanedDependencies && (
             <div className="space-y-3">
               <Label>How should we handle dependent changes?</Label>
-              <RadioGroup value={cascadeMode} onValueChange={(v) => setCascadeMode(v as CascadeMode)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="warn" id="warn" />
-                  <Label htmlFor="warn" className="font-normal">
-                    Cancel - I'll review dependencies first
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cascade" id="cascade" />
-                  <Label htmlFor="cascade" className="font-normal">
-                    Cascade - Revert dependent changes too
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="force" id="force" />
-                  <Label htmlFor="force" className="font-normal">
-                    Force - Revert only this change (may cause issues)
-                  </Label>
-                </div>
-              </RadioGroup>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="cascadeMode"
+                    value="warn"
+                    checked={cascadeMode === 'warn'}
+                    onChange={(e) => setCascadeMode(e.target.value as CascadeMode)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">Cancel - I&apos;ll review dependencies first</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="cascadeMode"
+                    value="cascade"
+                    checked={cascadeMode === 'cascade'}
+                    onChange={(e) => setCascadeMode(e.target.value as CascadeMode)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">Cascade - Revert dependent changes too</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="cascadeMode"
+                    value="force"
+                    checked={cascadeMode === 'force'}
+                    onChange={(e) => setCascadeMode(e.target.value as CascadeMode)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">Force - Revert only this change (may cause issues)</span>
+                </label>
+              </div>
             </div>
           )}
 
           {/* Error Display */}
           {error && (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2 text-red-800">
+                <XCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            </div>
           )}
 
           {/* Success Display */}
           {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Change reverted successfully! Refreshing...
-              </AlertDescription>
-            </Alert>
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <span>Change reverted successfully! Refreshing...</span>
+              </div>
+            </div>
           )}
         </div>
 

@@ -1,0 +1,1 @@
+{"nodes": [{"id": "goals_schema", "label": "goals-schema.ts", "file_type": "code", "source_file": "open-seo-main/src/db/goals-schema.ts", "source_location": "L1"}], "edges": [{"source": "goals_schema", "target": "pg_core", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "open-seo-main/src/db/goals-schema.ts", "source_location": "L5", "weight": 1.0}]}

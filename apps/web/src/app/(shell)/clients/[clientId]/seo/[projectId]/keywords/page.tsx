@@ -84,7 +84,7 @@ export default function KeywordsPage() {
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: (keywords: unknown[]) =>
+    mutationFn: (keywords: { keyword: string; searchVolume?: number; competition?: number; cpc?: number }[]) =>
       saveKeywords({ projectId, clientId, keywords }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["saved-keywords"] });

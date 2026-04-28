@@ -120,9 +120,9 @@ export const Route = createFileRoute("/api/prospects/$id/keywords/import")({
           });
         } catch (error) {
           if (error instanceof z.ZodError) {
-            log.warn("Validation error", { errors: error.errors });
+            log.warn("Validation error", { errors: error.issues });
             return Response.json(
-              { success: false, error: "Invalid input", details: error.errors },
+              { success: false, error: "Invalid input", details: error.issues },
               { status: 400 }
             );
           }

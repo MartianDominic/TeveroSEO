@@ -24,7 +24,7 @@ describe("SerpCache", () => {
   beforeEach(async () => {
     // Reset mocks before each test
     const { redis } = await import("@/server/lib/redis");
-    mockRedis = redis as typeof mockRedis;
+    mockRedis = redis as unknown as typeof mockRedis;
     vi.clearAllMocks();
   });
 
@@ -36,21 +36,27 @@ describe("SerpCache", () => {
   });
 
   describe("buildSerpCacheKey", () => {
-    it("should generate correct cache key format", async () => {
+    it("should generate correct cache key format with clientId", async () => {
       const { buildSerpCacheKey } = await import("./serp-cache");
-      const key = buildSerpCacheKey("mapping_123", "seo tools");
-      expect(key).toBe("serp:mapping_123:seo tools");
+      const key = buildSerpCacheKey("client_abc", "mapping_123", "seo tools");
+      expect(key).toBe("serp:client_abc:mapping_123:seo tools");
+    });
+
+    it("should include clientId in key for tenant isolation", async () => {
+      const { buildSerpCacheKey } = await import("./serp-cache");
+      const key = buildSerpCacheKey("client_xyz", "mapping_456", "keyword");
+      expect(key).toContain("client_xyz");
     });
 
     it("should include mappingId in key", async () => {
       const { buildSerpCacheKey } = await import("./serp-cache");
-      const key = buildSerpCacheKey("mapping_456", "keyword");
+      const key = buildSerpCacheKey("client_abc", "mapping_456", "keyword");
       expect(key).toContain("mapping_456");
     });
 
     it("should include keyword in key", async () => {
       const { buildSerpCacheKey } = await import("./serp-cache");
-      const key = buildSerpCacheKey("mapping_123", "test keyword");
+      const key = buildSerpCacheKey("client_abc", "mapping_123", "test keyword");
       expect(key).toContain("test keyword");
     });
   });

@@ -191,7 +191,9 @@ export default function ClientSettingsPage() {
     // Fetch voice templates (graceful degradation on failure)
     fetchVoiceTemplates()
       .then(setVoiceTemplates)
-      .catch(() => {});
+      .catch((err) => {
+        console.error("Failed to fetch voice templates:", err);
+      });
   }, [clientId, loadSettings, fetchPublishingSettings]);
 
   // Sync publishing settings into draft when they load

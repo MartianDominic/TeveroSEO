@@ -299,7 +299,7 @@ export default function CsvImportPage() {
             )}
 
             <Button
-              onClick={() => router.push(`/prospects/${prospectId}/keywords`)}
+              onClick={() => router.push(`/prospects/${prospectId}/keywords` as Parameters<typeof router.push>[0])}
             >
               View Keywords
             </Button>

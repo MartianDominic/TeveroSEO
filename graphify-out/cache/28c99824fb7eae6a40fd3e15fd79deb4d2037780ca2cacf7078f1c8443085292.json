@@ -1,0 +1,1 @@
+{"nodes": [{"id": "report_schema", "label": "report-schema.ts", "file_type": "code", "source_file": "open-seo-main/src/db/report-schema.ts", "source_location": "L1"}], "edges": [{"source": "report_schema", "target": "pg_core", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "open-seo-main/src/db/report-schema.ts", "source_location": "L10", "weight": 1.0}]}

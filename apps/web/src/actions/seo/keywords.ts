@@ -1,37 +1,71 @@
 "use server";
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 
-interface KeywordParams {
-  projectId: string;
-  clientId: string;
-}
+// Validation schemas
+const clientIdSchema = z.string().uuid("Invalid client ID format");
+const projectIdSchema = z.string().uuid("Invalid project ID format");
+const keywordIdSchema = z.string().uuid("Invalid keyword ID format");
 
-interface ResearchKeywordsParams extends KeywordParams {
-  keyword: string;
-  locationCode?: number;
-  resultLimit?: number;
-  mode?: string;
-  sortField?: string;
-  sortDir?: string;
-}
+const keywordParamsSchema = z.object({
+  projectId: projectIdSchema,
+  clientId: clientIdSchema,
+});
 
-interface SaveKeywordsParams extends KeywordParams {
-  keywords: unknown[];
-}
+// DataForSEO location codes are integers (e.g., 2840 for US, 2826 for UK)
+const locationCodeSchema = z.number().int().min(1000).max(99999).optional();
 
-interface RemoveSavedKeywordParams extends KeywordParams {
-  savedKeywordId: string;
-}
+const researchKeywordsParamsSchema = keywordParamsSchema.extend({
+  keyword: z.string().min(1, "Keyword is required").max(200, "Keyword too long"),
+  locationCode: locationCodeSchema,
+  resultLimit: z.number().int().min(1).max(1000).optional(),
+  mode: z.enum(["related", "suggestions", "questions"]).optional(),
+  sortField: z.enum(["search_volume", "competition", "cpc"]).optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
+});
 
-interface SerpAnalysisParams extends KeywordParams {
-  keyword: string;
-  locationCode?: number;
-}
+const saveKeywordsParamsSchema = keywordParamsSchema.extend({
+  keywords: z.array(z.object({
+    keyword: z.string().min(1).max(200),
+    searchVolume: z.number().int().min(0).optional(),
+    competition: z.number().min(0).max(1).optional(),
+    cpc: z.number().min(0).optional(),
+  })).min(1, "At least one keyword is required").max(500, "Maximum 500 keywords"),
+});
+
+const removeSavedKeywordParamsSchema = keywordParamsSchema.extend({
+  savedKeywordId: keywordIdSchema,
+});
+
+const serpAnalysisParamsSchema = keywordParamsSchema.extend({
+  keyword: z.string().min(1, "Keyword is required").max(200, "Keyword too long"),
+  locationCode: locationCodeSchema,
+});
+
+const getKeywordHistoryParamsSchema = z.object({
+  keywordId: keywordIdSchema,
+  clientId: clientIdSchema,
+  days: z.number().int().min(1).max(365).optional(),
+});
+
+const getKeywordLatestParamsSchema = z.object({
+  keywordId: keywordIdSchema,
+  clientId: clientIdSchema,
+});
+
+// Type inference from Zod schemas
+type KeywordParams = z.infer<typeof keywordParamsSchema>;
+type ResearchKeywordsParams = z.infer<typeof researchKeywordsParamsSchema>;
+type SaveKeywordsParams = z.infer<typeof saveKeywordsParamsSchema>;
+type RemoveSavedKeywordParams = z.infer<typeof removeSavedKeywordParamsSchema>;
+type SerpAnalysisParams = z.infer<typeof serpAnalysisParamsSchema>;
+type GetKeywordHistoryParams = z.infer<typeof getKeywordHistoryParamsSchema>;
+type GetKeywordLatestParams = z.infer<typeof getKeywordLatestParamsSchema>;
 
 /**
  * Build query string with client_id and project_id.
@@ -48,18 +82,19 @@ function buildQuery(params: KeywordParams): string {
  * Research keywords using DataForSEO.
  */
 export async function researchKeywords(params: ResearchKeywordsParams): Promise<unknown> {
+  const validated = researchKeywordsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "research",
-    keyword: params.keyword,
-    locationCode: params.locationCode,
-    resultLimit: params.resultLimit,
-    mode: params.mode,
-    sortField: params.sortField,
-    sortDir: params.sortDir,
+    keyword: validated.keyword,
+    locationCode: validated.locationCode,
+    resultLimit: validated.resultLimit,
+    mode: validated.mode,
+    sortField: validated.sortField,
+    sortDir: validated.sortDir,
   });
 }
 
@@ -67,13 +102,14 @@ export async function researchKeywords(params: ResearchKeywordsParams): Promise<
  * Save keywords to the project.
  */
 export async function saveKeywords(params: SaveKeywordsParams): Promise<unknown> {
+  const validated = saveKeywordsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "save",
-    keywords: params.keywords,
+    keywords: validated.keywords,
   });
 }
 
@@ -81,10 +117,11 @@ export async function saveKeywords(params: SaveKeywordsParams): Promise<unknown>
  * Get saved keywords for a project.
  */
 export async function getSavedKeywords(params: KeywordParams): Promise<{ rows: unknown[] }> {
+  const validated = keywordParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return getOpenSeo<{ rows: unknown[] }>(`/api/seo/keywords?${query}`);
 }
 
@@ -92,13 +129,14 @@ export async function getSavedKeywords(params: KeywordParams): Promise<{ rows: u
  * Remove a saved keyword.
  */
 export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Promise<unknown> {
+  const validated = removeSavedKeywordParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "remove",
-    savedKeywordId: params.savedKeywordId,
+    savedKeywordId: validated.savedKeywordId,
   });
 }
 
@@ -106,29 +144,19 @@ export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Prom
  * Get SERP analysis for a keyword.
  */
 export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<unknown> {
+  const validated = serpAnalysisParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo(`/api/seo/keywords?${query}`, {
     action: "serp",
-    keyword: params.keyword,
-    locationCode: params.locationCode,
+    keyword: validated.keyword,
+    locationCode: validated.locationCode,
   });
 }
 
 // ---------- Ranking History Actions (Phase 17) ----------
-
-interface GetKeywordHistoryParams {
-  keywordId: string;
-  clientId: string;
-  days?: number;
-}
-
-interface GetKeywordLatestParams {
-  keywordId: string;
-  clientId: string;
-}
 
 /**
  * Get ranking history for a keyword (30 or 90 days).
@@ -146,14 +174,15 @@ export async function getKeywordHistory({
     serpFeatures: string[] | null;
   }>;
 }> {
+  const validated = getKeywordHistoryParamsSchema.parse({ keywordId, clientId, days });
   const auth = await requireActionAuth();
-  await validateClientOwnership(clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
   const query = new URLSearchParams({
-    client_id: clientId,
-    keyword_id: keywordId,
+    client_id: validated.clientId,
+    keyword_id: validated.keywordId,
     action: "history",
-    days: days.toString(),
+    days: (validated.days ?? 30).toString(),
   });
   return getOpenSeo(`/api/seo/keyword-rankings?${query}`);
 }
@@ -172,12 +201,13 @@ export async function getKeywordLatestRanking({
   serpFeatures: string[] | null;
   date: string | null;
 }> {
+  const validated = getKeywordLatestParamsSchema.parse({ keywordId, clientId });
   const auth = await requireActionAuth();
-  await validateClientOwnership(clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
   const query = new URLSearchParams({
-    client_id: clientId,
-    keyword_id: keywordId,
+    client_id: validated.clientId,
+    keyword_id: validated.keywordId,
     action: "latest",
   });
   return getOpenSeo(`/api/seo/keyword-rankings?${query}`);
@@ -203,12 +233,13 @@ export async function getSavedKeywordsWithRankings(
     }>;
   }>;
 }> {
+  const validated = keywordParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
   const query = new URLSearchParams({
-    client_id: params.clientId,
-    project_id: params.projectId,
+    client_id: validated.clientId,
+    project_id: validated.projectId,
     action: "with-rankings",
   });
   return getOpenSeo(`/api/seo/keyword-rankings?${query}`);

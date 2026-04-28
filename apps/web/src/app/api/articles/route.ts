@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, AuthError } from "@/lib/auth/api-auth";
 import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
+import { llmLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,17 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requireAuth();
+    const authResult = await requireAuth();
+
+    // Rate limit: 50 LLM calls per hour (article creation uses LLM)
+    const rateLimitResult = await llmLimiter.limit(authResult.userId);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Try again later." },
+        { status: 429, headers: rateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
     const body = await req.json();

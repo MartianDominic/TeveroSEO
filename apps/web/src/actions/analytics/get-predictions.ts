@@ -5,12 +5,20 @@
  * Phase 25: Team & Intelligence - Predictive Alerts + Goal Projection
  */
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  validateWorkspaceMembership,
 } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
-import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
+import { mlPredictionsLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { deduplicateRequest, createRequestHash } from "@/lib/dedup";
+
+// Validation schemas
+const clientIdSchema = z.string().uuid("Invalid client ID");
+const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
+import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import {
   projectGoalCompletion,
   predictTrafficDecline,
@@ -41,8 +49,11 @@ interface ClientAnalytics {
 export async function getGoalProjections(
   clientId: string
 ): Promise<GoalProjection[]> {
+  // Validate clientId format
+  const validatedClientId = clientIdSchema.parse(clientId);
+
   const auth = await requireActionAuth();
-  await validateClientOwnership(clientId, auth);
+  await validateClientOwnership(validatedClientId, auth);
 
   try {
     // Fetch client goals
@@ -97,13 +108,35 @@ export async function getGoalProjections(
 /**
  * Get predictive alerts for a specific client.
  * Generates alerts for declining traffic, goals at risk, etc.
+ *
+ * Rate limited: 10 predictions per minute per user.
+ * Deduplicated: Identical requests within 60s share the same result.
  */
 export async function getClientPredictions(
   clientId: string
 ): Promise<PredictiveAlert[]> {
-  const auth = await requireActionAuth();
-  await validateClientOwnership(clientId, auth);
+  // Validate clientId format
+  const validatedClientId = clientIdSchema.parse(clientId);
 
+  const auth = await requireActionAuth();
+  await validateClientOwnership(validatedClientId, auth);
+
+  // Rate limit expensive ML prediction operations
+  await checkRateLimit(mlPredictionsLimiter, auth.userId);
+
+  // Deduplicate identical requests within 60s window
+  const requestHash = createRequestHash({ clientId: validatedClientId, type: "client-predictions" });
+
+  return deduplicateRequest(`predictions:client:${requestHash}`, async () => {
+    return executeClientPredictions(validatedClientId);
+  });
+}
+
+/**
+ * Internal: Execute client predictions logic.
+ * Separated for deduplication wrapper.
+ */
+async function executeClientPredictions(clientId: string): Promise<PredictiveAlert[]> {
   const alerts: PredictiveAlert[] = [];
 
   try {
@@ -214,60 +247,66 @@ export async function getClientPredictions(
 export async function getWorkspacePredictions(
   workspaceId: string
 ): Promise<PredictiveAlert[]> {
-  await requireActionAuth();
+  // Validate workspaceId format
+  const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
 
-  // Check cache first
-  const cacheKey = `predictions:workspace:${workspaceId}`;
-  const cached = await cacheGet<PredictiveAlert[]>(cacheKey);
-  if (cached) {
-    return cached;
-  }
+  const auth = await requireActionAuth();
+
+  // Validate workspace membership before accessing workspace data
+  await validateWorkspaceMembership(validatedWorkspaceId, auth);
+
+  const cacheKey = `predictions:workspace:${validatedWorkspaceId}`;
 
   try {
-    // Fetch all client metrics to get client IDs and names
-    const metrics = await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
+    // Use singleflight to prevent cache stampede:
+    // Multiple concurrent requests for same workspace share a single fetch
+    return await getCachedWithSingleflight<PredictiveAlert[]>(
+      cacheKey,
+      300, // 5 minute TTL
+      async () => {
+        // Fetch all client metrics to get client IDs and names
+        const metrics = await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
 
-    if (!metrics.length) {
-      return [];
-    }
+        if (!metrics.length) {
+          return [];
+        }
 
-    const allPredictions: PredictiveAlert[] = [];
+        const allPredictions: PredictiveAlert[] = [];
 
-    // Process clients in batches to avoid overwhelming the API
-    const batchSize = 10;
-    for (let i = 0; i < Math.min(metrics.length, 50); i += batchSize) {
-      const batch = metrics.slice(i, i + batchSize);
-      const batchResults = await Promise.all(
-        batch.map(async (client) => {
-          try {
-            const predictions = await getClientPredictions(client.clientId);
-            return predictions.map((p) => ({
-              ...p,
-              clientName: client.clientName,
-            }));
-          } catch {
-            return [];
-          }
-        })
-      );
-      allPredictions.push(...batchResults.flat());
-    }
+        // Process clients in batches to avoid overwhelming the API
+        const batchSize = 10;
+        for (let i = 0; i < Math.min(metrics.length, 50); i += batchSize) {
+          const batch = metrics.slice(i, i + batchSize);
+          const batchResults = await Promise.all(
+            batch.map(async (client) => {
+              try {
+                const predictions = await getClientPredictions(client.clientId);
+                return predictions.map((p) => ({
+                  ...p,
+                  clientName: client.clientName,
+                }));
+              } catch {
+                return [];
+              }
+            })
+          );
+          allPredictions.push(...batchResults.flat());
+        }
 
-    // Sort by severity and probability
-    const severityOrder = { critical: 0, warning: 1, info: 2 };
-    allPredictions.sort((a, b) => {
-      const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
-      if (severityDiff !== 0) return severityDiff;
-      return b.probability - a.probability;
-    });
+        // Sort by severity and probability
+        const severityOrder = { critical: 0, warning: 1, info: 2 };
+        allPredictions.sort((a, b) => {
+          const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+          if (severityDiff !== 0) return severityDiff;
+          return b.probability - a.probability;
+        });
 
-    // Cache for 5 minutes
-    await cacheSet(cacheKey, allPredictions, {
-      ttl: 300,
-      tags: [cacheTags.workspace(workspaceId)],
-    });
-
-    return allPredictions;
+        return allPredictions;
+      },
+      cacheGet,
+      cacheSet,
+      [cacheTags.workspace(validatedWorkspaceId)]
+    );
   } catch (error) {
     console.error("[get-predictions] Error fetching workspace predictions:", error);
     return [];
@@ -282,6 +321,9 @@ export async function getPredictionCounts(
   workspaceId: string
 ): Promise<{ critical: number; warning: number; total: number }> {
   try {
+    // Validate workspaceId format (getWorkspacePredictions also validates, but fail fast here)
+    workspaceIdSchema.parse(workspaceId);
+
     await requireActionAuth();
     const predictions = await getWorkspacePredictions(workspaceId);
     const critical = predictions.filter((p) => p.severity === "critical").length;

@@ -445,10 +445,12 @@ class ClientOAuthService:
                 return
 
             # Call AI-Writer's internal API which forwards to open-seo-worker
+            # Timeout: 5s total, 2s connect to prevent hanging on slow/unavailable services
+            timeout = httpx.Timeout(total=5.0, connect=2.0)
             response = httpx.post(
                 "http://localhost:8000/internal/analytics/backfill/" + client_id,
                 headers={"X-Internal-Api-Key": internal_api_key},
-                timeout=5.0,
+                timeout=timeout,
             )
             if response.status_code in (200, 202):
                 logger.info(f"Analytics backfill triggered for client {client_id}")
@@ -456,6 +458,12 @@ class ClientOAuthService:
                 logger.warning(
                     f"Backfill trigger returned {response.status_code} for {client_id}"
                 )
+        except httpx.TimeoutException as e:
+            # Don't fail OAuth if backfill trigger times out
+            logger.warning(f"Backfill trigger timed out for {client_id}: {e}")
+        except httpx.ConnectError as e:
+            # Don't fail OAuth if internal service is unavailable
+            logger.warning(f"Could not connect to backfill service for {client_id}: {e}")
         except Exception as e:
             # Don't fail OAuth if backfill trigger fails
             logger.warning(f"Failed to trigger backfill for {client_id}: {e}")

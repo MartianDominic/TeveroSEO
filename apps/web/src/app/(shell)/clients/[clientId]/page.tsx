@@ -40,6 +40,50 @@ function formatWordCount(n: number): string {
   return n.toString();
 }
 
+/**
+ * Sanitize error messages to avoid exposing internal details to users.
+ * Returns user-friendly messages for common error scenarios.
+ */
+function sanitizeError(error: string): string {
+  const lowerError = error.toLowerCase();
+
+  // Server errors - don't expose internal details
+  if (lowerError.includes("500") || lowerError.includes("internal")) {
+    return "An unexpected error occurred. Please try again.";
+  }
+
+  // Authentication/authorization errors
+  if (lowerError.includes("401") || lowerError.includes("unauthorized")) {
+    return "Please sign in to view this data.";
+  }
+  if (lowerError.includes("403") || lowerError.includes("forbidden")) {
+    return "You don't have permission to view this data.";
+  }
+
+  // Not found errors
+  if (lowerError.includes("404") || lowerError.includes("not found")) {
+    return "The requested data could not be found.";
+  }
+
+  // Timeout errors
+  if (lowerError.includes("timeout") || lowerError.includes("timed out")) {
+    return "Request timed out. Please try again.";
+  }
+
+  // Network errors
+  if (lowerError.includes("network") || lowerError.includes("fetch")) {
+    return "Network error. Please check your connection and try again.";
+  }
+
+  // Rate limiting
+  if (lowerError.includes("429") || lowerError.includes("rate limit")) {
+    return "Too many requests. Please wait a moment and try again.";
+  }
+
+  // For any other errors, return a generic message
+  return "Failed to load data. Please try again.";
+}
+
 // ---------------------------------------------------------------------------
 // StatCard — clean card, no icon backgrounds
 // ---------------------------------------------------------------------------
@@ -110,7 +154,10 @@ export default function ClientDashboardPage() {
           (data.scrape_status as IntelligenceStatus) ?? "not_started"
         );
       })
-      .catch(() => setIntelligenceStatus("not_started"));
+      .catch((err) => {
+        console.error("Failed to fetch intelligence status:", err);
+        setIntelligenceStatus("not_started");
+      });
   }, [clientId]);
 
   // Poll every 5s while in_progress
@@ -125,7 +172,9 @@ export default function ClientDashboardPage() {
             (data.scrape_status as IntelligenceStatus) ?? "not_started"
           );
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error("Failed to poll intelligence status:", err);
+        });
     }, 5000);
     return () => clearInterval(interval);
   }, [intelligenceStatus, clientId]);
@@ -299,7 +348,7 @@ export default function ClientDashboardPage() {
       {/* Error banner */}
       {!loading && error && (
         <ErrorBanner
-          message={error}
+          message={sanitizeError(error)}
           onRetry={() => {
             if (clientId) {
               fetchAnalytics(clientId);

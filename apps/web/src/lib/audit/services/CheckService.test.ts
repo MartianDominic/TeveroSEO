@@ -142,7 +142,11 @@ describe("CheckService", () => {
 
       expect(page1Score).toBeDefined();
       expect(page2Score).toBeDefined();
-      expect(page1Score!.score).toBeGreaterThan(page2Score!.score);
+      // After assertions above, TypeScript still needs help narrowing
+      // Use safe access pattern for test assertions
+      if (page1Score && page2Score) {
+        expect(page1Score.score).toBeGreaterThan(page2Score.score);
+      }
     });
 
     it("passes keyword to all page checks", async () => {

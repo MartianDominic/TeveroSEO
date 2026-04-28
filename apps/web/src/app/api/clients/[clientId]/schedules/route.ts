@@ -7,6 +7,7 @@
  */
 import { NextResponse } from "next/server";
 import { getOpenSeo, postOpenSeo, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,11 +37,18 @@ export async function GET(
 ) {
   try {
     const { clientId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const data = await getOpenSeo<ScheduleListResponse>(
       `/api/schedules?client_id=${clientId}`,
     );
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -56,6 +64,10 @@ export async function POST(
 ) {
   try {
     const { clientId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const body = (await req.json()) as Record<string, unknown>;
 
     // Inject clientId from path into body
@@ -65,6 +77,9 @@ export async function POST(
     });
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

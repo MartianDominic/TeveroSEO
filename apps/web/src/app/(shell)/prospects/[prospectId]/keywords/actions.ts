@@ -67,7 +67,7 @@ export async function getKeywords(
     offset?: number;
   }
 ): Promise<KeywordListResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
   const params = new URLSearchParams();
 
   if (options?.tier) params.set("tier", options.tier);
@@ -98,7 +98,7 @@ export async function prioritizeKeywords(
   prospectId: string,
   weights?: ScoreWeights
 ): Promise<PrioritizationResult> {
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(
     `${openSeoUrl}/api/prospects/${prospectId}/keywords/prioritize`,
@@ -126,7 +126,7 @@ export async function bulkUpdateTier(
   keywordIds: string[],
   tier: string
 ): Promise<{ updated: number }> {
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(
     `${openSeoUrl}/api/prospects/${prospectId}/keywords`,

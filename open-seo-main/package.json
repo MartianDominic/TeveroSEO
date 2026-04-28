@@ -68,7 +68,7 @@
     "daisyui": "^5.5.5",
     "dataforseo-client": "^2.0.19",
     "date-fns": "^4.1.0",
-    "drizzle-orm": "^0.44.4",
+    "drizzle-orm": "^0.45.2",
     "falkordb": "^6.6.2",
     "fast-xml-parser": "^5.4.1",
     "framer-motion": "^12.38.0",

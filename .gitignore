@@ -1,4 +1,76 @@
+# ============================================================
+# TeveroSEO Root .gitignore
+# ============================================================
+
+# Subprojects (managed separately)
 AI-Writer/
 .claude/
-.env.vps
+
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# ============================================================
+# Environment files - NEVER commit secrets
+# ============================================================
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.production
+**/.env.development
+**/.env.staging
+.env.vps
+
+# Allow example/template files (safe - no real secrets)
+!**/.env.example
+!**/.env.template
+!**/.env.sample
+
+# ============================================================
+# IDE and Editor
+# ============================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ============================================================
+# OS files
+# ============================================================
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# Build outputs
+# ============================================================
+dist/
+build/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================================================
+# Testing
+# ============================================================
+coverage/
+.nyc_output/
+
+# ============================================================
+# Security - additional protection
+# ============================================================
+*.pem
+*.key
+*.crt
+credentials.json
+service-account*.json
+**/secrets/

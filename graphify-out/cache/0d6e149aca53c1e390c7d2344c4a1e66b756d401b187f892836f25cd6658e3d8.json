@@ -1,0 +1,1 @@
+{"nodes": [{"id": "userdata", "label": "userData.ts", "file_type": "code", "source_file": "AI-Writer/frontend/src/api/userData.ts", "source_location": "L1"}], "edges": [{"source": "userdata", "target": "client", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "AI-Writer/frontend/src/api/userData.ts", "source_location": "L1", "weight": 1.0}]}

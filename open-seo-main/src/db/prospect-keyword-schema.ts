@@ -15,6 +15,7 @@ import {
   real,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { prospects } from "./prospect-schema";
 
 // Source enum - tracks where keyword originated
 export const KEYWORD_SOURCES = [
@@ -74,7 +75,9 @@ export const prospectKeywords = pgTable(
   "prospect_keywords",
   {
     id: text("id").primaryKey(),
-    prospectId: text("prospect_id").notNull(),
+    prospectId: text("prospect_id")
+      .notNull()
+      .references(() => prospects.id, { onDelete: "cascade" }),
 
     // Keyword data
     keyword: text("keyword").notNull(),

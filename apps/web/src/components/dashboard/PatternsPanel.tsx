@@ -40,6 +40,7 @@ import {
   dismissPattern,
   resolvePattern,
   refreshPatterns,
+  type PaginatedPatternsResponse,
 } from "@/actions/analytics/detect-patterns";
 
 interface PatternsPanelProps {
@@ -130,12 +131,15 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
     return <PatternsPanelSkeleton />;
   }
 
-  if (!patterns?.length) {
+  const patternList = patterns?.data ?? [];
+  const total = patterns?.pagination.total ?? 0;
+
+  if (!patternList.length) {
     return null; // Don't show if no patterns detected
   }
 
-  const criticalCount = patterns.filter(
-    (p) => getPatternSeverity(p) === "critical"
+  const criticalCount = patternList.filter(
+    (p: PatternWithClients) => getPatternSeverity(p) === "critical"
   ).length;
 
   return (
@@ -145,7 +149,7 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-lg">Detected Patterns</CardTitle>
-            <Badge variant="secondary">{patterns.length}</Badge>
+            <Badge variant="secondary">{total}</Badge>
             {criticalCount > 0 && (
               <Badge variant="destructive">{criticalCount} critical</Badge>
             )}
@@ -163,7 +167,7 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {patterns.map((pattern) => {
+        {patternList.map((pattern: PatternWithClients) => {
           const severity = getPatternSeverity(pattern);
           const isExpanded = expandedId === pattern.id;
 

@@ -36,7 +36,9 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
     setLoading(true);
     getProtectionRules(clientId)
       .then(setRules)
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to fetch protection rules:", err);
+      })
       .finally(() => setLoading(false));
   }, [clientId]);
 
@@ -52,8 +54,8 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
       setRules([...rules, rule]);
       setNewTarget("");
       setNewReason("");
-    } catch {
-      // Handle error
+    } catch (err) {
+      console.error("Failed to add protection rule:", err);
     } finally {
       setAdding(false);
     }
@@ -64,8 +66,8 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
     try {
       await removeProtectionRule(clientId, ruleId);
       setRules(rules.filter((r) => r.id !== ruleId));
-    } catch {
-      // Handle error
+    } catch (err) {
+      console.error("Failed to delete protection rule:", err);
     } finally {
       setDeletingId(null);
     }

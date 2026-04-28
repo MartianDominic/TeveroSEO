@@ -16,7 +16,7 @@ import {
 } from "@tevero/ui";
 import { Lightbulb, TrendingUp, Target, Zap, ArrowRight, FileText } from "lucide-react";
 import Link from "next/link";
-import { getClientOpportunities } from "@/actions/analytics/get-opportunities";
+import { getClientOpportunities, type PaginatedResponse } from "@/actions/analytics/get-opportunities";
 import type { Opportunity, OpportunityType } from "@/types/opportunities";
 import { cn } from "@/lib/utils";
 
@@ -44,9 +44,9 @@ const effortColors: Record<string, string> = {
 };
 
 export function OpportunitiesPanel({ clientId }: OpportunitiesPanelProps) {
-  const { data: opportunities, isLoading } = useQuery({
+  const { data: response, isLoading } = useQuery({
     queryKey: ["opportunities", clientId],
-    queryFn: () => getClientOpportunities(clientId),
+    queryFn: () => getClientOpportunities(clientId, undefined, { limit: 10 }),
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
@@ -54,7 +54,10 @@ export function OpportunitiesPanel({ clientId }: OpportunitiesPanelProps) {
     return <OpportunitiesSkeleton />;
   }
 
-  if (!opportunities?.length) {
+  const opportunities = response?.data ?? [];
+  const total = response?.pagination.total ?? 0;
+
+  if (!opportunities.length) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
@@ -72,18 +75,18 @@ export function OpportunitiesPanel({ clientId }: OpportunitiesPanelProps) {
         <CardTitle className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-yellow-500" />
           Opportunities
-          <Badge variant="secondary">{opportunities.length}</Badge>
+          <Badge variant="secondary">{total}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {opportunities.slice(0, 5).map((opportunity) => (
+        {opportunities.slice(0, 5).map((opportunity: Opportunity) => (
           <OpportunityItem key={opportunity.id} opportunity={opportunity} />
         ))}
 
-        {opportunities.length > 5 && (
+        {total > 5 && (
           <Button variant="outline" className="w-full" asChild>
             <Link href={`/clients/${clientId}/opportunities` as Parameters<typeof Link>[0]["href"]}>
-              View All {opportunities.length} Opportunities
+              View All {total} Opportunities
               <ArrowRight className="h-4 w-4 ml-2" />
             </Link>
           </Button>

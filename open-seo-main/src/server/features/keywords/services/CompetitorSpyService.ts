@@ -13,9 +13,10 @@
 
 import { fetchOrganicKeywords } from "@/server/lib/dataforseo-organic";
 import { redis } from "@/server/lib/redis";
+import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 
 // Constants
-const CACHE_PREFIX = "competitor-spy:";
+const CACHE_PREFIX = CACHE_NS.COMPETITOR_SPY;
 const CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 const DEFAULT_LIMIT = 100;
 const COST_PER_DOMAIN_CENTS = 2; // $0.02 per domain
@@ -70,12 +71,16 @@ export class CompetitorSpyService {
     const cached = await redis.get(cacheKey);
 
     if (cached) {
-      const cachedResult: CachedResult = JSON.parse(cached);
-      return {
-        ...cachedResult,
-        cached: true,
-        costCents: 0,
-      };
+      const cachedResult = safeJsonParse<CachedResult>(cached, cacheKey);
+      if (cachedResult) {
+        return {
+          ...cachedResult,
+          cached: true,
+          costCents: 0,
+        };
+      }
+      // Corrupted cache - delete and fetch fresh
+      await redis.del(cacheKey);
     }
 
     // Fetch from DataForSEO

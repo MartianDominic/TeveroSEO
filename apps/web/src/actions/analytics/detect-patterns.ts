@@ -9,9 +9,12 @@
  * Patterns update slowly (hourly) so we cache aggressively.
  */
 
-import { requireActionAuth } from "@/lib/auth/action-auth";
-import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
+import { z } from "zod";
+import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
+import { getOpenSeoPattern } from "@/lib/server-fetch";
+import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
+import { cpuIntensiveLimiter, checkRateLimit } from "@/lib/rate-limit";
 import type { PatternWithClients, PatternStatus } from "@/types/patterns";
 import {
   detectAllPatterns,
@@ -21,6 +24,34 @@ import {
 
 // Cache TTL: 1 hour (patterns don't change rapidly)
 const PATTERNS_CACHE_TTL = 3600;
+
+// Validation schemas
+const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
+const patternIdSchema = z.string().uuid("Invalid pattern ID");
+
+const getPatternsOptionsSchema = z.object({
+  status: z.enum(["active", "dismissed", "resolved"]).optional(),
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+}).strict();
+
+/**
+ * Pagination metadata for list responses.
+ */
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * Paginated response wrapper for patterns.
+ */
+export interface PaginatedPatternsResponse {
+  data: PatternWithClients[];
+  pagination: PaginationMeta;
+}
 
 // Extend cache keys
 const patternCacheKey = (workspaceId: string) =>
@@ -100,56 +131,65 @@ function transformRankingData(data: RankingDataResponse[]): ClientRankingData[] 
 export async function detectPatterns(
   workspaceId: string
 ): Promise<PatternWithClients[]> {
-  await requireActionAuth();
+  const auth = await requireActionAuth();
 
-  if (!workspaceId) {
+  // Validate workspaceId format
+  const validatedWorkspaceId = workspaceIdSchema.safeParse(workspaceId);
+  if (!validatedWorkspaceId.success) {
     return [];
   }
 
-  // Check cache first
-  const cacheKey = patternCacheKey(workspaceId);
-  const cached = await cacheGet<PatternWithClients[]>(cacheKey);
-  if (cached) {
-    return cached;
-  }
+  // Validate user has access to this workspace before fetching data
+  await validateWorkspaceMembership(validatedWorkspaceId.data, auth);
+
+  // Rate limit: 30 per minute (CPU intensive pattern detection)
+  await checkRateLimit(cpuIntensiveLimiter, auth.userId);
+
+  const cacheKey = patternCacheKey(validatedWorkspaceId.data);
 
   try {
-    // Fetch real data from open-seo endpoints
-    const [trafficResponse, rankingResponse] = await Promise.all([
-      getOpenSeo<TrafficDataResponse[]>(
-        `/api/workspaces/${workspaceId}/traffic-data`
-      ),
-      getOpenSeo<RankingDataResponse[]>(
-        `/api/workspaces/${workspaceId}/ranking-data`
-      ),
-    ]);
+    // Use singleflight to prevent cache stampede:
+    // Multiple concurrent requests for the same workspace will share
+    // a single backend fetch instead of all hitting the API
+    return await getCachedWithSingleflight<PatternWithClients[]>(
+      cacheKey,
+      PATTERNS_CACHE_TTL,
+      async () => {
+        // Fetch real data from open-seo endpoints
+        const [trafficResponse, rankingResponse] = await Promise.all([
+          getOpenSeo<TrafficDataResponse[]>(
+            `/api/workspaces/${validatedWorkspaceId.data}/traffic-data`
+          ),
+          getOpenSeo<RankingDataResponse[]>(
+            `/api/workspaces/${validatedWorkspaceId.data}/ranking-data`
+          ),
+        ]);
 
-    // Transform API responses to detection algorithm formats
-    const trafficData = transformTrafficData(trafficResponse);
-    const rankingData = transformRankingData(rankingResponse);
+        // Transform API responses to detection algorithm formats
+        const trafficData = transformTrafficData(trafficResponse);
+        const rankingData = transformRankingData(rankingResponse);
 
-    // Run detection algorithms
-    const patterns = detectAllPatterns(trafficData, rankingData, workspaceId);
+        // Run detection algorithms
+        const patterns = detectAllPatterns(trafficData, rankingData, validatedWorkspaceId.data);
 
-    // Enrich with client names
-    const patternsWithClients: PatternWithClients[] = patterns.map((p) => ({
-      ...p,
-      affectedClients: p.affectedClientIds.map((id) => {
-        const traffic = trafficData.find((t) => t.clientId === id);
-        return {
-          id,
-          name: traffic?.clientName ?? `Client ${id}`,
-        };
-      }),
-    }));
+        // Enrich with client names
+        const patternsWithClients: PatternWithClients[] = patterns.map((p) => ({
+          ...p,
+          affectedClients: p.affectedClientIds.map((id) => {
+            const traffic = trafficData.find((t) => t.clientId === id);
+            return {
+              id,
+              name: traffic?.clientName ?? `Client ${id}`,
+            };
+          }),
+        }));
 
-    // Cache results
-    await cacheSet(cacheKey, patternsWithClients, {
-      ttl: PATTERNS_CACHE_TTL,
-      tags: [cacheTags.workspace(workspaceId)],
-    });
-
-    return patternsWithClients;
+        return patternsWithClients;
+      },
+      cacheGet,
+      cacheSet,
+      [cacheTags.workspace(validatedWorkspaceId.data)]
+    );
   } catch (error) {
     console.error("[detect-patterns] Error detecting patterns:", error);
     return [];
@@ -157,13 +197,21 @@ export async function detectPatterns(
 }
 
 /**
- * Get patterns with optional status filter.
+ * Get patterns with optional status filter and pagination.
  */
 export async function getPatterns(
   workspaceId: string,
-  options: { status?: PatternStatus; limit?: number } = {}
-): Promise<PatternWithClients[]> {
-  const { status = "active", limit = 20 } = options;
+  options: { status?: PatternStatus; page?: number; limit?: number } = {}
+): Promise<PaginatedPatternsResponse> {
+  // Validate options
+  const validatedOptions = getPatternsOptionsSchema.safeParse(options);
+  if (!validatedOptions.success) {
+    return {
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    };
+  }
+  const { status = "active", page = 1, limit = 20 } = validatedOptions.data;
 
   const patterns = await detectPatterns(workspaceId);
 
@@ -172,8 +220,21 @@ export async function getPatterns(
     ? patterns.filter((p) => p.status === status)
     : patterns;
 
-  // Apply limit
-  return filtered.slice(0, limit);
+  // Calculate pagination
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const paginatedData = filtered.slice(offset, offset + limit);
+
+  return {
+    data: paginatedData,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+    },
+  };
 }
 
 /**
@@ -181,13 +242,16 @@ export async function getPatterns(
  * Persists status change to database via API.
  */
 export async function dismissPattern(patternId: string): Promise<void> {
-  await requireActionAuth();
+  const auth = await requireActionAuth();
 
-  if (!patternId) {
-    throw new Error("patternId is required");
-  }
+  // Validate patternId format
+  const validated = patternIdSchema.parse(patternId);
 
-  await patchOpenSeo(`/api/patterns/${patternId}`, {
+  // Fetch pattern to get workspaceId, then validate membership
+  const pattern = await getOpenSeoPattern(validated);
+  await validateWorkspaceMembership(pattern.workspaceId, auth);
+
+  await patchOpenSeo(`/api/patterns/${validated}`, {
     status: "dismissed",
     dismissedAt: new Date().toISOString(),
   });
@@ -198,13 +262,16 @@ export async function dismissPattern(patternId: string): Promise<void> {
  * Persists status change to database via API.
  */
 export async function resolvePattern(patternId: string): Promise<void> {
-  await requireActionAuth();
+  const auth = await requireActionAuth();
 
-  if (!patternId) {
-    throw new Error("patternId is required");
-  }
+  // Validate patternId format
+  const validated = patternIdSchema.parse(patternId);
 
-  await patchOpenSeo(`/api/patterns/${patternId}`, {
+  // Fetch pattern to get workspaceId, then validate membership
+  const pattern = await getOpenSeoPattern(validated);
+  await validateWorkspaceMembership(pattern.workspaceId, auth);
+
+  await patchOpenSeo(`/api/patterns/${validated}`, {
     status: "resolved",
     resolvedAt: new Date().toISOString(),
   });
@@ -216,12 +283,18 @@ export async function resolvePattern(patternId: string): Promise<void> {
 export async function refreshPatterns(
   workspaceId: string
 ): Promise<PatternWithClients[]> {
-  await requireActionAuth();
+  const auth = await requireActionAuth();
+
+  // Validate workspaceId format
+  const validated = workspaceIdSchema.parse(workspaceId);
+
+  // Validate workspace membership before refreshing
+  await validateWorkspaceMembership(validated, auth);
 
   // Invalidate cache
-  const cacheKey = patternCacheKey(workspaceId);
+  const cacheKey = patternCacheKey(validated);
   await cacheSet(cacheKey, null, { ttl: 0 });
 
-  // Re-run detection
-  return detectPatterns(workspaceId);
+  // Re-run detection (will skip validation since we already validated)
+  return detectPatterns(validated);
 }

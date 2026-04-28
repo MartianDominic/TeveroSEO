@@ -1,11 +1,23 @@
 "use server";
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
 import type { ScoreResult } from "@/lib/audit/checks/types";
+
+// Validation schemas
+const findingsParamsSchema = z.object({
+  projectId: z.string().uuid("Invalid project ID format"),
+  clientId: z.string().uuid("Invalid client ID format"),
+  auditId: z.string().uuid("Invalid audit ID format"),
+});
+
+const pageFindingsParamsSchema = findingsParamsSchema.extend({
+  pageId: z.string().uuid("Invalid page ID format"),
+});
 
 interface FindingsParams {
   projectId: string;
@@ -61,11 +73,12 @@ function buildQuery(
 export async function getPageFindings(
   params: PageFindingsParams
 ): Promise<PageFindingsResponse> {
+  const validated = pageFindingsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params, {
-    page_id: params.pageId,
+  const query = buildQuery(validated, {
+    page_id: validated.pageId,
     action: "page-findings",
   });
   return getOpenSeo(`/api/seo/audits?${query}`);
@@ -77,10 +90,11 @@ export async function getPageFindings(
 export async function getAuditFindings(
   params: FindingsParams
 ): Promise<{ findings: AuditFinding[] }> {
+  const validated = findingsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params, { action: "all-findings" });
+  const query = buildQuery(validated, { action: "all-findings" });
   return getOpenSeo(`/api/seo/audits?${query}`);
 }
 
@@ -91,8 +105,10 @@ export async function getAuditFindings(
 export async function exportFindingsCSV(
   params: FindingsParams
 ): Promise<string> {
+  // Validation is done in getAuditFindings, but validate here for early failure
+  const validated = findingsParamsSchema.parse(params);
   // Auth is checked in getAuditFindings
-  const { findings } = await getAuditFindings(params);
+  const { findings } = await getAuditFindings(validated);
 
   // Build CSV header
   const headers = [

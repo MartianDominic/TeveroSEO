@@ -28,7 +28,7 @@ describe("CompetitorSpyService", () => {
   describe("spyOnCompetitor", () => {
     it("should fetch top keywords for a domain", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -73,7 +73,7 @@ describe("CompetitorSpyService", () => {
 
     it("should normalize domain input", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -104,7 +104,7 @@ describe("CompetitorSpyService", () => {
   describe("result structure", () => {
     it("should return keyword details with position, volume, CPC, URL", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -145,7 +145,7 @@ describe("CompetitorSpyService", () => {
   describe("sorting", () => {
     it("should sort keywords by search volume descending", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -177,7 +177,7 @@ describe("CompetitorSpyService", () => {
   describe("cost tracking", () => {
     it("should track cost at 2 cents per domain", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -204,7 +204,7 @@ describe("CompetitorSpyService", () => {
   describe("caching", () => {
     it("should cache results for 24 hours", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -232,7 +232,7 @@ describe("CompetitorSpyService", () => {
 
     it("should return cached results without API call", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -265,7 +265,7 @@ describe("CompetitorSpyService", () => {
   describe("traffic estimation", () => {
     it("should estimate traffic based on position and volume", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -299,7 +299,7 @@ describe("CompetitorSpyService", () => {
   describe("compareCompetitors", () => {
     it("should compare multiple domains", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };

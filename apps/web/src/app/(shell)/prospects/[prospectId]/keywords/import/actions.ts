@@ -63,7 +63,7 @@ export async function previewCsv(
   prospectId: string,
   csvContent: string
 ): Promise<CsvPreviewResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(
     `${openSeoUrl}/api/prospects/${prospectId}/keywords/import`,
@@ -95,7 +95,7 @@ export async function importCsv(
   mappingOverrides?: ColumnMapping[],
   forceEnrich?: boolean
 ): Promise<CsvImportResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   const response = await fetch(
     `${openSeoUrl}/api/prospects/${prospectId}/keywords/import`,

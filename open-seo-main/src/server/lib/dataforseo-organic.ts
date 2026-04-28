@@ -5,6 +5,8 @@
  * dataforseo_labs/google/ranked_keywords endpoint.
  */
 
+import { getDataForSEOAuthHeader } from "@/server/lib/dataforseo-auth";
+
 export interface OrganicKeywordItem {
   keyword: string;
   position: number;
@@ -28,19 +30,15 @@ export async function fetchOrganicKeywords(
   languageCode: string,
   limit: number = 100
 ): Promise<OrganicKeywordItem[]> {
-  const apiLogin = process.env.DATAFORSEO_LOGIN;
-  const apiPassword = process.env.DATAFORSEO_PASSWORD;
-
-  if (!apiLogin || !apiPassword) {
-    throw new Error("DataForSEO credentials not configured");
-  }
+  // Uses centralized auth from dataforseo-auth.ts
+  // Throws if DATAFORSEO_API_KEY is not set
 
   const response = await fetch(
     "https://api.dataforseo.com/v3/dataforseo_labs/google/ranked_keywords/live",
     {
       method: "POST",
       headers: {
-        Authorization: `Basic ${Buffer.from(`${apiLogin}:${apiPassword}`).toString("base64")}`,
+        Authorization: getDataForSEOAuthHeader(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify([
@@ -59,7 +57,31 @@ export async function fetchOrganicKeywords(
     throw new Error(`DataForSEO API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as {
+    status_code: number;
+    status_message?: string;
+    tasks?: Array<{
+      result?: Array<{
+        items?: Array<{
+          keyword?: string;
+          position?: number;
+          keyword_data?: {
+            keyword_info?: {
+              keyword?: string;
+              search_volume?: number;
+              cpc?: number;
+            };
+          };
+          ranked_serp_element?: {
+            serp_item?: {
+              rank_absolute?: number;
+              url?: string;
+            };
+          };
+        }>;
+      }>;
+    }>;
+  };
 
   if (data.status_code !== 20000) {
     throw new Error(`DataForSEO error: ${data.status_message}`);

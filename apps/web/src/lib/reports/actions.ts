@@ -1,5 +1,6 @@
 "use server";
 
+import { requireActionAuth, validateClientOwnership } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import type { ReportMetadata } from "@tevero/types";
 
@@ -18,6 +19,9 @@ export async function generateReport(
     locale?: string;
   },
 ): Promise<{ reportId: string }> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
+
   return postOpenSeo<{ reportId: string }>("/api/reports/generate", {
     clientId,
     ...options,
@@ -45,6 +49,9 @@ export async function getReportStatus(
 export async function listClientReports(
   clientId: string,
 ): Promise<ReportMetadata[]> {
+  const auth = await requireActionAuth();
+  await validateClientOwnership(clientId, auth);
+
   return getOpenSeo<ReportMetadata[]>(`/api/clients/${clientId}/reports`);
 }
 

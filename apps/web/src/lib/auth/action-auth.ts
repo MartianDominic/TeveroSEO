@@ -9,6 +9,8 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { env } from '@/lib/env';
 
 /**
  * Authentication context for server actions.
@@ -86,6 +88,77 @@ export async function requireActionAuthStrict(): Promise<ActionAuthContext> {
 }
 
 /**
+ * Validate that the current user is a member of a specific workspace.
+ * Verifies membership through the backend API.
+ *
+ * @param workspaceId - The workspace ID to validate membership for
+ * @param authContext - The authentication context from requireActionAuth
+ * @throws ActionAuthError with FORBIDDEN code if not a member
+ *
+ * @example
+ * ```ts
+ * export async function getWorkspaceData(workspaceId: string) {
+ *   const auth = await requireActionAuth();
+ *   await validateWorkspaceMembership(workspaceId, auth);
+ *   return db.workspaces.find(workspaceId);
+ * }
+ * ```
+ */
+/**
+ * Schema for workspace membership API response.
+ */
+const workspaceMembershipResponseSchema = z.object({
+  isMember: z.boolean(),
+  role: z.string().optional(),
+});
+
+export async function validateWorkspaceMembership(
+  workspaceId: string,
+  authContext: ActionAuthContext
+): Promise<void> {
+  const backendUrl = env.OPEN_SEO_URL;
+
+  try {
+    const response = await fetch(
+      `${backendUrl}/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(authContext.userId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ActionAuthError('Workspace not found', 'NOT_FOUND');
+      }
+      throw new ActionAuthError('Access denied: Not a member of this workspace', 'FORBIDDEN');
+    }
+
+    const json = await response.json();
+    const parsed = workspaceMembershipResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error('[ActionAuth] Invalid workspace membership response shape:', parsed.error);
+      throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
+    }
+
+    if (!parsed.data.isMember) {
+      throw new ActionAuthError('Access denied: Not a member of this workspace', 'FORBIDDEN');
+    }
+  } catch (error) {
+    if (error instanceof ActionAuthError) {
+      throw error;
+    }
+
+    // Network error or backend unavailable - fail closed for security
+    console.error(`[ActionAuth] Failed to verify workspace membership: workspaceId=${workspaceId}, userId=${authContext.userId}`, error);
+    throw new ActionAuthError('Unable to verify workspace membership. Please try again.', 'FORBIDDEN');
+  }
+}
+
+/**
  * Validate that the current user has access to a specific client.
  * Verifies ownership through the backend API.
  *
@@ -102,11 +175,18 @@ export async function requireActionAuthStrict(): Promise<ActionAuthContext> {
  * }
  * ```
  */
+/**
+ * Schema for client ownership API response.
+ */
+const clientOwnershipResponseSchema = z.object({
+  hasAccess: z.boolean(),
+});
+
 export async function validateClientOwnership(
   clientId: string,
   authContext: ActionAuthContext
 ): Promise<void> {
-  const backendUrl = process.env.AI_WRITER_BACKEND_URL ?? 'http://ai-writer-backend:8000';
+  const backendUrl = env.AI_WRITER_URL;
 
   try {
     const response = await fetch(
@@ -130,9 +210,15 @@ export async function validateClientOwnership(
       throw new ActionAuthError('Access denied: You do not own this client', 'FORBIDDEN');
     }
 
-    const result = await response.json() as { hasAccess: boolean };
+    const json = await response.json();
+    const parsed = clientOwnershipResponseSchema.safeParse(json);
 
-    if (!result.hasAccess) {
+    if (!parsed.success) {
+      console.error('[ActionAuth] Invalid client ownership response shape:', parsed.error);
+      throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
+    }
+
+    if (!parsed.data.hasAccess) {
       throw new ActionAuthError('Access denied: You do not own this client', 'FORBIDDEN');
     }
   } catch (error) {

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt name="proposal-investment-section" version="1.0">
+  <system-context>
+    <role>Dan Kennedy-trained direct response copywriter</role>
+    <language>Lithuanian (formal, persuasive but not manipulative)</language>
+
+    <kennedy-principles>
+      <principle name="price-justification">
+        Compare price to value received AND cost of inaction
+      </principle>
+      <principle name="risk-reversal">
+        Guarantees shift risk from buyer to seller
+      </principle>
+      <principle name="urgency-legitimacy">
+        Only create urgency if genuine (capacity, timing)
+      </principle>
+      <principle name="stack-the-deck">
+        List all deliverables with individual values
+      </principle>
+    </kennedy-principles>
+
+    <cialdini-integration>
+      <principle name="contrast">Compare to alternatives (in-house, other agencies)</principle>
+      <principle name="commitment">Start with small yes before big yes</principle>
+      <principle name="social-proof">Reference similar client results</principle>
+      <principle name="authority">Expert credentials, methodology names</principle>
+    </cialdini-integration>
+  </system-context>
+
+  <input-schema>
+    <scenario>{{SCENARIO}}</scenario>
+    <pricing>
+      <base_price>{{BASE_PRICE}}</base_price>
+      <monthly_fee>{{MONTHLY_FEE}}</monthly_fee>
+      <setup_fee>{{SETUP_FEE}}</setup_fee>
+      <contract_months>{{CONTRACT_MONTHS}}</contract_months>
+      <total_contract_value>{{TOTAL_VALUE}}</total_contract_value>
+    </pricing>
+    <value>
+      <revenue_opportunity>{{REVENUE_OPPORTUNITY}}</revenue_opportunity>
+      <roi_multiplier>{{ROI_MULTIPLIER}}</roi_multiplier>
+      <cost_per_visitor>{{COST_PER_VISITOR}}</cost_per_visitor>
+    </value>
+    <deliverables>
+      {{DELIVERABLES_JSON}}
+    </deliverables>
+    <guarantee>
+      <type>{{GUARANTEE_TYPE}}</type>
+      <terms>{{GUARANTEE_TERMS}}</terms>
+    </guarantee>
+    <awareness_level>{{AWARENESS_LEVEL}}</awareness_level>
+    <agency_name>{{AGENCY_NAME}}</agency_name>
+    <agency_positioning>{{AGENCY_POSITIONING}}</agency_positioning>
+    <differentiators>{{DIFFERENTIATORS}}</differentiators>
+    <case_studies>{{CASE_STUDIES}}</case_studies>
+  </input-schema>
+
+  <instructions>
+    Generate the investment/pricing section for an SEO proposal.
+    Follow Dan Kennedy direct response principles.
+    Include:
+    1. Value stack - list all deliverables with their value
+    2. Price justification - compare to alternatives
+    3. Risk reversal - guarantees if applicable
+    4. Urgency - only if legitimate
+    5. Payment options - 2-3 choices
+    6. Clear CTA
+
+    Adapt approach based on awareness level:
+    - unaware/problem-aware: More justification needed
+    - solution-aware: Focus on value comparison
+    - product-aware: Address objections
+    - most-aware: Direct CTA, minimal friction
+
+    Write in Lithuanian.
+  </instructions>
+
+  <output-schema>
+    <json-structure>
+      {
+        "investment_section": {
+          "value_stack": {
+            "deliverables": [
+              {"name": "string", "value": number, "description": "string"}
+            ],
+            "total_value": number
+          },
+          "price_justification": {
+            "inhouse_comparison": "string",
+            "inaction_cost": "string",
+            "ppc_comparison": "string"
+          },
+          "guarantee": {
+            "statement": "string",
+            "fine_print": "string"
+          },
+          "urgency": {
+            "statement": "string",
+            "type": "capacity|seasonal|none"
+          },
+          "payment_options": [
+            {
+              "name": "string",
+              "structure": "string",
+              "total": number,
+              "recommended": boolean
+            }
+          ],
+          "cta": {
+            "primary_action": "string",
+            "primary_button": "string",
+            "secondary_action": "string"
+          }
+        }
+      }
+    </json-structure>
+  </output-schema>
+</prompt>

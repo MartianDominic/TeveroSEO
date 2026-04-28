@@ -1,6 +1,7 @@
 "use server";
 
-import { requireActionAuth } from "@/lib/auth/action-auth";
+import { z } from "zod";
+import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
 import type {
   SavedView,
@@ -8,6 +9,31 @@ import type {
   CreateSavedViewInput,
   UpdateSavedViewInput,
 } from "@/types/saved-views";
+
+// Validation schemas
+const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
+const viewIdSchema = z.string().uuid("Invalid view ID");
+
+const viewConfigSchema = z.object({
+  columns: z.array(z.string().min(1).max(100)).max(50),
+  filters: z.record(z.unknown()).optional(),
+  sortBy: z.string().max(100).optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
+});
+
+const createViewInputSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  description: z.string().max(500).optional(),
+  config: viewConfigSchema,
+  isShared: z.boolean().optional(),
+});
+
+const updateViewInputSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  config: viewConfigSchema.optional(),
+  isShared: z.boolean().optional(),
+});
 
 /**
  * API response type for saved views from backend.
@@ -27,6 +53,41 @@ interface SavedViewApiResponse {
 }
 
 /**
+ * Schema for validating parsed JSON columns.
+ */
+const columnsJsonSchema = z.array(z.string());
+
+/**
+ * Schema for validating parsed JSON filters.
+ */
+const filtersJsonSchema = z.record(z.unknown());
+
+/**
+ * Safely parse JSON column with schema validation.
+ * Returns fallback value on parse or validation error.
+ */
+function parseJsonColumn<T>(
+  raw: string | null | undefined,
+  schema: z.ZodType<T>,
+  fallback: T
+): T {
+  if (!raw) return fallback;
+
+  try {
+    const parsed = JSON.parse(raw);
+    const result = schema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    console.warn('[SavedViews] Invalid JSON structure:', result.error);
+    return fallback;
+  } catch (err) {
+    console.warn('[SavedViews] JSON parse error:', err);
+    return fallback;
+  }
+}
+
+/**
  * Transform API response to SavedView type.
  */
 function transformView(raw: SavedViewApiResponse): SavedView {
@@ -35,8 +96,8 @@ function transformView(raw: SavedViewApiResponse): SavedView {
     name: raw.name,
     description: raw.description,
     config: {
-      columns: JSON.parse(raw.columns) as string[],
-      filters: JSON.parse(raw.filters),
+      columns: parseJsonColumn(raw.columns, columnsJsonSchema, []),
+      filters: parseJsonColumn(raw.filters, filtersJsonSchema, {}),
       sortBy: raw.sortBy,
       sortDir: raw.sortDir as "asc" | "desc" | undefined,
     },
@@ -48,17 +109,58 @@ function transformView(raw: SavedViewApiResponse): SavedView {
 }
 
 /**
+ * Get a single saved view by ID.
+ * SECURITY: Only returns views the user owns OR shared views they can access.
+ * Prevents IDOR by checking ownership/sharing permissions.
+ */
+export async function getSavedView(viewId: string): Promise<SavedView | null> {
+  // Validate viewId format
+  const validatedViewId = viewIdSchema.parse(viewId);
+
+  const auth = await requireActionAuth();
+
+  try {
+    const response = await getFastApi<SavedViewApiResponse & { workspaceId?: string }>(
+      `/api/dashboard/views/${validatedViewId}`
+    );
+
+    // SECURITY: Only allow access if user owns the view OR if it's shared
+    if (response.userId !== auth.userId && !response.isShared) {
+      throw new Error("View not found");
+    }
+
+    // If it's a shared view, also validate workspace membership
+    if (response.isShared && response.workspaceId) {
+      await validateWorkspaceMembership(response.workspaceId, auth);
+    }
+
+    return transformView(response);
+  } catch (error) {
+    console.error("[getSavedView] Failed to fetch saved view:", error);
+    return null;
+  }
+}
+
+/**
  * Get all saved views for a workspace (user's own + shared views).
+ * Validates workspace membership before fetching.
  */
 export async function getSavedViewsWithConfig(workspaceId: string): Promise<SavedView[]> {
-  await requireActionAuth();
+  // Validate workspaceId format
+  const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
+
+  const auth = await requireActionAuth();
+
+  // Validate workspace membership before accessing workspace views
+  await validateWorkspaceMembership(validatedWorkspaceId, auth);
 
   try {
     const response = await getFastApi<SavedViewApiResponse[]>(
-      `/api/dashboard/views?workspaceId=${workspaceId}`
+      `/api/dashboard/views?workspaceId=${validatedWorkspaceId}`
     );
     return response.map(transformView);
-  } catch {
+  } catch (error) {
+    console.error("[getSavedViewsWithConfig] Failed to fetch saved views:", error);
     // Return empty array on error for graceful degradation
     return [];
   }
@@ -66,22 +168,30 @@ export async function getSavedViewsWithConfig(workspaceId: string): Promise<Save
 
 /**
  * Create a new saved view with column configuration.
+ * Validates workspace membership before creating.
  */
 export async function createSavedViewWithConfig(
   workspaceId: string,
   input: CreateSavedViewInput
 ): Promise<SavedView> {
-  await requireActionAuth();
+  // Validate inputs
+  const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
+  const validatedInput = createViewInputSchema.parse(input);
+
+  const auth = await requireActionAuth();
+
+  // Validate workspace membership before creating view
+  await validateWorkspaceMembership(validatedWorkspaceId, auth);
 
   const body = {
-    name: input.name,
-    description: input.description,
-    columns: JSON.stringify(input.config.columns),
-    filters: JSON.stringify(input.config.filters),
-    sortBy: input.config.sortBy,
-    sortDir: input.config.sortDir,
-    isShared: input.isShared ?? false,
-    workspaceId,
+    name: validatedInput.name,
+    description: validatedInput.description,
+    columns: JSON.stringify(validatedInput.config.columns),
+    filters: JSON.stringify(validatedInput.config.filters),
+    sortBy: validatedInput.config.sortBy,
+    sortDir: validatedInput.config.sortDir,
+    isShared: validatedInput.isShared ?? false,
+    workspaceId: validatedWorkspaceId,
   };
 
   const response = await getFastApi<SavedViewApiResponse>("/api/dashboard/views", {
@@ -95,27 +205,39 @@ export async function createSavedViewWithConfig(
 
 /**
  * Update an existing saved view.
- * Note: Backend validates view ownership.
+ * Validates that the current user owns the view before updating.
  */
 export async function updateSavedViewWithConfig(
   viewId: string,
   input: UpdateSavedViewInput
 ): Promise<void> {
-  await requireActionAuth();
+  // Validate inputs
+  const validatedViewId = viewIdSchema.parse(viewId);
+  const validatedInput = updateViewInputSchema.parse(input);
+
+  const auth = await requireActionAuth();
+
+  // Fetch view to verify ownership - only view owner can update
+  const view = await getFastApi<SavedViewApiResponse & { workspaceId?: string }>(
+    `/api/dashboard/views/${validatedViewId}`
+  );
+  if (view.userId !== auth.userId) {
+    throw new Error("Access denied: You do not own this view");
+  }
 
   const body: Record<string, unknown> = {};
 
-  if (input.name !== undefined) body.name = input.name;
-  if (input.description !== undefined) body.description = input.description;
-  if (input.isShared !== undefined) body.isShared = input.isShared;
-  if (input.config) {
-    body.columns = JSON.stringify(input.config.columns);
-    body.filters = JSON.stringify(input.config.filters);
-    body.sortBy = input.config.sortBy;
-    body.sortDir = input.config.sortDir;
+  if (validatedInput.name !== undefined) body.name = validatedInput.name;
+  if (validatedInput.description !== undefined) body.description = validatedInput.description;
+  if (validatedInput.isShared !== undefined) body.isShared = validatedInput.isShared;
+  if (validatedInput.config) {
+    body.columns = JSON.stringify(validatedInput.config.columns);
+    body.filters = JSON.stringify(validatedInput.config.filters);
+    body.sortBy = validatedInput.config.sortBy;
+    body.sortDir = validatedInput.config.sortDir;
   }
 
-  await getFastApi(`/api/dashboard/views/${viewId}`, {
+  await getFastApi(`/api/dashboard/views/${validatedViewId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -124,25 +246,44 @@ export async function updateSavedViewWithConfig(
 
 /**
  * Delete a saved view.
- * Note: Backend validates view ownership.
+ * Validates that the current user owns the view before deleting.
  */
 export async function deleteSavedViewById(viewId: string): Promise<void> {
-  await requireActionAuth();
+  // Validate viewId format
+  const validatedViewId = viewIdSchema.parse(viewId);
 
-  await getFastApi(`/api/dashboard/views/${viewId}`, {
+  const auth = await requireActionAuth();
+
+  // Fetch view to verify ownership - only view owner can delete
+  const view = await getFastApi<SavedViewApiResponse>(
+    `/api/dashboard/views/${validatedViewId}`
+  );
+  if (view.userId !== auth.userId) {
+    throw new Error("Access denied: You do not own this view");
+  }
+
+  await getFastApi(`/api/dashboard/views/${validatedViewId}`, {
     method: "DELETE",
   });
 }
 
 /**
  * Set a view as the default for the user in the workspace.
+ * Validates workspace membership before setting default.
  */
 export async function setDefaultViewById(viewId: string, workspaceId: string): Promise<void> {
-  await requireActionAuth();
+  // Validate inputs
+  const validatedViewId = viewIdSchema.parse(viewId);
+  const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
 
-  await getFastApi(`/api/dashboard/views/${viewId}/default`, {
+  const auth = await requireActionAuth();
+
+  // Validate workspace membership before setting default view
+  await validateWorkspaceMembership(validatedWorkspaceId, auth);
+
+  await getFastApi(`/api/dashboard/views/${validatedViewId}/default`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId }),
+    body: JSON.stringify({ workspaceId: validatedWorkspaceId }),
   });
 }

@@ -6,9 +6,16 @@ import type {
   InviteValidation,
 } from "@tevero/types";
 import { auth } from "@clerk/nextjs/server";
+import {
+  fetchWithTimeout,
+  DEFAULT_TIMEOUT_MS,
+} from "./fetch-with-timeout";
 
 const BACKEND_URL =
-  process.env.AI_WRITER_BACKEND_URL || "http://ai-writer-backend:8000";
+  process.env.AI_WRITER_URL || "http://localhost:8000";
+
+/** OAuth operations timeout - 30 seconds default */
+const OAUTH_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;
 
 /**
  * Get auth header for authenticated requests.
@@ -27,7 +34,7 @@ export async function fetchConnections(
   clientId: string
 ): Promise<OAuthConnection[]> {
   const headers = await authHeader();
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BACKEND_URL}/api/clients/${clientId}/connections`,
     {
       method: "GET",
@@ -36,6 +43,7 @@ export async function fetchConnections(
         ...headers,
       },
       cache: "no-store",
+      timeout: OAUTH_TIMEOUT_MS,
     }
   );
 
@@ -58,15 +66,19 @@ export async function createInvite(
   scopes: string[] = []
 ): Promise<InviteResponse> {
   const headers = await authHeader();
-  const res = await fetch(`${BACKEND_URL}/api/clients/${clientId}/invites`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: JSON.stringify({ scopes_requested: scopes }),
-    cache: "no-store",
-  });
+  const res = await fetchWithTimeout(
+    `${BACKEND_URL}/api/clients/${clientId}/invites`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify({ scopes_requested: scopes }),
+      cache: "no-store",
+      timeout: OAUTH_TIMEOUT_MS,
+    }
+  );
 
   if (!res.ok) {
     throw new Error(`Failed to create invite: ${res.status}`);
@@ -84,7 +96,7 @@ export async function revokeConnection(
   provider: string
 ): Promise<boolean> {
   const headers = await authHeader();
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BACKEND_URL}/api/clients/${clientId}/connections/${provider}`,
     {
       method: "DELETE",
@@ -93,6 +105,7 @@ export async function revokeConnection(
         ...headers,
       },
       cache: "no-store",
+      timeout: OAUTH_TIMEOUT_MS,
     }
   );
 
@@ -110,13 +123,17 @@ export async function revokeConnection(
 export async function validateInvite(
   token: string
 ): Promise<InviteValidation | null> {
-  const res = await fetch(`${BACKEND_URL}/api/invites/${token}/validate`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+  const res = await fetchWithTimeout(
+    `${BACKEND_URL}/api/invites/${token}/validate`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      timeout: OAUTH_TIMEOUT_MS,
+    }
+  );
 
   if (!res.ok) {
     return null;

@@ -1,5 +1,6 @@
 import { REPORT_COLORS } from "@/lib/reports/styles";
 import type { ReportLabels, ReportBranding } from "@/lib/reports/types";
+import { sanitizeMinimalHtml } from "@/lib/sanitize";
 
 interface ReportFooterProps {
   /** ISO8601 timestamp when report was generated */
@@ -18,9 +19,9 @@ interface ReportFooterProps {
  * Server component - no "use client" directive.
  * Supports optional branding for white-label reports (Phase 16).
  *
- * SECURITY NOTE: branding.footerText is pre-sanitized by the API layer
- * (Plan 16-03) using DOMPurify before storage. Only safe tags are allowed
- * (p, br, a, span). The render side trusts the stored content is safe.
+ * SECURITY: Always sanitize at render time using DOMPurify.
+ * Never trust "pre-sanitized" data - storage could be compromised,
+ * or sanitization rules may have been bypassed.
  */
 export function ReportFooter({
   generatedAt,
@@ -45,12 +46,11 @@ export function ReportFooter({
       style={{ borderColor: REPORT_COLORS.border }}
     >
       {branding?.footerText ? (
-        // Custom footer text (pre-sanitized HTML from API - see Plan 16-03)
-        // eslint-disable-next-line react/no-danger
+        // SECURITY: Sanitize at render time - never trust "pre-sanitized" data
         <div
           className="text-sm"
           style={{ color: REPORT_COLORS.textMuted }}
-          dangerouslySetInnerHTML={{ __html: branding.footerText }}
+          dangerouslySetInnerHTML={{ __html: sanitizeMinimalHtml(branding.footerText) }}
         />
       ) : (
         // Default Tevero attribution

@@ -81,7 +81,7 @@ describe("KeywordEnrichmentService", () => {
   describe("enrichBatch with cache", () => {
     it("should return cached status when keyword exists in cache", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -139,7 +139,7 @@ describe("KeywordEnrichmentService", () => {
   describe("enrichBatch with csv_upload source", () => {
     it("should skip keywords with existing metrics from CSV", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };
@@ -189,7 +189,7 @@ describe("KeywordEnrichmentService", () => {
   describe("enrichBatch error handling", () => {
     it("should mark failed enrichments with failed status", async () => {
       const { redis } = await import("@/server/lib/redis");
-      const mockRedis = redis as {
+      const mockRedis = redis as unknown as {
         get: ReturnType<typeof vi.fn>;
         setex: ReturnType<typeof vi.fn>;
       };

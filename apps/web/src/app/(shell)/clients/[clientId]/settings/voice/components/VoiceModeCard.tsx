@@ -2,7 +2,7 @@
 
 import { Card } from "@tevero/ui";
 import { Check, Shield, Wand2, Settings } from "lucide-react";
-import { cn } from "@tevero/ui/lib/utils";
+import { cn } from "@tevero/ui";
 
 interface VoiceModeCardProps {
   mode: "preservation" | "application" | "best_practices";

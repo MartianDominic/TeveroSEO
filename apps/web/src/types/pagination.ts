@@ -15,6 +15,8 @@ export interface CursorPaginationResult<T> {
   prevCursor: string | null;
   hasMore: boolean;
   totalCount: number;
+  /** Error message for graceful degradation */
+  error?: string;
 }
 
 export interface FilterParams {

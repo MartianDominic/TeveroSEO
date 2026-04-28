@@ -602,22 +602,16 @@ async function setCachedSerp(key: string, data: SerpAnalysis, ttl: number) {
 - **Fixed word count targets (e.g., "always 1500 words"):** Replaced by competitor min/max/avg analysis.
 - **Single-mode AI generation:** Replaced by voice mode selection (preservation/application/best_practices).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Question: Does DataForSEO SERP API extract H2 headings directly?**
-   - What we know: DataForSEO provides `items[].content` field with some HTML extraction
-   - What's unclear: Whether H2s are pre-extracted or require cheerio parsing of returned HTML
-   - Recommendation: Check API response schema; if not included, add cheerio parsing step
+   - **RESOLVED:** DataForSEO does NOT extract H2 headings directly. The `items[].content` field contains page description, not structured HTML. Use cheerio to parse fetched HTML or DataForSEO's OnPage API for H2 extraction. For MVP, extract H2s from fetched page HTML via cheerio parsing step.
 
 2. **Question: How does AI-Writer currently receive generation constraints?**
-   - What we know: AI-Writer has `/api/articles/` routes for generation
-   - What's unclear: Current parameter structure, whether word count/H2 constraints are supported
-   - Recommendation: Add new `/api/articles/generate-from-brief` endpoint that accepts full brief object
+   - **RESOLVED:** AI-Writer's `/api/articles` POST endpoint accepts `ArticleCreate` payload. Extend payload to include `brief_id`, `target_word_count`, `voice_mode`, `suggested_h2s[]`, `paa_questions[]`. No new endpoint needed — extend existing schema.
 
 3. **Question: Should voice mode be stored on brief or inherited from client settings?**
-   - What we know: Phase 37 (Brand Voice Management) implements voice learning per client
-   - What's unclear: Whether voice mode varies per brief or is a client-level default
-   - Recommendation: Store on brief with client-level default; allows override for specific content types
+   - **RESOLVED:** Store voice mode on the brief itself with a client-level default. This allows per-brief overrides (e.g., a product page might use best_practices while blog posts use preservation). Default from client settings, override per brief in wizard.
 
 ## Environment Availability
 

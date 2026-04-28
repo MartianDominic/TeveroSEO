@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFastApi, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,9 +11,13 @@ export async function GET(
 ) {
   const { clientId } = await params;
   try {
+    await requireClientAccess(clientId);
     const data = await getFastApi(`/api/clients/${clientId}/analytics`);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

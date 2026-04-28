@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from api.model_constants import ALLOWED_TEXT_MODELS, ALLOWED_IMAGE_MODELS
 from middleware.auth_middleware import get_current_user
+from middleware.authorization import require_client_access, grant_creator_access, get_user_clients
 from models.client import Client, ClientSettings
 from services.shared_db import get_shared_db
 from services.encryption import encrypt_value, decrypt_value
@@ -77,25 +78,18 @@ class TestConnectionParams(BaseModel):
     platform: str = Field(..., pattern="^(wordpress|shopify|wix|webhook)$")
     credentials: Dict[str, str] = Field(default_factory=dict)
 
-    @field_validator("text_model_override")
-    @classmethod
-    def validate_text_model_override(cls, v):
-        if v is not None and v not in ALLOWED_TEXT_MODELS:
-            raise ValueError(
-                f"Model '{v}' is not in the v2.0 allowed text model list. "
-                f"Allowed: {ALLOWED_TEXT_MODELS}"
-            )
-        return v
 
-    @field_validator("image_model_override")
-    @classmethod
-    def validate_image_model_override(cls, v):
-        if v is not None and v not in ALLOWED_IMAGE_MODELS:
-            raise ValueError(
-                f"Model '{v}' is not in the v2.0 allowed image model list. "
-                f"Allowed: {ALLOWED_IMAGE_MODELS}"
-            )
-        return v
+class VerifyAccessRequest(BaseModel):
+    """Request body for verify-access endpoint."""
+    userId: str = Field(..., min_length=1)
+    orgId: Optional[str] = Field(None)
+
+
+class VerifyAccessResponse(BaseModel):
+    """Response for verify-access endpoint."""
+    hasAccess: bool
+    isMember: bool = True  # For backwards compatibility
+    role: Optional[str] = None
 
 
 class SettingsResponse(BaseModel):
@@ -192,12 +186,20 @@ def _client_to_detail(c: Client) -> ClientDetailResponse:
 @router.get("", response_model=List[ClientResponse])
 def list_clients(
     db: Session = Depends(get_shared_db),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Return all active (non-archived) clients sorted alphabetically by name."""
+    """Return active (non-archived) clients the user has access to, sorted alphabetically."""
+    # Get client IDs this user has access to
+    clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
+    accessible_client_ids = get_user_clients(db, clerk_user_id)
+
+    # Filter to only accessible, non-archived clients
     clients = (
         db.query(Client)
-        .filter(Client.is_archived.is_(False))
+        .filter(
+            Client.is_archived.is_(False),
+            Client.id.in_(accessible_client_ids) if accessible_client_ids else False,
+        )
         .order_by(Client.name)
         .all()
     )
@@ -208,13 +210,21 @@ def list_clients(
 def create_client(
     payload: ClientCreate,
     db: Session = Depends(get_shared_db),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Create a new client. Name is required; website_url is optional."""
+    """Create a new client. Name is required; website_url is optional.
+
+    The creating user is automatically granted admin access to the new client.
+    """
     client = Client(name=payload.name, website_url=payload.website_url)
     db.add(client)
     db.commit()
     db.refresh(client)
+
+    # Grant creator admin access to the new client
+    clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
+    grant_creator_access(db, client.id, clerk_user_id)
+
     return _client_to_response(client)
 
 
@@ -223,6 +233,7 @@ def get_client(
     client_id: str,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """Get a single active client including its settings (encrypted fields masked)."""
     client = _get_active_client_or_404(client_id, db)
@@ -235,6 +246,7 @@ def update_client(
     payload: ClientUpdate,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """Update a client's name and/or website_url. Only provided fields are changed."""
     client = _get_active_client_or_404(client_id, db)
@@ -252,6 +264,7 @@ def archive_client(
     client_id: str,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """Soft-delete a client by setting is_archived=True. Does NOT delete the row."""
     client = _get_active_client_or_404(client_id, db)
@@ -266,6 +279,7 @@ def get_settings(
     client_id: str,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """Get per-client settings. Encrypted credential values are omitted from response."""
     client = _get_active_client_or_404(client_id, db)
@@ -280,6 +294,7 @@ def upsert_settings(
     payload: SettingsUpdate,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """
     Upsert all settings for a client.
@@ -326,11 +341,68 @@ def upsert_settings(
 # CMS Connection Test Helpers
 # ---------------------------------------------------------------------------
 
+def _normalize_wordpress_credentials(credentials: Dict[str, str]) -> Dict[str, str]:
+    """
+    Normalize WordPress credential field names.
+
+    Frontend sends: siteUrl, username, applicationPassword
+    Backend expects: wp_url, wp_username, wp_app_password
+
+    Accepts both formats for backwards compatibility.
+    """
+    return {
+        "wp_url": credentials.get("siteUrl") or credentials.get("wp_url", ""),
+        "wp_username": credentials.get("username") or credentials.get("wp_username", ""),
+        "wp_app_password": credentials.get("applicationPassword") or credentials.get("wp_app_password", ""),
+    }
+
+
+def _normalize_shopify_credentials(credentials: Dict[str, str]) -> Dict[str, str]:
+    """
+    Normalize Shopify credential field names.
+
+    Frontend sends: storeDomain, accessToken
+    Backend expects: shopify_store_url, shopify_access_token/shopify_api_key
+    """
+    return {
+        "shopify_store_url": credentials.get("storeDomain") or credentials.get("shopify_store_url", ""),
+        "shopify_access_token": credentials.get("accessToken") or credentials.get("shopify_access_token") or credentials.get("shopify_api_key", ""),
+    }
+
+
+def _normalize_wix_credentials(credentials: Dict[str, str]) -> Dict[str, str]:
+    """
+    Normalize Wix credential field names.
+
+    Frontend sends: siteId, apiKey
+    Backend expects: wix_site_id, wix_access_token
+    """
+    return {
+        "wix_site_id": credentials.get("siteId") or credentials.get("wix_site_id", ""),
+        "wix_access_token": credentials.get("apiKey") or credentials.get("wix_access_token", ""),
+    }
+
+
+def _normalize_webhook_credentials(credentials: Dict[str, str]) -> Dict[str, str]:
+    """
+    Normalize webhook credential field names.
+
+    Frontend sends: webhookUrl, secret
+    Backend expects: webhook_url, webhook_secret
+    """
+    return {
+        "webhook_url": credentials.get("webhookUrl") or credentials.get("webhook_url", ""),
+        "webhook_secret": credentials.get("secret") or credentials.get("webhook_secret", ""),
+    }
+
+
 async def _test_wordpress_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test WordPress REST API connection."""
-    url = credentials.get("wp_url", "").rstrip("/")
-    username = credentials.get("wp_username")
-    app_password = credentials.get("wp_app_password")
+    # Normalize field names for both frontend and backend formats
+    normalized = _normalize_wordpress_credentials(credentials)
+    url = normalized.get("wp_url", "").rstrip("/")
+    username = normalized.get("wp_username")
+    app_password = normalized.get("wp_app_password")
 
     if not all([url, username, app_password]):
         return {"success": False, "error": "Missing WordPress credentials (URL, username, or app password)"}
@@ -365,8 +437,10 @@ async def _test_wordpress_connection(credentials: Dict[str, str]) -> Dict[str, a
 
 async def _test_shopify_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test Shopify Admin API connection."""
-    store_url = credentials.get("shopify_store_url", "").rstrip("/")
-    access_token = credentials.get("shopify_access_token") or credentials.get("shopify_api_key")
+    # Normalize field names for both frontend and backend formats
+    normalized = _normalize_shopify_credentials(credentials)
+    store_url = normalized.get("shopify_store_url", "").rstrip("/")
+    access_token = normalized.get("shopify_access_token")
 
     if not all([store_url, access_token]):
         return {"success": False, "error": "Missing Shopify credentials (store URL or access token)"}
@@ -401,8 +475,10 @@ async def _test_shopify_connection(credentials: Dict[str, str]) -> Dict[str, any
 
 async def _test_wix_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test Wix API connection."""
-    site_id = credentials.get("wix_site_id")
-    access_token = credentials.get("wix_access_token")
+    # Normalize field names for both frontend and backend formats
+    normalized = _normalize_wix_credentials(credentials)
+    site_id = normalized.get("wix_site_id")
+    access_token = normalized.get("wix_access_token")
 
     if not all([site_id, access_token]):
         return {"success": False, "error": "Missing Wix credentials (site ID or access token)"}
@@ -439,7 +515,9 @@ async def _test_wix_connection(credentials: Dict[str, str]) -> Dict[str, any]:
 
 async def _test_webhook_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test webhook endpoint with a ping."""
-    webhook_url = credentials.get("webhook_url")
+    # Normalize field names for both frontend and backend formats
+    normalized = _normalize_webhook_credentials(credentials)
+    webhook_url = normalized.get("webhook_url")
 
     if not webhook_url:
         return {"success": False, "error": "Missing webhook URL"}
@@ -474,6 +552,7 @@ async def test_cms_connection(
     params: TestConnectionParams,
     db: Session = Depends(get_shared_db),
     _current_user: dict = Depends(get_current_user),
+    _authorized: bool = Depends(require_client_access),
 ):
     """
     Test CMS connection with provided credentials.
@@ -501,3 +580,64 @@ async def test_cms_connection(
     except Exception as e:
         logger.error(f"Connection test failed for {platform}: {e}")
         return {"success": False, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Access Verification Endpoint
+# ---------------------------------------------------------------------------
+
+@router.post("/{client_id}/verify-access", response_model=VerifyAccessResponse)
+def verify_client_access(
+    client_id: str,
+    payload: VerifyAccessRequest,
+    db: Session = Depends(get_shared_db),
+):
+    """
+    Verify that a user has access to a client.
+
+    This endpoint is called by the frontend to validate client access
+    before performing operations. It checks:
+    1. Client exists and is not archived
+    2. User is authenticated (userId is provided)
+
+    NOTE: Currently all authenticated users have access to all clients
+    in the agency model. Future versions may implement per-client
+    workspace membership via the member table.
+
+    Returns:
+        VerifyAccessResponse with hasAccess=true if user has access
+    """
+    # Validate userId is provided
+    if not payload.userId:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User ID is required"
+        )
+
+    # Check client exists and is not archived
+    try:
+        client = _get_active_client_or_404(client_id, db)
+    except HTTPException:
+        # Return 404 for missing/archived clients
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+
+    # In the current agency model, all authenticated users have access
+    # to all active clients. Future enhancement: check member table
+    # for workspace-based access control.
+    #
+    # Example future implementation:
+    # member = db.query(WorkspaceMember).filter(
+    #     WorkspaceMember.workspace_id == client.workspace_id,
+    #     WorkspaceMember.user_id == payload.userId
+    # ).first()
+    # if not member:
+    #     return VerifyAccessResponse(hasAccess=False, isMember=False)
+
+    return VerifyAccessResponse(
+        hasAccess=True,
+        isMember=True,
+        role="member"  # Default role for agency model
+    )

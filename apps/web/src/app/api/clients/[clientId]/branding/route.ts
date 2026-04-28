@@ -13,6 +13,7 @@ import {
   deleteOpenSeo,
   FastApiError,
 } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,11 +35,18 @@ export async function GET(
 ) {
   try {
     const { clientId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const data = await getOpenSeo<BrandingResponse>(
       `/api/branding?client_id=${clientId}`,
     );
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -54,6 +62,10 @@ export async function PUT(
 ) {
   try {
     const { clientId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const body = (await req.json()) as Record<string, unknown>;
 
     // Inject clientId from path into body
@@ -65,6 +77,9 @@ export async function PUT(
     // Return 201 for new, 200 for update (based on presence of id before call)
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -80,11 +95,18 @@ export async function DELETE(
 ) {
   try {
     const { clientId } = await params;
+
+    // Verify user has access to this client
+    await requireClientAccess(clientId);
+
     const data = await deleteOpenSeo<{ success: boolean }>(
       `/api/branding?client_id=${clientId}`,
     );
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

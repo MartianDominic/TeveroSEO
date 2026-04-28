@@ -100,16 +100,18 @@ export function calculateMetaLengths(items: SerpLiveItem[]): {
  * Analyze SERP for a keyword with caching.
  * Extracts competitor patterns: PAA questions, meta lengths, H2s, word counts.
  *
+ * @param clientId - Client ID for multi-tenant cache isolation
  * @param mappingId - Keyword mapping ID for cache key
  * @param keyword - Target keyword
  * @param locationCode - DataForSEO location code (default: 2840 = United States)
  */
 export async function analyzeSerpForKeyword(
+  clientId: string,
   mappingId: string,
   keyword: string,
   locationCode: number = 2840
 ): Promise<SerpAnalysisData> {
-  const cacheKey = buildSerpCacheKey(mappingId, keyword);
+  const cacheKey = buildSerpCacheKey(clientId, mappingId, keyword);
 
   // Check cache first
   const cached = await getCachedSerp(cacheKey);

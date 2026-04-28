@@ -1,10 +1,32 @@
 "use server";
 
+import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+
+// Validation schemas
+const mappingParamsSchema = z.object({
+  projectId: z.string().uuid("Invalid project ID format"),
+  clientId: z.string().uuid("Invalid client ID format"),
+});
+
+const getMappingsParamsSchema = mappingParamsSchema.extend({
+  action: z.enum(["optimize", "create"]).optional(),
+});
+
+const suggestMappingsParamsSchema = mappingParamsSchema.extend({
+  includeGsc: z.boolean().optional(),
+  includeSaved: z.boolean().optional(),
+  includeProspect: z.boolean().optional(),
+});
+
+const overrideMappingParamsSchema = mappingParamsSchema.extend({
+  keyword: z.string().min(1, "Keyword is required").max(500, "Keyword too long"),
+  newTargetUrl: z.string().url("Invalid URL format").max(2048, "URL too long").nullable(),
+});
 
 interface MappingParams {
   projectId: string;
@@ -83,11 +105,12 @@ function buildQuery(params: MappingParams, extra?: Record<string, string>): stri
 export async function getMappings(
   params: MappingParams & { action?: "optimize" | "create" }
 ): Promise<GetMappingsResponse> {
+  const validated = getMappingsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const extra = params.action ? { action: params.action } : undefined;
-  const query = buildQuery(params, extra);
+  const extra = validated.action ? { action: validated.action } : undefined;
+  const query = buildQuery(validated, extra);
   return getOpenSeo<GetMappingsResponse>(`/api/seo/keyword-mapping?${query}`);
 }
 
@@ -97,15 +120,16 @@ export async function getMappings(
 export async function suggestMappings(
   params: SuggestMappingsParams
 ): Promise<SuggestMappingsResponse> {
+  const validated = suggestMappingsParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo<SuggestMappingsResponse>(`/api/seo/keyword-mapping?${query}`, {
     action: "suggest",
-    includeGsc: params.includeGsc ?? true,
-    includeSaved: params.includeSaved ?? true,
-    includeProspect: params.includeProspect ?? true,
+    includeGsc: validated.includeGsc ?? true,
+    includeSaved: validated.includeSaved ?? true,
+    includeProspect: validated.includeProspect ?? true,
   });
 }
 
@@ -115,13 +139,14 @@ export async function suggestMappings(
 export async function overrideMapping(
   params: OverrideMappingParams
 ): Promise<OverrideMappingResponse> {
+  const validated = overrideMappingParamsSchema.parse(params);
   const auth = await requireActionAuth();
-  await validateClientOwnership(params.clientId, auth);
+  await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(params);
+  const query = buildQuery(validated);
   return postOpenSeo<OverrideMappingResponse>(`/api/seo/keyword-mapping?${query}`, {
     action: "override",
-    keyword: params.keyword,
-    newTargetUrl: params.newTargetUrl,
+    keyword: validated.keyword,
+    newTargetUrl: validated.newTargetUrl,
   });
 }

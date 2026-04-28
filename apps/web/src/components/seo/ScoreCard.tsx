@@ -22,10 +22,10 @@ function getScoreBg(score: number): string {
 }
 
 const TIER_CONFIG = [
-  { key: "tier1", label: "Tier 1", max: 40, desc: "Critical on-page" },
-  { key: "tier2", label: "Tier 2", max: 25, desc: "Content quality" },
-  { key: "tier3", label: "Tier 3", max: 20, desc: "Technical SEO" },
-  { key: "tier4", label: "Tier 4", max: 15, desc: "Advanced" },
+  { key: "tier1", label: "Tier 1", max: 20, desc: "Critical on-page" },
+  { key: "tier2", label: "Tier 2", max: 10, desc: "Content quality" },
+  { key: "tier3", label: "Tier 3", max: 10, desc: "Technical SEO" },
+  { key: "tier4", label: "Tier 4", max: 10, desc: "Advanced" },
 ] as const;
 
 export function ScoreCard({ score, breakdown, gates }: ScoreCardProps) {
@@ -51,7 +51,7 @@ export function ScoreCard({ score, breakdown, gates }: ScoreCardProps) {
               Score Breakdown
             </div>
             {TIER_CONFIG.map(({ key, label, max, desc }) => {
-              const value = breakdown[key];
+              const value = breakdown[key] ?? 0;
               const pct = Math.round((value / max) * 100);
               return (
                 <div key={key} className="space-y-1">
