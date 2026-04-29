@@ -1,61 +1,84 @@
 @import "tailwindcss";
+@import "@tevero/ui/src/lib/tokens.css";
 
-@theme {
-  /* Base colors */
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.141 0.005 285.823);
+@theme inline {
+  /* ===== Colors - Map v6 tokens to Tailwind utilities ===== */
 
-  /* Primary */
-  --color-primary: oklch(0.546 0.245 262.881);
-  --color-primary-foreground: oklch(0.97 0.014 254.604);
+  /* Canvas & Surface */
+  --color-canvas: var(--canvas);
+  --color-canvas-dim: var(--canvas-dim);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
 
-  /* Secondary */
-  --color-secondary: oklch(0.967 0.001 286.375);
-  --color-secondary-foreground: oklch(0.21 0.006 285.885);
+  /* Hairlines (borders) */
+  --color-hairline: var(--hairline);
+  --color-hairline-2: var(--hairline-2);
+  --color-hairline-3: var(--hairline-3);
 
-  /* Muted */
-  --color-muted: oklch(0.967 0.001 286.375);
-  --color-muted-foreground: oklch(0.552 0.016 285.938);
+  /* Text ramp */
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
 
-  /* Accent */
-  --color-accent: oklch(0.967 0.001 286.375);
-  --color-accent-foreground: oklch(0.21 0.006 285.885);
+  /* Accent (emerald) */
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-line: var(--accent-line);
+  --color-accent-tint: var(--accent-tint);
 
-  /* Destructive */
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.97 0.014 254.604);
+  /* Semantic colors */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
 
-  /* Border / Input / Ring */
-  --color-border: oklch(0.92 0.004 286.32);
-  --color-input: oklch(0.92 0.004 286.32);
-  --color-ring: oklch(0.546 0.245 262.881);
+  /* ===== Shadows ===== */
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-cta: var(--shadow-cta);
+  --shadow-cta-hover: var(--shadow-cta-hover);
 
-  /* Card */
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.141 0.005 285.823);
+  /* ===== Radius ===== */
+  --radius-input: var(--radius-input);
+  --radius-button: var(--radius-button);
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
+  --radius-pill: var(--radius-pill);
 
-  /* Popover */
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.141 0.005 285.823);
+  /* ===== Spacing ===== */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-7: var(--space-7);
+  --spacing-8: var(--space-8);
+  --spacing-9: var(--space-9);
 
-  /* Border radius */
-  --radius: 0.5rem;
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-
-  /* Font family */
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* ===== Font families ===== */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
 }
 
 @layer base {
   * {
-    border-color: var(--color-border);
+    border-color: var(--hairline);
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    background-color: var(--canvas);
+    color: var(--text-2);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
