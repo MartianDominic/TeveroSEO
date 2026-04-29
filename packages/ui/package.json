@@ -40,10 +40,10 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@storybook/addon-a11y": "^8.6.15",
-    "@storybook/addon-essentials": "^8.6.15",
-    "@storybook/nextjs-vite": "^8.6.15",
-    "@storybook/react": "^8.6.15",
+    "@storybook/addon-a11y": "^8.6.18",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/nextjs": "^8.6.18",
+    "@storybook/react": "^8.6.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -52,7 +52,7 @@
     "@vitejs/plugin-react": "^4.5.1",
     "jsdom": "^26.1.0",
     "next": "15.5.15",
-    "storybook": "^8.6.15",
+    "storybook": "^8.6.18",
     "typescript": "^5.9.3",
     "vitest": "^4.1.5"
   }
