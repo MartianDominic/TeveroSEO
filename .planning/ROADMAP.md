@@ -1573,12 +1573,12 @@ compositeScore = (
   7. Full flow works: prospect → keywords → mapping → komercinis
   8. Cost per prospect < $0.10 at 95% cache hit rate
 **Estimated effort**: 40 hours
-**Plans**: 6 plans
-  - [ ] 43-01-PLAN.md — Foundation: Entry Point Architecture + Keyword Schema (Wave 1)
-  - [ ] 43-02-PLAN.md — Quick Check + Competitor Spy Modes (Wave 2)
-  - [ ] 43-03-PLAN.md — CSV Import + Metric Detection (Wave 2)
-  - [ ] 43-04-PLAN.md — Prioritization Engine + UI (Wave 3)
-  - [ ] 43-05-PLAN.md — Scraping Customization + AI Extraction (Wave 3)
-  - [ ] 43-06-PLAN.md — Proposal Generation + Copywriting AI (Wave 4)
+**Plans**: 6 plans (5 complete, 1 deferred)
+  - [x] 43-01-PLAN.md — Foundation: Entry Point Architecture + Keyword Schema (Wave 1)
+  - [x] 43-02-PLAN.md — Quick Check + Competitor Spy Modes (Wave 2)
+  - [x] 43-03-PLAN.md — CSV Import + Metric Detection (Wave 2)
+  - [x] 43-04-PLAN.md — Prioritization Engine + UI (Wave 3)
+  - [x] 43-05-PLAN.md — Scraping Customization + AI Extraction (Wave 3)
+  - [ ] 43-06-PLAN.md — Proposal Generation + Copywriting AI (Wave 4) — DEFERRED to Phase 46-47 (UI requires design-system-v6)
 
 ---
