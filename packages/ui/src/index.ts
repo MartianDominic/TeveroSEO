@@ -5,7 +5,10 @@
 export { cn } from "./lib/utils";
 export * from "./lib/tokens";
 export * from "./lib/status-config";
-export { formatRelativeTime, formatFullTimestamp, formatShortTime } from "./lib/format-time";
+export { formatRelativeTime, formatShortDate, formatDateTime, formatTime } from "./lib/format-time";
+
+export { CardActionMenu } from "./components/card-action-menu";
+export type { CardActionMenuProps, CardAction } from "./components/card-action-menu";
 
 export { Checklist, ChecklistItem } from "./components/checklist";
 export type { ChecklistProps, ChecklistItemProps } from "./components/checklist";
@@ -70,10 +73,16 @@ export { ErrorBanner } from "./components/error-banner";
 export { Input } from "./components/input";
 export type { InputProps } from "./components/input";
 
+export { KanbanColumn, KanbanCard } from "./components/kanban";
+export type { KanbanColumnProps, KanbanCardProps } from "./components/kanban";
+
 export { Label } from "./components/label";
 
 export { PageHeader } from "./components/page-header";
 export type { PageHeaderProps } from "./components/page-header";
+
+export { PipelineStageCard } from "./components/pipeline-stage-card";
+export type { PipelineStageCardProps } from "./components/pipeline-stage-card";
 
 export {
   Popover,
