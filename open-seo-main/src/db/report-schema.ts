@@ -39,7 +39,7 @@ export const reports = pgTable(
   "reports",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     reportType: text("report_type").notNull(), // "monthly-seo", "weekly-summary"

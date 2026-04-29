@@ -30,7 +30,8 @@ interface GoalSetupWizardProps {
 interface GoalConfig {
   templateId: string;
   targetValue: number;
-  targetDenominator?: number;
+  // TODO: Phase 40+ - Re-enable when backend supports this field
+  // targetDenominator?: number;
 }
 
 export function GoalSetupWizard({
@@ -70,15 +71,14 @@ export function GoalSetupWizard({
       for (let i = 0; i < selectedIds.length; i++) {
         const templateId = selectedIds[i];
         const config = configs[templateId];
-        const template = templates?.find((t) => t.id === templateId);
 
         await createGoal.mutateAsync({
           templateId,
-          targetValue:
-            config?.targetValue ?? Number(template?.defaultTarget) ?? 10,
-          targetDenominator: config?.targetDenominator,
-          isPrimary: i === 0,
+          targetValue: config?.targetValue ?? 10,
           workspaceId,
+          // TODO: Phase 40+ - Re-enable when backend supports these fields
+          // targetDenominator: config?.targetDenominator,
+          // isPrimary: i === 0,
         });
       }
       onComplete();
@@ -102,7 +102,7 @@ export function GoalSetupWizard({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {templates
-                ?.filter((t) => t.goalType !== "custom")
+                ?.filter((t) => t.metric !== "custom")
                 .map((template) => (
                   <TemplateCard
                     key={template.id}
@@ -176,7 +176,7 @@ function TemplateCard({
           <Checkbox checked={selected} className="mt-1" />
           <div>
             <div className="flex items-center gap-2">
-              <GoalIcon type={template.goalType} />
+              <GoalIcon type={template.metric} />
               <span className="font-medium">{template.name}</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
@@ -200,18 +200,17 @@ function QuickConfigCard({
   onChange: (updates: Partial<GoalConfig>) => void;
   isPrimary: boolean;
 }) {
-  const targetValue =
-    config?.targetValue ?? Number(template.defaultTarget) ?? 10;
+  const targetValue = config?.targetValue ?? 10;
 
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <GoalIcon type={template.goalType} />
+          <GoalIcon type={template.metric} />
           <span className="font-medium">{template.name}</span>
           {isPrimary && (
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-              Primary
+              First
             </span>
           )}
         </div>
@@ -226,32 +225,11 @@ function QuickConfigCard({
               className="w-24"
               min={0}
             />
-            {template.unit && (
-              <span className="text-sm text-muted-foreground">
-                {template.unit}
-              </span>
-            )}
+            <span className="text-sm text-muted-foreground">
+              {template.metric}
+            </span>
           </div>
-
-          {template.hasDenominator && (
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">out of</Label>
-              <Input
-                type="number"
-                value={config?.targetDenominator ?? ""}
-                onChange={(e) =>
-                  onChange({
-                    targetDenominator: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
-                  })
-                }
-                className="w-24"
-                placeholder="total"
-                min={1}
-              />
-            </div>
-          )}
+          {/* TODO: Phase 40+ - Re-enable denominator when backend supports it */}
         </div>
       </CardContent>
     </Card>

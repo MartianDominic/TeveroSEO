@@ -37,7 +37,7 @@ const detectPlatformSchema = z.object({
  * Schema for creating a connection.
  */
 const createConnectionSchema = z.object({
-  clientId: z.string().min(1, "Client ID is required"),
+  clientId: z.string().uuid("Client ID must be a valid UUID"),
   platform: z.enum(PLATFORM_TYPES),
   siteUrl: z.string().url("Invalid site URL"),
   displayName: z.string().optional(),
@@ -55,7 +55,7 @@ const connectionIdSchema = z.object({
  * Schema for client ID operations.
  */
 const clientIdSchema = z.object({
-  clientId: z.string().min(1, "Client ID is required"),
+  clientId: z.string().uuid("Client ID must be a valid UUID"),
 });
 
 // ============================================================================

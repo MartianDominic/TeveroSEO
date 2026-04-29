@@ -135,7 +135,7 @@ async function _detectCTROpportunities(
             potentialValue: expectedCTR,
             estimatedGain,
           },
-          createdAt: new Date(),
+          createdAt: new Date().toISOString(),
         });
       }
     }
@@ -185,7 +185,7 @@ async function _detectRankingGaps(
           currentValue: kw.position,
           potentialValue: 10,
         },
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       });
     }
   } catch {
@@ -234,7 +234,7 @@ async function _detectQuickWins(
           currentValue: kw.position,
           potentialValue: kw.previousPosition,
         },
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       });
     }
   } catch {

@@ -98,15 +98,18 @@ registerCheck({
   editRecipe: "Add current year to title for freshness signal",
   run: (ctx: CheckContext): CheckResult => {
     const title = ctx.$("title").text();
-    // Match years 2024-2030
-    const passed = /\b(202[4-9]|2030)\b/.test(title);
+    // Dynamically calculate current year and accept current year or next year
+    const currentYear = new Date().getFullYear();
+    const validYears = [currentYear, currentYear + 1];
+    const yearPattern = new RegExp(`\\b(${validYears.join("|")})\\b`);
+    const passed = yearPattern.test(title);
     return {
       checkId: "T1-17",
       passed,
       severity: passed ? "info" : "low",
-      message: passed ? "Title contains year (freshness signal)" : "Consider adding year to title",
+      message: passed ? "Title contains year (freshness signal)" : `Consider adding ${currentYear} to title`,
       autoEditable: !passed,
-      editRecipe: passed ? undefined : "Add current year to title for freshness signal",
+      editRecipe: passed ? undefined : `Add current year (${currentYear}) to title for freshness signal`,
     };
   },
 });

@@ -11,6 +11,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { QuickCheckService } from "@/server/features/keywords/services/QuickCheckService";
 import { createLogger } from "@/server/lib/logger";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { AppError } from "@/server/lib/errors";
 
 const log = createLogger({ module: "api/keywords/quick-check" });
 
@@ -29,6 +31,9 @@ export const Route = createFileRoute("/api/keywords/quick-check")({
     handlers: {
       POST: async ({ request }: { request: Request }) => {
         try {
+          // SECURITY: Require authentication to prevent unlimited lookups
+          await requireApiAuth(request);
+
           const body = await request.json();
           const input = QuickCheckSchema.parse(body);
 
@@ -60,6 +65,14 @@ export const Route = createFileRoute("/api/keywords/quick-check")({
             },
           });
         } catch (error) {
+          if (error instanceof AppError) {
+            const status = error.code === "UNAUTHENTICATED" ? 401 : error.code === "FORBIDDEN" ? 403 : 400;
+            return Response.json(
+              { success: false, error: error.message },
+              { status }
+            );
+          }
+
           if (error instanceof z.ZodError) {
             log.warn("Quick check validation error", { errors: error.issues });
             return Response.json(

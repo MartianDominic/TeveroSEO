@@ -6,9 +6,10 @@
  * Returns predefined goal templates that can be used to create client goals.
  * Templates define the metric type, default targets, and computation methods.
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { getFastApi, FastApiError } from "@/lib/server-fetch";
+import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,16 +148,16 @@ const DEFAULT_TEMPLATES: GoalTemplate[] = [
   },
 ];
 
-export async function GET() {
+async function handleGet() {
   try {
     await requireAuth();
 
-    // Try to fetch templates from backend first
+    // Fetch templates from open-seo-main (the source of truth for goals)
     try {
-      const data = await getFastApi<TemplatesResponse>("/api/goal-templates");
+      const data = await getOpenSeo<TemplatesResponse>("/api/goal-templates");
       return NextResponse.json(data);
     } catch (backendErr) {
-      // If backend doesn't have templates endpoint (404), use defaults
+      // If open-seo-main templates endpoint unavailable (404), use defaults
       if (backendErr instanceof FastApiError && backendErr.status === 404) {
         return NextResponse.json({ templates: DEFAULT_TEMPLATES });
       }
@@ -172,3 +173,6 @@ export async function GET() {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
+
+// Rate limit: 100 requests per minute (standard API limit)
+export const GET = withRateLimit(handleGet, RATE_LIMITS.API);

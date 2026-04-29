@@ -24,7 +24,7 @@ export interface SavedView {
   config: ViewConfig;
   isShared: boolean;
   isDefault: boolean;
-  createdAt: Date;
+  createdAt: string; // ISO string from JSON serialization
   userId: string;
 }
 

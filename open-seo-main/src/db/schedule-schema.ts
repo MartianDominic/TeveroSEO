@@ -3,9 +3,6 @@
  *
  * Schedules define when to automatically generate reports for clients.
  * Uses cron expressions with timezone support.
- *
- * Note: No FK to clients table since that lives in AI-Writer's PostgreSQL.
- * The client_id is a UUID reference validated at the application layer.
  */
 import {
   pgTable,
@@ -17,6 +14,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { clients } from "./client-schema";
 
 /**
  * Report schedule type enum values.
@@ -38,8 +36,11 @@ export const reportSchedules = pgTable(
   "report_schedules",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // TEXT type to match clients.id (canonical source). No FK due to cross-db design.
-    clientId: text("client_id").notNull(),
+    // UUID reference to clients.id.
+    // FK-02: CASCADE on delete removes schedules when client is deleted.
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
     cronExpression: text("cron_expression").notNull(), // e.g., "0 6 * * 1" (Mondays 6am)
     timezone: text("timezone").notNull(), // e.g., "Europe/Vilnius"
     reportType: text("report_type").notNull(), // "monthly-seo", "weekly-summary"

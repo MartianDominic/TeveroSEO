@@ -103,28 +103,26 @@ describe("calculateOnPageScore", () => {
     expect(result.gates).toContain("cwv-poor");
   });
 
-  it("caps at 0 when noindex (T1-55 fail)", () => {
+  it("caps at 0 when noindex (T1-67 fail)", () => {
     const checks: CheckResult[] = [
       ...Array.from({ length: 50 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`)),
-      failCheck("T1-55", "critical"), // noindex
+      failCheck("T1-67", "critical"), // noindex (T1-67 is the noindex check)
     ];
     const result = calculateOnPageScore(checks);
     expect(result.score).toBe(0);
     expect(result.gates).toContain("noindex");
   });
 
-  it("caps at 60 when no author on YMYL (T2-17 fail)", () => {
-    // Generate T2 checks excluding T2-17
-    const tier2Checks = Array.from({ length: 21 }, (_, i) => {
-      const num = i + 1;
-      if (num === 17) return null; // Skip T2-17
-      return passCheck(`T2-${String(num).padStart(2, "0")}`);
-    }).filter(Boolean) as CheckResult[];
+  it("caps at 60 when no author on YMYL (T1-68 fail)", () => {
+    // Generate T1 checks excluding T1-68 (YMYL author check)
+    const tier1Checks = Array.from({ length: 67 }, (_, i) => {
+      return passCheck(`T1-${String(i + 1).padStart(2, "0")}`);
+    });
 
     const checks: CheckResult[] = [
-      ...Array.from({ length: 67 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`)),
-      ...tier2Checks,
-      failCheck("T2-17", "high"), // YMYL no author
+      ...tier1Checks,
+      ...Array.from({ length: 21 }, (_, i) => passCheck(`T2-${String(i + 1).padStart(2, "0")}`)),
+      failCheck("T1-68", "critical"), // YMYL no author (T1-68 is the YMYL author check)
     ];
     const result = calculateOnPageScore(checks);
     expect(result.score).toBe(60);

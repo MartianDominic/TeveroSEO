@@ -32,14 +32,25 @@ function getRedisUrl(): string {
 
 const REDIS_URL = getRedisUrl();
 
+// QUEUE-M01 FIX: Improved retry strategy with more attempts and exponential backoff with reset
 // Create singleton Redis client for caching
 export const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
-    if (times > 3) {
-      return null; // Stop retrying
+    // QUEUE-M01: Increase retry count and implement exponential backoff with cap
+    // After 10 retries (~3 minutes total), reset counter to allow continued reconnection
+    const effectiveTimes = times % 10 || 10;
+
+    if (times > 50) {
+      // After extended failures, log and continue with max delay
+      console.error(`[Redis] Extended reconnection attempts (${times}), continuing with 30s delay`);
+      return 30000; // 30 second delay for extended outages
     }
-    return Math.min(times * 200, 2000); // Exponential backoff
+
+    // Exponential backoff: 200ms, 400ms, 800ms, 1600ms, 3200ms, capped at 10s
+    const delay = Math.min(Math.pow(2, effectiveTimes - 1) * 200, 10000);
+    console.log(`[Redis] Reconnection attempt ${times}, next retry in ${delay}ms`);
+    return delay;
   },
 });
 

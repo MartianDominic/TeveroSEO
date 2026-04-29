@@ -2,7 +2,7 @@
  * Pipeline status API endpoint.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { readCheckpoint } from "@/server/pipeline/checkpoint-manager";
+import { readCheckpoint, ROADMAP_PATH } from "@/server/pipeline/checkpoint-manager";
 import { parseRoadmap } from "@/server/pipeline/roadmap-parser";
 import { calculateETA } from "@/server/pipeline/eta-calculator";
 import { readFile } from "fs/promises";
@@ -14,7 +14,7 @@ export const getPipelineStatus = createServerFn({ method: "POST" })
     const workspaceId = context.organizationId;
 
     const checkpoint = await readCheckpoint();
-    const roadmapContent = await readFile(".planning/ROADMAP.md", "utf-8");
+    const roadmapContent = await readFile(ROADMAP_PATH, "utf-8");
     const phases = parseRoadmap(roadmapContent);
 
     const completedPlans = countCompletedPlans(checkpoint);

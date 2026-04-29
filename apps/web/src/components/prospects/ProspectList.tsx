@@ -47,7 +47,9 @@ export function ProspectList({
 
   const handleAnalyzeSelected = async (ids: string[]) => {
     const result = await bulkAnalyzeAction(ids);
-    setRemaining(result.remainingQuota);
+    if (result.success) {
+      setRemaining(result.data.remainingQuota);
+    }
   };
 
   const handleArchiveSelected = async (ids: string[]) => {

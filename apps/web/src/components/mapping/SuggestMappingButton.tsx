@@ -32,8 +32,12 @@ export function SuggestMappingButton({
         includeProspect: true,
       });
 
-      setResult(response.message);
-      onComplete();
+      if (response.success) {
+        setResult(response.data.message);
+        onComplete();
+      } else {
+        setResult(`Error: ${response.error}`);
+      }
     } catch (error) {
       setResult(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {

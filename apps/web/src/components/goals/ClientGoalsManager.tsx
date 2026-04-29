@@ -42,7 +42,7 @@ export function ClientGoalsManager({
   );
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
-  const existingTemplateIds = goals?.map((g) => g.goal.templateId) ?? [];
+  const existingTemplateIds = goals?.map((g) => g.goal.templateId).filter((id): id is string => id !== null) ?? [];
   const selectedTemplate = templates?.find((t) => t.id === selectedTemplateId);
   const editingGoal = goals?.find((g) => g.goal.id === editingGoalId);
 
@@ -51,8 +51,8 @@ export function ClientGoalsManager({
 
     await createGoal.mutateAsync({
       templateId: selectedTemplateId,
+      targetValue: values.targetValue,
       workspaceId,
-      ...values,
     });
 
     setIsAddOpen(false);
@@ -64,7 +64,9 @@ export function ClientGoalsManager({
 
     await updateGoal.mutateAsync({
       goalId: editingGoalId,
-      updates: values,
+      updates: {
+        targetValue: values.targetValue,
+      },
     });
 
     setEditingGoalId(null);

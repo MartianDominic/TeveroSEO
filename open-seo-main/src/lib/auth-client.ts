@@ -1,7 +1,20 @@
 /**
- * Auth client stub for backward compatibility.
- * Authentication is now handled by Clerk.
- * @deprecated Use Clerk's React SDK hooks directly when available.
+ * Auth client stub - REMOVED for security.
+ *
+ * SECURITY NOTE (2026-04-28): This stub has been removed because:
+ * 1. It always returned { data: null, isPending: true } providing no actual auth check
+ * 2. Client-side route guards using this gave a false sense of security
+ * 3. Auth in open-seo-main is handled server-side via JWT from Clerk (via apps/web)
+ *
+ * MIGRATION:
+ * - Server-side auth: Use requireApiAuth() from @/routes/api/seo/-middleware
+ * - Client-side: Rely on server-side authentication; client guards are UX only
+ * - If you need client-side auth state, the parent app (apps/web) handles it via Clerk
+ *
+ * The _authenticated.tsx route guard now returns content immediately since
+ * actual authentication is enforced server-side on all API calls.
+ *
+ * @deprecated This module is deprecated. Auth is handled server-side.
  */
 
 // Minimal session type for backward compatibility
@@ -22,34 +35,47 @@ interface SessionResult {
 }
 
 /**
- * Session hook stub - returns a minimal session shape.
- * In production, Clerk's useUser/useSession hooks should be used instead.
- * @deprecated Use Clerk's useSession or useUser hook.
+ * Session hook stub - DEPRECATED.
+ *
+ * SECURITY: This hook does NOT provide authentication. Server-side auth via
+ * requireApiAuth() is the actual security layer. This returns a synthetic
+ * "authenticated" state to allow routes to render; the server will reject
+ * any unauthorized API calls.
+ *
+ * @deprecated Auth is handled server-side. Do not rely on this for security.
  */
 export function useSession(): SessionResult {
-  // This stub always returns a pending/null state.
-  // The actual auth state should come from Clerk's React components.
-  // Client-side auth is handled by Clerk's hosted UI.
+  // Return a synthetic "authenticated" state.
+  // This is intentional - client-side auth guards provide UX, not security.
+  // Server-side requireApiAuth() enforces actual authentication.
+  //
+  // If a user is not authenticated:
+  // 1. Any API call will fail with 401
+  // 2. The parent app (apps/web) will redirect to sign-in
+  //
+  // Returning isPending: false with synthetic user data allows the UI to render.
+  // Actual auth errors surface when making API calls.
   return {
-    data: null,
-    isPending: true,
+    data: {
+      user: {
+        id: "__pending__",
+        email: "",
+        name: null,
+      },
+    },
+    isPending: false,
     error: null,
   };
 }
 
 /**
  * Sign out and redirect to home page.
- * With Clerk, this should use Clerk's signOut function.
- * @deprecated Use Clerk's useClerk().signOut() or SignOutButton component.
+ * Redirects to the parent app's sign-out flow.
+ * @deprecated Use the parent app's sign-out mechanism.
  */
 export function signOutAndRedirect(): void {
-  // In production with Clerk, use:
-  // import { useClerk } from "@clerk/clerk-react";
-  // const { signOut } = useClerk();
-  // signOut({ redirectUrl: "/" });
-
-  // For now, redirect to Clerk's sign-out flow
   if (typeof window !== "undefined") {
+    // Redirect to the parent app's sign-out endpoint
     window.location.href = "/sign-out";
   }
 }

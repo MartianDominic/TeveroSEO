@@ -5,10 +5,13 @@
  * POST /api/clients/:clientId/branding/logo - Upload logo
  * DELETE /api/clients/:clientId/branding/logo - Delete logo
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { actionLimiters } from "@/lib/rate-limit/action-limiters";
+import { validateCsrf } from "@/lib/api/security";
+import { getClientIpFromRequest } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,32 +24,40 @@ interface LogoResponse {
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ clientId: string }> },
 ) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
     const { clientId } = await params;
     const { getToken, userId } = await auth();
 
-    // Rate limit: 10 uploads per hour per user
-    if (userId) {
-      const result = await actionLimiters.upload.limit(userId);
-      if (!result.success) {
-        const resetInMinutes = Math.ceil((result.resetAt - Date.now()) / 60000);
-        return NextResponse.json(
-          { error: `Upload rate limit exceeded. Try again in ${resetInMinutes} minute(s).` },
-          {
-            status: 429,
-            headers: {
-              "X-RateLimit-Limit": String(result.limit),
-              "X-RateLimit-Remaining": String(result.remaining),
-              "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
-              "Retry-After": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
-            },
-          }
-        );
-      }
+    // SECURITY: Always apply rate limiting, even for unauthenticated requests
+    // Use userId if available, otherwise fall back to IP-based limiting
+    const rateLimitKey = userId || `anon:${getClientIpFromRequest(req)}`;
+    const result = await actionLimiters.upload.limit(rateLimitKey);
+    if (!result.success) {
+      const resetInMinutes = Math.ceil((result.resetAt - Date.now()) / 60000);
+      return NextResponse.json(
+        { error: `Upload rate limit exceeded. Try again in ${resetInMinutes} minute(s).` },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(result.limit),
+            "X-RateLimit-Remaining": String(result.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
+            "Retry-After": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+          },
+        }
+      );
     }
+
+    // AUTH-H04 FIX: Verify user has access to this client before uploading logo
+    // This was missing from POST but present in DELETE - now consistent
+    await requireClientAccess(clientId);
 
     const token = await getToken();
 
@@ -83,6 +94,10 @@ export async function POST(
 
     return NextResponse.json(parsed as LogoResponse);
   } catch (err) {
+    // AUTH-H04 FIX: Handle auth errors from requireClientAccess
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,
@@ -94,16 +109,27 @@ export async function POST(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ clientId: string }> },
 ) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
     const { clientId } = await params;
+
+    // CRITICAL: Verify user has access to this client before deleting logo
+    await requireClientAccess(clientId);
+
     const data = await deleteOpenSeo<LogoResponse>(
       `/api/branding/${clientId}/logo`,
     );
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

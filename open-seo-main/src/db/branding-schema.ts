@@ -21,7 +21,7 @@ export const clientBranding = pgTable(
   "client_branding",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     // Logo stored at /data/branding/{clientId}/logo.{ext}

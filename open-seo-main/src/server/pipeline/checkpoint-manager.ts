@@ -1,10 +1,11 @@
 /**
  * Checkpoint manager for pipeline execution state.
- * 
+ *
  * Persists progress to STATE.md after each plan completion.
  * Enables crash recovery by reading last checkpoint on resume.
  */
 import { readFile, writeFile } from "fs/promises";
+import path from "path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { PipelineState } from "./types";
 import { PipelineError } from "./types";
@@ -12,7 +13,21 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "checkpoint-manager" });
 
-const STATE_PATH = ".planning/STATE.md";
+/**
+ * Base directory for planning/pipeline files.
+ * Defaults to {cwd}/.planning, can be overridden via PLANNING_DIR env var.
+ */
+export const PLANNING_DIR = process.env.PLANNING_DIR ?? path.join(process.cwd(), ".planning");
+
+/**
+ * Path to the STATE.md checkpoint file.
+ */
+export const STATE_PATH = path.join(PLANNING_DIR, "STATE.md");
+
+/**
+ * Path to the ROADMAP.md file.
+ */
+export const ROADMAP_PATH = path.join(PLANNING_DIR, "ROADMAP.md");
 
 export interface Checkpoint {
   status: "idle" | "running" | "paused" | "verifying" | "error";

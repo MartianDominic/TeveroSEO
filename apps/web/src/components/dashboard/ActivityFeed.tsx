@@ -52,7 +52,8 @@ export function ActivityFeed({ workspaceId }: ActivityFeedProps) {
 
   const getEventIcon = (type: ActivityEventType) => {
     // Simple mapping - could be expanded with specific icons per type
-    return <Activity className={`h-4 w-4 ${EVENT_TYPE_COLORS[type]}`} />;
+    const typeColor = EVENT_TYPE_COLORS[type] ?? "bg-gray-100 text-gray-600";
+    return <Activity className={`h-4 w-4 ${typeColor}`} />;
   };
 
   return (
@@ -137,7 +138,7 @@ export function ActivityFeed({ workspaceId }: ActivityFeedProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">
-                      {EVENT_TYPE_LABELS[event.type as ActivityEventType] || event.type}
+                      {EVENT_TYPE_LABELS[event.type as ActivityEventType] ?? event.type}
                     </span>
                     {event.clientName && (
                       <Badge variant="outline" className="text-xs">

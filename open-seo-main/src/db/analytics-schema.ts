@@ -28,7 +28,7 @@ export const seoGscSnapshots = pgTable(
   "seo_gsc_snapshots",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
@@ -58,7 +58,7 @@ export const gscQuerySnapshots = pgTable(
   "gsc_query_snapshots",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
@@ -79,14 +79,17 @@ export const gscQuerySnapshots = pgTable(
 );
 
 /**
- * GA4 daily aggregate snapshots.
+ * SEO GA4 daily aggregate snapshots.
  * One row per client per date.
+ *
+ * Note: Renamed from ga4_snapshots to seo_ga4_snapshots to avoid conflict
+ * with AI-Writer's ga4_snapshots table (CRITICAL-DB-005).
  */
-export const ga4Snapshots = pgTable(
-  "ga4_snapshots",
+export const seoGa4Snapshots = pgTable(
+  "seo_ga4_snapshots",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
@@ -103,10 +106,13 @@ export const ga4Snapshots = pgTable(
       .notNull(),
   },
   (table) => [
-    unique("uq_ga4_snapshots_client_date").on(table.clientId, table.date),
-    index("ix_ga4_snapshots_client_date").on(table.clientId, table.date),
+    unique("uq_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
+    index("ix_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
   ],
 );
+
+/** @deprecated Use seoGa4Snapshots instead. Alias kept for migration compatibility. */
+export const ga4Snapshots = seoGa4Snapshots;
 
 // Type exports for use in queries
 export type SeoGSCSnapshot = typeof seoGscSnapshots.$inferSelect;
@@ -120,5 +126,10 @@ export type GSCSnapshotInsert = SeoGSCSnapshotInsert;
 export type GSCQuerySnapshot = typeof gscQuerySnapshots.$inferSelect;
 export type GSCQuerySnapshotInsert = typeof gscQuerySnapshots.$inferInsert;
 
-export type GA4Snapshot = typeof ga4Snapshots.$inferSelect;
-export type GA4SnapshotInsert = typeof ga4Snapshots.$inferInsert;
+export type SeoGA4Snapshot = typeof seoGa4Snapshots.$inferSelect;
+export type SeoGA4SnapshotInsert = typeof seoGa4Snapshots.$inferInsert;
+
+/** @deprecated Use SeoGA4Snapshot instead */
+export type GA4Snapshot = SeoGA4Snapshot;
+/** @deprecated Use SeoGA4SnapshotInsert instead */
+export type GA4SnapshotInsert = SeoGA4SnapshotInsert;

@@ -17,6 +17,7 @@ import {
   getKeywordHistory,
   getKeywordLatestRanking,
 } from "@/actions/seo/keywords";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 
 export default function KeywordDetailPage() {
   const params = useParams<{
@@ -50,9 +51,9 @@ export default function KeywordDetailPage() {
     history90Query.isLoading ||
     latestQuery.isLoading;
 
-  const data30 = history30Query.data?.rows ?? [];
-  const data90 = history90Query.data?.rows ?? [];
-  const latest = latestQuery.data;
+  const data30 = history30Query.data?.success ? history30Query.data.data?.rows ?? [] : [];
+  const data90 = history90Query.data?.success ? history90Query.data.data?.rows ?? [] : [];
+  const latest = latestQuery.data?.success ? latestQuery.data.data : null;
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
@@ -93,9 +94,9 @@ export default function KeywordDetailPage() {
                     change={latest?.change ?? null}
                     className="text-2xl py-2 px-4"
                   />
-                  {latest?.url && (
+                  {latest?.url && isSafeUrl(latest.url) && (
                     <a
-                      href={latest.url}
+                      href={safeHref(latest.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"

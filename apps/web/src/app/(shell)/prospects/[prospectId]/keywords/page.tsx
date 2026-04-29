@@ -77,7 +77,7 @@ export default function KeywordListPage() {
     setError(null);
 
     try {
-      const data = await getKeywords(prospectId, {
+      const result = await getKeywords(prospectId, {
         tier: selectedTier || undefined,
         quickWin: showQuickWins || undefined,
         sortBy,
@@ -85,9 +85,13 @@ export default function KeywordListPage() {
         limit: 100,
       });
 
-      setKeywords(data.keywords);
-      setTotal(data.total);
-      setTierCounts(data.tierCounts);
+      if (!result.success) {
+        setError(result.error || "Failed to fetch keywords");
+        return;
+      }
+      setKeywords(result.data.keywords);
+      setTotal(result.data.total);
+      setTierCounts(result.data.tierCounts);
     } catch (e) {
       setError((e as Error).message);
     } finally {

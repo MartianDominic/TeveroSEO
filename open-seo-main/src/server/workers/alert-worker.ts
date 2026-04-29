@@ -81,8 +81,9 @@ export async function startAlertWorker(): Promise<void> {
         };
         const queue = getAlertQueue();
         await queue.add("dlq:alert-processing", dlqData, {
-          removeOnComplete: false,
-          removeOnFail: false,
+          // TTL: auto-remove DLQ jobs after 7 days to prevent accumulation
+          removeOnComplete: { age: 604800 },
+          removeOnFail: { age: 604800 },
           attempts: 1,
         });
         jobLogger.info("Alert job moved to DLQ", { attemptsMade: job.attemptsMade });
@@ -94,6 +95,10 @@ export async function startAlertWorker(): Promise<void> {
 
   alertWorker.on("error", (err) => {
     log.error("Alert worker error", err);
+  });
+
+  alertWorker.on("stalled", (jobId) => {
+    log.warn("Alert job stalled", { jobId, queue: ALERT_QUEUE_NAME });
   });
 
   // Wait for ready before returning

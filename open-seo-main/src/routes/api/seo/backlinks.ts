@@ -9,8 +9,15 @@ import { AppError } from "@/server/lib/errors";
 import { backlinksOverviewInputSchema } from "@/types/schemas/backlinks";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/seo/backlinks" });
+
+/** Rate limit config for backlinks operations: 10 requests per hour per user (external API costs) */
+const BACKLINKS_RATE_LIMIT = {
+  limit: 10,
+  window: 3600, // 1 hour in seconds
+};
 
 async function getProjectContext(request: Request) {
   const auth = await requireApiAuth(request);
@@ -32,6 +39,16 @@ export const Route = createFileRoute("/api/seo/backlinks")({
       POST: async ({ request }: { request: Request }) => {
         try {
           const ctx = await getProjectContext(request);
+
+          // Rate limit all backlinks operations (external API costs)
+          const rateLimitResult = await rateLimit({
+            key: `backlinks:${ctx.userId}`,
+            ...BACKLINKS_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           const body = (await request.json()) as Record<string, unknown>;
           const action = (body.action as string) ?? "overview";
 

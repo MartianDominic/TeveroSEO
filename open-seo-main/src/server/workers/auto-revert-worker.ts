@@ -150,6 +150,10 @@ export async function startAutoRevertWorker(): Promise<Worker<AutoRevertJobData,
     workerLogger.error('Worker error', error);
   });
 
+  worker.on('stalled', (jobId) => {
+    workerLogger.warn('Job stalled', { jobId, queue: QUEUE_NAME });
+  });
+
   return worker;
 }
 

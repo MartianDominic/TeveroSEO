@@ -13,6 +13,7 @@ import {
 } from "@tevero/ui";
 import { Edit2, ExternalLink } from "lucide-react";
 import { OverrideDialog } from "./OverrideDialog";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 
 interface MappingItem {
   id: string;
@@ -101,9 +102,9 @@ export function MappingTable({
                 )}
               </TableCell>
               <TableCell>
-                {mapping.targetUrl ? (
+                {mapping.targetUrl && isSafeUrl(mapping.targetUrl) ? (
                   <a
-                    href={mapping.targetUrl}
+                    href={safeHref(mapping.targetUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline flex items-center gap-1"

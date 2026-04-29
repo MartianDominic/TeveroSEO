@@ -118,6 +118,10 @@ export async function startProspectAnalysisWorker(): Promise<
     });
   });
 
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: PROSPECT_ANALYSIS_QUEUE_NAME });
+  });
+
   return worker;
 }
 

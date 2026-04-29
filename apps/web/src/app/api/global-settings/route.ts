@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getFastApi, patchFastApi, FastApiError } from "@/lib/server-fetch";
+import { validateCsrf } from "@/lib/api/security";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 /**
  * Schema for global settings updates.
@@ -22,7 +24,7 @@ const updateSettingsSchema = z.object({
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function handleGet() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,7 +43,11 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: Request) {
+async function handlePatch(req: NextRequest) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { userId, orgRole } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -79,3 +85,9 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
+
+// Rate limit: 100 requests per minute for GET (standard API limit)
+export const GET = withRateLimit(handleGet, RATE_LIMITS.API);
+
+// Rate limit: 30 requests per minute for PATCH (admin action)
+export const PATCH = withRateLimit(handlePatch, RATE_LIMITS.ACTION);

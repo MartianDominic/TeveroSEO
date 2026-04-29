@@ -67,11 +67,12 @@ export default function KeywordMappingPage() {
     queryClient.invalidateQueries({ queryKey: ["keyword-mappings"] });
   };
 
-  const mappings = mappingsQuery.data?.mappings ?? [];
-  const stats = mappingsQuery.data?.stats ?? { optimize: 0, create: 0, total: 0 };
+  const mappingsData = mappingsQuery.data?.success ? mappingsQuery.data.data : null;
+  const mappings = mappingsData?.mappings ?? [];
+  const stats = mappingsData?.stats ?? { optimize: 0, create: 0, total: 0 };
 
   // Extract pages from mappings that have targetUrl for the override dialog
-  const pages = Array.from(
+  const pages: Array<{ url: string; title: string | null }> = Array.from(
     new Map(
       mappings
         .filter((m): m is MappingItem & { targetUrl: string } => m.targetUrl !== null)

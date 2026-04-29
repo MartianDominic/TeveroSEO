@@ -8,7 +8,7 @@
  * - 60 second timeout (DataForSEO can be slow for large requests)
  * - Automatic retries with exponential backoff
  * - Circuit breaker to prevent cascading failures
- * - Token bucket rate limiting (5 requests per second)
+ * - Redis-backed token bucket rate limiting (5 requests per second, shared across workers)
  */
 
 import { dataForSeoClient, HttpError, TimeoutError } from "@/server/lib/http-client";
@@ -28,79 +28,18 @@ import {
 import { getDataForSEOHeaders } from "@/server/lib/dataforseo-auth";
 
 // ============================================================================
-// Token Bucket Rate Limiter for DataForSEO API
+// Redis-backed Rate Limiter for DataForSEO API
 // ============================================================================
 
-/**
- * Simple in-memory token bucket rate limiter.
- * Ensures we don't exceed DataForSEO's rate limits (5 requests/second).
- */
-class TokenBucketRateLimiter {
-  private tokens: number;
-  private lastRefill: number;
-  private readonly maxTokens: number;
-  private readonly refillRate: number; // tokens per millisecond
-  private readonly queue: Array<{
-    resolve: () => void;
-    reject: (error: Error) => void;
-  }> = [];
-  private processing = false;
-
-  constructor(tokensPerSecond: number, maxBurst: number = tokensPerSecond) {
-    this.maxTokens = maxBurst;
-    this.tokens = maxBurst;
-    this.refillRate = tokensPerSecond / 1000; // Convert to per-ms
-    this.lastRefill = Date.now();
-  }
-
-  private refillTokens(): void {
-    const now = Date.now();
-    const elapsed = now - this.lastRefill;
-    const newTokens = elapsed * this.refillRate;
-    this.tokens = Math.min(this.maxTokens, this.tokens + newTokens);
-    this.lastRefill = now;
-  }
-
-  private async processQueue(): Promise<void> {
-    if (this.processing) return;
-    this.processing = true;
-
-    while (this.queue.length > 0) {
-      this.refillTokens();
-
-      if (this.tokens >= 1) {
-        this.tokens -= 1;
-        const request = this.queue.shift();
-        if (request) {
-          request.resolve();
-        }
-      } else {
-        // Wait until we have a token available
-        const waitTime = Math.ceil((1 - this.tokens) / this.refillRate);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-
-    this.processing = false;
-  }
-
-  /**
-   * Acquire a token, waiting if necessary.
-   * Returns a promise that resolves when a token is available.
-   */
-  async acquire(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this.queue.push({ resolve, reject });
-      void this.processQueue();
-    });
-  }
-}
+import { dataForSeoRateLimiter } from "@/server/lib/redis-rate-limiter";
 
 /**
- * Global rate limiter for DataForSEO API calls.
+ * Redis-backed rate limiter for DataForSEO API calls.
  * 5 requests per second with burst capacity of 5.
+ * Shared across all workers via Redis for consistent rate limiting.
+ * Re-exported for use by other DataForSEO modules (e.g., scraper).
  */
-const dataForSeoRateLimiter = new TokenBucketRateLimiter(5, 5);
+export { dataForSeoRateLimiter };
 
 // Re-export types for consumers
 export type { LabsKeywordDataItem, DomainRankedKeywordItem, SerpLiveItem, DomainMetricsItem };

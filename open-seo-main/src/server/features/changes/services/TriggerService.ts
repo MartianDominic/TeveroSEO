@@ -333,7 +333,13 @@ function parseRollbackScope(scope: unknown, clientId: string): RevertScope {
   // Try to parse with Zod schema
   const parsed = RollbackScopeSchema.safeParse(scope);
   if (!parsed.success) {
-    console.warn('Invalid rollback scope config, using default:', parsed.error.issues);
+    // Log only the error paths and codes, not the actual values (which may contain sensitive data)
+    const sanitizedIssues = parsed.error.issues.map((issue) => ({
+      path: issue.path.join('.'),
+      code: issue.code,
+      message: issue.message,
+    }));
+    console.warn('Invalid rollback scope config, using default:', sanitizedIssues);
     return defaultScope();
   }
 

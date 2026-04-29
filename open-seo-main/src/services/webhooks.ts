@@ -3,7 +3,7 @@
  * Phase 18.5: CRUD operations for webhooks.
  */
 import { randomBytes } from "crypto";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { webhooks, webhookDeliveries } from "@/db/webhook-schema";
 import { matchesAnyPattern } from "./event-registry";
@@ -197,68 +197,62 @@ export async function getWebhooksByScope(
 /**
  * Find all webhooks matching an event type and scope hierarchy.
  * Returns webhooks from most specific (client) to least specific (global).
+ *
+ * PERFORMANCE FIX: Uses single query with OR conditions instead of
+ * 3 separate queries. Reduces 3 queries to 1.
  */
 export async function findMatchingWebhooks(
   eventType: string,
   clientId?: string,
   workspaceId?: string,
 ): Promise<typeof webhooks.$inferSelect[]> {
-  const matchingWebhooks: (typeof webhooks.$inferSelect)[] = [];
+  // Build OR conditions for all applicable scopes
+  const scopeConditions: ReturnType<typeof and>[] = [];
 
-  // 1. Client-level webhooks (most specific)
+  // Global webhooks (always included)
+  scopeConditions.push(eq(webhooks.scope, "global"));
+
+  // Client-level webhooks (most specific)
   if (clientId) {
-    const clientWebhooks = await db
-      .select()
-      .from(webhooks)
-      .where(
-        and(
-          eq(webhooks.scope, "client"),
-          eq(webhooks.scopeId, clientId),
-          eq(webhooks.enabled, true),
-        ),
-      );
-
-    for (const webhook of clientWebhooks) {
-      const events = webhook.events as string[];
-      if (matchesAnyPattern(eventType, events)) {
-        matchingWebhooks.push(webhook);
-      }
-    }
+    scopeConditions.push(
+      and(eq(webhooks.scope, "client"), eq(webhooks.scopeId, clientId))
+    );
   }
 
-  // 2. Workspace-level webhooks
+  // Workspace-level webhooks
   if (workspaceId) {
-    const workspaceWebhooks = await db
-      .select()
-      .from(webhooks)
-      .where(
-        and(
-          eq(webhooks.scope, "workspace"),
-          eq(webhooks.scopeId, workspaceId),
-          eq(webhooks.enabled, true),
-        ),
-      );
-
-    for (const webhook of workspaceWebhooks) {
-      const events = webhook.events as string[];
-      if (matchesAnyPattern(eventType, events)) {
-        matchingWebhooks.push(webhook);
-      }
-    }
+    scopeConditions.push(
+      and(eq(webhooks.scope, "workspace"), eq(webhooks.scopeId, workspaceId))
+    );
   }
 
-  // 3. Global webhooks (least specific)
-  const globalWebhooks = await db
+  // Single query with OR for all scopes, filtered by enabled
+  const allWebhooks = await db
     .select()
     .from(webhooks)
-    .where(and(eq(webhooks.scope, "global"), eq(webhooks.enabled, true)));
+    .where(
+      and(
+        eq(webhooks.enabled, true),
+        or(...scopeConditions)
+      )
+    );
 
-  for (const webhook of globalWebhooks) {
+  // Filter by event pattern matching (done in-memory as patterns can be complex)
+  const matchingWebhooks = allWebhooks.filter((webhook) => {
     const events = webhook.events as string[];
-    if (matchesAnyPattern(eventType, events)) {
-      matchingWebhooks.push(webhook);
-    }
-  }
+    return matchesAnyPattern(eventType, events);
+  });
+
+  // Sort by scope specificity: client > workspace > global
+  const scopePriority: Record<string, number> = {
+    client: 0,
+    workspace: 1,
+    global: 2,
+  };
+
+  matchingWebhooks.sort(
+    (a, b) => (scopePriority[a.scope] ?? 3) - (scopePriority[b.scope] ?? 3)
+  );
 
   return matchingWebhooks;
 }

@@ -32,17 +32,29 @@ export function SectionEditor({
 
   const handleRegenerate = () => {
     startTransition(async () => {
-      const newSection = await regenerateSection(proposalId, section.type);
-      setContent(newSection.content);
-      onUpdate(newSection);
+      const result = await regenerateSection(proposalId, section.type);
+      if (result.success) {
+        setContent(result.data.content);
+        onUpdate(result.data);
+      } else {
+        // Show error via callback - parent handles toast
+        console.error("[SectionEditor] Regenerate failed:", result.error);
+        alert(result.error || "Failed to regenerate section");
+      }
     });
   };
 
   const handleSave = () => {
     startTransition(async () => {
-      await updateSection(proposalId, section.type, content);
-      onUpdate({ ...section, content });
-      setIsEditing(false);
+      const result = await updateSection(proposalId, section.type, content);
+      if (result.success) {
+        onUpdate({ ...section, content });
+        setIsEditing(false);
+      } else {
+        // Show error to user - don't exit edit mode on failure
+        console.error("[SectionEditor] Save failed:", result.error);
+        alert(result.error || "Failed to save section");
+      }
     });
   };
 

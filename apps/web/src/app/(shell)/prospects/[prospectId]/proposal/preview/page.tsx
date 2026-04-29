@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button, Card, CardContent } from "@tevero/ui";
-import { ArrowLeft, Download, Send } from "lucide-react";
+import { ArrowLeft, Download, Send, Loader2, AlertCircle } from "lucide-react";
+import {
+  getProposalForPreview,
+  type ProposalPreviewData,
+} from "../builder/actions";
 
 export default function ProposalPreviewPage() {
   const params = useParams();
@@ -12,10 +17,89 @@ export default function ProposalPreviewPage() {
   const prospectId = params.prospectId as string;
   const proposalId = searchParams.get("id");
 
-  if (!proposalId) {
+  const [proposal, setProposal] = useState<ProposalPreviewData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadProposal() {
+      if (!proposalId) {
+        setError("No proposal ID provided");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const result = await getProposalForPreview(proposalId);
+        if (result.success) {
+          setProposal(result.data);
+        } else {
+          setError(result.error || "Failed to load proposal");
+        }
+      } catch (err) {
+        setError("An unexpected error occurred while loading the proposal");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProposal();
+  }, [proposalId]);
+
+  if (loading) {
     return (
-      <div className="container py-8">
-        <p>No proposal ID provided</p>
+      <div className="container max-w-4xl py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading preview...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container max-w-4xl py-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Editor
+        </Button>
+        <Card>
+          <CardContent className="p-8">
+            <div className="flex items-center justify-center text-destructive">
+              <AlertCircle className="h-6 w-6 mr-2" />
+              <p>{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <div className="container max-w-4xl py-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Editor
+        </Button>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">No proposal found</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -45,13 +129,17 @@ export default function ProposalPreviewPage() {
 
       <Card>
         <CardContent className="p-8">
-          <div className="prose prose-sm max-w-none">
-            <p className="text-center text-muted-foreground">
-              Proposal preview for ID: {proposalId}
-            </p>
-            <p className="text-center text-muted-foreground text-sm">
-              Full preview rendering will load proposal sections from the API
-            </p>
+          <div className="proposal-preview space-y-8">
+            {proposal.sections.map((section) => (
+              <div key={section.type} className="section">
+                <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
+                  {section.title}
+                </h2>
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                  {section.content}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

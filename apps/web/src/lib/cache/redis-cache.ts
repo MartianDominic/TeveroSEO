@@ -20,6 +20,7 @@ export {
 } from "@/lib/redis/client";
 
 import { redis } from "@/lib/redis/client";
+import type { ZodLikeSchema } from "@/lib/utils/type-guards";
 
 // Namespace prefix for all cache keys - prevents collisions
 const CACHE_PREFIX = "tevero:cache:";
@@ -51,16 +52,44 @@ function buildTagKey(tag: string): string {
   return `${CACHE_PREFIX}tag:${tag}`;
 }
 
+export interface CacheGetOptions<T> {
+  /** Optional Zod schema for validating cached data */
+  schema?: ZodLikeSchema<T>;
+}
+
 /**
  * Get a cached value by key.
  * Key is automatically namespaced with "tevero:cache:" prefix.
+ *
+ * @param key - Cache key (will be prefixed automatically)
+ * @param options - Optional configuration including schema validation
+ * @returns Cached value or null if not found/invalid
  */
-export async function cacheGet<T>(key: string): Promise<T | null> {
+export async function cacheGet<T>(
+  key: string,
+  options?: CacheGetOptions<T>
+): Promise<T | null> {
   const cacheKey = buildKey(key);
   try {
     const data = await redis.get(cacheKey);
     if (!data) return null;
-    return JSON.parse(data) as T;
+
+    const parsed: unknown = JSON.parse(data);
+
+    // If schema provided, validate the cached data
+    if (options?.schema) {
+      const result = options.schema.safeParse(parsed);
+      if (!result.success) {
+        console.warn(`[redis-cache] Cached data validation failed for key "${key}": ${result.error.message}`);
+        // Invalidate corrupted cache entry
+        await redis.del(cacheKey);
+        return null;
+      }
+      return result.data;
+    }
+
+    // Without schema, return as T (maintains backward compatibility)
+    return parsed as T;
   } catch (error) {
     console.error("[redis-cache] Get error:", error);
     return null;

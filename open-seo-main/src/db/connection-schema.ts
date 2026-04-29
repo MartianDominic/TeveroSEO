@@ -8,6 +8,7 @@
 import {
   pgTable,
   text,
+  uuid,
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
@@ -45,7 +46,7 @@ export const siteConnections = pgTable(
   "site_connections",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
 

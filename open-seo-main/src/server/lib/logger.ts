@@ -247,3 +247,21 @@ export const defaultLogger = createLogger({ module: "open-seo" });
  * Equivalent to defaultLogger but with a more intuitive name.
  */
 export const logger = defaultLogger;
+
+/**
+ * Redact user ID for safe logging - shows first 8 characters only.
+ * Use this whenever logging user IDs to prevent full ID exposure.
+ *
+ * @param userId - Full user ID to redact
+ * @returns Redacted user ID (e.g., "user_33G***") or "None" if empty
+ *
+ * @example
+ * logger.info("User authenticated", { userId: redactUserId(userId) });
+ */
+export function redactUserId(userId: string | null | undefined): string {
+  if (!userId) return "None";
+  if (userId.length <= 8) {
+    return userId.length > 3 ? `${userId.substring(0, 3)}***` : "***";
+  }
+  return `${userId.substring(0, 8)}***`;
+}

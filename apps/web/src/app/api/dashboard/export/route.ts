@@ -75,8 +75,9 @@ export async function GET(request: NextRequest) {
       columns = ["clientName", "healthScore", "trafficCurrent", "trafficTrendPct", "keywordsTotal", "alertsOpen"];
     }
 
-    // Fetch metrics (would include filters in production)
-    const metrics = await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
+    // HIGH-AUTH-05 FIX: Pass userId to backend for user-scoped filtering
+    // The backend MUST filter results to only include clients owned by this user
+    const metrics = await getFastApi<ClientMetrics[]>(`/api/dashboard/metrics?user_id=${encodeURIComponent(userId)}`);
 
     // Return JSON for client-side export (PDF uses this)
     if (format === "json") {

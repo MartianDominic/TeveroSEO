@@ -17,17 +17,11 @@ interface ReportDetailPageProps {
 export default async function ReportDetailPage({ params }: ReportDetailPageProps) {
   const { clientId, reportId } = await params;
 
-  let report;
-  try {
-    report = await getReportStatus(reportId);
-  } catch {
+  const result = await getReportStatus(reportId, clientId);
+  if (!result.success || !result.data) {
     notFound();
   }
-
-  // Verify client ownership
-  if (report.clientId !== clientId) {
-    notFound();
-  }
+  const report = result.data;
 
   const dateRangeText = `${report.dateRange.start} to ${report.dateRange.end}`;
   const reportTypeLabel = report.reportType === "monthly-seo"
@@ -65,7 +59,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
 
       <Card>
         <CardContent className="p-6">
-          <ReportPreview reportId={reportId} initialStatus={report} />
+          <ReportPreview reportId={reportId} clientId={clientId} initialStatus={report} />
         </CardContent>
       </Card>
     </div>

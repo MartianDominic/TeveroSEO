@@ -235,3 +235,104 @@ registerCheck({
     };
   },
 });
+
+// T1-68: YMYL page has author attribution
+// NOTE: This check is used by scoring.ts Gate 3 - if this fails on YMYL pages, score is capped at 60
+registerCheck({
+  id: "T1-68",
+  name: "YMYL page has author",
+  tier: 1,
+  category: "eeat-signals",
+  severity: "critical",
+  autoEditable: false,
+  run: (ctx: CheckContext): CheckResult => {
+    const $ = ctx.$;
+
+    // Detect YMYL topics (Your Money Your Life - health, finance, legal, safety)
+    const bodyText = $("body").text().toLowerCase();
+    const ymylKeywords = [
+      // Health/Medical
+      "health", "medical", "medicine", "doctor", "treatment", "diagnosis", "symptom",
+      "disease", "illness", "prescription", "therapy", "hospital", "clinic",
+      // Finance
+      "finance", "money", "investment", "loan", "mortgage", "credit", "debt",
+      "insurance", "tax", "retirement", "pension", "banking", "stock", "crypto",
+      // Legal
+      "legal", "law", "attorney", "lawyer", "court", "lawsuit", "litigation",
+      // Safety
+      "safety", "emergency", "danger", "warning", "hazard",
+    ];
+
+    const matchedYmylKeywords = ymylKeywords.filter(k => bodyText.includes(k));
+    const isYmyl = matchedYmylKeywords.length >= 2; // Require at least 2 YMYL keywords
+
+    if (!isYmyl) {
+      return {
+        checkId: "T1-68",
+        passed: true,
+        severity: "info",
+        message: "Not a YMYL page (no YMYL topic keywords detected)",
+        details: { isYmyl: false },
+        autoEditable: false,
+      };
+    }
+
+    // Check for author attribution
+    const authorSelectors = [
+      '[rel="author"]',
+      '[itemprop="author"]',
+      '.author',
+      '.byline',
+      '[class*="author"]',
+      'a[href*="/author/"]',
+      'a[href*="/writers/"]',
+    ];
+
+    let hasAuthor = false;
+    for (const sel of authorSelectors) {
+      if ($(sel).length > 0) {
+        hasAuthor = true;
+        break;
+      }
+    }
+
+    // Also check for "By " pattern in text
+    if (!hasAuthor) {
+      hasAuthor = /\bby\s+[A-Z][a-z]+\s+[A-Z]/i.test(bodyText);
+    }
+
+    // Check for author in schema
+    if (!hasAuthor) {
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const content = $(el).text();
+          const parsed = JSON.parse(content);
+          const schemas = parsed["@graph"] ? parsed["@graph"] : [parsed];
+          for (const schema of schemas) {
+            if (schema.author && (schema.author.name || schema.author["@type"])) {
+              hasAuthor = true;
+              break;
+            }
+          }
+        } catch {
+          // Invalid JSON, skip
+        }
+      });
+    }
+
+    return {
+      checkId: "T1-68",
+      passed: hasAuthor,
+      severity: hasAuthor ? "info" : "critical",
+      message: hasAuthor
+        ? "YMYL page has author attribution"
+        : "YMYL page missing author attribution - required for E-E-A-T",
+      details: {
+        isYmyl: true,
+        ymylKeywordsFound: matchedYmylKeywords.slice(0, 5),
+        hasAuthor,
+      },
+      autoEditable: false,
+    };
+  },
+});

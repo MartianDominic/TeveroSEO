@@ -53,11 +53,14 @@ export { calculateOnPageScore } from "./scoring";
 // Re-export tier-specific functions
 export { tier1Checks, TIER1_CHECK_COUNT } from "./tier1";
 export { getTier2Checks, TIER_2_CHECK_IDS, verifyTier2Registration } from "./tier2";
-export { getTier3Checks, TIER_3_CHECK_IDS, verifyTier3Registration } from "./tier3";
+export { getTier3Checks, TIER_3_CHECK_IDS, verifyTier3Registration, clearCruxCache } from "./tier3";
 export { getTier4Checks, TIER_4_CHECK_IDS, verifyTier4Registration } from "./tier4";
 
-/** Total expected checks across all tiers */
-export const TOTAL_CHECK_COUNT = 107;
+/**
+ * Total expected checks across all tiers.
+ * Tier 1: 77, Tier 2: 26, Tier 3: 17, Tier 4: 9 = 129 total
+ */
+export const TOTAL_CHECK_COUNT = 129;
 
 /**
  * Verify all checks are registered.

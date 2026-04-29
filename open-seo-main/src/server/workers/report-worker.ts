@@ -93,8 +93,8 @@ export async function startReportWorker(): Promise<
             attemptsMade: job.attemptsMade,
           };
           await reportQueue.add("dlq:report-generation", dlqData, {
-            removeOnComplete: false,
-            removeOnFail: false,
+            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
+            removeOnFail: { age: 604800 }, // 7 days
             attempts: 1,
           });
           jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
@@ -117,6 +117,10 @@ export async function startReportWorker(): Promise<
           ? job.finishedOn - job.processedOn
           : undefined,
     });
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: REPORT_QUEUE_NAME });
   });
 
   return worker;

@@ -17,6 +17,8 @@ interface ClientActions {
   fetchClients: () => Promise<void>;
   setActiveClient: (id: string) => void;
   clearActiveClient: () => void;
+  clearError: () => void;
+  retryFetchClients: () => Promise<void>;
 }
 
 export type ClientStore = ClientState & ClientActions;
@@ -55,6 +57,15 @@ export const useClientStore = create<ClientStore>()(
 
       clearActiveClient: () => {
         set({ activeClientId: null, activeClient: null });
+      },
+
+      clearError: () => {
+        set({ error: null });
+      },
+
+      retryFetchClients: async () => {
+        const { fetchClients } = get();
+        await fetchClients();
       },
     }),
     {

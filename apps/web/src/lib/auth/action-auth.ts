@@ -88,6 +88,17 @@ export async function requireActionAuthStrict(): Promise<ActionAuthContext> {
 }
 
 /**
+ * Get the session token for backend API authentication.
+ * This token should be passed as Authorization: Bearer header to backend services.
+ *
+ * @returns The session token or null if not authenticated
+ */
+async function getSessionToken(): Promise<string | null> {
+  const { getToken } = await auth();
+  return getToken();
+}
+
+/**
  * Validate that the current user is a member of a specific workspace.
  * Verifies membership through the backend API.
  *
@@ -118,6 +129,12 @@ export async function validateWorkspaceMembership(
 ): Promise<void> {
   const backendUrl = env.OPEN_SEO_URL;
 
+  // Get session token for backend authentication
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) {
+    throw new ActionAuthError('Unable to obtain session token for backend authentication', 'UNAUTHORIZED');
+  }
+
   try {
     const response = await fetch(
       `${backendUrl}/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(authContext.userId)}`,
@@ -125,6 +142,7 @@ export async function validateWorkspaceMembership(
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
         },
       }
     );
@@ -188,6 +206,12 @@ export async function validateClientOwnership(
 ): Promise<void> {
   const backendUrl = env.AI_WRITER_URL;
 
+  // Get session token for backend authentication
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) {
+    throw new ActionAuthError('Unable to obtain session token for backend authentication', 'UNAUTHORIZED');
+  }
+
   try {
     const response = await fetch(
       `${backendUrl}/api/clients/${clientId}/verify-access`,
@@ -195,6 +219,7 @@ export async function validateClientOwnership(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
         },
         body: JSON.stringify({
           userId: authContext.userId,
@@ -230,6 +255,158 @@ export async function validateClientOwnership(
     // Fail closed for security, but log the error
     console.error(`[ActionAuth] Failed to verify client access: clientId=${clientId}, userId=${authContext.userId}`, error);
     throw new ActionAuthError('Unable to verify access. Please try again.', 'FORBIDDEN');
+  }
+}
+
+/**
+ * Validate that the current user has access to a specific prospect.
+ * Verifies ownership through the backend API by checking prospect's workspace membership.
+ *
+ * @param prospectId - The prospect ID to validate access for
+ * @param authContext - The authentication context from requireActionAuth
+ * @throws ActionAuthError with FORBIDDEN code if access is denied
+ *
+ * @example
+ * ```ts
+ * export async function updateProspect(prospectId: string, data: ProspectData) {
+ *   const auth = await requireActionAuth();
+ *   await validateProspectOwnership(prospectId, auth);
+ *   return db.prospects.update(prospectId, data);
+ * }
+ * ```
+ */
+/**
+ * Schema for prospect ownership API response.
+ */
+const prospectOwnershipResponseSchema = z.object({
+  hasAccess: z.boolean(),
+  workspaceId: z.string().optional(),
+});
+
+export async function validateProspectOwnership(
+  prospectId: string,
+  authContext: ActionAuthContext
+): Promise<void> {
+  const backendUrl = env.OPEN_SEO_URL;
+
+  // Get session token for backend authentication
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) {
+    throw new ActionAuthError('Unable to obtain session token for backend authentication', 'UNAUTHORIZED');
+  }
+
+  try {
+    const response = await fetch(
+      `${backendUrl}/api/prospects/${prospectId}/verify-access`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          userId: authContext.userId,
+          orgId: authContext.orgId
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ActionAuthError('Prospect not found', 'NOT_FOUND');
+      }
+      throw new ActionAuthError('Access denied: You do not have access to this prospect', 'FORBIDDEN');
+    }
+
+    const json = await response.json();
+    const parsed = prospectOwnershipResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error('[ActionAuth] Invalid prospect ownership response shape:', parsed.error);
+      throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
+    }
+
+    if (!parsed.data.hasAccess) {
+      throw new ActionAuthError('Access denied: You do not have access to this prospect', 'FORBIDDEN');
+    }
+  } catch (error) {
+    if (error instanceof ActionAuthError) {
+      throw error;
+    }
+
+    // Network error or backend unavailable - fail closed for security
+    console.error(`[ActionAuth] Failed to verify prospect access: prospectId=${prospectId}, userId=${authContext.userId}`, error);
+    throw new ActionAuthError('Unable to verify prospect access. Please try again.', 'FORBIDDEN');
+  }
+}
+
+/**
+ * Validate that the current user has access to a specific proposal.
+ * Verifies ownership through the backend API.
+ *
+ * @param proposalId - The proposal ID to validate access for
+ * @param authContext - The authentication context from requireActionAuth
+ * @throws ActionAuthError with FORBIDDEN code if access is denied
+ */
+const proposalOwnershipResponseSchema = z.object({
+  hasAccess: z.boolean(),
+  prospectId: z.string().optional(),
+});
+
+export async function validateProposalOwnership(
+  proposalId: string,
+  authContext: ActionAuthContext
+): Promise<void> {
+  const backendUrl = env.OPEN_SEO_URL;
+
+  // Get session token for backend authentication
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) {
+    throw new ActionAuthError('Unable to obtain session token for backend authentication', 'UNAUTHORIZED');
+  }
+
+  try {
+    const response = await fetch(
+      `${backendUrl}/api/proposals/${proposalId}/verify-access`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          userId: authContext.userId,
+          orgId: authContext.orgId
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new ActionAuthError('Proposal not found', 'NOT_FOUND');
+      }
+      throw new ActionAuthError('Access denied: You do not have access to this proposal', 'FORBIDDEN');
+    }
+
+    const json = await response.json();
+    const parsed = proposalOwnershipResponseSchema.safeParse(json);
+
+    if (!parsed.success) {
+      console.error('[ActionAuth] Invalid proposal ownership response shape:', parsed.error);
+      throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
+    }
+
+    if (!parsed.data.hasAccess) {
+      throw new ActionAuthError('Access denied: You do not have access to this proposal', 'FORBIDDEN');
+    }
+  } catch (error) {
+    if (error instanceof ActionAuthError) {
+      throw error;
+    }
+
+    // Network error or backend unavailable - fail closed for security
+    console.error(`[ActionAuth] Failed to verify proposal access: proposalId=${proposalId}, userId=${authContext.userId}`, error);
+    throw new ActionAuthError('Unable to verify proposal access. Please try again.', 'FORBIDDEN');
   }
 }
 

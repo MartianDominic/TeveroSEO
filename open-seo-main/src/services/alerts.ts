@@ -244,3 +244,119 @@ export async function updateAlertEmailStatus(
     })
     .where(eq(alerts.id, id));
 }
+
+/**
+ * Create a new alert rule.
+ * Returns the created rule.
+ */
+export async function createAlertRule(data: {
+  clientId: string;
+  alertType: string;
+  enabled: boolean;
+  threshold?: number | null;
+  severity: "info" | "warning" | "critical";
+  emailNotify: boolean;
+}) {
+  const id = crypto.randomUUID();
+  const now = new Date();
+
+  const ruleData: AlertRuleInsert = {
+    id,
+    clientId: data.clientId,
+    alertType: data.alertType as "ranking_drop" | "sync_failure" | "connection_expiry",
+    enabled: data.enabled,
+    threshold: data.threshold ?? null,
+    severity: data.severity,
+    emailNotify: data.emailNotify,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    await db.insert(alertRules).values(ruleData);
+
+    // Return the created rule
+    const [created] = await db
+      .select()
+      .from(alertRules)
+      .where(eq(alertRules.id, id));
+
+    return created;
+  } catch (error) {
+    logger.error("Failed to create alert rule", error instanceof Error ? error : undefined, {
+      clientId: data.clientId,
+      alertType: data.alertType,
+    });
+    throw new AppError("ALERT_RULE_CREATE_FAILED", "Failed to create alert rule");
+  }
+}
+
+/**
+ * Update an existing alert rule by ID.
+ * Validates that the rule belongs to the specified client.
+ */
+export async function updateAlertRuleById(
+  ruleId: string,
+  clientId: string,
+  updates: {
+    enabled?: boolean;
+    threshold?: number | null;
+    severity?: "info" | "warning" | "critical";
+    emailNotify?: boolean;
+  }
+): Promise<void> {
+  // First verify the rule belongs to this client
+  const [existing] = await db
+    .select()
+    .from(alertRules)
+    .where(and(eq(alertRules.id, ruleId), eq(alertRules.clientId, clientId)));
+
+  if (!existing) {
+    throw new AppError("NOT_FOUND", "Alert rule not found");
+  }
+
+  const updateData: Partial<AlertRuleInsert> = {
+    updatedAt: new Date(),
+  };
+
+  if (updates.enabled !== undefined) {
+    updateData.enabled = updates.enabled;
+  }
+  if (updates.threshold !== undefined) {
+    updateData.threshold = updates.threshold;
+  }
+  if (updates.severity !== undefined) {
+    updateData.severity = updates.severity;
+  }
+  if (updates.emailNotify !== undefined) {
+    updateData.emailNotify = updates.emailNotify;
+  }
+
+  await db
+    .update(alertRules)
+    .set(updateData)
+    .where(eq(alertRules.id, ruleId));
+}
+
+/**
+ * Delete an alert rule by ID.
+ * Validates that the rule belongs to the specified client before deletion.
+ */
+export async function deleteAlertRuleById(
+  ruleId: string,
+  clientId: string
+): Promise<void> {
+  // First verify the rule belongs to this client
+  const [existing] = await db
+    .select()
+    .from(alertRules)
+    .where(and(eq(alertRules.id, ruleId), eq(alertRules.clientId, clientId)));
+
+  if (!existing) {
+    throw new AppError("NOT_FOUND", "Alert rule not found");
+  }
+
+  await db
+    .delete(alertRules)
+    .where(eq(alertRules.id, ruleId));
+}

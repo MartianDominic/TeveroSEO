@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { Opportunity, OpportunityType } from "@/types/opportunities";
 import { cn } from "@/lib/utils";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 import { OPPORTUNITY_TYPE_LABELS } from "@/types/opportunities";
 
 interface OpportunityCardProps {
@@ -181,18 +182,27 @@ export function OpportunityCard({
           <div>
             <h4 className="text-sm font-medium mb-2">Affected Pages</h4>
             <div className="space-y-1">
-              {opportunity.pages.map((url) => (
-                <a
-                  key={url}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {truncateUrl(url)}
-                </a>
-              ))}
+              {opportunity.pages.map((url) =>
+                isSafeUrl(url) ? (
+                  <a
+                    key={url}
+                    href={safeHref(url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {truncateUrl(url)}
+                  </a>
+                ) : (
+                  <span
+                    key={url}
+                    className="flex items-center gap-1 text-xs text-muted-foreground"
+                  >
+                    {truncateUrl(url)}
+                  </span>
+                )
+              )}
             </div>
           </div>
         )}
@@ -227,7 +237,7 @@ export function OpportunityCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
           <span>Priority score: {opportunity.priority}/9</span>
           <span>
-            Created: {opportunity.createdAt.toLocaleDateString()}
+            Created: {new Date(opportunity.createdAt).toLocaleDateString()}
           </span>
         </div>
       </CardContent>

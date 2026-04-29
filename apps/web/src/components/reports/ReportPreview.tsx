@@ -8,10 +8,11 @@ import type { ReportMetadata } from "@tevero/types";
 
 interface ReportPreviewProps {
   reportId: string;
+  clientId: string;
   initialStatus: ReportMetadata;
 }
 
-export function ReportPreview({ reportId, initialStatus }: ReportPreviewProps) {
+export function ReportPreview({ reportId, clientId, initialStatus }: ReportPreviewProps) {
   const [status, setStatus] = useState(initialStatus);
 
   // Poll for status updates while generating
@@ -19,10 +20,12 @@ export function ReportPreview({ reportId, initialStatus }: ReportPreviewProps) {
     if (status.status === "pending" || status.status === "generating") {
       const interval = setInterval(async () => {
         try {
-          const updated = await getReportStatus(reportId);
-          setStatus(updated);
-          if (updated.status === "complete" || updated.status === "failed") {
-            clearInterval(interval);
+          const result = await getReportStatus(reportId, clientId);
+          if (result.success) {
+            setStatus(result.data);
+            if (result.data.status === "complete" || result.data.status === "failed") {
+              clearInterval(interval);
+            }
           }
         } catch (error) {
           // eslint-disable-next-line no-console
@@ -31,7 +34,7 @@ export function ReportPreview({ reportId, initialStatus }: ReportPreviewProps) {
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [reportId, status.status]);
+  }, [reportId, clientId, status.status]);
 
   if (status.status === "pending" || status.status === "generating") {
     return (

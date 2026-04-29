@@ -5,8 +5,10 @@
  * Only use for service-to-service communication on internal network.
  */
 
-const AIWRITER_INTERNAL_URL =
-  process.env.AIWRITER_INTERNAL_URL || "http://localhost:8000";
+// ENV-H04 FIX: Standardized to AI_WRITER_URL to match apps/web and docker-compose.vps.yml
+// Supports legacy AI_WRITER_URL for backward compatibility during migration
+const AI_WRITER_URL =
+  process.env.AI_WRITER_URL || process.env.AI_WRITER_URL || "http://localhost:8000";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 const FETCH_TIMEOUT_MS = 30000;
 
@@ -47,7 +49,7 @@ export async function getClientToken(
   }
 
   const res = await fetchWithTimeout(
-    `${AIWRITER_INTERNAL_URL}/internal/tokens/${clientId}/${provider}`,
+    `${AI_WRITER_URL}/internal/tokens/${clientId}/${provider}`,
     {
       headers: {
         "X-Internal-Api-Key": INTERNAL_API_KEY,
@@ -75,7 +77,7 @@ export async function updateClientToken(
   }
 
   const res = await fetchWithTimeout(
-    `${AIWRITER_INTERNAL_URL}/internal/tokens/${clientId}/${provider}`,
+    `${AI_WRITER_URL}/internal/tokens/${clientId}/${provider}`,
     {
       method: "PUT",
       headers: {
@@ -100,7 +102,7 @@ export async function markTokenInactive(
   }
 
   const res = await fetchWithTimeout(
-    `${AIWRITER_INTERNAL_URL}/internal/tokens/${clientId}/${provider}/deactivate`,
+    `${AI_WRITER_URL}/internal/tokens/${clientId}/${provider}/deactivate`,
     {
       method: "POST",
       headers: {

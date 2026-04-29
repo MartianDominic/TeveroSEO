@@ -125,28 +125,38 @@ export const voiceTemplateService = {
    * Seed all system templates.
    * Skips templates that already exist (idempotent).
    *
+   * PERFORMANCE FIX: Uses single query to get existing IDs, then bulk insert
+   * for new templates. Reduces N*2 queries to 2 queries total.
+   *
    * @returns Number of templates seeded
    */
   async seedSystemTemplates(): Promise<number> {
-    let seeded = 0;
+    // Step 1: Get all existing template IDs in one query
+    const existingTemplates = await db
+      .select({ id: voiceTemplates.id })
+      .from(voiceTemplates);
+    const existingIds = new Set(existingTemplates.map((t) => t.id));
 
-    for (const template of INDUSTRY_TEMPLATES) {
-      const existing = await this.getById(template.id);
-      if (existing) continue;
+    // Step 2: Filter to only new templates
+    const newTemplates = INDUSTRY_TEMPLATES.filter((t) => !existingIds.has(t.id));
 
-      await db.insert(voiceTemplates).values({
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        industry: template.id,
-        isSystem: true,
-        templateConfig: template.defaults,
-        usageCount: 0,
-      });
-
-      seeded++;
+    if (newTemplates.length === 0) {
+      return 0;
     }
 
-    return seeded;
+    // Step 3: Bulk insert all new templates
+    const valuesToInsert = newTemplates.map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      industry: template.id,
+      isSystem: true,
+      templateConfig: template.defaults,
+      usageCount: 0,
+    }));
+
+    await db.insert(voiceTemplates).values(valuesToInsert);
+
+    return newTemplates.length;
   },
 };

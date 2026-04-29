@@ -31,7 +31,7 @@ export function GoalTemplateSelector({
   }
 
   const available = templates?.filter(
-    (t) => !excludeTemplates.includes(t.id) || t.goalType === "custom",
+    (t) => !excludeTemplates.includes(t.id) || t.metric === "custom",
   );
 
   return (
@@ -47,7 +47,7 @@ export function GoalTemplateSelector({
         {available?.map((template) => (
           <SelectItem key={template.id} value={template.id}>
             <div className="flex items-center gap-2">
-              <GoalIcon type={template.goalType} />
+              <GoalIcon type={template.metric} />
               <span>{template.name}</span>
             </div>
           </SelectItem>

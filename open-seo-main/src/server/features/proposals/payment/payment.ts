@@ -15,6 +15,7 @@ import { db } from "@/db/index";
 import { proposalPayments, proposals } from "@/db/proposal-schema";
 import { createLogger } from "@/server/lib/logger";
 import { enqueueOnboarding } from "@/server/queues/onboardingQueue";
+import { withRetry } from "@/server/lib/retry";
 
 const log = createLogger({ module: "PaymentService" });
 
@@ -147,19 +148,23 @@ export async function createPaymentCheckout(
   const mode: "payment" | "subscription" =
     monthlyFeeCents && monthlyFeeCents > 0 ? "subscription" : "payment";
 
-  // Create Stripe checkout session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    mode,
-    line_items: lineItems,
-    customer_email: customerEmail,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      proposalId,
-    },
-    locale: "lt", // Lithuanian
-  });
+  // Create Stripe checkout session with retry for transient failures
+  const session = await withRetry(
+    () =>
+      stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode,
+        line_items: lineItems,
+        customer_email: customerEmail,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          proposalId,
+        },
+        locale: "lt", // Lithuanian
+      }),
+    { maxRetries: 2, baseDelayMs: 500 }
+  );
 
   // Store payment record in database
   const paymentId = nanoid();

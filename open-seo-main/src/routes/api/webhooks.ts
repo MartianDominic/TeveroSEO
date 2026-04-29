@@ -7,6 +7,7 @@ import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { validateWebhookUrl } from "@/server/lib/webhook-url-policy";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess, AuthorizationError } from "@/server/middleware/authz";
 import {
   createWebhook,
   updateWebhook,
@@ -89,7 +90,7 @@ export const Route = createFileRoute("/api/webhooks")({
       // POST /api/webhooks - Create webhook
       POST: async ({ request }: { request: Request }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const body = (await request.json()) as {
             scope: "global" | "workspace" | "client";
@@ -108,6 +109,16 @@ export const Route = createFileRoute("/api/webhooks")({
             );
           }
 
+          // SECURITY: Validate scopeId ownership for client-scoped webhooks (CRIT-03-D fix)
+          if (body.scope === "client" && body.scopeId) {
+            await requireClientAccess(authContext.userId, body.scopeId);
+          } else if (body.scope === "workspace" && body.scopeId) {
+            // Workspace-scoped: verify user belongs to this workspace
+            if (body.scopeId !== authContext.organizationId) {
+              throw new AppError("FORBIDDEN", "Access denied to this workspace");
+            }
+          }
+
           // SECURITY: Validate webhook URL to prevent SSRF attacks
           await validateWebhookUrl(body.url);
 
@@ -123,12 +134,22 @@ export const Route = createFileRoute("/api/webhooks")({
 
           const webhook = await getWebhookById(webhookId);
 
+          if (!webhook) {
+            return Response.json(
+              { error: "Webhook not found after creation" },
+              { status: 404 }
+            );
+          }
+
           return Response.json({
-            id: webhook!.id,
-            secret: webhook!.secret,
+            id: webhook.id,
+            secret: webhook.secret,
             message: "Webhook created. Save the secret - it won't be shown again.",
           });
         } catch (err) {
+          if (err instanceof AuthorizationError) {
+            return Response.json({ error: err.message }, { status: 403 });
+          }
           if (err instanceof AppError) {
             const status =
               err.code === "UNAUTHENTICATED"

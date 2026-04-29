@@ -76,22 +76,30 @@ export function GoalCard({ goal, template, onEdit, onDelete }: GoalCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const currentValue = Number(goal.currentValue ?? 0);
   const targetValue = Number(goal.targetValue);
-  const attainmentPct = Number(goal.attainmentPct ?? 0);
+  // Calculate attainment percentage from current/target values
+  const attainmentPct = targetValue > 0 ? (currentValue / targetValue) * 100 : 0;
   const displayName = goal.customName ?? template.name;
+  // Status-based highlighting (achieved = primary ring)
+  const isHighlighted = goal.status === "achieved";
 
   return (
-    <Card className={cn(goal.isPrimary && "ring-2 ring-primary")}>
+    <Card className={cn(isHighlighted && "ring-2 ring-primary")}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="space-y-3 flex-1">
             <div className="flex items-center gap-2">
               <GoalIcon
-                type={template.goalType}
+                type={template.metric}
                 className="h-5 w-5 text-muted-foreground"
               />
-              {goal.isPrimary && (
+              {goal.status === "achieved" && (
                 <Badge variant="secondary" className="text-xs">
-                  Primary
+                  Achieved
+                </Badge>
+              )}
+              {goal.status === "abandoned" && (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  Paused
                 </Badge>
               )}
               <h4 className="font-medium">{displayName}</h4>
@@ -102,7 +110,6 @@ export function GoalCard({ goal, template, onEdit, onDelete }: GoalCardProps) {
               <div className="flex items-center justify-between text-sm">
                 <span>
                   {currentValue.toLocaleString()} / {targetValue.toLocaleString()}
-                  {template.unit && ` ${template.unit}`}
                 </span>
                 <span
                   className={cn(
@@ -119,13 +126,13 @@ export function GoalCard({ goal, template, onEdit, onDelete }: GoalCardProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">30d trend:</span>
-              <TrendIndicator
-                direction={goal.trendDirection}
-                value={goal.trendValue}
-              />
-            </div>
+            {/* TODO: Phase 40+ - Show trend when backend supports trendDirection/trendValue */}
+            {goal.targetDate && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Target:</span>
+                <span className="text-xs">{new Date(goal.targetDate).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
 
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>

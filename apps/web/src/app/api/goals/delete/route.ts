@@ -7,38 +7,59 @@
  * Uses POST instead of DELETE for simpler body parsing.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { deleteFastApi, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { deleteFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { validateCsrf } from "@/lib/api/security";
+import {
+  deleteGoalSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface DeleteGoalInput {
-  goalId: string;
-  clientId?: string;
-}
-
 async function handlePost(req: NextRequest) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
-    await requireAuth();
-
-    const body: DeleteGoalInput = await req.json();
-
-    if (!body.goalId) {
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
       return NextResponse.json(
-        { error: "goalId is required" },
+        { error: jsonResult.error },
         { status: 400 }
       );
     }
 
-    // If clientId is provided, use client-specific endpoint
-    if (body.clientId) {
-      await deleteFastApi(`/api/clients/${body.clientId}/goals/${body.goalId}`);
-    } else {
-      // Use generic endpoint - backend handles authorization
-      await deleteFastApi(`/api/goals/${body.goalId}`);
+    // Validate with Zod schema
+    const parsed = deleteGoalSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
     }
+
+    const body = parsed.data;
+
+    // Get clientId from body or fetch it from the goal
+    let clientId = body.clientId;
+
+    if (!clientId) {
+      // Fetch the goal to get its clientId for access validation
+      const goal = await getFastApi<{ client_id: string }>(`/api/goals/${body.goalId}`);
+      clientId = goal.client_id;
+    }
+
+    // CRITICAL: Verify user has access to this client before allowing delete
+    await requireClientAccess(clientId);
+
+    // Use client-specific endpoint for proper authorization
+    await deleteFastApi(`/api/clients/${clientId}/goals/${body.goalId}`);
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -8,11 +8,17 @@
 import { NextResponse } from "next/server";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import {
-  getFastApi,
-  putFastApi,
-  deleteFastApi,
+  getOpenSeo,
+  putOpenSeo,
+  deleteOpenSeo,
   FastApiError,
 } from "@/lib/server-fetch";
+import { validateCsrf } from "@/lib/api/security";
+import {
+  updateGoalByIdSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,7 +55,7 @@ export async function GET(_req: Request, { params }: Params) {
   const { clientId, goalId } = await params;
   try {
     await requireClientAccess(clientId);
-    const data = await getFastApi<{ goal: GoalWithTemplate }>(
+    const data = await getOpenSeo<{ goal: GoalWithTemplate }>(
       `/api/clients/${clientId}/goals/${goalId}`
     );
     return NextResponse.json(data);
@@ -65,11 +71,34 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PUT(req: Request, { params }: Params) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId, goalId } = await params;
   try {
     await requireClientAccess(clientId);
-    const body = await req.json();
-    const data = await putFastApi<{ id: string }>(
+
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
+      return NextResponse.json(
+        { error: jsonResult.error },
+        { status: 400 }
+      );
+    }
+
+    // Validate with Zod schema
+    const parsed = updateGoalByIdSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
+    const data = await putOpenSeo<{ id: string }>(
       `/api/clients/${clientId}/goals/${goalId}`,
       body
     );
@@ -85,11 +114,15 @@ export async function PUT(req: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId, goalId } = await params;
   try {
     await requireClientAccess(clientId);
-    await deleteFastApi(`/api/clients/${clientId}/goals/${goalId}`);
+    await deleteOpenSeo(`/api/clients/${clientId}/goals/${goalId}`);
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     if (err instanceof AuthError) {

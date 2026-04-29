@@ -34,8 +34,7 @@ import {
 } from "@/server/services/report/report-renderer";
 import { writeFile, mkdir, unlink, access } from "node:fs/promises";
 import path from "node:path";
-
-const REPORTS_DIR = process.env.REPORTS_DIR ?? "/data/reports";
+import { REPORTS_DIR, sanitizePathComponent } from "../lib/storage";
 
 /**
  * Check if a partial PDF exists from a previous attempt.
@@ -46,9 +45,11 @@ async function checkExistingPdf(
   reportType: string,
   dateEnd: string,
 ): Promise<string | null> {
+  // SECURITY: Sanitize clientId to prevent path traversal
+  const safeClientId = sanitizePathComponent(clientId);
   const dateStr = dateEnd.replace(/-/g, "");
   const filename = `${dateStr}_${reportType}.pdf`;
-  const pdfPath = path.join(REPORTS_DIR, clientId, filename);
+  const pdfPath = path.join(REPORTS_DIR, safeClientId, filename);
 
   try {
     await access(pdfPath);
@@ -222,9 +223,11 @@ export default async function processReportJob(
 
     // Step 8: Write to filesystem
     // File naming: {client_id}/{YYYY-MM-DD}_{report_type}.pdf per CONTEXT.md
+    // SECURITY: Sanitize clientId to prevent path traversal
+    const safeClientId = sanitizePathComponent(clientId);
     const dateStr = dateRange.end.replace(/-/g, "");
     const filename = `${dateStr}_${reportType}.pdf`;
-    const clientDir = path.join(REPORTS_DIR, clientId);
+    const clientDir = path.join(REPORTS_DIR, safeClientId);
     const pdfPath = path.join(clientDir, filename);
 
     await mkdir(clientDir, { recursive: true });

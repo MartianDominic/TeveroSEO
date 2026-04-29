@@ -39,8 +39,12 @@ export default function PageFindingsPage() {
     if (!auditId) return;
     setIsExporting(true);
     try {
-      const csv = await exportFindingsCSV({ projectId, clientId, auditId });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const result = await exportFindingsCSV({ projectId, clientId, auditId });
+      if (!result.success) {
+        console.error("[handleExport] Failed:", result.error);
+        return;
+      }
+      const blob = new Blob([result.data], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -98,7 +102,24 @@ export default function PageFindingsPage() {
     );
   }
 
-  const data = findingsQuery.data as PageFindingsResponse;
+  const queryData = findingsQuery.data;
+  if (!queryData?.success) {
+    return (
+      <div className="px-4 py-6 md:px-6">
+        <div className="mx-auto max-w-3xl space-y-4">
+          <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300">
+            <AlertCircle className="h-5 w-5" />
+            <span>Failed to load page findings. Please try again.</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={goBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to audit
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  const data = queryData.data;
   const { findings, score, pageUrl } = data;
 
   const passedCount = findings.filter((f) => f.passed).length;

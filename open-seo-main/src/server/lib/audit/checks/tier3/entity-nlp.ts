@@ -16,10 +16,14 @@ function getNlpApiKey(): string | undefined {
 
 /**
  * Extract text content from HTML for NLP analysis.
+ * Uses a cloned Cheerio instance to avoid mutating shared state.
  */
 function extractTextContent($: CheckContext["$"]): string {
-  $("script, style, noscript, nav, footer, header").remove();
-  return $("body").text().replace(/\s+/g, " ").trim();
+  // Clone the root to avoid mutating the shared Cheerio instance
+  const $clone = $.root().clone();
+  const $cloned = $.load($clone.html() ?? "");
+  $cloned("script, style, noscript, nav, footer, header").remove();
+  return $cloned("body").text().replace(/\s+/g, " ").trim();
 }
 
 /**

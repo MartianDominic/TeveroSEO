@@ -6,8 +6,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import { AppError } from "@/server/lib/errors";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
-const OPEN_SEO_API = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+const OPEN_SEO_API = process.env.OPEN_SEO_URL || "http://localhost:3001";
+
+// Timeout configuration for briefs API calls
+const BRIEFS_TIMEOUT = 30_000; // 30s for standard operations
+const BRIEFS_ANALYZE_TIMEOUT = 60_000; // 60s for SERP analysis (external API)
+const BRIEFS_GENERATE_TIMEOUT = 120_000; // 120s for content generation
 
 export interface Brief {
   id: string;
@@ -59,13 +65,14 @@ export const getBriefsFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => getBriefsSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs?projectId=${data.projectId}`,
       {
         headers: {
           "X-Client-ID": context.clientId || "",
           "Content-Type": "application/json",
         },
+        timeout: BRIEFS_TIMEOUT,
       }
     );
 
@@ -82,13 +89,14 @@ export const getBriefFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => getBriefSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs?id=${data.briefId}`,
       {
         headers: {
           "X-Client-ID": context.clientId || "",
           "Content-Type": "application/json",
         },
+        timeout: BRIEFS_TIMEOUT,
       }
     );
 
@@ -106,7 +114,7 @@ export const analyzeSerpFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => analyzeSerpSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs/analyze-serp/${data.mappingId}`,
       {
         method: "POST",
@@ -115,6 +123,7 @@ export const analyzeSerpFn = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ locationCode: data.locationCode }),
+        timeout: BRIEFS_ANALYZE_TIMEOUT, // Longer timeout for SERP analysis
       }
     );
 
@@ -131,13 +140,14 @@ export const createBriefFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => createBriefSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(`${OPEN_SEO_API}/api/seo/briefs`, {
+    const response = await fetchWithTimeout(`${OPEN_SEO_API}/api/seo/briefs`, {
       method: "POST",
       headers: {
         "X-Client-ID": context.clientId || "",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
+      timeout: BRIEFS_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -153,7 +163,7 @@ export const updateBriefStatusFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => updateStatusSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs?id=${data.briefId}`,
       {
         method: "PATCH",
@@ -162,6 +172,7 @@ export const updateBriefStatusFn = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ status: data.status }),
+        timeout: BRIEFS_TIMEOUT,
       }
     );
 
@@ -178,7 +189,7 @@ export const deleteBriefFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => deleteBriefSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs?id=${data.briefId}`,
       {
         method: "DELETE",
@@ -186,6 +197,7 @@ export const deleteBriefFn = createServerFn({ method: "POST" })
           "X-Client-ID": context.clientId || "",
           "Content-Type": "application/json",
         },
+        timeout: BRIEFS_TIMEOUT,
       }
     );
 
@@ -198,8 +210,8 @@ export const deleteBriefFn = createServerFn({ method: "POST" })
   });
 
 const generateContentSchema = z.object({
-  briefId: z.string(),
-  clientId: z.string(),
+  briefId: z.string().uuid(),
+  clientId: z.string().uuid(),
 });
 
 export interface GenerateContentResult {
@@ -212,7 +224,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => generateContentSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs/generate/${data.briefId}`,
       {
         method: "POST",
@@ -221,6 +233,7 @@ export const generateContentFn = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ clientId: data.clientId }),
+        timeout: BRIEFS_GENERATE_TIMEOUT, // Longer timeout for content generation
       }
     );
 
@@ -245,13 +258,14 @@ export const getGenerationStatusFn = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => getGenerationStatusSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${OPEN_SEO_API}/api/seo/briefs/status/${data.briefId}`,
       {
         headers: {
           "X-Client-ID": context.clientId || "",
           "Content-Type": "application/json",
         },
+        timeout: BRIEFS_TIMEOUT,
       }
     );
 

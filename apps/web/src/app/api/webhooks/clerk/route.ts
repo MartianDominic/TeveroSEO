@@ -82,7 +82,7 @@ export async function POST(req: Request) {
  * Sync new user to local database if needed.
  */
 async function handleUserCreated(data: WebhookEvent['data']) {
-  if (!('id' in data)) return;
+  if (!('id' in data) || !data.id) return;
 
   console.log('[ClerkWebhook] User created:', data.id);
 

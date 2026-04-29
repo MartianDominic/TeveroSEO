@@ -15,8 +15,7 @@ jobs:
         with:
           node-version: '20'
       - run: npm ci
-      - run: npm audit --audit-level=high
-        continue-on-error: true
+      - run: npm audit --audit-level=critical
 
   python-audit:
     runs-on: ubuntu-latest
@@ -29,5 +28,14 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install safety pip-audit
-      - run: safety check -r requirements.txt || true
-      - run: pip-audit -r requirements.txt || true
+      - name: Run safety check
+        run: safety check -r requirements.txt --output json > safety-report.json || true
+      - name: Check for critical vulnerabilities
+        run: |
+          if grep -q '"severity": "critical"' safety-report.json 2>/dev/null; then
+            echo "Critical vulnerabilities found in safety check"
+            cat safety-report.json
+            exit 1
+          fi
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt --strict

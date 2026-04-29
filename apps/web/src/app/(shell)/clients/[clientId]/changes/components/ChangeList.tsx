@@ -25,6 +25,7 @@ import type { Change } from '@/actions/changes';
 import { RevertDialog } from './RevertDialog';
 import { BatchRevertDialog } from './BatchRevertDialog';
 import { safeGetPathname } from '@/lib/utils/safe-parse';
+import { safeHref, isSafeUrl } from '@/lib/utils/safe-url';
 
 interface ChangeListProps {
   changes: Change[];
@@ -237,14 +238,16 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
                   <span className="truncate text-sm font-medium" title={change.resourceUrl}>
                     {safeGetPathname(change.resourceUrl)}
                   </span>
-                  <a
-                    href={change.resourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {isSafeUrl(change.resourceUrl) && (
+                    <a
+                      href={safeHref(change.resourceUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground">{change.resourceType}</span>
               </TableCell>

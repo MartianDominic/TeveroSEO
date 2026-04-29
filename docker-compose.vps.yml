@@ -63,11 +63,19 @@ services:
       REDIS_URL: "redis://redis:6379"
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
       ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
-      DATAFORSEO_API_KEY: ${DATAFORSEO_API_KEY:-}
+      DATAFORSEO_API_KEY: ${DATAFORSEO_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
+      # Alias for backwards compatibility with code using AI_WRITER_API_URL
+      AI_WRITER_API_URL: "http://ai-writer-backend:8000"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # Security: Rate limiting and encryption
+      IP_SALT: ${IP_SALT}
+      SITE_ENCRYPTION_KEY: ${SITE_ENCRYPTION_KEY}
+      PERSONAL_CODE_SALT: ${PERSONAL_CODE_SALT}
+      # WebSocket server port (must differ from tevero-web:3002)
+      WS_PORT: "3003"
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,6 +104,8 @@ services:
       ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
+      # Alias for backwards compatibility with code using AI_WRITER_API_URL
+      AI_WRITER_API_URL: "http://ai-writer-backend:8000"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       PUPPETEER_WS_ENDPOINT: "ws://puppeteer-pdf:9222"
@@ -173,14 +183,19 @@ services:
       PORT: "8000"
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
+      REDIS_URL: "redis://redis:6379"
       ALLOW_UNVERIFIED_JWT_DEV: ${ALLOW_UNVERIFIED_JWT_DEV:-false}
       DISABLE_AUTH: "false"
       DISABLE_SUBSCRIPTION: ${DISABLE_SUBSCRIPTION:-true}
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       OPEN_SEO_URL: "http://open-seo:3001"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # AI Provider: Required for content generation
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Encryption: Required for CMS credentials at rest
+      FERNET_KEY: ${FERNET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -222,7 +237,7 @@ services:
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_OPEN_SEO_URL: "https://app.openseo.so"
         NEXT_PUBLIC_AI_WRITER_URL: "https://app.alwrity.com"
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://app.tevero.lt}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://seowith.tevero.lt/ws}
     image: teveroseo/tevero-web:latest
     restart: unless-stopped
     environment:
@@ -231,6 +246,9 @@ services:
       DATABASE_URL: "postgresql://open_seo_user:${OPEN_SEO_DB_PASSWORD}@postgres:5432/open_seo"
       REDIS_URL: "redis://redis:6379"
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET}
+      # FIX H-COMM-02: Added INTERNAL_API_KEY for authenticated cross-service calls
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       AI_WRITER_URL: "http://ai-writer-backend:8000"
       OPEN_SEO_URL: "http://open-seo:3001"
     depends_on:

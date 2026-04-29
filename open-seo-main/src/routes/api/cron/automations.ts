@@ -15,6 +15,7 @@
  */
 
 import { createFileRoute } from "@tanstack/react-router";
+import { timingSafeEqual } from "crypto";
 import { processAutomations } from "@/server/features/proposals/automation";
 import { processProspectAutomations } from "@/server/features/prospects/automation/prospectAutomation";
 import { db } from "@/db/index";
@@ -46,9 +47,26 @@ export const Route = createFileRoute("/api/cron/automations")({
           );
         }
 
-        // Verify cron secret matches
+        // SECURITY: Use timing-safe comparison to prevent timing attacks
         const authHeader = request.headers.get("Authorization");
-        if (authHeader !== `Bearer ${cronSecret}`) {
+        const expectedAuth = `Bearer ${cronSecret}`;
+
+        let isAuthorized = false;
+        if (authHeader) {
+          try {
+            const authBuffer = Buffer.from(authHeader);
+            const expectedBuffer = Buffer.from(expectedAuth);
+            // timingSafeEqual requires same length buffers
+            if (authBuffer.length === expectedBuffer.length) {
+              isAuthorized = timingSafeEqual(authBuffer, expectedBuffer);
+            }
+          } catch {
+            // Any error in comparison should fail closed
+            isAuthorized = false;
+          }
+        }
+
+        if (!isAuthorized) {
           log.warn("Unauthorized cron request", {
             hasAuthHeader: !!authHeader,
             path: new URL(request.url).pathname,

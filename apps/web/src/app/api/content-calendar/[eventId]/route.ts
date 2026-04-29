@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   getFastApi,
@@ -8,6 +8,8 @@ import {
   FastApiError,
 } from "@/lib/server-fetch";
 import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { validateCsrf } from "@/lib/api/security";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 /**
  * Schema for validating eventId route parameter.
@@ -69,9 +71,19 @@ async function fetchEventWithAuth(eventId: string): Promise<ArticleResponse> {
 }
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  // Rate limit: 100 requests per minute
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.API.limit, RATE_LIMITS.API.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
   const { eventId } = await params;
 
   // Validate eventId is a valid UUID
@@ -98,9 +110,23 @@ export async function GET(
 }
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { eventId } = await params;
 
   // Validate eventId is a valid UUID
@@ -145,9 +171,23 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { eventId } = await params;
 
   // Validate eventId is a valid UUID
@@ -181,9 +221,23 @@ export async function DELETE(
 // only catch a single segment, action sub-routes like /approve, /reject, etc. are
 // separately proxied here via a POST fallback that forwards to FastAPI.
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { eventId } = await params;
 
   // Validate eventId is a valid UUID

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getFastApi, postFastApi, patchFastApi, deleteFastApi, FastApiError } from "@/lib/server-fetch";
 import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
@@ -6,6 +7,28 @@ import { getClientIpFromRequest, checkRateLimit } from "@/lib/middleware/rate-li
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Zod schema for PATCH request body validation.
+ * Allows partial updates to article fields.
+ * API-H07 fix: Validate input before passing to backend.
+ */
+const articlePatchSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  content: z.string().max(500_000).optional(), // Max 500KB content
+  excerpt: z.string().max(2000).optional(),
+  status: z.enum(["draft", "review", "approved", "published", "archived"]).optional(),
+  seo_title: z.string().max(200).optional(),
+  seo_description: z.string().max(500).optional(),
+  slug: z.string().max(200).regex(/^[a-z0-9-]+$/).optional(),
+  featured_image: z.string().url().max(2000).optional().nullable(),
+  tags: z.array(z.string().max(100)).max(50).optional(),
+  categories: z.array(z.string().max(100)).max(20).optional(),
+  author_id: z.string().uuid().optional(),
+  publish_at: z.string().datetime().optional().nullable(),
+  voice_compliance_score: z.number().min(0).max(100).optional(),
+  seo_score: z.number().min(0).max(100).optional(),
+}).strict(); // Reject unknown fields
 
 type Params = Promise<{ articleId: string }>;
 
@@ -120,8 +143,24 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
 
     const { searchParams } = new URL(req.url);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    const body = await req.json();
-    const data = await patchFastApi(`/api/articles/${articleId}${qs}`, body);
+
+    // API-H07 fix: Validate input before passing to backend
+    const rawBody = await req.json();
+    const validation = articlePatchSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: validation.error.issues.map((i) => ({
+            field: i.path.join("."),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const data = await patchFastApi(`/api/articles/${articleId}${qs}`, validation.data);
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof AuthError) {

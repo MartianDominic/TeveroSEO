@@ -8,6 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { voiceProfileService } from "@/server/features/voice";
 import { queueVoiceAnalysis } from "@/server/queues/voiceAnalysisQueue";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess, AuthorizationError } from "@/server/middleware/authz";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import { z } from "zod";
@@ -25,12 +26,15 @@ export const Route = createFileRoute("/api/seo/voice/$clientId/analyze")({
       // POST /api/seo/voice/:clientId/analyze - Trigger voice analysis
       POST: async ({ request, params }: { request: Request; params: { clientId: string } }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
           const { clientId } = params;
 
           if (!clientId) {
             throw new AppError("VALIDATION_ERROR", "Missing clientId");
           }
+
+          // SECURITY: Validate user has access to this client (CRIT-03-A fix)
+          await requireClientAccess(authContext.userId, clientId);
 
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = analyzeSchema.safeParse(body);
@@ -70,6 +74,9 @@ export const Route = createFileRoute("/api/seo/voice/$clientId/analyze")({
             },
           });
         } catch (error) {
+          if (error instanceof AuthorizationError) {
+            return Response.json({ error: error.message }, { status: 403 });
+          }
           if (error instanceof AppError) {
             const status =
               error.code === "NOT_FOUND"

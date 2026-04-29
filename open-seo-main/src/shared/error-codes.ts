@@ -19,6 +19,7 @@ const ERROR_CODES = [
   "SERVICE_UNAVAILABLE", // Queue backpressure or service overload
   // Database operation errors
   "ALERT_CREATE_FAILED",
+  "ALERT_RULE_CREATE_FAILED",
   "DROP_EVENT_FAILED",
   "WEBHOOK_DELETE_FAILED",
   // External API errors

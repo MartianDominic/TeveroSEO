@@ -44,6 +44,18 @@ export {
 } from "./webhook-auth";
 
 /**
+ * Internal API authentication middleware.
+ * HMAC-based authentication for service-to-service communication.
+ * CRIT-002 fix: Standardized auth protocol between apps/web and open-seo-main.
+ */
+export {
+  verifyInternalAuth,
+  requireInternalAuth,
+  getMaxTimestampDrift,
+  type InternalAuthResult,
+} from "./internal-auth";
+
+/**
  * Security headers middleware.
  * Adds OWASP recommended security headers to all responses.
  */

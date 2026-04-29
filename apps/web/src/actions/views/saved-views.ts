@@ -20,7 +20,7 @@ const viewIdSchema = z.string().uuid("Invalid view ID");
 
 const viewConfigSchema = z.object({
   columns: z.array(z.string().min(1).max(100)).max(50),
-  filters: z.record(z.unknown()).optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
   sortBy: z.string().max(100).optional(),
   sortDir: z.enum(["asc", "desc"]).optional(),
 });
@@ -64,7 +64,7 @@ const columnsJsonSchema = z.array(z.string());
 /**
  * Schema for validating parsed JSON filters.
  */
-const filtersJsonSchema = z.record(z.unknown());
+const filtersJsonSchema = z.record(z.string(), z.unknown());
 
 /**
  * Safely parse JSON column with schema validation.
@@ -92,9 +92,18 @@ function parseJsonColumn<T>(
 }
 
 /**
+ * Schema for validating sortDir values.
+ */
+const sortDirSchema = z.enum(["asc", "desc"]).optional();
+
+/**
  * Transform API response to SavedView type.
  */
 function transformView(raw: SavedViewApiResponse): SavedView {
+  // Use Zod validation instead of unsafe type assertion for sortDir
+  const sortDirResult = sortDirSchema.safeParse(raw.sortDir?.toLowerCase());
+  const validatedSortDir = sortDirResult.success ? sortDirResult.data : undefined;
+
   return {
     id: raw.id,
     name: raw.name,
@@ -103,11 +112,11 @@ function transformView(raw: SavedViewApiResponse): SavedView {
       columns: parseJsonColumn(raw.columns, columnsJsonSchema, []),
       filters: parseJsonColumn(raw.filters, filtersJsonSchema, {}),
       sortBy: raw.sortBy,
-      sortDir: raw.sortDir as "asc" | "desc" | undefined,
+      sortDir: validatedSortDir,
     },
     isShared: raw.isShared,
     isDefault: raw.isDefault,
-    createdAt: new Date(raw.createdAt),
+    createdAt: raw.createdAt,
     userId: raw.userId,
   };
 }

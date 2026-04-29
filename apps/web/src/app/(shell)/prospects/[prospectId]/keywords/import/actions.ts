@@ -5,6 +5,21 @@
  * Phase 43-03: CSV Import + Metric Detection
  */
 
+import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
+import { env } from "@/lib/env";
+import { requireActionAuth, validateProspectOwnership } from "@/lib/auth/action-auth";
+
+/** Maximum CSV content size: 5MB */
+const MAX_CSV_SIZE = 5 * 1024 * 1024;
+
+/** Input validation schemas */
+const prospectIdSchema = z.string().uuid("Invalid prospect ID format");
+const csvContentSchema = z.string().max(MAX_CSV_SIZE, `CSV content too large (max ${MAX_CSV_SIZE / 1024 / 1024}MB)`);
+
+/** Default timeout for API requests (30 seconds) */
+const API_TIMEOUT_MS = 30000;
+
 export interface ColumnMapping {
   sourceColumn: string;
   targetField:
@@ -63,23 +78,41 @@ export async function previewCsv(
   prospectId: string,
   csvContent: string
 ): Promise<CsvPreviewResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+  const authContext = await requireActionAuth();
+
+  // Validate inputs
+  const validatedProspectId = prospectIdSchema.parse(prospectId);
+  const validatedCsvContent = csvContentSchema.parse(csvContent);
+
+  // Validate ownership - user must have access to this prospect
+  await validateProspectOwnership(validatedProspectId, authContext);
+
+  const { getToken } = await auth();
+  const token = await getToken();
 
   const response = await fetch(
-    `${openSeoUrl}/api/prospects/${prospectId}/keywords/import`,
+    `${env.OPEN_SEO_URL}/api/prospects/${validatedProspectId}/keywords/import`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Preview": "true",
+        ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ csvContent }),
+      body: JSON.stringify({ csvContent: validatedCsvContent }),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     }
   );
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Preview failed" }));
-    throw new Error(error.error || "Preview failed");
+    let errorMessage = `Request failed: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+    } catch {
+      // Response wasn't JSON (e.g., 502 HTML from nginx)
+    }
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();
@@ -95,25 +128,48 @@ export async function importCsv(
   mappingOverrides?: ColumnMapping[],
   forceEnrich?: boolean
 ): Promise<CsvImportResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+  const authContext = await requireActionAuth();
+
+  // Validate inputs
+  const validatedProspectId = prospectIdSchema.parse(prospectId);
+  const validatedCsvContent = csvContentSchema.parse(csvContent);
+
+  // Validate ownership - user must have access to this prospect
+  await validateProspectOwnership(validatedProspectId, authContext);
+
+  const { getToken } = await auth();
+  const token = await getToken();
+
+  // Use longer timeout for imports (60 seconds) as they may process many rows
+  const IMPORT_TIMEOUT_MS = 60000;
 
   const response = await fetch(
-    `${openSeoUrl}/api/prospects/${prospectId}/keywords/import`,
+    `${env.OPEN_SEO_URL}/api/prospects/${validatedProspectId}/keywords/import`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
       body: JSON.stringify({
-        csvContent,
+        csvContent: validatedCsvContent,
         mappingOverrides,
         forceEnrich,
         mergeWithExisting: true,
       }),
+      signal: AbortSignal.timeout(IMPORT_TIMEOUT_MS),
     }
   );
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Import failed" }));
-    throw new Error(error.error || "Import failed");
+    let errorMessage = `Request failed: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+    } catch {
+      // Response wasn't JSON (e.g., 502 HTML from nginx)
+    }
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();

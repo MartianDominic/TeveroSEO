@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useClientStore } from "@/stores/clientStore";
 import { useAnalyticsStore } from "@/stores/analyticsStore";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 import {
   Button,
   CmsHealthBadge,
@@ -190,6 +191,32 @@ export default function ClientDashboardPage() {
   const displayClient =
     activeClient ?? clients.find((c) => c.id === clientId) ?? null;
 
+  // Handle case where client cannot be found
+  if (!displayClient) {
+    return (
+      <div className="p-8 md:p-10 space-y-8">
+        <PageHeader
+          title="Client Not Found"
+          subtitle={`No client found with ID: ${clientId}`}
+          backHref="/clients"
+        />
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-border py-16 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground max-w-xs">
+            The requested client could not be found. It may have been deleted or you may not have access.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/clients" as Parameters<typeof router.push>[0])}
+          >
+            Back to Clients
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Determine if per-client checklist should be shown.
   const hasPublishedArticles =
     analytics !== null && analytics.articles_published_this_month > 0;
@@ -359,45 +386,47 @@ export default function ClientDashboardPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {loading ? (
-          <>
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-          </>
-        ) : analytics ? (
-          <>
-            <StatCard
-              label="Articles Published"
-              value={analytics.articles_published_this_month}
-              subtitle="this month"
-            />
-            <StatCard
-              label="Total Words"
-              value={formatWordCount(analytics.total_word_count_this_month)}
-              subtitle="this month"
-            />
-            <StatCard
-              label="Failed Publishes"
-              value={analytics.failed_count_this_month}
-              subtitle="this month"
-            />
-          </>
-        ) : null}
-      </div>
+      <WithErrorBoundary name="ClientStatCards">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {loading ? (
+            <>
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </>
+          ) : analytics ? (
+            <>
+              <StatCard
+                label="Articles Published"
+                value={analytics.articles_published_this_month}
+                subtitle="this month"
+              />
+              <StatCard
+                label="Total Words"
+                value={formatWordCount(analytics.total_word_count_this_month)}
+                subtitle="this month"
+              />
+              <StatCard
+                label="Failed Publishes"
+                value={analytics.failed_count_this_month}
+                subtitle="this month"
+              />
+            </>
+          ) : null}
+        </div>
+      </WithErrorBoundary>
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-4">
@@ -464,79 +493,81 @@ export default function ClientDashboardPage() {
       </div>
 
       {/* Recent activity */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground">
-          Recent Activity
-        </h2>
+      <WithErrorBoundary name="RecentActivitySection">
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">
+            Recent Activity
+          </h2>
 
-        {logsLoading ? (
-          <div className="space-y-2">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-10 w-full rounded-md" />
-            ))}
-          </div>
-        ) : publishingLogs.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-border py-16 text-center">
-            <Calendar className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground max-w-xs">
-              No publishing activity yet. Add articles to the content calendar
-              to get started.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(`/clients/${clientId}/calendar` as Parameters<typeof router.push>[0])}
-            >
-              Open Calendar
-            </Button>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-sm font-medium text-muted-foreground">
-                    article
-                  </TableHead>
-                  <TableHead className="text-sm font-medium text-muted-foreground">
-                    date
-                  </TableHead>
-                  <TableHead className="text-sm font-medium text-muted-foreground">
-                    cms
-                  </TableHead>
-                  <TableHead className="text-sm font-medium text-muted-foreground">
-                    status
-                  </TableHead>
-                  <TableHead className="text-sm font-medium text-muted-foreground">
-                    http
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {publishingLogs.slice(0, 10).map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-mono text-xs">
-                      {log.article_id.slice(0, 8)}&hellip;
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(log.attempted_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.cms_type ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <StatusChip status={log.status} />
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.http_status_code ?? "—"}
-                    </TableCell>
+          {logsLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-md" />
+              ))}
+            </div>
+          ) : publishingLogs.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-border py-16 text-center">
+              <Calendar className="h-10 w-10 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground max-w-xs">
+                No publishing activity yet. Add articles to the content calendar
+                to get started.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/clients/${clientId}/calendar` as Parameters<typeof router.push>[0])}
+              >
+                Open Calendar
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-sm font-medium text-muted-foreground">
+                      article
+                    </TableHead>
+                    <TableHead className="text-sm font-medium text-muted-foreground">
+                      date
+                    </TableHead>
+                    <TableHead className="text-sm font-medium text-muted-foreground">
+                      cms
+                    </TableHead>
+                    <TableHead className="text-sm font-medium text-muted-foreground">
+                      status
+                    </TableHead>
+                    <TableHead className="text-sm font-medium text-muted-foreground">
+                      http
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {publishingLogs.slice(0, 10).map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono text-xs">
+                        {log.article_id.slice(0, 8)}&hellip;
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {new Date(log.attempted_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.cms_type ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusChip status={log.status} />
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.http_status_code ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </WithErrorBoundary>
     </div>
   );
 }

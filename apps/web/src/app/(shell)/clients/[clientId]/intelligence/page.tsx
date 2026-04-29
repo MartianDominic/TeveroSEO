@@ -35,6 +35,7 @@ import {
   TabsTrigger,
 } from "@tevero/ui";
 
+import { z } from "zod";
 import { useClientStore } from "@/stores/clientStore";
 import {
   useIntelligenceStore,
@@ -44,6 +45,31 @@ import {
 } from "@/stores/intelligenceStore";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { useWebSocket } from "@/hooks/use-websocket";
+
+// WebSocket message schema for intelligence updates
+const intelligenceWsMessageSchema = z.union([
+  z.object({
+    type: z.literal("intelligence_update"),
+    payload: z.object({
+      clientId: z.string().uuid(),
+      status: z.string().optional(),
+    }).passthrough(),
+  }),
+  z.object({
+    type: z.literal("status"),
+    payload: z.record(z.string(), z.unknown()),
+  }),
+  z.object({
+    type: z.literal("error"),
+    message: z.string(),
+  }),
+  z.object({ type: z.literal("auth_success") }),
+  z.object({ type: z.literal("auth_refresh_ack") }),
+  z.object({ type: z.literal("ping") }),
+  z.object({ type: z.literal("pong") }),
+]);
+
+type IntelligenceWsMessage = z.infer<typeof intelligenceWsMessageSchema>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -742,15 +768,15 @@ export default function ClientIntelligencePage() {
     ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws/intelligence?clientId=${clientId}`
     : '';
 
-  const handleWebSocketMessage = useCallback((data: unknown) => {
-    // Handle intelligence update messages
-    if (data && typeof data === 'object' && 'type' in data) {
-      const message = data as { type: string; payload?: unknown };
-      if (message.type === 'intelligence_update' && clientId) {
-        // Refetch intelligence data when we receive an update
-        fetchIntelligence(clientId);
-      }
+  const handleWebSocketMessage = useCallback((message: IntelligenceWsMessage) => {
+    // Handle intelligence update messages (already validated by schema)
+    if (message.type === 'intelligence_update' && clientId) {
+      // Refetch intelligence data when we receive an update
+      fetchIntelligence(clientId);
+    } else if (message.type === 'error') {
+      console.warn('[Intelligence WS] Server error:', message.message);
     }
+    // auth_success, auth_refresh_ack, ping, pong, status are handled silently
   }, [clientId, fetchIntelligence]);
 
   const {
@@ -762,6 +788,10 @@ export default function ClientIntelligencePage() {
   } = useWebSocket({
     url: wsUrl,
     onMessage: handleWebSocketMessage,
+    messageSchema: intelligenceWsMessageSchema,
+    onValidationError: (error) => {
+      console.warn('[Intelligence WS] Invalid message:', error.issues);
+    },
     reconnectInterval: 3000,
     maxReconnectAttempts: 5,
     // Only enable when scrape is in progress

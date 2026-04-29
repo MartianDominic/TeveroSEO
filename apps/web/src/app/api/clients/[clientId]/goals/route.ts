@@ -6,8 +6,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
+import { getOpenSeo, postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { validateCsrf } from "@/lib/api/security";
+import {
+  goalBodySchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +54,7 @@ async function handleGet(_req: Request, { params }: Params) {
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);
-    const data = await getFastApi<GoalsListResponse>(
+    const data = await getOpenSeo<GoalsListResponse>(
       `/api/clients/${clientId}/goals`
     );
     return NextResponse.json(data);
@@ -64,15 +70,38 @@ async function handleGet(_req: Request, { params }: Params) {
 }
 
 async function handlePost(req: Request, { params }: Params) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);
-    const body = await req.json();
+
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
+      return NextResponse.json(
+        { error: jsonResult.error },
+        { status: 400 }
+      );
+    }
+
+    // Validate with Zod schema
+    const parsed = goalBodySchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
 
     // Handle bulk create if goals array is present
-    if (Array.isArray(body.goals)) {
-      const data = await postFastApi<{ results: Array<{ success: boolean; id?: string; error?: string }> }>(
-        `/api/clients/${clientId}/goals/bulk`,
+    if ("goals" in body && Array.isArray(body.goals)) {
+      const data = await postOpenSeo<{ results: Array<{ success: boolean; id?: string; error?: string }> }>(
+        `/api/clients/${clientId}/goals`,
         {
           ...body,
           clientId,
@@ -82,7 +111,7 @@ async function handlePost(req: Request, { params }: Params) {
     }
 
     // Single goal creation
-    const data = await postFastApi<{ id: string }>(
+    const data = await postOpenSeo<{ id: string }>(
       `/api/clients/${clientId}/goals`,
       {
         ...body,

@@ -17,14 +17,20 @@ const ThemeContext = createContext<ThemeContextValue>({
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
+  // HYDRATION FIX: Initialize to consistent default, sync with localStorage after mount
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  // Sync theme from localStorage after component mounts (client-side only)
+  useEffect(() => {
     try {
-      return (localStorage.getItem("agency-theme") as Theme) ?? "dark";
+      const stored = localStorage.getItem("agency-theme") as Theme | null;
+      if (stored === "light" || stored === "dark") {
+        setTheme(stored);
+      }
     } catch {
-      return "dark";
+      // Ignore storage errors
     }
-  });
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;

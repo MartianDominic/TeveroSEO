@@ -5,6 +5,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { audits, auditLighthouseResults, auditPages } from "@/db/schema";
+import { withTransaction, type Transaction } from "@/lib/db/transaction";
 import type {
   AuditConfig,
   LighthouseResult,
@@ -13,13 +14,18 @@ import type {
 
 const DB_BATCH_SIZE = 100;
 
+/**
+ * Execute database operations in batches with optional transaction context.
+ * When a transaction is provided, all operations share the same transaction.
+ */
 async function executeInBatches<T>(
   items: T[],
-  buildStatement: (item: T) => Promise<unknown>,
+  buildStatement: (item: T, tx?: Transaction) => Promise<unknown>,
+  tx?: Transaction,
 ) {
   for (let i = 0; i < items.length; i += DB_BATCH_SIZE) {
     const chunk = items.slice(i, i + DB_BATCH_SIZE);
-    await Promise.all(chunk.map(buildStatement));
+    await Promise.all(chunk.map((item) => buildStatement(item, tx)));
   }
 }
 
@@ -124,68 +130,81 @@ async function getAuditForWorkflow(
   });
 }
 
+/**
+ * Write audit pages and lighthouse results atomically.
+ * Uses a transaction to ensure both inserts succeed or fail together,
+ * preventing partial data from being written on error.
+ */
 async function batchWriteResults(
   auditId: string,
   pages: StepPageResult[],
   lighthouseResults: LighthouseResult[],
 ) {
-  await executeInBatches(pages, (page) =>
-    db.insert(auditPages).values({
-      id: page.id,
-      auditId,
-      url: page.url,
-      statusCode: page.statusCode,
-      redirectUrl: page.redirectUrl,
-      title: page.title,
-      metaDescription: page.metaDescription,
-      canonicalUrl: page.canonicalUrl,
-      robotsMeta: page.robotsMeta,
-      ogTitle: page.ogTitle,
-      ogDescription: page.ogDescription,
-      ogImage: page.ogImage,
-      h1Count: page.h1Count,
-      h2Count: page.h2Count,
-      h3Count: page.h3Count,
-      h4Count: page.h4Count,
-      h5Count: page.h5Count,
-      h6Count: page.h6Count,
-      headingOrderJson: page.headingOrder,
-      wordCount: page.wordCount,
-      imagesTotal: page.imagesTotal,
-      imagesMissingAlt: page.imagesMissingAlt,
-      imagesJson: page.images,
-      internalLinkCount: page.internalLinks.length,
-      externalLinkCount: page.externalLinks.length,
-      hasStructuredData: page.hasStructuredData,
-      hreflangTagsJson: page.hreflangTags,
-      isIndexable: page.isIndexable,
-      responseTimeMs: page.responseTimeMs,
-    }),
-  );
+  await withTransaction(async (tx) => {
+    await executeInBatches(
+      pages,
+      (page, txCtx) =>
+        (txCtx ?? db).insert(auditPages).values({
+          id: page.id,
+          auditId,
+          url: page.url,
+          statusCode: page.statusCode,
+          redirectUrl: page.redirectUrl,
+          title: page.title,
+          metaDescription: page.metaDescription,
+          canonicalUrl: page.canonicalUrl,
+          robotsMeta: page.robotsMeta,
+          ogTitle: page.ogTitle,
+          ogDescription: page.ogDescription,
+          ogImage: page.ogImage,
+          h1Count: page.h1Count,
+          h2Count: page.h2Count,
+          h3Count: page.h3Count,
+          h4Count: page.h4Count,
+          h5Count: page.h5Count,
+          h6Count: page.h6Count,
+          headingOrderJson: page.headingOrder,
+          wordCount: page.wordCount,
+          imagesTotal: page.imagesTotal,
+          imagesMissingAlt: page.imagesMissingAlt,
+          imagesJson: page.images,
+          internalLinkCount: page.internalLinks.length,
+          externalLinkCount: page.externalLinks.length,
+          hasStructuredData: page.hasStructuredData,
+          hreflangTagsJson: page.hreflangTags,
+          isIndexable: page.isIndexable,
+          responseTimeMs: page.responseTimeMs,
+        }),
+      tx,
+    );
 
-  if (lighthouseResults.length === 0) {
-    return;
-  }
+    if (lighthouseResults.length === 0) {
+      return;
+    }
 
-  await executeInBatches(lighthouseResults, (result) =>
-    db.insert(auditLighthouseResults).values({
-      id: crypto.randomUUID(),
-      auditId,
-      pageId: result.pageId,
-      strategy: result.strategy,
-      performanceScore: result.performanceScore,
-      accessibilityScore: result.accessibilityScore,
-      bestPracticesScore: result.bestPracticesScore,
-      seoScore: result.seoScore,
-      lcpMs: result.lcpMs,
-      cls: result.cls,
-      inpMs: result.inpMs,
-      ttfbMs: result.ttfbMs,
-      errorMessage: result.errorMessage ?? null,
-      r2Key: result.r2Key ?? null,
-      payloadSizeBytes: result.payloadSizeBytes ?? null,
-    }),
-  );
+    await executeInBatches(
+      lighthouseResults,
+      (result, txCtx) =>
+        (txCtx ?? db).insert(auditLighthouseResults).values({
+          id: crypto.randomUUID(),
+          auditId,
+          pageId: result.pageId,
+          strategy: result.strategy,
+          performanceScore: result.performanceScore,
+          accessibilityScore: result.accessibilityScore,
+          bestPracticesScore: result.bestPracticesScore,
+          seoScore: result.seoScore,
+          lcpMs: result.lcpMs,
+          cls: result.cls,
+          inpMs: result.inpMs,
+          ttfbMs: result.ttfbMs,
+          errorMessage: result.errorMessage ?? null,
+          r2Key: result.r2Key ?? null,
+          payloadSizeBytes: result.payloadSizeBytes ?? null,
+        }),
+      tx,
+    );
+  });
 }
 
 async function getAuditForProject(auditId: string, projectId: string) {

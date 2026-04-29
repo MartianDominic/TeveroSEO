@@ -44,6 +44,8 @@ import { useArticleLibraryStore } from "@/stores";
 import type { Article, SortField, SortDir } from "@/stores";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 // ---------------------------------------------------------------------------
 // RankSnapshot type
@@ -463,17 +465,36 @@ export default function ArticleLibraryPage() {
     (a) => a.status === "pending_review"
   );
 
+  /**
+   * Process items with concurrency limit to avoid overwhelming the API.
+   * Uses Promise.all with chunking for controlled parallelism.
+   */
+  const processWithConcurrency = async <T,>(
+    items: T[],
+    processor: (item: T) => Promise<void>,
+    concurrencyLimit = 5
+  ): Promise<void> => {
+    // Process in batches of concurrencyLimit
+    for (let i = 0; i < items.length; i += concurrencyLimit) {
+      const batch = items.slice(i, i + concurrencyLimit);
+      await Promise.all(batch.map(processor));
+    }
+  };
+
   const handleBulkGenerate = async () => {
     if (!clientId || generateCandidates.length === 0) return;
     setBulkLoading(true);
     try {
-      for (const article of generateCandidates) {
-        await apiPost(
-          `/api/articles/${article.id}/generate?client_id=${clientId}`,
-          {}
-        );
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
+      await processWithConcurrency(
+        generateCandidates,
+        async (article) => {
+          await apiPost(
+            `/api/articles/${article.id}/generate?client_id=${clientId}`,
+            {}
+          );
+        },
+        5 // 5 concurrent requests
+      );
     } finally {
       setBulkLoading(false);
       clearSelection();
@@ -487,10 +508,13 @@ export default function ArticleLibraryPage() {
     if (!clientId || approveCandidates.length === 0) return;
     setBulkLoading(true);
     try {
-      for (const article of approveCandidates) {
-        await apiPost(`/api/articles/${article.id}/approve`, {});
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
+      await processWithConcurrency(
+        approveCandidates,
+        async (article) => {
+          await apiPost(`/api/articles/${article.id}/approve`, {});
+        },
+        5 // 5 concurrent requests
+      );
     } finally {
       setBulkLoading(false);
       clearSelection();
@@ -508,11 +532,15 @@ export default function ArticleLibraryPage() {
     if (!confirmed) return;
     setBulkLoading(true);
     try {
-      for (const article of selectedArticles) {
-        await apiDelete(
-          `/api/articles/${article.id}?client_id=${clientId}`
-        );
-      }
+      await processWithConcurrency(
+        selectedArticles,
+        async (article) => {
+          await apiDelete(
+            `/api/articles/${article.id}?client_id=${clientId}`
+          );
+        },
+        5 // 5 concurrent requests
+      );
     } finally {
       setBulkLoading(false);
       clearSelection();
@@ -633,8 +661,9 @@ export default function ArticleLibraryPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
+      <WithErrorBoundary name="ArticlesTable">
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
@@ -785,9 +814,9 @@ export default function ArticleLibraryPage() {
                       </TableCell>
 
                       <TableCell>
-                        {article.cms_post_url ? (
+                        {article.cms_post_url && isSafeUrl(article.cms_post_url) ? (
                           <a
-                            href={article.cms_post_url}
+                            href={safeHref(article.cms_post_url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center text-primary hover:text-primary/80"
@@ -856,7 +885,8 @@ export default function ArticleLibraryPage() {
             )}
           </TableBody>
         </Table>
-      </div>
+        </div>
+      </WithErrorBoundary>
     </div>
   );
 }

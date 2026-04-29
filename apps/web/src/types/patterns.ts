@@ -17,7 +17,7 @@ export type PatternType =
 /**
  * Pattern direction indicating trend direction.
  */
-export type PatternDirection = "up" | "down" | "volatile";
+export type PatternDirection = "up" | "down" | "volatile" | "stable";
 
 /**
  * Pattern status for workflow management.
@@ -35,9 +35,9 @@ export interface DetectedPattern {
   description: string | null;
   affectedClientIds: string[];
   affectedCount: number;
-  magnitude: number; // Avg change %
+  magnitude: number | string; // Avg change % - may be string from PostgreSQL
   direction: PatternDirection;
-  confidence: number; // 0-100 confidence score
+  confidence: number | string; // 0-100 confidence score - may be string from PostgreSQL
   startDate: string | null; // ISO date
   endDate: string | null; // ISO date
   status: PatternStatus;
@@ -61,13 +61,21 @@ export interface PatternWithClients extends DetectedPattern {
 export type PatternSeverity = "critical" | "warning" | "info";
 
 /**
+ * Helper to ensure numeric value from potentially string PostgreSQL response.
+ */
+export function ensureNumber(val: number | string): number {
+  return typeof val === "string" ? parseFloat(val) : val;
+}
+
+/**
  * Calculate pattern severity from pattern data.
  */
 export function getPatternSeverity(pattern: DetectedPattern): PatternSeverity {
-  if (pattern.magnitude >= 30 && pattern.affectedCount >= 5) {
+  const magnitude = ensureNumber(pattern.magnitude);
+  if (magnitude >= 30 && pattern.affectedCount >= 5) {
     return "critical";
   }
-  if (pattern.magnitude >= 20 || pattern.affectedCount >= 3) {
+  if (magnitude >= 20 || pattern.affectedCount >= 3) {
     return "warning";
   }
   return "info";

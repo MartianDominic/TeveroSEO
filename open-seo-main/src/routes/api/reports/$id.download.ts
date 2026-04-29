@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { createLogger } from "@/server/lib/logger";
+import { REPORTS_DIR } from "@/server/lib/storage";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { requireClientAccess, AuthorizationError } from "@/server/middleware/authz";
@@ -53,11 +54,11 @@ export const Route = createFileRoute("/api/reports/$id/download")({
           }
 
           // SECURITY: Validate path is within expected reports directory
-          const REPORTS_DIR = path.resolve(process.cwd(), "reports");
+          const resolvedReportsDir = path.resolve(REPORTS_DIR);
           const filePath = report.pdfPath;
           const resolvedPath = path.resolve(filePath);
 
-          if (!resolvedPath.startsWith(REPORTS_DIR + path.sep) && resolvedPath !== REPORTS_DIR) {
+          if (!resolvedPath.startsWith(resolvedReportsDir + path.sep) && resolvedPath !== resolvedReportsDir) {
             log.error("Path traversal attempt detected", undefined, {
               reportId: id,
               attemptedPath: filePath,

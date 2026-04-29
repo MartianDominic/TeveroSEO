@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getFastApi, FastApiError } from "@/lib/server-fetch";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import type { AnalyticsData } from "@/lib/analytics/types";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,17 @@ type Params = { params: Promise<{ clientId: string; metric: string }> };
  *
  * Response format: { data: number[], labels?: string[] }
  */
-export async function GET(_: Request, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
+  // Rate limit: 100 requests per minute
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.API.limit, RATE_LIMITS.API.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
   const { clientId, metric } = await params;
 
   // Validate metric

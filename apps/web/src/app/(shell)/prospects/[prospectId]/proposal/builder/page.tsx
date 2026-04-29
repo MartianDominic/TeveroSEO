@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -16,6 +16,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  StatusChip,
 } from "@tevero/ui";
 import { Loader2, FileText, Eye, ArrowLeft, ArrowRight } from "lucide-react";
 import { ScenarioSelector } from "./components/ScenarioSelector";
@@ -26,6 +27,7 @@ import {
   type AwarenessLevel,
   type GeneratedSection,
 } from "./actions";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 type BuilderStep = "scenario" | "customize" | "pricing" | "sections";
 
@@ -61,19 +63,36 @@ export default function ProposalBuilderPage() {
   const [sections, setSections] = useState<GeneratedSection[]>([]);
   const [isPending, startTransition] = useTransition();
 
+  // Local toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   const handleGenerate = () => {
     startTransition(async () => {
-      const result = await generateProposal({
-        prospectId,
-        scenario,
-        awarenessLevel,
-        pricing,
-        agencyInfo: agencyInfo.name ? agencyInfo : undefined,
-      });
-      setProposalId(result.proposalId);
-      setSections(result.sections);
-      setAwarenessLevel(result.awarenessLevel);
-      setStep("sections");
+      try {
+        const result = await generateProposal({
+          prospectId,
+          scenario,
+          awarenessLevel,
+          pricing,
+          agencyInfo: agencyInfo.name ? agencyInfo : undefined,
+        });
+        if (!result.success) {
+          setToast({ message: result.error || "Failed to generate proposal", type: "error" });
+          return;
+        }
+        setProposalId(result.data.proposalId);
+        setSections(result.data.sections);
+        setAwarenessLevel(result.data.awarenessLevel);
+        setStep("sections");
+      } catch (error) {
+        setToast({ message: "An unexpected error occurred. Please try again.", type: "error" });
+      }
     });
   };
 
@@ -223,13 +242,14 @@ export default function ProposalBuilderPage() {
                     <Input
                       id="setup-fee"
                       type="number"
+                      min={0}
+                      max={1000000}
                       value={pricing.setupFee}
-                      onChange={(e) =>
-                        setPricing({
-                          ...pricing,
-                          setupFee: parseInt(e.target.value) || 0,
-                        })
-                      }
+                      onChange={(e) => {
+                        const numValue = parseInt(e.target.value) || 0;
+                        const validated = Math.max(0, Math.min(numValue, 1000000));
+                        setPricing({ ...pricing, setupFee: validated });
+                      }}
                     />
                   </div>
                   <div>
@@ -237,13 +257,14 @@ export default function ProposalBuilderPage() {
                     <Input
                       id="monthly-fee"
                       type="number"
+                      min={0}
+                      max={1000000}
                       value={pricing.monthlyFee}
-                      onChange={(e) =>
-                        setPricing({
-                          ...pricing,
-                          monthlyFee: parseInt(e.target.value) || 0,
-                        })
-                      }
+                      onChange={(e) => {
+                        const numValue = parseInt(e.target.value) || 0;
+                        const validated = Math.max(0, Math.min(numValue, 1000000));
+                        setPricing({ ...pricing, monthlyFee: validated });
+                      }}
                     />
                   </div>
                   <div>
@@ -251,13 +272,14 @@ export default function ProposalBuilderPage() {
                     <Input
                       id="contract-months"
                       type="number"
+                      min={1}
+                      max={60}
                       value={pricing.contractMonths}
-                      onChange={(e) =>
-                        setPricing({
-                          ...pricing,
-                          contractMonths: parseInt(e.target.value) || 6,
-                        })
-                      }
+                      onChange={(e) => {
+                        const numValue = parseInt(e.target.value) || 1;
+                        const validated = Math.max(1, Math.min(numValue, 60));
+                        setPricing({ ...pricing, contractMonths: validated });
+                      }}
                     />
                   </div>
                 </div>
@@ -316,14 +338,24 @@ export default function ProposalBuilderPage() {
             </div>
 
             <div className="space-y-4">
-              {sections.map((section, index) => (
-                <SectionEditor
-                  key={section.type}
-                  proposalId={proposalId!}
-                  section={section}
-                  onUpdate={(updated) => handleSectionUpdate(index, updated)}
-                />
-              ))}
+              {proposalId ? (
+                sections.map((section, index) => (
+                  <WithErrorBoundary key={section.type} name={`SectionEditor-${section.type}`}>
+                    <SectionEditor
+                      proposalId={proposalId}
+                      section={section}
+                      onUpdate={(updated) => handleSectionUpdate(index, updated)}
+                    />
+                  </WithErrorBoundary>
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Generating proposal...</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="flex justify-between">
@@ -342,6 +374,14 @@ export default function ProposalBuilderPage() {
 
   return (
     <div className="container max-w-4xl py-8">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background border rounded-lg px-4 py-3 shadow-lg">
+          <StatusChip status={toast.type === "success" ? "published" : "failed"} />
+          <span className="text-foreground font-medium">{toast.message}</span>
+        </div>
+      )}
+
       <div className="mb-8">
         <Button
           variant="ghost"

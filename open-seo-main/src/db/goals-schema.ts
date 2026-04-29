@@ -5,6 +5,7 @@
 import {
   pgTable,
   text,
+  uuid,
   boolean,
   integer,
   numeric,
@@ -40,7 +41,7 @@ export const clientGoals = pgTable(
   "client_goals",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").notNull(),

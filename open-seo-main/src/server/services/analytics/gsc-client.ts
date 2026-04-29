@@ -12,11 +12,43 @@
 import { google } from "googleapis";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
+import { withRetry } from "@/server/lib/retry";
 
 const log = createLogger({ module: "gsc-client" });
 
 /** Timeout for GSC API requests (30 seconds) */
 const GSC_TIMEOUT_MS = 30000;
+
+/** Retry configuration for GSC API calls */
+const GSC_RETRY_OPTIONS = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+  isRetryable: (error: Error): boolean => {
+    const message = error.message.toLowerCase();
+    // Retry on transient Google API errors (5xx, rate limits, network issues)
+    if (
+      message.includes("500") ||
+      message.includes("502") ||
+      message.includes("503") ||
+      message.includes("504") ||
+      message.includes("429") ||
+      message.includes("rate") ||
+      message.includes("quota") ||
+      message.includes("timeout") ||
+      message.includes("network") ||
+      message.includes("econnreset") ||
+      message.includes("econnrefused")
+    ) {
+      return true;
+    }
+    // Don't retry client errors (4xx except 429)
+    if (message.includes("400") || message.includes("401") || message.includes("403") || message.includes("404")) {
+      return false;
+    }
+    return false;
+  },
+};
 
 /**
  * Wrap a promise with a timeout.
@@ -63,17 +95,20 @@ export async function fetchGSCDateMetrics(
 
     const searchconsole = google.searchconsole({ version: "v1", auth });
 
-    const response = await withTimeout(
-      searchconsole.searchanalytics.query({
-        siteUrl,
-        requestBody: {
-          startDate,
-          endDate,
-          dimensions: ["date"],
-          rowLimit: 1000,
-        },
-      }),
-      GSC_TIMEOUT_MS
+    const response = await withRetry(
+      () => withTimeout(
+        searchconsole.searchanalytics.query({
+          siteUrl,
+          requestBody: {
+            startDate,
+            endDate,
+            dimensions: ["date"],
+            rowLimit: 1000,
+          },
+        }),
+        GSC_TIMEOUT_MS
+      ),
+      GSC_RETRY_OPTIONS
     );
 
     return (response.data.rows || []).map((row) => ({
@@ -120,17 +155,20 @@ export async function fetchGSCTopQueries(
 
     // Request more rows to ensure we get top N per day
     // For 90 days * 50 queries = 4500 rows max
-    const response = await withTimeout(
-      searchconsole.searchanalytics.query({
-        siteUrl,
-        requestBody: {
-          startDate,
-          endDate,
-          dimensions: ["date", "query"],
-          rowLimit: 5000,
-        },
-      }),
-      GSC_TIMEOUT_MS
+    const response = await withRetry(
+      () => withTimeout(
+        searchconsole.searchanalytics.query({
+          siteUrl,
+          requestBody: {
+            startDate,
+            endDate,
+            dimensions: ["date", "query"],
+            rowLimit: 5000,
+          },
+        }),
+        GSC_TIMEOUT_MS
+      ),
+      GSC_RETRY_OPTIONS
     );
 
     const allRows = (response.data.rows || []).map((row) => ({
@@ -226,17 +264,20 @@ export async function fetchGSCQueryPageMetrics(
 
     const searchconsole = google.searchconsole({ version: "v1", auth });
 
-    const response = await withTimeout(
-      searchconsole.searchanalytics.query({
-        siteUrl,
-        requestBody: {
-          startDate,
-          endDate,
-          dimensions: ["query", "page"],
-          rowLimit: 25000,
-        },
-      }),
-      GSC_TIMEOUT_MS
+    const response = await withRetry(
+      () => withTimeout(
+        searchconsole.searchanalytics.query({
+          siteUrl,
+          requestBody: {
+            startDate,
+            endDate,
+            dimensions: ["query", "page"],
+            rowLimit: 25000,
+          },
+        }),
+        GSC_TIMEOUT_MS
+      ),
+      GSC_RETRY_OPTIONS
     );
 
     return (response.data.rows || []).map((row) => ({

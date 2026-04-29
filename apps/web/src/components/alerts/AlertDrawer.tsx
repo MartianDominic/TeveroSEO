@@ -35,16 +35,20 @@ export function AlertDrawer({ clientId, initialCount = 0 }: AlertDrawerProps) {
   useEffect(() => {
     if (open) {
       startTransition(async () => {
-        const pending = await getClientAlerts(clientId, "pending");
-        setAlerts(pending);
+        const result = await getClientAlerts(clientId, "pending");
+        if (result.success) {
+          setAlerts(result.data);
+        }
       });
     }
   }, [open, clientId]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
-      const newCount = await getAlertCount(clientId);
-      setCount(newCount);
+      const result = await getAlertCount(clientId);
+      if (result.success) {
+        setCount(result.data);
+      }
     }, 60000);
     return () => clearInterval(interval);
   }, [clientId]);

@@ -14,8 +14,15 @@ import {
 } from "@/types/schemas/keywords";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/seo/keywords" });
+
+/** Rate limit config for keyword operations: 10 requests per hour per user (external API costs) */
+const KEYWORD_RATE_LIMIT = {
+  limit: 10,
+  window: 3600, // 1 hour in seconds
+};
 
 async function getProjectContext(request: Request) {
   const auth = await requireApiAuth(request);
@@ -57,6 +64,17 @@ export const Route = createFileRoute("/api/seo/keywords")({
           const ctx = await getProjectContext(request);
           const body = (await request.json()) as Record<string, unknown>;
           const action = (body.action as string) ?? "research";
+
+          // Rate limit external API calls (research and serp actions)
+          if (action === "research" || action === "serp") {
+            const rateLimitResult = await rateLimit({
+              key: `keywords:${action}:${ctx.userId}`,
+              ...KEYWORD_RATE_LIMIT,
+            });
+            if (!rateLimitResult.allowed) {
+              return rateLimitExceededResponse(rateLimitResult);
+            }
+          }
 
           if (action === "save") {
             const parsed = saveKeywordsSchema.safeParse(body);

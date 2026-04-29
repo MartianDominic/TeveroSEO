@@ -160,6 +160,7 @@ import type { RawHtmlResult, ScrapeResponse } from "./types";
 // ---------------------------------------------------------------------------
 
 import { createDataForSEOFetch } from "@/server/lib/dataforseo-auth";
+import { dataForSeoRateLimiter } from "@/server/lib/dataforseo";
 
 const API_BASE = "https://api.dataforseo.com";
 
@@ -170,6 +171,9 @@ async function postDataforseo(
   path: string,
   payload: unknown,
 ): Promise<unknown> {
+  // Wait for rate limit token before making API call
+  await dataForSeoRateLimiter.acquire();
+
   const authenticatedFetch = createAuthenticatedFetch();
   const response = await authenticatedFetch(`${API_BASE}${path}`, {
     method: "POST",

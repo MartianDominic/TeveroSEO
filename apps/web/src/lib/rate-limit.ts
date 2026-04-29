@@ -17,6 +17,14 @@ export interface RateLimitConfig {
   windowSeconds: number;
   /** Redis key prefix for this limiter */
   prefix: string;
+  /**
+   * If true, reject requests when Redis fails (fail-closed).
+   * If false, allow requests when Redis fails (fail-open, default).
+   *
+   * Use failClosed: true for expensive operations like audits, LLM calls,
+   * and content generation to prevent abuse during Redis outages.
+   */
+  failClosed?: boolean;
 }
 
 /**
@@ -93,9 +101,19 @@ export class RateLimiter {
         limit: this.config.maxRequests,
       };
     } catch (error) {
-      // Log error but allow request through to avoid blocking on Redis issues
-      // In production, you may want stricter behavior
-      console.error("[rate-limit] Redis error, allowing request:", error);
+      // Handle Redis failure based on failClosed configuration
+      if (this.config.failClosed) {
+        // For expensive operations, fail closed to prevent abuse during outages
+        console.error("[rate-limit] Redis error, rejecting request (failClosed):", error);
+        return {
+          success: false,
+          remaining: 0,
+          resetAt: now + 60000, // Suggest retry in 1 minute
+          limit: this.config.maxRequests,
+        };
+      }
+      // For non-critical operations, fail open to maintain availability
+      console.error("[rate-limit] Redis error, allowing request (failOpen):", error);
       return {
         success: true,
         remaining: this.config.maxRequests,
@@ -144,31 +162,37 @@ export class RateLimiter {
 /**
  * Audit limiter: 5 audits per hour per user.
  * Audits involve crawling up to 10K pages - expensive operation.
+ * Fails closed on Redis outage to prevent abuse.
  */
 export const auditLimiter = new RateLimiter({
   maxRequests: 5,
   windowSeconds: 3600, // 1 hour
   prefix: "ratelimit:audit",
+  failClosed: true,
 });
 
 /**
  * API cost limiter: 100 external API calls per hour per user.
  * For DataForSEO, Google APIs, and other paid services.
+ * Fails closed on Redis outage to prevent cost overruns.
  */
 export const apiCostLimiter = new RateLimiter({
   maxRequests: 100,
   windowSeconds: 3600, // 1 hour
   prefix: "ratelimit:api-cost",
+  failClosed: true,
 });
 
 /**
  * LLM limiter: 50 LLM calls per hour per user.
  * For voice analysis, content generation, etc.
+ * Fails closed on Redis outage to prevent cost overruns.
  */
 export const llmLimiter = new RateLimiter({
   maxRequests: 50,
   windowSeconds: 3600, // 1 hour
   prefix: "ratelimit:llm",
+  failClosed: true,
 });
 
 /**
@@ -209,6 +233,78 @@ export const mlPredictionsLimiter = new RateLimiter({
   maxRequests: 10,
   windowSeconds: 60, // 1 minute
   prefix: "ratelimit:ml-predictions",
+});
+
+/**
+ * Site verification limiter: 10 verifications per minute per user.
+ * Prevents abuse of CMS connection verification (SSRF risk).
+ */
+export const verifyLimiter = new RateLimiter({
+  maxRequests: 10,
+  windowSeconds: 60, // 1 minute
+  prefix: "ratelimit:verify",
+});
+
+/**
+ * Report generation limiter: 5 reports per hour per user.
+ * Report generation involves expensive PDF rendering and data aggregation.
+ */
+export const reportLimiter = new RateLimiter({
+  maxRequests: 5,
+  windowSeconds: 3600, // 1 hour
+  prefix: "ratelimit:report",
+});
+
+/**
+ * Download limiter: 20 downloads per hour per user.
+ * Prevents bulk downloading and bandwidth abuse.
+ */
+export const downloadLimiter = new RateLimiter({
+  maxRequests: 20,
+  windowSeconds: 3600, // 1 hour
+  prefix: "ratelimit:download",
+});
+
+/**
+ * Scrape limiter: 10 scrapes per hour per user.
+ * Web scraping is expensive and can trigger bot detection.
+ */
+export const scrapeLimiter = new RateLimiter({
+  maxRequests: 10,
+  windowSeconds: 3600, // 1 hour
+  prefix: "ratelimit:scrape",
+});
+
+/**
+ * Content generation limiter: 20 generations per hour per user.
+ * Content generation involves expensive LLM calls.
+ * Fails closed on Redis outage to prevent cost overruns.
+ */
+export const contentGenerationLimiter = new RateLimiter({
+  maxRequests: 20,
+  windowSeconds: 3600, // 1 hour
+  prefix: "ratelimit:content-gen",
+  failClosed: true,
+});
+
+/**
+ * Analytics limiter: 30 analytics queries per minute per user.
+ * Prevents abuse of analytics endpoints.
+ */
+export const analyticsLimiter = new RateLimiter({
+  maxRequests: 30,
+  windowSeconds: 60, // 1 minute
+  prefix: "ratelimit:analytics",
+});
+
+/**
+ * General API limiter: 100 requests per minute per user.
+ * Fallback for routes without specific limiters.
+ */
+export const generalApiLimiter = new RateLimiter({
+  maxRequests: 100,
+  windowSeconds: 60, // 1 minute
+  prefix: "ratelimit:general-api",
 });
 
 /**

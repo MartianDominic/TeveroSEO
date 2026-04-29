@@ -133,6 +133,10 @@ export async function startWebhookWorker(): Promise<void> {
     log.error("Webhook worker error", err);
   });
 
+  webhookWorker.on("stalled", (jobId) => {
+    log.warn("Webhook job stalled", { jobId, queue: "webhook-delivery" });
+  });
+
   log.info("Webhook worker started");
 }
 

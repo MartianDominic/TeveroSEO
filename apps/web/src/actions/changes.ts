@@ -33,9 +33,7 @@ const changeIdSchema = z.string().uuid('Invalid change ID format');
 const batchIdSchema = z.string().uuid('Invalid batch ID format');
 const connectionIdSchema = z.string().uuid('Invalid connection ID format');
 
-const cascadeModeSchema = z.enum(['warn', 'cascade', 'force'], {
-  errorMap: () => ({ message: 'Cascade mode must be warn, cascade, or force' }),
-});
+const cascadeModeSchema = z.enum(['warn', 'cascade', 'force']);
 
 const changeFiltersSchema = z.object({
   status: z.enum(['pending', 'applied', 'verified', 'reverted', 'failed']).optional(),
@@ -175,7 +173,7 @@ export async function getChanges(
     return { success: true, data: response.data };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0]?.message ?? 'Invalid input' };
+      return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
     console.error('[getChanges]', error);
@@ -208,7 +206,7 @@ export async function getChange(
     return { success: true, data: response.data };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0]?.message ?? 'Invalid input' };
+      return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
     console.error('[getChange]', error);
@@ -243,7 +241,7 @@ export async function previewRevert(
     return { success: true, data: response.data };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0]?.message ?? 'Invalid input' };
+      return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
     console.error('[previewRevert]', error);
@@ -299,7 +297,7 @@ export async function executeRevert(
     return { success: true, data: response.data };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors[0]?.message ?? 'Invalid input' };
+      return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
     console.error('[executeRevert]', error);

@@ -3,6 +3,11 @@ import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { requireAuth, AuthError } from "@/lib/auth";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
+import {
+  detectPlatformSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,11 +53,25 @@ export async function POST(request: Request) {
     // Require authentication to prevent SSRF reconnaissance attacks
     await requireAuth();
 
-    const body = await request.json();
-
-    if (!body.domain || typeof body.domain !== "string") {
-      return NextResponse.json({ error: "domain required" }, { status: 400 });
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return NextResponse.json(
+        { error: jsonResult.error },
+        { status: 400 }
+      );
     }
+
+    // Validate with Zod schema
+    const parsed = detectPlatformSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
 
     const data = await postOpenSeo<DetectionResult>(
       "/api/detect-platform",

@@ -105,6 +105,13 @@ function blendLabel(weight: number): string {
 
 import { sanitizeHtml } from "@/lib/sanitize";
 
+// Error boundary for crash recovery
+import {
+  ArticleEditorErrorBoundary,
+  saveArticleRecoveryData,
+  clearArticleRecoveryData,
+} from "@/components/editor/ArticleEditorErrorBoundary";
+
 // ---------------------------------------------------------------------------
 // ArticleHtmlPreview — renders AI-generated article HTML safely
 // ---------------------------------------------------------------------------
@@ -121,10 +128,10 @@ function ArticleHtmlPreview({ html }: { html: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// ArticleEditorPage
+// ArticleEditorPageInner — the actual editor content
 // ---------------------------------------------------------------------------
 
-export default function ArticleEditorPage() {
+function ArticleEditorPageInner() {
   const params = useParams<{ clientId: string; articleId: string }>();
   const clientId = params.clientId;
   const articleId = params.articleId;
@@ -256,6 +263,39 @@ export default function ArticleEditorPage() {
     const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Auto-save article data for crash recovery
+  useEffect(() => {
+    if (!clientId) return;
+
+    // Debounce auto-save to avoid excessive writes
+    const timer = setTimeout(() => {
+      saveArticleRecoveryData(clientId, currentArticle.articleId, {
+        title: currentArticle.title,
+        keyword: currentArticle.keyword,
+        htmlContent: currentArticle.htmlContent,
+        customInstructions: currentArticle.customInstructions,
+        quickNotes: currentArticle.quickNotes,
+      });
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [
+    clientId,
+    currentArticle.articleId,
+    currentArticle.title,
+    currentArticle.keyword,
+    currentArticle.htmlContent,
+    currentArticle.customInstructions,
+    currentArticle.quickNotes,
+  ]);
+
+  // Clear recovery data on successful generation
+  useEffect(() => {
+    if (generationStatus === "generated" && clientId) {
+      clearArticleRecoveryData(clientId, currentArticle.articleId);
+    }
+  }, [generationStatus, clientId, currentArticle.articleId]);
 
   // ---------------------------------------------------------------------------
   // Field change handlers (immutable patches)
@@ -798,5 +838,44 @@ export default function ArticleEditorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ArticleEditorPage — wrapped with error boundary for crash recovery
+// ---------------------------------------------------------------------------
+
+export default function ArticleEditorPage() {
+  const params = useParams<{ clientId: string; articleId: string }>();
+  const { setArticle, patchArticle } = useArticleEditorStore();
+
+  // Recovery handler to restore article data after a crash
+  const handleRecover = useCallback(
+    (data: {
+      title: string;
+      keyword: string;
+      htmlContent: string | null;
+      customInstructions: string;
+      quickNotes: string;
+    }) => {
+      patchArticle({
+        title: data.title,
+        keyword: data.keyword,
+        htmlContent: data.htmlContent,
+        customInstructions: data.customInstructions,
+        quickNotes: data.quickNotes,
+      });
+    },
+    [patchArticle]
+  );
+
+  return (
+    <ArticleEditorErrorBoundary
+      articleId={params.articleId === "new" ? null : params.articleId}
+      clientId={params.clientId}
+      onRecover={handleRecover}
+    >
+      <ArticleEditorPageInner />
+    </ArticleEditorErrorBoundary>
   );
 }

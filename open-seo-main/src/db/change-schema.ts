@@ -8,6 +8,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   boolean,
   timestamp,
@@ -15,7 +16,6 @@ import {
   index,
   check,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { siteConnections } from "./connection-schema";
@@ -28,7 +28,7 @@ export const siteChanges = pgTable(
   "site_changes",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     connectionId: text("connection_id")
@@ -96,7 +96,7 @@ export const changeBackups = pgTable(
   "change_backups",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
 
@@ -147,7 +147,7 @@ export const rollbackTriggers = pgTable(
   "rollback_triggers",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
 

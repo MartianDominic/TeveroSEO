@@ -10,6 +10,14 @@ import type { ActivityEvent } from "./types";
 
 const log = createLogger({ module: "connection-manager" });
 
+// DEPLOYMENT NOTE: Connection limits are tracked in-memory only.
+// In multi-instance deployments, consider using Redis for distributed tracking.
+// Current architecture assumes single-instance deployment or sticky sessions.
+log.warn(
+  "WebSocket connection limits are tracked in-memory. " +
+  "In multi-instance deployments, consider using Redis for distributed tracking."
+);
+
 /**
  * Maximum connections allowed per authenticated user.
  */
@@ -28,6 +36,14 @@ const MESSAGE_WINDOW_MS = 60000;
 const EVENT_BUFFER_SIZE = 100;
 const EVENT_BUFFER_TTL = 300; // 5 minutes
 
+/**
+ * Hard limits for in-memory collections to prevent unbounded memory growth.
+ * These are safety limits - normal operation should stay well below them.
+ */
+const MAX_SOCKET_ENTRIES = 10000;
+const MAX_USER_ENTRIES = 5000;
+const MAX_COUNTER_ENTRIES = 5000;
+
 // In-memory tracking for user connections (socketId -> userId)
 const socketToUser = new Map<string, string>();
 // userId -> Set<socketId>
@@ -35,6 +51,46 @@ const userConnections = new Map<string, Set<string>>();
 
 // In-memory message counters: userId -> { count, resetAt }
 const messageCounters = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Enforce size limit on a Map by evicting oldest entries.
+ * Uses FIFO eviction (first key in Map iteration order is oldest).
+ */
+function enforceMapLimit<K, V>(map: Map<K, V>, maxSize: number): void {
+  while (map.size >= maxSize) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey !== undefined) {
+      map.delete(oldestKey);
+      log.warn("Evicted entry from bounded map due to size limit", {
+        mapSize: map.size,
+        maxSize,
+      });
+    } else {
+      break;
+    }
+  }
+}
+
+/**
+ * Get current map sizes for monitoring.
+ */
+export function getConnectionManagerStats(): {
+  socketToUserSize: number;
+  userConnectionsSize: number;
+  messageCountersSize: number;
+  limits: { maxSockets: number; maxUsers: number; maxCounters: number };
+} {
+  return {
+    socketToUserSize: socketToUser.size,
+    userConnectionsSize: userConnections.size,
+    messageCountersSize: messageCounters.size,
+    limits: {
+      maxSockets: MAX_SOCKET_ENTRIES,
+      maxUsers: MAX_USER_ENTRIES,
+      maxCounters: MAX_COUNTER_ENTRIES,
+    },
+  };
+}
 
 /**
  * Check if a user can open a new connection.
@@ -58,21 +114,29 @@ export function canConnect(userId: string): boolean {
 
 /**
  * Register a new connection for a user.
+ * Enforces collection size limits to prevent unbounded memory growth.
  */
 export function addConnection(userId: string, socketId: string): void {
+  // Enforce size limits before adding new entries
+  enforceMapLimit(socketToUser, MAX_SOCKET_ENTRIES);
+  enforceMapLimit(userConnections, MAX_USER_ENTRIES);
+
   // Track socket -> user mapping
   socketToUser.set(socketId, userId);
 
-  // Track user -> sockets mapping
+  // Track user -> sockets mapping - use safe access instead of non-null assertions
   if (!userConnections.has(userId)) {
     userConnections.set(userId, new Set());
   }
-  userConnections.get(userId)!.add(socketId);
+  const connections = userConnections.get(userId);
+  if (connections) {
+    connections.add(socketId);
+  }
 
   log.debug("Connection added", {
     userId,
     socketId,
-    totalConnections: userConnections.get(userId)!.size,
+    totalConnections: connections?.size ?? 0,
   });
 }
 
@@ -110,6 +174,7 @@ export function getUserConnectionCount(userId: string): number {
 /**
  * Check if a user is within their message rate limit.
  * Returns true if message is allowed, false if rate limited.
+ * Enforces counter map size limit to prevent unbounded memory growth.
  */
 export function checkMessageLimit(userId: string): boolean {
   const now = Date.now();
@@ -117,6 +182,8 @@ export function checkMessageLimit(userId: string): boolean {
 
   // First message or window expired - reset counter
   if (!counter || now > counter.resetAt) {
+    // Enforce size limit before adding new counter
+    enforceMapLimit(messageCounters, MAX_COUNTER_ENTRIES);
     messageCounters.set(userId, { count: 1, resetAt: now + MESSAGE_WINDOW_MS });
     return true;
   }

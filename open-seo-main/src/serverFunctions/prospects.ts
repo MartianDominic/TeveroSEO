@@ -7,12 +7,16 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { inArray, eq, and } from "drizzle-orm";
+import { db } from "@/db";
+import { prospects, PROSPECT_STATUS, PIPELINE_STAGES } from "@/db/prospect-schema";
+import { pipelineAutomationLogs } from "@/db/pipeline-rules-schema";
 import { ProspectService } from "@/server/features/prospects/services/ProspectService";
 import { AnalysisService } from "@/server/features/prospects/services/AnalysisService";
 import { PipelineService } from "@/server/features/prospects/services/PipelineService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
-import { PROSPECT_STATUS, PIPELINE_STAGES } from "@/db/prospect-schema";
 import { AppError } from "@/server/lib/errors";
+import { nanoid } from "nanoid";
 
 /**
  * Schema for creating a prospect.
@@ -186,6 +190,9 @@ const importCsvSchema = z.object({
  *
  * T-30.5-01: Validates all rows with zod before insert.
  * T-30.5-02: Handles duplicate domain conflicts gracefully.
+ *
+ * PERFORMANCE FIX: Uses batch INSERT with ON CONFLICT instead of
+ * individual inserts per row. Reduces 10,000 queries to ~20 batch inserts.
  */
 export const importProspectsFromCsv = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
@@ -197,26 +204,83 @@ export const importProspectsFromCsv = createServerFn({ method: "POST" })
       errors: [] as Array<{ domain: string; error: string }>,
     };
 
+    // Normalize and validate domains, collect valid rows
+    const validRows: Array<{
+      id: string;
+      workspaceId: string;
+      domain: string;
+      companyName: string | undefined;
+      contactEmail: string | undefined;
+      contactName: string | undefined;
+      industry: string | undefined;
+      notes: string | undefined;
+      source: string;
+      status: string;
+      pipelineStage: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }> = [];
+
+    const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+    const now = new Date();
+
     for (const row of data.rows) {
-      try {
-        await ProspectService.create({
-          workspaceId: context.organizationId,
+      // Normalize domain
+      let normalized = row.domain.replace(/^https?:\/\//, "");
+      normalized = normalized.replace(/^www\./, "");
+      normalized = normalized.split("/")[0];
+      normalized = normalized.split(":")[0];
+      normalized = normalized.toLowerCase().trim();
+
+      if (!DOMAIN_REGEX.test(normalized)) {
+        results.errors.push({
           domain: row.domain,
-          companyName: row.companyName,
-          contactEmail: row.contactEmail || undefined,
-          contactName: row.contactName,
-          industry: row.industry,
-          notes: row.notes,
-          source: row.source || "csv_import",
+          error: `Invalid domain format: ${row.domain}`,
         });
-        results.created++;
+        continue;
+      }
+
+      validRows.push({
+        id: nanoid(),
+        workspaceId: context.organizationId,
+        domain: normalized,
+        companyName: row.companyName,
+        contactEmail: row.contactEmail || undefined,
+        contactName: row.contactName,
+        industry: row.industry,
+        notes: row.notes,
+        source: row.source || "csv_import",
+        status: "new",
+        pipelineStage: "new",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Batch insert with ON CONFLICT DO NOTHING
+    // Process in batches of 500 to avoid query size limits
+    const BATCH_SIZE = 500;
+
+    for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
+      const batch = validRows.slice(i, i + BATCH_SIZE);
+
+      try {
+        const inserted = await db
+          .insert(prospects)
+          .values(batch)
+          .onConflictDoNothing({
+            target: [prospects.workspaceId, prospects.domain],
+          })
+          .returning({ id: prospects.id });
+
+        results.created += inserted.length;
+        results.skipped += batch.length - inserted.length;
       } catch (error) {
-        if (error instanceof AppError && error.code === "CONFLICT") {
-          results.skipped++;
-        } else {
+        // If batch fails, record all domains as errors
+        for (const row of batch) {
           results.errors.push({
             domain: row.domain,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: error instanceof Error ? error.message : "Batch insert failed",
           });
         }
       }
@@ -275,31 +339,69 @@ export const bulkAnalyzeProspects = createServerFn({ method: "POST" })
  * Transitions all selected to "archived" stage.
  *
  * T-30.5-05a: Verifies ownership for each prospect before archiving.
+ *
+ * PERFORMANCE FIX: Uses bulk UPDATE with IN clause instead of
+ * individual findById + transitionStage per ID. Reduces 1,000 queries to 3.
  */
 export const bulkArchiveProspects = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) => bulkArchiveSchema.parse(data))
   .handler(async ({ data, context }) => {
-    let archived = 0;
-    let errors = 0;
+    const now = new Date();
 
-    for (const prospectId of data.prospectIds) {
-      try {
-        // Verify ownership first
-        const prospect = await ProspectService.findById(prospectId);
-        if (!prospect || prospect.workspaceId !== context.organizationId) {
-          errors++;
-          continue;
-        }
+    // Step 1: Get current state of all prospects that belong to this workspace
+    // This validates ownership in a single query
+    const existingProspects = await db
+      .select({
+        id: prospects.id,
+        pipelineStage: prospects.pipelineStage,
+      })
+      .from(prospects)
+      .where(
+        and(
+          inArray(prospects.id, data.prospectIds),
+          eq(prospects.workspaceId, context.organizationId)
+        )
+      );
 
-        await PipelineService.transitionStage(prospectId, "archived", "bulk_archive");
-        archived++;
-      } catch {
-        errors++;
-      }
+    // Track which IDs were found and owned by this workspace
+    const validIds = existingProspects.map((p) => p.id);
+    const notFoundOrUnauthorized = data.prospectIds.length - validIds.length;
+
+    if (validIds.length === 0) {
+      return { archived: 0, errors: notFoundOrUnauthorized };
     }
 
-    return { archived, errors };
+    // Step 2: Bulk update all valid prospects to archived stage
+    const updated = await db
+      .update(prospects)
+      .set({
+        pipelineStage: "archived",
+        updatedAt: now,
+      })
+      .where(inArray(prospects.id, validIds))
+      .returning({ id: prospects.id });
+
+    // Step 3: Bulk insert pipeline transition logs for audit trail
+    const logsToInsert = existingProspects
+      .filter((p) => p.pipelineStage !== "archived") // Only log actual transitions
+      .map((p) => ({
+        id: nanoid(),
+        prospectId: p.id,
+        ruleId: "bulk_archive",
+        fromStage: p.pipelineStage,
+        toStage: "archived" as const,
+        executedAt: now,
+      }));
+
+    if (logsToInsert.length > 0) {
+      await db.insert(pipelineAutomationLogs).values(logsToInsert);
+    }
+
+    return {
+      archived: updated.length,
+      errors: notFoundOrUnauthorized,
+    };
   });
 
 /**

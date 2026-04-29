@@ -332,13 +332,24 @@ export const ProspectService = {
 
   /**
    * Update prospect status to 'converted' and link to client.
+   *
+   * Validates clientId is a valid UUID format before storing.
+   * No FK constraint exists due to cross-database design (clients may live in AI-Writer DB).
+   * Caller should verify client actually exists via resolveClientId() before calling.
    */
   async markConverted(id: string, clientId: string): Promise<void> {
+    // Validate UUID format to match the UUID column type
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_REGEX.test(clientId)) {
+      throw new AppError("VALIDATION_ERROR", `Invalid client ID format: ${clientId}. Must be a valid UUID.`);
+    }
+
     await db
       .update(prospects)
       .set({
         status: "converted",
         convertedClientId: clientId,
+        pipelineStage: "converted",
         updatedAt: new Date(),
       })
       .where(eq(prospects.id, id));

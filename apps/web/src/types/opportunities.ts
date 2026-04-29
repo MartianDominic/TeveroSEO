@@ -44,8 +44,8 @@ export interface Opportunity {
     estimatedGain?: number;
   };
 
-  createdAt: Date;
-  expiresAt?: Date;
+  createdAt: string; // ISO string from JSON serialization
+  expiresAt?: string; // ISO string from JSON serialization
 }
 
 /**

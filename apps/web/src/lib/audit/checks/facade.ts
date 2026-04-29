@@ -15,15 +15,47 @@ import {
   isValidCheckResult,
   isValidCheckResponse,
 } from "./types";
+import * as crypto from "crypto";
 
-/** Request timeout in milliseconds (30 seconds) */
-const REQUEST_TIMEOUT_MS = 30000;
+/**
+ * Request timeout in milliseconds (120 seconds).
+ * FIX H-COMM-04: Increased from 30s to 120s because audits can take 5+ minutes.
+ * For very long audits, consider implementing a polling pattern instead.
+ */
+const REQUEST_TIMEOUT_MS = 120_000;
 
 /** Configurable open-seo-main URL */
 const OPEN_SEO_URL =
   process.env.OPEN_SEO_URL ??
   process.env.NEXT_PUBLIC_OPEN_SEO_URL ??
   "http://localhost:3001";
+
+/** Internal API key for service-to-service auth */
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+/**
+ * Generate internal auth headers for service-to-service calls.
+ * FIX H-COMM-02: Added HMAC signing for cross-service authentication.
+ */
+function getInternalAuthHeaders(body: string): HeadersInit {
+  if (!INTERNAL_API_KEY) {
+    // In development, auth may be optional
+    return { "Content-Type": "application/json" };
+  }
+
+  const timestamp = Date.now();
+  const message = `${timestamp}.${body}`;
+  const signature = crypto
+    .createHmac("sha256", INTERNAL_API_KEY)
+    .update(message)
+    .digest("hex");
+
+  return {
+    "Content-Type": "application/json",
+    "X-Internal-Timestamp": timestamp.toString(),
+    "X-Internal-Signature": signature,
+  };
+}
 
 
 /**
@@ -61,17 +93,17 @@ export async function runAllChecks(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
+    const requestBody = JSON.stringify({
+      html,
+      url,
+      keyword: options.keyword,
+      tiers: options.tiers ?? [1, 2, 3, 4],
+    });
+
     const response = await fetch(`${OPEN_SEO_URL}/api/audit/run-checks`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        html,
-        url,
-        keyword: options.keyword,
-        tiers: options.tiers ?? [1, 2, 3, 4],
-      }),
+      headers: getInternalAuthHeaders(requestBody),
+      body: requestBody,
       signal: controller.signal,
     });
 

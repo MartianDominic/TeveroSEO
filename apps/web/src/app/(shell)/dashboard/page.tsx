@@ -12,6 +12,7 @@ import { TeamWorkloadSection } from "@/components/dashboard/TeamWorkloadSection"
 import { UpcomingScheduledSection } from "@/components/dashboard/UpcomingScheduledSection";
 import { PowerUserFeatures } from "@/components/dashboard/PowerUserFeatures";
 import { DashboardViewProvider } from "@/components/dashboard/DashboardViewProvider";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 import {
   getDashboardMetrics,
   getPortfolioSummary,
@@ -117,18 +118,26 @@ export default async function DashboardPage() {
 
       {/* Quick Stats Cards - drag and drop */}
       <section>
-        <QuickStatsCards summary={summary} initialLayout={cardLayout ?? undefined} />
+        <WithErrorBoundary name="QuickStatsCards">
+          <QuickStatsCards summary={summary} initialLayout={cardLayout ?? undefined} />
+        </WithErrorBoundary>
       </section>
 
       {/* Portfolio Health Summary */}
       <section>
-        <PortfolioHealthSummary summary={summary} />
+        <WithErrorBoundary name="PortfolioHealthSummary">
+          <PortfolioHealthSummary summary={summary} />
+        </WithErrorBoundary>
       </section>
 
       {/* Needs Attention + Wins (side by side on large screens) */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <NeedsAttentionSection items={attentionItems} />
-        <WinsMilestonesSection wins={wins} />
+        <WithErrorBoundary name="NeedsAttentionSection">
+          <NeedsAttentionSection items={attentionItems} />
+        </WithErrorBoundary>
+        <WithErrorBoundary name="WinsMilestonesSection">
+          <WinsMilestonesSection wins={wins} />
+        </WithErrorBoundary>
       </section>
 
       {/* Client Portfolio Table + Sidebar (Activity Feed, Team Workload, Upcoming) */}
@@ -146,14 +155,22 @@ export default async function DashboardPage() {
               <span>Shortcuts</span>
             </div>
           </div>
-          <ClientPortfolioTable clients={metrics} />
+          <WithErrorBoundary name="ClientPortfolioTable">
+            <ClientPortfolioTable clients={metrics} />
+          </WithErrorBoundary>
         </div>
         <div className="space-y-6">
-          <ActivityFeed workspaceId={workspaceId} />
+          <WithErrorBoundary name="ActivityFeed">
+            <ActivityFeed workspaceId={workspaceId} />
+          </WithErrorBoundary>
           {teamWorkload.length > 0 && (
-            <TeamWorkloadSection members={teamWorkload} />
+            <WithErrorBoundary name="TeamWorkloadSection">
+              <TeamWorkloadSection members={teamWorkload} />
+            </WithErrorBoundary>
           )}
-          <UpcomingScheduledSection items={upcomingScheduled} />
+          <WithErrorBoundary name="UpcomingScheduledSection">
+            <UpcomingScheduledSection items={upcomingScheduled} />
+          </WithErrorBoundary>
         </div>
       </section>
     </div>

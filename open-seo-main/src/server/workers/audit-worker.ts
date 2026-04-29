@@ -7,7 +7,7 @@
  *   - maxStalledCount: 2 (BQ-06)
  *   - Sandboxed processor via file path (BQ-04) — audit-processor.ts runs in child process
  *   - on("failed") handler that, when attemptsMade === attempts, enqueues a
- *     FailedAuditJobData to the `failed-audits` DLQ (BQ-07)
+ *     FailedAuditJobData to the `failed-audits` DLQ (BQ-07) AND marks audit as failed in DB
  *   - Graceful shutdown: stopAuditWorker() awaits up to 25s for in-flight jobs (BQ-06)
  */
 import { Worker, type Job } from "bullmq";
@@ -20,6 +20,7 @@ import {
   type AuditJobData,
   type FailedAuditJobData,
 } from "@/server/queues/auditQueue";
+import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 
 const workerLog = createLogger({ module: "audit-worker" });
 
@@ -67,18 +68,35 @@ export function startAuditWorker(): Worker<AuditJobData> {
       const maxAttempts = job.opts.attempts ?? 1;
       const jobLog = createLogger({ module: "audit-worker", jobId: job.id, auditId: job.data.auditId });
       jobLog.error("Job failed", err, { attempt: job.attemptsMade, maxAttempts });
-      // Only enqueue DLQ when retries are exhausted (BQ-07)
+      // Only process terminal failure when retries are exhausted (BQ-07)
       if (job.attemptsMade >= maxAttempts) {
+        const { auditId, projectId } = job.data;
+        // workflowInstanceId is the job.id (see audit-processor.ts line 99-101)
+        const workflowInstanceId = String(job.id ?? auditId);
+
+        // CRITICAL FIX: Mark audit as failed in database so it doesn't hang forever
+        try {
+          await AuditRepository.failAudit(auditId, workflowInstanceId);
+          jobLog.info("Audit marked as failed in database", { auditId });
+        } catch (dbErr) {
+          jobLog.error(
+            "Failed to mark audit as failed in database",
+            dbErr instanceof Error ? dbErr : new Error(String(dbErr)),
+            { auditId },
+          );
+        }
+
+        // Enqueue to DLQ for investigation
         const dlqPayload: FailedAuditJobData = {
-          auditId: job.data.auditId,
-          projectId: job.data.projectId,
-          originalJobId: String(job.id ?? job.data.auditId),
+          auditId,
+          projectId,
+          originalJobId: workflowInstanceId,
           failedAt: Date.now(),
           error: err.message,
           attemptsMade: job.attemptsMade,
         };
         try {
-          await failedAuditsQueue.add(`dlq-${job.data.auditId}`, dlqPayload);
+          await failedAuditsQueue.add(`dlq-${auditId}`, dlqPayload);
         } catch (dlqErr) {
           jobLog.error("Failed to enqueue DLQ job", dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
         }
@@ -89,6 +107,10 @@ export function startAuditWorker(): Worker<AuditJobData> {
   worker.on("completed", (job) => {
     const jobLog = createLogger({ module: "audit-worker", jobId: job.id, auditId: job.data.auditId });
     jobLog.info("Job completed");
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLog.warn("Job stalled", { jobId, queue: AUDIT_QUEUE_NAME });
   });
 
   return worker;

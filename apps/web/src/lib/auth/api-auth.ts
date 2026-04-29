@@ -104,6 +104,17 @@ export async function requireClientAccess(clientId: string): Promise<AuthContext
 }
 
 /**
+ * Get the session token for backend API authentication.
+ * This token should be passed as Authorization: Bearer header to backend services.
+ *
+ * @returns The session token or null if not authenticated
+ */
+async function getSessionToken(): Promise<string | null> {
+  const { getToken } = await auth();
+  return getToken();
+}
+
+/**
  * Verify client access through the backend API.
  * The backend handles the actual ownership verification against the database.
  */
@@ -115,6 +126,13 @@ async function verifyClientAccess(
   // Get backend URL from environment
   const backendUrl = process.env.AI_WRITER_URL ?? 'http://localhost:8000';
 
+  // Get session token for backend authentication
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) {
+    console.error(`[Auth] No session token available for client access verification: client=${clientId}, user=${userId}`);
+    return false;
+  }
+
   try {
     // Verify ownership through the backend
     const response = await fetch(
@@ -123,6 +141,7 @@ async function verifyClientAccess(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
         },
         body: JSON.stringify({ userId, orgId }),
       }

@@ -88,6 +88,7 @@ export function startOnboardingWorker(): Worker<
       connection,
       concurrency: 2, // Process 2 onboardings at a time
       lockDuration: 120_000, // 2 minutes per job
+      maxStalledCount: 2, // Mark job as failed after 2 stalls
     }
   );
 
@@ -141,18 +142,37 @@ export function startOnboardingWorker(): Worker<
     log.error("Onboarding worker error", error);
   });
 
+  worker.on("stalled", (jobId) => {
+    log.warn("Onboarding job stalled", { jobId, queue: QUEUE_NAME });
+  });
+
   log.info("Onboarding worker started");
 
   return worker;
 }
 
 /**
- * Stop the onboarding worker gracefully.
+ * Stop the onboarding worker gracefully with timeout (HIGH-BQ-02 fix).
  */
 export async function stopOnboardingWorker(): Promise<void> {
-  if (worker) {
-    await worker.close();
-    worker = null;
-    log.info("Onboarding worker stopped");
+  if (!worker) return;
+
+  const current = worker;
+  worker = null;
+
+  const SHUTDOWN_TIMEOUT_MS = 10_000;
+  const timeout = new Promise<"timeout">((resolve) =>
+    setTimeout(() => resolve("timeout"), SHUTDOWN_TIMEOUT_MS),
+  );
+  const closed = current.close().then(() => "closed" as const);
+  const result = await Promise.race([closed, timeout]);
+
+  if (result === "timeout") {
+    log.warn("Worker close timed out, forcing close", {
+      timeoutMs: SHUTDOWN_TIMEOUT_MS,
+    });
+    await current.close(true);
   }
+
+  log.info("Onboarding worker stopped");
 }

@@ -199,11 +199,12 @@ export async function internalApiRequest<T>(
         );
       }
 
-      // Network errors
+      // Network errors - log stack trace server-side, return sanitized message to client
+      console.error(`[InternalApiClient] Network error for ${path}:`, e);
       throw new InternalApiError(
         `Failed to connect to AI-Writer: ${e.message}`,
         503,
-        e.stack,
+        'Network error - check service availability',
         correlationId
       );
     }

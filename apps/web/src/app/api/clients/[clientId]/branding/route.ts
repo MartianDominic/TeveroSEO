@@ -6,7 +6,7 @@
  * PUT /api/clients/:clientId/branding - Create/update branding
  * DELETE /api/clients/:clientId/branding - Delete branding
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   getOpenSeo,
   putOpenSeo,
@@ -14,6 +14,13 @@ import {
   FastApiError,
 } from "@/lib/server-fetch";
 import { requireClientAccess, AuthError } from "@/lib/auth";
+import { validateCsrf } from "@/lib/api/security";
+import {
+  brandingSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,9 +37,19 @@ interface BrandingResponse {
 }
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ clientId: string }> },
 ) {
+  // Rate limit: 100 requests per minute
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.API.limit, RATE_LIMITS.API.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
   try {
     const { clientId } = await params;
 
@@ -57,16 +74,48 @@ export async function GET(
 }
 
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ clientId: string }> },
 ) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
     const { clientId } = await params;
 
     // Verify user has access to this client
     await requireClientAccess(clientId);
 
-    const body = (await req.json()) as Record<string, unknown>;
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
+      return NextResponse.json(
+        { error: jsonResult.error },
+        { status: 400 }
+      );
+    }
+
+    // Validate with Zod schema
+    const parsed = brandingSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
 
     // Inject clientId from path into body
     const data = await putOpenSeo<BrandingResponse>("/api/branding", {
@@ -90,9 +139,23 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ clientId: string }> },
 ) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(req);
+  const rateLimitResult = await checkRateLimit(`${ip}:${req.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
     const { clientId } = await params;
 

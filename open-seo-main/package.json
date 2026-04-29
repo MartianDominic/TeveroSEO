@@ -99,7 +99,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tldts": "^7.0.25",
     "yaml": "^2.8.3",
-    "zod": "^4.1.12"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",
@@ -125,6 +125,6 @@
     "typescript": "^5.9.3",
     "vite": "^7.1.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.4"
   }
 }

@@ -62,24 +62,30 @@ export async function startVoiceAnalysisWorker(): Promise<
       }
 
       const maxAttempts = job.opts.attempts ?? 1;
+      const clientId = (job.data as VoiceAnalysisJobData).clientId;
       const jobLogger = createLogger({
         module: "voice-analysis-worker",
         jobId: job.id,
-        clientId: (job.data as VoiceAnalysisJobData).clientId,
+        clientId,
       });
       jobLogger.error("Job failed", err, {
         attempt: job.attemptsMade,
         maxAttempts,
       });
 
-      // Move to DLQ after max retries and release the lock
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
-        // Release the lock so client can retry later
-        const clientId = (job.data as VoiceAnalysisJobData).clientId;
-        if (clientId) {
+      // Always release the lock on failure (not just after max retries)
+      // This allows the client to retry immediately if needed
+      if (clientId && !job.name.startsWith("dlq:")) {
+        try {
           await releaseVoiceAnalysisLock(clientId);
+          jobLogger.debug("Lock released after failure", { attempt: job.attemptsMade });
+        } catch (lockErr) {
+          jobLogger.error("Failed to release lock after failure", lockErr as Error);
         }
+      }
 
+      // Move to DLQ after max retries
+      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
         try {
           const dlqData: VoiceAnalysisDLQJobData = {
             originalJobId: job.id,
@@ -91,8 +97,9 @@ export async function startVoiceAnalysisWorker(): Promise<
             attemptsMade: job.attemptsMade,
           };
           await voiceAnalysisQueue.add("dlq:voice-analysis", dlqData, {
-            removeOnComplete: false,
-            removeOnFail: false,
+            // TTL: auto-remove completed DLQ jobs after 7 days
+            removeOnComplete: { age: 604800 },
+            removeOnFail: { age: 604800 },
             attempts: 1,
           });
           jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
@@ -129,6 +136,10 @@ export async function startVoiceAnalysisWorker(): Promise<
       jobId: job.id,
       progress: typeof progress === "number" ? `${progress}%` : progress,
     });
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: VOICE_ANALYSIS_QUEUE_NAME });
   });
 
   return worker;

@@ -15,6 +15,7 @@ import { Resend } from "resend";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { createLogger } from "./logger";
+import { REPORTS_DIR } from "./storage";
 
 const log = createLogger({ module: "email" });
 
@@ -78,10 +79,11 @@ export async function sendReportEmail(params: ReportEmailParams): Promise<void> 
   const fromAddress = process.env.EMAIL_FROM ?? DEFAULT_FROM;
 
   // SECURITY: Validate path is within expected reports directory
-  const REPORTS_DIR = path.resolve(process.cwd(), "reports");
+  // Uses REPORTS_DIR from storage.ts for consistency
+  const resolvedReportsDir = path.resolve(REPORTS_DIR);
   const resolvedPath = path.resolve(params.pdfPath);
 
-  if (!resolvedPath.startsWith(REPORTS_DIR + path.sep) && resolvedPath !== REPORTS_DIR) {
+  if (!resolvedPath.startsWith(resolvedReportsDir + path.sep) && resolvedPath !== resolvedReportsDir) {
     log.error("Path traversal attempt in email attachment", undefined, {
       attemptedPath: params.pdfPath,
     });

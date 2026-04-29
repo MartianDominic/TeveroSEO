@@ -38,6 +38,27 @@ import {
   formatStartedAt,
   SUPPORT_URL,
 } from "@/lib/seo/shared";
+import { z } from "zod";
+
+// Zod schema for audit results validation
+const AuditResultsSchema = z.object({
+  summary: z.object({
+    pagesScanned: z.number(),
+    issuesFound: z.number(),
+    lighthouseAvg: z.object({
+      performance: z.number().nullable(),
+      accessibility: z.number().nullable(),
+      bestPractices: z.number().nullable(),
+      seo: z.number().nullable(),
+    }).optional(),
+  }).optional(),
+  pages: z.array(z.object({
+    url: z.string(),
+    statusCode: z.number(),
+    title: z.string().nullable(),
+    issues: z.number(),
+  })).optional(),
+});
 import { safeFirst, safeFormatTime } from "@/lib/utils/safe-parse";
 
 interface AuditStatus {
@@ -73,8 +94,8 @@ export default function SiteAuditPage() {
   useEffect(() => {
     async function validateProject() {
       try {
-        const project = await getProject({ projectId, clientId });
-        setProjectExists(project !== null);
+        const result = await getProject({ projectId, clientId });
+        setProjectExists(result.success && result.data !== null);
       } catch {
         setProjectExists(false);
       }
@@ -179,8 +200,8 @@ function LaunchView({
         lighthouseStrategy: lighthouseStrategy === "none" ? undefined : lighthouseStrategy as "mobile" | "desktop",
       }),
     onSuccess: (result) => {
-      if ("auditId" in result) {
-        onAuditStarted(result.auditId);
+      if (result.success && result.data.auditId) {
+        onAuditStarted(result.data.auditId);
       }
     },
   });
@@ -192,13 +213,14 @@ function LaunchView({
     },
   });
 
-  const history = (historyQuery.data as Array<{
+  const historyData = historyQuery.data;
+  const history = (historyData?.success ? historyData.data : []) as Array<{
     id: string;
     startUrl: string;
     status: string;
     startedAt: string;
     pagesCrawled: number;
-  }>) ?? [];
+  }>;
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
@@ -364,14 +386,16 @@ function AuditDetail({
     queryKey: ["audit-status", projectId, auditId],
     queryFn: () => getAuditStatus({ projectId, clientId, auditId }),
     refetchInterval: (query) => {
-      const data = query.state.data as AuditStatus | undefined;
+      const result = query.state.data;
+      const data = result?.success ? result.data : undefined;
       return data?.status === "running" ? 3000 : false;
     },
   });
 
-  const isComplete = statusQuery.data?.status === "completed";
-  const isFailed = statusQuery.data?.status === "failed";
-  const isRunning = statusQuery.data?.status === "running";
+  const statusData = statusQuery.data?.success ? statusQuery.data.data : undefined;
+  const isComplete = statusData?.status === "completed";
+  const isFailed = statusData?.status === "failed";
+  const isRunning = statusData?.status === "running";
 
   const resultsQuery = useQuery({
     queryKey: ["audit-results", projectId, auditId],
@@ -405,7 +429,7 @@ function AuditDetail({
     );
   }
 
-  const status = statusQuery.data as AuditStatus;
+  const status = statusData as AuditStatus;
   const showSupportCta =
     isFailed || (isComplete && status && status.pagesCrawled <= 1);
 
@@ -628,24 +652,20 @@ function ResultsView({
   tab: string;
   setSearchParams: (updates: Record<string, string | undefined>) => void;
 }) {
-  const results = data as {
-    summary?: {
-      pagesScanned: number;
-      issuesFound: number;
-      lighthouseAvg?: {
-        performance: number | null;
-        accessibility: number | null;
-        bestPractices: number | null;
-        seo: number | null;
-      };
-    };
-    pages?: Array<{
-      url: string;
-      statusCode: number;
-      title: string | null;
-      issues: number;
-    }>;
-  };
+  // Validate audit results with Zod schema instead of unsafe type assertion
+  const parsed = AuditResultsSchema.safeParse(data);
+  if (!parsed.success) {
+    console.error("Invalid audit results format:", parsed.error.message);
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+          <p className="text-muted-foreground">Invalid audit data format. Please try running a new audit.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  const results = parsed.data;
 
   return (
     <div className="space-y-4">

@@ -186,12 +186,12 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
                     <p className="font-medium text-sm">{pattern.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {pattern.affectedCount} clients affected |{" "}
-                      {pattern.confidence.toFixed(0)}% confidence
+                      {Number(pattern.confidence).toFixed(0)}% confidence
                     </p>
                   </div>
                   <Badge variant={getDirectionBadgeVariant(pattern.direction)}>
                     {pattern.direction === "down" ? "-" : "+"}
-                    {pattern.magnitude.toFixed(1)}%
+                    {Number(pattern.magnitude).toFixed(1)}%
                   </Badge>
                   <ChevronDown
                     className={`h-4 w-4 text-muted-foreground transition-transform ${

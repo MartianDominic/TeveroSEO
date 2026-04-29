@@ -290,8 +290,23 @@ async function executeClientPredictions(clientId: string): Promise<PredictiveAle
 }
 
 /**
+ * Concurrency limit for parallel client prediction fetches.
+ * Balances throughput vs API/memory pressure.
+ */
+const PREDICTION_CONCURRENCY_LIMIT = 5;
+
+/**
+ * Maximum clients to process for workspace predictions.
+ * Prevents unbounded processing time for large workspaces.
+ */
+const MAX_CLIENTS_FOR_PREDICTIONS = 50;
+
+/**
  * Get predictive alerts across all clients in a workspace.
  * Aggregates predictions from all clients for dashboard display.
+ *
+ * Uses controlled concurrency to avoid overwhelming the API while
+ * still providing good throughput.
  */
 export async function getWorkspacePredictions(
   workspaceId: string
@@ -321,14 +336,20 @@ export async function getWorkspacePredictions(
         }
 
         const allPredictions: PredictiveAlert[] = [];
+        const clientsToProcess = metrics.slice(0, MAX_CLIENTS_FOR_PREDICTIONS);
 
-        // Process clients in batches to avoid overwhelming the API
-        const batchSize = 10;
-        for (let i = 0; i < Math.min(metrics.length, 50); i += batchSize) {
-          const batch = metrics.slice(i, i + batchSize);
+        // Process clients with controlled concurrency using Promise.all + chunking
+        // This is more efficient than sequential processing while avoiding API overload
+        for (let i = 0; i < clientsToProcess.length; i += PREDICTION_CONCURRENCY_LIMIT) {
+          const batch = clientsToProcess.slice(i, i + PREDICTION_CONCURRENCY_LIMIT);
+
+          // Use deduplication-aware fetching - identical client predictions
+          // within the same request window will share results
           const batchResults = await Promise.all(
             batch.map(async (client) => {
               try {
+                // getClientPredictions already uses deduplicateRequest internally,
+                // so concurrent calls for the same client will share results
                 const predictions = await getClientPredictions(client.clientId);
                 return predictions.map((p) => ({
                   ...p,

@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { sortBy } from "remeda";
 
 export const CACHE_TTL = {
@@ -75,7 +75,19 @@ export async function setCached<T>(
     expiresAt: Date.now() + ttlSeconds * 1000,
     data,
   };
-  await fs.writeFile(keyToPath(key), JSON.stringify(envelope), "utf8");
+  const filePath = keyToPath(key);
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
+
+  // Atomic write pattern: write to temp file, then rename
+  // This prevents concurrent reads from getting partial data
+  try {
+    await fs.writeFile(tempPath, JSON.stringify(envelope), "utf8");
+    await fs.rename(tempPath, filePath);
+  } catch (err) {
+    // Clean up temp file on failure
+    await fs.unlink(tempPath).catch(() => {});
+    throw err;
+  }
 }
 
 function sha256Hex(input: string): string {

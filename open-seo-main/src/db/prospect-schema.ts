@@ -8,6 +8,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   timestamp,
   jsonb,
@@ -16,9 +17,10 @@ import {
   real,
   check,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
+// Note: clients import would create circular dependency (client-schema imports prospects).
+// FK constraint is defined in migration 0036_add_missing_fk_constraints.sql
 
 // Status enum values
 export const PROSPECT_STATUS = [
@@ -175,7 +177,10 @@ export const prospects = pgTable(
     status: text("status").notNull().default("new"),
     source: text("source"),
     assignedTo: text("assigned_to"),
-    convertedClientId: text("converted_client_id"),
+    // UUID reference to clients.id when prospect converts to client.
+    // FK constraint defined in migration 0036 (circular import prevention).
+    // FK-03: SET NULL on delete preserves prospect history when client is removed.
+    convertedClientId: uuid("converted_client_id"),
     priorityScore: real("priority_score"), // 0-100, auto-computed after analysis (Phase 30.5-03)
     pipelineStage: text("pipeline_stage").notNull().default("new"), // Phase 30.5-04: Sales funnel tracking
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })

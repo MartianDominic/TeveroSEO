@@ -1,6 +1,7 @@
 /**
  * Tier 1 Checks Test Suite
- * Verifies all 66 checks are registered and perform well
+ * Verifies all 68 checks are registered and perform well
+ * (66 original + T1-67 noindex + T1-68 YMYL author)
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { runTier1Checks } from "../runner";
@@ -19,7 +20,7 @@ import "./schema-basics";
 import "./technical-basics";
 import "./eeat-signals";
 
-const TIER1_CHECK_COUNT = 66;
+const TIER1_CHECK_COUNT = 68;
 const tier1Checks = () => getChecksByTier(1);
 
 // Sample HTML for testing
@@ -346,13 +347,13 @@ describe("Individual Check Categories", () => {
     expect(checks.length).toBe(7);
   });
 
-  it("should have 5 technical checks (T1-55 to T1-59)", () => {
+  it("should have 6 technical checks (T1-55 to T1-59, T1-67)", () => {
     const checks = tier1Checks().filter(c => c.category === "technical-basics");
-    expect(checks.length).toBe(5);
+    expect(checks.length).toBe(6); // Includes T1-67 (noindex check)
   });
 
-  it("should have 7 E-E-A-T checks (T1-60 to T1-66)", () => {
+  it("should have 8 E-E-A-T checks (T1-60 to T1-66, T1-68)", () => {
     const checks = tier1Checks().filter(c => c.category === "eeat-signals");
-    expect(checks.length).toBe(7);
+    expect(checks.length).toBe(8); // Includes T1-68 (YMYL author check)
   });
 });

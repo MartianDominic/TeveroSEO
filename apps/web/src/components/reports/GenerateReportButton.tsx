@@ -41,8 +41,12 @@ export function GenerateReportButton({ clientId }: GenerateReportButtonProps) {
     startTransition(async () => {
       try {
         const result = await generateReport(clientId, { locale });
+        if (!result.success) {
+          console.error("Failed to generate report:", result.error);
+          return;
+        }
         setOpen(false);
-        router.push(`/clients/${clientId}/reports/${result.reportId}` as Parameters<typeof router.push>[0]);
+        router.push(`/clients/${clientId}/reports/${result.data.reportId}` as Parameters<typeof router.push>[0]);
         router.refresh();
       } catch (error) {
         // Error handling - could show toast in future

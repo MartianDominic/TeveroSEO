@@ -5,6 +5,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   boolean,
   timestamp,
@@ -23,7 +24,7 @@ export const clientDashboardMetrics = pgTable(
   "client_dashboard_metrics",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .unique()
       .references(() => clients.id, { onDelete: "cascade" }),
@@ -72,7 +73,7 @@ export const portfolioActivity = pgTable(
   {
     id: text("id").primaryKey(),
     workspaceId: text("workspace_id").notNull(),
-    clientId: text("client_id").references(() => clients.id, { onDelete: "cascade" }), // nullable for workspace-level events
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }), // nullable for workspace-level events
     eventType: text("event_type").notNull(),
     eventData: jsonb("event_data").$type<Record<string, unknown>>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),

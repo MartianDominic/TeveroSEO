@@ -1,0 +1,2109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tevero — Acme Corp · Project Overview (TDS v1.1)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,400..600&display=swap" rel="stylesheet" />
+
+<style>
+:root {
+  --canvas:        #FAFAF7;
+  --surface:       #FFFFFF;
+  --surface-2:     #F5F5F0;
+  --surface-tinted:#F2EDE0;
+  --hairline:      #ECECE7;
+  --hairline-soft: #F0F0EB;
+  --hairline-tint: #E8E1CF;
+
+  --text-1:        #14141A;
+  --text-2:        #4F4F55;
+  --text-3:        #8A8A92;
+  --text-4:        #C0BFB7;
+
+  --accent:        #0F4F3D;
+  --accent-soft:   #E6F0EC;
+  --accent-ink:    #093528;
+  --accent-line:   #C8DDD4;
+  --accent-tint:   #5A8E7B;
+
+  --success:       #1B6E45; --success-soft: #E8F2EC;
+  --error:         #9B2C2C; --error-soft:   #F4E5E5;
+  --warning:       #A87F1A; --warning-soft: #F5EDD9;
+  --info:          #2D5A87; --info-soft:    #EFF4F9;
+
+  --radius-input:  6px;
+  --radius-card:   10px;
+  --radius-modal:  14px;
+  --radius-pill:   999px;
+
+  --font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+
+  --motion-hover:  150ms cubic-bezier(.2,0,.2,1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────── Type roles */
+.t-h1 { font-family: var(--font-sans); font-weight: 500; font-size: 28px; line-height: 1.1; letter-spacing: -0.022em; color: var(--text-1); }
+.t-h2 { font-family: var(--font-sans); font-weight: 500; font-size: 17px; line-height: 1.3; letter-spacing: -0.012em; color: var(--text-1); }
+.t-h3 { font-family: var(--font-sans); font-weight: 500; font-size: 14px; line-height: 1.3; letter-spacing: -0.005em; color: var(--text-1); }
+
+.t-eyebrow { font-family: var(--font-sans); font-weight: 500; font-size: 10.5px; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.t-smallcaps { font-family: var(--font-sans); font-weight: 500; font-size: 11px; letter-spacing: 0.04em; font-variant-caps: all-small-caps; color: var(--text-3); }
+
+.t-meta { font-size: 12px; color: var(--text-3); line-height: 1.3; }
+.t-micro { font-size: 11px; color: var(--text-3); line-height: 1.3; font-variant-numeric: tabular-nums lining-nums; }
+.t-tnum { font-variant-numeric: tabular-nums lining-nums; }
+.t-mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--text-2); }
+
+em { font-style: italic; color: inherit; font-variant-numeric: inherit; }
+
+/* Display serif numerals */
+.t-num-mega   { font-family: var(--font-display); font-weight: 400; font-size: 56px; line-height: 1.0; letter-spacing: -0.025em; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-optical-sizing: auto; }
+.t-num-hero   { font-family: var(--font-display); font-weight: 400; font-size: 36px; line-height: 1.0; letter-spacing: -0.022em; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-optical-sizing: auto; }
+.t-num-card   { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.0; letter-spacing: -0.022em; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; }
+.t-num-row    { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1.0; letter-spacing: -0.015em; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; }
+
+/* Display headline (the goal sentence) */
+.t-goal-line {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+  color: var(--text-1);
+  font-optical-sizing: auto;
+}
+.t-goal-line em {
+  font-style: italic;
+  color: var(--text-1);
+}
+
+/* ─────────────────────────────────────────── Layout shell */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--hairline);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0;
+  height: 100vh;
+}
+.sidebar .brand {
+  padding: 18px 20px 16px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.sidebar .brand-mark {
+  width: 26px; height: 26px;
+  background: var(--accent);
+  border-radius: 6px;
+  position: relative;
+}
+.sidebar .brand-mark::after {
+  content: ""; position: absolute; inset: 6px;
+  border: 1px solid #fff; border-radius: 2px; opacity: 0.85;
+}
+.sidebar .brand-name {
+  font-family: var(--font-display);
+  font-size: 19px; font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  line-height: 1;
+}
+.sidebar .brand-tag {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.client-switcher {
+  margin: 14px 14px 8px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+}
+.client-switcher .av {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg,#0F4F3D,#1E7A5C);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500;
+}
+.client-switcher .info { flex: 1; min-width: 0; }
+.client-switcher .info .name { color: var(--text-1); font-size: 13px; font-weight: 500; line-height: 1.2; }
+.client-switcher .info .domain { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-3); line-height: 1.2; }
+
+.nav-group { padding: 14px 12px 6px; }
+.nav-group .label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); padding: 0 8px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-input);
+  font-size: 13px; color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--motion-hover), color var(--motion-hover);
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text-1); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 500; }
+.nav-item .ic { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
+.nav-item .grow { flex: 1; }
+.nav-item .count {
+  font-size: 11px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.nav-item.active .count { background: var(--surface); color: var(--accent); }
+.nav-item.warn .count { background: var(--warning-soft); color: var(--warning); }
+
+.sidebar .footer {
+  margin-top: auto;
+  border-top: 1px solid var(--hairline-soft);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar .footer .av {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#1A1A4F,#3F3F8C);
+  color: #fff;
+  font-size: 10.5px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sidebar .footer .info { flex: 1; min-width: 0; }
+.sidebar .footer .name { color: var(--text-1); font-size: 12.5px; font-weight: 500; line-height: 1.2; }
+.sidebar .footer .role { font-size: 10.5px; color: var(--text-3); line-height: 1.2; }
+
+/* ─────────────────────────────────────────── Main */
+.main {
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+
+/* Top utility strip */
+.utility {
+  height: 52px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 0 28px;
+  display: flex; align-items: center; gap: 14px;
+  position: sticky; top: 0; z-index: 30;
+}
+.search-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 8px 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 12px;
+  width: 380px;
+}
+.search-trigger .kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.utility .grow { flex: 1; }
+.icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* Content container */
+.content {
+  padding: 28px 36px 80px;
+  max-width: 1320px;
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────── Identity strip + page header */
+.crumb-strip {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.crumb-strip .name { color: var(--text-1); font-weight: 500; }
+.crumb-strip .mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-3); }
+.crumb-strip .sep { color: var(--text-4); }
+
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.page-head h1 { margin: 0; }
+.page-head .subtitle {
+  font-size: 13.5px; color: var(--text-3);
+  margin-top: 6px;
+  max-width: 540px;
+}
+.page-head .actions {
+  display: inline-flex; gap: 8px; align-items: center;
+}
+
+/* Period selector */
+.period {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  height: 32px;
+}
+.period button {
+  font-family: var(--font-sans);
+  font-size: 12px; font-weight: 500;
+  padding: 0 10px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--hairline-soft);
+  color: var(--text-2);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.005em;
+}
+.period button:last-child { border-right: none; }
+.period button.active { background: var(--accent-soft); color: var(--accent-ink); }
+.period button:hover:not(.active) { background: var(--surface-2); color: var(--text-1); }
+
+.btn {
+  font-family: var(--font-sans);
+  font-size: 12.5px; font-weight: 500;
+  letter-spacing: -0.005em;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  color: var(--text-1);
+  cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+
+/* ─────────────────────────────────────────── Card primitives */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  transition: box-shadow var(--motion-hover);
+}
+.card.tinted { background: var(--surface-tinted); border-color: var(--hairline-tint); }
+.card.inset { background: var(--surface-2); border: none; }
+.card:hover { box-shadow: 0 1px 0 rgba(20,20,26,0.04); }
+
+.card-head {
+  padding: 14px 24px 12px;
+  display: flex; align-items: center; gap: 10px;
+  position: relative;
+}
+.card-head::after {
+  content: ""; position: absolute;
+  left: 16px; right: 16px; bottom: 0;
+  height: 1px;
+  background: var(--hairline-soft);
+}
+.card.tinted .card-head::after { background: rgba(20,20,26,0.06); }
+.card-head .ic { width: 16px; height: 16px; color: var(--text-3); display: inline-flex; align-items: center; }
+.card-head .title { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; font-variant-caps: all-small-caps; color: var(--text-2); }
+.card-head .meta { font-size: 11px; letter-spacing: 0.04em; font-variant-caps: all-small-caps; color: var(--text-3); }
+.card-head .meta::before { content: "·"; margin: 0 8px; color: var(--text-4); }
+.card-head .grow { flex: 1; }
+.card-head .action { font-size: 11.5px; color: var(--text-2); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.card-head .action:hover { color: var(--text-1); }
+
+.card-body { padding: 20px 24px 24px; }
+.card-foot {
+  background: var(--surface-2);
+  border-top: 1px solid var(--hairline-soft);
+  padding: 8px 20px;
+  font-size: 11px; letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-3);
+  display: flex; gap: 10px;
+}
+
+/* ─────────────────────────────────────────── Goal hero (centerpiece) */
+.goal-hero {
+  background: var(--surface-tinted);
+  border: 1px solid var(--hairline-tint);
+  border-radius: var(--radius-card);
+  padding: 26px 28px 28px;
+  margin-bottom: 28px;
+  position: relative;
+}
+.goal-hero .gh-eyebrow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.goal-hero .gh-eyebrow .left {
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.goal-hero .gh-eyebrow .left .days {
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-2);
+  letter-spacing: 0.06em;
+}
+.goal-hero .gh-eyebrow .left .sep { color: var(--text-4); }
+.goal-hero .gh-eyebrow .edit-btn {
+  font-size: 11.5px;
+  color: var(--text-2);
+  background: transparent;
+  border: 1px solid rgba(20,20,26,0.08);
+  border-radius: var(--radius-input);
+  padding: 5px 9px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.goal-hero .gh-eyebrow .edit-btn:hover { background: rgba(255,255,255,0.6); }
+
+.goal-hero .gh-title {
+  margin-bottom: 22px;
+}
+.goal-hero .gh-grid {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+/* Progress card */
+.progress-panel {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 22px 24px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.progress-panel .nums {
+  display: flex; align-items: baseline; gap: 8px;
+}
+.progress-panel .nums .now { color: var(--text-1); }
+.progress-panel .nums .of { font-family: var(--font-display); font-size: 28px; color: var(--text-3); letter-spacing: -0.02em; }
+.progress-panel .nums .target { font-family: var(--font-display); font-size: 32px; color: var(--text-2); letter-spacing: -0.022em; font-variant-numeric: tabular-nums lining-nums; }
+
+/* Hatched progress bar */
+.progress-bar {
+  height: 16px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.progress-bar .fill {
+  height: 100%;
+  width: 60%;
+  background-color: var(--accent);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(255,255,255,0.18) 3px, rgba(255,255,255,0.18) 4px
+  );
+  border-radius: 4px 0 0 4px;
+}
+.progress-bar .target-marker {
+  position: absolute; top: -3px; bottom: -3px;
+  right: 0;
+  width: 2px;
+  background: var(--text-1);
+}
+.progress-bar .target-marker::after {
+  content: "";
+  position: absolute; top: -4px; right: -3px;
+  width: 8px; height: 8px;
+  background: var(--text-1);
+  transform: rotate(45deg);
+}
+.progress-meta {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.progress-meta .strong { color: var(--text-1); font-weight: 500; }
+.progress-meta .sep { color: var(--text-4); }
+
+.progress-divider { height: 1px; background: var(--hairline-soft); margin: 4px 0; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 8px;
+  background: var(--success-soft);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-variant-caps: all-small-caps;
+  color: var(--success);
+  width: max-content;
+}
+.status-pill svg { display: inline-block; }
+.eta-line {
+  font-size: 13.5px; color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.eta-line em { font-style: italic; }
+.eta-line .lead { color: var(--text-3); font-variant-numeric: normal; }
+
+/* Trajectory chart card */
+.trajectory-panel {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 22px 22px 18px;
+  position: relative;
+}
+.trajectory-panel .tj-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.trajectory-panel .tj-title {
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-2);
+}
+.trajectory-panel .tj-legend {
+  display: flex; gap: 14px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.trajectory-panel .tj-legend .swatch {
+  display: inline-block; width: 14px; height: 2px;
+  vertical-align: 3px; margin-right: 5px;
+}
+.trajectory-panel .tj-legend .actual { background: var(--accent); }
+.trajectory-panel .tj-legend .pace { background: var(--text-3); }
+
+/* Velocity rows */
+.velocity-rows {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 18px;
+}
+.velocity-row {
+  border-left: 3px solid var(--accent);
+  padding: 6px 16px 6px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.velocity-row + .velocity-row { border-left-color: var(--text-4); }
+.velocity-row .label {
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  display: block;
+  margin-bottom: 2px;
+}
+.velocity-row .value { color: var(--text-1); }
+.velocity-row .value em { font-style: italic; }
+.velocity-row .value .num { font-variant-numeric: tabular-nums lining-nums; font-weight: 500; }
+
+/* Sub-goals */
+.subgoals { padding: 0; }
+.subgoals .heading {
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.subgoal {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.subgoal + .subgoal { border-top: 1px solid rgba(20,20,26,0.06); }
+.subgoal .ic {
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.subgoal.ok .ic { color: var(--success); }
+.subgoal.warn .ic { color: var(--warning); }
+.subgoal .text { flex: 1; }
+.subgoal .text em { font-style: italic; }
+.subgoal .text .num { font-family: var(--font-display); font-style: normal; font-size: 14px; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; letter-spacing: -0.01em; }
+.subgoal .tag {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  font-variant-caps: all-small-caps;
+}
+.subgoal.ok .tag { color: var(--success); }
+.subgoal.warn .tag { color: var(--warning); }
+
+/* ─────────────────────────────────────────── KPI strip */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: 18px 22px 20px;
+}
+.kpi .head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 14px;
+}
+.kpi .head .ic { width: 14px; height: 14px; color: var(--text-3); }
+.kpi .head .name { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; font-variant-caps: all-small-caps; color: var(--text-2); }
+.kpi .v {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.022em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.kpi .v .unit { font-size: 18px; color: var(--text-3); letter-spacing: -0.01em; }
+.kpi .sub {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.kpi .delta { font-weight: 500; font-variant-numeric: tabular-nums lining-nums; }
+.delta-up { color: var(--success); }
+.delta-down { color: var(--error); }
+.delta-flat { color: var(--text-3); }
+.kpi .sub .vs { color: var(--text-3); }
+
+/* ─────────────────────────────────────────── Distribution chart (visual anchor) */
+.dist-card { margin-bottom: 28px; }
+.dist-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px 14px;
+}
+.dist-head .left .title { font-family: var(--font-sans); font-weight: 500; font-size: 16px; color: var(--text-1); letter-spacing: -0.01em; }
+.dist-head .left .sub { font-size: 12.5px; color: var(--text-3); margin-top: 3px; }
+.dist-head .left .sub em { font-style: italic; }
+.dist-chart-wrap {
+  padding: 8px 28px 24px;
+}
+.dist-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 28px;
+  align-items: end;
+  height: 280px;
+  border-bottom: 1px solid var(--hairline-soft);
+  padding-bottom: 0;
+  position: relative;
+}
+.dist-grid-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--hairline-soft);
+  pointer-events: none;
+}
+.dist-grid-label {
+  position: absolute;
+  left: -28px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums lining-nums;
+  transform: translateY(-50%);
+}
+.dist-bucket {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.dist-bar-stack {
+  position: relative;
+  width: 100%;
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 6px;
+  height: 100%;
+}
+.dist-bar {
+  width: 36px;
+  border-radius: 2px 2px 0 0;
+  position: relative;
+  transition: filter var(--motion-hover);
+}
+.dist-bar:hover { filter: brightness(1.05); }
+.dist-bar.prev {
+  background-color: var(--surface-2);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(20,20,26,0.06) 3px, rgba(20,20,26,0.06) 4px
+  );
+  border: 1px solid var(--hairline);
+  border-bottom: none;
+}
+.dist-bar.curr {
+  background-color: var(--accent-tint);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(255,255,255,0.22) 3px, rgba(255,255,255,0.22) 4px
+  );
+}
+.dist-bar.curr.goal {
+  background-color: var(--accent);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(255,255,255,0.18) 3px, rgba(255,255,255,0.18) 4px
+  );
+}
+.dist-bar .v {
+  position: absolute;
+  top: -28px;
+  left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.018em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+.dist-bar.prev .v { color: var(--text-3); font-size: 14px; top: -22px; }
+.dist-bucket .label {
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: -0.012em;
+  color: var(--text-2);
+  margin-top: 12px;
+}
+.dist-bucket.goal-bucket .label { color: var(--accent); font-weight: 500; }
+.dist-legend {
+  display: flex; gap: 18px;
+  padding: 14px 28px 18px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  border-top: 1px solid var(--hairline-soft);
+}
+.dist-legend .swatch {
+  display: inline-block;
+  width: 12px; height: 10px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 2px;
+}
+.dist-legend .sw-curr { background: var(--accent); background-image: repeating-linear-gradient(45deg,transparent 0,transparent 2px,rgba(255,255,255,0.2) 2px,rgba(255,255,255,0.2) 3px); }
+.dist-legend .sw-prev { background: var(--surface-2); border: 1px solid var(--hairline); background-image: repeating-linear-gradient(45deg,transparent 0,transparent 2px,rgba(20,20,26,0.08) 2px,rgba(20,20,26,0.08) 3px); }
+.dist-legend .goal-note {
+  margin-left: auto;
+  font-style: italic;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────── Two-column: keywords + rail */
+.split {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+/* Keywords table */
+.kw-tabs {
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.kw-tab {
+  padding: 12px 12px 11px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.kw-tab .count {
+  font-size: 11px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.kw-tab:hover { color: var(--text-1); }
+.kw-tab.active { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.kw-tab.active .count { background: var(--accent-soft); color: var(--accent); }
+
+.kw-table-head {
+  display: grid;
+  grid-template-columns: 2fr 0.6fr 0.7fr 0.5fr 0.7fr 1fr;
+  gap: 14px;
+  padding: 12px 18px;
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--hairline);
+}
+.kw-row {
+  display: grid;
+  grid-template-columns: 2fr 0.6fr 0.7fr 0.5fr 0.7fr 1fr;
+  gap: 14px;
+  padding: 14px 18px;
+  align-items: center;
+  border-bottom: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  transition: background var(--motion-hover);
+}
+.kw-row:hover { background: var(--surface-2); }
+.kw-row:last-child { border-bottom: none; }
+.kw-cell-kw .term {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-1);
+  letter-spacing: 0;
+}
+.kw-cell-kw .page {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kw-cell-pos {
+  display: flex; align-items: baseline; gap: 6px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.kw-cell-pos .delta {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.kw-cell-num {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--text-2);
+}
+.kw-cell-kd .pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px;
+  font-size: 11px; font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border-radius: var(--radius-pill);
+}
+.kw-cell-kd .pill.hard { background: var(--warning-soft); color: var(--warning); }
+.kw-cell-intent .badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  font-size: 11px; font-weight: 500;
+  border-radius: var(--radius-pill);
+}
+.intent-comm { background: var(--accent-soft); color: var(--accent); }
+.intent-info { background: var(--info-soft); color: var(--info); }
+.intent-trans { background: var(--warning-soft); color: var(--warning); }
+.intent-nav { background: var(--surface-2); color: var(--text-2); }
+
+/* Right rail */
+.rail { display: flex; flex-direction: column; gap: 18px; }
+
+/* Health gauge */
+.health-card { padding: 0; }
+.health-body { padding: 22px 22px 18px; text-align: center; }
+.health-gauge {
+  position: relative;
+  width: 200px; height: 110px;
+  margin: 6px auto 0;
+}
+.health-gauge svg { width: 100%; height: 100%; overflow: visible; }
+.health-gauge .gauge-track { fill: none; stroke: var(--surface-2); stroke-width: 18; stroke-linecap: round; }
+.health-gauge .gauge-fill  { fill: none; stroke: var(--accent); stroke-width: 18; stroke-linecap: round; }
+.health-gauge .gauge-tip   { fill: var(--text-1); }
+.health-gauge .gauge-label {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  text-align: center;
+}
+.health-gauge .gauge-num {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.health-card .health-tag {
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin-top: 8px;
+}
+.health-card .health-tag em { font-style: italic; }
+.health-card .health-tag .grade { font-family: var(--font-display); font-style: italic; font-size: 14px; color: var(--text-1); letter-spacing: -0.01em; }
+.health-card .health-tag .strong { color: var(--text-1); font-weight: 500; }
+.health-breakdown { padding: 14px 22px 18px; border-top: 1px solid var(--hairline-soft); display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; font-size: 11.5px; }
+.health-breakdown .row { display: flex; align-items: center; gap: 8px; }
+.health-breakdown .row .name { color: var(--text-3); font-variant-caps: all-small-caps; font-size: 11px; letter-spacing: 0.04em; flex: 1; }
+.health-breakdown .row .v { color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-weight: 500; }
+
+/* Opportunities */
+.opp-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.opp-row + .opp-row { border-top: 1px solid var(--hairline-soft); }
+.opp-row:hover .opp-title { color: var(--accent); }
+.opp-row .ic {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.opp-row.warn .ic { background: var(--warning-soft); color: var(--warning); }
+.opp-row.crit .ic { background: var(--error-soft); color: var(--error); }
+.opp-row.info .ic { background: var(--info-soft); color: var(--info); }
+.opp-row .body { flex: 1; min-width: 0; }
+.opp-row .opp-title { color: var(--text-1); font-size: 13px; font-weight: 500; line-height: 1.3; transition: color var(--motion-hover); }
+.opp-row .opp-meta { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
+.opp-row .opp-meta em { font-style: italic; color: var(--text-2); }
+.opp-row .opp-meta .mono { font-family: var(--font-mono); font-size: 11px; }
+
+/* Activity */
+.act-row { display: flex; gap: 10px; padding: 11px 0; font-size: 12.5px; }
+.act-row + .act-row { border-top: 1px solid var(--hairline-soft); }
+.act-row .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-4);
+  margin-top: 6px; flex-shrink: 0;
+}
+.act-row.success .dot { background: var(--success); }
+.act-row.info .dot { background: var(--info); }
+.act-row.warn .dot { background: var(--warning); }
+.act-row .body { flex: 1; min-width: 0; }
+.act-row .text { color: var(--text-2); line-height: 1.45; }
+.act-row .text .strong { color: var(--text-1); font-weight: 500; }
+.act-row .when { font-size: 11px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums lining-nums; }
+
+/* ─────────────────────────────────────────── Forecast & diagnostics */
+.forecast-card { margin-bottom: 28px; }
+.forecast-head {
+  padding: 18px 24px 14px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.forecast-head .left .title { font-family: var(--font-sans); font-weight: 500; font-size: 16px; color: var(--text-1); letter-spacing: -0.01em; }
+.forecast-head .left .sub { font-size: 12.5px; color: var(--text-3); margin-top: 3px; max-width: 540px; }
+.forecast-head .left .sub em { font-style: italic; }
+.forecast-head .right { font-size: 11px; color: var(--text-3); letter-spacing: 0.06em; font-variant-caps: all-small-caps; }
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--hairline-soft);
+  border-top: 1px solid var(--hairline-soft);
+}
+.forecast-col {
+  background: var(--surface);
+  padding: 22px 22px 22px;
+}
+.forecast-col .col-eyebrow {
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.forecast-col .col-eyebrow .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.confidence-eta {
+  font-size: 14px; color: var(--text-2);
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+.confidence-eta em { font-style: italic; }
+.confidence-eta .num { font-family: var(--font-display); font-style: normal; font-size: 16px; color: var(--text-1); letter-spacing: -0.012em; font-variant-numeric: tabular-nums lining-nums; }
+.confidence-eta .strong { color: var(--text-1); font-weight: 500; }
+
+.risk-row {
+  padding: 8px 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  display: flex; gap: 10px;
+  line-height: 1.45;
+}
+.risk-row + .risk-row { border-top: 1px solid var(--hairline-soft); }
+.risk-row .ic { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+.risk-row.up .ic { color: var(--success); }
+.risk-row.down .ic { color: var(--error); }
+.risk-row em { font-style: italic; color: var(--text-1); }
+.risk-row .num { font-family: var(--font-display); font-style: normal; font-size: 13px; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; letter-spacing: -0.01em; }
+
+.diag-row {
+  padding: 11px 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.diag-row + .diag-row { border-top: 1px solid var(--hairline-soft); }
+.diag-row .term {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.diag-row .meta {
+  font-size: 11px; color: var(--text-3);
+  font-variant-numeric: tabular-nums lining-nums;
+  margin-top: 3px;
+}
+.diag-row .meta em { font-style: italic; }
+.diag-row .meta .num { font-family: var(--font-display); font-style: normal; font-size: 12px; color: var(--text-2); letter-spacing: -0.005em; }
+.diag-row .meta .num.up { color: var(--success); }
+.diag-row .meta .num.down { color: var(--error); }
+.diag-row .pos {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--text-1);
+  letter-spacing: -0.012em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.diag-row .pos .arrow { color: var(--text-4); font-size: 14px; margin: 0 2px; }
+
+.effort-impact {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.effort-impact .pill {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.effort-impact .pill.high-i { background: var(--accent-soft); color: var(--accent); }
+.effort-impact .pill.low-e { background: var(--success-soft); color: var(--success); }
+.effort-impact .pill.med-e { background: var(--warning-soft); color: var(--warning); }
+.effort-impact .pill.hi-e { background: var(--error-soft); color: var(--error); }
+
+.diag-action {
+  font-size: 11.5px;
+  color: var(--text-2);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-variant-caps: normal;
+  letter-spacing: -0.005em;
+}
+.diag-action:hover { background: var(--surface-2); color: var(--text-1); }
+
+.qw-summary {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--accent-ink);
+  line-height: 1.5;
+}
+.qw-summary em { font-style: italic; }
+.qw-summary .num { font-family: var(--font-display); font-style: normal; font-size: 15px; color: var(--accent-ink); letter-spacing: -0.012em; font-variant-numeric: tabular-nums lining-nums; font-weight: 500; }
+
+/* ─────────────────────────────────────────── Pipeline strip */
+.pipeline-strip {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.pipeline-stages {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--hairline-soft);
+}
+.pipeline-stage {
+  background: var(--surface);
+  padding: 14px 14px 12px;
+  text-align: center;
+}
+.pipeline-stage .label {
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.pipeline-stage .count {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.018em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.pipeline-stage .count .total { color: var(--text-3); font-size: 14px; }
+.pipeline-stage.published { background: var(--accent-soft); }
+.pipeline-stage.published .count { color: var(--accent-ink); }
+
+.audit-tiers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--hairline-soft);
+}
+.tier-cell {
+  background: var(--surface);
+  padding: 14px 14px 12px;
+  text-align: center;
+}
+.tier-cell .label {
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.tier-cell .count {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.tier-cell.t1 .count { color: var(--error); }
+.tier-cell.t2 .count { color: var(--warning); }
+.tier-cell.t3 .count { color: var(--info); }
+.tier-cell.t4 .count { color: var(--text-2); }
+.tier-cell .meta {
+  font-size: 10.5px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+}
+
+/* ─────────────────────────────────────────── Ops strip */
+.ops-strip {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+.ops-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+}
+.ops-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.ops-item .v { color: var(--text-1); font-variant-caps: normal; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
+.ops-strip .grow { flex: 1; }
+
+/* Sparkline */
+.spark path { stroke: var(--accent); fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.spark.down path { stroke: var(--error); }
+.spark .endpoint { fill: var(--accent); }
+.spark.down .endpoint { fill: var(--error); }
+.spark .baseline { stroke: var(--text-4); stroke-width: 0.6; stroke-dasharray: 1.5 2; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- ═══════════════════════════════════════════════ SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <div>
+        <div class="brand-name">Tevero</div>
+        <div class="brand-tag">SEO Platform</div>
+      </div>
+    </div>
+
+    <div class="client-switcher">
+      <span class="av">AC</span>
+      <div class="info">
+        <div class="name">Acme Corp</div>
+        <div class="domain">acmecorp.com</div>
+      </div>
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 6l3-3 3 3M5 10l3 3 3-3"/></svg>
+    </div>
+
+    <div class="nav-group">
+      <div class="label">General</div>
+      <div class="nav-item active"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8 8 3l6 5v6H2V8Z"/></svg></span>Overview</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg></span>Keywords<span class="grow"></span><span class="count">1,284</span></div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12 6 8l3 3 5-7"/><path d="M11 4h3v3"/></svg></span>Rankings</div>
+      <div class="nav-item warn"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg></span>Audit<span class="grow"></span><span class="count">12</span></div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 10a3 3 0 0 1 0-4l1-1M11 6a3 3 0 0 1 0 4l-1 1"/><path d="M6 8h4"/></svg></span>Backlinks</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="label">Content</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h7l3 3v7H3z"/><path d="M3 6h7M3 9h7M3 12h5"/></svg></span>Articles<span class="grow"></span><span class="count">38</span></div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M3 6h10M6 3v10"/></svg></span>Reports</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h5l2 2h5v7H2z"/></svg></span>Library</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="label">Workspace</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="5.5" r="2.2"/><path d="M2.5 13c.5-2 1.8-3 3.5-3s3 1 3.5 3"/><circle cx="11" cy="6" r="1.7"/><path d="M9.5 13c.4-1.5 1.4-2.4 2.7-2.4 1 0 1.8.6 2.2 1.5"/></svg></span>Team</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 2-5 7h4l-1 5 5-7h-4l1-5Z"/></svg></span>Integrations</div>
+      <div class="nav-item"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.2"/><path d="M8 1v2.5M8 12.5V15M3.5 3.5l1.7 1.7M10.8 10.8l1.7 1.7M1 8h2.5M12.5 8H15M3.5 12.5l1.7-1.7M10.8 5.2l1.7-1.7"/></svg></span>Settings</div>
+    </div>
+
+    <div class="footer">
+      <div class="av">DM</div>
+      <div class="info">
+        <div class="name">Dominic M.</div>
+        <div class="role">Tevero Agency</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════ MAIN -->
+  <main class="main">
+
+    <!-- Top utility -->
+    <div class="utility">
+      <div class="search-trigger">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
+        Search keywords, pages, articles, audits…
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="grow"></div>
+      <button class="icon-btn" title="Notifications">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 11.5h9a1 1 0 0 0 .8-1.6c-.5-.6-1.1-1.4-1.1-2.4V6.4A4.4 4.4 0 0 0 8 2.1a4.4 4.4 0 0 0-4.2 4.3v1.1c0 1-.6 1.8-1.1 2.4a1 1 0 0 0 .8 1.6Z"/><path d="M6.5 13.3a1.7 1.7 0 0 0 3 0"/></svg>
+      </button>
+      <button class="icon-btn" title="Help">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M6 6.5c.3-1.2 1.1-1.7 2-1.7 1 0 2 .6 2 1.6 0 1.6-2 1.6-2 3.2"/><circle cx="8" cy="11.7" r=".6" fill="currentColor"/></svg>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Identity strip / breadcrumb -->
+      <div class="crumb-strip">
+        <span class="name">Acme Corp</span>
+        <span class="sep">·</span>
+        <span class="mono">acmecorp.com</span>
+        <span class="sep">·</span>
+        <span>United States</span>
+        <span class="sep">·</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft);"></span>Last sync 2h ago</span>
+      </div>
+
+      <!-- Page header -->
+      <div class="page-head">
+        <div>
+          <h1 class="t-h1">Project overview</h1>
+          <p class="subtitle">Snapshot of organic performance, goal attainment, and active opportunities for <em>April 2026</em>.</p>
+        </div>
+        <div class="actions">
+          <div class="period">
+            <button>7D</button>
+            <button class="active">30D</button>
+            <button>90D</button>
+            <button>1Y</button>
+          </div>
+          <button class="btn">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v8m0 0L5 7m3 3 3-3M2.5 12.5v1A1.5 1.5 0 0 0 4 15h8a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg>
+            Export
+          </button>
+          <button class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 3v10M3 8h10" stroke-linecap="round"/></svg>
+            Run audit
+          </button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════ GOAL HERO -->
+      <section class="goal-hero">
+        <div class="gh-eyebrow">
+          <div class="left">
+            <span>Q2 2026 goal</span>
+            <span class="sep">·</span>
+            <span class="days">89 days remaining</span>
+            <span class="sep">·</span>
+            <span>set <em style="font-style:italic;text-transform:none;letter-spacing:0;">Apr 1 by Marcus L.</em></span>
+          </div>
+          <button class="edit-btn">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 13 7-7 3 3-7 7H3v-3Z"/></svg>
+            Edit goal
+          </button>
+        </div>
+
+        <div class="gh-title">
+          <p class="t-goal-line">Land <em>20 of 200</em> tracked keywords on <em>page 1</em> by <em>July 31, 2026</em>.</p>
+        </div>
+
+        <div class="gh-grid">
+
+          <!-- Progress panel -->
+          <div class="progress-panel">
+            <div class="nums">
+              <span class="t-num-mega">12</span>
+              <span class="of">/</span>
+              <span class="target">20</span>
+            </div>
+            <div class="progress-bar">
+              <div class="fill"></div>
+              <div class="target-marker"></div>
+            </div>
+            <div class="progress-meta">
+              <span><span class="strong t-tnum">60%</span> to goal</span>
+              <span class="sep">·</span>
+              <span><span class="strong t-tnum">8</span> to land</span>
+              <span class="sep">·</span>
+              <span><span class="strong t-tnum">200</span> tracked</span>
+            </div>
+            <div class="progress-divider"></div>
+            <div class="status-pill">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3.5 8.5 3 3 6-7" stroke-linecap="round"/></svg>
+              On track
+            </div>
+            <div class="eta-line">
+              <span class="lead">ETA</span> <em>July 18, 2026</em> — <span style="color:var(--success);font-weight:500;">13 days ahead</span> of target
+            </div>
+          </div>
+
+          <!-- Trajectory chart -->
+          <div class="trajectory-panel">
+            <div class="tj-head">
+              <div class="tj-title">Goal trajectory · last 90 days + forecast</div>
+              <div class="tj-legend">
+                <span><span class="swatch actual"></span>Actual</span>
+                <span><span class="swatch pace" style="border-top:1px dashed var(--text-3);background:transparent;height:0;"></span>Required pace</span>
+              </div>
+            </div>
+            <svg viewBox="0 0 600 200" width="100%" height="180" preserveAspectRatio="none" style="display:block;">
+              <!-- gridlines -->
+              <line x1="0" y1="40" x2="600" y2="40" stroke="var(--hairline-soft)" stroke-width="1"/>
+              <line x1="0" y1="80" x2="600" y2="80" stroke="var(--hairline-soft)" stroke-width="1"/>
+              <line x1="0" y1="120" x2="600" y2="120" stroke="var(--hairline-soft)" stroke-width="1"/>
+              <line x1="0" y1="160" x2="600" y2="160" stroke="var(--hairline-soft)" stroke-width="1"/>
+              <!-- y-axis labels -->
+              <text x="2" y="36" font-family="Geist" font-size="10" fill="var(--text-3)" font-variant-numeric="tabular-nums lining-nums">20</text>
+              <text x="2" y="76" font-family="Geist" font-size="10" fill="var(--text-3)" font-variant-numeric="tabular-nums lining-nums">15</text>
+              <text x="2" y="116" font-family="Geist" font-size="10" fill="var(--text-3)" font-variant-numeric="tabular-nums lining-nums">10</text>
+              <text x="2" y="156" font-family="Geist" font-size="10" fill="var(--text-3)" font-variant-numeric="tabular-nums lining-nums">5</text>
+
+              <!-- Required pace dashed line (linear from 4 to 20 over 90+89 days) -->
+              <line x1="30" y1="168" x2="570" y2="40" stroke="var(--text-3)" stroke-width="1.2" stroke-dasharray="4 3"/>
+
+              <!-- Actual line up to "now" at ~50% width -->
+              <path d="M30,168 L60,165 L90,160 L120,156 L150,148 L180,145 L210,138 L240,132 L270,128 L300,118 L330,112 L355,104" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Confidence band shaded forward of "now" -->
+              <path d="M355,104 L420,82 L490,56 L570,40 L570,30 L490,40 L420,68 L355,94 Z" fill="var(--accent)" opacity="0.10"/>
+              <!-- p50 forward forecast -->
+              <path d="M355,104 L420,82 L490,56 L570,40" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 3"/>
+              <!-- Now marker -->
+              <line x1="355" y1="20" x2="355" y2="180" stroke="var(--text-1)" stroke-width="0.6" stroke-dasharray="1.5 2"/>
+              <text x="358" y="32" font-family="Geist" font-size="9" font-weight="500" fill="var(--text-1)" letter-spacing="0.06em" text-transform="uppercase">Now · Apr 28</text>
+              <!-- Target endpoint -->
+              <circle cx="570" cy="40" r="4" fill="var(--accent)"/>
+              <circle cx="570" cy="40" r="7" fill="none" stroke="var(--accent)" stroke-width="1" opacity="0.4"/>
+              <text x="540" y="22" font-family="Newsreader" font-size="11" font-style="italic" fill="var(--text-1)">Target Jul 31</text>
+              <!-- Actual endpoint -->
+              <circle cx="355" cy="104" r="3" fill="var(--accent)"/>
+              <text x="335" y="98" font-family="Newsreader" font-size="13" font-weight="400" fill="var(--text-1)" font-variant-numeric="tabular-nums lining-nums">12</text>
+
+              <!-- Annotations -->
+              <line x1="180" y1="20" x2="180" y2="180" stroke="var(--accent-line)" stroke-width="0.8"/>
+              <text x="183" y="30" font-family="Geist" font-size="9" fill="var(--text-3)" letter-spacing="0.04em">Apr 14 · audit</text>
+              <line x1="270" y1="20" x2="270" y2="180" stroke="var(--accent-line)" stroke-width="0.8"/>
+              <text x="273" y="30" font-family="Geist" font-size="9" fill="var(--text-3)" letter-spacing="0.04em">Apr 22 · pillar</text>
+
+              <!-- x-axis labels -->
+              <text x="30"  y="194" font-family="Geist" font-size="10" fill="var(--text-3)">Feb 1</text>
+              <text x="180" y="194" font-family="Geist" font-size="10" fill="var(--text-3)">Mar 1</text>
+              <text x="350" y="194" font-family="Geist" font-size="10" fill="var(--text-3)">Apr 28</text>
+              <text x="450" y="194" font-family="Geist" font-size="10" fill="var(--text-3)">Jun 1</text>
+              <text x="540" y="194" font-family="Geist" font-size="10" fill="var(--text-3)">Jul 31</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Velocity rows -->
+        <div class="velocity-rows">
+          <div class="velocity-row">
+            <span class="label">Velocity</span>
+            <div class="value"><span class="num">+3</span> keywords last <em>7 days</em> · pace <span class="num">+12</span> in <em>30 days</em></div>
+          </div>
+          <div class="velocity-row">
+            <span class="label">Required</span>
+            <div class="value"><span class="num">+0.9</span> per week to land remaining <span class="num">8</span> by <em>July 31</em></div>
+          </div>
+        </div>
+
+        <!-- Sub-goals -->
+        <div class="subgoals">
+          <div class="heading">Sub-goals</div>
+          <div class="subgoal ok">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="m3.5 8.5 3 3 6-7" stroke-linecap="round"/></svg></span>
+            <div class="text"><span class="num">5</span> keywords at <em>position 1</em> — currently <span class="num">2</span> of <span class="num">5</span></div>
+            <span class="tag">on pace</span>
+          </div>
+          <div class="subgoal warn">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="currentColor"/></svg></span>
+            <div class="text">Avg position top 20 target <span class="num">8.0</span> — currently <span class="num">9.4</span></div>
+            <span class="tag">at risk</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════ KPI STRIP -->
+      <section class="kpi-grid">
+
+        <div class="kpi">
+          <div class="head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-3 4.5-5 7-5s5.5 2 7 5c-1.5 3-4.5 5-7 5s-5.5-2-7-5Z"/><circle cx="8" cy="8" r="2.2"/></svg></span>
+            <span class="name">Organic traffic</span>
+          </div>
+          <div class="v">128,409</div>
+          <div class="sub">
+            <span class="delta delta-up">↑ 18.4%</span>
+            <span class="vs">vs previous 30d</span>
+            <svg class="spark" width="60" height="20" viewBox="0 0 60 20" preserveAspectRatio="none" style="margin-left:auto;">
+              <path d="M0,16 L8,15 L16,13 L24,12 L32,9 L40,7 L48,5 L60,3"/>
+              <circle class="endpoint" cx="60" cy="3" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="kpi">
+          <div class="head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.2"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg></span>
+            <span class="name">Avg position</span>
+          </div>
+          <div class="v">14.6</div>
+          <div class="sub">
+            <span class="delta delta-up">↑ 2.1</span>
+            <span class="vs">positions improved</span>
+          </div>
+        </div>
+
+        <div class="kpi">
+          <div class="head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h7l3 3v7H3z"/><path d="M3 6h7M3 9h7M3 12h5"/></svg></span>
+            <span class="name">Indexed pages</span>
+          </div>
+          <div class="v">847</div>
+          <div class="sub">
+            <span class="delta delta-flat">— 0</span>
+            <span class="vs">no change</span>
+          </div>
+        </div>
+
+        <div class="kpi">
+          <div class="head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 10a3 3 0 0 1 0-4l1-1M11 6a3 3 0 0 1 0 4l-1 1"/><path d="M6 8h4"/></svg></span>
+            <span class="name">Referring domains</span>
+          </div>
+          <div class="v">2,316</div>
+          <div class="sub">
+            <span class="delta delta-down">↓ 1.2%</span>
+            <span class="vs">14 lost this period</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════════════════════ DISTRIBUTION CHART (visual anchor) -->
+      <section class="card dist-card">
+        <div class="dist-head">
+          <div class="left">
+            <div class="title">Organic ranking distribution</div>
+            <div class="sub">Keyword count by position bucket — <em>April 2026</em>. Bucket <em>1–10</em> is the goal zone.</div>
+          </div>
+          <div class="period">
+            <button>7D</button>
+            <button class="active">30D</button>
+            <button>90D</button>
+            <button>1Y</button>
+          </div>
+        </div>
+        <div class="dist-chart-wrap">
+          <div class="dist-bars">
+            <!-- bucket: 1 -->
+            <div class="dist-bucket goal-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:5%;"><span class="v">1</span></div>
+                <div class="dist-bar curr goal" style="height:11%;"><span class="v">2</span></div>
+              </div>
+              <div class="label">#1</div>
+            </div>
+            <!-- bucket: 2-3 -->
+            <div class="dist-bucket goal-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:11%;"><span class="v">2</span></div>
+                <div class="dist-bar curr goal" style="height:21%;"><span class="v">4</span></div>
+              </div>
+              <div class="label">2–3</div>
+            </div>
+            <!-- bucket: 4-10 (goal bucket) -->
+            <div class="dist-bucket goal-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:23%;"><span class="v">4</span></div>
+                <div class="dist-bar curr goal" style="height:32%;"><span class="v">6</span></div>
+              </div>
+              <div class="label">4–10</div>
+            </div>
+            <!-- bucket: 11-20 -->
+            <div class="dist-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:65%;"><span class="v">12</span></div>
+                <div class="dist-bar curr"   style="height:95%;"><span class="v">18</span></div>
+              </div>
+              <div class="label">11–20</div>
+            </div>
+            <!-- bucket: 21-50 -->
+            <div class="dist-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:62%;"><span class="v">42</span></div>
+                <div class="dist-bar curr"   style="height:71%;"><span class="v">47</span></div>
+              </div>
+              <div class="label">21–50</div>
+            </div>
+            <!-- bucket: 51-100 -->
+            <div class="dist-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:79%;"><span class="v">59</span></div>
+                <div class="dist-bar curr"   style="height:88%;"><span class="v">65</span></div>
+              </div>
+              <div class="label">51–100</div>
+            </div>
+            <!-- bucket: 100+ -->
+            <div class="dist-bucket">
+              <div class="dist-bar-stack">
+                <div class="dist-bar prev"   style="height:88%;"><span class="v">68</span></div>
+                <div class="dist-bar curr"   style="height:78%;"><span class="v">58</span></div>
+              </div>
+              <div class="label">100+</div>
+            </div>
+          </div>
+          <div class="dist-legend">
+            <span><span class="swatch sw-curr"></span>This period · <span class="t-tnum" style="color:var(--text-2);">200 tracked</span></span>
+            <span><span class="swatch sw-prev"></span>Previous · <span class="t-tnum" style="color:var(--text-2);">188 tracked</span></span>
+            <span class="goal-note">Goal zone <em>(top 10)</em>: <span style="color:var(--accent);font-style:normal;font-weight:500;">12 keywords · was 7</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════ KEYWORDS + RAIL -->
+      <section class="split">
+
+        <!-- Keywords table -->
+        <div class="card">
+          <div class="card-head" style="padding-bottom:0;">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg></span>
+            <span class="title">Keyword performance</span>
+            <span class="meta">1,284 tracked</span>
+            <span class="grow"></span>
+            <a class="action" href="#">View all <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+          </div>
+          <div class="kw-tabs" style="margin-top:8px;">
+            <div class="kw-tab">All <span class="count">1,284</span></div>
+            <div class="kw-tab">Movers <span class="count">47</span></div>
+            <div class="kw-tab active">Opportunities <span class="count">5</span></div>
+            <div class="kw-tab">At risk <span class="count">2</span></div>
+          </div>
+          <div class="kw-table-head">
+            <div>Keyword</div>
+            <div>Position</div>
+            <div>Volume</div>
+            <div>KD</div>
+            <div>Intent</div>
+            <div>90d trend</div>
+          </div>
+
+          <div class="kw-row">
+            <div class="kw-cell-kw">
+              <div class="term">best running shoes</div>
+              <div class="page">/blog/best-running-shoes</div>
+            </div>
+            <div class="kw-cell-pos">
+              13<span class="delta delta-up">↑2</span>
+            </div>
+            <div class="kw-cell-num">12,400</div>
+            <div class="kw-cell-kd"><span class="pill hard">42</span></div>
+            <div class="kw-cell-intent"><span class="badge intent-comm">Commercial</span></div>
+            <div>
+              <svg class="spark" width="120" height="22" viewBox="0 0 120 22" preserveAspectRatio="none">
+                <line class="baseline" x1="0" y1="14" x2="120" y2="14"/>
+                <path d="M0,18 L15,17 L30,16 L45,15 L60,14 L75,12 L90,11 L105,10 L120,9"/>
+                <circle class="endpoint" cx="120" cy="9" r="1.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="kw-row">
+            <div class="kw-cell-kw">
+              <div class="term">running shoes for flat feet</div>
+              <div class="page">/blog/flat-feet-running-shoes</div>
+            </div>
+            <div class="kw-cell-pos">
+              11<span class="delta delta-up">↑3</span>
+            </div>
+            <div class="kw-cell-num">6,200</div>
+            <div class="kw-cell-kd"><span class="pill">38</span></div>
+            <div class="kw-cell-intent"><span class="badge intent-info">Informational</span></div>
+            <div>
+              <svg class="spark" width="120" height="22" viewBox="0 0 120 22" preserveAspectRatio="none">
+                <line class="baseline" x1="0" y1="13" x2="120" y2="13"/>
+                <path d="M0,17 L15,17 L30,16 L45,14 L60,13 L75,11 L90,10 L105,9 L120,8"/>
+                <circle class="endpoint" cx="120" cy="8" r="1.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="kw-row">
+            <div class="kw-cell-kw">
+              <div class="term">carbon plate running shoes</div>
+              <div class="page">/products/carbon-elite</div>
+            </div>
+            <div class="kw-cell-pos">
+              14<span class="delta delta-up">↑1</span>
+            </div>
+            <div class="kw-cell-num">8,900</div>
+            <div class="kw-cell-kd"><span class="pill hard">51</span></div>
+            <div class="kw-cell-intent"><span class="badge intent-trans">Transactional</span></div>
+            <div>
+              <svg class="spark" width="120" height="22" viewBox="0 0 120 22" preserveAspectRatio="none">
+                <line class="baseline" x1="0" y1="13" x2="120" y2="13"/>
+                <path d="M0,16 L15,15 L30,15 L45,14 L60,13 L75,13 L90,12 L105,11 L120,10"/>
+                <circle class="endpoint" cx="120" cy="10" r="1.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="kw-row">
+            <div class="kw-cell-kw">
+              <div class="term">best marathon running shoes 2026</div>
+              <div class="page">/blog/marathon-shoes-2026</div>
+            </div>
+            <div class="kw-cell-pos">
+              12<span class="delta delta-up">↑4</span>
+            </div>
+            <div class="kw-cell-num">4,800</div>
+            <div class="kw-cell-kd"><span class="pill">47</span></div>
+            <div class="kw-cell-intent"><span class="badge intent-comm">Commercial</span></div>
+            <div>
+              <svg class="spark" width="120" height="22" viewBox="0 0 120 22" preserveAspectRatio="none">
+                <line class="baseline" x1="0" y1="12" x2="120" y2="12"/>
+                <path d="M0,18 L15,17 L30,16 L45,14 L60,12 L75,10 L90,9 L105,8 L120,7"/>
+                <circle class="endpoint" cx="120" cy="7" r="1.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="kw-row">
+            <div class="kw-cell-kw">
+              <div class="term">trail running shoes review</div>
+              <div class="page">/reviews/trail-shoes</div>
+            </div>
+            <div class="kw-cell-pos">
+              15<span class="delta delta-flat">—</span>
+            </div>
+            <div class="kw-cell-num">11,200</div>
+            <div class="kw-cell-kd"><span class="pill">36</span></div>
+            <div class="kw-cell-intent"><span class="badge intent-info">Informational</span></div>
+            <div>
+              <svg class="spark" width="120" height="22" viewBox="0 0 120 22" preserveAspectRatio="none">
+                <line class="baseline" x1="0" y1="11" x2="120" y2="11"/>
+                <path d="M0,12 L15,11 L30,12 L45,11 L60,11 L75,11 L90,11 L105,11 L120,11"/>
+                <circle class="endpoint" cx="120" cy="11" r="1.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-foot">
+            <span><span class="t-tnum" style="color:var(--text-1);font-weight:500;">5 quick wins</span></span>
+            <span style="color:var(--text-4);">·</span>
+            <span>est. push: <em style="font-style:italic;">2–4 weeks each</em></span>
+            <span style="color:var(--text-4);margin-left:auto;">·</span>
+            <span>updated <span class="t-tnum" style="color:var(--text-1);font-variant-caps:normal;letter-spacing:0;">2h ago</span></span>
+          </div>
+        </div>
+
+        <!-- Right rail -->
+        <div class="rail">
+
+          <!-- Site health -->
+          <div class="card health-card">
+            <div class="card-head">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 14C4 12 1 9 1 6a3.5 3.5 0 0 1 7 0 3.5 3.5 0 0 1 7 0c0 3-3 6-7 8Z"/></svg></span>
+              <span class="title">Site health</span>
+              <span class="meta">last audit Apr 26</span>
+              <span class="grow"></span>
+              <a class="action" href="#">Run audit <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+            </div>
+            <div class="health-body">
+              <div class="health-gauge">
+                <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid meet">
+                  <!-- track -->
+                  <path class="gauge-track" d="M 18 100 A 82 82 0 0 1 182 100"/>
+                  <!-- fill 82% of arc -->
+                  <path class="gauge-fill"  d="M 18 100 A 82 82 0 0 1 169 50" pathLength="100" stroke-dasharray="82 100"/>
+                  <circle class="gauge-tip" cx="169" cy="50" r="4"/>
+                </svg>
+                <div class="gauge-label">
+                  <div class="gauge-num">82</div>
+                </div>
+              </div>
+              <div class="health-tag">
+                <span class="grade">Healthy</span> · grade <span class="strong">A−</span>
+                <div style="font-size:11.5px;color:var(--text-3);margin-top:4px;font-variant-numeric:tabular-nums lining-nums;letter-spacing:0;">
+                  <span style="color:var(--text-1);font-weight:500;">12</span> issues · <span style="color:var(--error);font-weight:500;">3</span> critical
+                </div>
+              </div>
+            </div>
+            <div class="health-breakdown">
+              <div class="row"><span class="name">Technical</span><span class="v">88</span></div>
+              <div class="row"><span class="name">Mobile</span><span class="v">79</span></div>
+              <div class="row"><span class="name">Content</span><span class="v">85</span></div>
+              <div class="row"><span class="name">Links</span><span class="v">76</span></div>
+            </div>
+          </div>
+
+          <!-- Top opportunities -->
+          <div class="card">
+            <div class="card-head">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m9 2-5 7h4l-1 5 5-7h-4l1-5Z"/></svg></span>
+              <span class="title">Top opportunities</span>
+              <span class="meta">12 ranked</span>
+              <span class="grow"></span>
+              <a class="action" href="#">All <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+            </div>
+            <div class="card-body" style="padding-top:6px;padding-bottom:14px;">
+
+              <div class="opp-row">
+                <div class="ic"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12 6 8l3 3 5-7"/><path d="M11 4h3v3"/></svg></div>
+                <div class="body">
+                  <div class="opp-title">8 keywords ranking 11–15 — push to page one</div>
+                  <div class="opp-meta"><em>+18,400</em> est. traffic · <em>4 quick wins</em></div>
+                </div>
+              </div>
+
+              <div class="opp-row warn">
+                <div class="ic"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg></div>
+                <div class="body">
+                  <div class="opp-title">14 pages missing meta descriptions</div>
+                  <div class="opp-meta"><span class="mono">/blog/*</span> · last audited <em>2d ago</em></div>
+                </div>
+              </div>
+
+              <div class="opp-row info">
+                <div class="ic"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 10a3 3 0 0 1 0-4l1-1M11 6a3 3 0 0 1 0 4l-1 1"/><path d="M6 8h4"/></svg></div>
+                <div class="body">
+                  <div class="opp-title">Internal linking gap — 6 orphan pages</div>
+                  <div class="opp-meta">No incoming links from <em>authority pages</em></div>
+                </div>
+              </div>
+
+              <div class="opp-row crit">
+                <div class="ic"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg></div>
+                <div class="body">
+                  <div class="opp-title">3 critical: Core Web Vitals failing</div>
+                  <div class="opp-meta"><span class="mono">/products/*</span> — LCP <em>&gt; 4.0s</em> on mobile</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Recent activity -->
+          <div class="card">
+            <div class="card-head">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8h3l1.5-3 3 6 1.5-3h3"/></svg></span>
+              <span class="title">Recent activity</span>
+              <span class="grow"></span>
+              <a class="action" href="#">All <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+            </div>
+            <div class="card-body" style="padding-top:4px;padding-bottom:12px;">
+
+              <div class="act-row info">
+                <span class="dot"></span>
+                <div class="body">
+                  <div class="text"><span class="strong">Sarah K.</span> published <em>"How to do a technical SEO audit"</em></div>
+                  <div class="when">12 minutes ago</div>
+                </div>
+              </div>
+
+              <div class="act-row success">
+                <span class="dot"></span>
+                <div class="body">
+                  <div class="text">Audit complete — <span class="strong">3 new critical issues</span></div>
+                  <div class="when">2 hours ago</div>
+                </div>
+              </div>
+
+              <div class="act-row">
+                <span class="dot"></span>
+                <div class="body">
+                  <div class="text"><span class="strong">Marcus T.</span> assigned <em>4 keywords</em> to the content team</div>
+                  <div class="when">Yesterday</div>
+                </div>
+              </div>
+
+              <div class="act-row">
+                <span class="dot"></span>
+                <div class="body">
+                  <div class="text">Weekly report delivered to <span class="strong">acme@client.com</span></div>
+                  <div class="when">Apr 26</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════ FORECAST & DIAGNOSTICS -->
+      <section class="card forecast-card">
+        <div class="forecast-head">
+          <div class="left">
+            <div class="title">Forecast &amp; diagnostics</div>
+            <div class="sub">What's between us and the goal — confidence band, stuck keywords, falling keywords, and the quick wins that close the gap. <em>Refresh hourly.</em></div>
+          </div>
+          <div class="right">Updated 14m ago</div>
+        </div>
+
+        <div class="forecast-grid">
+
+          <!-- Forecast envelope -->
+          <div class="forecast-col">
+            <div class="col-eyebrow">
+              <span class="dot" style="background:var(--accent);"></span>
+              Forecast envelope
+            </div>
+            <div class="confidence-eta">
+              <span class="strong">85% confidence</span> we land between <em>July 6</em> and <em>August 14</em>.
+              <br/>
+              <span style="color:var(--text-3);">p50</span> <span class="num">Jul 18</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span style="color:var(--text-3);">p90</span> <span class="num">Aug 14</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span style="color:var(--text-3);">p10</span> <span class="num">Jul 6</span>
+            </div>
+
+            <div class="risk-row up">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 11 4-4 3 3 3-5"/><path d="M10 5h3v3"/></svg></span>
+              <div>If <em>3 stuck keywords</em> in the 11–15 bucket push to top 10 in next <em>14 days</em>, ETA pulls in <span class="num">~6 days</span>.</div>
+            </div>
+            <div class="risk-row down">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 5 4 4 3-3 3 5"/><path d="M10 11h3V8"/></svg></span>
+              <div>If <em>algo volatility</em> hits like the Mar 18 window, ETA slips <span class="num">~9 days</span>.</div>
+            </div>
+            <div class="risk-row down">
+              <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 5 4 4 3-3 3 5"/><path d="M10 11h3V8"/></svg></span>
+              <div>If the <em>2 falling keywords</em> aren't recovered by May 5, ETA slips <span class="num">~3 days</span>.</div>
+            </div>
+          </div>
+
+          <!-- Stuck & falling -->
+          <div class="forecast-col">
+            <div class="col-eyebrow">
+              <span class="dot" style="background:var(--warning);"></span>
+              Stuck &amp; falling
+            </div>
+
+            <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;">Stuck (in 11–20, &gt; 30 days)</div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">running shoes near me</div>
+                <div class="meta">stuck since <em>Mar 1</em> · <span class="num">58 days</span></div>
+                <div class="effort-impact">
+                  <span class="pill low-e">low effort</span>
+                  <span class="pill high-i">high impact</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="pos">16</div>
+                <button class="diag-action">Audit page →</button>
+              </div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">best women's running shoes</div>
+                <div class="meta">stuck since <em>Feb 14</em> · <span class="num">73 days</span></div>
+                <div class="effort-impact">
+                  <span class="pill med-e">med effort</span>
+                  <span class="pill high-i">high impact</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="pos">18</div>
+                <button class="diag-action">Refresh →</button>
+              </div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">wide running shoes</div>
+                <div class="meta">stuck since <em>Mar 12</em> · <span class="num">47 days</span></div>
+                <div class="effort-impact">
+                  <span class="pill low-e">low effort</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="pos">14</div>
+                <button class="diag-action">Build links →</button>
+              </div>
+            </div>
+
+            <div style="font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);margin:14px 0 6px;">Falling (lost top 10, &lt; 14 days)</div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">best trail shoes</div>
+                <div class="meta">was <span class="num">8</span> · now <span class="num down">12</span> · <em>Apr 18</em></div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="pos">12 <span class="arrow">↓</span></div>
+                <button class="diag-action">Recover →</button>
+              </div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">running shoes 2026</div>
+                <div class="meta">was <span class="num">9</span> · now <span class="num down">13</span> · <em>Apr 24</em></div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <div class="pos">13 <span class="arrow">↓</span></div>
+                <button class="diag-action">Recover →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick wins -->
+          <div class="forecast-col">
+            <div class="col-eyebrow">
+              <span class="dot" style="background:var(--accent);"></span>
+              Quick wins · 5 candidates
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">best running shoes</div>
+                <div class="meta">est <em>2 weeks</em> · vol <span class="num">12,400</span></div>
+                <div class="effort-impact">
+                  <span class="pill low-e">low effort</span>
+                  <span class="pill high-i">high impact</span>
+                </div>
+              </div>
+              <div class="pos">13 <span class="arrow">→</span> 10</div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">running shoes for flat feet</div>
+                <div class="meta">est <em>1 week</em> · vol <span class="num">6,200</span></div>
+                <div class="effort-impact">
+                  <span class="pill low-e">low effort</span>
+                </div>
+              </div>
+              <div class="pos">11 <span class="arrow">→</span> 10</div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">carbon plate running shoes</div>
+                <div class="meta">est <em>3 weeks</em> · vol <span class="num">8,900</span></div>
+                <div class="effort-impact">
+                  <span class="pill med-e">med effort</span>
+                </div>
+              </div>
+              <div class="pos">14 <span class="arrow">→</span> 10</div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">best marathon running shoes 2026</div>
+                <div class="meta">est <em>2 weeks</em> · vol <span class="num">4,800</span></div>
+                <div class="effort-impact">
+                  <span class="pill low-e">low effort</span>
+                  <span class="pill high-i">high impact</span>
+                </div>
+              </div>
+              <div class="pos">12 <span class="arrow">→</span> 10</div>
+            </div>
+
+            <div class="diag-row">
+              <div>
+                <div class="term">trail running shoes review</div>
+                <div class="meta">est <em>4 weeks</em> · vol <span class="num">11,200</span></div>
+                <div class="effort-impact">
+                  <span class="pill hi-e">high effort</span>
+                </div>
+              </div>
+              <div class="pos">15 <span class="arrow">→</span> 10</div>
+            </div>
+
+            <div class="qw-summary">
+              If <span class="num">3</span> of these land, goal hits at <span class="num">15 / 20</span> in <em>~14 days</em> — pulling ETA forward to <span class="num">Jul 12</span>.
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════ PIPELINE STRIP -->
+      <section class="pipeline-strip">
+
+        <div class="card">
+          <div class="card-head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3h7l3 3v7H3z"/><path d="M3 6h7M3 9h7M3 12h5"/></svg></span>
+            <span class="title">Content pipeline</span>
+            <span class="meta">38 articles · this quarter</span>
+            <span class="grow"></span>
+            <a class="action" href="#">Library <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+          </div>
+          <div class="pipeline-stages">
+            <div class="pipeline-stage">
+              <div class="label">Idea</div>
+              <div class="count">7</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="label">Outline</div>
+              <div class="count">4</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="label">Draft</div>
+              <div class="count">6</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="label">Review</div>
+              <div class="count">3</div>
+            </div>
+            <div class="pipeline-stage published">
+              <div class="label">Published</div>
+              <div class="count">18</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg></span>
+            <span class="title">Audit findings</span>
+            <span class="meta">12 open · 3 critical</span>
+            <span class="grow"></span>
+            <a class="action" href="#">View <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+          </div>
+          <div class="audit-tiers">
+            <div class="tier-cell t1">
+              <div class="label">Tier 1</div>
+              <div class="count">3</div>
+              <div class="meta">critical</div>
+            </div>
+            <div class="tier-cell t2">
+              <div class="label">Tier 2</div>
+              <div class="count">5</div>
+              <div class="meta">warning</div>
+            </div>
+            <div class="tier-cell t3">
+              <div class="label">Tier 3</div>
+              <div class="count">3</div>
+              <div class="meta">info</div>
+            </div>
+            <div class="tier-cell t4">
+              <div class="label">Tier 4</div>
+              <div class="count">1</div>
+              <div class="meta">site-wide</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Ops strip -->
+      <div class="ops-strip">
+        <span class="ops-item"><span class="dot"></span>All systems</span>
+        <span class="ops-item">Last GSC sync <span class="v">2h ago</span></span>
+        <span class="ops-item">Last DataForSEO pull <span class="v">14m ago</span></span>
+        <span class="ops-item">Auto-fix queue <span class="v">3</span></span>
+        <span class="grow"></span>
+        <span class="ops-item">v5.1 · build <span class="v">7e2c3a1</span></span>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

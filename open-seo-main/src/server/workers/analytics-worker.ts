@@ -152,8 +152,14 @@ export async function startAnalyticsWorker(): Promise<
             attemptsMade: job.attemptsMade,
           };
           await analyticsQueue.add("dlq:analytics-sync", dlqData, {
-            removeOnComplete: false, // Keep DLQ jobs for manual inspection
-            removeOnFail: false,
+            removeOnComplete: {
+              age: 7 * 24 * 3600, // Keep completed DLQ jobs for 7 days
+              count: 1000, // But no more than 1000 completed jobs
+            },
+            removeOnFail: {
+              age: 7 * 24 * 3600, // Keep failed DLQ jobs for 7 days
+              count: 1000, // But no more than 1000 failed jobs
+            },
             attempts: 1, // DLQ jobs should not retry
           });
           jobLogger.info("Job moved to DLQ", {
@@ -180,6 +186,10 @@ export async function startAnalyticsWorker(): Promise<
     jobLogger.info("Job completed", {
       durationMs: job.finishedOn && job.processedOn ? job.finishedOn - job.processedOn : undefined,
     });
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: ANALYTICS_QUEUE_NAME });
   });
 
   return worker;

@@ -33,7 +33,7 @@ import { logger } from "@/server/lib/logger";
 // ============================================================================
 
 const clientIdSchema = z.object({
-  clientId: z.string().min(1, "Client ID is required"),
+  clientId: z.string().uuid("Client ID must be a valid UUID"),
 });
 
 const profileIdSchema = z.object({
@@ -41,7 +41,7 @@ const profileIdSchema = z.object({
 });
 
 const createProfileSchema = z.object({
-  clientId: z.string().min(1),
+  clientId: z.string().uuid(),
   templateId: z.string().optional(),
   mode: z.enum(["preservation", "application", "best_practices"]).optional(),
   tonePrimary: z.string().optional(),

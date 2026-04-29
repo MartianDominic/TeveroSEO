@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
@@ -83,86 +84,143 @@ function buildQuery(params: KeywordParams): string {
  * Research keywords using DataForSEO.
  * Rate limited: 20 requests per hour (external API cost).
  */
-export async function researchKeywords(params: ResearchKeywordsParams): Promise<unknown> {
-  const validated = researchKeywordsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function researchKeywords(params: ResearchKeywordsParams): Promise<ActionResult<unknown>> {
+  try {
+    const validated = researchKeywordsParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  // Rate limit: DataForSEO calls have direct cost
-  await checkActionRateLimit("keywords", auth.userId);
+    // Rate limit: DataForSEO calls have direct cost
+    await checkActionRateLimit("keywords", auth.userId);
 
-  const query = buildQuery(validated);
-  return postOpenSeo(`/api/seo/keywords?${query}`, {
-    action: "research",
-    keyword: validated.keyword,
-    locationCode: validated.locationCode,
-    resultLimit: validated.resultLimit,
-    mode: validated.mode,
-    sortField: validated.sortField,
-    sortDir: validated.sortDir,
-  });
+    const query = buildQuery(validated);
+    const data = await postOpenSeo(`/api/seo/keywords?${query}`, {
+      action: "research",
+      keyword: validated.keyword,
+      locationCode: validated.locationCode,
+      resultLimit: validated.resultLimit,
+      mode: validated.mode,
+      sortField: validated.sortField,
+      sortDir: validated.sortDir,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[researchKeywords] Error:", error);
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Invalid keyword research parameters",
+      };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to research keywords",
+    };
+  }
 }
 
 /**
  * Save keywords to the project.
  */
-export async function saveKeywords(params: SaveKeywordsParams): Promise<unknown> {
-  const validated = saveKeywordsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function saveKeywords(params: SaveKeywordsParams): Promise<ActionResult<unknown>> {
+  try {
+    const validated = saveKeywordsParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(validated);
-  return postOpenSeo(`/api/seo/keywords?${query}`, {
-    action: "save",
-    keywords: validated.keywords,
-  });
+    const query = buildQuery(validated);
+    const data = await postOpenSeo(`/api/seo/keywords?${query}`, {
+      action: "save",
+      keywords: validated.keywords,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[saveKeywords] Error:", error);
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Invalid keyword data provided",
+      };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save keywords",
+    };
+  }
 }
 
 /**
  * Get saved keywords for a project.
  */
-export async function getSavedKeywords(params: KeywordParams): Promise<{ rows: unknown[] }> {
-  const validated = keywordParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function getSavedKeywords(params: KeywordParams): Promise<ActionResult<{ rows: unknown[] }>> {
+  try {
+    const validated = keywordParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(validated);
-  return getOpenSeo<{ rows: unknown[] }>(`/api/seo/keywords?${query}`);
+    const query = buildQuery(validated);
+    const data = await getOpenSeo<{ rows: unknown[] }>(`/api/seo/keywords?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getSavedKeywords] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get saved keywords",
+    };
+  }
 }
 
 /**
  * Remove a saved keyword.
  */
-export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Promise<unknown> {
-  const validated = removeSavedKeywordParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Promise<ActionResult<unknown>> {
+  try {
+    const validated = removeSavedKeywordParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(validated);
-  return postOpenSeo(`/api/seo/keywords?${query}`, {
-    action: "remove",
-    savedKeywordId: validated.savedKeywordId,
-  });
+    const query = buildQuery(validated);
+    const data = await postOpenSeo(`/api/seo/keywords?${query}`, {
+      action: "remove",
+      savedKeywordId: validated.savedKeywordId,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[removeSavedKeyword] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to remove keyword",
+    };
+  }
 }
 
 /**
  * Get SERP analysis for a keyword.
  * Rate limited: 20 requests per hour (external API cost).
  */
-export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<unknown> {
-  const validated = serpAnalysisParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<ActionResult<unknown>> {
+  try {
+    const validated = serpAnalysisParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  // Rate limit: DataForSEO SERP analysis has direct cost
-  await checkActionRateLimit("keywords", auth.userId);
+    // Rate limit: DataForSEO SERP analysis has direct cost
+    await checkActionRateLimit("keywords", auth.userId);
 
-  const query = buildQuery(validated);
-  return postOpenSeo(`/api/seo/keywords?${query}`, {
-    action: "serp",
-    keyword: validated.keyword,
-    locationCode: validated.locationCode,
-  });
+    const query = buildQuery(validated);
+    const data = await postOpenSeo(`/api/seo/keywords?${query}`, {
+      action: "serp",
+      keyword: validated.keyword,
+      locationCode: validated.locationCode,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getSerpAnalysis] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get SERP analysis",
+    };
+  }
 }
 
 // ---------- Ranking History Actions (Phase 17) ----------
@@ -174,7 +232,7 @@ export async function getKeywordHistory({
   keywordId,
   clientId,
   days = 30,
-}: GetKeywordHistoryParams): Promise<{
+}: GetKeywordHistoryParams): Promise<ActionResult<{
   rows: Array<{
     date: string;
     position: number;
@@ -182,18 +240,35 @@ export async function getKeywordHistory({
     url: string | null;
     serpFeatures: string[] | null;
   }>;
-}> {
-  const validated = getKeywordHistoryParamsSchema.parse({ keywordId, clientId, days });
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+}>> {
+  try {
+    const validated = getKeywordHistoryParamsSchema.parse({ keywordId, clientId, days });
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = new URLSearchParams({
-    client_id: validated.clientId,
-    keyword_id: validated.keywordId,
-    action: "history",
-    days: (validated.days ?? 30).toString(),
-  });
-  return getOpenSeo(`/api/seo/keyword-rankings?${query}`);
+    const query = new URLSearchParams({
+      client_id: validated.clientId,
+      keyword_id: validated.keywordId,
+      action: "history",
+      days: (validated.days ?? 30).toString(),
+    });
+    const data = await getOpenSeo<{
+      rows: Array<{
+        date: string;
+        position: number;
+        previousPosition: number | null;
+        url: string | null;
+        serpFeatures: string[] | null;
+      }>;
+    }>(`/api/seo/keyword-rankings?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getKeywordHistory] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get keyword history",
+    };
+  }
 }
 
 /**
@@ -202,24 +277,40 @@ export async function getKeywordHistory({
 export async function getKeywordLatestRanking({
   keywordId,
   clientId,
-}: GetKeywordLatestParams): Promise<{
+}: GetKeywordLatestParams): Promise<ActionResult<{
   position: number | null;
   previousPosition: number | null;
   change: number | null;
   url: string | null;
   serpFeatures: string[] | null;
   date: string | null;
-}> {
-  const validated = getKeywordLatestParamsSchema.parse({ keywordId, clientId });
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+}>> {
+  try {
+    const validated = getKeywordLatestParamsSchema.parse({ keywordId, clientId });
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = new URLSearchParams({
-    client_id: validated.clientId,
-    keyword_id: validated.keywordId,
-    action: "latest",
-  });
-  return getOpenSeo(`/api/seo/keyword-rankings?${query}`);
+    const query = new URLSearchParams({
+      client_id: validated.clientId,
+      keyword_id: validated.keywordId,
+      action: "latest",
+    });
+    const data = await getOpenSeo<{
+      position: number | null;
+      previousPosition: number | null;
+      change: number | null;
+      url: string | null;
+      serpFeatures: string[] | null;
+      date: string | null;
+    }>(`/api/seo/keyword-rankings?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getKeywordLatestRanking] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get latest ranking",
+    };
+  }
 }
 
 /**
@@ -227,7 +318,7 @@ export async function getKeywordLatestRanking({
  */
 export async function getSavedKeywordsWithRankings(
   params: KeywordParams,
-): Promise<{
+): Promise<ActionResult<{
   rows: Array<{
     id: string;
     keyword: string;
@@ -241,15 +332,38 @@ export async function getSavedKeywordsWithRankings(
       previousPosition: number | null;
     }>;
   }>;
-}> {
-  const validated = keywordParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+}>> {
+  try {
+    const validated = keywordParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = new URLSearchParams({
-    client_id: validated.clientId,
-    project_id: validated.projectId,
-    action: "with-rankings",
-  });
-  return getOpenSeo(`/api/seo/keyword-rankings?${query}`);
+    const query = new URLSearchParams({
+      client_id: validated.clientId,
+      project_id: validated.projectId,
+      action: "with-rankings",
+    });
+    const data = await getOpenSeo<{
+      rows: Array<{
+        id: string;
+        keyword: string;
+        searchVolume: number;
+        competition: number;
+        savedAt: string;
+        trackingEnabled: boolean;
+        rankings: Array<{
+          date: string;
+          position: number;
+          previousPosition: number | null;
+        }>;
+      }>;
+    }>(`/api/seo/keyword-rankings?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getSavedKeywordsWithRankings] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get keywords with rankings",
+    };
+  }
 }

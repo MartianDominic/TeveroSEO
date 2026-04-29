@@ -4,11 +4,15 @@
  *
  * GET /api/workspaces/{workspaceId}/clients
  * Returns all clients belonging to a workspace.
+ *
+ * SECURITY NOTE (2026-04-28): Added workspace membership verification.
+ * Previously only authenticated but did not verify workspace access.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/db";
 import { clients } from "@/db/client-schema";
-import { eq, desc } from "drizzle-orm";
+import { member } from "@/db/user-schema";
+import { eq, desc, and } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
@@ -25,6 +29,25 @@ interface WorkspaceClientResponse {
   createdAt: string;
 }
 
+/**
+ * Verify that a user is a member of the specified workspace.
+ * @param userId - The authenticated user's ID
+ * @param workspaceId - The workspace/organization ID to verify access to
+ * @returns true if user is a member, false otherwise
+ */
+async function isWorkspaceMember(
+  userId: string,
+  workspaceId: string
+): Promise<boolean> {
+  const membership = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.userId, userId), eq(member.organizationId, workspaceId)))
+    .limit(1);
+
+  return membership.length > 0;
+}
+
 export const Route = createFileRoute("/api/workspaces/$workspaceId/clients")({
   server: {
     handlers: {
@@ -36,7 +59,7 @@ export const Route = createFileRoute("/api/workspaces/$workspaceId/clients")({
         params: { workspaceId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const { userId } = await requireApiAuth(request);
 
           const { workspaceId } = params;
 
@@ -44,6 +67,20 @@ export const Route = createFileRoute("/api/workspaces/$workspaceId/clients")({
             return Response.json(
               { error: "workspaceId is required" },
               { status: 400 }
+            );
+          }
+
+          // SECURITY FIX: Verify user has access to this workspace
+          const isMember = await isWorkspaceMember(userId, workspaceId);
+          if (!isMember) {
+            log.warn("Workspace access denied", {
+              userId,
+              workspaceId,
+              reason: "not_member",
+            });
+            return Response.json(
+              { error: "Access denied to this workspace" },
+              { status: 403 }
             );
           }
 

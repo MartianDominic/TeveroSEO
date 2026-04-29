@@ -8,14 +8,17 @@
     "build": "pnpm -r --filter ./apps/web build",
     "dev": "pnpm --filter @tevero/web dev",
     "lint": "pnpm -r --if-present lint",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --filter './apps/*' --filter './packages/*' run test"
   },
   "pnpm": {
     "overrides": {
       "postcss": ">=8.5.10",
       "esbuild": ">=0.25.0",
       "uuid": ">=14.0.0",
-      "@eslint/plugin-kit": ">=0.3.4"
+      "@eslint/plugin-kit": ">=0.3.4",
+      "typescript": "^5.9.3",
+      "vitest": "^4.1.4"
     }
   }
 }

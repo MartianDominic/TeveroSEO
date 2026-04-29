@@ -143,7 +143,6 @@ async function handleOrganizationDeleted(
   }
 }
 
-// @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
 export const Route = createFileRoute("/api/clerk/webhook")({
   server: {
     handlers: {

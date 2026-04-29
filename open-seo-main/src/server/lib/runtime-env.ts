@@ -77,16 +77,60 @@ export function validateEnv(required: readonly string[]): void {
 /**
  * The canonical list of env vars the app requires in hosted mode.
  * Consumed by validateEnv() at startup.
+ *
+ * SECURITY: All critical variables must be listed here to fail fast
+ * at startup rather than crash at runtime when features are used.
  */
 export const REQUIRED_ENV_HOSTED = [
+  // Database
   "DATABASE_URL",
   "REDIS_URL",
   "ALWRITY_DATABASE_URL",
+  // Authentication
   "CLERK_PUBLISHABLE_KEY",
+  // SEO Features
   "DATAFORSEO_API_KEY",
+  // Security
   "IP_SALT",
   "INTERNAL_API_KEY",
+  "SITE_ENCRYPTION_KEY",
+  // AI Features
+  "ANTHROPIC_API_KEY",
+  // Payments (Stripe)
+  "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  // Google OAuth (required for GSC/Analytics integration)
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  // Email Service (required for alerts)
+  "RESEND_API_KEY",
+  // Cron Security (required for scheduled jobs)
+  "CRON_SECRET",
 ] as const;
+
+/**
+ * Validate all required environment variables at module load time.
+ * This ensures the app fails fast with a clear error message
+ * rather than crashing when a feature tries to use a missing variable.
+ */
+function validateRequiredEnvAtStartup(): void {
+  const isProduction = process.env.NODE_ENV === "production";
+  if (!isProduction) {
+    // In development, only validate core vars to allow partial setups
+    return;
+  }
+
+  const missing = REQUIRED_ENV_HOSTED.filter(key => !readEnv(key));
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables in production: ${missing.join(", ")}. ` +
+      `Set them in .env or the deployment environment before starting.`
+    );
+  }
+}
+
+// Run validation at module load time (production only)
+validateRequiredEnvAtStartup();
 
 /** Always-required vars regardless of auth mode. */
 export const REQUIRED_ENV_CORE = [

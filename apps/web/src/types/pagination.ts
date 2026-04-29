@@ -2,6 +2,14 @@
  * Cursor-based pagination types for large dataset handling.
  */
 
+import { z } from "zod";
+
+// Zod schema for cursor validation
+const CursorSchema = z.object({
+  clientId: z.string(),
+  sortValue: z.union([z.string(), z.number()]),
+});
+
 export interface CursorPaginationParams {
   cursor?: string;          // Encoded cursor (clientId + sortValue)
   limit?: number;           // Page size (default 50)
@@ -39,10 +47,13 @@ export function encodeCursor(clientId: string, sortValue: string | number): stri
 
 /**
  * Decode cursor string back to components.
+ * Uses Zod validation instead of unsafe type assertion.
  */
 export function decodeCursor(cursor: string): { clientId: string; sortValue: string | number } | null {
   try {
-    return JSON.parse(Buffer.from(cursor, "base64url").toString()) as { clientId: string; sortValue: string | number };
+    const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString());
+    const parsed = CursorSchema.safeParse(decoded);
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }

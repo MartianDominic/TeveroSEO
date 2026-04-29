@@ -13,8 +13,11 @@ interface ReportsPageProps {
 }
 
 async function ReportsContent({ clientId }: { clientId: string }) {
-  const reports = await listClientReports(clientId);
-  return <ReportList reports={reports} clientId={clientId} />;
+  const result = await listClientReports(clientId);
+  if (!result.success) {
+    return <div className="text-destructive p-4">{result.error || "Failed to load reports"}</div>;
+  }
+  return <ReportList reports={result.data} clientId={clientId} />;
 }
 
 function ReportsLoading() {

@@ -171,6 +171,10 @@ export function startPlanWorker(): Worker<PlanJobData> {
     log.info("Plan completed", { planId: job.data.planId });
   });
 
+  worker.on("stalled", (jobId) => {
+    log.warn("Plan job stalled", { jobId, queue: PLAN_QUEUE_NAME });
+  });
+
   worker.on("failed", async (job, err) => {
     const error = err instanceof Error ? err : new Error(String(err));
 

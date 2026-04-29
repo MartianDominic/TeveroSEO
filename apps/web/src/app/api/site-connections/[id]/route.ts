@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getOpenSeo, deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
+import { validateCsrf } from "@/lib/api/security";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +29,17 @@ interface ConnectionOwnership {
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
+  // Rate limit: 100 requests per minute
+  const ip = getClientIpFromRequest(request);
+  const rateLimitResult = await checkRateLimit(`${ip}:${request.nextUrl.pathname}`, RATE_LIMITS.API.limit, RATE_LIMITS.API.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
   const { id } = await params;
 
   try {
@@ -57,7 +69,21 @@ export async function GET(_request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  // Rate limit: 20 requests per minute for mutations
+  const ip = getClientIpFromRequest(request);
+  const rateLimitResult = await checkRateLimit(`${ip}:${request.nextUrl.pathname}`, RATE_LIMITS.HEAVY.limit, RATE_LIMITS.HEAVY.windowMs);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests", retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
+
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(request);
+  if (csrfError) return csrfError;
+
   const { id } = await params;
 
   try {

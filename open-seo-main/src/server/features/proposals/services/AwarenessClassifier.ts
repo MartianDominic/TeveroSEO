@@ -18,6 +18,8 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLogger } from "@/server/lib/logger";
+import { withRetry } from "@/server/lib/retry";
+import { z } from "zod";
 
 const log = createLogger({ module: "AwarenessClassifier" });
 
@@ -26,6 +28,43 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PROMPT_PATH = join(__dirname, "../prompts/awareness-classifier.xml");
+
+/**
+ * Cached prompt template - loaded once at module initialization.
+ * This eliminates blocking readFileSync calls during request handling.
+ */
+let CACHED_PROMPT_TEMPLATE: string | null = null;
+
+/**
+ * Load and cache the awareness classifier prompt template.
+ * Called once at module initialization, reused forever.
+ */
+function getPromptTemplate(): string {
+  if (CACHED_PROMPT_TEMPLATE !== null) {
+    return CACHED_PROMPT_TEMPLATE;
+  }
+
+  try {
+    CACHED_PROMPT_TEMPLATE = readFileSync(PROMPT_PATH, "utf-8");
+    log.info("Awareness classifier prompt template loaded and cached");
+    return CACHED_PROMPT_TEMPLATE;
+  } catch (error) {
+    log.error(
+      "Failed to load awareness classifier prompt template",
+      error instanceof Error ? error : new Error(String(error)),
+      { path: PROMPT_PATH }
+    );
+    throw new Error("Failed to load awareness classifier prompt");
+  }
+}
+
+// Preload template at module initialization (blocking but only once at startup)
+try {
+  getPromptTemplate();
+} catch {
+  // Log but don't fail module load - will retry on first use
+  log.warn("Failed to preload awareness classifier template at startup");
+}
 
 export type AwarenessLevel =
   | "unaware"
@@ -54,6 +93,29 @@ export interface ClassificationInput {
   leadSource?: string;
   conversationHistory?: string;
 }
+
+/**
+ * Zod schema for validating LLM awareness classification response.
+ * Ensures type safety and catches malformed AI outputs.
+ */
+const AwarenessResponseSchema = z.object({
+  awareness_level: z.enum([
+    "unaware",
+    "problem-aware",
+    "solution-aware",
+    "product-aware",
+    "most-aware",
+  ]),
+  confidence: z.number().min(0).max(1),
+  signals_detected: z.array(z.string()),
+  hook_strategy: z.string(),
+  recommended_approach: z.object({
+    opening_angle: z.string(),
+    primary_cialdini: z.string(),
+    objections_to_address: z.array(z.string()),
+  }),
+  reasoning: z.string(),
+});
 
 /**
  * Hook strategies for each awareness level.
@@ -92,20 +154,11 @@ export class AwarenessClassifier {
 
   /**
    * Classify prospect's awareness level using AI (Claude).
-   * Uses the awareness-classifier.xml prompt template.
+   * Uses the cached awareness-classifier.xml prompt template.
    */
   async classify(input: ClassificationInput): Promise<ClassificationResult> {
-    let promptTemplate: string;
-    try {
-      promptTemplate = readFileSync(PROMPT_PATH, "utf-8");
-    } catch (error) {
-      log.error(
-        "Failed to read prompt template",
-        error instanceof Error ? error : new Error(String(error)),
-        { path: PROMPT_PATH }
-      );
-      throw new Error("Failed to load awareness classifier prompt");
-    }
+    // Use cached template (loaded at module init, no blocking I/O)
+    const promptTemplate = getPromptTemplate();
 
     // Escape user input to prevent injection (T-43-17)
     const safeInput = {
@@ -133,11 +186,15 @@ export class AwarenessClassifier {
 
     log.info("Classifying prospect awareness", { domain: input.domain });
 
-    const response = await this.anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const response = await withRetry(
+      () =>
+        this.anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      { maxRetries: 3, baseDelayMs: 1000 }
+    );
 
     const content = response.content[0];
     if (content.type !== "text") {
@@ -153,7 +210,19 @@ export class AwarenessClassifier {
       throw new Error("No JSON found in response");
     }
 
-    const result = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Validate response structure with Zod schema
+    const validationResult = AwarenessResponseSchema.safeParse(parsed);
+    if (!validationResult.success) {
+      log.error("LLM response validation failed", new Error("Schema validation failed"), {
+        domain: input.domain,
+        errors: validationResult.error.issues,
+      });
+      throw new Error(`Invalid LLM response: ${validationResult.error.message}`);
+    }
+
+    const result = validationResult.data;
 
     log.info("Awareness classification complete", {
       domain: input.domain,

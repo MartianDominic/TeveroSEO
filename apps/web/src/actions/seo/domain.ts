@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
@@ -51,21 +52,36 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
  * Get domain overview from DataForSEO.
  * Rate limited: 30 requests per hour (external API cost).
  */
-export async function getDomainOverview(params: DomainOverviewParams): Promise<unknown> {
-  const validated = domainOverviewParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function getDomainOverview(params: DomainOverviewParams): Promise<ActionResult<unknown>> {
+  try {
+    const validated = domainOverviewParamsSchema.parse(params);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  // Rate limit: DataForSEO domain analysis has direct cost
-  await checkActionRateLimit("domainAnalysis", auth.userId);
+    // Rate limit: DataForSEO domain analysis has direct cost
+    await checkActionRateLimit("domainAnalysis", auth.userId);
 
-  const query = buildQuery(validated);
-  return postOpenSeo(`/api/seo/domain?${query}`, {
-    domain: validated.domain,
-    subdomains: validated.subdomains,
-    sort: validated.sort,
-    order: validated.order,
-    tab: validated.tab,
-    search: validated.search,
-  });
+    const query = buildQuery(validated);
+    const data = await postOpenSeo(`/api/seo/domain?${query}`, {
+      domain: validated.domain,
+      subdomains: validated.subdomains,
+      sort: validated.sort,
+      order: validated.order,
+      tab: validated.tab,
+      search: validated.search,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getDomainOverview] Error:", error);
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        error: "Invalid domain parameters provided",
+      };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get domain overview",
+    };
+  }
 }

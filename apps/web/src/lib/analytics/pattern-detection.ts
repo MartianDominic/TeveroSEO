@@ -308,5 +308,5 @@ export function detectAllPatterns(
   allPatterns.push(...detectSeasonalTrends(trafficData, workspaceId));
 
   // Filter by minimum confidence
-  return allPatterns.filter((p) => p.confidence >= THRESHOLDS.MIN_CONFIDENCE);
+  return allPatterns.filter((p) => Number(p.confidence) >= THRESHOLDS.MIN_CONFIDENCE);
 }

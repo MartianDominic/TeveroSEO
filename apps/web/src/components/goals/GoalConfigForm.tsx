@@ -22,39 +22,32 @@ interface GoalConfigFormProps {
 
 export interface GoalFormValues {
   targetValue: number;
-  targetDenominator?: number;
-  isPrimary: boolean;
-  isClientVisible: boolean;
+  // TODO: Phase 40+ - Re-enable when backend supports these fields
+  // targetDenominator?: number;
+  // isPrimary: boolean;
+  // isClientVisible: boolean;
 }
 
 function formatGoalPreview(
   template: GoalTemplateSelect,
   target: number,
-  denominator?: number,
 ): string {
-  switch (template.goalType) {
-    case "keywords_top_10":
-      return denominator
-        ? `${target} of ${denominator} keywords in top 10`
-        : `${target} keywords in top 10`;
-    case "keywords_top_3":
-      return denominator
-        ? `${target} of ${denominator} keywords in top 3`
-        : `${target} keywords in top 3`;
-    case "keywords_position_1":
-      return `${target} keywords at #1`;
-    case "weekly_clicks":
-      return `${target.toLocaleString()} clicks per week`;
-    case "monthly_clicks":
-      return `${target.toLocaleString()} clicks per month`;
-    case "ctr_target":
+  // Use metric field to determine goal type display
+  switch (template.metric) {
+    case "organic_clicks":
+      return `${target.toLocaleString()} organic clicks`;
+    case "avg_position":
+      return `Average position ${target}`;
+    case "impressions":
+      return `${target.toLocaleString()} impressions`;
+    case "ctr":
       return `CTR above ${target}%`;
-    case "traffic_growth":
-      return `${target}% MoM traffic growth`;
-    case "impressions_target":
-      return `${target.toLocaleString()} impressions per month`;
+    case "keywords_top_10":
+      return `${target} keywords in top 10`;
+    case "keywords_top_3":
+      return `${target} keywords in top 3`;
     default:
-      return `${target} ${template.unit ?? ""}`;
+      return `${target} ${template.metric}`;
   }
 }
 
@@ -66,23 +59,17 @@ export function GoalConfigForm({
   isSubmitting,
 }: GoalConfigFormProps) {
   const [targetValue, setTargetValue] = useState(
-    Number(initialValues?.targetValue) || Number(template.defaultTarget) || 10,
-  );
-  const [denominator, setDenominator] = useState<number | undefined>(
-    initialValues?.targetDenominator ?? undefined,
-  );
-  const [isPrimary, setIsPrimary] = useState(initialValues?.isPrimary ?? false);
-  const [isClientVisible, setIsClientVisible] = useState(
-    initialValues?.isClientVisible ?? true,
+    Number(initialValues?.targetValue) || 10,
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       targetValue,
-      targetDenominator: denominator,
-      isPrimary,
-      isClientVisible,
+      // TODO: Phase 40+ - Re-enable when backend supports these fields
+      // targetDenominator: undefined,
+      // isPrimary: false,
+      // isClientVisible: true,
     });
   };
 
@@ -91,11 +78,11 @@ export function GoalConfigForm({
       <Card className="bg-muted">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <GoalIcon type={template.goalType} />
+            <GoalIcon type={template.metric} />
             <span>Goal Preview</span>
           </div>
           <p className="text-lg font-medium">
-            {formatGoalPreview(template, targetValue, denominator)}
+            {formatGoalPreview(template, targetValue)}
           </p>
         </CardContent>
       </Card>
@@ -109,58 +96,17 @@ export function GoalConfigForm({
             value={targetValue}
             onChange={(e) => setTargetValue(Number(e.target.value))}
             min={0}
-            step={template.goalType === "ctr_target" ? 0.1 : 1}
+            step={template.metric === "ctr" ? 0.1 : 1}
             className="w-32"
           />
-          {template.unit && (
-            <span className="text-muted-foreground">{template.unit}</span>
-          )}
+          <span className="text-muted-foreground">{template.metric}</span>
         </div>
       </div>
 
-      {template.hasDenominator && (
-        <div className="space-y-2">
-          <Label htmlFor="denominator">Out of (total tracked)</Label>
-          <Input
-            id="denominator"
-            type="number"
-            value={denominator ?? ""}
-            onChange={(e) =>
-              setDenominator(e.target.value ? Number(e.target.value) : undefined)
-            }
-            placeholder="e.g., 100 keywords"
-            min={1}
-            className="w-48"
-          />
-          <p className="text-xs text-muted-foreground">
-            Optional: helps show progress like &ldquo;7 of 100 keywords&rdquo;
-          </p>
-        </div>
+      {/* TODO: Phase 40+ - Re-enable denominator and visibility options when backend supports them */}
+      {template.description && (
+        <p className="text-sm text-muted-foreground">{template.description}</p>
       )}
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="isPrimary"
-            checked={isPrimary}
-            onCheckedChange={(checked) => setIsPrimary(checked === true)}
-          />
-          <Label htmlFor="isPrimary" className="font-normal">
-            Set as primary goal (highlighted on dashboard)
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="isClientVisible"
-            checked={isClientVisible}
-            onCheckedChange={(checked) => setIsClientVisible(checked === true)}
-          />
-          <Label htmlFor="isClientVisible" className="font-normal">
-            Show in client reports
-          </Label>
-        </div>
-      </div>
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>

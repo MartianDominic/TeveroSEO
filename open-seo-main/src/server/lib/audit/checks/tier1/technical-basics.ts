@@ -1,9 +1,54 @@
 /**
- * Tier 1 Technical Basics Checks (T1-55 to T1-59)
+ * Tier 1 Technical Basics Checks (T1-55 to T1-59, T1-67)
  * Category J: Technical SEO fundamentals
  */
 import { registerCheck } from "../registry";
 import type { CheckContext, CheckResult } from "../types";
+
+// T1-67: No noindex meta tag
+// NOTE: This check is used by scoring.ts Gate 1 - if this fails, score is capped at 0
+registerCheck({
+  id: "T1-67",
+  name: "No noindex meta tag",
+  tier: 1,
+  category: "technical-basics",
+  severity: "critical",
+  autoEditable: true,
+  editRecipe: "Remove noindex meta tag or X-Robots-Tag header to allow indexing",
+  run: (ctx: CheckContext): CheckResult => {
+    const $ = ctx.$;
+
+    // Check for noindex in robots meta tag
+    const robotsMeta = $('meta[name="robots"]').attr("content") ?? "";
+    const googlebotMeta = $('meta[name="googlebot"]').attr("content") ?? "";
+
+    // Check for noindex directive
+    const hasNoindex =
+      /noindex/i.test(robotsMeta) ||
+      /noindex/i.test(googlebotMeta);
+
+    // Also check X-Robots-Tag if available in response headers (via context)
+    // Note: This would require headers to be passed in context for full coverage
+
+    const passed = !hasNoindex;
+
+    return {
+      checkId: "T1-67",
+      passed,
+      severity: passed ? "info" : "critical",
+      message: passed
+        ? "Page is indexable (no noindex directive)"
+        : "Page has noindex directive - will NOT be indexed by search engines",
+      details: {
+        robotsMeta: robotsMeta || null,
+        googlebotMeta: googlebotMeta || null,
+        hasNoindex,
+      },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Remove noindex meta tag or X-Robots-Tag header to allow indexing",
+    };
+  },
+});
 
 // T1-55: Self-referencing canonical
 registerCheck({

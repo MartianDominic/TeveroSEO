@@ -3,6 +3,7 @@ import { postFastApi, FastApiError } from "@/lib/server-fetch";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { rateLimitAction, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { auth } from "@clerk/nextjs/server";
+import { validateCsrf } from "@/lib/api/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,9 +12,13 @@ export const dynamic = "force-dynamic";
 const SCRAPE_RATE_LIMIT = { limit: 5, windowMs: 3600000 }; // 1 hour
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ clientId: string }> }
 ) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId } = await params;
   try {
     const authResult = await requireClientAccess(clientId);

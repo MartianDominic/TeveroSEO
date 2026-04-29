@@ -90,6 +90,10 @@ export function startPhaseWorker(): Worker<PhaseJobData> {
     });
   });
 
+  worker.on("stalled", (jobId) => {
+    log.warn("Phase job stalled", { jobId, queue: PHASE_QUEUE_NAME });
+  });
+
   worker.on("failed", async (job, err) => {
     const error = err instanceof Error ? err : new Error(String(err));
 

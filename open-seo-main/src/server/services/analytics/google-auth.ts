@@ -20,6 +20,7 @@ import {
   type TokenResponse,
 } from "@/server/lib/aiwriter-api";
 import { createLogger } from "@/server/lib/logger";
+import { withTimeout } from "@/server/lib/retry";
 
 const log = createLogger({ module: "google-auth" });
 
@@ -125,7 +126,11 @@ async function refreshAccessToken(
     refresh_token: refreshToken,
   });
 
-  const { credentials } = await oauth2Client.refreshAccessToken();
+  const { credentials } = await withTimeout(
+    oauth2Client.refreshAccessToken(),
+    10000,
+    "Token refresh"
+  );
 
   if (!credentials.access_token) {
     throw new Error("Refresh response missing access_token");

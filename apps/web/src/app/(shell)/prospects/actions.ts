@@ -1,12 +1,34 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import {
   getOpenSeo,
   postOpenSeo,
   patchOpenSeo,
   deleteOpenSeo,
 } from "@/lib/server-fetch";
+import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
+import { sanitizeErrorForClient } from "@/lib/error-utils";
+import { logError } from "@/lib/errors/handler";
+
+// Validation schemas
+const prospectIdSchema = z.string().uuid("Invalid prospect ID format");
+
+// Domain validation - prevent SSRF by only allowing valid domain patterns
+const domainSchema = z
+  .string()
+  .min(1, "Domain is required")
+  .max(253, "Domain too long")
+  .regex(
+    /^(?!:\/\/)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
+    "Invalid domain format. Use format: example.com"
+  );
+
+const emailSchema = z.string().email("Invalid email format").max(254, "Email too long").optional();
+
+// Array limits to prevent abuse
+const MAX_PROSPECT_IDS = 100;
 
 export interface Prospect {
   id: string;
@@ -119,6 +141,7 @@ export async function getProspects(options?: {
   pageSize?: number;
   status?: string;
 }): Promise<PaginatedProspects> {
+  await requireActionAuth();
   const params = new URLSearchParams();
   if (options?.page) params.set("page", options.page.toString());
   if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
@@ -137,9 +160,40 @@ export async function getProspects(options?: {
 /**
  * Get single prospect with analyses.
  */
-export async function getProspect(id: string): Promise<ProspectWithAnalyses> {
-  return getOpenSeo<ProspectWithAnalyses>(`/api/prospects/${id}`);
+export async function getProspect(id: string): Promise<ActionResult<ProspectWithAnalyses>> {
+  const auth = await requireActionAuth();
+
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(id);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  try {
+    // Validate ownership before fetching
+    await validateProspectOwnership(validatedId.data, auth);
+
+    const data = await getOpenSeo<ProspectWithAnalyses>(`/api/prospects/${validatedId.data}`);
+    return { success: true, data };
+  } catch (error) {
+    logError("getProspect", error, { prospectId: id });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
+
+// Input validation schema for creating prospects
+const createProspectSchema = z.object({
+  domain: domainSchema,
+  companyName: z.string().max(255, "Company name too long").optional(),
+  contactEmail: emailSchema,
+  contactName: z.string().max(255, "Contact name too long").optional(),
+  industry: z.string().max(100, "Industry too long").optional(),
+  notes: z.string().max(5000, "Notes too long").optional(),
+  source: z.string().max(100, "Source too long").optional(),
+});
 
 /**
  * Create a new prospect.
@@ -152,11 +206,38 @@ export async function createProspectAction(data: {
   industry?: string;
   notes?: string;
   source?: string;
-}): Promise<Prospect> {
-  const result = await postOpenSeo<Prospect>("/api/prospects", data);
-  revalidatePath("/prospects");
-  return result;
+}): Promise<ActionResult<Prospect>> {
+  await requireActionAuth();
+
+  // Validate input
+  const validated = createProspectSchema.safeParse(data);
+  if (!validated.success) {
+    return { success: false, error: validated.error.issues[0]?.message || "Invalid input" };
+  }
+
+  try {
+    const result = await postOpenSeo<Prospect>("/api/prospects", validated.data);
+    revalidatePath("/prospects");
+    return { success: true, data: result };
+  } catch (error) {
+    logError("createProspectAction", error, { domain: data.domain });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
+
+// Update prospect schema - only allow safe fields to be updated
+const updateProspectSchema = z.object({
+  companyName: z.string().max(255, "Company name too long").optional(),
+  contactEmail: emailSchema,
+  contactName: z.string().max(255, "Contact name too long").optional(),
+  industry: z.string().max(100, "Industry too long").optional(),
+  notes: z.string().max(5000, "Notes too long").optional(),
+  status: z.enum(["new", "analyzing", "analyzed", "converted", "archived"]).optional(),
+  source: z.string().max(100, "Source too long").optional(),
+});
 
 /**
  * Update a prospect.
@@ -164,20 +245,72 @@ export async function createProspectAction(data: {
 export async function updateProspectAction(
   id: string,
   data: Partial<Prospect>,
-): Promise<Prospect> {
-  const result = await patchOpenSeo<Prospect>(`/api/prospects/${id}`, data);
-  revalidatePath("/prospects");
-  revalidatePath(`/prospects/${id}`);
-  return result;
+): Promise<ActionResult<Prospect>> {
+  const auth = await requireActionAuth();
+
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(id);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  // Validate update data
+  const validatedData = updateProspectSchema.safeParse(data);
+  if (!validatedData.success) {
+    return { success: false, error: validatedData.error.issues[0]?.message || "Invalid input" };
+  }
+
+  try {
+    // Validate ownership before updating
+    await validateProspectOwnership(validatedId.data, auth);
+
+    const result = await patchOpenSeo<Prospect>(`/api/prospects/${validatedId.data}`, validatedData.data);
+    revalidatePath("/prospects");
+    revalidatePath(`/prospects/${validatedId.data}`);
+    return { success: true, data: result };
+  } catch (error) {
+    logError("updateProspectAction", error, { prospectId: id });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
 
 /**
  * Delete a prospect.
  */
-export async function deleteProspectAction(id: string): Promise<void> {
-  await deleteOpenSeo(`/api/prospects/${id}`);
-  revalidatePath("/prospects");
+export async function deleteProspectAction(id: string): Promise<ActionResult<void>> {
+  const auth = await requireActionAuth();
+
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(id);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  try {
+    // Validate ownership before deleting
+    await validateProspectOwnership(validatedId.data, auth);
+
+    await deleteOpenSeo(`/api/prospects/${validatedId.data}`);
+    revalidatePath("/prospects");
+    return { success: true, data: undefined };
+  } catch (error) {
+    logError("deleteProspectAction", error, { prospectId: id });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
+
+// Analysis options schema
+const analysisOptionsSchema = z.object({
+  analysisType: z.enum(["quick_scan", "deep_dive", "opportunity_discovery"]).optional(),
+  targetRegion: z.string().max(10, "Region code too long").optional(),
+  targetLanguage: z.string().max(10, "Language code too long").optional(),
+});
 
 /**
  * Trigger analysis for a prospect.
@@ -189,25 +322,51 @@ export async function triggerAnalysisAction(
     targetRegion?: string;
     targetLanguage?: string;
   },
-): Promise<{ analysisId: string; jobId: string }> {
-  const result = await postOpenSeo<{ analysisId: string; jobId: string }>(
-    `/api/prospects/${prospectId}/analyze`,
-    {
-      analysisType: options?.analysisType ?? "quick_scan",
-      targetRegion: options?.targetRegion ?? "US",
-      targetLanguage: options?.targetLanguage ?? "en",
-    },
-  );
+): Promise<ActionResult<{ analysisId: string; jobId: string }>> {
+  const auth = await requireActionAuth();
 
-  revalidatePath(`/prospects/${prospectId}`);
-  revalidatePath("/prospects");
-  return result;
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  // Validate options
+  const validatedOptions = analysisOptionsSchema.safeParse(options || {});
+  if (!validatedOptions.success) {
+    return { success: false, error: validatedOptions.error.issues[0]?.message || "Invalid options" };
+  }
+
+  try {
+    // Validate ownership before triggering analysis
+    await validateProspectOwnership(validatedId.data, auth);
+
+    const result = await postOpenSeo<{ analysisId: string; jobId: string }>(
+      `/api/prospects/${validatedId.data}/analyze`,
+      {
+        analysisType: validatedOptions.data.analysisType ?? "quick_scan",
+        targetRegion: validatedOptions.data.targetRegion ?? "US",
+        targetLanguage: validatedOptions.data.targetLanguage ?? "en",
+      },
+    );
+
+    revalidatePath(`/prospects/${validatedId.data}`);
+    revalidatePath("/prospects");
+    return { success: true, data: result };
+  } catch (error) {
+    logError("triggerAnalysisAction", error, { prospectId, analysisType: options?.analysisType });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
 
 /**
  * Get remaining analyses for today.
  */
 export async function getRemainingAnalyses(): Promise<number> {
+  await requireActionAuth();
   try {
     const result = await getOpenSeo<{ remaining: number }>(
       "/api/prospects/rate-limit",
@@ -217,6 +376,14 @@ export async function getRemainingAnalyses(): Promise<number> {
     return 10;
   }
 }
+
+// Bulk analyze schema with array limits
+const bulkAnalyzeSchema = z.object({
+  prospectIds: z.array(prospectIdSchema).min(1, "At least one prospect required").max(MAX_PROSPECT_IDS, `Maximum ${MAX_PROSPECT_IDS} prospects allowed`),
+  analysisType: z.enum(["quick_scan", "deep_dive", "opportunity_discovery"]).optional(),
+  targetRegion: z.string().max(10, "Region code too long").optional(),
+  targetLanguage: z.string().max(10, "Language code too long").optional(),
+});
 
 /**
  * Bulk queue analysis for multiple prospects.
@@ -229,26 +396,51 @@ export async function bulkAnalyzeAction(
     targetRegion?: string;
     targetLanguage?: string;
   },
-): Promise<{
+): Promise<ActionResult<{
   queuedCount: number;
   skippedCount: number;
   queuedIds: string[];
   skippedIds: string[];
   remainingQuota: number;
-}> {
-  const result = await postOpenSeo<{
-    queuedCount: number;
-    skippedCount: number;
-    queuedIds: string[];
-    skippedIds: string[];
-    remainingQuota: number;
-  }>("/api/prospects/bulk-analyze", {
-    prospectIds,
-    analysisType: options?.analysisType ?? "quick_scan",
-    targetRegion: options?.targetRegion ?? "US",
-    targetLanguage: options?.targetLanguage ?? "en",
-  });
+}>> {
+  const auth = await requireActionAuth();
 
-  revalidatePath("/prospects");
-  return result;
+  // Validate input with array limits
+  const validated = bulkAnalyzeSchema.safeParse({
+    prospectIds,
+    ...options,
+  });
+  if (!validated.success) {
+    return { success: false, error: validated.error.issues[0]?.message || "Invalid input" };
+  }
+
+  try {
+    // Validate ownership for each prospect
+    // Note: This validates each prospect - for large batches, consider a bulk validation endpoint
+    await Promise.all(
+      validated.data.prospectIds.map(id => validateProspectOwnership(id, auth))
+    );
+
+    const result = await postOpenSeo<{
+      queuedCount: number;
+      skippedCount: number;
+      queuedIds: string[];
+      skippedIds: string[];
+      remainingQuota: number;
+    }>("/api/prospects/bulk-analyze", {
+      prospectIds: validated.data.prospectIds,
+      analysisType: validated.data.analysisType ?? "quick_scan",
+      targetRegion: validated.data.targetRegion ?? "US",
+      targetLanguage: validated.data.targetLanguage ?? "en",
+    });
+
+    revalidatePath("/prospects");
+    return { success: true, data: result };
+  } catch (error) {
+    logError("bulkAnalyzeAction", error, { prospectCount: prospectIds.length, analysisType: options?.analysisType });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }

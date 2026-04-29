@@ -48,9 +48,31 @@ export const pool = new pg.Pool({
       : false,
 });
 
-// Handle unexpected pool errors gracefully - log but don't exit to allow recovery
+// Handle unexpected pool errors - log and handle fatal errors appropriately
 pool.on("error", (err) => {
   console.error("[db] Unexpected pool error:", err);
+
+  // Check if error is fatal (connection lost or refused)
+  const errorMessage = err.message || "";
+  const isFatalError =
+    errorMessage.includes("Connection terminated") ||
+    errorMessage.includes("connection refused") ||
+    errorMessage.includes("ECONNREFUSED") ||
+    errorMessage.includes("the database system is starting up") ||
+    errorMessage.includes("the database system is shutting down");
+
+  if (isFatalError) {
+    console.error("[db] Fatal pool error detected - attempting recovery");
+
+    // In production, exit and let orchestrator restart the process
+    // This ensures a clean reconnection rather than operating in a degraded state
+    if (process.env.NODE_ENV === "production") {
+      console.error("[db] Exiting due to fatal database error (orchestrator will restart)");
+      process.exit(1);
+    }
+    // In development, just log - developer can restart manually
+    console.error("[db] Development mode - manual restart may be required");
+  }
 });
 
 /**

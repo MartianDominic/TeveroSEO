@@ -8,6 +8,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   real,
   boolean,
@@ -19,6 +20,7 @@ import {
 import { relations } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { audits, auditPages } from "./app.schema";
+import { siteChanges } from "./change-schema";
 
 // Constants
 export const LINK_POSITIONS = [
@@ -61,7 +63,7 @@ export const linkGraph = pgTable(
   "link_graph",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     auditId: text("audit_id")
@@ -135,7 +137,7 @@ export const pageLinks = pgTable(
   "page_links",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     auditId: text("audit_id")
@@ -197,7 +199,7 @@ export const orphanPages = pgTable(
   "orphan_pages",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     auditId: text("audit_id")
@@ -247,7 +249,7 @@ export const linkOpportunities = pgTable(
   "link_opportunities",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     auditId: text("audit_id")
@@ -391,7 +393,7 @@ export const linkSuggestions = pgTable(
   "link_suggestions",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     auditId: text("audit_id")
@@ -445,7 +447,10 @@ export const linkSuggestions = pgTable(
     acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "date" }),
     rejectedAt: timestamp("rejected_at", { withTimezone: true, mode: "date" }),
     appliedAt: timestamp("applied_at", { withTimezone: true, mode: "date" }),
-    appliedChangeId: text("applied_change_id"), // FK to site_changes when applied
+    // SECURITY FIX (DB-H05): Added FK constraint to prevent orphaned references
+    appliedChangeId: text("applied_change_id").references(() => siteChanges.id, {
+      onDelete: "set null",
+    }),
 
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
@@ -541,7 +546,7 @@ export const keywordCannibalization = pgTable(
   "keyword_cannibalization",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
 

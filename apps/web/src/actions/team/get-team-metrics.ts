@@ -8,9 +8,8 @@ import {
   ActionAuthError,
   type ActionAuthContext,
 } from "@/lib/auth/action-auth";
-import { getFastApi } from "@/lib/server-fetch";
+import { getFastApi, getOpenSeo } from "@/lib/server-fetch";
 import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
-import { env } from "@/lib/env";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type {
   TeamMetrics,
@@ -43,26 +42,14 @@ const workspaceMembershipWithRoleSchema = z.object({
  */
 async function validateReassignmentPermission(
   workspaceId: string,
-  auth: ActionAuthContext
+  authContext: ActionAuthContext
 ): Promise<void> {
-  const backendUrl = env.OPEN_SEO_URL;
-
   try {
-    const response = await fetch(
-      `${backendUrl}/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(auth.userId)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+    // Use authenticated getOpenSeo helper which includes Authorization header
+    const json = await getOpenSeo<{ isMember: boolean; role?: string }>(
+      `/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(authContext.userId)}`
     );
 
-    if (!response.ok) {
-      throw new ActionAuthError('Access denied: Unable to verify permissions', 'FORBIDDEN');
-    }
-
-    const json = await response.json();
     const parsed = workspaceMembershipWithRoleSchema.safeParse(json);
 
     if (!parsed.success) {
@@ -87,8 +74,13 @@ async function validateReassignmentPermission(
       throw error;
     }
 
+    // Handle timeout errors specifically
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new ActionAuthError('Permission verification timed out. Please try again.', 'FORBIDDEN');
+    }
+
     console.error(
-      `[ActionAuth] Failed to verify reassignment permission: workspaceId=${workspaceId}, userId=${auth.userId}`,
+      `[ActionAuth] Failed to verify reassignment permission: workspaceId=${workspaceId}, userId=${authContext.userId}`,
       error
     );
     throw new ActionAuthError('Unable to verify permissions. Please try again.', 'FORBIDDEN');
@@ -100,24 +92,14 @@ async function validateReassignmentPermission(
  */
 async function getUserWorkspaceRole(
   workspaceId: string,
-  auth: ActionAuthContext
+  authContext: ActionAuthContext
 ): Promise<string> {
-  const backendUrl = env.OPEN_SEO_URL;
-
   try {
-    const response = await fetch(
-      `${backendUrl}/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(auth.userId)}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }
+    // Use authenticated getOpenSeo helper which includes Authorization header
+    const json = await getOpenSeo<{ role?: string }>(
+      `/api/workspaces/${workspaceId}/membership?userId=${encodeURIComponent(authContext.userId)}`
     );
 
-    if (!response.ok) {
-      return 'member'; // Default to most restrictive role
-    }
-
-    const json = await response.json();
     return json.role ?? 'member';
   } catch {
     return 'member'; // Default to most restrictive role on error
@@ -337,9 +319,14 @@ export async function reassignClient(
       } as RequestInit
     );
 
-    // Invalidate cache after reassignment
-    const cacheKey = teamMetricsCacheKey(validatedWorkspaceId, 'owner');
-    await cacheSet(cacheKey, null, { ttl: 0 });
+    // DI-M02 FIX: Invalidate cache for ALL role variants, not just owner
+    // This ensures all users see updated team metrics after reassignment
+    const roleVariants = ['owner', 'admin', 'member', 'intern'];
+    await Promise.all(
+      roleVariants.map((role) =>
+        cacheSet(teamMetricsCacheKey(validatedWorkspaceId, role), null, { ttl: 0 })
+      )
+    );
 
     return { success: true };
   } catch (error) {

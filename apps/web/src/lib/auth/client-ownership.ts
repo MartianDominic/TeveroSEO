@@ -9,7 +9,7 @@
  *   User (Clerk) -> Organization (Clerk) -> Client (AI-Writer DB)
  *
  * Caching Strategy:
- * - Ownership checks are cached in Redis for 5 minutes
+ * - Ownership checks are cached in Redis for 2 minutes
  * - Cache key: ownership:{userId}:{clientId}
  * - Negative results are also cached to prevent repeated DB queries for denied access
  *
@@ -41,10 +41,30 @@ export {
 } from './errors';
 
 /**
- * Cache TTL for ownership checks (5 minutes).
- * Balances performance with security - ownership changes are relatively rare.
+ * Cache TTL for ownership checks (2 minutes).
+ *
+ * SECURITY TRADE-OFF DOCUMENTATION:
+ * - Caching reduces backend load and improves response times
+ * - However, cached authorization allows access for up to TTL duration
+ *   after a user's access has been revoked
+ *
+ * Mitigations:
+ * 1. TTL reduced from 5 minutes to 2 minutes to limit stale access window
+ * 2. Webhook-based cache invalidation (invalidateOwnershipCache) should be
+ *    called when user membership changes via:
+ *    - Clerk organization membership webhooks
+ *    - Client ownership transfer events
+ *    - User removal from client access
+ * 3. Negative results (access denied) are also cached to prevent
+ *    repeated queries for unauthorized users
+ * 4. Fail-closed behavior: if cache/backend is unavailable, access is denied
+ *
+ * To further reduce risk:
+ * - Ensure webhook handlers call invalidateOwnershipCache immediately
+ * - For high-security operations, bypass cache with direct backend check
+ * - Monitor cache invalidation webhook delivery in production
  */
-const OWNERSHIP_CACHE_TTL = 5 * 60; // 5 minutes in seconds
+const OWNERSHIP_CACHE_TTL = 2 * 60; // 2 minutes in seconds (reduced from 5 min)
 
 /**
  * Build cache key for ownership check.

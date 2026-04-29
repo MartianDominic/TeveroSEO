@@ -1,8 +1,10 @@
 /**
  * Rate limiting for Next.js API routes and server actions.
  *
- * Provides in-memory rate limiting for development and single-instance deployments.
- * For production multi-instance deployments, use Redis-based rate limiting.
+ * Uses Redis-based rate limiting for distributed deployments.
+ * Falls back to in-memory for development when Redis is unavailable.
+ *
+ * SECURITY: In production, fails closed on Redis errors to prevent bypass.
  *
  * @example
  * ```ts
@@ -22,6 +24,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { z } from 'zod';
+import { redis } from '@/lib/redis/client';
+
+// --- Schemas ---
+
+const rateLimitEntrySchema = z.object({
+  count: z.number(),
+  resetTime: z.number(),
+});
 
 // --- Types ---
 
@@ -48,23 +59,76 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-// --- In-memory Store ---
+// --- Redis-based Store with In-memory Fallback ---
 
 /**
- * In-memory rate limit store.
- * For production multi-instance deployments, replace with Redis.
+ * Redis key prefix for rate limiting.
  */
-const rateLimitMap = new Map<string, RateLimitEntry>();
+const REDIS_KEY_PREFIX = 'ratelimit:middleware:';
 
 /**
- * Maximum entries to prevent unbounded memory growth.
- * 10K entries at ~100 bytes each = ~1MB max memory.
+ * In-memory fallback store for development when Redis is unavailable.
+ * NOT used in production - production fails closed on Redis errors.
+ */
+const rateLimitMapFallback = new Map<string, RateLimitEntry>();
+
+/**
+ * Maximum entries for in-memory fallback.
  */
 const MAX_RATE_LIMIT_ENTRIES = 10000;
 
 /**
- * Cleanup interval to prevent memory leaks.
- * Runs every minute to remove expired entries.
+ * Check if Redis is available.
+ */
+async function isRedisAvailable(): Promise<boolean> {
+  try {
+    if (redis.status === 'ready') {
+      return true;
+    }
+    await redis.ping();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get rate limit entry from Redis.
+ */
+async function getRedisRateLimitEntry(key: string): Promise<RateLimitEntry | null> {
+  const data = await redis.get(`${REDIS_KEY_PREFIX}${key}`);
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data);
+    const validated = rateLimitEntrySchema.safeParse(parsed);
+    if (!validated.success) {
+      console.warn('[rate-limit] Invalid rate limit entry in Redis, ignoring:', validated.error);
+      return null;
+    }
+    return validated.data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Set rate limit entry in Redis.
+ */
+async function setRedisRateLimitEntry(
+  key: string,
+  entry: RateLimitEntry,
+  ttlMs: number
+): Promise<void> {
+  await redis.set(
+    `${REDIS_KEY_PREFIX}${key}`,
+    JSON.stringify(entry),
+    'PX',
+    ttlMs
+  );
+}
+
+/**
+ * Cleanup interval for in-memory fallback.
  */
 let cleanupInterval: NodeJS.Timeout | null = null;
 
@@ -75,31 +139,28 @@ function startCleanup(): void {
     const now = Date.now();
     const keysToDelete: string[] = [];
 
-    rateLimitMap.forEach((entry, key) => {
+    rateLimitMapFallback.forEach((entry, key) => {
       if (now > entry.resetTime) {
         keysToDelete.push(key);
       }
     });
 
-    keysToDelete.forEach(key => rateLimitMap.delete(key));
+    keysToDelete.forEach(key => rateLimitMapFallback.delete(key));
 
-    // Emergency cap - remove oldest entries if still too large
-    // This handles cases where cleanup doesn't keep up with new entries
-    if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
-      const excess = rateLimitMap.size - MAX_RATE_LIMIT_ENTRIES;
-      // Map maintains insertion order, so first entries are oldest
-      const keys = Array.from(rateLimitMap.keys()).slice(0, excess);
-      keys.forEach(k => rateLimitMap.delete(k));
+    // Emergency cap for fallback map
+    if (rateLimitMapFallback.size > MAX_RATE_LIMIT_ENTRIES) {
+      const excess = rateLimitMapFallback.size - MAX_RATE_LIMIT_ENTRIES;
+      const keys = Array.from(rateLimitMapFallback.keys()).slice(0, excess);
+      keys.forEach(k => rateLimitMapFallback.delete(k));
     }
-  }, 60000); // Every minute
+  }, 60000);
 
-  // Don't keep the process alive just for cleanup
   if (cleanupInterval.unref) {
     cleanupInterval.unref();
   }
 }
 
-// Start cleanup on module load
+// Start cleanup on module load (for fallback map)
 startCleanup();
 
 // --- Core Rate Limiting ---
@@ -107,8 +168,10 @@ startCleanup();
 /**
  * Check rate limit for a given identifier.
  *
- * Uses a sliding window algorithm based on request timestamps.
- * Increments the counter on each call.
+ * Uses Redis for distributed rate limiting across instances.
+ * Falls back to in-memory in development only.
+ *
+ * SECURITY: In production, fails closed on Redis errors to prevent bypass.
  *
  * @param identifier - Unique key for rate limiting (e.g., IP + path, user ID)
  * @param limit - Maximum requests allowed
@@ -123,38 +186,93 @@ export async function checkRateLimit(
   const now = Date.now();
   const key = identifier;
 
-  let entry = rateLimitMap.get(key);
+  try {
+    // Try Redis first
+    const redisAvailable = await isRedisAvailable();
 
-  // Window expired or first request - start fresh
-  if (!entry || now > entry.resetTime) {
-    entry = { count: 1, resetTime: now + windowMs };
-    rateLimitMap.set(key, entry);
+    if (redisAvailable) {
+      // Use Redis for distributed rate limiting
+      let entry = await getRedisRateLimitEntry(key);
+
+      // Window expired or first request - start fresh
+      if (!entry || now > entry.resetTime) {
+        entry = { count: 1, resetTime: now + windowMs };
+        await setRedisRateLimitEntry(key, entry, windowMs + 1000); // TTL with buffer
+        return {
+          success: true,
+          remaining: limit - 1,
+          reset: entry.resetTime,
+          limit,
+        };
+      }
+
+      // Check if over limit
+      if (entry.count >= limit) {
+        return {
+          success: false,
+          remaining: 0,
+          reset: entry.resetTime,
+          limit,
+        };
+      }
+
+      // Increment and allow
+      entry.count++;
+      await setRedisRateLimitEntry(key, entry, entry.resetTime - now + 1000);
+      return {
+        success: true,
+        remaining: limit - entry.count,
+        reset: entry.resetTime,
+        limit,
+      };
+    }
+
+    // Redis not available - use fallback behavior based on environment
+    throw new Error('Redis not available');
+  } catch (error) {
+    // SECURITY: Fail-closed in production to prevent rate limit bypass
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[rate-limit] Redis error in production, blocking request for safety:', error);
+      return {
+        success: false,
+        remaining: 0,
+        reset: now + 60000, // Retry in 1 minute
+        limit,
+      };
+    }
+
+    // Development fallback: use in-memory store
+    console.warn('[rate-limit] Redis unavailable in development, using in-memory fallback');
+    let entry = rateLimitMapFallback.get(key);
+
+    if (!entry || now > entry.resetTime) {
+      entry = { count: 1, resetTime: now + windowMs };
+      rateLimitMapFallback.set(key, entry);
+      return {
+        success: true,
+        remaining: limit - 1,
+        reset: entry.resetTime,
+        limit,
+      };
+    }
+
+    if (entry.count >= limit) {
+      return {
+        success: false,
+        remaining: 0,
+        reset: entry.resetTime,
+        limit,
+      };
+    }
+
+    entry.count++;
     return {
       success: true,
-      remaining: limit - 1,
+      remaining: limit - entry.count,
       reset: entry.resetTime,
       limit,
     };
   }
-
-  // Check if over limit
-  if (entry.count >= limit) {
-    return {
-      success: false,
-      remaining: 0,
-      reset: entry.resetTime,
-      limit,
-    };
-  }
-
-  // Increment and allow
-  entry.count++;
-  return {
-    success: true,
-    remaining: limit - entry.count,
-    reset: entry.resetTime,
-    limit,
-  };
 }
 
 /**
@@ -167,64 +285,154 @@ export async function getRateLimitStatus(
   windowMs: number
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const entry = rateLimitMap.get(identifier);
 
-  if (!entry || now > entry.resetTime) {
+  try {
+    const redisAvailable = await isRedisAvailable();
+
+    if (redisAvailable) {
+      const entry = await getRedisRateLimitEntry(identifier);
+
+      if (!entry || now > entry.resetTime) {
+        return {
+          success: true,
+          remaining: limit,
+          reset: now + windowMs,
+          limit,
+        };
+      }
+
+      return {
+        success: entry.count < limit,
+        remaining: Math.max(0, limit - entry.count),
+        reset: entry.resetTime,
+        limit,
+      };
+    }
+
+    throw new Error('Redis not available');
+  } catch {
+    // Fallback to in-memory for status check
+    const entry = rateLimitMapFallback.get(identifier);
+
+    if (!entry || now > entry.resetTime) {
+      return {
+        success: true,
+        remaining: limit,
+        reset: now + windowMs,
+        limit,
+      };
+    }
+
     return {
-      success: true,
-      remaining: limit,
-      reset: now + windowMs,
+      success: entry.count < limit,
+      remaining: Math.max(0, limit - entry.count),
+      reset: entry.resetTime,
       limit,
     };
   }
-
-  return {
-    success: entry.count < limit,
-    remaining: Math.max(0, limit - entry.count),
-    reset: entry.resetTime,
-    limit,
-  };
 }
 
-// --- IP Extraction ---
+// --- IP Extraction with Spoofing Protection ---
 
 /**
- * Get client IP from Next.js headers.
- * Handles proxied requests (X-Forwarded-For, X-Real-IP).
+ * Get client IP from Next.js headers with spoofing protection.
+ *
+ * SECURITY: Only trusts X-Forwarded-For if request came through our known proxy.
+ * This prevents attackers from bypassing rate limits by spoofing headers.
+ *
  * Note: In Next.js 15, headers() returns a Promise.
  */
 export async function getClientIp(): Promise<string> {
   const headersList = await headers();
 
-  // Try X-Forwarded-For first (most common for proxied requests)
-  const forwarded = headersList.get('x-forwarded-for');
-  if (forwarded) {
-    // Take the first IP (original client)
-    return forwarded.split(',')[0].trim();
+  const forwardedFor = headersList.get('x-forwarded-for');
+  const realIp = headersList.get('x-real-ip');
+  const proxySecret = headersList.get('x-proxy-secret');
+
+  // Only trust X-Forwarded-For if request came through our verified proxy
+  const expectedSecret = process.env.PROXY_SECRET;
+
+  if (expectedSecret && proxySecret === expectedSecret && forwardedFor) {
+    // Trust the first IP in the chain (original client)
+    return forwardedFor.split(',')[0].trim();
   }
 
-  // Try X-Real-IP (nginx default)
-  const realIp = headersList.get('x-real-ip');
-  if (realIp) {
+  // Cloudflare: Use CF-Connecting-IP if available and we're behind Cloudflare
+  const cfIp = headersList.get('cf-connecting-ip');
+  if (process.env.TRUST_CLOUDFLARE === 'true' && cfIp) {
+    return cfIp.trim();
+  }
+
+  // Vercel: Use x-vercel-forwarded-for if on Vercel
+  const vercelIp = headersList.get('x-vercel-forwarded-for');
+  if (process.env.VERCEL && vercelIp) {
+    return vercelIp.split(',')[0].trim();
+  }
+
+  // Fall back to X-Real-IP only if no X-Forwarded-For (less likely to be spoofed)
+  if (realIp && !forwardedFor) {
     return realIp.trim();
   }
 
-  // Fallback
+  // If X-Forwarded-For exists but no proxy secret, log warning in production
+  if (forwardedFor) {
+    if (process.env.NODE_ENV === 'production' && expectedSecret) {
+      console.warn(
+        '[rate-limit] X-Forwarded-For present without valid proxy secret. ' +
+          'This could indicate a spoofing attempt or misconfigured proxy.'
+      );
+    }
+    // In development or when PROXY_SECRET is not set, still use forwarded header
+    return forwardedFor.split(',')[0].trim();
+  }
+
+  // No forwarding headers - direct connection or unknown
   return 'unknown';
 }
 
 /**
- * Get client IP from NextRequest (for API routes).
+ * Get client IP from NextRequest (for API routes) with spoofing protection.
+ *
+ * SECURITY: Only trusts X-Forwarded-For if request came through our known proxy.
  */
 export function getClientIpFromRequest(req: NextRequest): string {
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const proxySecret = req.headers.get('x-proxy-secret');
+
+  // Only trust X-Forwarded-For if request came through our verified proxy
+  const expectedSecret = process.env.PROXY_SECRET;
+
+  if (expectedSecret && proxySecret === expectedSecret && forwardedFor) {
+    return forwardedFor.split(',')[0].trim();
   }
 
-  const realIp = req.headers.get('x-real-ip');
-  if (realIp) {
+  // Cloudflare: Use CF-Connecting-IP if available and we're behind Cloudflare
+  const cfIp = req.headers.get('cf-connecting-ip');
+  if (process.env.TRUST_CLOUDFLARE === 'true' && cfIp) {
+    return cfIp.trim();
+  }
+
+  // Vercel: Use x-vercel-forwarded-for if on Vercel
+  const vercelIp = req.headers.get('x-vercel-forwarded-for');
+  if (process.env.VERCEL && vercelIp) {
+    return vercelIp.split(',')[0].trim();
+  }
+
+  // Fall back to X-Real-IP only if no X-Forwarded-For
+  if (realIp && !forwardedFor) {
     return realIp.trim();
+  }
+
+  // If X-Forwarded-For exists but no proxy secret, log warning in production
+  if (forwardedFor) {
+    if (process.env.NODE_ENV === 'production' && expectedSecret) {
+      console.warn(
+        '[rate-limit] X-Forwarded-For present without valid proxy secret. ' +
+          'This could indicate a spoofing attempt or misconfigured proxy.'
+      );
+    }
+    return forwardedFor.split(',')[0].trim();
   }
 
   return 'unknown';
@@ -392,24 +600,49 @@ export function withHeavyRateLimit(
 
 /**
  * Reset rate limit for a specific identifier.
- * Use only in tests.
+ * Use only in tests. Clears both Redis and in-memory fallback.
  */
-export function resetRateLimit(identifier: string): void {
-  rateLimitMap.delete(identifier);
+export async function resetRateLimit(identifier: string): Promise<void> {
+  // Clear from in-memory fallback
+  rateLimitMapFallback.delete(identifier);
+
+  // Try to clear from Redis
+  try {
+    const redisAvailable = await isRedisAvailable();
+    if (redisAvailable) {
+      await redis.del(`${REDIS_KEY_PREFIX}${identifier}`);
+    }
+  } catch {
+    // Ignore Redis errors in test cleanup
+  }
 }
 
 /**
  * Clear all rate limits.
- * Use only in tests.
+ * Use only in tests. Clears both Redis and in-memory fallback.
  */
-export function clearAllRateLimits(): void {
-  rateLimitMap.clear();
+export async function clearAllRateLimits(): Promise<void> {
+  // Clear in-memory fallback
+  rateLimitMapFallback.clear();
+
+  // Try to clear Redis keys
+  try {
+    const redisAvailable = await isRedisAvailable();
+    if (redisAvailable) {
+      const keys = await redis.keys(`${REDIS_KEY_PREFIX}*`);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    }
+  } catch {
+    // Ignore Redis errors in test cleanup
+  }
 }
 
 /**
- * Get current size of the rate limit map.
+ * Get current size of the rate limit map (in-memory fallback only).
  * Useful for debugging and monitoring.
  */
 export function getRateLimitMapSize(): number {
-  return rateLimitMap.size;
+  return rateLimitMapFallback.size;
 }

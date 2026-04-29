@@ -7,53 +7,56 @@
  * The goalId in the body is used to look up and update the goal.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { putFastApi, FastApiError } from "@/lib/server-fetch";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { putFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { validateCsrf } from "@/lib/api/security";
+import {
+  updateGoalSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface UpdateGoalInput {
-  goalId: string;
-  updates: {
-    targetValue?: number;
-    targetDenominator?: number;
-    customName?: string;
-    customDescription?: string;
-    isPrimary?: boolean;
-    isClientVisible?: boolean;
-    currentValue?: number;
-    clientId?: string;
-  };
-}
-
 async function handlePost(req: NextRequest) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   try {
-    await requireAuth();
-
-    const body: UpdateGoalInput = await req.json();
-
-    if (!body.goalId) {
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
       return NextResponse.json(
-        { error: "goalId is required" },
+        { error: jsonResult.error },
         { status: 400 }
       );
     }
 
-    // Extract clientId from updates if provided, otherwise we need to look it up
-    // For now, we'll require clientId in the updates for proper routing
-    const clientId = body.updates?.clientId;
+    // Validate with Zod schema
+    const parsed = updateGoalSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
+
+    // Extract clientId from updates if provided, otherwise fetch it from the goal
+    let clientId = body.updates?.clientId;
 
     if (!clientId) {
-      // If no clientId provided, attempt to use a generic update endpoint
-      // The backend should be able to handle goal lookup by ID
-      const data = await putFastApi<{ id: string }>(
-        `/api/goals/${body.goalId}`,
-        body.updates
-      );
-      return NextResponse.json(data);
+      // Fetch the goal to get its clientId for access validation
+      const goal = await getFastApi<{ client_id: string }>(`/api/goals/${body.goalId}`);
+      clientId = goal.client_id;
     }
+
+    // CRITICAL: Verify user has access to this client before allowing update
+    await requireClientAccess(clientId);
 
     // Use client-specific endpoint for proper authorization
     const data = await putFastApi<{ id: string }>(

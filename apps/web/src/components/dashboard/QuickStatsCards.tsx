@@ -89,7 +89,7 @@ export function QuickStatsCards({ summary, initialLayout }: QuickStatsCardsProps
       title: "Keywords in Top 10",
       icon: <Search className="h-4 w-4 text-blue-500" />,
       value: summary.keywordsTop10,
-      subtitle: `${((summary.keywordsTop10 / summary.keywordsTotal) * 100 || 0).toFixed(0)}% of total`,
+      subtitle: `${(summary.keywordsTotal > 0 ? ((summary.keywordsTop10 / summary.keywordsTotal) * 100).toFixed(0) : 0)}% of total`,
     },
     {
       id: "open-alerts",

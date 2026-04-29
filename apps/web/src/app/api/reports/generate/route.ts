@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
@@ -52,11 +52,6 @@ export async function POST(req: Request) {
     const csrfError = validateCsrf(req);
     if (csrfError) return csrfError;
 
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body: GenerateReportRequest = await req.json();
 
     // Validate required field
@@ -67,6 +62,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // CRITICAL: Verify user has access to this client before generating report
+    await requireClientAccess(body.clientId);
+
     const data = await postOpenSeo<GenerateReportResponse>(
       "/api/reports/generate",
       body,
@@ -74,6 +72,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(data, { status: 202 }); // 202 Accepted - async processing
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+    }
     if (err instanceof FastApiError) {
       return NextResponse.json(err.body ?? { error: err.message }, {
         status: err.status,

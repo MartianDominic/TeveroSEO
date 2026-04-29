@@ -52,13 +52,17 @@ export const Route = createFileRoute("/api/audit/pages/$pageId/findings")({
 
           const { pageId } = params;
 
-          // 2. Get the clientId for this page and validate ownership
+          // 2. Get the clientId for this page and validate ownership (HIGH-AUTH-01 fix)
           const clientId = await getClientIdForPage(pageId);
-          if (clientId) {
-            const headers = new Headers(request.headers);
-            headers.set("x-client-id", clientId);
-            await resolveClientId(headers, request.url);
+          if (!clientId) {
+            // Page not found or not associated with any audit/client
+            return Response.json({ error: "Page not found" }, { status: 404 });
           }
+
+          // Validate client ownership
+          const headers = new Headers(request.headers);
+          headers.set("x-client-id", clientId);
+          await resolveClientId(headers, request.url);
 
           const findings = await FindingsRepository.getFindingsByPage(pageId);
 

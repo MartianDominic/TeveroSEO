@@ -8,6 +8,7 @@
 import {
   pgTable,
   text,
+  uuid,
   timestamp,
   boolean,
   index,
@@ -61,7 +62,7 @@ export const apiKeys = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
 
     // Optional client restriction
-    clientId: text("client_id").references(() => clients.id, {
+    clientId: uuid("client_id").references(() => clients.id, {
       onDelete: "cascade",
     }),
 

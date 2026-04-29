@@ -114,8 +114,11 @@ export async function subscribe(
     handlers.set(channel, new Set());
   }
 
-  // Add handler
-  handlers.get(channel)!.add(handler);
+  // Add handler - use safe access instead of non-null assertion
+  const channelHandlers = handlers.get(channel);
+  if (channelHandlers) {
+    channelHandlers.add(handler);
+  }
 
   // Subscribe to Redis channel if not already subscribed
   if (!subscribedChannels.has(channel)) {
@@ -125,7 +128,11 @@ export async function subscribe(
       console.log(`[redis-pubsub] Subscribed to ${channel}`);
     } catch (error) {
       console.error(`[redis-pubsub] Subscribe error for ${channel}:`, error);
-      handlers.get(channel)!.delete(handler);
+      // Safe access on error path as well
+      const handlersOnError = handlers.get(channel);
+      if (handlersOnError) {
+        handlersOnError.delete(handler);
+      }
       throw error;
     }
   }

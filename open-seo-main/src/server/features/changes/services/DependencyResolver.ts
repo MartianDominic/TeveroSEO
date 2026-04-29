@@ -45,6 +45,8 @@ export interface DependencyResult {
  * 1. Same resourceId and field
  * 2. Created after this change was applied
  * 3. beforeValue matches this change's afterValue
+ *
+ * Uses batch prefetching to avoid N+1 query problem.
  */
 export async function detectDependencies(
   changeId: string,
@@ -68,9 +70,20 @@ export async function detectDependencies(
     };
   }
 
-  // Build dependency tree recursively
+  // Prefetch all potential dependents for this resource/field combination in one query
+  // This eliminates N+1 queries during tree traversal
+  const allPotentialDependents = await prefetchAllDependents(change);
+  const dependentsByAfterValue = groupDependentsByBeforeValue(allPotentialDependents);
+
+  // Build dependency tree using prefetched data (no additional DB queries)
   const visited = new Set<string>();
-  const tree = await buildDependencyNode(change, visited, 0, maxDepth);
+  const tree = buildDependencyNodeFromCache(
+    change,
+    dependentsByAfterValue,
+    visited,
+    0,
+    maxDepth
+  );
   const dependentIds = collectDependentIds(tree);
 
   return {
@@ -84,14 +97,59 @@ export async function detectDependencies(
 }
 
 /**
- * Build a dependency node for a change, recursively finding dependents.
+ * Prefetch all verified changes for the same resource/field that could be dependents.
+ * Single query replaces N recursive queries.
  */
-async function buildDependencyNode(
+async function prefetchAllDependents(
+  rootChange: SiteChangeSelect
+): Promise<SiteChangeSelect[]> {
+  if (!rootChange.appliedAt) {
+    return [];
+  }
+
+  return db
+    .select()
+    .from(siteChanges)
+    .where(
+      and(
+        eq(siteChanges.resourceId, rootChange.resourceId),
+        eq(siteChanges.field, rootChange.field),
+        gt(siteChanges.createdAt, rootChange.appliedAt),
+        eq(siteChanges.status, 'verified')
+      )
+    )
+    .orderBy(siteChanges.createdAt);
+}
+
+/**
+ * Group prefetched changes by their beforeValue for O(1) lookup during tree building.
+ */
+function groupDependentsByBeforeValue(
+  changes: SiteChangeSelect[]
+): Map<string, SiteChangeSelect[]> {
+  const grouped = new Map<string, SiteChangeSelect[]>();
+
+  for (const change of changes) {
+    if (change.beforeValue) {
+      const existing = grouped.get(change.beforeValue) ?? [];
+      existing.push(change);
+      grouped.set(change.beforeValue, existing);
+    }
+  }
+
+  return grouped;
+}
+
+/**
+ * Build a dependency node using prefetched data (no DB queries).
+ */
+function buildDependencyNodeFromCache(
   change: SiteChangeSelect,
+  dependentsByBeforeValue: Map<string, SiteChangeSelect[]>,
   visited: Set<string>,
   depth: number,
   maxDepth: number
-): Promise<DependencyNode> {
+): DependencyNode {
   visited.add(change.id);
 
   const node: DependencyNode = {
@@ -110,28 +168,19 @@ async function buildDependencyNode(
     return node;
   }
 
-  // Find changes that:
-  // 1. Same resourceId and field
-  // 2. Created after this change
-  // 3. beforeValue matches afterValue
-  const dependents = await db
-    .select()
-    .from(siteChanges)
-    .where(
-      and(
-        eq(siteChanges.resourceId, change.resourceId),
-        eq(siteChanges.field, change.field),
-        gt(siteChanges.createdAt, change.appliedAt),
-        eq(siteChanges.beforeValue, change.afterValue),
-        eq(siteChanges.status, 'verified') // Only verified changes count
-      )
-    )
-    .orderBy(siteChanges.createdAt);
+  // Look up dependents from prefetched cache (O(1) instead of DB query)
+  const dependents = dependentsByBeforeValue.get(change.afterValue) ?? [];
 
-  // Build child nodes for each dependent
+  // Build child nodes for each dependent (no DB queries)
   for (const dependent of dependents) {
     if (!visited.has(dependent.id)) {
-      const childNode = await buildDependencyNode(dependent, visited, depth + 1, maxDepth);
+      const childNode = buildDependencyNodeFromCache(
+        dependent,
+        dependentsByBeforeValue,
+        visited,
+        depth + 1,
+        maxDepth
+      );
       node.dependents.push(childNode);
     }
   }

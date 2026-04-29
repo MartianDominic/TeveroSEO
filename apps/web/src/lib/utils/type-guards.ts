@@ -172,7 +172,14 @@ export function isNonEmptyArray<T>(value: unknown): value is [T, ...T[]] {
 }
 
 /**
- * Safe JSON parse with type validation.
+ * Result type for safe JSON parsing operations.
+ */
+export type SafeJsonParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+/**
+ * Safe JSON parse with type validation using a type guard.
  * Returns null if parsing fails or validation fails.
  *
  * @example
@@ -195,6 +202,112 @@ export function safeJsonParse<T>(
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Zod-like parse result for failed validation.
+ */
+export interface ZodLikeParseError {
+  success: false;
+  error: { message: string };
+}
+
+/**
+ * Zod-like parse result for successful validation.
+ */
+export interface ZodLikeParseSuccess<T> {
+  success: true;
+  data: T;
+}
+
+/**
+ * Zod schema type for generic schema validation.
+ * Mirrors the essential Zod schema interface for type inference.
+ */
+export interface ZodLikeSchema<T> {
+  safeParse(data: unknown): ZodLikeParseSuccess<T> | ZodLikeParseError;
+}
+
+/**
+ * Safe JSON parse with Zod schema validation.
+ * Returns a result object with success status.
+ *
+ * @example
+ * ```ts
+ * import { z } from 'zod';
+ *
+ * const UserSchema = z.object({ id: z.string(), name: z.string() });
+ * const result = safeJsonParseWithSchema(jsonString, UserSchema);
+ * if (result.success) {
+ *   console.log(result.data); // Typed as { id: string; name: string }
+ * } else {
+ *   console.error(result.error);
+ * }
+ * ```
+ */
+export function safeJsonParseWithSchema<T>(
+  json: string,
+  schema: ZodLikeSchema<T>,
+  context?: string
+): SafeJsonParseResult<T> {
+  try {
+    const data: unknown = JSON.parse(json);
+    const parseResult = schema.safeParse(data);
+    if (parseResult.success) {
+      return { success: true, data: parseResult.data };
+    }
+    // parseResult is ZodLikeParseError here due to discriminated union narrowing
+    const errorMsg = `JSON validation failed${context ? ` for ${context}` : ''}: ${parseResult.error.message}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[safeJsonParseWithSchema] ${errorMsg}`);
+    }
+    return { success: false, error: errorMsg };
+  } catch (e) {
+    const errorMsg = `JSON parse failed${context ? ` for ${context}` : ''}: ${e instanceof Error ? e.message : 'Unknown error'}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[safeJsonParseWithSchema] ${errorMsg}`);
+    }
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Safe JSON parse with Zod schema that throws on validation failure.
+ * Use when you want to fail fast on invalid data.
+ *
+ * @throws Error if JSON parsing or validation fails
+ */
+export function safeJsonParseWithSchemaOrThrow<T>(
+  json: string,
+  schema: ZodLikeSchema<T>,
+  context?: string
+): T {
+  const result = safeJsonParseWithSchema(json, schema, context);
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+  return result.data;
+}
+
+/**
+ * Safe JSON parse that returns unknown without any type assertion.
+ * Use this as a safe base for further validation.
+ * Returns a result object for explicit error handling.
+ */
+export function safeJsonParseUnknown(
+  json: string,
+  context?: string
+): SafeJsonParseResult<unknown> {
+  try {
+    const data: unknown = JSON.parse(json);
+    return { success: true, data };
+  } catch (e) {
+    const errorMsg = `JSON parse failed${context ? ` for ${context}` : ''}: ${e instanceof Error ? e.message : 'Unknown error'}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[safeJsonParseUnknown] ${errorMsg}`);
+    }
+    return { success: false, error: errorMsg };
   }
 }
 

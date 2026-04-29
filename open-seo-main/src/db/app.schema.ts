@@ -2,6 +2,7 @@ import {
   pgTable,
   pgEnum,
   text,
+  uuid,
   integer,
   real,
   boolean,
@@ -13,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { desc, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
+import { clients } from "./client-schema";
 
 // ============================================================================
 // ENUMS - Database-level type safety for status fields
@@ -136,6 +138,10 @@ export const audits = pgTable(
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
+    // User ID from Clerk authentication system.
+    // No FK constraint as Clerk users are external to PostgreSQL.
+    // Validated during request via requireAuth middleware.
+    // Format: Clerk user_* ID string.
     startedByUserId: text("started_by_user_id").notNull(),
     startUrl: text("start_url").notNull(),
     // Status uses inline enum for now; migration 0032 creates proper PostgreSQL enum
@@ -146,13 +152,12 @@ export const audits = pgTable(
       .notNull()
       .default("running"),
     workflowInstanceId: text("workflow_instance_id"),
-    // AUTH-04: client ownership for per-client scoping. Nullable because
-    // audits created before Phase 6 have no client; queries MUST treat
-    // NULL as "unscoped" not "all clients".
-    // MIGRATION NOTE: NULL clientIds should be backfilled when client context
-    // is available. Consider running a data migration to assign clientId based
-    // on projectId -> organizationId -> first client mapping.
-    clientId: text("client_id"),
+    // UUID reference to clients.id for client-scoped audits.
+    // Nullable for legacy audits created before Phase 6 client scoping.
+    // NULL means "unscoped" not "all clients" - queries must handle explicitly.
+    // AUTH-04: Validated via resolveClientId() in API routes.
+    // FK-01: SET NULL on delete preserves audit history when client is removed.
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
     // JSON config: { maxPages, lighthouseStrategy }
     // Schema: { maxPages?: number, lighthouseStrategy?: "mobile"|"desktop"|"both" }
     config: jsonb("config").notNull().default({}),

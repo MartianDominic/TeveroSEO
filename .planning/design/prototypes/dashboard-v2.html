@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TeveroSEO — Agency Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas:        #FAFAF7;
+    --surface:       #FFFFFF;
+    --surface-2:     #F5F5F0;
+    --hairline:      #ECECE7;
+    --hairline-soft: #F0F0EB;
+
+    --text-1:        #0E0E10;
+    --text-2:        #5C5C60;
+    --text-3:        #9A9A9F;
+    --text-4:        #BEBEC0;
+
+    --accent:        #0F4F3D;
+    --accent-soft:   #E6F0EC;
+    --accent-ink:    #093528;
+
+    --success:       #1B6E45;
+    --error:         #9B2C2C;
+    --warning:       #A87F1A;
+    --info:          #2D5A87;
+    --success-soft:  #E8F2EC;
+    --error-soft:    #F4E5E5;
+    --warning-soft:  #F5EDD9;
+    --info-soft:     #EFF4F9;
+
+    --radius-input:  6px;
+    --radius-card:   10px;
+    --radius-modal:  14px;
+
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-display: "Fraunces", "GT Sectra", "Tiempos Headline", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--canvas);
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.005em;
+    font-size: 13px;
+  }
+
+  /* ========== Shell ========== */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+  .sidebar {
+    border-right: 1px solid var(--hairline);
+    background: var(--canvas);
+    padding: 16px 12px;
+    display: flex; flex-direction: column; gap: 4px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .main {
+    padding: 0 32px 56px;
+    min-width: 0;
+  }
+
+  /* ========== Sidebar ========== */
+  .brand { display: flex; align-items: center; gap: 10px; padding: 8px 8px 16px; border-bottom: 1px solid var(--hairline-soft); margin-bottom: 12px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; color: white; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: -0.02em; }
+  .brand-name { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+  .brand-sub { font-size: 11px; color: var(--text-3); }
+
+  .workspace-switcher { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--hairline); border-radius: var(--radius-input); background: var(--surface); margin: 0 4px 16px; cursor: pointer; transition: border-color 150ms ease-out; }
+  .workspace-switcher:hover { border-color: var(--text-3); }
+  .ws-left { display: flex; align-items: center; gap: 8px; }
+  .ws-avatar { width: 22px; height: 22px; border-radius: 5px; background: linear-gradient(135deg, #2C2C30 0%, #565660 100%); color: white; font-size: 10px; font-weight: 600; display: grid; place-items: center; letter-spacing: -0.02em; }
+  .ws-name { font-size: 13px; font-weight: 500; }
+  .ws-meta { font-size: 11px; color: var(--text-3); }
+
+  .nav-group { padding: 8px 0; }
+  .nav-label { font-size: 10.5px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 10px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius-input); font-size: 13px; color: var(--text-2); cursor: pointer; user-select: none; transition: background 120ms ease-out, color 120ms ease-out; }
+  .nav-item:hover { background: var(--surface-2); color: var(--text-1); }
+  .nav-item.active { background: var(--surface); color: var(--text-1); font-weight: 500; border: 1px solid var(--hairline); }
+  .nav-item .icon { width: 16px; height: 16px; flex: none; color: var(--text-3); }
+  .nav-item.active .icon { color: var(--accent); }
+  .nav-item .count { margin-left: auto; font-size: 11px; color: var(--text-3); background: var(--surface-2); padding: 1px 6px; border-radius: 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .nav-item.active .count { background: var(--accent-soft); color: var(--accent); }
+  .nav-item .badge-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--error); }
+
+  .sidebar-footer { margin-top: auto; padding: 8px 4px; border-top: 1px solid var(--hairline-soft); }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-input); cursor: pointer; }
+  .user-row:hover { background: var(--surface-2); }
+  .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #2C2C30 0%, #565660 100%); display: grid; place-items: center; color: white; font-size: 11px; font-weight: 600; }
+  .user-meta { line-height: 1.2; }
+  .user-name { font-size: 12.5px; font-weight: 500; }
+  .user-org { font-size: 11px; color: var(--text-3); }
+
+  /* ========== Topbar ========== */
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 16px 0 18px; position: sticky; top: 0; background: var(--canvas); z-index: 5; border-bottom: 1px solid var(--hairline-soft); margin-bottom: 24px; }
+  .search { flex: 1; max-width: 520px; position: relative; }
+  .search input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--hairline); border-radius: var(--radius-input); font-family: inherit; font-size: 13px; background: var(--surface); color: var(--text-1); outline: none; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .search input::placeholder { color: var(--text-3); }
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-3); }
+  .kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10.5px; color: var(--text-3); border: 1px solid var(--hairline); background: var(--canvas); padding: 1px 5px; border-radius: 4px; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--hairline); border-radius: var(--radius-input); background: var(--surface); color: var(--text-2); cursor: pointer; transition: background 120ms ease-out, border-color 120ms ease-out; position: relative; }
+  .icon-btn:hover { background: var(--surface-2); border-color: var(--text-3); }
+  .icon-btn .dot { position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; background: var(--error); border-radius: 50%; border: 1.5px solid var(--surface); }
+
+  /* ========== Page header ========== */
+  .page-header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; gap: 24px; }
+  .eyebrow { font-size: 12px; color: var(--text-3); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .eyebrow .live-pip { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .eyebrow .sep { color: var(--text-4); }
+  .page-title { font-family: var(--font-display); font-weight: 500; font-size: 32px; line-height: 1.1; letter-spacing: -0.025em; color: var(--text-1); margin: 0; }
+  .page-sub { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+  .page-actions { display: flex; align-items: center; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--hairline); border-radius: 999px; font-size: 12.5px; background: var(--surface); color: var(--text-2); cursor: pointer; transition: border-color 150ms ease-out; font-family: inherit; }
+  .pill:hover { border-color: var(--text-3); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: var(--radius-input); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; border: 1px solid var(--hairline); background: var(--surface); color: var(--text-1); transition: background 120ms ease-out, border-color 120ms ease-out; }
+  .btn:hover { background: var(--surface-2); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+
+  /* ========== Cards / shared ========== */
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-card); }
+  .card-pad { padding: 18px 20px 20px; }
+  .card-head { display: flex; align-items: start; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--hairline-soft); }
+  .card-head h3 { margin: 0; font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; color: var(--text-1); }
+  .card-head .meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .card-head a { font-size: 11.5px; color: var(--text-3); text-decoration: none; cursor: pointer; }
+  .card-head a:hover { color: var(--text-1); }
+
+  .delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 500; padding: 1px 6px 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+  .delta.up   { color: var(--success); background: var(--success-soft); }
+  .delta.down { color: var(--error);   background: var(--error-soft); }
+  .delta.flat { color: var(--text-2);  background: var(--surface-2); }
+
+  /* ========== Quick stats row ========== */
+  .quickstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .qs-card { padding: 18px 20px 20px; position: relative; }
+  .qs-drag { position: absolute; top: 14px; right: 14px; color: var(--text-4); cursor: grab; opacity: 0; transition: opacity 150ms; }
+  .qs-card:hover .qs-drag { opacity: 1; }
+  .qs-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); font-weight: 500; margin-bottom: 14px; }
+  .qs-label .ico { width: 14px; height: 14px; color: var(--text-3); }
+  .qs-value { font-family: var(--font-display); font-weight: 500; font-size: 30px; line-height: 1; letter-spacing: -0.022em; color: var(--text-1); display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+  .qs-value .unit { font-family: var(--font-sans); font-size: 13px; color: var(--text-3); letter-spacing: 0; font-weight: 400; }
+  .qs-foot { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+  .qs-segments { display: flex; gap: 3px; margin-top: 12px; height: 4px; }
+  .qs-seg { flex: 1; border-radius: 2px; }
+  .qs-seg.healthy { background: var(--accent); }
+  .qs-seg.monitor { background: var(--warning); }
+  .qs-seg.risk    { background: var(--error); }
+
+  /* ========== Portfolio health bar ========== */
+  .portfolio-health { padding: 18px 20px 20px; margin-bottom: 24px; }
+  .ph-head { display: flex; align-items: end; justify-content: space-between; margin-bottom: 14px; }
+  .ph-head h3 { margin: 0; font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em; }
+  .ph-head .meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .ph-stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+  .ph-stack > div { display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; font-size: 10.5px; font-weight: 500; color: white; }
+  .ph-stack .b-healthy { background: var(--accent); }
+  .ph-stack .b-monitor { background: var(--warning); }
+  .ph-stack .b-risk    { background: var(--error); }
+  .ph-substats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .ph-stat { padding-left: 14px; border-left: 2px solid var(--hairline); }
+  .ph-stat .lbl { font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
+  .ph-stat .val { font-family: var(--font-display); font-weight: 500; font-size: 20px; letter-spacing: -0.02em; line-height: 1; display: flex; align-items: baseline; gap: 6px; }
+  .ph-stat .val .delta { font-family: var(--font-sans); font-size: 11px; }
+
+  /* ========== 60/40 attention + wins ========== */
+  .row-attention { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .attention-list, .wins-list { padding: 0 0 4px; }
+  .att-item, .win-item { display: flex; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--hairline-soft); cursor: pointer; transition: background 120ms; }
+  .att-item:last-child, .win-item:last-child { border-bottom: 0; }
+  .att-item:hover, .win-item:hover { background: rgba(14,14,16,0.012); }
+  .att-icon, .win-icon { width: 28px; height: 28px; border-radius: 6px; flex: none; display: grid; place-items: center; }
+  .att-icon.crit { background: var(--error-soft); color: var(--error); }
+  .att-icon.warn { background: var(--warning-soft); color: var(--warning); }
+  .att-icon.info { background: var(--info-soft); color: var(--info); }
+  .win-icon.up   { background: var(--accent-soft); color: var(--accent); }
+  .win-icon.gold { background: var(--warning-soft); color: var(--warning); }
+  .win-icon.link { background: var(--info-soft); color: var(--info); }
+  .att-body, .win-body { flex: 1; min-width: 0; }
+  .att-title, .win-title { font-size: 13px; line-height: 1.35; font-weight: 500; }
+  .att-meta, .win-meta { font-size: 11.5px; color: var(--text-3); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+  .att-meta .sep { color: var(--text-4); }
+  .att-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+  .text-link { font-size: 11.5px; color: var(--text-3); cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .text-link:hover { background: var(--surface-2); color: var(--text-1); }
+  .text-link.primary { color: var(--accent); }
+
+  /* ========== Pipeline + Content row ========== */
+  .row-pipeline { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  .funnel { padding: 18px 20px 20px; }
+  .funnel-stages { display: flex; align-items: end; gap: 4px; height: 110px; margin: 16px 0 12px; }
+  .stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 6px; }
+  .stage-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 6px; }
+  .stage-bar.s1 { height: 100%; background: var(--accent); opacity: 1; }
+  .stage-bar.s2 { height: 64%; background: var(--accent); opacity: 0.85; }
+  .stage-bar.s3 { height: 36%; background: var(--accent); opacity: 0.7; }
+  .stage-bar.s4 { height: 22%; background: var(--accent); opacity: 0.55; }
+  .stage-bar.s5 { height: 12%; background: var(--accent-ink); opacity: 1; }
+  .stage-count { font-family: var(--font-display); font-size: 16px; font-weight: 500; letter-spacing: -0.015em; color: var(--text-1); }
+  .stage-label { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+  .funnel-foot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 14px; border-top: 1px solid var(--hairline-soft); }
+  .ff-stat .lbl { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+  .ff-stat .val { font-size: 14px; font-weight: 500; font-family: var(--font-display); letter-spacing: -0.015em; }
+  .ff-stat .val.accent { color: var(--accent); }
+
+  .content-prod { padding: 18px 20px 20px; }
+  .cp-distribution { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 14px 0 12px; }
+  .cp-state { padding: 10px 8px; border: 1px solid var(--hairline); border-radius: 6px; text-align: center; }
+  .cp-state .ct { font-family: var(--font-display); font-size: 16px; font-weight: 500; letter-spacing: -0.015em; line-height: 1; margin-bottom: 4px; }
+  .cp-state .lbl { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .cp-state.has { border-color: var(--accent); background: var(--accent-soft); }
+  .cp-state.has .ct { color: var(--accent-ink); }
+  .cp-state.warn { border-color: #E8DAB6; background: var(--warning-soft); }
+  .cp-state.warn .ct { color: var(--warning); }
+  .cp-foot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding-top: 14px; border-top: 1px solid var(--hairline-soft); }
+  .cp-stat .lbl { font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
+  .cp-stat .val { font-size: 13.5px; font-weight: 500; }
+  .cp-stat .val.warn-i { color: var(--warning); }
+
+  /* ========== Client portfolio table ========== */
+  .portfolio-table { padding: 0 0 4px; margin-bottom: 24px; }
+  .pt-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--hairline-soft); }
+  .pt-tools { display: flex; gap: 6px; align-items: center; }
+  .filter-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--hairline); border-radius: var(--radius-input); font-size: 12px; color: var(--text-2); background: var(--surface); cursor: pointer; font-family: inherit; }
+  .filter-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .savedview-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--hairline); border-radius: var(--radius-input); font-size: 12px; color: var(--text-1); background: var(--surface); cursor: pointer; font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-weight: 500; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 16px; border-bottom: 1px solid var(--hairline-soft); }
+  thead th.num { text-align: right; }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid var(--hairline-soft); color: var(--text-1); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: rgba(14,14,16,0.012); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td:first-child, th:first-child { padding-left: 20px; }
+  td:last-child, th:last-child { padding-right: 20px; }
+
+  .client-cell { display: flex; align-items: center; gap: 10px; }
+  .client-mark { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: white; font-size: 9.5px; font-weight: 600; flex: none; }
+  .client-name { font-weight: 500; font-size: 13px; }
+  .client-domain { font-size: 11px; color: var(--text-3); }
+
+  .health-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .health-pill.h1 { color: var(--accent); background: var(--accent-soft); }
+  .health-pill.h2 { color: var(--warning); background: var(--warning-soft); }
+  .health-pill.h3 { color: var(--error); background: var(--error-soft); }
+  .health-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .health-pill.h1 .health-dot { background: var(--accent); }
+  .health-pill.h2 .health-dot { background: var(--warning); }
+  .health-pill.h3 .health-dot { background: var(--error); }
+  .traffic-cell { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .sparkline { height: 22px; width: 80px; }
+  .goal-bar { display: inline-flex; align-items: center; gap: 8px; }
+  .goal-meter { width: 56px; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .goal-meter > div { height: 100%; background: var(--accent); border-radius: 2px; }
+  .issue-badges { display: inline-flex; gap: 4px; }
+  .ib { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; font-weight: 500; }
+  .ib.crit { background: var(--error-soft); color: var(--error); }
+  .ib.warn { background: var(--warning-soft); color: var(--warning); }
+  .last-sync { font-size: 11.5px; color: var(--text-3); }
+  .last-sync.stale { color: var(--warning); }
+
+  /* ========== 1/1/1 row ========== */
+  .row-tri { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  /* Activity feed */
+  .activity-card { padding: 0 0 4px; }
+  .feed-item { padding: 12px 20px; border-bottom: 1px solid var(--hairline-soft); display: flex; gap: 10px; }
+  .feed-item:last-child { border-bottom: 0; }
+  .feed-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex: none; }
+  .feed-dot.live { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .feed-dot.muted { background: var(--text-4); }
+  .feed-text { font-size: 12.5px; line-height: 1.45; }
+  .feed-text strong { font-weight: 500; }
+  .feed-text .em { color: var(--accent); font-weight: 500; }
+  .feed-time { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+  /* Team workload */
+  .team-card { padding: 0 0 4px; }
+  .tm-row { padding: 12px 20px; border-bottom: 1px solid var(--hairline-soft); }
+  .tm-row:last-child { border-bottom: 0; }
+  .tm-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tm-avatar { width: 26px; height: 26px; border-radius: 50%; color: white; font-size: 10.5px; font-weight: 600; display: grid; place-items: center; flex: none; }
+  .tm-name { font-size: 12.5px; font-weight: 500; flex: 1; }
+  .tm-pct { font-size: 11.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tm-pct.over { color: var(--error); }
+  .tm-pct.near { color: var(--warning); }
+  .tm-pct.ok   { color: var(--accent); }
+  .tm-bar { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .tm-bar > div { height: 100%; border-radius: 2px; }
+  .tm-bar .over { background: var(--error); }
+  .tm-bar .near { background: var(--warning); }
+  .tm-bar .ok   { background: var(--accent); }
+  .tm-meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+  /* Upcoming */
+  .upcoming-card { padding: 0 0 4px; }
+  .uc-row { padding: 12px 20px; border-bottom: 1px solid var(--hairline-soft); display: flex; gap: 10px; }
+  .uc-row:last-child { border-bottom: 0; }
+  .uc-icon { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; flex: none; background: var(--surface-2); color: var(--text-2); }
+  .uc-icon.urgent { background: var(--warning-soft); color: var(--warning); }
+  .uc-body { flex: 1; }
+  .uc-title { font-size: 12.5px; font-weight: 500; line-height: 1.3; }
+  .uc-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+  .uc-meta.urgent { color: var(--warning); }
+
+  /* ========== Operational strip ========== */
+  .ops-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px; }
+  .ops-card { padding: 16px 18px 18px; }
+  .ops-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .ops-title { font-size: 12px; color: var(--text-2); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .ops-title .ico { width: 13px; height: 13px; color: var(--text-3); }
+  .ops-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .ops-stat .ct { font-family: var(--font-display); font-size: 18px; font-weight: 500; letter-spacing: -0.015em; line-height: 1; }
+  .ops-stat .ct.crit { color: var(--error); }
+  .ops-stat .ct.warn { color: var(--warning); }
+  .ops-stat .ct.ok   { color: var(--accent); }
+  .ops-stat .lbl { font-size: 10.5px; color: var(--text-3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chevron-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol>
+    <symbol id="i-trending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.7 3h16.96a2 2 0 0 0 1.7-3L13.7 3.86a2 2 0 0 0-3.4 0z"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.9-5.7L21 9"/><path d="M21 4v5h-5"/><path d="M21 12a9 9 0 0 1-15.9 5.7L3 15"/><path d="M3 20v-5h5"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5L14 10l-1.8-1.2 2.5-2.5z"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M5 8h14v3a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5z"/><path d="M12 16v6"/></symbol>
+    <symbol id="i-funnel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="22,3 2,3 10,12.5 10,19 14,21 14,12.5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  </defs>
+
+  <!-- Hatched fill pattern — TeveroSEO chart signature -->
+  <defs>
+    <pattern id="hatch-emerald" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#0F4F3D" stroke-width="2.5" />
+    </pattern>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <!-- ============== SIDEBAR ============== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <div>
+        <div class="brand-name">Tevero</div>
+        <div class="brand-sub">SEO Platform</div>
+      </div>
+    </div>
+
+    <div class="workspace-switcher">
+      <div class="ws-left">
+        <div class="ws-avatar">TA</div>
+        <div>
+          <div class="ws-name">Tevero Agency</div>
+          <div class="ws-meta">34 clients · 47 prospects</div>
+        </div>
+      </div>
+      <svg class="icon" width="14" height="14" style="color:var(--text-3)"><use href="#i-chevron-up-down"/></svg>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-item active"><svg class="icon"><use href="#i-home"/></svg> Command Center</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-folder"/></svg> Clients <span class="count">34</span></div>
+      <div class="nav-item"><svg class="icon"><use href="#i-funnel"/></svg> Prospects <span class="count">47</span></div>
+      <div class="nav-item"><svg class="icon"><use href="#i-pen"/></svg> Articles <span class="count">128</span></div>
+      <div class="nav-item"><svg class="icon"><use href="#i-doc"/></svg> Reports</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-bell"/></svg> Alerts <span class="badge-dot"></span></div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Intelligence</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-target"/></svg> Keyword research</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-eye"/></svg> Competitor spy</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-bolt"/></svg> Quick check</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Operations</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-wrench"/></svg> Auto-fix activity</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-pulse"/></svg> Pipeline runs</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-users"/></svg> Team</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-plug"/></svg> Integrations</div>
+      <div class="nav-item"><svg class="icon"><use href="#i-settings"/></svg> Settings</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">DM</div>
+        <div class="user-meta">
+          <div class="user-name">Dominic M.</div>
+          <div class="user-org">Owner · Tevero</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============== MAIN ============== -->
+  <main class="main">
+
+    <div class="topbar">
+      <div class="search">
+        <svg class="search-icon"><use href="#i-search"/></svg>
+        <input type="text" placeholder="Search clients, keywords, articles, audits, reports…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" aria-label="Notifications">
+          <svg width="14" height="14"><use href="#i-bell"/></svg>
+          <span class="dot"></span>
+        </button>
+        <button class="icon-btn" aria-label="Settings">
+          <svg width="14" height="14"><use href="#i-settings"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="eyebrow"><span class="live-pip"></span> Live · 34 clients tracked <span class="sep">·</span> Last sync 2:14 AM UTC</div>
+        <h1 class="page-title">Command Center</h1>
+        <div class="page-sub">Portfolio health, prospect pipeline, and operational status across the agency.</div>
+      </div>
+      <div class="page-actions">
+        <button class="pill">
+          <svg width="13" height="13"><use href="#i-calendar"/></svg>
+          Last 30 days
+          <svg width="12" height="12"><use href="#i-chevron-down"/></svg>
+        </button>
+        <button class="btn">
+          <svg width="13" height="13"><use href="#i-download"/></svg>
+          Export
+        </button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13"><use href="#i-plus"/></svg>
+          Add client
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ Quick stats row ============ -->
+    <div class="quickstats">
+      <div class="card qs-card">
+        <svg width="14" height="14" class="qs-drag"><use href="#i-grip"/></svg>
+        <div class="qs-label"><svg class="ico"><use href="#i-folder"/></svg> Total clients</div>
+        <div class="qs-value">34</div>
+        <div class="qs-foot"><span class="delta up"><svg width="9" height="9"><use href="#i-arrow-up"/></svg> 2 this month</span></div>
+        <div class="qs-segments" title="21 healthy / 8 monitor / 5 at-risk">
+          <div class="qs-seg healthy" style="flex:21"></div>
+          <div class="qs-seg monitor" style="flex:8"></div>
+          <div class="qs-seg risk"    style="flex:5"></div>
+        </div>
+      </div>
+
+      <div class="card qs-card">
+        <svg width="14" height="14" class="qs-drag"><use href="#i-grip"/></svg>
+        <div class="qs-label"><svg class="ico"><use href="#i-target"/></svg> Avg goal attainment</div>
+        <div class="qs-value">68<span class="unit">%</span></div>
+        <div class="qs-foot"><span class="delta up"><svg width="9" height="9"><use href="#i-arrow-up"/></svg> 4.2 pts</span><span>vs. previous 30 days</span></div>
+        <div class="qs-segments">
+          <div class="qs-seg healthy" style="flex:23"></div>
+          <div class="qs-seg monitor" style="flex:11"></div>
+        </div>
+      </div>
+
+      <div class="card qs-card">
+        <svg width="14" height="14" class="qs-drag"><use href="#i-grip"/></svg>
+        <div class="qs-label"><svg class="ico"><use href="#i-trending"/></svg> Keywords in Top 10</div>
+        <div class="qs-value">1,284</div>
+        <div class="qs-foot"><span class="delta up"><svg width="9" height="9"><use href="#i-arrow-up"/></svg> 47</span><span>this week</span></div>
+        <svg class="sparkline" viewBox="0 0 240 22" preserveAspectRatio="none" style="margin-top:12px;width:100%">
+          <path d="M0 18 L30 17 L60 15 L90 14 L120 12 L150 10 L180 8 L210 7 L240 5" fill="none" stroke="#0F4F3D" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="card qs-card">
+        <svg width="14" height="14" class="qs-drag"><use href="#i-grip"/></svg>
+        <div class="qs-label"><svg class="ico"><use href="#i-trophy"/></svg> Wins this week</div>
+        <div class="qs-value">12</div>
+        <div class="qs-foot"><span class="delta up"><svg width="9" height="9"><use href="#i-arrow-up"/></svg> 5</span><span>vs. last week</span></div>
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:10px;color:var(--accent);background:var(--accent-soft);padding:1px 6px;border-radius:4px;font-weight:500">3 #1 rankings</span>
+          <span style="font-size:10px;color:var(--info);background:var(--info-soft);padding:1px 6px;border-radius:4px;font-weight:500">4 Top 10</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Portfolio Health Summary ============ -->
+    <div class="card portfolio-health">
+      <div class="ph-head">
+        <div>
+          <h3>Portfolio health</h3>
+          <div class="meta">Recomputed every 5 minutes · weighted: traffic 30% · rankings 25% · technical 20% · backlinks 15% · content 10%</div>
+        </div>
+        <a class="text-link">View breakdown ↗</a>
+      </div>
+      <div class="ph-stack" title="Distribution of client health scores">
+        <div class="b-healthy" style="flex:21">21 healthy</div>
+        <div class="b-monitor" style="flex:8">8 monitor</div>
+        <div class="b-risk"    style="flex:5">5 at-risk</div>
+      </div>
+      <div class="ph-substats">
+        <div class="ph-stat">
+          <div class="lbl">Total clicks · 30d</div>
+          <div class="val">4.2<span class="unit" style="font-size:13px;color:var(--text-3)">M</span> <span class="delta up">+12.4%</span></div>
+        </div>
+        <div class="ph-stat">
+          <div class="lbl">Total impressions · 30d</div>
+          <div class="val">38.1<span class="unit" style="font-size:13px;color:var(--text-3)">M</span> <span class="delta up">+8.1%</span></div>
+        </div>
+        <div class="ph-stat">
+          <div class="lbl">Goals on-track</div>
+          <div class="val">198<span class="unit" style="font-size:13px;color:var(--text-3)">/289</span></div>
+        </div>
+        <div class="ph-stat">
+          <div class="lbl">Keywords in Top 3</div>
+          <div class="val">312 <span class="delta up">+18</span></div>
+        </div>
+        <div class="ph-stat">
+          <div class="lbl">Position #1</div>
+          <div class="val">87 <span class="delta up">+6</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Attention + Wins ============ -->
+    <div class="row-attention">
+
+      <div class="card attention-list">
+        <div class="card-head">
+          <div>
+            <h3>Needs attention</h3>
+            <div class="meta">Sorted by priority: alerts × 1000 + goal gaps × 50 + traffic drops × 200</div>
+          </div>
+          <a>View all (12)</a>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon crit"><svg width="14" height="14"><use href="#i-arrow-down"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Acme Corp — traffic drop −28% week-over-week</div>
+            <div class="att-meta">acmecorp.com <span class="sep">·</span> Critical <span class="sep">·</span> detected 6h ago <span class="sep">·</span> auto-revert pending</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">Investigate</span>
+            <span class="text-link">Snooze</span>
+          </div>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon crit"><svg width="14" height="14"><use href="#i-rotate"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Globex — auto-revert triggered (alt-text fix on /products/*)</div>
+            <div class="att-meta">12 changes reverted <span class="sep">·</span> rank dropped 7 positions post-fix <span class="sep">·</span> 1d ago</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">View changes</span>
+            <span class="text-link">Dismiss</span>
+          </div>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon warn"><svg width="14" height="14"><use href="#i-plug"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Initech — GSC connection stale, no sync in 3 days</div>
+            <div class="att-meta">Token refresh failed <span class="sep">·</span> Warning <span class="sep">·</span> reconnect required</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">Send reconnect link</span>
+            <span class="text-link">Snooze</span>
+          </div>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon warn"><svg width="14" height="14"><use href="#i-edit"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Wayne Industries — 6 articles blocked at quality gate (score &lt;80)</div>
+            <div class="att-meta">avg score 72 <span class="sep">·</span> voice profile incomplete <span class="sep">·</span> blocking auto-publish</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">Configure voice</span>
+            <span class="text-link">View queue</span>
+          </div>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon warn"><svg width="14" height="14"><use href="#i-target"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Stark Tech — 3 keywords dropped from Top 10</div>
+            <div class="att-meta">"industrial automation", "enterprise iot", "ai manufacturing" <span class="sep">·</span> Warning</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">View rankings</span>
+            <span class="text-link">Dismiss</span>
+          </div>
+        </div>
+
+        <div class="att-item">
+          <div class="att-icon info"><svg width="14" height="14"><use href="#i-shield"/></svg></div>
+          <div class="att-body">
+            <div class="att-title">Tyrell Corp — platform detection failed (unknown CMS)</div>
+            <div class="att-meta">Auto-fix system blocked until platform identified <span class="sep">·</span> Info</div>
+          </div>
+          <div class="att-actions">
+            <span class="text-link primary">Set platform</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card wins-list">
+        <div class="card-head">
+          <div>
+            <h3>Wins & milestones</h3>
+            <div class="meta">Last 7 days</div>
+          </div>
+          <a>All wins ↗</a>
+        </div>
+
+        <div class="win-item">
+          <div class="win-icon gold"><svg width="14" height="14"><use href="#i-trophy"/></svg></div>
+          <div class="win-body">
+            <div class="win-title"><strong>Acme</strong> — "enterprise seo platform" reached <strong>position #1</strong></div>
+            <div class="win-meta">8,100 monthly volume <span class="sep">·</span> from #3 <span class="sep">·</span> 2d ago</div>
+          </div>
+        </div>
+
+        <div class="win-item">
+          <div class="win-icon up"><svg width="14" height="14"><use href="#i-trending"/></svg></div>
+          <div class="win-body">
+            <div class="win-title"><strong>Globex</strong> — 4 keywords entered Top 10 this week</div>
+            <div class="win-meta">+18,400 est. traffic added <span class="sep">·</span> 1d ago</div>
+          </div>
+        </div>
+
+        <div class="win-item">
+          <div class="win-icon gold"><svg width="14" height="14"><use href="#i-trophy"/></svg></div>
+          <div class="win-body">
+            <div class="win-title"><strong>Initech</strong> — 50,000 clicks/mo milestone reached</div>
+            <div class="win-meta">2× target attainment for monthly clicks <span class="sep">·</span> 2d ago</div>
+          </div>
+        </div>
+
+        <div class="win-item">
+          <div class="win-icon link"><svg width="14" height="14"><use href="#i-link"/></svg></div>
+          <div class="win-body">
+            <div class="win-title"><strong>Wayne Industries</strong> — high-authority backlink from forbes.com</div>
+            <div class="win-meta">DR 95 <span class="sep">·</span> /enterprise-guide <span class="sep">·</span> 3d ago</div>
+          </div>
+        </div>
+
+        <div class="win-item">
+          <div class="win-icon up"><svg width="14" height="14"><use href="#i-shield"/></svg></div>
+          <div class="win-body">
+            <div class="win-title"><strong>Stark Tech</strong> — audit score improved <strong>67 → 84</strong></div>
+            <div class="win-meta">31 auto-fixes applied <span class="sep">·</span> 4d ago</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ Pipeline + Content ============ -->
+    <div class="row-pipeline">
+
+      <!-- Prospect funnel -->
+      <div class="card funnel">
+        <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <h3 style="margin:0;font-size:13.5px;font-weight:600">Prospect pipeline</h3>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">This month · 7/10 daily quota used</div>
+          </div>
+          <a class="text-link">Open pipeline ↗</a>
+        </div>
+
+        <div class="funnel-stages">
+          <div class="stage">
+            <div class="stage-count">47</div>
+            <div class="stage-bar s1"></div>
+            <div class="stage-label">New</div>
+          </div>
+          <div class="stage">
+            <div class="stage-count">24</div>
+            <div class="stage-bar s2"></div>
+            <div class="stage-label">Analyzing</div>
+          </div>
+          <div class="stage">
+            <div class="stage-count">12</div>
+            <div class="stage-bar s3"></div>
+            <div class="stage-label">Analyzed</div>
+          </div>
+          <div class="stage">
+            <div class="stage-count">8</div>
+            <div class="stage-bar s4"></div>
+            <div class="stage-label">Proposal</div>
+          </div>
+          <div class="stage">
+            <div class="stage-count">3</div>
+            <div class="stage-bar s5"></div>
+            <div class="stage-label">Won</div>
+          </div>
+        </div>
+
+        <div class="funnel-foot">
+          <div class="ff-stat"><div class="lbl">Conversion · this mo</div><div class="val accent">23%</div></div>
+          <div class="ff-stat"><div class="lbl">ARR added</div><div class="val">$12k</div></div>
+          <div class="ff-stat"><div class="lbl">Pending signature</div><div class="val">2</div></div>
+        </div>
+      </div>
+
+      <!-- Content production -->
+      <div class="card content-prod">
+        <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <h3 style="margin:0;font-size:13.5px;font-weight:600">Content production</h3>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">Across all clients · 8-state lifecycle</div>
+          </div>
+          <a class="text-link">Calendar ↗</a>
+        </div>
+
+        <div class="cp-distribution">
+          <div class="cp-state"><div class="ct">12</div><div class="lbl">Draft</div></div>
+          <div class="cp-state"><div class="ct">4</div><div class="lbl">Generating</div></div>
+          <div class="cp-state has"><div class="ct">8</div><div class="lbl">Generated</div></div>
+          <div class="cp-state warn"><div class="ct">11</div><div class="lbl">Pending</div></div>
+          <div class="cp-state"><div class="ct">3</div><div class="lbl">Approved</div></div>
+          <div class="cp-state"><div class="ct">6</div><div class="lbl">Scheduled</div></div>
+          <div class="cp-state has"><div class="ct">28</div><div class="lbl">Published</div></div>
+          <div class="cp-state"><div class="ct">2</div><div class="lbl">Failed</div></div>
+        </div>
+
+        <div class="cp-foot">
+          <div class="cp-stat"><div class="lbl">Quality gate avg</div><div class="val">87 <span class="delta up" style="font-size:10px">+3</span></div></div>
+          <div class="cp-stat"><div class="lbl">Voice profiles</div><div class="val warn-i">8/12 set</div></div>
+          <div class="cp-stat"><div class="lbl">Auto-links inserted</div><div class="val">142 <span class="delta up" style="font-size:10px">7d</span></div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ Client Portfolio Table ============ -->
+    <div class="card portfolio-table">
+      <div class="pt-head">
+        <div>
+          <h3 style="margin:0;font-size:13.5px;font-weight:600">Client portfolio</h3>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">34 clients · sortable, filterable, ⌘K to search</div>
+        </div>
+        <div class="pt-tools">
+          <button class="savedview-pill">All clients <svg width="12" height="12"><use href="#i-chevron-down"/></svg></button>
+          <button class="filter-pill active">All</button>
+          <button class="filter-pill">At risk</button>
+          <button class="filter-pill">Stale conn.</button>
+          <button class="filter-pill">No goals</button>
+          <button class="filter-pill"><svg width="12" height="12"><use href="#i-settings"/></svg></button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24%">Client</th>
+            <th class="num" style="width:9%">Health</th>
+            <th class="num" style="width:18%">Traffic · 30d</th>
+            <th class="num" style="width:11%">Top 10</th>
+            <th class="num" style="width:9%">Goals</th>
+            <th style="width:14%">Issues</th>
+            <th style="width:10%">Last sync</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C)">AC</div>
+                <div>
+                  <div class="client-name">Acme Corp</div>
+                  <div class="client-domain">acmecorp.com</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h1"><span class="health-dot"></span> 84</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 18 L13 16 L26 14 L40 11 L53 9 L66 7 L80 4" fill="none" stroke="#0F4F3D" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta up">+18.4%</span>
+              </div>
+            </td>
+            <td class="num">47</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">7/9</span><div class="goal-meter"><div style="width:78%"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib crit">3 crit</span><span class="ib warn">12 warn</span></div></td>
+            <td><span class="last-sync">2h ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#9B2C2C,#B85050)">GX</div>
+                <div>
+                  <div class="client-name">Globex Industries</div>
+                  <div class="client-domain">globex.io</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h3"><span class="health-dot"></span> 52</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 5 L13 6 L26 9 L40 12 L53 15 L66 18 L80 19" fill="none" stroke="#9B2C2C" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta down">−28.0%</span>
+              </div>
+            </td>
+            <td class="num">23</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">4/9</span><div class="goal-meter"><div style="width:44%;background:var(--error)"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib crit">12 crit</span><span class="ib warn">28 warn</span></div></td>
+            <td><span class="last-sync">1d ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#2D5A87,#5285B8)">IN</div>
+                <div>
+                  <div class="client-name">Initech</div>
+                  <div class="client-domain">initech.com</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h2"><span class="health-dot"></span> 71</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 12 L13 13 L26 11 L40 12 L53 11 L66 10 L80 9" fill="none" stroke="#9A9A9F" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta flat">+0.2%</span>
+              </div>
+            </td>
+            <td class="num">38</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">6/9</span><div class="goal-meter"><div style="width:67%"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib warn">7 warn</span></div></td>
+            <td><span class="last-sync stale">3d ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#1A1A4F,#3F3F8C)">WI</div>
+                <div>
+                  <div class="client-name">Wayne Industries</div>
+                  <div class="client-domain">wayneindustries.com</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h1"><span class="health-dot"></span> 91</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 16 L13 15 L26 13 L40 12 L53 9 L66 7 L80 5" fill="none" stroke="#0F4F3D" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta up">+24.7%</span>
+              </div>
+            </td>
+            <td class="num">112</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">9/9</span><div class="goal-meter"><div style="width:100%"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib warn">2 warn</span></div></td>
+            <td><span class="last-sync">2h ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#A87F1A,#D4A340)">ST</div>
+                <div>
+                  <div class="client-name">Stark Tech</div>
+                  <div class="client-domain">starkindustries.com</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h2"><span class="health-dot"></span> 76</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 14 L13 12 L26 10 L40 11 L53 9 L66 8 L80 6" fill="none" stroke="#0F4F3D" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta up">+11.2%</span>
+              </div>
+            </td>
+            <td class="num">67</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">5/9</span><div class="goal-meter"><div style="width:55%"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib warn">9 warn</span></div></td>
+            <td><span class="last-sync">2h ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#6B5B7A,#9881AB)">TC</div>
+                <div>
+                  <div class="client-name">Tyrell Corp</div>
+                  <div class="client-domain">tyrell.app</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h3"><span class="health-dot"></span> 48</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 11 L13 12 L26 13 L40 14 L53 14 L66 15 L80 15" fill="none" stroke="#9A9A9F" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta down">−4.1%</span>
+              </div>
+            </td>
+            <td class="num">14</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">2/9</span><div class="goal-meter"><div style="width:22%;background:var(--error)"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib crit">CMS unknown</span></div></td>
+            <td><span class="last-sync">5h ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="client-cell">
+                <div class="client-mark" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C)">UM</div>
+                <div>
+                  <div class="client-name">Umbrella Corp</div>
+                  <div class="client-domain">umbrella.bio</div>
+                </div>
+              </div>
+            </td>
+            <td class="num"><span class="health-pill h1"><span class="health-dot"></span> 88</span></td>
+            <td class="num">
+              <div class="traffic-cell">
+                <svg class="sparkline" viewBox="0 0 80 22" preserveAspectRatio="none"><path d="M0 17 L13 14 L26 13 L40 11 L53 9 L66 6 L80 4" fill="none" stroke="#0F4F3D" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="delta up">+32.1%</span>
+              </div>
+            </td>
+            <td class="num">89</td>
+            <td class="num"><div class="goal-bar"><span style="font-variant-numeric:tabular-nums">8/9</span><div class="goal-meter"><div style="width:89%"></div></div></div></td>
+            <td><div class="issue-badges"><span class="ib warn">3 warn</span></div></td>
+            <td><span class="last-sync">2h ago</span></td>
+            <td><svg width="14" height="14" style="color:var(--text-3);cursor:pointer"><use href="#i-more"/></svg></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ============ Activity / Team / Upcoming ============ -->
+    <div class="row-tri">
+
+      <!-- Activity feed -->
+      <div class="card activity-card">
+        <div class="card-head">
+          <div>
+            <h3>Activity feed</h3>
+            <div class="meta"><span style="color:var(--accent);font-weight:500">●</span> Live · Socket.IO</div>
+          </div>
+          <a>Pause</a>
+        </div>
+
+        <div class="feed-item">
+          <div class="feed-dot live"></div>
+          <div>
+            <div class="feed-text"><strong>Acme</strong> — keyword <span class="em">"enterprise seo platform"</span> reached #1</div>
+            <div class="feed-time">2 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot live"></div>
+          <div>
+            <div class="feed-text"><strong>Initech</strong> — weekly report delivered to <span class="em">client@initech.com</span></div>
+            <div class="feed-time">8 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot live"></div>
+          <div>
+            <div class="feed-text"><strong>Globex</strong> — audit completed <span class="em">12 critical findings</span></div>
+            <div class="feed-time">14 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot muted"></div>
+          <div>
+            <div class="feed-text"><strong>Wayne</strong> — published article <span class="em">"Beginner's guide to enterprise SEO"</span></div>
+            <div class="feed-time">23 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot muted"></div>
+          <div>
+            <div class="feed-text"><strong>Stark Tech</strong> — auto-fix applied: alt text on 12 images</div>
+            <div class="feed-time">31 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot muted"></div>
+          <div>
+            <div class="feed-text"><strong>Umbrella</strong> — 3 internal link suggestions auto-approved</div>
+            <div class="feed-time">42 minutes ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot muted"></div>
+          <div>
+            <div class="feed-text">Maria S. assigned 4 keywords to content team</div>
+            <div class="feed-time">1 hour ago</div>
+          </div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-dot muted"></div>
+          <div>
+            <div class="feed-text"><strong>Globex</strong> — auto-revert fired: traffic dropped 23% post-fix</div>
+            <div class="feed-time">1 hour ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team workload -->
+      <div class="card team-card">
+        <div class="card-head">
+          <div>
+            <h3>Team workload</h3>
+            <div class="meta">3 members · 1 reassignment suggested</div>
+          </div>
+          <a>Balance ↗</a>
+        </div>
+
+        <div class="tm-row">
+          <div class="tm-top">
+            <div class="tm-avatar" style="background:linear-gradient(135deg,#9B2C2C,#B85050)">MS</div>
+            <div class="tm-name">Maria S.</div>
+            <div class="tm-pct over">110%</div>
+          </div>
+          <div class="tm-bar"><div class="over" style="width:100%"></div></div>
+          <div class="tm-meta">11 of 10 capacity · overloaded · 2 newest can move</div>
+        </div>
+
+        <div class="tm-row">
+          <div class="tm-top">
+            <div class="tm-avatar" style="background:linear-gradient(135deg,#A87F1A,#D4A340)">JK</div>
+            <div class="tm-name">James K.</div>
+            <div class="tm-pct near">85%</div>
+          </div>
+          <div class="tm-bar"><div class="near" style="width:85%"></div></div>
+          <div class="tm-meta">8.5 of 10 capacity · near capacity</div>
+        </div>
+
+        <div class="tm-row">
+          <div class="tm-top">
+            <div class="tm-avatar" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C)">ST</div>
+            <div class="tm-name">Sara T.</div>
+            <div class="tm-pct ok">60%</div>
+          </div>
+          <div class="tm-bar"><div class="ok" style="width:60%"></div></div>
+          <div class="tm-meta">6 of 10 capacity · available · can take 2 reassigned</div>
+        </div>
+
+        <div class="tm-row">
+          <div class="tm-top">
+            <div class="tm-avatar" style="background:linear-gradient(135deg,#2D5A87,#5285B8)">DM</div>
+            <div class="tm-name">Dominic M.</div>
+            <div class="tm-pct ok">40%</div>
+          </div>
+          <div class="tm-bar"><div class="ok" style="width:40%"></div></div>
+          <div class="tm-meta">Owner · oversight only</div>
+        </div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="card upcoming-card">
+        <div class="card-head">
+          <div>
+            <h3>Upcoming · 24h</h3>
+            <div class="meta">Reports, audits, expirations</div>
+          </div>
+          <a>Schedule</a>
+        </div>
+
+        <div class="uc-row">
+          <div class="uc-icon urgent"><svg width="13" height="13"><use href="#i-clock"/></svg></div>
+          <div class="uc-body">
+            <div class="uc-title">Initech proposal expires</div>
+            <div class="uc-meta urgent">in 2h 14m · €4,200 ARR at stake</div>
+          </div>
+        </div>
+
+        <div class="uc-row">
+          <div class="uc-icon"><svg width="13" height="13"><use href="#i-doc"/></svg></div>
+          <div class="uc-body">
+            <div class="uc-title">Acme weekly report generates</div>
+            <div class="uc-meta">today 5:00 PM · 2 recipients</div>
+          </div>
+        </div>
+
+        <div class="uc-row">
+          <div class="uc-icon"><svg width="13" height="13"><use href="#i-shield"/></svg></div>
+          <div class="uc-body">
+            <div class="uc-title">Globex full-site audit</div>
+            <div class="uc-meta">tomorrow 2:00 AM UTC · scheduled</div>
+          </div>
+        </div>
+
+        <div class="uc-row">
+          <div class="uc-icon urgent"><svg width="13" height="13"><use href="#i-plug"/></svg></div>
+          <div class="uc-body">
+            <div class="uc-title">Wayne — SSL cert renewal</div>
+            <div class="uc-meta urgent">in 3 days · auto-renew enabled</div>
+          </div>
+        </div>
+
+        <div class="uc-row">
+          <div class="uc-icon"><svg width="13" height="13"><use href="#i-mail"/></svg></div>
+          <div class="uc-body">
+            <div class="uc-title">5 monthly reports queued</div>
+            <div class="uc-meta">Mon 6:00 AM · auto-deliver via email</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ Operational strip ============ -->
+    <div class="ops-strip">
+
+      <div class="card ops-card">
+        <div class="ops-head">
+          <div class="ops-title"><svg class="ico"><use href="#i-wrench"/></svg> Auto-fix activity</div>
+          <a class="text-link">Last 7 days ↗</a>
+        </div>
+        <div class="ops-grid">
+          <div class="ops-stat"><div class="ct ok">47</div><div class="lbl">applied</div></div>
+          <div class="ops-stat"><div class="ct crit">2</div><div class="lbl">reverted</div></div>
+          <div class="ops-stat"><div class="ct">12</div><div class="lbl">flagged</div></div>
+        </div>
+      </div>
+
+      <div class="card ops-card">
+        <div class="ops-head">
+          <div class="ops-title"><svg class="ico"><use href="#i-bell"/></svg> Alerts firing</div>
+          <a class="text-link">Drawer ↗</a>
+        </div>
+        <div class="ops-grid">
+          <div class="ops-stat"><div class="ct crit">2</div><div class="lbl">critical</div></div>
+          <div class="ops-stat"><div class="ct warn">3</div><div class="lbl">warning</div></div>
+          <div class="ops-stat"><div class="ct">1</div><div class="lbl">info</div></div>
+        </div>
+      </div>
+
+      <div class="card ops-card">
+        <div class="ops-head">
+          <div class="ops-title"><svg class="ico"><use href="#i-doc"/></svg> Reports</div>
+          <a class="text-link">All ↗</a>
+        </div>
+        <div class="ops-grid">
+          <div class="ops-stat"><div class="ct ok">8</div><div class="lbl">delivered</div></div>
+          <div class="ops-stat"><div class="ct">3</div><div class="lbl">pending</div></div>
+          <div class="ops-stat"><div class="ct">2</div><div class="lbl">scheduled</div></div>
+        </div>
+      </div>
+
+      <div class="card ops-card">
+        <div class="ops-head">
+          <div class="ops-title"><svg class="ico"><use href="#i-plug"/></svg> Connections</div>
+          <a class="text-link">Manage ↗</a>
+        </div>
+        <div class="ops-grid">
+          <div class="ops-stat"><div class="ct ok">28</div><div class="lbl">healthy</div></div>
+          <div class="ops-stat"><div class="ct warn">4</div><div class="lbl">stale</div></div>
+          <div class="ops-stat"><div class="ct crit">2</div><div class="lbl">failed</div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+</body>
+</html>

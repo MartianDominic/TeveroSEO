@@ -232,15 +232,21 @@ def create_client(
             detail=f"Client limit reached. Maximum {MAX_CLIENTS_PER_USER} clients allowed per user."
         )
 
-    client = Client(name=payload.name, website_url=payload.website_url)
-    db.add(client)
-    db.commit()
-    db.refresh(client)
+    # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
+    try:
+        client = Client(name=payload.name, website_url=payload.website_url)
+        db.add(client)
+        db.commit()
+        db.refresh(client)
 
-    # Grant creator admin access to the new client
-    grant_creator_access(db, client.id, clerk_user_id)
+        # Grant creator admin access to the new client
+        grant_creator_access(db, client.id, clerk_user_id)
 
-    return _client_to_response(client)
+        return _client_to_response(client)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating client: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{client_id}", response_model=ClientDetailResponse)
@@ -264,14 +270,22 @@ def update_client(
     _authorized: bool = Depends(require_client_access),
 ):
     """Update a client's name and/or website_url. Only provided fields are changed."""
-    client = _get_active_client_or_404(client_id, db)
-    if payload.name is not None:
-        client.name = payload.name
-    if payload.website_url is not None:
-        client.website_url = payload.website_url
-    db.commit()
-    db.refresh(client)
-    return _client_to_response(client)
+    # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
+    try:
+        client = _get_active_client_or_404(client_id, db)
+        if payload.name is not None:
+            client.name = payload.name
+        if payload.website_url is not None:
+            client.website_url = payload.website_url
+        db.commit()
+        db.refresh(client)
+        return _client_to_response(client)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating client: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{client_id}/archive", response_model=ClientResponse)
@@ -282,11 +296,19 @@ def archive_client(
     _authorized: bool = Depends(require_client_access),
 ):
     """Soft-delete a client by setting is_archived=True. Does NOT delete the row."""
-    client = _get_active_client_or_404(client_id, db)
-    client.is_archived = True
-    db.commit()
-    db.refresh(client)
-    return _client_to_response(client)
+    # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
+    try:
+        client = _get_active_client_or_404(client_id, db)
+        client.is_archived = True
+        db.commit()
+        db.refresh(client)
+        return _client_to_response(client)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error archiving client: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{client_id}/settings", response_model=SettingsResponse)
@@ -317,39 +339,47 @@ def upsert_settings(
     CMS credential plaintext (wp_app_password, shopify_api_key) is encrypted
     before storage and never returned in the response.
     """
-    client = _get_active_client_or_404(client_id, db)
+    # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
+    try:
+        client = _get_active_client_or_404(client_id, db)
 
-    settings = client.settings
-    if settings is None:
-        settings = ClientSettings(client_id=client.id)
-        db.add(settings)
+        settings = client.settings
+        if settings is None:
+            settings = ClientSettings(client_id=client.id)
+            db.add(settings)
 
-    # Update non-sensitive fields
-    if payload.brand_voice is not None:
-        settings.brand_voice = payload.brand_voice
-    if payload.image_prompt_template is not None:
-        settings.image_prompt_template = payload.image_prompt_template
-    # Model overrides support explicit null to CLEAR the override (MODEL-05)
-    if "text_model_override" in payload.model_fields_set:
-        settings.text_model_override = payload.text_model_override  # may be None
-    if "image_model_override" in payload.model_fields_set:
-        settings.image_model_override = payload.image_model_override  # may be None
-    if payload.wp_url is not None:
-        settings.wp_url = payload.wp_url
-    if payload.wp_username is not None:
-        settings.wp_username = payload.wp_username
+        # Update non-sensitive fields
+        if payload.brand_voice is not None:
+            settings.brand_voice = payload.brand_voice
+        if payload.image_prompt_template is not None:
+            settings.image_prompt_template = payload.image_prompt_template
+        # Model overrides support explicit null to CLEAR the override (MODEL-05)
+        if "text_model_override" in payload.model_fields_set:
+            settings.text_model_override = payload.text_model_override  # may be None
+        if "image_model_override" in payload.model_fields_set:
+            settings.image_model_override = payload.image_model_override  # may be None
+        if payload.wp_url is not None:
+            settings.wp_url = payload.wp_url
+        if payload.wp_username is not None:
+            settings.wp_username = payload.wp_username
 
-    # Encrypt sensitive fields before storage
-    if payload.wp_app_password is not None:
-        settings.wp_app_password_encrypted = encrypt_value(payload.wp_app_password)
-    if payload.shopify_store_url is not None:
-        settings.shopify_store_url = payload.shopify_store_url
-    if payload.shopify_api_key is not None:
-        settings.shopify_api_key_encrypted = encrypt_value(payload.shopify_api_key)
+        # Encrypt sensitive fields before storage
+        if payload.wp_app_password is not None:
+            settings.wp_app_password_encrypted = encrypt_value(payload.wp_app_password)
+        if payload.shopify_store_url is not None:
+            settings.shopify_store_url = payload.shopify_store_url
+        if payload.shopify_api_key is not None:
+            settings.shopify_api_key_encrypted = encrypt_value(payload.shopify_api_key)
 
-    db.commit()
-    db.refresh(settings)
-    return _settings_to_response(settings)
+        db.commit()
+        db.refresh(settings)
+        return _settings_to_response(settings)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating client settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +443,8 @@ def _normalize_webhook_credentials(credentials: Dict[str, str]) -> Dict[str, str
 
 async def _test_wordpress_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test WordPress REST API connection."""
+    from services.url_validator import validate_url
+
     # Normalize field names for both frontend and backend formats
     normalized = _normalize_wordpress_credentials(credentials)
     url = normalized.get("wp_url", "").rstrip("/")
@@ -421,6 +453,15 @@ async def _test_wordpress_connection(credentials: Dict[str, str]) -> Dict[str, a
 
     if not all([url, username, app_password]):
         return {"success": False, "error": "Missing WordPress credentials (URL, username, or app password)"}
+
+    # SSRF Protection: Validate WordPress URL before making request
+    if not validate_url(url):
+        return {
+            "success": False,
+            "error": "Invalid WordPress URL: URL must be a valid http/https URL "
+            "and cannot target internal/private IP addresses (e.g., localhost, "
+            "127.0.0.1, 10.x.x.x, 192.168.x.x, 169.254.169.254)"
+        }
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -447,11 +488,13 @@ async def _test_wordpress_connection(credentials: Dict[str, str]) -> Dict[str, a
         return {"success": False, "error": "Could not connect - check URL is correct"}
     except Exception as e:
         logger.error(f"WordPress connection test error: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "An unexpected error occurred while testing the connection"}
 
 
 async def _test_shopify_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test Shopify Admin API connection."""
+    from services.url_validator import validate_url
+
     # Normalize field names for both frontend and backend formats
     normalized = _normalize_shopify_credentials(credentials)
     store_url = normalized.get("shopify_store_url", "").rstrip("/")
@@ -459,6 +502,15 @@ async def _test_shopify_connection(credentials: Dict[str, str]) -> Dict[str, any
 
     if not all([store_url, access_token]):
         return {"success": False, "error": "Missing Shopify credentials (store URL or access token)"}
+
+    # SSRF Protection: Validate Shopify store URL before making request
+    if not validate_url(store_url):
+        return {
+            "success": False,
+            "error": "Invalid Shopify store URL: URL must be a valid http/https URL "
+            "and cannot target internal/private IP addresses (e.g., localhost, "
+            "127.0.0.1, 10.x.x.x, 192.168.x.x, 169.254.169.254)"
+        }
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -485,11 +537,16 @@ async def _test_shopify_connection(credentials: Dict[str, str]) -> Dict[str, any
         return {"success": False, "error": "Could not connect - check store URL"}
     except Exception as e:
         logger.error(f"Shopify connection test error: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "An unexpected error occurred while testing the connection"}
 
 
 async def _test_wix_connection(credentials: Dict[str, str]) -> Dict[str, any]:
-    """Test Wix API connection."""
+    """Test Wix API connection.
+
+    Note: Wix API uses a fixed endpoint (www.wixapis.com), so SSRF validation
+    is not needed here - the URL is not user-controlled. However, we validate
+    the site_id format to prevent injection attacks.
+    """
     # Normalize field names for both frontend and backend formats
     normalized = _normalize_wix_credentials(credentials)
     site_id = normalized.get("wix_site_id")
@@ -497,6 +554,15 @@ async def _test_wix_connection(credentials: Dict[str, str]) -> Dict[str, any]:
 
     if not all([site_id, access_token]):
         return {"success": False, "error": "Missing Wix credentials (site ID or access token)"}
+
+    # Validate site_id format (should be a GUID-like string, no special chars)
+    # This prevents header injection attacks via wix-site-id header
+    import re
+    if not re.match(r'^[a-zA-Z0-9\-_]+$', site_id):
+        return {
+            "success": False,
+            "error": "Invalid Wix site ID format: must contain only alphanumeric characters, hyphens, and underscores"
+        }
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -525,17 +591,28 @@ async def _test_wix_connection(credentials: Dict[str, str]) -> Dict[str, any]:
         return {"success": False, "error": "Connection timed out"}
     except Exception as e:
         logger.error(f"Wix connection test error: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "An unexpected error occurred while testing the connection"}
 
 
 async def _test_webhook_connection(credentials: Dict[str, str]) -> Dict[str, any]:
     """Test webhook endpoint with a ping."""
+    from services.url_validator import validate_url
+
     # Normalize field names for both frontend and backend formats
     normalized = _normalize_webhook_credentials(credentials)
     webhook_url = normalized.get("webhook_url")
 
     if not webhook_url:
         return {"success": False, "error": "Missing webhook URL"}
+
+    # SSRF Protection: Validate webhook URL before making request
+    if not validate_url(webhook_url):
+        return {
+            "success": False,
+            "error": "Invalid webhook URL: URL must be a valid http/https URL "
+            "and cannot target internal/private IP addresses (e.g., localhost, "
+            "127.0.0.1, 10.x.x.x, 192.168.x.x, 169.254.169.254)"
+        }
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -554,7 +631,7 @@ async def _test_webhook_connection(credentials: Dict[str, str]) -> Dict[str, any
         return {"success": False, "error": "Could not connect to webhook URL"}
     except Exception as e:
         logger.error(f"Webhook connection test error: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "An unexpected error occurred while testing the connection"}
 
 
 # ---------------------------------------------------------------------------
@@ -593,8 +670,9 @@ async def test_cms_connection(
         else:
             return {"success": False, "error": f"Unknown platform: {platform}"}
     except Exception as e:
-        logger.error(f"Connection test failed for {platform}: {e}")
-        return {"success": False, "error": str(e)}
+        # SECURITY FIX: HIGH-ERR-06 - Log full error but return generic message
+        logger.error(f"Connection test failed for {platform}: {e}", exc_info=True)
+        return {"success": False, "error": "Connection test failed unexpectedly"}
 
 
 # ---------------------------------------------------------------------------
@@ -602,18 +680,20 @@ async def test_cms_connection(
 # ---------------------------------------------------------------------------
 
 @router.post("/{client_id}/verify-access", response_model=VerifyAccessResponse)
-def verify_client_access(
+async def verify_client_access(
     client_id: str,
     payload: VerifyAccessRequest,
     db: Session = Depends(get_shared_db),
+    current_user: Dict = Depends(get_current_user),
 ):
     """
     Verify that a user has access to a client.
 
     This endpoint is called by the frontend to validate client access
     before performing operations. It checks:
-    1. Client exists and is not archived
-    2. User is authenticated (userId is provided)
+    1. User is authenticated via Bearer token (get_current_user dependency)
+    2. UserId in request body matches authenticated user (prevents spoofing)
+    3. Client exists and is not archived
 
     NOTE: Currently all authenticated users have access to all clients
     in the agency model. Future versions may implement per-client
@@ -622,11 +702,32 @@ def verify_client_access(
     Returns:
         VerifyAccessResponse with hasAccess=true if user has access
     """
-    # Validate userId is provided
+    # Validate userId is provided in request body
     if not payload.userId:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User ID is required"
+        )
+
+    # SECURITY: Verify that the userId in the request matches the authenticated user
+    # This prevents a malicious user from checking access for other users
+    authenticated_user_id = current_user.get('clerk_user_id') or current_user.get('id')
+    if not authenticated_user_id:
+        logger.error("Authenticated user missing clerk_user_id/id in token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+
+    if payload.userId != authenticated_user_id:
+        logger.warning(
+            f"User ID mismatch in verify-access: "
+            f"request.userId={payload.userId[:8]}***, "
+            f"authenticated_user={authenticated_user_id[:8]}***"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User ID mismatch: cannot verify access for another user"
         )
 
     # Check client exists and is not archived

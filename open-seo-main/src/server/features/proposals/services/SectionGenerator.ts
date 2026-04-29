@@ -16,7 +16,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
+import { withRetry } from "@/server/lib/retry";
 import type { AwarenessLevel } from "./AwarenessClassifier";
 
 const log = createLogger({ module: "SectionGenerator" });
@@ -26,6 +28,61 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PROMPTS_DIR = join(__dirname, "../prompts");
+
+/**
+ * Template cache - loaded once at module initialization, reused forever.
+ * Templates are static XML files that never change at runtime.
+ * This eliminates blocking readFileSync calls during request handling.
+ */
+const TEMPLATE_CACHE = new Map<string, string>();
+
+/**
+ * Load a template from disk or return cached version.
+ * Safe to call at module initialization or lazily on first use.
+ */
+function loadTemplate(filename: string): string {
+  if (TEMPLATE_CACHE.has(filename)) {
+    return TEMPLATE_CACHE.get(filename)!;
+  }
+
+  const path = join(PROMPTS_DIR, filename);
+  const content = readFileSync(path, "utf-8");
+  TEMPLATE_CACHE.set(filename, content);
+  log.debug("Template loaded and cached", { filename });
+  return content;
+}
+
+/**
+ * Preload all templates at module initialization.
+ * This ensures no blocking I/O during request handling.
+ */
+function preloadAllTemplates(): void {
+  const files = [
+    "presale-hook.xml",
+    "executive-summary.xml",
+    "current-state.xml",
+    "keyword-analysis.xml",
+    "competitor-comparison.xml",
+    "page-mapping.xml",
+    "roi-projections.xml",
+    "investment-section.xml",
+    "agreement-generator.xml",
+  ];
+
+  for (const filename of files) {
+    try {
+      loadTemplate(filename);
+    } catch (error) {
+      // Log but don't fail initialization - template may not exist yet
+      log.warn("Failed to preload template", { filename, error: String(error) });
+    }
+  }
+
+  log.info("Template preloading complete", { loadedCount: TEMPLATE_CACHE.size });
+}
+
+// Preload templates at module initialization (blocking but only once at startup)
+preloadAllTemplates();
 
 export type SectionType =
   | "presale_hook"
@@ -76,6 +133,16 @@ export interface GeneratedSection {
 }
 
 /**
+ * Zod schema for validating LLM section generation response.
+ * The LLM returns text content, optionally wrapped in <output> tags.
+ * We validate that the response is a non-empty string.
+ */
+const SectionResponseSchema = z.object({
+  type: z.literal("text"),
+  text: z.string().min(1, "Generated content cannot be empty"),
+});
+
+/**
  * Prompt file mapping for each section type.
  */
 const PROMPT_FILES: Record<SectionType, string> = {
@@ -111,21 +178,26 @@ export class SectionGenerator {
 
   /**
    * Generate a single section using the appropriate XML prompt.
+   * Uses cached templates to avoid blocking I/O during request handling.
    */
   async generateSection(
     sectionType: SectionType,
     input: SectionInput
   ): Promise<GeneratedSection> {
-    const promptPath = this.getPromptPath(sectionType);
-    let promptTemplate: string;
+    const filename = PROMPT_FILES[sectionType];
+    if (!filename) {
+      throw new Error(`Unknown section type: ${sectionType}`);
+    }
 
+    let promptTemplate: string;
     try {
-      promptTemplate = readFileSync(promptPath, "utf-8");
+      // Use cached template (loaded at module init, no blocking I/O)
+      promptTemplate = loadTemplate(filename);
     } catch (error) {
       log.error(
-        "Failed to read prompt template",
+        "Failed to load prompt template",
         error instanceof Error ? error : new Error(String(error)),
-        { path: promptPath, sectionType }
+        { filename, sectionType }
       );
       throw new Error(`Failed to load prompt template for ${sectionType}`);
     }
@@ -139,19 +211,31 @@ export class SectionGenerator {
       awarenessLevel: input.awarenessLevel,
     });
 
-    const response = await this.anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const response = await withRetry(
+      () =>
+        this.anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 2000,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      { maxRetries: 3, baseDelayMs: 1000 }
+    );
 
     const content = response.content[0];
-    if (content.type !== "text") {
-      throw new Error("Unexpected response type");
+
+    // Validate response structure with Zod schema
+    const validationResult = SectionResponseSchema.safeParse(content);
+    if (!validationResult.success) {
+      log.error("LLM response validation failed", new Error("Schema validation failed"), {
+        sectionType,
+        domain: input.domain,
+        errors: validationResult.error.issues,
+      });
+      throw new Error(`Invalid LLM response: ${validationResult.error.message}`);
     }
 
     // Extract the generated content (may be wrapped in XML tags)
-    let generatedContent = content.text;
+    let generatedContent = validationResult.data.text;
 
     // Try to extract from <output> tags if present
     const outputMatch = generatedContent.match(/<output>([\s\S]*?)<\/output>/);
@@ -198,17 +282,6 @@ export class SectionGenerator {
     });
 
     return results;
-  }
-
-  /**
-   * Get the prompt file path for a section type.
-   */
-  private getPromptPath(sectionType: SectionType): string {
-    const filename = PROMPT_FILES[sectionType];
-    if (!filename) {
-      throw new Error(`Unknown section type: ${sectionType}`);
-    }
-    return join(PROMPTS_DIR, filename);
   }
 
   /**

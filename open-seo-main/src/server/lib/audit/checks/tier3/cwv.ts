@@ -31,11 +31,32 @@ function getCruxApiKey(): string | undefined {
 }
 
 /**
- * Fetch CrUX data for a URL.
+ * Origin-level cache for CrUX data.
+ * CrUX data is per-origin (not per-page), so we cache to avoid redundant API calls.
+ * Cache is cleared at the start of each audit run via clearCruxCache().
+ */
+const cruxOriginCache = new Map<string, CruxResponse | null>();
+
+/**
+ * Clear the CrUX cache. Call at the start of each audit run.
+ */
+export function clearCruxCache(): void {
+  cruxOriginCache.clear();
+}
+
+/**
+ * Fetch CrUX data for a URL with origin-level caching.
+ * CrUX API returns origin-level metrics, so all pages from the same origin share data.
  */
 async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse | null> {
+  const origin = new URL(url).origin;
+
+  // Check cache first (deduplication per origin)
+  if (cruxOriginCache.has(origin)) {
+    return cruxOriginCache.get(origin) ?? null;
+  }
+
   try {
-    const origin = new URL(url).origin;
     const response = await fetch(
       `https://chromeuxreport.googleapis.com/v1/records:queryRecord?key=${apiKey}`,
       {
@@ -46,11 +67,17 @@ async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse 
     );
 
     if (!response.ok) {
+      // Cache the null result to avoid retrying failed origins
+      cruxOriginCache.set(origin, null);
       return null;
     }
 
-    return (await response.json()) as CruxResponse;
+    const data = (await response.json()) as CruxResponse;
+    cruxOriginCache.set(origin, data);
+    return data;
   } catch {
+    // Cache failures to prevent repeated failed requests
+    cruxOriginCache.set(origin, null);
     return null;
   }
 }
@@ -64,7 +91,7 @@ registerCheck({
   name: "LCP <= 2.5s",
   tier: 3,
   category: "cwv",
-  severity: "high",
+  severity: "critical",
   autoEditable: false,
   run: async (ctx: CheckContext): Promise<CheckResult> => {
     const apiKey = getCruxApiKey();
@@ -96,11 +123,15 @@ registerCheck({
     const lcp = data.record.metrics.largest_contentful_paint.percentiles.p75;
     const lcpSeconds = lcp / 1000;
     const passed = lcpSeconds <= 2.5;
+    const rating = lcpSeconds <= 2.5 ? "good" : lcpSeconds <= 4 ? "needs-improvement" : "poor";
+
+    // Return "critical" severity for poor CWV (triggers scoring gate)
+    const severity = passed ? "info" : rating === "poor" ? "critical" : "high";
 
     return {
       checkId: "T3-01",
       passed,
-      severity: passed ? "info" : "high",
+      severity,
       message: passed
         ? `LCP is ${lcpSeconds.toFixed(2)}s (target: <= 2.5s)`
         : `LCP is ${lcpSeconds.toFixed(2)}s, exceeds 2.5s threshold`,
@@ -108,7 +139,7 @@ registerCheck({
         lcpMs: lcp,
         lcpSeconds: Math.round(lcpSeconds * 100) / 100,
         threshold: 2.5,
-        rating: lcpSeconds <= 2.5 ? "good" : lcpSeconds <= 4 ? "needs-improvement" : "poor",
+        rating,
       },
       autoEditable: false,
     };
@@ -124,7 +155,7 @@ registerCheck({
   name: "INP <= 200ms",
   tier: 3,
   category: "cwv",
-  severity: "high",
+  severity: "critical",
   autoEditable: false,
   run: async (ctx: CheckContext): Promise<CheckResult> => {
     const apiKey = getCruxApiKey();
@@ -155,18 +186,22 @@ registerCheck({
 
     const inp = data.record.metrics.interaction_to_next_paint.percentiles.p75;
     const passed = inp <= 200;
+    const rating = inp <= 200 ? "good" : inp <= 500 ? "needs-improvement" : "poor";
+
+    // Return "critical" severity for poor CWV (triggers scoring gate)
+    const severity = passed ? "info" : rating === "poor" ? "critical" : "high";
 
     return {
       checkId: "T3-02",
       passed,
-      severity: passed ? "info" : "high",
+      severity,
       message: passed
         ? `INP is ${inp}ms (target: <= 200ms)`
         : `INP is ${inp}ms, exceeds 200ms threshold`,
       details: {
         inpMs: inp,
         threshold: 200,
-        rating: inp <= 200 ? "good" : inp <= 500 ? "needs-improvement" : "poor",
+        rating,
       },
       autoEditable: false,
     };
@@ -182,7 +217,7 @@ registerCheck({
   name: "CLS <= 0.1",
   tier: 3,
   category: "cwv",
-  severity: "high",
+  severity: "critical",
   autoEditable: false,
   run: async (ctx: CheckContext): Promise<CheckResult> => {
     const apiKey = getCruxApiKey();
@@ -213,18 +248,22 @@ registerCheck({
 
     const cls = data.record.metrics.cumulative_layout_shift.percentiles.p75;
     const passed = cls <= 0.1;
+    const rating = cls <= 0.1 ? "good" : cls <= 0.25 ? "needs-improvement" : "poor";
+
+    // Return "critical" severity for poor CWV (triggers scoring gate)
+    const severity = passed ? "info" : rating === "poor" ? "critical" : "high";
 
     return {
       checkId: "T3-03",
       passed,
-      severity: passed ? "info" : "high",
+      severity,
       message: passed
         ? `CLS is ${cls.toFixed(3)} (target: <= 0.1)`
         : `CLS is ${cls.toFixed(3)}, exceeds 0.1 threshold`,
       details: {
         cls: Math.round(cls * 1000) / 1000,
         threshold: 0.1,
-        rating: cls <= 0.1 ? "good" : cls <= 0.25 ? "needs-improvement" : "poor",
+        rating,
       },
       autoEditable: false,
     };

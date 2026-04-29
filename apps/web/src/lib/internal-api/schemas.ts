@@ -97,7 +97,7 @@ export type ContentQuality = z.infer<typeof ContentQualitySchema>;
  */
 export const VoiceProfileSchema = z.object({
   id: z.number().int().positive(),
-  clientId: z.number().int().positive(),
+  clientId: z.string().uuid(),
   name: z.string().min(1).max(100),
   description: z.string().optional(),
   toneAttributes: z.record(z.string(), z.number().min(0).max(100)),
@@ -117,7 +117,7 @@ export type VoiceProfile = z.infer<typeof VoiceProfileSchema>;
  */
 export const VoiceProfileSummarySchema = z.object({
   id: z.number().int().positive(),
-  clientId: z.number().int().positive(),
+  clientId: z.string().uuid(),
   name: z.string(),
   lastUsed: IsoDateTimeSchema.nullable(),
   contentCount: z.number().int().nonnegative(),
@@ -134,7 +134,7 @@ export type VoiceProfileSummary = z.infer<typeof VoiceProfileSummarySchema>;
  */
 export const ClientAccessVerificationSchema = z.object({
   hasAccess: z.boolean(),
-  clientId: z.number().int().positive(),
+  clientId: z.string().uuid(),
   organizationId: z.string().uuid().nullable(),
   role: z.enum(["owner", "admin", "member", "viewer"]).optional(),
 });
@@ -145,7 +145,7 @@ export type ClientAccessVerification = z.infer<typeof ClientAccessVerificationSc
  * Client details schema.
  */
 export const ClientDetailsSchema = z.object({
-  id: z.number().int().positive(),
+  id: z.string().uuid(),
   name: z.string().min(1).max(255),
   domain: z.string().url().optional(),
   industry: z.string().optional(),
@@ -185,7 +185,7 @@ export type GscQueryData = z.infer<typeof GscQueryDataSchema>;
  * GSC snapshot response.
  */
 export const GscSnapshotResponseSchema = z.object({
-  clientId: z.number().int().positive(),
+  clientId: z.string().uuid(),
   dateRange: z.object({
     startDate: z.string(),
     endDate: z.string(),

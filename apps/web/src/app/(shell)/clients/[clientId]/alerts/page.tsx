@@ -13,8 +13,11 @@ interface AlertsPageProps {
 }
 
 async function AlertsContent({ clientId }: { clientId: string }) {
-  const alerts = await getClientAlerts(clientId);
-  return <AlertsTable alerts={alerts} clientId={clientId} />;
+  const result = await getClientAlerts(clientId);
+  if (!result.success) {
+    return <div className="text-destructive p-4">{result.error || "Failed to load alerts"}</div>;
+  }
+  return <AlertsTable alerts={result.data} clientId={clientId} />;
 }
 
 function AlertsLoading() {

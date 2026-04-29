@@ -20,7 +20,7 @@
       "idx": 2,
       "version": "7",
       "when": 1776527038000,
-      "tag": "0002_clerk_auth_migration",
+      "tag": "0002_clerk_auth_migration_safe",
       "breakpoints": true
     },
     {
@@ -54,127 +54,246 @@
     {
       "idx": 7,
       "version": "7",
-      "when": 1776620800000,
+      "when": 1776621100000,
       "tag": "0007_alerts",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "7",
-      "when": 1776621100000,
-      "tag": "0008_webhooks",
+      "when": 1776621200000,
+      "tag": "0007b_keyword_gaps",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "7",
       "when": 1776621400000,
-      "tag": "0009_dashboard_metrics",
+      "tag": "0008_webhooks",
       "breakpoints": true
     },
     {
       "idx": 10,
+      "version": "7",
+      "when": 1776621700000,
+      "tag": "0009_dashboard_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
       "version": "7",
       "when": 1776685400000,
       "tag": "0010_goals_schema",
       "breakpoints": true
     },
     {
-      "idx": 11,
+      "idx": 12,
       "version": "7",
       "when": 1776685800000,
       "tag": "0011_dashboard_goals_columns",
       "breakpoints": true
     },
     {
-      "idx": 12,
+      "idx": 13,
       "version": "7",
       "when": 1776700000000,
       "tag": "0012_detected_patterns",
       "breakpoints": true
     },
     {
-      "idx": 13,
+      "idx": 14,
       "version": "7",
       "when": 1776730000000,
       "tag": "0013_prospect_tables",
       "breakpoints": true
     },
     {
-      "idx": 14,
+      "idx": 15,
       "version": "7",
       "when": 1776780000000,
       "tag": "0014_add_scraped_content",
       "breakpoints": true
     },
     {
-      "idx": 15,
+      "idx": 16,
       "version": "7",
       "when": 1776790000000,
       "tag": "0015_proposal_tables",
       "breakpoints": true
     },
     {
-      "idx": 16,
+      "idx": 17,
       "version": "7",
       "when": 1776800000000,
       "tag": "0016_clients_table",
       "breakpoints": true
     },
     {
-      "idx": 17,
+      "idx": 18,
       "version": "7",
       "when": 1776810000000,
       "tag": "0017_pipeline_loss_tracking",
       "breakpoints": true
     },
     {
-      "idx": 18,
+      "idx": 19,
       "version": "7",
       "when": 1776820000000,
       "tag": "0018_automation_logs",
       "breakpoints": true
     },
     {
-      "idx": 19,
+      "idx": 20,
       "version": "7",
       "when": 1776830000000,
       "tag": "0019_pipeline_stages",
       "breakpoints": true
     },
     {
-      "idx": 20,
+      "idx": 21,
       "version": "7",
       "when": 1776866200000,
       "tag": "0020_site_connections",
       "breakpoints": true
     },
     {
-      "idx": 21,
+      "idx": 22,
       "version": "7",
       "when": 1776894500000,
       "tag": "0021_change_tracking_tables",
       "breakpoints": true
     },
     {
-      "idx": 22,
+      "idx": 23,
       "version": "7",
       "when": 1776942000000,
       "tag": "0022_keyword_page_mapping",
       "breakpoints": true
     },
     {
-      "idx": 23,
+      "idx": 24,
       "version": "7",
-      "when": 1776974230764,
-      "tag": "0023_pink_ghost_rider",
+      "when": 1776970000000,
+      "tag": "0023_link_graph_tables",
       "breakpoints": true
     },
     {
-      "idx": 24,
+      "idx": 25,
+      "version": "7",
+      "when": 1776974230764,
+      "tag": "0023b_pink_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1777000000000,
+      "tag": "0024_link_opportunities_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1777010000000,
+      "tag": "0025_link_suggestions_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1777020000000,
+      "tag": "0026_link_suggestions_auto_insert",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1777030000000,
+      "tag": "0027_voice_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1777040000000,
+      "tag": "0028_link_suggestions_query_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1777050000000,
+      "tag": "0028b_prospect_scrape_configs",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1777060000000,
+      "tag": "0029_fix_client_id_types_and_fks_safe",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1777070000000,
+      "tag": "0030_race_condition_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
       "version": "7",
       "when": 1777488000000,
-      "tag": "0031_add_missing_fk_constraints",
+      "tag": "0031_add_missing_fk_constraints_safe",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0032_indexes_batch1",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1777510000000,
+      "tag": "0032_indexes_batch2",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1777520000000,
+      "tag": "0032_indexes_batch3",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1777530000000,
+      "tag": "0032_rename_gsc_snapshots_with_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1777540000000,
+      "tag": "0033_data_integrity_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0034_client_id_to_uuid",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1777700000000,
+      "tag": "0037_rename_ga4_snapshots",
       "breakpoints": true
     }
   ]

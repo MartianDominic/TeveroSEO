@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link2, AlertTriangle, Loader2, Check, X, Zap } from "lucide-react";
@@ -16,7 +17,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  StatusChip,
 } from "@tevero/ui";
+
+// Toast state type for user feedback
+interface ToastState {
+  open: boolean;
+  message: string;
+  type: "success" | "error";
+}
 
 interface LinkHealthMetrics {
   totalPages: number;
@@ -66,7 +75,11 @@ async function getLinkHealth(clientId: string): Promise<LinkHealthData> {
   if (!res.ok) {
     throw new Error(`Failed to fetch link health: ${res.status}`);
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch (parseError) {
+    throw new Error('Failed to parse link health response');
+  }
 }
 
 async function getOpportunities(clientId: string): Promise<OpportunitiesData> {
@@ -76,7 +89,11 @@ async function getOpportunities(clientId: string): Promise<OpportunitiesData> {
   if (!res.ok) {
     throw new Error(`Failed to fetch opportunities: ${res.status}`);
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch (parseError) {
+    throw new Error('Failed to parse opportunities response');
+  }
 }
 
 async function approveOpportunity(id: string, clientId: string): Promise<void> {
@@ -132,6 +149,15 @@ export default function LinksPage() {
   const { clientId } = params;
   const queryClient = useQueryClient();
 
+  // Toast state for user feedback
+  const [toast, setToast] = useState<ToastState>({ open: false, message: "", type: "success" });
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ open: true, message, type });
+    // Auto-hide after 4 seconds
+    setTimeout(() => setToast((t) => ({ ...t, open: false })), 4000);
+  };
+
   const healthQuery = useQuery({
     queryKey: ["link-health", clientId],
     queryFn: () => getLinkHealth(clientId),
@@ -148,9 +174,11 @@ export default function LinksPage() {
     mutationFn: (id: string) => approveOpportunity(id, clientId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["link-opportunities", clientId] });
+      showToast("Link opportunity approved", "success");
     },
     onError: (error) => {
       console.error("Failed to approve opportunity:", error);
+      showToast("Failed to approve opportunity. Please try again.", "error");
     },
   });
 
@@ -158,9 +186,11 @@ export default function LinksPage() {
     mutationFn: (id: string) => rejectOpportunity(id, clientId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["link-opportunities", clientId] });
+      showToast("Link opportunity rejected", "success");
     },
     onError: (error) => {
       console.error("Failed to reject opportunity:", error);
+      showToast("Failed to reject opportunity. Please try again.", "error");
     },
   });
 
@@ -365,6 +395,14 @@ export default function LinksPage() {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Toast notification */}
+        {toast.open && (
+          <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border bg-background px-4 py-3 shadow-lg">
+            <StatusChip status={toast.type === "success" ? "published" : "failed"} />
+            <span className="text-foreground font-medium">{toast.message}</span>
+          </div>
         )}
       </div>
     </div>

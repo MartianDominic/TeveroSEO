@@ -4,22 +4,41 @@
  * Manages WebSocket connections with exponential backoff reconnection.
  * Resolves HIGH-STATE-008: WebSocket reconnect logic missing.
  * Resolves CRITICAL-WS-001: Client WebSocket Hook Missing Authentication.
+ * Resolves M-24: WebSocket message parsing without validation.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { z, ZodSchema } from 'zod';
 
-interface UseWebSocketOptions {
+/**
+ * Base WebSocket message schema for common message types.
+ * Consumers can extend this or provide their own schema.
+ */
+export const baseWsMessageSchema = z.union([
+  z.object({ type: z.literal("status"), payload: z.record(z.string(), z.unknown()) }),
+  z.object({ type: z.literal("error"), message: z.string() }),
+  z.object({ type: z.literal("auth_success") }),
+  z.object({ type: z.literal("auth_refresh_ack") }),
+  z.object({ type: z.literal("ping") }),
+  z.object({ type: z.literal("pong") }),
+]);
+
+interface UseWebSocketOptions<T = unknown> {
   url: string;
-  onMessage: (data: unknown) => void;
+  onMessage: (data: T) => void;
   onError?: (error: Event) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onAuthError?: () => void;
+  /** Called when a message fails schema validation */
+  onValidationError?: (error: z.ZodError, rawData: unknown) => void;
   reconnectInterval?: number;
   maxReconnectAttempts?: number;
   enabled?: boolean;
   /** Token refresh interval in milliseconds (default: 5 minutes) */
   tokenRefreshInterval?: number;
+  /** Optional Zod schema for message validation. If provided, only valid messages are passed to onMessage. */
+  messageSchema?: ZodSchema<T>;
 }
 
 interface WebSocketState {
@@ -30,18 +49,20 @@ interface WebSocketState {
   isAuthenticated: boolean;
 }
 
-export function useWebSocket({
+export function useWebSocket<T = unknown>({
   url,
   onMessage,
   onError,
   onConnect,
   onDisconnect,
   onAuthError,
+  onValidationError,
   reconnectInterval = 3000,
   maxReconnectAttempts = 10,
   enabled = true,
   tokenRefreshInterval = 5 * 60 * 1000, // 5 minutes
-}: UseWebSocketOptions) {
+  messageSchema,
+}: UseWebSocketOptions<T>) {
   const { getToken, isSignedIn } = useAuth();
 
   const [state, setState] = useState<WebSocketState>({
@@ -85,6 +106,11 @@ export function useWebSocket({
   useEffect(() => {
     onAuthErrorRef.current = onAuthError;
   }, [onAuthError]);
+
+  const onValidationErrorRef = useRef(onValidationError);
+  useEffect(() => {
+    onValidationErrorRef.current = onValidationError;
+  }, [onValidationError]);
 
   // Token refresh for long-lived connections
   const refreshToken = useCallback(async () => {
@@ -167,11 +193,29 @@ export function useWebSocket({
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          onMessageRef.current(data);
+          const rawData = JSON.parse(event.data) as unknown;
+
+          // If a schema is provided, validate the message
+          if (messageSchema) {
+            const parsed = messageSchema.safeParse(rawData);
+            if (parsed.success) {
+              onMessageRef.current(parsed.data);
+            } else {
+              // Log validation error and optionally notify consumer
+              console.warn('[useWebSocket] Invalid message format:', parsed.error.issues);
+              onValidationErrorRef.current?.(parsed.error, rawData);
+            }
+          } else {
+            // No schema provided - pass data through (backwards compatible)
+            onMessageRef.current(rawData as T);
+          }
         } catch {
-          // Handle non-JSON messages
-          onMessageRef.current(event.data);
+          // Handle non-JSON messages - only pass through if no schema required
+          if (!messageSchema) {
+            onMessageRef.current(event.data as T);
+          } else {
+            console.warn('[useWebSocket] Received non-JSON message when schema validation is enabled');
+          }
         }
       };
 

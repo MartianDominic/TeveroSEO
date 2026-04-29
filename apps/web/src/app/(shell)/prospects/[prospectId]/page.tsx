@@ -16,6 +16,7 @@ import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisp
 import { BusinessInfoFormWrapper } from "@/components/prospects/BusinessInfoFormWrapper";
 import { OpportunityKeywordsSection } from "@/components/prospects/OpportunityKeywordsSection";
 import { getProspectDetail } from "./actions";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 interface ProspectDetailPageProps {
   params: Promise<{ prospectId: string }>;
@@ -40,16 +41,11 @@ export default async function ProspectDetailPage({
 }: ProspectDetailPageProps) {
   const { prospectId } = await params;
 
-  let prospect;
-  try {
-    prospect = await getProspectDetail(prospectId);
-  } catch {
+  const result = await getProspectDetail(prospectId);
+  if (!result.success || !result.data) {
     notFound();
   }
-
-  if (!prospect) {
-    notFound();
-  }
+  const prospect = result.data;
 
   const statusBadge = STATUS_BADGES[prospect.status] ?? STATUS_BADGES.new;
   const latestAnalysis = prospect.analyses[0];
@@ -157,29 +153,37 @@ export default async function ProspectDetailPage({
           {/* Business Information from Scraping */}
           {latestAnalysis.scrapedContent?.businessInfo &&
             latestAnalysis.scrapedContent.businessInfo.confidence >= 0.5 && (
-              <ScrapedContentDisplay
-                scrapedContent={latestAnalysis.scrapedContent}
-              />
+              <WithErrorBoundary name="ScrapedContentDisplay">
+                <ScrapedContentDisplay
+                  scrapedContent={latestAnalysis.scrapedContent}
+                />
+              </WithErrorBoundary>
             )}
 
           {/* Manual entry form if scraping failed or low confidence */}
           {(!latestAnalysis.scrapedContent?.businessInfo ||
             latestAnalysis.scrapedContent.businessInfo.confidence < 0.5) && (
-            <BusinessInfoFormWrapper
-              prospectId={prospectId}
-              analysisId={latestAnalysis.id}
-            />
+            <WithErrorBoundary name="BusinessInfoFormWrapper">
+              <BusinessInfoFormWrapper
+                prospectId={prospectId}
+                analysisId={latestAnalysis.id}
+              />
+            </WithErrorBoundary>
           )}
 
-          <AnalysisResults analysis={latestAnalysis} />
+          <WithErrorBoundary name="AnalysisResults">
+            <AnalysisResults analysis={latestAnalysis} />
+          </WithErrorBoundary>
 
           {/* AI Opportunity Keywords */}
           {latestAnalysis.opportunityKeywords &&
             latestAnalysis.opportunityKeywords.length > 0 && (
-              <OpportunityKeywordsSection
-                keywords={latestAnalysis.opportunityKeywords}
-                domain={prospect.domain}
-              />
+              <WithErrorBoundary name="OpportunityKeywordsSection">
+                <OpportunityKeywordsSection
+                  keywords={latestAnalysis.opportunityKeywords}
+                  domain={prospect.domain}
+                />
+              </WithErrorBoundary>
             )}
         </div>
       )}

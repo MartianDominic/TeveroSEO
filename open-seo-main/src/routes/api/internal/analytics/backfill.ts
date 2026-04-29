@@ -4,28 +4,20 @@
  * Called by AI-Writer backend after OAuth callback successfully stores
  * Google credentials. This endpoint queues a backfill job in BullMQ.
  *
- * SECURITY: Protected by X-Internal-Api-Key header.
+ * SECURITY: Protected by HMAC-signed requests (X-Internal-Signature + X-Internal-Timestamp).
+ * Also accepts legacy X-Internal-Api-Key header for backward compatibility.
  * This endpoint is NOT exposed to public - internal network only.
+ *
+ * SECURITY FIXES:
+ * - CRIT-002: Uses standardized HMAC-based auth from internal-auth middleware
+ * - CRIT-003: Uses timing-safe comparison to prevent timing attacks
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { queueBackfillJob } from "@/server/queues/analyticsQueue";
 import { createLogger } from "@/server/lib/logger";
+import { requireInternalAuth } from "@/server/middleware/internal-auth";
 
 const log = createLogger({ module: "api/internal/analytics/backfill" });
-
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-
-/**
- * Verify internal API key header for service-to-service auth.
- */
-function verifyInternalApiKey(request: Request): boolean {
-  const apiKey = request.headers.get("X-Internal-Api-Key");
-  if (!INTERNAL_API_KEY) {
-    log.error("INTERNAL_API_KEY not configured");
-    return false;
-  }
-  return apiKey === INTERNAL_API_KEY;
-}
 
 interface BackfillRequestBody {
   clientId: string;
@@ -36,16 +28,23 @@ export const Route = createFileRoute("/api/internal/analytics/backfill")({
     handlers: {
       // POST /api/internal/analytics/backfill - Queue backfill job
       POST: async ({ request }: { request: Request }) => {
-        // Verify internal API key
-        if (!verifyInternalApiKey(request)) {
-          return Response.json(
-            { error: "Unauthorized" },
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+        // Clone request to read body for signature verification
+        const clonedRequest = request.clone();
+        let bodyText = "";
+        try {
+          bodyText = await clonedRequest.text();
+        } catch {
+          // Empty body is fine
+        }
+
+        // Verify internal auth using shared middleware (CRIT-002, CRIT-003 fixes)
+        const authError = await requireInternalAuth(request, bodyText);
+        if (authError) {
+          return authError;
         }
 
         try {
-          const body = (await request.json()) as BackfillRequestBody;
+          const body = JSON.parse(bodyText || "{}") as BackfillRequestBody;
           const { clientId } = body;
 
           if (!clientId) {

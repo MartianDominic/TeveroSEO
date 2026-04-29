@@ -14,7 +14,7 @@
 
 import type { Job } from "bullmq";
 import { z } from "zod";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { savedKeywords, projects } from "@/db/app.schema";
 import { keywordRankings } from "@/db/ranking-schema";
@@ -101,43 +101,77 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Get previous position for a keyword (most recent ranking).
+ * PERFORMANCE FIX: Batch fetch existing rankings for multiple keywords on a given date.
+ * Replaces N individual queries with a single query using IN clause.
+ *
+ * @returns Map of keywordId -> { position, url }
  */
-async function getPreviousPosition(keywordId: string): Promise<number | null> {
-  const [lastRanking] = await db
-    .select({ position: keywordRankings.position })
-    .from(keywordRankings)
-    .where(eq(keywordRankings.keywordId, keywordId))
-    .orderBy(desc(keywordRankings.date))
-    .limit(1);
-
-  return lastRanking?.position ?? null;
-}
-
-/**
- * Check if a ranking record already exists for the given keyword and date.
- * Returns the existing record if found, null otherwise.
- * This enables idempotent processing - duplicate job runs are safe.
- */
-async function getExistingRanking(
-  keywordId: string,
+async function batchGetExistingRankings(
+  keywordIds: string[],
   date: Date,
-): Promise<{ position: number; url: string | null } | null> {
-  const [existing] = await db
+): Promise<Map<string, { position: number; url: string | null }>> {
+  if (keywordIds.length === 0) {
+    return new Map();
+  }
+
+  const existing = await db
     .select({
+      keywordId: keywordRankings.keywordId,
       position: keywordRankings.position,
       url: keywordRankings.url,
     })
     .from(keywordRankings)
     .where(
       and(
-        eq(keywordRankings.keywordId, keywordId),
+        inArray(keywordRankings.keywordId, keywordIds),
         eq(keywordRankings.date, date),
       ),
-    )
-    .limit(1);
+    );
 
-  return existing ?? null;
+  return new Map(existing.map((r) => [r.keywordId, { position: r.position, url: r.url }]));
+}
+
+/**
+ * PERFORMANCE FIX: Batch fetch previous positions for multiple keywords.
+ * Uses a subquery to get the most recent ranking for each keyword.
+ *
+ * @returns Map of keywordId -> previousPosition (or null if no previous ranking)
+ */
+async function batchGetPreviousPositions(
+  keywordIds: string[],
+): Promise<Map<string, number | null>> {
+  if (keywordIds.length === 0) {
+    return new Map();
+  }
+
+  // Use a subquery to get the latest ranking per keyword
+  // This is more efficient than N individual queries
+  const latestRankings = await db
+    .select({
+      keywordId: keywordRankings.keywordId,
+      position: keywordRankings.position,
+      date: keywordRankings.date,
+    })
+    .from(keywordRankings)
+    .where(inArray(keywordRankings.keywordId, keywordIds))
+    .orderBy(desc(keywordRankings.date));
+
+  // Group by keywordId and take the most recent
+  const positionMap = new Map<string, number | null>();
+  for (const id of keywordIds) {
+    positionMap.set(id, null);
+  }
+
+  // Since results are ordered by date DESC, first occurrence per keyword is the latest
+  const seenKeywords = new Set<string>();
+  for (const ranking of latestRankings) {
+    if (!seenKeywords.has(ranking.keywordId)) {
+      seenKeywords.add(ranking.keywordId);
+      positionMap.set(ranking.keywordId, ranking.position);
+    }
+  }
+
+  return positionMap;
 }
 
 /**
@@ -178,6 +212,10 @@ async function upsertRanking(
 /**
  * Process a batch of keywords.
  * Each keyword is processed independently - failures don't affect others.
+ *
+ * PERFORMANCE FIX: Uses batch queries to avoid N+1 database round-trips.
+ * Previously: O(2n) queries per batch (getExistingRanking + getPreviousPosition per keyword)
+ * Now: O(2) queries per batch (batchGetExistingRankings + batchGetPreviousPositions once)
  */
 async function processBatch(
   keywords: Array<{
@@ -197,10 +235,17 @@ async function processBatch(
   let drops = 0;
   let skipped = 0;
 
+  // PERFORMANCE FIX: Batch fetch all existing rankings and previous positions upfront
+  const keywordIds = keywords.map((kw) => kw.id);
+  const [existingRankingsMap, previousPositionsMap] = await Promise.all([
+    batchGetExistingRankings(keywordIds, today),
+    batchGetPreviousPositions(keywordIds),
+  ]);
+
   for (const kw of keywords) {
     try {
-      // Idempotency check: skip if already processed today
-      const existing = await getExistingRanking(kw.id, today);
+      // Idempotency check: skip if already processed today (lookup from batch-fetched map)
+      const existing = existingRankingsMap.get(kw.id);
       if (existing) {
         log.debug("Skipping already processed keyword", {
           keywordId: kw.id,
@@ -232,7 +277,8 @@ async function processBatch(
       const items = response.data;
       const { position, url } = extractPosition(items, kw.projectDomain);
       const serpFeatures = extractSerpFeatures(items);
-      const previousPosition = await getPreviousPosition(kw.id);
+      // PERFORMANCE FIX: Lookup from batch-fetched map instead of individual query
+      const previousPosition = previousPositionsMap.get(kw.id) ?? null;
 
       // Upsert ranking record (idempotent)
       await upsertRanking(

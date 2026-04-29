@@ -262,6 +262,10 @@ export async function startGoalWorker(): Promise<void> {
     log.error("Goal worker error", err);
   });
 
+  goalWorker.on("stalled", (jobId) => {
+    log.warn("Goal job stalled", { jobId, queue: GOAL_QUEUE_NAME });
+  });
+
   log.info("Goal worker started");
 }
 

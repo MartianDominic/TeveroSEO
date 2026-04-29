@@ -1,6 +1,12 @@
 "use server";
 
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
+import { env } from "@/lib/env";
+import { requireActionAuth } from "@/lib/auth/action-auth";
+
+/** Default timeout for API requests (30 seconds) */
+const API_TIMEOUT_MS = 30000;
 
 /**
  * Quick Check Server Actions
@@ -43,22 +49,34 @@ export async function quickCheckKeywords(
   keywords: string[],
   generateShareLink: boolean = false
 ): Promise<QuickCheckResponse> {
+  await requireActionAuth();
   const input = QuickCheckSchema.parse({ keywords, generateShareLink });
 
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+  const { getToken } = await auth();
+  const token = await getToken();
 
-  const response = await fetch(`${openSeoUrl}/api/keywords/quick-check`, {
+  const response = await fetch(`${env.OPEN_SEO_URL}/api/keywords/quick-check`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
     body: JSON.stringify({
       keywords: input.keywords,
       generateShareLink: input.generateShareLink,
     }),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Quick check failed");
+    let errorMessage = `Request failed: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+    } catch {
+      // Response wasn't JSON (e.g., 502 HTML from nginx)
+    }
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();
@@ -76,6 +94,7 @@ export async function quickCheckKeywords(
 export async function exportToCsv(
   keywords: QuickCheckKeyword[]
 ): Promise<string> {
+  await requireActionAuth();
   const headers = [
     "Keyword",
     "Search Volume",

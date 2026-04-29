@@ -5,6 +5,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   boolean,
   timestamp,
@@ -21,7 +22,7 @@ export const alertRules = pgTable(
   "alert_rules",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     alertType: text("alert_type", {
@@ -49,7 +50,7 @@ export const alerts = pgTable(
   "alerts",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
     ruleId: text("rule_id").references(() => alertRules.id, { onDelete: "set null" }),

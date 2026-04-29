@@ -62,10 +62,13 @@ registerCheck({
       };
     }
 
-    // Extract main content text
+    // Extract main content text using a cloned Cheerio instance
+    // to avoid mutating the shared Cheerio state
     const $ = ctx.$;
-    $("script, style, noscript, nav, footer, header, aside").remove();
-    const text = $("body").text().replace(/\s+/g, " ").trim();
+    const $clone = $.root().clone();
+    const $cloned = $.load($clone.html() ?? "");
+    $cloned("script, style, noscript, nav, footer, header, aside").remove();
+    const text = $cloned("body").text().replace(/\s+/g, " ").trim();
 
     if (text.length < 500) {
       return {
@@ -122,10 +125,13 @@ registerCheck({
       };
     }
 
-    // Analyze page for template patterns
+    // Analyze page for template patterns using a cloned Cheerio instance
+    // to avoid mutating the shared Cheerio state
     const $ = ctx.$;
-    $("script, style, noscript").remove();
-    const text = $("body").text().replace(/\s+/g, " ").trim();
+    const $clone = $.root().clone();
+    const $cloned = $.load($clone.html() ?? "");
+    $cloned("script, style, noscript").remove();
+    const text = $cloned("body").text().replace(/\s+/g, " ").trim();
 
     // Check for common scaled content indicators
     const warnings: string[] = [];

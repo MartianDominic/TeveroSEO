@@ -22,6 +22,7 @@ import {
 import { ArrowUpDown, Zap, Target, Sparkles, ExternalLink } from "lucide-react";
 import type { ProspectKeyword } from "../actions";
 import { getTierBadge } from "./TierFilter";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 
 interface KeywordTableProps {
   keywords: ProspectKeyword[];
@@ -218,9 +219,9 @@ export function KeywordTable({
                     )}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
-                    {keyword.mappedUrl ? (
+                    {keyword.mappedUrl && isSafeUrl(keyword.mappedUrl) ? (
                       <a
-                        href={keyword.mappedUrl}
+                        href={safeHref(keyword.mappedUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-blue-600 hover:underline"

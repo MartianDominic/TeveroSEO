@@ -177,17 +177,20 @@ export function handleSocketConnection(socket: TypedSocket): void {
     const roomName = `workspace:${validWorkspaceId}`;
     socket.join(roomName);
 
-    // Track connection
+    // Track connection - use safe access instead of non-null assertions
     if (!workspaceConnections.has(validWorkspaceId)) {
       workspaceConnections.set(validWorkspaceId, new Set());
     }
-    workspaceConnections.get(validWorkspaceId)!.add(socket.id);
+    const connections = workspaceConnections.get(validWorkspaceId);
+    if (connections) {
+      connections.add(socket.id);
+    }
 
     log.info("Client joined workspace", {
       socketId: socket.id,
       userId,
       workspaceId: validWorkspaceId,
-      roomSize: workspaceConnections.get(validWorkspaceId)!.size,
+      roomSize: connections?.size ?? 0,
     });
 
     // Acknowledge successful join

@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
@@ -105,14 +106,25 @@ function buildQuery(params: MappingParams, extra?: Record<string, string>): stri
  */
 export async function getMappings(
   params: MappingParams & { action?: "optimize" | "create" }
-): Promise<GetMappingsResponse> {
-  const validated = getMappingsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+): Promise<ActionResult<GetMappingsResponse>> {
+  const parseResult = getMappingsParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  const extra = validated.action ? { action: validated.action } : undefined;
-  const query = buildQuery(validated, extra);
-  return getOpenSeo<GetMappingsResponse>(`/api/seo/keyword-mapping?${query}`);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    const extra = validated.action ? { action: validated.action } : undefined;
+    const query = buildQuery(validated, extra);
+    const data = await getOpenSeo<GetMappingsResponse>(`/api/seo/keyword-mapping?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getMappings] Failed:", error);
+    return { success: false, error: "Failed to fetch mappings" };
+  }
 }
 
 /**
@@ -121,21 +133,32 @@ export async function getMappings(
  */
 export async function suggestMappings(
   params: SuggestMappingsParams
-): Promise<SuggestMappingsResponse> {
-  const validated = suggestMappingsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+): Promise<ActionResult<SuggestMappingsResponse>> {
+  const parseResult = suggestMappingsParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  // Rate limit: suggestion can be CPU-intensive
-  await checkActionRateLimit("mapping", auth.userId);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(validated);
-  return postOpenSeo<SuggestMappingsResponse>(`/api/seo/keyword-mapping?${query}`, {
-    action: "suggest",
-    includeGsc: validated.includeGsc ?? true,
-    includeSaved: validated.includeSaved ?? true,
-    includeProspect: validated.includeProspect ?? true,
-  });
+    // Rate limit: suggestion can be CPU-intensive
+    await checkActionRateLimit("mapping", auth.userId);
+
+    const query = buildQuery(validated);
+    const data = await postOpenSeo<SuggestMappingsResponse>(`/api/seo/keyword-mapping?${query}`, {
+      action: "suggest",
+      includeGsc: validated.includeGsc ?? true,
+      includeSaved: validated.includeSaved ?? true,
+      includeProspect: validated.includeProspect ?? true,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[suggestMappings] Failed:", error);
+    return { success: false, error: "Failed to suggest mappings" };
+  }
 }
 
 /**
@@ -144,18 +167,29 @@ export async function suggestMappings(
  */
 export async function overrideMapping(
   params: OverrideMappingParams
-): Promise<OverrideMappingResponse> {
-  const validated = overrideMappingParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+): Promise<ActionResult<OverrideMappingResponse>> {
+  const parseResult = overrideMappingParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  // Rate limit: prevent bulk override abuse
-  await checkActionRateLimit("mapping", auth.userId);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
 
-  const query = buildQuery(validated);
-  return postOpenSeo<OverrideMappingResponse>(`/api/seo/keyword-mapping?${query}`, {
-    action: "override",
-    keyword: validated.keyword,
-    newTargetUrl: validated.newTargetUrl,
-  });
+    // Rate limit: prevent bulk override abuse
+    await checkActionRateLimit("mapping", auth.userId);
+
+    const query = buildQuery(validated);
+    const data = await postOpenSeo<OverrideMappingResponse>(`/api/seo/keyword-mapping?${query}`, {
+      action: "override",
+      keyword: validated.keyword,
+      newTargetUrl: validated.newTargetUrl,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error("[overrideMapping] Failed:", error);
+    return { success: false, error: "Failed to override mapping" };
+  }
 }

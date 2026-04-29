@@ -82,6 +82,9 @@ export interface PaginatedClients {
 export const ClientService = {
   /**
    * Create a new client with audit logging.
+   *
+   * Uses INSERT ON CONFLICT to atomically prevent duplicate domain/workspace
+   * combinations, avoiding TOCTOU race conditions.
    */
   async create(
     input: CreateClientInput,
@@ -90,28 +93,12 @@ export const ClientService = {
     const normalizedDomain = validateDomain(input.domain);
     const audit = withAudit<ClientSelect>("client", auditContext);
 
-    // Check for duplicate domain in workspace
-    const existing = await db
-      .select({ id: clients.id })
-      .from(clients)
-      .where(
-        and(
-          eq(clients.workspaceId, input.workspaceId),
-          eq(clients.domain, normalizedDomain)
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
-      throw new AppError(
-        "CONFLICT",
-        `Client with domain ${normalizedDomain} already exists in this workspace`
-      );
-    }
-
     const id = nanoid();
     const now = new Date();
 
+    // Use INSERT ON CONFLICT DO NOTHING to atomically check for duplicates
+    // This avoids TOCTOU race conditions where two requests could pass a
+    // SELECT check and both attempt to insert the same domain/workspace
     const [created] = await db
       .insert(clients)
       .values({
@@ -127,7 +114,18 @@ export const ClientService = {
         createdAt: now,
         updatedAt: now,
       })
+      .onConflictDoNothing({
+        target: [clients.workspaceId, clients.domain],
+      })
       .returning();
+
+    // If no row returned, a client with this domain already exists
+    if (!created) {
+      throw new AppError(
+        "CONFLICT",
+        `Client with domain ${normalizedDomain} already exists in this workspace`
+      );
+    }
 
     // Log the creation
     await audit.logCreate(id, created, {

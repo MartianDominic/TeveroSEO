@@ -108,7 +108,9 @@ import { Route as ApiSeoBriefsGenerateBriefIdRouteImport } from './routes/api/se
 import { Route as ApiSeoBriefsAnalyzeSerpMappingIdRouteImport } from './routes/api/seo/briefs.analyze-serp.$mappingId'
 import { Route as ApiProspectsIdKeywordsPrioritizeRouteImport } from './routes/api/prospects/$id/keywords/prioritize'
 import { Route as ApiProspectsIdKeywordsImportRouteImport } from './routes/api/prospects/$id/keywords/import'
+import { Route as ApiClientsClientIdGscDailyRouteImport } from './routes/api/clients/$clientId/gsc.daily'
 import { Route as ApiClientsClientIdGoalsGoalIdRouteImport } from './routes/api/clients/$clientId/goals/$goalId'
+import { Route as ApiClientsClientIdAlertRulesRuleIdRouteImport } from './routes/api/clients/$clientId.alert-rules.$ruleId'
 import { Route as ApiAuditPagesPageIdFindingsRouteImport } from './routes/api/audit/pages.$pageId.findings'
 import { Route as AppClientsClientIdConnectionsNewRouteImport } from './routes/_app/clients/$clientId/connections/new'
 import { Route as AppClientsClientIdBriefsNewRouteImport } from './routes/_app/clients/$clientId/briefs/new'
@@ -118,6 +120,7 @@ import { Route as ApiSeoVoiceClientIdJobJobIdRouteImport } from './routes/api/se
 import { Route as ApiSeoLinksSuggestionsIdApplyRouteImport } from './routes/api/seo/links/suggestions.$id.apply'
 import { Route as ApiSeoLinksOpportunitiesIdRejectRouteImport } from './routes/api/seo/links/opportunities.$id.reject'
 import { Route as ApiSeoLinksOpportunitiesIdApproveRouteImport } from './routes/api/seo/links/opportunities.$id.approve'
+import { Route as ApiClientsClientIdGoalsSnapshotsBatchRouteImport } from './routes/api/clients/$clientId/goals/snapshots.batch'
 import { Route as ProjectPProjectIdAuditIssuesResultIdRouteImport } from './routes/_project/p/$projectId/audit/issues/$resultId'
 
 const HealthzRoute = HealthzRouteImport.update({
@@ -648,11 +651,23 @@ const ApiProspectsIdKeywordsImportRoute =
     path: '/api/prospects/$id/keywords/import',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiClientsClientIdGscDailyRoute =
+  ApiClientsClientIdGscDailyRouteImport.update({
+    id: '/api/clients/$clientId/gsc/daily',
+    path: '/api/clients/$clientId/gsc/daily',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiClientsClientIdGoalsGoalIdRoute =
   ApiClientsClientIdGoalsGoalIdRouteImport.update({
     id: '/api/clients/$clientId/goals/$goalId',
     path: '/api/clients/$clientId/goals/$goalId',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiClientsClientIdAlertRulesRuleIdRoute =
+  ApiClientsClientIdAlertRulesRuleIdRouteImport.update({
+    id: '/$ruleId',
+    path: '/$ruleId',
+    getParentRoute: () => ApiClientsClientIdAlertRulesRoute,
   } as any)
 const ApiAuditPagesPageIdFindingsRoute =
   ApiAuditPagesPageIdFindingsRouteImport.update({
@@ -706,6 +721,12 @@ const ApiSeoLinksOpportunitiesIdApproveRoute =
   ApiSeoLinksOpportunitiesIdApproveRouteImport.update({
     id: '/api/seo/links/opportunities/$id/approve',
     path: '/api/seo/links/opportunities/$id/approve',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiClientsClientIdGoalsSnapshotsBatchRoute =
+  ApiClientsClientIdGoalsSnapshotsBatchRouteImport.update({
+    id: '/api/clients/$clientId/goals/snapshots/batch',
+    path: '/api/clients/$clientId/goals/snapshots/batch',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ProjectPProjectIdAuditIssuesResultIdRoute =
@@ -774,7 +795,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/api/admin/dlq/$jobId': typeof ApiAdminDlqJobIdRoute
   '/api/branding/$clientId/logo': typeof ApiBrandingClientIdLogoRoute
-  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRoute
+  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
@@ -796,7 +817,9 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
   '/api/audit/pages/$pageId/findings': typeof ApiAuditPagesPageIdFindingsRoute
+  '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
+  '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -818,6 +841,7 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/goals/': typeof ApiClientsClientIdGoalsIndexRoute
   '/api/prospects/$id/keywords/': typeof ApiProspectsIdKeywordsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -880,7 +904,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/api/admin/dlq/$jobId': typeof ApiAdminDlqJobIdRoute
   '/api/branding/$clientId/logo': typeof ApiBrandingClientIdLogoRoute
-  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRoute
+  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
@@ -902,7 +926,9 @@ export interface FileRoutesByTo {
   '/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
   '/api/audit/pages/$pageId/findings': typeof ApiAuditPagesPageIdFindingsRoute
+  '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
+  '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -924,6 +950,7 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/goals': typeof ApiClientsClientIdGoalsIndexRoute
   '/api/prospects/$id/keywords': typeof ApiProspectsIdKeywordsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -993,7 +1020,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/api/admin/dlq/$jobId': typeof ApiAdminDlqJobIdRoute
   '/api/branding/$clientId/logo': typeof ApiBrandingClientIdLogoRoute
-  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRoute
+  '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
@@ -1015,7 +1042,9 @@ export interface FileRoutesById {
   '/_app/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/_app/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
   '/api/audit/pages/$pageId/findings': typeof ApiAuditPagesPageIdFindingsRoute
+  '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
+  '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1037,6 +1066,7 @@ export interface FileRoutesById {
   '/api/clients/$clientId/goals/': typeof ApiClientsClientIdGoalsIndexRoute
   '/api/prospects/$id/keywords/': typeof ApiProspectsIdKeywordsIndexRoute
   '/_project/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -1126,7 +1156,9 @@ export interface FileRouteTypes {
     | '/clients/$clientId/briefs/new'
     | '/clients/$clientId/connections/new'
     | '/api/audit/pages/$pageId/findings'
+    | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
+    | '/api/clients/$clientId/gsc/daily'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1148,6 +1180,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals/'
     | '/api/prospects/$id/keywords/'
     | '/p/$projectId/audit/issues/$resultId'
+    | '/api/clients/$clientId/goals/snapshots/batch'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1232,7 +1265,9 @@ export interface FileRouteTypes {
     | '/clients/$clientId/briefs/new'
     | '/clients/$clientId/connections/new'
     | '/api/audit/pages/$pageId/findings'
+    | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
+    | '/api/clients/$clientId/gsc/daily'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1254,6 +1289,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals'
     | '/api/prospects/$id/keywords'
     | '/p/$projectId/audit/issues/$resultId'
+    | '/api/clients/$clientId/goals/snapshots/batch'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1344,7 +1380,9 @@ export interface FileRouteTypes {
     | '/_app/clients/$clientId/briefs/new'
     | '/_app/clients/$clientId/connections/new'
     | '/api/audit/pages/$pageId/findings'
+    | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
+    | '/api/clients/$clientId/gsc/daily'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1366,6 +1404,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals/'
     | '/api/prospects/$id/keywords/'
     | '/_project/p/$projectId/audit/issues/$resultId'
+    | '/api/clients/$clientId/goals/snapshots/batch'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1415,7 +1454,7 @@ export interface RootRouteChildren {
   ApiReportsIndexRoute: typeof ApiReportsIndexRoute
   ApiSchedulesIndexRoute: typeof ApiSchedulesIndexRoute
   ApiBrandingClientIdLogoRoute: typeof ApiBrandingClientIdLogoRoute
-  ApiClientsClientIdAlertRulesRoute: typeof ApiClientsClientIdAlertRulesRoute
+  ApiClientsClientIdAlertRulesRoute: typeof ApiClientsClientIdAlertRulesRouteWithChildren
   ApiClientsClientIdAlertsRoute: typeof ApiClientsClientIdAlertsRoute
   ApiClientsClientIdDropEventsRoute: typeof ApiClientsClientIdDropEventsRoute
   ApiClientsClientIdReportsRoute: typeof ApiClientsClientIdReportsRoute
@@ -1431,6 +1470,7 @@ export interface RootRouteChildren {
   ApiWorkspacesWorkspaceIdTrafficDataRoute: typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   ApiAuditPagesPageIdFindingsRoute: typeof ApiAuditPagesPageIdFindingsRoute
   ApiClientsClientIdGoalsGoalIdRoute: typeof ApiClientsClientIdGoalsGoalIdRoute
+  ApiClientsClientIdGscDailyRoute: typeof ApiClientsClientIdGscDailyRoute
   ApiProspectsIdKeywordsImportRoute: typeof ApiProspectsIdKeywordsImportRoute
   ApiProspectsIdKeywordsPrioritizeRoute: typeof ApiProspectsIdKeywordsPrioritizeRoute
   ApiSeoLinksBatchApplySafeRoute: typeof ApiSeoLinksBatchApplySafeRoute
@@ -1440,6 +1480,7 @@ export interface RootRouteChildren {
   ApiSeoLinksOpportunitiesClientIdRoute: typeof ApiSeoLinksOpportunitiesClientIdRoute
   ApiClientsClientIdGoalsIndexRoute: typeof ApiClientsClientIdGoalsIndexRoute
   ApiProspectsIdKeywordsIndexRoute: typeof ApiProspectsIdKeywordsIndexRoute
+  ApiClientsClientIdGoalsSnapshotsBatchRoute: typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
   ApiSeoLinksOpportunitiesIdApproveRoute: typeof ApiSeoLinksOpportunitiesIdApproveRoute
   ApiSeoLinksOpportunitiesIdRejectRoute: typeof ApiSeoLinksOpportunitiesIdRejectRoute
 }
@@ -2139,12 +2180,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProspectsIdKeywordsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/clients/$clientId/gsc/daily': {
+      id: '/api/clients/$clientId/gsc/daily'
+      path: '/api/clients/$clientId/gsc/daily'
+      fullPath: '/api/clients/$clientId/gsc/daily'
+      preLoaderRoute: typeof ApiClientsClientIdGscDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/clients/$clientId/goals/$goalId': {
       id: '/api/clients/$clientId/goals/$goalId'
       path: '/api/clients/$clientId/goals/$goalId'
       fullPath: '/api/clients/$clientId/goals/$goalId'
       preLoaderRoute: typeof ApiClientsClientIdGoalsGoalIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/$clientId/alert-rules/$ruleId': {
+      id: '/api/clients/$clientId/alert-rules/$ruleId'
+      path: '/$ruleId'
+      fullPath: '/api/clients/$clientId/alert-rules/$ruleId'
+      preLoaderRoute: typeof ApiClientsClientIdAlertRulesRuleIdRouteImport
+      parentRoute: typeof ApiClientsClientIdAlertRulesRoute
     }
     '/api/audit/pages/$pageId/findings': {
       id: '/api/audit/pages/$pageId/findings'
@@ -2207,6 +2262,13 @@ declare module '@tanstack/react-router' {
       path: '/api/seo/links/opportunities/$id/approve'
       fullPath: '/api/seo/links/opportunities/$id/approve'
       preLoaderRoute: typeof ApiSeoLinksOpportunitiesIdApproveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/$clientId/goals/snapshots/batch': {
+      id: '/api/clients/$clientId/goals/snapshots/batch'
+      path: '/api/clients/$clientId/goals/snapshots/batch'
+      fullPath: '/api/clients/$clientId/goals/snapshots/batch'
+      preLoaderRoute: typeof ApiClientsClientIdGoalsSnapshotsBatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_project/p/$projectId/audit/issues/$resultId': {
@@ -2431,6 +2493,21 @@ const ApiSeoBriefsRouteWithChildren = ApiSeoBriefsRoute._addFileChildren(
   ApiSeoBriefsRouteChildren,
 )
 
+interface ApiClientsClientIdAlertRulesRouteChildren {
+  ApiClientsClientIdAlertRulesRuleIdRoute: typeof ApiClientsClientIdAlertRulesRuleIdRoute
+}
+
+const ApiClientsClientIdAlertRulesRouteChildren: ApiClientsClientIdAlertRulesRouteChildren =
+  {
+    ApiClientsClientIdAlertRulesRuleIdRoute:
+      ApiClientsClientIdAlertRulesRuleIdRoute,
+  }
+
+const ApiClientsClientIdAlertRulesRouteWithChildren =
+  ApiClientsClientIdAlertRulesRoute._addFileChildren(
+    ApiClientsClientIdAlertRulesRouteChildren,
+  )
+
 interface ApiSeoLinksSuggestionsRouteChildren {
   ApiSeoLinksSuggestionsIdApplyRoute: typeof ApiSeoLinksSuggestionsIdApplyRoute
 }
@@ -2507,7 +2584,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReportsIndexRoute: ApiReportsIndexRoute,
   ApiSchedulesIndexRoute: ApiSchedulesIndexRoute,
   ApiBrandingClientIdLogoRoute: ApiBrandingClientIdLogoRoute,
-  ApiClientsClientIdAlertRulesRoute: ApiClientsClientIdAlertRulesRoute,
+  ApiClientsClientIdAlertRulesRoute:
+    ApiClientsClientIdAlertRulesRouteWithChildren,
   ApiClientsClientIdAlertsRoute: ApiClientsClientIdAlertsRoute,
   ApiClientsClientIdDropEventsRoute: ApiClientsClientIdDropEventsRoute,
   ApiClientsClientIdReportsRoute: ApiClientsClientIdReportsRoute,
@@ -2526,6 +2604,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiWorkspacesWorkspaceIdTrafficDataRoute,
   ApiAuditPagesPageIdFindingsRoute: ApiAuditPagesPageIdFindingsRoute,
   ApiClientsClientIdGoalsGoalIdRoute: ApiClientsClientIdGoalsGoalIdRoute,
+  ApiClientsClientIdGscDailyRoute: ApiClientsClientIdGscDailyRoute,
   ApiProspectsIdKeywordsImportRoute: ApiProspectsIdKeywordsImportRoute,
   ApiProspectsIdKeywordsPrioritizeRoute: ApiProspectsIdKeywordsPrioritizeRoute,
   ApiSeoLinksBatchApplySafeRoute: ApiSeoLinksBatchApplySafeRoute,
@@ -2536,6 +2615,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSeoLinksOpportunitiesClientIdRoute: ApiSeoLinksOpportunitiesClientIdRoute,
   ApiClientsClientIdGoalsIndexRoute: ApiClientsClientIdGoalsIndexRoute,
   ApiProspectsIdKeywordsIndexRoute: ApiProspectsIdKeywordsIndexRoute,
+  ApiClientsClientIdGoalsSnapshotsBatchRoute:
+    ApiClientsClientIdGoalsSnapshotsBatchRoute,
   ApiSeoLinksOpportunitiesIdApproveRoute:
     ApiSeoLinksOpportunitiesIdApproveRoute,
   ApiSeoLinksOpportunitiesIdRejectRoute: ApiSeoLinksOpportunitiesIdRejectRoute,

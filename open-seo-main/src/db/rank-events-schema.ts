@@ -7,6 +7,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   timestamp,
   index,
@@ -25,7 +26,7 @@ export const rankDropEvents = pgTable(
       .notNull()
       .references(() => savedKeywords.id, { onDelete: "cascade" }),
     projectId: text("project_id").notNull(),
-    clientId: text("client_id"), // Nullable for backwards compatibility
+    clientId: uuid("client_id"), // Nullable for backwards compatibility
     keyword: text("keyword").notNull(), // Denormalized for easy display
     previousPosition: integer("previous_position").notNull(),
     currentPosition: integer("current_position").notNull(),

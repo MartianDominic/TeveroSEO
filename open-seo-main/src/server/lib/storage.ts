@@ -1,10 +1,11 @@
 /**
- * File storage utilities for branding assets.
+ * File storage utilities for branding assets and reports.
  * Phase 16 Plan 03: White-label branding for reports.
  *
  * Handles logo file upload, validation, and storage at /data/branding/{clientId}/
+ * Also provides shared constants for report storage paths.
  */
-import { mkdir, writeFile, unlink, stat } from "node:fs/promises";
+import { mkdir, writeFile, unlink, stat, rename, readdir } from "node:fs/promises";
 import path from "node:path";
 import { createLogger } from "./logger";
 
@@ -12,9 +13,71 @@ const log = createLogger({ module: "storage" });
 
 /**
  * Base directory for branding assets.
- * Defaults to /data/branding, can be overridden via BRANDING_DIR env var.
+ * Defaults to {cwd}/data/branding (relative fallback instead of absolute /data/branding).
+ * Can be overridden via BRANDING_DIR env var.
  */
-export const BRANDING_DIR = process.env.BRANDING_DIR ?? "/data/branding";
+export const BRANDING_DIR = process.env.BRANDING_DIR ?? path.join(process.cwd(), "data", "branding");
+
+/**
+ * Ensures the branding directory exists.
+ * Called on first use to create the directory if needed.
+ */
+let brandingDirInitialized = false;
+export async function ensureBrandingDir(): Promise<void> {
+  if (brandingDirInitialized) return;
+  await mkdir(BRANDING_DIR, { recursive: true });
+  brandingDirInitialized = true;
+  log.info("Branding directory initialized", { path: BRANDING_DIR });
+}
+
+/**
+ * Ensures the reports directory exists.
+ * Called on first use to create the directory if needed.
+ */
+let reportsDirInitialized = false;
+export async function ensureReportsDir(): Promise<void> {
+  if (reportsDirInitialized) return;
+  await mkdir(REPORTS_DIR, { recursive: true });
+  reportsDirInitialized = true;
+  log.info("Reports directory initialized", { path: REPORTS_DIR });
+}
+
+/**
+ * Validates storage directories at startup.
+ * Should be called during application initialization.
+ */
+export async function validateStorageDirs(): Promise<void> {
+  await ensureBrandingDir();
+  await ensureReportsDir();
+  log.info("Storage directories validated", {
+    branding: BRANDING_DIR,
+    reports: REPORTS_DIR
+  });
+}
+
+/**
+ * Base directory for report PDF files.
+ * Unified constant to prevent path mismatch between report generation and downloads.
+ * Defaults to {cwd}/data/reports, can be overridden via REPORTS_DIR env var.
+ */
+export const REPORTS_DIR = process.env.REPORTS_DIR ?? path.join(process.cwd(), "data", "reports");
+
+/**
+ * Sanitize a path component (e.g., clientId) to prevent path traversal attacks.
+ * Only allows alphanumeric characters and hyphens.
+ *
+ * @param component - The path component to sanitize
+ * @returns The sanitized component
+ * @throws Error if the component contains invalid characters or path traversal sequences
+ */
+export function sanitizePathComponent(component: string): string {
+  // Only allow alphanumeric and hyphens
+  const sanitized = component.replace(/[^a-zA-Z0-9-]/g, "");
+  if (sanitized !== component || component.includes("..")) {
+    throw new Error(`Invalid path component: ${component}`);
+  }
+  return sanitized;
+}
 
 /**
  * Maximum logo file size: 2MB per CONTEXT.md spec.
@@ -81,32 +144,49 @@ export async function saveBrandingLogo(
     );
   }
 
-  // T-16-18: Path traversal mitigation - sanitize clientId
-  // Only allow alphanumeric and hyphens in clientId
-  const sanitizedClientId = clientId.replace(/[^a-zA-Z0-9-]/g, "");
-  if (sanitizedClientId !== clientId || sanitizedClientId.includes("..")) {
-    throw new Error("Invalid client ID format");
-  }
+  // T-16-18: Path traversal mitigation - use shared sanitization
+  const safeClientId = sanitizePathComponent(clientId);
 
   const ext = EXTENSION_MAP[mimeType];
-  const clientDir = path.join(BRANDING_DIR, clientId);
-  const filename = `logo${ext}`;
-  const fullPath = path.join(clientDir, filename);
 
-  // Ensure directory exists
+  // Ensure base branding directory exists on first use
+  await ensureBrandingDir();
+
+  const clientDir = path.join(BRANDING_DIR, safeClientId);
+  const filename = `logo${ext}`;
+  const finalPath = path.join(clientDir, filename);
+  const tempPath = path.join(clientDir, `logo.${Date.now()}.tmp`);
+
+  // Ensure client-specific directory exists
   await mkdir(clientDir, { recursive: true });
 
-  // Delete old logo if exists (T-16-17: Disk exhaustion mitigation)
-  await deleteBrandingLogo(clientId);
+  // Write to temp file first (atomic write pattern to handle race conditions)
+  await writeFile(tempPath, file);
 
-  // Write new file
-  await writeFile(fullPath, file);
-  log.info("Logo saved", { clientId, path: fullPath, size: file.length });
+  // Atomic rename (handles race condition - rename is atomic on POSIX)
+  await rename(tempPath, finalPath);
 
-  const relativePath = `/branding/${clientId}/${filename}`;
+  // Clean up old logos with different extensions (T-16-17: Disk exhaustion mitigation)
+  try {
+    const files = await readdir(clientDir);
+    for (const f of files) {
+      if (f.startsWith("logo.") && f !== filename && !f.endsWith(".tmp")) {
+        await unlink(path.join(clientDir, f)).catch(() => {
+          // Ignore errors - file may have been deleted by concurrent request
+        });
+      }
+    }
+  } catch {
+    // Directory read failed - non-critical, log and continue
+    log.warn("Failed to clean up old logos", { clientId: safeClientId });
+  }
+
+  log.info("Logo saved", { clientId: safeClientId, path: finalPath, size: file.length });
+
+  const relativePath = `/branding/${safeClientId}/${filename}`;
   return {
     path: relativePath,
-    url: fullPath,
+    url: finalPath,
   };
 }
 
@@ -118,14 +198,10 @@ export async function saveBrandingLogo(
  * @throws Error if clientId contains invalid characters (path traversal protection)
  */
 export async function deleteBrandingLogo(clientId: string): Promise<void> {
-  // SECURITY: Path traversal mitigation - sanitize clientId
-  // Only allow alphanumeric and hyphens in clientId
-  const sanitizedClientId = clientId.replace(/[^a-zA-Z0-9-]/g, "");
-  if (sanitizedClientId !== clientId || sanitizedClientId.includes("..")) {
-    throw new Error("Invalid client ID format");
-  }
+  // SECURITY: Path traversal mitigation - use shared sanitization
+  const safeClientId = sanitizePathComponent(clientId);
 
-  const clientDir = path.join(BRANDING_DIR, sanitizedClientId);
+  const clientDir = path.join(BRANDING_DIR, safeClientId);
 
   for (const ext of Object.values(EXTENSION_MAP)) {
     const filePath = path.join(clientDir, `logo${ext}`);
@@ -151,14 +227,10 @@ export async function deleteBrandingLogo(clientId: string): Promise<void> {
 export async function getBrandingLogoPath(
   clientId: string,
 ): Promise<string | null> {
-  // SECURITY: Path traversal mitigation - sanitize clientId
-  // Only allow alphanumeric and hyphens in clientId
-  const sanitizedClientId = clientId.replace(/[^a-zA-Z0-9-]/g, "");
-  if (sanitizedClientId !== clientId || sanitizedClientId.includes("..")) {
-    throw new Error("Invalid client ID format");
-  }
+  // SECURITY: Path traversal mitigation - use shared sanitization
+  const safeClientId = sanitizePathComponent(clientId);
 
-  const clientDir = path.join(BRANDING_DIR, sanitizedClientId);
+  const clientDir = path.join(BRANDING_DIR, safeClientId);
 
   for (const ext of Object.values(EXTENSION_MAP)) {
     const filePath = path.join(clientDir, `logo${ext}`);

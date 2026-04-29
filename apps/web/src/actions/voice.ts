@@ -55,9 +55,7 @@ const analyzeVoiceSchema = z.object({
 const protectionRuleSchema = z.object({
   clientId: clientIdSchema,
   rule: z.object({
-    ruleType: z.enum(["page", "section", "pattern"], {
-      errorMap: () => ({ message: "Rule type must be page, section, or pattern" }),
-    }),
+    ruleType: z.enum(["page", "section", "pattern"]),
     target: z.string().min(1, "Target is required").max(2048, "Target too long"),
     reason: z.string().max(500, "Reason too long").optional(),
     expiresAt: z.string().datetime("Invalid expiration date format").optional(),
@@ -72,69 +70,104 @@ const removeProtectionRuleSchema = z.object({
 const industrySchema = z.string().max(100, "Industry name too long").optional();
 
 export async function getVoiceProfile(clientId: string): Promise<VoiceProfile | null> {
-  const validated = clientIdSchema.parse(clientId);
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated, auth);
-  return apiFetchVoiceProfile(validated);
+  try {
+    const validated = clientIdSchema.parse(clientId);
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated, auth);
+    return apiFetchVoiceProfile(validated);
+  } catch (error) {
+    console.error("[getVoiceProfile]", { message: error instanceof Error ? error.message : "Unknown error" });
+    return null;
+  }
 }
 
 export async function saveVoiceProfile(
   clientId: string,
   data: Partial<VoiceProfile>
-): Promise<VoiceProfile> {
-  const validated = clientIdSchema.parse(clientId);
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated, auth);
-  return apiUpdateVoiceProfile(validated, data);
+): Promise<VoiceProfile | null> {
+  try {
+    const validated = clientIdSchema.parse(clientId);
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated, auth);
+    return apiUpdateVoiceProfile(validated, data);
+  } catch (error) {
+    console.error("[saveVoiceProfile]", { message: error instanceof Error ? error.message : "Unknown error" });
+    throw new Error("Failed to save voice profile. Please try again.");
+  }
 }
 
 export async function analyzeVoice(
   clientId: string,
   urls: string[]
 ): Promise<AnalyzeJobResult> {
-  const validated = analyzeVoiceSchema.parse({ clientId, urls });
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated.clientId, auth);
+  try {
+    const validated = analyzeVoiceSchema.parse({ clientId, urls });
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated.clientId, auth);
 
-  // Rate limit: 50 LLM calls per hour (voice analysis uses LLM)
-  await checkRateLimit(llmLimiter, auth.userId);
+    // Rate limit: 50 LLM calls per hour (voice analysis uses LLM)
+    await checkRateLimit(llmLimiter, auth.userId);
 
-  return apiTriggerVoiceAnalysis(validated.clientId, validated.urls);
+    return apiTriggerVoiceAnalysis(validated.clientId, validated.urls);
+  } catch (error) {
+    console.error("[analyzeVoice]", { message: error instanceof Error ? error.message : "Unknown error" });
+    throw new Error("Failed to analyze voice. Please try again.");
+  }
 }
 
 export async function getProtectionRules(clientId: string): Promise<ProtectionRule[]> {
-  const validated = clientIdSchema.parse(clientId);
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated, auth);
-  return apiFetchProtectionRules(validated);
+  try {
+    const validated = clientIdSchema.parse(clientId);
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated, auth);
+    return apiFetchProtectionRules(validated);
+  } catch (error) {
+    console.error("[getProtectionRules]", { message: error instanceof Error ? error.message : "Unknown error" });
+    return [];
+  }
 }
 
 export async function addProtectionRule(
   clientId: string,
   rule: { ruleType: "page" | "section" | "pattern"; target: string; reason?: string; expiresAt?: string }
 ): Promise<ProtectionRule> {
-  const validated = protectionRuleSchema.parse({ clientId, rule });
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated.clientId, auth);
-  return apiCreateProtectionRule(validated.clientId, validated.rule);
+  try {
+    const validated = protectionRuleSchema.parse({ clientId, rule });
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated.clientId, auth);
+    return apiCreateProtectionRule(validated.clientId, validated.rule);
+  } catch (error) {
+    console.error("[addProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
+    throw new Error("Failed to add protection rule. Please try again.");
+  }
 }
 
 export async function removeProtectionRule(clientId: string, ruleId: string): Promise<void> {
-  const validated = removeProtectionRuleSchema.parse({ clientId, ruleId });
-  const auth = await requireActionAuth();
-  // SECURITY: Organization-level filtering for multi-tenant isolation
-  await validateOrganizationAccess(validated.clientId, auth);
-  return apiDeleteProtectionRule(validated.clientId, validated.ruleId);
+  try {
+    const validated = removeProtectionRuleSchema.parse({ clientId, ruleId });
+    const auth = await requireActionAuth();
+    // SECURITY: Organization-level filtering for multi-tenant isolation
+    await validateOrganizationAccess(validated.clientId, auth);
+    return apiDeleteProtectionRule(validated.clientId, validated.ruleId);
+  } catch (error) {
+    console.error("[removeProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
+    throw new Error("Failed to remove protection rule. Please try again.");
+  }
 }
 
 export async function getVoiceTemplates(industry?: string): Promise<VoiceTemplate[]> {
-  const validated = industrySchema.parse(industry);
-  // Voice templates are public/shared, but require authentication
-  await requireActionAuth();
-  return apiFetchVoiceTemplates(validated);
+  try {
+    const validated = industrySchema.parse(industry);
+    // Voice templates are public/shared, but require authentication
+    await requireActionAuth();
+    return apiFetchVoiceTemplates(validated);
+  } catch (error) {
+    console.error("[getVoiceTemplates]", { message: error instanceof Error ? error.message : "Unknown error" });
+    return [];
+  }
 }

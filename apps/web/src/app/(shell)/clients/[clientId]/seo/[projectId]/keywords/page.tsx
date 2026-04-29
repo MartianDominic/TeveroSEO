@@ -28,6 +28,38 @@ import {
 import { RankSparkline } from "@/components/keywords/RankSparkline";
 import { PositionBadge } from "@/components/keywords/PositionBadge";
 import { safeLast } from "@/lib/utils/safe-parse";
+import { z } from "zod";
+
+// Zod schemas for type-safe validation
+const KeywordResultSchema = z.object({
+  keyword: z.string(),
+  searchVolume: z.number(),
+  competition: z.number(),
+  cpc: z.number(),
+  trend: z.array(z.number()).optional(),
+});
+
+const KeywordResultsSchema = z.object({
+  rows: z.array(KeywordResultSchema).optional(),
+});
+
+const SavedKeywordSchema = z.object({
+  id: z.string(),
+  keyword: z.string(),
+  searchVolume: z.number(),
+  competition: z.number(),
+  savedAt: z.string(),
+  trackingEnabled: z.boolean(),
+  rankings: z.array(z.object({
+    date: z.string(),
+    position: z.number(),
+    previousPosition: z.number().nullable(),
+  })),
+});
+
+const SavedKeywordsSchema = z.object({
+  rows: z.array(SavedKeywordSchema).optional(),
+});
 
 interface KeywordResult {
   keyword: string;
@@ -112,8 +144,9 @@ export default function KeywordsPage() {
   };
 
   const handleSaveSelected = () => {
-    const results = (researchMutation.data as { rows?: KeywordResult[] })
-      ?.rows ?? [];
+    // Use Zod validation instead of unsafe type assertion
+    const parsed = KeywordResultsSchema.safeParse(researchMutation.data);
+    const results = parsed.success ? (parsed.data.rows ?? []) : [];
     const toSave = results.filter((r) => selectedKeywords.has(r.keyword));
     if (toSave.length > 0) {
       saveMutation.mutate(toSave);
@@ -130,9 +163,12 @@ export default function KeywordsPage() {
     setSelectedKeywords(newSet);
   };
 
-  const results = (researchMutation.data as { rows?: KeywordResult[] })
-    ?.rows ?? [];
-  const saved = (savedQuery.data as { rows?: SavedKeyword[] })?.rows ?? [];
+  // Use Zod validation instead of unsafe type assertions
+  const researchParsed = KeywordResultsSchema.safeParse(researchMutation.data);
+  const results = researchParsed.success ? (researchParsed.data.rows ?? []) : [];
+
+  const savedParsed = SavedKeywordsSchema.safeParse(savedQuery.data);
+  const saved = savedParsed.success ? (savedParsed.data.rows ?? []) : [];
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">

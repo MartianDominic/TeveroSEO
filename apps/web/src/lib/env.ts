@@ -47,8 +47,19 @@ const serverEnvSchema = z.object({
     ),
 
   // Backend services - using standardized names
-  OPEN_SEO_URL: z.string().url('OPEN_SEO_URL must be a valid URL').default('http://localhost:3001'),
-  AI_WRITER_URL: z.string().url('AI_WRITER_URL must be a valid URL').default('http://localhost:8000'),
+  // SECURITY: In production, localhost URLs will cause startup failure
+  OPEN_SEO_URL: z.string().url('OPEN_SEO_URL must be a valid URL')
+    .default('http://localhost:3001')
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || !val.includes('localhost'),
+      { message: 'OPEN_SEO_URL cannot be localhost in production' }
+    ),
+  AI_WRITER_URL: z.string().url('AI_WRITER_URL must be a valid URL')
+    .default('http://localhost:8000')
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || !val.includes('localhost'),
+      { message: 'AI_WRITER_URL cannot be localhost in production' }
+    ),
 
   // Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

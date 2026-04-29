@@ -10,6 +10,7 @@
 import {
   pgTable,
   text,
+  uuid,
   integer,
   jsonb,
   timestamp,
@@ -19,7 +20,6 @@ import {
   pgEnum,
   check,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { VOICE_MODES, type VoiceMode } from "./brief-schema";
@@ -140,7 +140,7 @@ export const voiceProfiles = pgTable(
   "voice_profiles",
   {
     id: text("id").primaryKey(),
-    clientId: text("client_id")
+    clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
 
@@ -349,6 +349,8 @@ export const voiceAuditLog = pgTable(
   (table) => [
     index("idx_voice_audit_profile").on(table.voiceProfileId),
     index("idx_voice_audit_content").on(table.contentId),
+    // Index for trend analysis queries filtering by auditedAt
+    index("idx_voice_audit_audited_at").on(table.auditedAt),
   ],
 );
 

@@ -138,6 +138,7 @@ from api.seo_dashboard import (
     get_analysis_summary,
     batch_analyze_urls,
     SEOAnalysisRequest,
+    BatchAnalyzeRequest,
     get_seo_dashboard_overview,
     get_gsc_raw_data,
     get_bing_raw_data,
@@ -167,6 +168,8 @@ def validate_production_config():
         "DISABLE_AUTH": "Authentication bypass is not allowed in production",
         "SKIP_AUTH": "Authentication bypass is not allowed in production",
         "DEBUG_MODE": "Debug mode must be disabled in production",
+        "DISABLE_SUBSCRIPTION": "Subscription enforcement must be enabled in production",
+        "USAGE_LIMITS_EMERGENCY_FAIL_OPEN": "Usage limits fail-open bypass is not allowed in production",
         "QUALITY_GATE_ENABLED": None,  # Special check: must be true or unset
     }
 
@@ -529,11 +532,11 @@ async def seo_analysis_summary(
 
 @app.post("/api/seo-dashboard/batch-analyze")
 async def batch_analyze_urls_endpoint(
-    urls: list[str],
+    request: BatchAnalyzeRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Analyze multiple URLs in batch."""
-    return await batch_analyze_urls(urls)
+    """Analyze multiple URLs in batch. Max 50 URLs, rate limited to 5 per hour."""
+    return await batch_analyze_urls(request.urls)
 
 @app.post("/api/seo-dashboard/analyze-urls-ai")
 async def analyze_urls_ai_endpoint(request: AnalyzeURLsRequest, current_user: dict = Depends(get_current_user)):
@@ -602,30 +605,51 @@ async def serve_frontend():
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on startup."""
-    try:
-        # Validate production config before anything else
-        validate_production_config()
+    """Initialize services on startup.
 
-        # Initialize database
+    Critical errors prevent the server from accepting requests.
+    Non-critical errors are logged but allow startup to continue.
+    """
+    critical_errors: list[str] = []
+
+    # Validate production config before anything else (critical)
+    try:
+        validate_production_config()
+    except Exception as e:
+        critical_errors.append(f"Production config validation failed: {e}")
+
+    # Initialize database (critical)
+    try:
         init_database()
-        
-        # Start task scheduler
+    except Exception as e:
+        critical_errors.append(f"Database initialization failed: {e}")
+
+    # Start task scheduler (non-critical - app can function without scheduled jobs)
+    try:
         from services.scheduler import get_scheduler
         await get_scheduler().start()
-        
-        # Log environment configuration status (SECURE: never log actual values)
-        log_env_status()
-
-        # Check optional integrations
-        if is_configured('WIX_API_KEY'):
-            logger.info("WIX_API_KEY: configured - Wix publishing enabled")
-        else:
-            logger.warning("WIX_API_KEY: not configured - Wix publishing disabled")
-
-        logger.info("ALwrity backend started successfully")
     except Exception as e:
-        logger.error(f"Error during startup: {e}")
+        logger.warning(f"[STARTUP] Scheduler failed to start (non-critical): {e}")
+
+    # Log environment configuration status (SECURE: never log actual values)
+    try:
+        log_env_status()
+    except Exception as e:
+        logger.warning(f"[STARTUP] Environment status logging failed (non-critical): {e}")
+
+    # Check optional integrations (non-critical)
+    if is_configured('WIX_API_KEY'):
+        logger.info("WIX_API_KEY: configured - Wix publishing enabled")
+    else:
+        logger.warning("WIX_API_KEY: not configured - Wix publishing disabled")
+
+    # If any critical errors occurred, prevent server from accepting requests
+    if critical_errors:
+        error_msg = "Critical startup failures: " + "; ".join(critical_errors)
+        logger.critical(error_msg)
+        raise RuntimeError(error_msg)
+
+    logger.info("ALwrity backend started successfully")
 
 # Shutdown event
 @app.on_event("shutdown")

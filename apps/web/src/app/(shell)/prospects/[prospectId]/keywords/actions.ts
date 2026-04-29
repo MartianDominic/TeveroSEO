@@ -5,6 +5,22 @@
  * Phase 43-04: Prioritization Engine + UI
  */
 
+import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
+import { env } from "@/lib/env";
+import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
+import { sanitizeErrorForClient } from "@/lib/error-utils";
+
+/** Default timeout for API requests (30 seconds) */
+const API_TIMEOUT_MS = 30000;
+
+// Validation schemas
+const prospectIdSchema = z.string().uuid("Invalid prospect ID format");
+const keywordIdSchema = z.string().uuid("Invalid keyword ID format");
+
+// Array limits
+const MAX_KEYWORD_IDS = 1000;
+
 export interface ProspectKeyword {
   id: string;
   keyword: string;
@@ -53,6 +69,16 @@ export interface PrioritizationResult {
   };
 }
 
+// Options schema for getKeywords
+const getKeywordsOptionsSchema = z.object({
+  tier: z.string().max(50, "Tier too long").optional(),
+  quickWin: z.boolean().optional(),
+  sortBy: z.string().max(50, "Sort field too long").optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
 /**
  * Fetch keywords for a prospect with optional filtering.
  */
@@ -66,30 +92,89 @@ export async function getKeywords(
     limit?: number;
     offset?: number;
   }
-): Promise<KeywordListResponse> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
-  const params = new URLSearchParams();
+): Promise<ActionResult<KeywordListResponse>> {
+  const authContext = await requireActionAuth();
 
-  if (options?.tier) params.set("tier", options.tier);
-  if (options?.quickWin) params.set("quickWin", "true");
-  if (options?.sortBy) params.set("sortBy", options.sortBy);
-  if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
-  if (options?.limit) params.set("limit", String(options.limit));
-  if (options?.offset) params.set("offset", String(options.offset));
-
-  const response = await fetch(
-    `${openSeoUrl}/api/prospects/${prospectId}/keywords?${params}`,
-    { cache: "no-store" }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Failed to fetch keywords" }));
-    throw new Error(error.error || "Failed to fetch keywords");
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
   }
 
-  const result = await response.json();
-  return result.data;
+  // Validate options
+  const validatedOptions = getKeywordsOptionsSchema.safeParse(options || {});
+  if (!validatedOptions.success) {
+    return { success: false, error: validatedOptions.error.issues[0]?.message || "Invalid options" };
+  }
+
+  try {
+    // Validate ownership before fetching
+    await validateProspectOwnership(validatedId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const params = new URLSearchParams();
+
+    if (validatedOptions.data.tier) params.set("tier", validatedOptions.data.tier);
+    if (validatedOptions.data.quickWin) params.set("quickWin", "true");
+    if (validatedOptions.data.sortBy) params.set("sortBy", validatedOptions.data.sortBy);
+    if (validatedOptions.data.sortOrder) params.set("sortOrder", validatedOptions.data.sortOrder);
+    if (validatedOptions.data.limit) params.set("limit", String(validatedOptions.data.limit));
+    if (validatedOptions.data.offset) params.set("offset", String(validatedOptions.data.offset));
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/prospects/${validatedId.data}/keywords?${params}`,
+      {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+      } catch {
+        // Response wasn't JSON (e.g., 502 HTML from nginx)
+      }
+      console.error("[getKeywords] API error:", response.status, errorMessage);
+      return {
+        success: false,
+        error: sanitizeErrorForClient(new Error(errorMessage)),
+      };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("[getKeywords] Error:", error);
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return {
+        success: false,
+        error: "Request timed out. Please try again.",
+      };
+    }
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
+
+// Weights schema for prioritization
+const weightsSchema = z.object({
+  volume: z.number().min(0).max(1).optional(),
+  competition: z.number().min(0).max(1).optional(),
+  relevance: z.number().min(0).max(1).optional(),
+  focus: z.number().min(0).max(1).optional(),
+  position: z.number().min(0).max(1).optional(),
+});
 
 /**
  * Run prioritization algorithm on all keywords for a prospect.
@@ -97,26 +182,80 @@ export async function getKeywords(
 export async function prioritizeKeywords(
   prospectId: string,
   weights?: ScoreWeights
-): Promise<PrioritizationResult> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+): Promise<ActionResult<PrioritizationResult>> {
+  const authContext = await requireActionAuth();
 
-  const response = await fetch(
-    `${openSeoUrl}/api/prospects/${prospectId}/keywords/prioritize`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weights }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Prioritization failed" }));
-    throw new Error(error.error || "Prioritization failed");
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
   }
 
-  const result = await response.json();
-  return result.data;
+  // Validate weights if provided
+  if (weights) {
+    const validatedWeights = weightsSchema.safeParse(weights);
+    if (!validatedWeights.success) {
+      return { success: false, error: validatedWeights.error.issues[0]?.message || "Invalid weights" };
+    }
+  }
+
+  try {
+    // Validate ownership before prioritizing
+    await validateProspectOwnership(validatedId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/prospects/${validatedId.data}/keywords/prioritize`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ weights }),
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+      } catch {
+        // Response wasn't JSON (e.g., 502 HTML from nginx)
+      }
+      console.error("[prioritizeKeywords] API error:", response.status, errorMessage);
+      return {
+        success: false,
+        error: sanitizeErrorForClient(new Error(errorMessage)),
+      };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("[prioritizeKeywords] Error:", error);
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return {
+        success: false,
+        error: "Request timed out. Please try again.",
+      };
+    }
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
+
+// Bulk update schema with array limits
+const bulkUpdateTierSchema = z.object({
+  keywordIds: z.array(keywordIdSchema).min(1, "At least one keyword required").max(MAX_KEYWORD_IDS, `Maximum ${MAX_KEYWORD_IDS} keywords allowed`),
+  tier: z.string().min(1, "Tier is required").max(50, "Tier name too long"),
+});
 
 /**
  * Bulk update tier for selected keywords.
@@ -125,31 +264,78 @@ export async function bulkUpdateTier(
   prospectId: string,
   keywordIds: string[],
   tier: string
-): Promise<{ updated: number }> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+): Promise<ActionResult<{ updated: number }>> {
+  const authContext = await requireActionAuth();
 
-  const response = await fetch(
-    `${openSeoUrl}/api/prospects/${prospectId}/keywords`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keywordIds, tier }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Update failed" }));
-    throw new Error(error.error || "Update failed");
+  // Validate prospect ID format
+  const validatedProspectId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedProspectId.success) {
+    return { success: false, error: validatedProspectId.error.issues[0]?.message || "Invalid prospect ID" };
   }
 
-  const result = await response.json();
-  return result.data;
+  // Validate bulk update input with array limits
+  const validatedInput = bulkUpdateTierSchema.safeParse({ keywordIds, tier });
+  if (!validatedInput.success) {
+    return { success: false, error: validatedInput.error.issues[0]?.message || "Invalid input" };
+  }
+
+  try {
+    // Validate ownership before updating
+    await validateProspectOwnership(validatedProspectId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/prospects/${validatedProspectId.data}/keywords`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ keywordIds: validatedInput.data.keywordIds, tier: validatedInput.data.tier }),
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.detail || errorData.message || errorMessage;
+      } catch {
+        // Response wasn't JSON (e.g., 502 HTML from nginx)
+      }
+      console.error("[bulkUpdateTier] API error:", response.status, errorMessage);
+      return {
+        success: false,
+        error: sanitizeErrorForClient(new Error(errorMessage)),
+      };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("[bulkUpdateTier] Error:", error);
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return {
+        success: false,
+        error: "Request timed out. Please try again.",
+      };
+    }
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
 }
 
 /**
  * Export keywords to CSV format.
  */
 export async function exportKeywordsCsv(keywords: ProspectKeyword[]): Promise<string> {
+  await requireActionAuth();
   const headers = [
     "Keyword",
     "Volume",

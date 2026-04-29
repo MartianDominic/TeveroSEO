@@ -31,6 +31,7 @@ import {
   Textarea,
 } from "@tevero/ui";
 import { cn } from "@/lib/utils";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 // API
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/lib/api-client";
@@ -978,15 +979,21 @@ export default function GlobalSettingsPage() {
         </TabsList>
 
         <TabsContent value="api">
-          <ApiIntegrationsTab />
+          <WithErrorBoundary name="ApiIntegrationsTab">
+            <ApiIntegrationsTab />
+          </WithErrorBoundary>
         </TabsContent>
 
         <TabsContent value="voice">
-          <VoiceTemplatesTab />
+          <WithErrorBoundary name="VoiceTemplatesTab">
+            <VoiceTemplatesTab />
+          </WithErrorBoundary>
         </TabsContent>
 
         <TabsContent value="models">
-          <ModelDefaultsTab />
+          <WithErrorBoundary name="ModelDefaultsTab">
+            <ModelDefaultsTab />
+          </WithErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

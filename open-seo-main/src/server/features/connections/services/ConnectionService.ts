@@ -170,7 +170,13 @@ export class ConnectionService {
     // Decrypt credentials
     const packed = Buffer.from(row.encryptedCredentials, "base64");
     const credentialsJson = decryptCredential(packed);
-    const credentials = JSON.parse(credentialsJson);
+
+    let credentials: Record<string, unknown>;
+    try {
+      credentials = JSON.parse(credentialsJson) as Record<string, unknown>;
+    } catch {
+      throw new Error("Invalid credentials format: failed to parse JSON");
+    }
 
     return this.createAdapter(
       row.platform as PlatformType,
@@ -278,40 +284,54 @@ export class ConnectionService {
   /**
    * Create platform adapter from decrypted credentials.
    *
-   * @throws Error for unsupported platforms
+   * @throws Error for unsupported platforms or invalid credentials
    */
   private createAdapter(
     platform: PlatformType,
     siteUrl: string,
     credentials: Record<string, unknown>
   ): PlatformAdapter {
+    // Type-safe credential extraction helper
+    const getString = (key: string): string | undefined => {
+      const value = credentials[key];
+      return typeof value === "string" ? value : undefined;
+    };
+
+    const requireString = (key: string): string => {
+      const value = getString(key);
+      if (!value) {
+        throw new Error(`Missing required credential: ${key}`);
+      }
+      return value;
+    };
+
     switch (platform) {
       case "wordpress":
         return new WordPressAdapter({
           siteUrl,
-          username: credentials.username as string,
-          appPassword: credentials.appPassword as string,
+          username: requireString("username"),
+          appPassword: requireString("appPassword"),
         });
       case "shopify":
         return new ShopifyAdapter({
           shopDomain: new URL(siteUrl).hostname,
-          accessToken: credentials.accessToken as string,
+          accessToken: requireString("accessToken"),
         });
       case "wix":
         return new WixAdapter({
-          siteId: credentials.siteId as string,
-          accessToken: credentials.accessToken as string,
-          accountId: credentials.accountId as string | undefined,
+          siteId: requireString("siteId"),
+          accessToken: requireString("accessToken"),
+          accountId: getString("accountId"),
         });
       case "squarespace":
         return new SquarespaceAdapter({
-          siteId: credentials.siteId as string,
-          apiKey: credentials.apiKey as string,
+          siteId: requireString("siteId"),
+          apiKey: requireString("apiKey"),
         });
       case "webflow":
         return new WebflowAdapter({
-          siteId: credentials.siteId as string,
-          accessToken: credentials.accessToken as string,
+          siteId: requireString("siteId"),
+          accessToken: requireString("accessToken"),
         });
       default:
         throw new Error(`Unsupported platform: ${platform}`);

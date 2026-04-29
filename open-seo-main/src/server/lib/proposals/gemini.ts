@@ -13,6 +13,7 @@ import { AppError } from "@/server/lib/errors";
 import type { ProspectWithAnalyses } from "@/server/features/prospects/services/ProspectService";
 import type { OpportunityKeyword } from "@/db/prospect-schema";
 import { sanitizeUserInput, validateOutput, sanitizeForLogging } from "@/lib/llm/safety";
+import { CircuitBreaker, CircuitBreakerOpenError } from "@/server/features/keywords/utils/CircuitBreaker";
 
 const log = createLogger({ module: "gemini" });
 
@@ -26,6 +27,16 @@ const RATE_LIMIT_WINDOW_SECONDS = 60;
 /** Maximum retry attempts for transient failures */
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
+
+/**
+ * Circuit breaker for Gemini API calls.
+ * Opens after 5 consecutive failures, recovers after 2 minutes.
+ */
+const geminiCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  resetTimeout: 120000, // 2 minutes
+  halfOpenMaxAttempts: 1,
+});
 
 // --- Lithuanian Terminology ---
 
@@ -524,9 +535,20 @@ export async function generateProposalSegment(
 
   let lastError: Error | null = null;
 
+  // Check circuit breaker state before attempting
+  if (geminiCircuitBreaker.isOpen) {
+    const stats = geminiCircuitBreaker.stats;
+    throw new AppError(
+      "SERVICE_UNAVAILABLE",
+      `Gemini API circuit breaker is open. Will recover in ${Math.ceil((stats.lastOpened ? 120000 - (Date.now() - stats.lastOpened) : 120000) / 1000)}s`,
+    );
+  }
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await model.generateContent(prompt);
+      const result = await geminiCircuitBreaker.execute(
+        () => model.generateContent(prompt)
+      );
       const rawText = result.response.text();
 
       // Validate output before returning
@@ -538,11 +560,20 @@ export async function generateProposalSegment(
       log.info("Segment generated", { segment, attempt });
       return validated.text;
     } catch (error) {
+      // If circuit breaker is open, don't retry
+      if (error instanceof CircuitBreakerOpenError) {
+        throw new AppError(
+          "SERVICE_UNAVAILABLE",
+          `Gemini API circuit breaker is open: ${error.message}`,
+        );
+      }
+
       lastError = error instanceof Error ? error : new Error(String(error));
       log.warn("Generation attempt failed", {
         segment,
         attempt,
         error: lastError.message,
+        circuitState: geminiCircuitBreaker.stats.state,
       });
 
       if (attempt < MAX_RETRIES) {

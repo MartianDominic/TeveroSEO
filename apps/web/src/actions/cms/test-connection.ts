@@ -18,9 +18,7 @@ export type CmsPlatform = "wordpress" | "shopify" | "wix" | "webhook";
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");
 
-const cmsPlatformSchema = z.enum(["wordpress", "shopify", "wix", "webhook"], {
-  errorMap: () => ({ message: "Platform must be wordpress, shopify, wix, or webhook" }),
-});
+const cmsPlatformSchema = z.enum(["wordpress", "shopify", "wix", "webhook"]);
 
 // Platform-specific credential schemas
 const wordpressCredentialsSchema = z.object({
@@ -104,7 +102,7 @@ export async function testCmsConnection(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0]?.message ?? "Invalid input",
+        error: error.issues[0]?.message ?? "Invalid input",
       };
     }
     // Log the actual error for debugging but return a generic message to the client

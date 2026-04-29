@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { validateCsrf } from "@/lib/api/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,10 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ clientId: string }> }
 ) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);

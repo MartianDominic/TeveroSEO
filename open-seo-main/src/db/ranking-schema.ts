@@ -44,6 +44,8 @@ export const keywordRankings = pgTable(
     index("ix_rankings_date").on(table.date),
     // Index for querying by keyword
     index("ix_rankings_keyword_id").on(table.keywordId),
+    // Composite index for time-series queries: WHERE keyword_id = ? ORDER BY date DESC
+    index("ix_rankings_keyword_date_desc").on(table.keywordId, sql`date DESC`),
     // Position must be 0-100 (0 = not ranking, 1-100 = actual position)
     check("chk_position_range", sql`position >= 0 AND position <= 100`),
   ],

@@ -14,6 +14,7 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
+import { withRetry } from '@/server/lib/retry';
 
 import {
   FocusDirective,
@@ -161,18 +162,22 @@ export class BusinessPriorityParser {
       const template = await this.loadPromptTemplate();
       const fullPrompt = this.buildPrompt(userInput.trim(), template);
 
-      // Call Claude API
-      const message = await this.client.messages.create({
-        model: this.config.model,
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-        messages: [
-          {
-            role: 'user',
-            content: fullPrompt,
-          },
-        ],
-      });
+      // Call Claude API with retry for transient failures
+      const message = await withRetry(
+        () =>
+          this.client.messages.create({
+            model: this.config.model,
+            max_tokens: this.config.maxTokens,
+            temperature: this.config.temperature,
+            messages: [
+              {
+                role: 'user',
+                content: fullPrompt,
+              },
+            ],
+          }),
+        { maxRetries: 3, baseDelayMs: 1000 }
+      );
 
       // Extract text response
       const textContent = message.content.find((c) => c.type === 'text');

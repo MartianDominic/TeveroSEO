@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { requireActionAuth } from "@/lib/auth/action-auth";
+import { postOpenSeo } from "@/lib/server-fetch";
 
 /**
  * Competitor Spy Server Actions
@@ -9,8 +11,26 @@ import { z } from "zod";
  * keywords from competitor domains.
  */
 
+/**
+ * Domain validation schema with SSRF protection.
+ * Blocks localhost, internal IPs (10.x, 172.16-31.x, 192.168.x), and requires valid TLD.
+ */
+const INTERNAL_IP_PATTERN = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i;
+const VALID_DOMAIN_PATTERN = /^[\w][\w.-]*\.[a-z]{2,}$/i;
+
+const domainSchema = z
+  .string()
+  .min(1, "Domain is required")
+  .max(253, "Domain too long")
+  .refine((val) => !INTERNAL_IP_PATTERN.test(val), {
+    message: "Internal IP addresses and localhost are not allowed",
+  })
+  .refine((val) => VALID_DOMAIN_PATTERN.test(val), {
+    message: "Invalid domain format - must be a valid domain with TLD",
+  });
+
 const CompetitorSpySchema = z.object({
-  domain: z.string().min(1),
+  domain: domainSchema,
   limit: z.number().int().min(1).max(500).default(100),
 });
 
@@ -39,25 +59,16 @@ export async function spyOnCompetitor(
   domain: string,
   limit: number = 100
 ): Promise<CompetitorSpyResponse> {
+  await requireActionAuth();
   const input = CompetitorSpySchema.parse({ domain, limit });
 
-  const openSeoUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
-
-  const response = await fetch(`${openSeoUrl}/api/keywords/competitor-spy`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const result = await postOpenSeo<{ success: boolean; data: CompetitorSpyResponse; error?: string }>(
+    "/api/keywords/competitor-spy",
+    {
       domain: input.domain,
       limit: input.limit,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Competitor spy failed");
-  }
-
-  const result = await response.json();
+    }
+  );
 
   if (!result.success) {
     throw new Error(result.error || "Competitor spy failed");
@@ -73,6 +84,7 @@ export async function exportCompetitorCsv(
   domain: string,
   keywords: CompetitorKeyword[]
 ): Promise<string> {
+  await requireActionAuth();
   const headers = [
     "Keyword",
     "Position",

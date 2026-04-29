@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getFastApi, FastApiError } from "@/lib/server-fetch";
 import { requireAuth, AuthError } from "@/lib/auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
  * Requires authentication - templates are platform resources
  * that should only be accessible to authenticated users.
  */
-export async function GET() {
+async function handleGet() {
   try {
     // Require authentication to access voice templates
     await requireAuth();
@@ -31,3 +32,6 @@ export async function GET() {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
+
+// Rate limit: 100 requests per minute (standard API limit)
+export const GET = withRateLimit(handleGet, RATE_LIMITS.API);

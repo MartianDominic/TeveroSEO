@@ -96,8 +96,8 @@ export async function startScheduleWorker(): Promise<
             attemptsMade: job.attemptsMade,
           };
           await scheduleQueue.add("dlq:report-scheduler", dlqData, {
-            removeOnComplete: false,
-            removeOnFail: false,
+            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
+            removeOnFail: { age: 604800 }, // 7 days
             attempts: 1,
           });
           jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
@@ -119,6 +119,10 @@ export async function startScheduleWorker(): Promise<
           ? job.finishedOn - job.processedOn
           : undefined,
     });
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: SCHEDULE_QUEUE_NAME });
   });
 
   return worker;

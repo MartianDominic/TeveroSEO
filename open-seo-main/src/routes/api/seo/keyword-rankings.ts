@@ -38,8 +38,17 @@ export const Route = createFileRoute("/api/seo/keyword-rankings")({
           const ctx = await getContext(request);
           const keywordId = ctx.url.searchParams.get("keyword_id");
           const action = ctx.url.searchParams.get("action") ?? "history";
-          const days = parseInt(ctx.url.searchParams.get("days") ?? "30", 10);
           const projectId = ctx.url.searchParams.get("project_id");
+
+          // Parse days with NaN check and bounds validation
+          const daysParam = ctx.url.searchParams.get("days");
+          let days = 30; // Default
+          if (daysParam) {
+            const parsed = parseInt(daysParam, 10);
+            if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 365) {
+              days = parsed;
+            }
+          }
 
           if (action === "with-rankings") {
             if (!projectId) {

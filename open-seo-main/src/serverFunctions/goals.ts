@@ -17,7 +17,7 @@ export const getGoalTemplates = createServerFn({ method: "GET" })
 export const getClientGoals = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .inputValidator((data: unknown) =>
-    z.object({ clientId: z.string().min(1) }).parse(data),
+    z.object({ clientId: z.string().uuid() }).parse(data),
   )
   .handler(async ({ data }) => {
     return GoalService.listClientGoals(data.clientId);
@@ -28,7 +28,7 @@ export const createGoal = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        clientId: z.string().min(1),
+        clientId: z.string().uuid(),
         goal: createGoalSchema,
       })
       .parse(data),
@@ -69,7 +69,7 @@ export const bulkCreateGoals = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
       .object({
-        clientId: z.string().min(1),
+        clientId: z.string().uuid(),
         goals: z.array(createGoalSchema).min(1).max(10),
       })
       .parse(data),

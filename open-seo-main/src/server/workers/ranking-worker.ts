@@ -96,8 +96,9 @@ export async function startRankingWorker(): Promise<
             attemptsMade: job.attemptsMade,
           };
           await rankingQueue.add("dlq:keyword-ranking", dlqData, {
-            removeOnComplete: false,
-            removeOnFail: false,
+            // TTL: auto-remove DLQ jobs after 7 days to prevent accumulation
+            removeOnComplete: { age: 604800 },
+            removeOnFail: { age: 604800 },
             attempts: 1,
           });
           jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
@@ -119,6 +120,10 @@ export async function startRankingWorker(): Promise<
           ? job.finishedOn - job.processedOn
           : undefined,
     });
+  });
+
+  worker.on("stalled", (jobId) => {
+    workerLogger.warn("Job stalled", { jobId, queue: RANKING_QUEUE_NAME });
   });
 
   return worker;

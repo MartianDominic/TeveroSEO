@@ -19,6 +19,7 @@ import {
   StatusChip,
 } from "@tevero/ui";
 import { cn } from "@/lib/utils";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 import { useContentCalendarStore, Article } from "@/stores/contentCalendarStore";
 import { useClientStore } from "@/stores/clientStore";
 import { apiPost } from "@/lib/api-client";
@@ -207,13 +208,13 @@ function ArticleDetailSheet({
               )}
 
               {/* CMS Post URL */}
-              {article.cms_post_url && (
+              {article.cms_post_url && isSafeUrl(article.cms_post_url) && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Published URL
                   </p>
                   <a
-                    href={article.cms_post_url}
+                    href={safeHref(article.cms_post_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-primary hover:underline flex items-center gap-1"
@@ -379,11 +380,16 @@ function CsvImportDialog({
         throw new Error(`Import failed: ${res.status}`);
       }
 
-      const data = (await res.json()) as {
+      let data: {
         imported?: number;
         skipped?: number;
         message?: string;
       };
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        throw new Error('Failed to parse server response. Please try again.');
+      }
       const msg =
         data.message ??
         `Imported: ${data.imported ?? 0}, Skipped: ${data.skipped ?? 0}`;
@@ -532,7 +538,12 @@ export default function ContentCalendarPage() {
   // Fetch pending review articles when pipeline tab is active
   useEffect(() => {
     if (tab === 1) {
-      fetchPendingReview().then((arts) => setPendingReview(arts));
+      fetchPendingReview()
+        .then((arts) => setPendingReview(arts))
+        .catch((error) => {
+          console.error("Failed to fetch pending reviews:", error);
+          setPendingReview([]);
+        });
     }
   }, [tab, fetchPendingReview]);
 

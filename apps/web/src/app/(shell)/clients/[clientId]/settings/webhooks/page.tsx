@@ -24,13 +24,19 @@ export default function WebhooksSettingsPage() {
     async function load() {
       try {
         setError(null);
-        const [webhooksData, registryData] = await Promise.all([
+        const [webhooksResult, registryResult] = await Promise.all([
           getClientWebhooks(clientId),
           getEventRegistry(),
         ]);
-        setWebhooks(webhooksData);
-        setEvents(registryData.events);
-        setCategories(registryData.categories);
+        if (!webhooksResult.success) {
+          throw new Error(webhooksResult.error);
+        }
+        if (!registryResult.success) {
+          throw new Error(registryResult.error);
+        }
+        setWebhooks(webhooksResult.data);
+        setEvents(registryResult.data.events);
+        setCategories(registryResult.data.categories);
       } catch (err) {
         console.error('[WebhooksPage] Load error:', err);
         setError('Failed to load webhooks. Please try again.');
@@ -56,9 +62,16 @@ export default function WebhooksSettingsPage() {
     if (!open) {
       setEditingWebhook(undefined);
       getClientWebhooks(clientId)
-        .then(setWebhooks)
+        .then((result) => {
+          if (result.success) {
+            setWebhooks(result.data);
+          } else {
+            setError(result.error);
+          }
+        })
         .catch((err) => {
           console.error('[WebhooksPage] Refresh error:', err);
+          setError('Failed to refresh webhooks list.');
         });
     }
   };
@@ -67,10 +80,16 @@ export default function WebhooksSettingsPage() {
     setLoading(true);
     setError(null);
     Promise.all([getClientWebhooks(clientId), getEventRegistry()])
-      .then(([webhooksData, registryData]) => {
-        setWebhooks(webhooksData);
-        setEvents(registryData.events);
-        setCategories(registryData.categories);
+      .then(([webhooksResult, registryResult]) => {
+        if (!webhooksResult.success) {
+          throw new Error(webhooksResult.error);
+        }
+        if (!registryResult.success) {
+          throw new Error(registryResult.error);
+        }
+        setWebhooks(webhooksResult.data);
+        setEvents(registryResult.data.events);
+        setCategories(registryResult.data.categories);
       })
       .catch((err) => {
         console.error('[WebhooksPage] Retry error:', err);

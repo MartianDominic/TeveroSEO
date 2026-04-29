@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
@@ -73,16 +74,27 @@ function buildQuery(
  */
 export async function getPageFindings(
   params: PageFindingsParams
-): Promise<PageFindingsResponse> {
-  const validated = pageFindingsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+): Promise<ActionResult<PageFindingsResponse>> {
+  const parseResult = pageFindingsParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  const query = buildQuery(validated, {
-    page_id: validated.pageId,
-    action: "page-findings",
-  });
-  return getOpenSeo(`/api/seo/audits?${query}`);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    const query = buildQuery(validated, {
+      page_id: validated.pageId,
+      action: "page-findings",
+    });
+    const data = await getOpenSeo<PageFindingsResponse>(`/api/seo/audits?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getPageFindings] Failed:", error);
+    return { success: false, error: "Failed to fetch page findings" };
+  }
 }
 
 /**
@@ -90,13 +102,24 @@ export async function getPageFindings(
  */
 export async function getAuditFindings(
   params: FindingsParams
-): Promise<{ findings: AuditFinding[] }> {
-  const validated = findingsParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+): Promise<ActionResult<{ findings: AuditFinding[] }>> {
+  const parseResult = findingsParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  const query = buildQuery(validated, { action: "all-findings" });
-  return getOpenSeo(`/api/seo/audits?${query}`);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    const query = buildQuery(validated, { action: "all-findings" });
+    const data = await getOpenSeo<{ findings: AuditFinding[] }>(`/api/seo/audits?${query}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getAuditFindings] Failed:", error);
+    return { success: false, error: "Failed to fetch audit findings" };
+  }
 }
 
 /**
@@ -106,43 +129,55 @@ export async function getAuditFindings(
  */
 export async function exportFindingsCSV(
   params: FindingsParams
-): Promise<string> {
-  // Validation is done in getAuditFindings, but validate here for early failure
-  const validated = findingsParamsSchema.parse(params);
+): Promise<ActionResult<string>> {
+  const parseResult = findingsParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  // Rate limit export operations (auth is checked in getAuditFindings)
-  const auth = await requireActionAuth();
-  await checkActionRateLimit("export", auth.userId);
+  try {
+    // Rate limit export operations (auth is checked in getAuditFindings)
+    const auth = await requireActionAuth();
+    await checkActionRateLimit("export", auth.userId);
 
-  // Auth is checked again in getAuditFindings but we need it for rate limiting
-  const { findings } = await getAuditFindings(validated);
+    // Auth is checked again in getAuditFindings but we need it for rate limiting
+    const result = await getAuditFindings(validated);
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+    const { findings } = result.data;
 
-  // Build CSV header
-  const headers = [
-    "Check ID",
-    "Tier",
-    "Category",
-    "Severity",
-    "Passed",
-    "Message",
-    "Auto-Fixable",
-    "Page ID",
-  ];
+    // Build CSV header
+    const headers = [
+      "Check ID",
+      "Tier",
+      "Category",
+      "Severity",
+      "Passed",
+      "Message",
+      "Auto-Fixable",
+      "Page ID",
+    ];
 
-  // Build CSV rows
-  const rows = findings.map((f) => [
-    f.checkId,
-    f.tier.toString(),
-    f.category,
-    f.severity,
-    f.passed ? "Yes" : "No",
-    `"${f.message.replace(/"/g, '""')}"`,
-    f.autoEditable ? "Yes" : "No",
-    f.pageId,
-  ]);
+    // Build CSV rows
+    const rows = findings.map((f) => [
+      f.checkId,
+      f.tier.toString(),
+      f.category,
+      f.severity,
+      f.passed ? "Yes" : "No",
+      `"${f.message.replace(/"/g, '""')}"`,
+      f.autoEditable ? "Yes" : "No",
+      f.pageId,
+    ]);
 
-  // Combine header and rows
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    // Combine header and rows
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 
-  return csv;
+    return { success: true, data: csv };
+  } catch (error) {
+    console.error("[exportFindingsCSV] Failed:", error);
+    return { success: false, error: "Failed to export findings" };
+  }
 }

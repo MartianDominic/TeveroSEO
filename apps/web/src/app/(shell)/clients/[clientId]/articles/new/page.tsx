@@ -105,6 +105,7 @@ export default function NewArticlePage() {
 
   const [voiceTemplates, setVoiceTemplates] = useState<VoiceTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -145,9 +146,15 @@ export default function NewArticlePage() {
 
   useEffect(() => {
     setLoadingTemplates(true);
+    setTemplateError(null);
     apiGet<VoiceTemplate[]>("/api/voice-templates")
       .then((data) => setVoiceTemplates(data))
-      .catch(() => setVoiceTemplates([]))
+      .catch((err) => {
+        setVoiceTemplates([]);
+        setTemplateError(
+          err instanceof Error ? err.message : "Failed to load voice templates"
+        );
+      })
       .finally(() => setLoadingTemplates(false));
   }, []);
 
@@ -326,6 +333,10 @@ export default function NewArticlePage() {
             <Label className="text-sm font-medium">Voice Template</Label>
             {loadingTemplates ? (
               <div className="h-10 w-full rounded-md bg-muted animate-pulse" />
+            ) : templateError ? (
+              <div className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                {templateError}. Using brand voice only.
+              </div>
             ) : (
               <Select
                 value={currentArticle.voiceTemplateId ?? "__none__"}

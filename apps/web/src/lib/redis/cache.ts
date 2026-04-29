@@ -72,10 +72,19 @@ export async function cacheGet<T>(
 
 /**
  * Get a cached value without schema validation (legacy compatibility).
- * Prefer cacheGet with schema validation for type safety.
+ * @deprecated Use cacheGet with schema validation instead for type safety.
+ * This function performs unsafe type assertions on JSON.parse results.
  */
 export async function cacheGetUnsafe<T>(namespace: string, key: string): Promise<T | null> {
   const cacheKey = buildKey(namespace, key);
+
+  // Log deprecation warning in development
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      `[redis-cache] DEPRECATED: cacheGetUnsafe called for key "${cacheKey}". ` +
+      `Migrate to cacheGet with Zod schema validation for type safety.`
+    );
+  }
 
   try {
     const raw = await redis.get(cacheKey);

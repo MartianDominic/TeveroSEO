@@ -1,0 +1,58 @@
+# ci-web.yml — CI workflow for apps/web (Tevero Web)
+#
+# Runs typecheck, lint, and tests on pull requests to main
+# that affect the apps/web directory or shared packages.
+
+name: CI - Web
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ci-web.yml'
+
+concurrency:
+  group: ci-web-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate apps/web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run typecheck
+        run: pnpm --filter @tevero/web typecheck
+
+      - name: Run lint
+        run: pnpm --filter @tevero/web lint
+
+      - name: Run tests
+        run: pnpm --filter @tevero/web test -- --run --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-web
+          path: apps/web/coverage/
+          retention-days: 7

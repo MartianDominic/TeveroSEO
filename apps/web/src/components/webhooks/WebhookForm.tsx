@@ -78,11 +78,15 @@ export function WebhookForm({
 
     startTransition(async () => {
       if (isEditing) {
-        await updateWebhook(webhook.id, {
+        const result = await updateWebhook(webhook.id, {
           name,
           url,
           events: selectedEvents,
         });
+        if (!result.success) {
+          console.error("[WebhookForm] Update failed:", result.error);
+          return;
+        }
       } else {
         const result = await createWebhook({
           clientId,
@@ -90,7 +94,11 @@ export function WebhookForm({
           url,
           events: selectedEvents,
         });
-        setNewSecret(result.secret);
+        if (!result.success) {
+          console.error("[WebhookForm] Create failed:", result.error);
+          return;
+        }
+        setNewSecret(result.data.secret);
       }
       router.refresh();
       if (isEditing) {

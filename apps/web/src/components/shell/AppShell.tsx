@@ -20,6 +20,7 @@ import {
   Plus,
   Sun,
   Moon,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClientStore } from "@/stores";
@@ -205,6 +206,7 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
   } = useClientStore();
 
   const [open, setOpen] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
     if (isSignedIn && clients.length === 0) {
@@ -216,12 +218,22 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
   if (!isSignedIn) return null;
 
   const handleSelect = (clientId: string) => {
+    // Validate client exists before navigation
+    const clientExists = clients.some((c) => c.id === clientId);
+    if (!clientExists) {
+      // Client may have been deleted - refresh the client list
+      fetchClients();
+      return;
+    }
+    setIsSwitching(true);
     setActiveClient(clientId);
     setOpen(false);
     router.push(
       `/clients/${clientId}` as Parameters<typeof router.push>[0]
     );
     router.refresh();
+    // Clear loading state after navigation starts (short delay for UX)
+    setTimeout(() => setIsSwitching(false), 500);
   };
 
   const handleAddNew = () => {
@@ -239,13 +251,17 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
         <PopoverTrigger asChild>
           <button
             title={triggerLabel}
+            disabled={isSwitching}
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white",
-              "transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              "transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              isSwitching && "opacity-70"
             )}
             style={name ? { backgroundColor: seedColor(name) } : undefined}
           >
-            {name ? (
+            {isSwitching ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : name ? (
               clientInitial(name)
             ) : (
               <Globe className="h-4 w-4 text-muted-foreground" />
@@ -275,26 +291,34 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          disabled={isSwitching}
           className={cn(
             "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium",
-            "hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            "hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isSwitching && "opacity-70"
           )}
         >
-          {/* Colored initial circle */}
-          <span
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
-            style={
-              name
-                ? { backgroundColor: seedColor(name) }
-                : { backgroundColor: "hsl(var(--muted))" }
-            }
-          >
-            {name ? clientInitial(name) : "?"}
-          </span>
+          {/* Colored initial circle or loading spinner */}
+          {isSwitching ? (
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </span>
+          ) : (
+            <span
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+              style={
+                name
+                  ? { backgroundColor: seedColor(name) }
+                  : { backgroundColor: "hsl(var(--muted))" }
+              }
+            >
+              {name ? clientInitial(name) : "?"}
+            </span>
+          )}
 
           {/* Name */}
           <span className="flex-1 truncate text-left">
-            {isLoading ? "Loading..." : triggerLabel}
+            {isSwitching ? "Switching..." : isLoading ? "Loading..." : triggerLabel}
           </span>
 
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -387,16 +411,20 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
   const platformHealth = usePlatformHealth();
 
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
+  // HYDRATION FIX: Initialize to consistent default, sync with localStorage after mount
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+
+  // Sync collapsed state from localStorage after component mounts (client-side only)
+  useEffect(() => {
     try {
-      return (
-        typeof window !== "undefined" &&
-        localStorage.getItem(COLLAPSED_KEY) === "true"
-      );
+      const stored = localStorage.getItem(COLLAPSED_KEY);
+      if (stored === "true") {
+        setCollapsed(true);
+      }
     } catch {
-      return false;
+      // Ignore storage errors
     }
-  });
+  }, []);
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 

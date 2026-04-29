@@ -23,12 +23,13 @@ function createRedisClient(): Redis {
     // Connection pooling with retry
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
-      if (times > 10) {
-        console.error("[redis] Max retries reached, giving up");
-        return null; // Stop retrying
+      if (times > 50) {
+        // HIGH-REDIS-01 fix: Continue reconnecting instead of giving up
+        console.error("[redis] Max retries reached, will retry in 30s");
+        return 30000; // Continue trying every 30s instead of giving up
       }
-      // Exponential backoff: 50ms, 100ms, 150ms... up to 2000ms
-      return Math.min(times * 50, 2000);
+      // Exponential backoff: 50ms, 100ms, 150ms... up to 3000ms
+      return Math.min(times * 100, 3000);
     },
     enableReadyCheck: true,
     lazyConnect: true,
@@ -122,6 +123,48 @@ export async function checkRedisHealth(): Promise<{
       latencyMs: Date.now() - start,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/**
+ * Validate Redis connection at application startup.
+ * In production, this will throw if Redis is unavailable.
+ * In development, it logs a warning but allows the app to continue.
+ *
+ * Call this from instrumentation.ts or application initialization.
+ */
+export async function validateRedisAtStartup(): Promise<void> {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  try {
+    // Connect if not already connected (lazyConnect is true)
+    if (redis.status === "wait") {
+      await redis.connect();
+    }
+
+    // Verify connection with ping
+    await redis.ping();
+    console.log("[redis] Startup validation: connection validated successfully");
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+
+    if (isProduction) {
+      console.error(
+        "[redis] CRITICAL: Startup validation failed:",
+        errorMessage
+      );
+      throw new Error(
+        `Redis is required in production but connection failed: ${errorMessage}`
+      );
+    }
+
+    console.warn(
+      "[redis] Startup validation warning: Redis connection failed.",
+      "Some features may be unavailable.",
+      "Error:",
+      errorMessage
+    );
   }
 }
 

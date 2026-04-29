@@ -27,6 +27,7 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
     "The service is temporarily at capacity. Please try again in a few minutes.",
   // Database operation errors
   ALERT_CREATE_FAILED: "Failed to create alert. Please try again.",
+  ALERT_RULE_CREATE_FAILED: "Failed to create alert rule. Please try again.",
   DROP_EVENT_FAILED: "Failed to record ranking drop event. Please try again.",
   WEBHOOK_DELETE_FAILED: "Failed to delete webhook. Please try again.",
   // External API errors

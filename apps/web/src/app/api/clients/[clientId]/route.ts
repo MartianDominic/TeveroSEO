@@ -6,7 +6,13 @@ import {
   deleteFastApi,
   FastApiError,
 } from "@/lib/server-fetch";
+import { validateCsrf } from "@/lib/api/security";
 import type { Client } from "@tevero/types";
+import {
+  patchClientSchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,10 +39,33 @@ export async function GET(_: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);
-    const body = await req.json();
+
+    // Safe JSON parsing
+    const jsonResult = await safeParseJson(req);
+    if (!jsonResult.success) {
+      return NextResponse.json(
+        { error: jsonResult.error },
+        { status: 400 }
+      );
+    }
+
+    // Validate with Zod schema
+    const parsed = patchClientSchema.safeParse(jsonResult.data);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const body = parsed.data;
     const data = await patchFastApi<Client>(`/api/clients/${clientId}`, body);
     return NextResponse.json(data);
   } catch (err) {
@@ -52,7 +81,11 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
+  // CSRF protection for state-changing request
+  const csrfError = validateCsrf(req);
+  if (csrfError) return csrfError;
+
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);

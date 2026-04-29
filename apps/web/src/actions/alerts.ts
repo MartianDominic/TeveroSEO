@@ -4,9 +4,11 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo, patchOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { generateAlertIdempotencyKey } from "@/lib/utils/idempotency";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");
@@ -44,12 +46,20 @@ export interface AlertRule {
 /**
  * Get alert count for badge display.
  */
-export async function getAlertCount(clientId: string): Promise<number> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validatedClientId, auth);
-  const result = await getOpenSeo(`/api/clients/${validatedClientId}/alerts?count_only=true`);
-  return (result as { count: number }).count ?? 0;
+export async function getAlertCount(clientId: string): Promise<ActionResult<number>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validatedClientId, auth);
+    const result = await getOpenSeo(`/api/clients/${validatedClientId}/alerts?count_only=true`);
+    return { success: true, data: (result as { count: number }).count ?? 0 };
+  } catch (error) {
+    console.error("[getAlertCount] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get alert count",
+    };
+  }
 }
 
 /**
@@ -58,13 +68,22 @@ export async function getAlertCount(clientId: string): Promise<number> {
 export async function getClientAlerts(
   clientId: string,
   status?: string,
-): Promise<Alert[]> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const validatedStatus = statusSchema.parse(status);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validatedClientId, auth);
-  const query = validatedStatus ? `?status=${validatedStatus}` : "";
-  return getOpenSeo(`/api/clients/${validatedClientId}/alerts${query}`) as Promise<Alert[]>;
+): Promise<ActionResult<Alert[]>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const validatedStatus = statusSchema.parse(status);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validatedClientId, auth);
+    const query = validatedStatus ? `?status=${validatedStatus}` : "";
+    const data = await getOpenSeo(`/api/clients/${validatedClientId}/alerts${query}`) as Alert[];
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getClientAlerts] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get alerts",
+    };
+  }
 }
 
 /**
@@ -74,26 +93,44 @@ export async function updateAlertStatus(
   clientId: string,
   alertId: string,
   action: "acknowledge" | "resolve" | "dismiss",
-): Promise<{ success: boolean }> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const validatedAlertId = alertIdSchema.parse(alertId);
-  const validatedAction = actionSchema.parse(action);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validatedClientId, auth);
-  return patchOpenSeo(`/api/clients/${validatedClientId}/alerts`, {
-    alertId: validatedAlertId,
-    action: validatedAction,
-  }) as Promise<{ success: boolean }>;
+): Promise<ActionResult<{ success: boolean }>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const validatedAlertId = alertIdSchema.parse(alertId);
+    const validatedAction = actionSchema.parse(action);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validatedClientId, auth);
+    const data = await patchOpenSeo(`/api/clients/${validatedClientId}/alerts`, {
+      alertId: validatedAlertId,
+      action: validatedAction,
+    }) as { success: boolean };
+    return { success: true, data };
+  } catch (error) {
+    console.error("[updateAlertStatus] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update alert status",
+    };
+  }
 }
 
 /**
  * Get alert rules for a client.
  */
-export async function getAlertRules(clientId: string): Promise<AlertRule[]> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validatedClientId, auth);
-  return getOpenSeo(`/api/clients/${validatedClientId}/alert-rules`) as Promise<AlertRule[]>;
+export async function getAlertRules(clientId: string): Promise<ActionResult<AlertRule[]>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validatedClientId, auth);
+    const data = await getOpenSeo(`/api/clients/${validatedClientId}/alert-rules`) as AlertRule[];
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getAlertRules] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get alert rules",
+    };
+  }
 }
 
 // Validation schema for alert rule updates
@@ -118,20 +155,29 @@ export async function updateAlertConfig(
     severity?: "info" | "warning" | "critical";
     emailNotify?: boolean;
   }
-): Promise<{ success: boolean }> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const validatedRuleId = alertIdSchema.parse(ruleId);
-  const validatedUpdates = alertRuleUpdateSchema.parse(updates);
+): Promise<ActionResult<{ success: boolean }>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const validatedRuleId = alertIdSchema.parse(ruleId);
+    const validatedUpdates = alertRuleUpdateSchema.parse(updates);
 
-  const auth = await requireActionAuth();
+    const auth = await requireActionAuth();
 
-  // Rate limit: prevent alert config abuse
-  await checkActionRateLimit("alertConfig", auth.userId);
+    // Rate limit: prevent alert config abuse
+    await checkActionRateLimit("alertConfig", auth.userId);
 
-  // SECURITY: Verify user has access to this client before updating alert config
-  await validateClientOwnership(validatedClientId, auth);
+    // SECURITY: Verify user has access to this client before updating alert config
+    await validateClientOwnership(validatedClientId, auth);
 
-  return patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, validatedUpdates) as Promise<{ success: boolean }>;
+    const data = await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, validatedUpdates) as { success: boolean };
+    return { success: true, data };
+  } catch (error) {
+    console.error("[updateAlertConfig] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update alert configuration",
+    };
+  }
 }
 
 /**
@@ -148,28 +194,45 @@ export async function createAlertRule(
     severity: "info" | "warning" | "critical";
     emailNotify: boolean;
   }
-): Promise<AlertRule> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const validatedRule = z.object({
-    alertType: z.string().min(1).max(100),
-    enabled: z.boolean(),
-    threshold: z.number().nullable().optional(),
-    severity: z.enum(["info", "warning", "critical"]),
-    emailNotify: z.boolean(),
-  }).parse(rule);
+): Promise<ActionResult<AlertRule>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const validatedRule = z.object({
+      alertType: z.string().min(1).max(100),
+      enabled: z.boolean(),
+      threshold: z.number().nullable().optional(),
+      severity: z.enum(["info", "warning", "critical"]),
+      emailNotify: z.boolean(),
+    }).parse(rule);
 
-  const auth = await requireActionAuth();
+    const auth = await requireActionAuth();
 
-  // Rate limit: prevent alert rule spam
-  await checkActionRateLimit("alertConfig", auth.userId);
+    // Rate limit: prevent alert rule spam
+    await checkActionRateLimit("alertConfig", auth.userId);
 
-  // SECURITY: Verify user has access to this client before creating alert rule
-  await validateClientOwnership(validatedClientId, auth);
+    // SECURITY: Verify user has access to this client before creating alert rule
+    await validateClientOwnership(validatedClientId, auth);
 
-  // HIGH-TXN-004 FIX: Use correct HTTP method (POST) for create operation
-  const response = await postOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, validatedRule);
+    // DB-H08 FIX: Generate idempotency key to prevent duplicate alert rule creation
+    const idempotencyKey = generateAlertIdempotencyKey('create', {
+      clientId: validatedClientId,
+      alertType: validatedRule.alertType,
+    });
 
-  return response as AlertRule;
+    // HIGH-TXN-004 FIX: Use correct HTTP method (POST) for create operation
+    const data = await postOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, {
+      ...validatedRule,
+      idempotencyKey, // Backend should use this to deduplicate
+    }) as AlertRule;
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("[createAlertRule] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create alert rule",
+    };
+  }
 }
 
 /**
@@ -180,20 +243,28 @@ export async function createAlertRule(
 export async function deleteAlertRule(
   clientId: string,
   ruleId: string
-): Promise<{ success: boolean }> {
-  const validatedClientId = clientIdSchema.parse(clientId);
-  const validatedRuleId = alertIdSchema.parse(ruleId);
+): Promise<ActionResult<{ success: boolean }>> {
+  try {
+    const validatedClientId = clientIdSchema.parse(clientId);
+    const validatedRuleId = alertIdSchema.parse(ruleId);
 
-  const auth = await requireActionAuth();
+    const auth = await requireActionAuth();
 
-  // Rate limit: prevent mass deletion abuse
-  await checkActionRateLimit("alertConfig", auth.userId);
+    // Rate limit: prevent mass deletion abuse
+    await checkActionRateLimit("alertConfig", auth.userId);
 
-  // SECURITY: Verify user has access to this client before deleting alert rule
-  await validateClientOwnership(validatedClientId, auth);
+    // SECURITY: Verify user has access to this client before deleting alert rule
+    await validateClientOwnership(validatedClientId, auth);
 
-  // HIGH-TXN-004 FIX: Use correct HTTP method (DELETE) for delete operation
-  await deleteOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`);
+    // HIGH-TXN-004 FIX: Use correct HTTP method (DELETE) for delete operation
+    await deleteOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`);
 
-  return { success: true };
+    return { success: true, data: { success: true } };
+  } catch (error) {
+    console.error("[deleteAlertRule] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete alert rule",
+    };
+  }
 }

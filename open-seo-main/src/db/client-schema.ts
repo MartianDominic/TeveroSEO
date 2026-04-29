@@ -8,13 +8,13 @@
 import {
   pgTable,
   text,
+  uuid,
   timestamp,
   jsonb,
   index,
   uniqueIndex,
   check,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { prospects } from "./prospect-schema";
@@ -43,7 +43,7 @@ export interface BaselineMetrics {
 export const clients = pgTable(
   "clients",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

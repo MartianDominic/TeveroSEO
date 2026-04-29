@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { z } from 'zod';
 
 /**
  * WebSocket URL for metrics - uses NEXT_PUBLIC_WS_URL or falls back to relative path.
@@ -20,6 +21,25 @@ export interface MetricsData {
   healthScore: number;
   [key: string]: unknown;
 }
+
+// WebSocket message schema with union for type safety (Zod v4 compatible)
+const metricsPayloadSchema = z.object({
+  timestamp: z.number(),
+  traffic: z.number(),
+  keywords: z.number(),
+  healthScore: z.number(),
+}).passthrough();
+
+const wsMessageSchema = z.union([
+  z.object({ type: z.literal("metrics"), payload: metricsPayloadSchema }),
+  z.object({ type: z.literal("status"), payload: z.object({ connected: z.boolean() }).passthrough() }),
+  z.object({ type: z.literal("error"), message: z.string() }),
+  z.object({ type: z.literal("auth_success") }),
+  z.object({ type: z.literal("auth_refresh_ack") }),
+]);
+
+// Fallback schema for direct metrics payload (backwards compatibility)
+const directMetricsSchema = metricsPayloadSchema;
 
 export interface RealtimeMetricsProps {
   clientId: string;
@@ -180,9 +200,34 @@ export function RealtimeMetrics({
         if (isCleaningUpRef.current) return;
 
         try {
-          const metrics = JSON.parse(event.data) as MetricsData;
-          setLastMetrics(metrics);
-          onMetricsUpdateRef.current?.(metrics);
+          const rawData = JSON.parse(event.data) as unknown;
+
+          // Try parsing as typed message first
+          const typedParsed = wsMessageSchema.safeParse(rawData);
+          if (typedParsed.success) {
+            const message = typedParsed.data;
+            if (message.type === 'metrics') {
+              const metrics = message.payload as MetricsData;
+              setLastMetrics(metrics);
+              onMetricsUpdateRef.current?.(metrics);
+            } else if (message.type === 'error') {
+              console.warn('[RealtimeMetrics] Server error:', message.message);
+            }
+            // auth_success and auth_refresh_ack are handled silently
+            return;
+          }
+
+          // Fallback: try parsing as direct metrics payload (backwards compatibility)
+          const directParsed = directMetricsSchema.safeParse(rawData);
+          if (directParsed.success) {
+            const metrics = directParsed.data as MetricsData;
+            setLastMetrics(metrics);
+            onMetricsUpdateRef.current?.(metrics);
+            return;
+          }
+
+          // Both parsers failed - log warning and ignore
+          console.warn('[RealtimeMetrics] Invalid WS message format:', typedParsed.error.issues);
         } catch (e) {
           console.error('[RealtimeMetrics] Failed to parse metrics:', e);
         }

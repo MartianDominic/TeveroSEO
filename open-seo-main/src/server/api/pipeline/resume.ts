@@ -2,7 +2,7 @@
  * Pipeline resume API endpoint.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { writeCheckpoint, readCheckpoint, getResumePoint } from "@/server/pipeline/checkpoint-manager";
+import { writeCheckpoint, readCheckpoint, getResumePoint, ROADMAP_PATH } from "@/server/pipeline/checkpoint-manager";
 import { parseRoadmap } from "@/server/pipeline/roadmap-parser";
 import { schedulePhase } from "@/server/pipeline/pipeline-scheduler";
 import { phaseQueue, planQueue } from "@/server/queues/pipelineQueue";
@@ -27,7 +27,7 @@ export const resumePipeline = createServerFn({ method: "POST" })
     await planQueue.resume();
 
     // Get resume point
-    const roadmapContent = await readFile(".planning/ROADMAP.md", "utf-8");
+    const roadmapContent = await readFile(ROADMAP_PATH, "utf-8");
     const phases = parseRoadmap(roadmapContent);
     const resumePoint = await getResumePoint(
       phases.map((p) => ({ slug: p.slug, planCount: p.planCount }))

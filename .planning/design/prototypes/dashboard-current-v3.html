@@ -1,0 +1,1678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tevero — Agency Command Center (TDS v1.1, free fonts)</title>
+
+<!-- Free typographic stack: Newsreader (display) + Geist (sans) + Geist Mono -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,400..600&display=swap" rel="stylesheet" />
+
+<style>
+/* =========================================================================
+   TDS v1.1 — Tokens (warmer text tier, Newsreader display, free triad only)
+   ========================================================================= */
+:root {
+  /* Surfaces */
+  --canvas:        #FAFAF7;
+  --surface:       #FFFFFF;
+  --surface-2:     #F5F5F0;
+  --surface-tinted:#F2EDE0;          /* warm tinted card for editorial moments */
+  --hairline:      #ECECE7;
+  --hairline-soft: #F0F0EB;
+
+  /* Text — warmth shift from v1.0 */
+  --text-1:        #14141A;          /* primary */
+  --text-2:        #4F4F55;          /* secondary */
+  --text-3:        #8A8A92;          /* tertiary */
+  --text-4:        #C0BFB7;          /* disabled / decorative dividers */
+
+  /* Accent (deep emerald — SEO/growth differentiation) */
+  --accent:        #0F4F3D;
+  --accent-soft:   #E6F0EC;
+  --accent-ink:    #093528;
+  --accent-line:   #C8DDD4;
+
+  /* Status — desaturated, semantic only */
+  --success:       #1B6E45; --success-soft: #E8F2EC;
+  --error:         #9B2C2C; --error-soft:   #F4E5E5;
+  --warning:       #A87F1A; --warning-soft: #F5EDD9;
+  --info:          #2D5A87; --info-soft:    #EFF4F9;
+
+  /* Radii */
+  --radius-input:  6px;
+  --radius-card:   10px;
+  --radius-modal:  14px;
+  --radius-pill:   999px;
+
+  /* Type — free triad */
+  --font-sans:    'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+
+  /* Motion */
+  --motion-hover:  150ms cubic-bezier(.2,0,.2,1);
+  --motion-state:  200ms cubic-bezier(.2,0,.2,1);
+
+  /* Card paddings */
+  --card-pad-h: 24px;
+  --card-pad-v: 28px;
+  --inset-divider: 16px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  /* Body prose uses old-style proportional figures so digits blend with lowercase */
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================================================
+   Type role classes — every text role keyed to OpenType + tracking
+   ========================================================================= */
+
+/* Display serif — hero numerals */
+.t-num-hero {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.0;
+  letter-spacing: -0.022em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+.t-num-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.0;
+  letter-spacing: -0.020em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+.t-num-md {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.0;
+  letter-spacing: -0.015em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Editorial sans display — page titles */
+.t-h1 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  color: var(--text-1);
+}
+.t-h2 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  color: var(--text-1);
+}
+
+/* Eyebrow — uppercase chrome label */
+.t-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 10.5px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Small caps — taxonomy labels (TIER 1, NEW LEAD, etc) */
+.t-smallcaps {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-3);
+}
+
+/* Body */
+.t-body { color: var(--text-2); }
+.t-body-strong { color: var(--text-1); font-weight: 500; }
+.t-meta { font-size: 12px; color: var(--text-3); line-height: 1.3; }
+.t-micro { font-size: 11px; color: var(--text-3); line-height: 1.3; font-variant-numeric: tabular-nums lining-nums; }
+
+/* Tabular numerics inline (sans) */
+.t-tnum { font-variant-numeric: tabular-nums lining-nums; }
+
+/* Mono — URLs, keywords, kbd hints */
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+
+/* Subtle italic semantic emphasis in editorial body */
+em { font-style: italic; color: inherit; font-variant-numeric: inherit; }
+
+/* =========================================================================
+   Top bar
+   ========================================================================= */
+.topbar {
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky; top: 0; z-index: 20;
+}
+.topbar .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+.topbar .brand-mark {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border-radius: 5px;
+  position: relative;
+}
+.topbar .brand-mark::after {
+  content: ""; position: absolute;
+  inset: 5px;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+.topbar .breadcrumb {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  margin-left: 4px;
+}
+.topbar .breadcrumb .sep { color: var(--text-4); }
+.topbar .breadcrumb .current { color: var(--text-1); font-weight: 500; }
+.topbar .grow { flex: 1; }
+.topbar .ws-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 10px 0 6px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.topbar .ws-pill .dot { width: 18px; height: 18px; border-radius: 4px; background: linear-gradient(135deg,#0F4F3D,#1E7A5C); }
+.topbar .search-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 8px 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-3);
+  width: 240px;
+}
+.topbar .search-trigger .kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.topbar .icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.topbar .avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg,#1A1A4F,#3F3F8C);
+  color: #fff;
+  font-size: 11px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--hairline);
+}
+
+/* =========================================================================
+   Page shell
+   ========================================================================= */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 32px 80px;
+}
+
+.page-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+.page-header .title { color: var(--text-1); }
+.page-header .subtitle {
+  font-size: 13.5px;
+  color: var(--text-3);
+  margin-top: 6px;
+  max-width: 540px;
+}
+.page-header .actions { display: inline-flex; gap: 8px; }
+
+.btn {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: var(--radius-input);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: background var(--motion-hover), border-color var(--motion-hover);
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--hairline); }
+
+.btn .kbd-inline {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* =========================================================================
+   Table controls strip
+   ========================================================================= */
+.controls-strip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  margin: 24px 0;
+}
+.view-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 28px; padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.view-pill.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-ink);
+}
+.controls-divider { width: 1px; height: 18px; background: var(--hairline); margin: 0 4px; }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 9px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 11.5px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.filter-chip .x { color: var(--text-3); }
+.controls-strip .grow { flex: 1; }
+.controls-strip .meta-text {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* =========================================================================
+   Cards — primitive
+   ========================================================================= */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  transition: box-shadow var(--motion-hover);
+}
+.card.tinted { background: var(--surface-tinted); border-color: #E8E1CF; }
+.card.inset { background: var(--surface-2); border: none; }
+.card:hover { box-shadow: 0 1px 0 rgba(20,20,26,0.04); }
+
+.card-head {
+  height: 52px;
+  padding: 14px var(--card-pad-h) 12px;
+  display: flex; align-items: center; gap: 10px;
+  position: relative;
+}
+/* Inset bottom divider — 16px from each edge */
+.card-head::after {
+  content: ""; position: absolute;
+  left: var(--inset-divider); right: var(--inset-divider); bottom: 0;
+  height: 1px;
+  background: var(--hairline-soft);
+}
+.card-head .icon { width: 16px; height: 16px; color: var(--text-3); display: inline-flex; align-items: center; }
+.card-head .title {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-2);
+}
+.card-head .meta {
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+}
+.card-head .meta::before { content: "·"; margin: 0 8px; color: var(--text-4); }
+.card-head .grow { flex: 1; }
+.card-head .action {
+  font-size: 11.5px;
+  color: var(--text-2);
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.card-head .action:hover { color: var(--text-1); }
+
+.card-body { padding: 20px var(--card-pad-h) 24px; }
+.card-foot {
+  background: var(--surface-2);
+  border-top: 1px solid var(--hairline-soft);
+  padding: 8px 20px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-3);
+  display: flex; gap: 10px;
+}
+.card-foot .sep { color: var(--text-4); }
+
+/* Inner inset divider — 16px from card-body edges */
+.inner-divider {
+  height: 1px;
+  background: var(--hairline-soft);
+  margin: 16px var(--inset-divider);
+}
+
+/* =========================================================================
+   Quick stat cards (6) — drag-drop indicator visible
+   ========================================================================= */
+.quickstats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.quickstat {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  padding: 16px 18px 14px;
+  position: relative;
+  transition: box-shadow var(--motion-hover);
+  cursor: grab;
+}
+.quickstat:hover { box-shadow: 0 1px 0 rgba(20,20,26,0.04); }
+.quickstat .grip {
+  position: absolute; top: 12px; right: 10px;
+  display: flex; gap: 1px;
+  opacity: 0;
+  transition: opacity var(--motion-hover);
+}
+.quickstat:hover .grip { opacity: 1; }
+.quickstat .grip span {
+  width: 2px; height: 2px; background: var(--text-4); border-radius: 50%;
+}
+.quickstat .label {
+  display: block;
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.quickstat .value {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.0;
+  letter-spacing: -0.022em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+  margin-bottom: 6px;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.quickstat .value .unit { font-size: 18px; color: var(--text-3); letter-spacing: -0.01em; }
+.quickstat .value .delta-inline {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.delta-up { color: var(--success); }
+.delta-down { color: var(--error); }
+.quickstat .submeta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.quickstat .submeta-text {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.quickstat .submeta-text .strong { color: var(--text-2); font-weight: 500; }
+.quickstat .submeta-text em { font-style: normal; }
+.quickstat .spark {
+  flex-shrink: 0;
+}
+
+/* =========================================================================
+   Portfolio Health Summary — 4 larger cards
+   ========================================================================= */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+/* =========================================================================
+   Position distribution bar — hatched fills (signature)
+   ========================================================================= */
+.pos-dist {
+  display: flex; align-items: center; gap: 4px;
+  height: 18px;
+  width: 100%;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+.pos-seg {
+  height: 100%;
+  background-color: var(--accent-soft);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(15,79,61,0.4) 3px, rgba(15,79,61,0.4) 4px
+  );
+  position: relative;
+}
+.pos-seg.deep {
+  background-color: var(--accent);
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(255,255,255,0.18) 3px, rgba(255,255,255,0.18) 4px
+  );
+}
+.pos-seg.mid {
+  background-color: #5A8E7B;
+  background-image: repeating-linear-gradient(45deg,
+    transparent 0, transparent 3px,
+    rgba(255,255,255,0.22) 3px, rgba(255,255,255,0.22) 4px
+  );
+}
+.pos-seg.outer { background: var(--surface-2); background-image: none; }
+.pos-legend {
+  display: flex; gap: 14px;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+}
+.pos-legend .swatch {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+.pos-legend .sw-1 { background: var(--accent); }
+.pos-legend .sw-3 { background: #5A8E7B; }
+.pos-legend .sw-10 { background: var(--accent-soft); }
+
+/* =========================================================================
+   Two-column grid: NeedsAttention + Wins
+   ========================================================================= */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.attention-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 0;
+  position: relative;
+}
+.attention-row + .attention-row {
+  border-top: 1px solid var(--hairline-soft);
+}
+.attention-row .sev-strip {
+  width: 3px; align-self: stretch; border-radius: 2px;
+  flex-shrink: 0;
+}
+.attention-row.critical .sev-strip { background: var(--error); }
+.attention-row.warning .sev-strip { background: var(--warning); }
+.attention-row.info .sev-strip { background: var(--info); }
+.attention-row.connection .sev-strip { background: var(--info); }
+.attention-row .body { flex: 1; min-width: 0; }
+.attention-row .head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.attention-row .name { font-weight: 500; color: var(--text-1); font-size: 13px; }
+.attention-row .tag {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+  color: var(--text-3);
+}
+.attention-row .title-line { font-size: 13px; color: var(--text-2); }
+.attention-row .desc { font-size: 12.5px; color: var(--text-3); margin-top: 2px; line-height: 1.45; }
+.attention-row .actions {
+  display: flex; gap: 4px;
+  opacity: 0; transition: opacity var(--motion-hover);
+}
+.attention-row:hover .actions { opacity: 1; }
+.attention-row .icon-btn-sm {
+  width: 26px; height: 26px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.goal-gap-mini {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.goal-gap-mini .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); }
+.goal-gap-mini .pct { font-variant-numeric: tabular-nums lining-nums; font-weight: 500; }
+
+.win-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 0;
+}
+.win-row + .win-row { border-top: 1px solid var(--hairline-soft); }
+.win-row .badge {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.win-row .body { flex: 1; min-width: 0; }
+.win-row .name { font-weight: 500; color: var(--text-1); font-size: 13px; }
+.win-row .summary { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.win-row .summary em { font-family: var(--font-display); font-style: italic; color: var(--text-1); font-size: 14px; letter-spacing: -0.01em; }
+.win-row .summary .num { font-family: var(--font-display); font-style: normal; color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-size: 14px; letter-spacing: -0.01em; }
+.win-row .meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.win-row .meta .mono { font-family: var(--font-mono); }
+
+/* =========================================================================
+   Three-column: Portfolio Table + Right rail
+   ========================================================================= */
+.three-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.portfolio-table {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.pt-head {
+  display: grid;
+  grid-template-columns: 28px 2fr 0.9fr 0.9fr 0.9fr 1.2fr 0.9fr;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.pt-row {
+  display: grid;
+  grid-template-columns: 28px 2fr 0.9fr 0.9fr 0.9fr 1.2fr 0.9fr;
+  gap: 12px;
+  padding: 14px 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--hairline-soft);
+  transition: background var(--motion-hover);
+  cursor: pointer;
+}
+.pt-row:hover { background: var(--surface-2); }
+.pt-row:last-child { border-bottom: none; }
+.pt-row .checkbox {
+  width: 14px; height: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  background: var(--surface);
+}
+.pt-client { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pt-client .av {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+}
+.pt-client .lines { min-width: 0; }
+.pt-client .name { font-weight: 500; color: var(--text-1); font-size: 13px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt-client .domain { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pt-num {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+}
+.pt-num .delta { font-size: 11px; margin-left: 4px; }
+.pt-health {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 3px 9px 3px 6px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.pt-health .h-dot { width: 6px; height: 6px; border-radius: 50%; }
+.pt-health.good { background: var(--success-soft); color: var(--success); }
+.pt-health.good .h-dot { background: var(--success); }
+.pt-health.warn { background: var(--warning-soft); color: var(--warning); }
+.pt-health.warn .h-dot { background: var(--warning); }
+.pt-health.crit { background: var(--error-soft); color: var(--error); }
+.pt-health.crit .h-dot { background: var(--error); }
+.pt-spark { display: flex; align-items: center; gap: 8px; }
+
+/* Right rail */
+.rail { display: flex; flex-direction: column; gap: 16px; }
+
+.activity-row {
+  display: flex; gap: 12px;
+  padding: 12px 0;
+  font-size: 12.5px;
+  position: relative;
+}
+.activity-row + .activity-row { border-top: 1px solid var(--hairline-soft); }
+.activity-row .ic {
+  width: 24px; height: 24px;
+  border-radius: 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.activity-row.success .ic { background: var(--success-soft); color: var(--success); }
+.activity-row.info .ic    { background: var(--info-soft);    color: var(--info); }
+.activity-row.warning .ic { background: var(--warning-soft); color: var(--warning); }
+.activity-row .body { flex: 1; min-width: 0; }
+.activity-row .text { color: var(--text-2); line-height: 1.45; }
+.activity-row .text .strong { color: var(--text-1); font-weight: 500; }
+.activity-row .text .mono { font-family: var(--font-mono); font-size: 11.5px; }
+.activity-row .when { font-size: 11px; color: var(--text-3); margin-top: 3px; font-variant-numeric: tabular-nums lining-nums; }
+
+.team-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+}
+.team-row + .team-row { border-top: 1px solid var(--hairline-soft); }
+.team-row .av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+}
+.team-row .name { color: var(--text-1); font-weight: 500; font-size: 12.5px; flex: 1; }
+.team-row .nums {
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.team-row .nums .strong { color: var(--text-1); font-weight: 500; }
+.team-load-bar {
+  width: 56px; height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-left: 4px;
+}
+.team-load-bar .fill { height: 100%; background: var(--accent); }
+
+.upcoming-row {
+  display: flex; gap: 12px;
+  padding: 11px 0;
+}
+.upcoming-row + .upcoming-row { border-top: 1px solid var(--hairline-soft); }
+.upcoming-row .when-block {
+  width: 56px; flex-shrink: 0;
+  text-align: center;
+  border-right: 1px solid var(--hairline-soft);
+  padding-right: 12px;
+}
+.upcoming-row .when-day {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.015em;
+}
+.upcoming-row .when-month {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.upcoming-row .body { flex: 1; min-width: 0; }
+.upcoming-row .title { font-size: 13px; color: var(--text-1); font-weight: 500; }
+.upcoming-row .meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.upcoming-row .meta em { font-style: normal; color: var(--text-2); }
+
+/* =========================================================================
+   Bottom ops strip — quiet system status
+   ========================================================================= */
+.ops-strip {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  margin-top: 28px;
+}
+.ops-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  font-variant-caps: all-small-caps;
+}
+.ops-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.ops-item .v { color: var(--text-1); font-variant-caps: normal; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0; }
+.ops-strip .grow { flex: 1; }
+
+/* =========================================================================
+   Sparkline SVG color
+   ========================================================================= */
+.spark path { stroke: var(--accent); fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.spark.down path { stroke: var(--error); }
+.spark .baseline { stroke: var(--text-4); stroke-width: 0.6; stroke-dasharray: 1.5 2; }
+.spark .endpoint { fill: var(--accent); }
+.spark.down .endpoint { fill: var(--error); }
+</style>
+</head>
+
+<body>
+
+<!-- =========================================================================
+     Top bar
+     ========================================================================= -->
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-mark"></span>
+    Tevero
+  </div>
+  <div class="breadcrumb">
+    <span class="sep">/</span>
+    <span class="current">Command Center</span>
+  </div>
+  <div class="grow"></div>
+  <button class="ws-pill" type="button">
+    <span class="dot"></span>
+    Greenhouse Studio
+    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg>
+  </button>
+  <div class="search-trigger">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
+    Search clients, keywords…
+    <span class="kbd">⌘K</span>
+  </div>
+  <button class="icon-btn" title="Help">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M6 6.5c.3-1.2 1.1-1.7 2-1.7 1 0 2 .6 2 1.6 0 1.6-2 1.6-2 3.2"/><circle cx="8" cy="11.7" r=".6" fill="currentColor"/></svg>
+  </button>
+  <button class="icon-btn" title="Notifications">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 11.5h9a1 1 0 0 0 .8-1.6c-.5-.6-1.1-1.4-1.1-2.4V6.4A4.4 4.4 0 0 0 8 2.1a4.4 4.4 0 0 0-4.2 4.3v1.1c0 1-.6 1.8-1.1 2.4a1 1 0 0 0 .8 1.6Z"/><path d="M6.5 13.3a1.7 1.7 0 0 0 3 0"/></svg>
+  </button>
+  <div class="avatar">DM</div>
+</div>
+
+<!-- =========================================================================
+     Page
+     ========================================================================= -->
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1 class="t-h1 title">Agency Command Center</h1>
+      <p class="subtitle">Portfolio health overview and actionable insights across the book.</p>
+    </div>
+    <div class="actions">
+      <button class="btn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v8m0 0L5 7m3 3 3-3M2.5 12.5v1A1.5 1.5 0 0 0 4 15h8a1.5 1.5 0 0 0 1.5-1.5v-1"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Table controls strip -->
+  <div class="controls-strip">
+    <button class="view-pill active">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h8M2 6h8M2 9h5"/></svg>
+      All clients
+    </button>
+    <button class="view-pill">Needs attention <span class="t-tnum" style="color:var(--error);font-weight:500;">4</span></button>
+    <button class="view-pill">High value</button>
+    <button class="view-pill">+ Save view</button>
+    <span class="controls-divider"></span>
+    <span class="filter-chip">Health: All <span class="x">×</span></span>
+    <span class="filter-chip">Goal status: All <span class="x">×</span></span>
+    <span class="filter-chip">Owner: Anyone <span class="x">×</span></span>
+    <span class="grow"></span>
+    <span class="meta-text"><span class="t-tnum">28</span> clients · <span class="t-tnum">7</span> columns</span>
+    <button class="btn btn-ghost" style="height:28px;">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M3 8h10M3 12h10"/></svg>
+      Columns
+    </button>
+  </div>
+
+  <!-- ===========================================================
+       QuickStatsCards — 6 cards, drag-drop indicator on hover
+       =========================================================== -->
+  <div class="quickstats">
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label">Total clients</span>
+      <div class="value">28</div>
+      <div class="submeta">
+        <div class="submeta-text"><span class="strong">24</span> on track · <span class="strong" style="color:var(--warning);">4</span> attention</div>
+      </div>
+    </div>
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label">Avg traffic Δ</span>
+      <div class="value"><span class="delta-up">+12.4</span><span class="unit">%</span></div>
+      <div class="submeta">
+        <div class="submeta-text"><span class="strong">152,847</span> clicks · 30d</div>
+        <svg class="spark" width="56" height="20" viewBox="0 0 56 20" preserveAspectRatio="none">
+          <path d="M0,15 L7,14 L14,12 L21,11 L28,9 L35,7 L42,6 L49,4 L56,3"/>
+          <circle class="endpoint" cx="56" cy="3" r="1.6"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label">Keywords top 10</span>
+      <div class="value">1,247</div>
+      <div class="submeta">
+        <div class="submeta-text"><span class="strong">25%</span> of 4,892 tracked</div>
+        <svg class="spark" width="56" height="20" viewBox="0 0 56 20" preserveAspectRatio="none">
+          <path d="M0,16 L7,15 L14,14 L21,12 L28,11 L35,9 L42,7 L49,5 L56,4"/>
+          <circle class="endpoint" cx="56" cy="4" r="1.6"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label">Open alerts</span>
+      <div class="value">7</div>
+      <div class="submeta">
+        <div class="submeta-text"><span class="strong" style="color:var(--error);">2</span> critical · <span class="strong">5</span> routine</div>
+      </div>
+    </div>
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label">Wins this week</span>
+      <div class="value">12</div>
+      <div class="submeta">
+        <div class="submeta-text">vs <span class="strong">8</span> last week</div>
+        <svg class="spark" width="56" height="20" viewBox="0 0 56 20" preserveAspectRatio="none">
+          <path d="M0,12 L7,10 L14,13 L21,9 L28,11 L35,7 L42,8 L49,5 L56,4"/>
+          <circle class="endpoint" cx="56" cy="4" r="1.6"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="quickstat" draggable="true">
+      <div class="grip"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="label"><span style="font-family:var(--font-display);font-style:italic;text-transform:none;letter-spacing:-0.01em;font-size:12px;color:var(--text-2);">#</span> 1 positions</span>
+      <div class="value">89</div>
+      <div class="submeta">
+        <div class="submeta-text"><span class="strong delta-up">+6</span> this week</div>
+        <svg class="spark" width="56" height="20" viewBox="0 0 56 20" preserveAspectRatio="none">
+          <path d="M0,15 L7,14 L14,13 L21,12 L28,10 L35,9 L42,7 L49,5 L56,4"/>
+          <circle class="endpoint" cx="56" cy="4" r="1.6"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===========================================================
+       PortfolioHealthSummary — 4 cards
+       =========================================================== -->
+  <div class="health-grid">
+
+    <div class="card">
+      <div class="card-head">
+        <span class="icon">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5.5" r="2.2"/><path d="M2.5 13c.5-2 1.8-3 3.5-3s3 1 3.5 3"/><circle cx="11" cy="6" r="1.7"/><path d="M9.5 13c.4-1.5 1.4-2.4 2.7-2.4 1 0 1.8.6 2.2 1.5"/></svg>
+        </span>
+        <span class="title">Total clients</span>
+        <span class="meta">portfolio</span>
+        <span class="grow"></span>
+      </div>
+      <div class="card-body">
+        <div class="t-num-hero">28</div>
+        <p class="t-meta" style="margin-top:10px;">
+          <span style="color:var(--success);font-weight:500;">24</span> on track
+          <span style="color:var(--text-4);margin:0 6px;">·</span>
+          <span style="color:var(--error);font-weight:500;">4</span> critical
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="icon">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.2"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>
+        </span>
+        <span class="title">Goal attainment</span>
+        <span class="meta">avg across 35 goals</span>
+        <span class="grow"></span>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span class="t-num-hero">76<span style="font-size:18px;color:var(--text-3);letter-spacing:-0.01em;">%</span></span>
+          <span style="font-size:12px;font-weight:500;color:var(--success);">+4 pp</span>
+        </div>
+        <p class="t-meta" style="margin-top:10px;">
+          <span class="t-tnum" style="color:var(--text-2);font-weight:500;">24/35</span> goals met this quarter
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="icon">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12 6 8l3 3 5-7"/><path d="M11 4h3v3"/></svg>
+        </span>
+        <span class="title">Avg traffic change</span>
+        <span class="meta">last 30 days</span>
+        <span class="grow"></span>
+      </div>
+      <div class="card-body">
+        <div class="t-num-hero" style="color:var(--success);">+12.4<span style="font-size:18px;color:var(--text-3);letter-spacing:-0.01em;">%</span></div>
+        <p class="t-meta" style="margin-top:10px;">
+          <span class="t-tnum" style="color:var(--text-2);font-weight:500;">152,847</span> clicks total
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="icon">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="m11 11 3 3"/></svg>
+        </span>
+        <span class="title">Keyword positions</span>
+        <span class="meta">all clients</span>
+        <span class="grow"></span>
+      </div>
+      <div class="card-body">
+        <div class="t-num-hero">4,892</div>
+        <div class="pos-dist" title="Position distribution">
+          <div class="pos-seg deep" style="flex:89;"></div>
+          <div class="pos-seg mid"  style="flex:323;"></div>
+          <div class="pos-seg"      style="flex:835;"></div>
+          <div class="pos-seg outer" style="flex:3645;"></div>
+        </div>
+        <div class="pos-legend">
+          <span><span class="swatch sw-1"></span>89 at #1</span>
+          <span><span class="swatch sw-3"></span>412 top 3</span>
+          <span><span class="swatch sw-10"></span>1,247 top 10</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===========================================================
+       NeedsAttention + Wins
+       =========================================================== -->
+  <div class="two-col">
+
+    <!-- Needs Attention -->
+    <div class="card">
+      <div class="card-head">
+        <span class="icon" style="color:var(--warning);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2 14 13H2L8 2Z"/><path d="M8 6.5v3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg>
+        </span>
+        <span class="title">Needs attention</span>
+        <span class="meta">5 items · 2 critical</span>
+        <span class="grow"></span>
+        <a class="action" href="#">View all <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+      </div>
+      <div class="card-body" style="padding-top:6px;padding-bottom:14px;">
+
+        <div class="attention-row critical">
+          <div class="sev-strip"></div>
+          <div class="body">
+            <div class="head">
+              <span class="name">Initech Corp</span>
+              <span class="tag">alert · critical</span>
+            </div>
+            <div class="title-line">Ranking drop on 12 commercial keywords</div>
+            <div class="desc">Average position fell from 4.2 → 8.7 over 6 days. Pattern matches a recent algorithm volatility window. <em>Recommended:</em> queue auto-fix audit on /pricing and /features.</div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn-sm" title="View"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-3 4.5-5 7-5s5.5 2 7 5c-1.5 3-4.5 5-7 5s-5.5-2-7-5Z"/><circle cx="8" cy="8" r="2.2"/></svg></button>
+            <button class="icon-btn-sm" title="Snooze"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 2"/></svg></button>
+            <button class="icon-btn-sm" title="Dismiss"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+          </div>
+        </div>
+
+        <div class="attention-row connection">
+          <div class="sev-strip"></div>
+          <div class="body">
+            <div class="head">
+              <span class="name">Globex Industries</span>
+              <span class="tag">connection</span>
+            </div>
+            <div class="title-line">GSC reauthorization required</div>
+            <div class="desc">Search Console token expired <em>April 22</em>. Last sync at <span class="t-mono" style="font-size:11.5px;">2026-04-22 03:14 UTC</span>. Reconnect to resume traffic + query data.</div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn-sm" title="Reconnect"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 8a6 6 0 1 1-1.8-4.2"/><path d="M14 2.5v3.4h-3.4"/></svg></button>
+            <button class="icon-btn-sm" title="View"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-3 4.5-5 7-5s5.5 2 7 5c-1.5 3-4.5 5-7 5s-5.5-2-7-5Z"/><circle cx="8" cy="8" r="2.2"/></svg></button>
+          </div>
+        </div>
+
+        <div class="attention-row warning">
+          <div class="sev-strip"></div>
+          <div class="body">
+            <div class="head">
+              <span class="name">Wayne Enterprises</span>
+              <span class="tag">alert · warning</span>
+            </div>
+            <div class="title-line">Page speed regression on /pricing</div>
+            <div class="desc">LCP rose from 2.1s to 3.4s after the April 24 deploy. CWV in red on mobile.</div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn-sm" title="View"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-3 4.5-5 7-5s5.5 2 7 5c-1.5 3-4.5 5-7 5s-5.5-2-7-5Z"/><circle cx="8" cy="8" r="2.2"/></svg></button>
+            <button class="icon-btn-sm" title="Snooze"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 2"/></svg></button>
+            <button class="icon-btn-sm" title="Dismiss"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+          </div>
+        </div>
+
+        <div class="attention-row warning">
+          <div class="sev-strip"></div>
+          <div class="body">
+            <div class="head">
+              <span class="name">Stark Industries</span>
+              <span class="tag">goal · trailing</span>
+            </div>
+            <div class="title-line">Q1 traffic goal at 58% with 6 weeks remaining</div>
+            <div class="desc">Target was <em>80% by April 30</em>. Current pace projects 71% landing.</div>
+            <div class="goal-gap-mini">
+              <span class="dot"></span>
+              <span class="pct">58%</span>
+              <span style="color:var(--text-3);">of 80% target · 3/5 milestones met</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn-sm" title="View"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-3 4.5-5 7-5s5.5 2 7 5c-1.5 3-4.5 5-7 5s-5.5-2-7-5Z"/><circle cx="8" cy="8" r="2.2"/></svg></button>
+            <button class="icon-btn-sm" title="Snooze"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 2"/></svg></button>
+            <button class="icon-btn-sm" title="Dismiss"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+          </div>
+        </div>
+
+        <div class="attention-row info">
+          <div class="sev-strip"></div>
+          <div class="body">
+            <div class="head">
+              <span class="name">Acme Corp</span>
+              <span class="tag">digest · pending</span>
+            </div>
+            <div class="title-line">Weekly digest awaiting your review before send</div>
+            <div class="desc">Drafted by <em>Haiku</em> this morning · scheduled for <em>Friday 9am</em> if approved.</div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn-sm" title="Review"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10v8H3z"/><path d="M3 4l5 4 5-4"/></svg></button>
+            <button class="icon-btn-sm" title="Snooze"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 2"/></svg></button>
+            <button class="icon-btn-sm" title="Dismiss"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Wins / Milestones -->
+    <div class="card">
+      <div class="card-head">
+        <span class="icon" style="color:var(--accent);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2h6l-1 5a2 2 0 0 1-4 0L5 2Z"/><path d="M5 4H3v2a2 2 0 0 0 2 2M11 4h2v2a2 2 0 0 1-2 2M6 13h4M5 14h6"/></svg>
+        </span>
+        <span class="title">Wins this week</span>
+        <span class="meta">12 milestones · since Mon</span>
+        <span class="grow"></span>
+        <a class="action" href="#">View all <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+      </div>
+      <div class="card-body" style="padding-top:6px;padding-bottom:14px;">
+
+        <div class="win-row">
+          <div class="badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13l3-7 3 4 4-7"/></svg>
+          </div>
+          <div class="body">
+            <div class="name">Acme Corp</div>
+            <div class="summary"><em>"best running shoes"</em> reached <span class="num">#1</span> — moved up from <span class="num">#4</span> in 11 days.</div>
+            <div class="meta">
+              <span class="mono">acmecorp.com/running-guide</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span class="t-tnum">2 hours ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="win-row">
+          <div class="badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13l3-7 3 4 4-7"/></svg>
+          </div>
+          <div class="body">
+            <div class="name">Tyrell Inc</div>
+            <div class="summary">Organic traffic up <span class="num">+18.4%</span> month-over-month — <em>highest sustained growth since Q3 2025</em>.</div>
+            <div class="meta">
+              <span class="mono">tyrell.io</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span class="t-tnum">Yesterday 4:20pm</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="win-row">
+          <div class="badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13l3-7 3 4 4-7"/></svg>
+          </div>
+          <div class="body">
+            <div class="name">Wonka Industries</div>
+            <div class="summary"><span class="num">47</span> keywords moved into the top 10 since <em>March 4</em> — driven by the long-form pillar refresh.</div>
+            <div class="meta">
+              <span class="mono">wonka.co</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span class="t-tnum">Tuesday</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="win-row">
+          <div class="badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13l3-7 3 4 4-7"/></svg>
+          </div>
+          <div class="body">
+            <div class="name">Pied Piper</div>
+            <div class="summary">Tier-1 audit cleared <span class="num">18</span> issues — health score moved <span class="num">84 → 91</span>.</div>
+            <div class="meta">
+              <span class="mono">piedpiper.com</span>
+              <span style="color:var(--text-4);margin:0 6px;">·</span>
+              <span class="t-tnum">Monday 9:15am</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===========================================================
+       Client Portfolio Table + Right Rail
+       =========================================================== -->
+  <div class="three-col">
+
+    <!-- Portfolio table -->
+    <div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px;">
+        <div>
+          <h2 class="t-h2" style="margin:0;">Client portfolio <span class="t-tnum" style="color:var(--text-3);font-weight:400;">(28)</span></h2>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--text-3);">
+          <span class="t-mono" style="background:var(--surface-2);border:1px solid var(--hairline);border-radius:4px;padding:1px 5px;font-size:10.5px;color:var(--text-2);">⌘ K</span>
+          <span>search</span>
+          <span style="color:var(--text-4);">|</span>
+          <span class="t-mono" style="background:var(--surface-2);border:1px solid var(--hairline);border-radius:4px;padding:1px 5px;font-size:10.5px;color:var(--text-2);">?</span>
+          <span>shortcuts</span>
+        </div>
+      </div>
+
+      <div class="portfolio-table">
+        <div class="pt-head">
+          <div></div>
+          <div>Client</div>
+          <div>Health</div>
+          <div>Goal</div>
+          <div>Traffic Δ</div>
+          <div>Top 10 / Total</div>
+          <div>30d trend</div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C);">AC</div>
+            <div class="lines">
+              <div class="name">Acme Corp</div>
+              <div class="domain">acmecorp.com</div>
+            </div>
+          </div>
+          <div><span class="pt-health good"><span class="h-dot"></span>91</span></div>
+          <div class="pt-num">82<span class="delta delta-up">+5</span></div>
+          <div class="pt-num delta-up">+18.4%</div>
+          <div class="pt-num">128 / 612</div>
+          <div class="pt-spark">
+            <svg class="spark" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="14" x2="92" y2="14"/>
+              <path d="M0,16 L11,15 L23,14 L34,12 L46,10 L57,9 L69,7 L80,5 L92,4"/>
+              <circle class="endpoint" cx="92" cy="4" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#9B2C2C,#B85050);">IN</div>
+            <div class="lines">
+              <div class="name">Initech Corp</div>
+              <div class="domain">initech.io</div>
+            </div>
+          </div>
+          <div><span class="pt-health crit"><span class="h-dot"></span>62</span></div>
+          <div class="pt-num">71<span class="delta delta-down">−8</span></div>
+          <div class="pt-num delta-down">−14.2%</div>
+          <div class="pt-num">42 / 380</div>
+          <div class="pt-spark">
+            <svg class="spark down" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="9" x2="92" y2="9"/>
+              <path d="M0,8 L11,7 L23,8 L34,11 L46,13 L57,14 L69,16 L80,17 L92,18"/>
+              <circle class="endpoint" cx="92" cy="18" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#A87F1A,#D4A340);">GL</div>
+            <div class="lines">
+              <div class="name">Globex Industries</div>
+              <div class="domain">globex.industries</div>
+            </div>
+          </div>
+          <div><span class="pt-health warn"><span class="h-dot"></span>74</span></div>
+          <div class="pt-num">— <span style="color:var(--text-3);font-weight:400;font-size:11px;">stale</span></div>
+          <div class="pt-num" style="color:var(--text-3);">no data</div>
+          <div class="pt-num" style="color:var(--text-3);">— / 247</div>
+          <div class="pt-spark"><span style="font-size:11px;color:var(--text-3);">awaiting reauth</span></div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#1A1A4F,#3F3F8C);">TY</div>
+            <div class="lines">
+              <div class="name">Tyrell Inc</div>
+              <div class="domain">tyrell.io</div>
+            </div>
+          </div>
+          <div><span class="pt-health good"><span class="h-dot"></span>88</span></div>
+          <div class="pt-num">94<span class="delta delta-up">+3</span></div>
+          <div class="pt-num delta-up">+18.4%</div>
+          <div class="pt-num">186 / 542</div>
+          <div class="pt-spark">
+            <svg class="spark" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="13" x2="92" y2="13"/>
+              <path d="M0,15 L11,14 L23,12 L34,11 L46,9 L57,8 L69,7 L80,5 L92,3"/>
+              <circle class="endpoint" cx="92" cy="3" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#2D5A87,#5285B8);">WE</div>
+            <div class="lines">
+              <div class="name">Wayne Enterprises</div>
+              <div class="domain">wayneenterprises.com</div>
+            </div>
+          </div>
+          <div><span class="pt-health warn"><span class="h-dot"></span>78</span></div>
+          <div class="pt-num">68<span class="delta delta-down">−2</span></div>
+          <div class="pt-num delta-up">+3.1%</div>
+          <div class="pt-num">94 / 421</div>
+          <div class="pt-spark">
+            <svg class="spark" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="11" x2="92" y2="11"/>
+              <path d="M0,12 L11,11 L23,10 L34,11 L46,12 L57,11 L69,10 L80,11 L92,11"/>
+              <circle class="endpoint" cx="92" cy="11" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#9B2C2C,#B85050);">SI</div>
+            <div class="lines">
+              <div class="name">Stark Industries</div>
+              <div class="domain">stark.engineering</div>
+            </div>
+          </div>
+          <div><span class="pt-health warn"><span class="h-dot"></span>71</span></div>
+          <div class="pt-num">58<span class="delta delta-down">−12</span></div>
+          <div class="pt-num delta-down">−4.7%</div>
+          <div class="pt-num">71 / 318</div>
+          <div class="pt-spark">
+            <svg class="spark down" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="10" x2="92" y2="10"/>
+              <path d="M0,9 L11,10 L23,11 L34,12 L46,13 L57,12 L69,13 L80,14 L92,15"/>
+              <circle class="endpoint" cx="92" cy="15" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C);">WO</div>
+            <div class="lines">
+              <div class="name">Wonka Industries</div>
+              <div class="domain">wonka.co</div>
+            </div>
+          </div>
+          <div><span class="pt-health good"><span class="h-dot"></span>86</span></div>
+          <div class="pt-num">79<span class="delta delta-up">+11</span></div>
+          <div class="pt-num delta-up">+22.8%</div>
+          <div class="pt-num">147 / 489</div>
+          <div class="pt-spark">
+            <svg class="spark" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="14" x2="92" y2="14"/>
+              <path d="M0,17 L11,15 L23,14 L34,12 L46,11 L57,9 L69,7 L80,5 L92,3"/>
+              <circle class="endpoint" cx="92" cy="3" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="pt-row">
+          <div class="checkbox"></div>
+          <div class="pt-client">
+            <div class="av" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C);">PP</div>
+            <div class="lines">
+              <div class="name">Pied Piper</div>
+              <div class="domain">piedpiper.com</div>
+            </div>
+          </div>
+          <div><span class="pt-health good"><span class="h-dot"></span>91</span></div>
+          <div class="pt-num">88<span class="delta delta-up">+6</span></div>
+          <div class="pt-num delta-up">+9.7%</div>
+          <div class="pt-num">112 / 364</div>
+          <div class="pt-spark">
+            <svg class="spark" width="92" height="22" viewBox="0 0 92 22" preserveAspectRatio="none">
+              <line class="baseline" x1="0" y1="13" x2="92" y2="13"/>
+              <path d="M0,14 L11,13 L23,12 L34,11 L46,10 L57,9 L69,8 L80,7 L92,6"/>
+              <circle class="endpoint" cx="92" cy="6" r="1.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--hairline-soft);">
+          <span class="t-meta">Showing <span class="t-tnum" style="color:var(--text-2);font-weight:500;">8</span> of <span class="t-tnum" style="color:var(--text-2);font-weight:500;">28</span> clients</span>
+          <a class="action" href="#" style="font-size:12px;color:var(--text-2);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">View all 28 <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 2 4 4-4 4"/></svg></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right rail -->
+    <div class="rail">
+
+      <!-- Activity Feed -->
+      <div class="card">
+        <div class="card-head">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h3l1.5-3 3 6 1.5-3h3"/></svg>
+          </span>
+          <span class="title">Activity</span>
+          <span class="meta">live</span>
+          <span class="grow"></span>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--success);letter-spacing:0.06em;text-transform:uppercase;">
+            <span style="width:5px;height:5px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px var(--success-soft);"></span>
+            connected
+          </span>
+        </div>
+        <div class="card-body" style="padding-top:4px;padding-bottom:8px;">
+
+          <div class="activity-row warning">
+            <div class="ic"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3l10 10M13 3 3 13"/></svg></div>
+            <div class="body">
+              <div class="text">Auto-fix applied: <span class="strong">Wayne Enterprises</span> <span class="mono">/pricing</span> meta description — <em>revertable for 24h</em>.</div>
+              <div class="when">14m ago</div>
+            </div>
+          </div>
+
+          <div class="activity-row success">
+            <div class="ic"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5 6.5 12 13 4.5"/></svg></div>
+            <div class="body">
+              <div class="text">Tier-1 audit completed: <span class="strong">Pied Piper</span> — score moved <span class="strong">84 → 91</span>.</div>
+              <div class="when">1h ago</div>
+            </div>
+          </div>
+
+          <div class="activity-row info">
+            <div class="ic"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg></div>
+            <div class="body">
+              <div class="text">New keyword tracked: <span class="strong">Initech</span> · <span class="mono">"enterprise saas tools"</span></div>
+              <div class="when">2h ago</div>
+            </div>
+          </div>
+
+          <div class="activity-row info">
+            <div class="ic"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 8a6 6 0 1 1-1.8-4.2"/><path d="M14 2.5v3.4h-3.4"/></svg></div>
+            <div class="body">
+              <div class="text">GSC sync completed across <span class="strong">28 clients</span> — 4,892 keywords refreshed.</div>
+              <div class="when">4h ago</div>
+            </div>
+          </div>
+
+          <div class="activity-row">
+            <div class="ic"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12v8H2z"/><path d="M2 4l6 5 6-5"/></svg></div>
+            <div class="body">
+              <div class="text">Weekly digest sent: <span class="strong">Acme Corp</span> — open rate <span class="strong">62%</span>.</div>
+              <div class="when">Yesterday 6:02pm</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="card-foot">
+          <span>Stream · Socket.io</span>
+          <span class="sep">·</span>
+          <span>last event 14m ago</span>
+        </div>
+      </div>
+
+      <!-- Team Workload -->
+      <div class="card">
+        <div class="card-head">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5.5" r="2.2"/><path d="M2.5 13c.5-2 1.8-3 3.5-3s3 1 3.5 3"/><circle cx="11" cy="6" r="1.7"/><path d="M9.5 13c.4-1.5 1.4-2.4 2.7-2.4 1 0 1.8.6 2.2 1.5"/></svg>
+          </span>
+          <span class="title">Team workload</span>
+          <span class="meta">3 members</span>
+          <span class="grow"></span>
+        </div>
+        <div class="card-body" style="padding-top:4px;padding-bottom:14px;">
+
+          <div class="team-row">
+            <div class="av" style="background:linear-gradient(135deg,#1A1A4F,#3F3F8C);">SK</div>
+            <div class="name">Sarah K.</div>
+            <div class="nums"><span class="strong">4</span> clients · <span class="strong">12</span> tasks</div>
+            <div class="team-load-bar"><div class="fill" style="width:60%;"></div></div>
+          </div>
+
+          <div class="team-row">
+            <div class="av" style="background:linear-gradient(135deg,#9B2C2C,#B85050);">ML</div>
+            <div class="name">Marcus L.</div>
+            <div class="nums"><span class="strong">5</span> clients · <span class="strong">18</span> tasks</div>
+            <div class="team-load-bar"><div class="fill" style="width:90%;background:var(--warning);"></div></div>
+          </div>
+
+          <div class="team-row">
+            <div class="av" style="background:linear-gradient(135deg,#0F4F3D,#1E7A5C);">PR</div>
+            <div class="name">Priya R.</div>
+            <div class="nums"><span class="strong">3</span> clients · <span class="strong">8</span> tasks</div>
+            <div class="team-load-bar"><div class="fill" style="width:40%;"></div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Upcoming Scheduled -->
+      <div class="card">
+        <div class="card-head">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3" width="11" height="11" rx="1.5"/><path d="M2.5 6.5h11M5.5 1.5v3M10.5 1.5v3"/></svg>
+          </span>
+          <span class="title">Upcoming</span>
+          <span class="meta">next 5 days</span>
+          <span class="grow"></span>
+        </div>
+        <div class="card-body" style="padding-top:4px;padding-bottom:14px;">
+
+          <div class="upcoming-row">
+            <div class="when-block">
+              <div class="when-day">29</div>
+              <div class="when-month">Apr</div>
+            </div>
+            <div class="body">
+              <div class="title" style="font-size:13px;">Acme Corp report sent</div>
+              <div class="meta"><em>10:00am</em> · scheduled · auto-generated</div>
+            </div>
+          </div>
+
+          <div class="upcoming-row">
+            <div class="when-block">
+              <div class="when-day">30</div>
+              <div class="when-month">Apr</div>
+            </div>
+            <div class="body">
+              <div class="title" style="font-size:13px;">Globex audit window</div>
+              <div class="meta"><em>2:00pm</em> · awaiting reauth · may skip</div>
+            </div>
+          </div>
+
+          <div class="upcoming-row">
+            <div class="when-block">
+              <div class="when-day">01</div>
+              <div class="when-month">May</div>
+            </div>
+            <div class="body">
+              <div class="title" style="font-size:13px;">Stark goal review</div>
+              <div class="meta"><em>11:00am</em> · with Marcus L. · Q1 attainment</div>
+            </div>
+          </div>
+
+          <div class="upcoming-row">
+            <div class="when-block">
+              <div class="when-day">02</div>
+              <div class="when-month">May</div>
+            </div>
+            <div class="body">
+              <div class="title" style="font-size:13px;">Wayne weekly digest</div>
+              <div class="meta"><em>9:00am</em> · auto-send · Sarah K. owner</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom ops strip -->
+  <div class="ops-strip">
+    <span class="ops-item"><span class="dot"></span>All systems</span>
+    <span class="ops-item">Last GSC sync <span class="v">4h ago</span></span>
+    <span class="ops-item">Last DataForSEO pull <span class="v">2h ago</span></span>
+    <span class="ops-item">Queue depth <span class="v">3</span></span>
+    <span class="grow"></span>
+    <span class="ops-item">v5.1 · build <span class="v">7e2c3a1</span></span>
+  </div>
+
+</div>
+
+</body>
+</html>

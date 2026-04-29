@@ -22,6 +22,7 @@ import {
   exportCompetitorCsv,
   type CompetitorKeyword,
 } from "./actions";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 
 export default function CompetitorSpyPage() {
   const [domain, setDomain] = useState("");
@@ -196,9 +197,9 @@ export default function CompetitorSpyPage() {
                         {Math.round(kw.trafficShare).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        {kw.url ? (
+                        {kw.url && isSafeUrl(kw.url) ? (
                           <a
-                            href={kw.url}
+                            href={safeHref(kw.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center text-blue-600 hover:underline text-sm truncate max-w-[180px]"

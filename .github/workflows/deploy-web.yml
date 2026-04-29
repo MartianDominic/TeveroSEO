@@ -26,9 +26,39 @@ env:
   COMPOSE_FILE: docker-compose.vps.yml
 
 jobs:
+  validate:
+    name: Validate before deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run typecheck
+        run: pnpm --filter @tevero/web typecheck
+
+      - name: Run lint
+        run: pnpm --filter @tevero/web lint
+
+      - name: Run tests
+        run: pnpm --filter @tevero/web test -- --run
+
   deploy:
     name: Deploy Tevero Web to VPS
     runs-on: ubuntu-latest
+    needs: validate
     timeout-minutes: 20
 
     steps:

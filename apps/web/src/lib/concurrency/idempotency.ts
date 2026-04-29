@@ -14,6 +14,8 @@
 
 import { redis } from "@/lib/redis/client";
 import crypto from "crypto";
+import { z } from "zod";
+import { safeJsonParseWithSchema } from "@/lib/utils/type-guards";
 
 /** Key prefix for idempotency entries */
 const IDEMPOTENCY_PREFIX = "tevero:idempotency:";
@@ -53,6 +55,33 @@ interface StoredResult<T> {
   completedAt: string;
   status: "completed" | "error";
   errorMessage?: string;
+}
+
+/**
+ * Zod schema for validating StoredResult structure from Redis.
+ * Note: data field is validated as unknown since we can't know T at parse time.
+ */
+const StoredResultSchema = z.object({
+  data: z.unknown(),
+  completedAt: z.string(),
+  status: z.enum(["completed", "error"]),
+  errorMessage: z.string().optional(),
+});
+
+/**
+ * Parse and validate a StoredResult from a JSON string.
+ * Returns null if parsing or validation fails.
+ */
+function parseStoredResult<T>(
+  json: string,
+  context: string
+): StoredResult<T> | null {
+  const result = safeJsonParseWithSchema(json, StoredResultSchema, context);
+  if (!result.success) {
+    return null;
+  }
+  // Cast is safe here because we validated the structure
+  return result.data as StoredResult<T>;
 }
 
 /**
@@ -146,15 +175,21 @@ export async function withIdempotency<T>(
 
     if (existing && existing !== PROCESSING_MARKER) {
       // Completed result exists - return it
-      const storedResult = JSON.parse(existing) as StoredResult<T>;
-      if (storedResult.status === "error") {
-        throw new Error(storedResult.errorMessage || "Previous request failed");
+      const storedResult = parseStoredResult<T>(existing, `idempotency:${key}`);
+      if (!storedResult) {
+        // Invalid cached data - clear it and proceed to re-execute
+        console.warn(`[idempotency] Invalid cached result for key "${key}", clearing cache`);
+        await redis.del(redisKey);
+      } else {
+        if (storedResult.status === "error") {
+          throw new Error(storedResult.errorMessage || "Previous request failed");
+        }
+        return {
+          cached: true,
+          data: storedResult.data,
+          key,
+        };
       }
-      return {
-        cached: true,
-        data: storedResult.data,
-        key,
-      };
     }
 
     // Try to acquire processing lock
@@ -266,7 +301,11 @@ async function waitForResult<T>(
     }
 
     // Result available
-    const storedResult = JSON.parse(value) as StoredResult<T>;
+    const storedResult = parseStoredResult<T>(value, `idempotency:waitForResult`);
+    if (!storedResult) {
+      // Invalid data in cache, return null to trigger re-execution
+      return null;
+    }
     if (storedResult.status === "error") {
       throw new Error(storedResult.errorMessage || "Previous request failed");
     }
@@ -299,7 +338,10 @@ export async function getIdempotencyStatus(
       return "processing";
     }
 
-    const storedResult = JSON.parse(value) as StoredResult<unknown>;
+    const storedResult = parseStoredResult<unknown>(value, `idempotency:status:${key}`);
+    if (!storedResult) {
+      return "none";
+    }
     return storedResult.status;
   } catch {
     return "none";

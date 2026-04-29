@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { getOpenSeo } from "@/lib/server-fetch";
 
@@ -36,40 +37,65 @@ interface Project {
 /**
  * Get or create the default project for a client.
  */
-export async function getDefaultProject(params: ProjectParams): Promise<Project> {
-  const validated = projectParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function getDefaultProject(params: ProjectParams): Promise<ActionResult<Project>> {
+  const parseResult = projectParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
-  const query = new URLSearchParams({
-    client_id: validated.clientId,
-  });
-  return getOpenSeo<Project>(`/api/seo/projects?${query.toString()}`);
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    const query = new URLSearchParams({
+      client_id: validated.clientId,
+    });
+    const data = await getOpenSeo<Project>(`/api/seo/projects?${query.toString()}`);
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getDefaultProject] Failed:", error);
+    return { success: false, error: "Failed to get default project" };
+  }
 }
 
 /**
  * Get a specific project by ID and validate it belongs to the client.
  * Returns null if project doesn't exist or doesn't belong to the client.
+ *
+ * TOCTOU FIX: Ownership validation happens BEFORE fetching project data.
+ * The backend should also enforce client_id filtering in the query.
  */
-export async function getProject(params: GetProjectParams): Promise<Project | null> {
-  const validated = getProjectParamsSchema.parse(params);
-  const auth = await requireActionAuth();
-  await validateClientOwnership(validated.clientId, auth);
+export async function getProject(params: GetProjectParams): Promise<ActionResult<Project | null>> {
+  const parseResult = getProjectParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
 
   try {
-    const project = await getOpenSeo<Project>(`/api/seo/projects/${validated.projectId}`);
+    const auth = await requireActionAuth();
+    // TOCTOU FIX: Validate ownership BEFORE any data fetch
+    await validateClientOwnership(validated.clientId, auth);
 
-    // Verify the project belongs to the specified client
+    // Include client_id in query to let backend enforce ownership atomically
+    const query = new URLSearchParams({
+      client_id: validated.clientId,
+    });
+    const project = await getOpenSeo<Project>(`/api/seo/projects/${validated.projectId}?${query.toString()}`);
+
+    // Verify the project belongs to the specified client (defense in depth)
     if (project.clientId && project.clientId !== validated.clientId) {
-      return null;
+      return { success: true, data: null };
     }
 
-    return project;
+    return { success: true, data: project };
   } catch (error) {
     // Return null for 404 errors (project not found)
     if (error instanceof Error && error.message.includes("404")) {
-      return null;
+      return { success: true, data: null };
     }
-    throw error;
+    console.error("[getProject] Failed:", error);
+    return { success: false, error: "Failed to get project" };
   }
 }

@@ -1,0 +1,61 @@
+# ci-ai-writer.yml — CI workflow for AI-Writer (Python FastAPI backend)
+#
+# Runs ruff lint, ruff format check, and pytest on pull requests to main
+# that affect the AI-Writer directory.
+
+name: CI - AI-Writer
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AI-Writer/**'
+      - '.github/workflows/ci-ai-writer.yml'
+
+concurrency:
+  group: ci-ai-writer-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate AI-Writer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: AI-Writer/backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: AI-Writer/backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-cov
+
+      - name: Run ruff lint
+        run: ruff check .
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+      - name: Run pytest with coverage
+        run: pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-ai-writer
+          path: AI-Writer/backend/htmlcov/
+          retention-days: 7

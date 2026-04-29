@@ -16,6 +16,7 @@ import { computeReportHash } from "@/server/services/report/content-hasher";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess, AuthorizationError } from "@/server/middleware/authz";
 
 const log = createLogger({ module: "api/reports" });
 
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/api/reports/")({
       // POST /api/reports - Start report generation
       POST: async ({ request }: { request: Request }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = generateSchema.safeParse(body);
@@ -50,6 +51,9 @@ export const Route = createFileRoute("/api/reports/")({
           }
 
           const { clientId, reportType, locale } = parsed.data;
+
+          // SECURITY: Validate user has access to this client (CRIT-03-C fix)
+          await requireClientAccess(authContext.userId, clientId);
 
           // Default date range: last 30 days
           const dateRange = parsed.data.dateRange ?? {
@@ -161,6 +165,9 @@ export const Route = createFileRoute("/api/reports/")({
             { status: 202 },
           );
         } catch (err) {
+          if (err instanceof AuthorizationError) {
+            return Response.json({ error: err.message }, { status: 403 });
+          }
           if (err instanceof AppError) {
             const status =
               err.code === "UNAUTHENTICATED"

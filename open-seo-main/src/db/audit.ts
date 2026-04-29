@@ -170,7 +170,19 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
   } catch (error) {
     // Log audit failures to stderr but don't throw
     // Audit logging should not break the main operation
-    console.error("[AUDIT] Failed to log audit entry:", error, entry);
+    // SECURITY: Redact entry before logging to prevent sensitive data exposure
+    const safeEntry = {
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      action: entry.action,
+      userId: entry.userId ? `${entry.userId.substring(0, 8)}***` : undefined,
+      organizationId: entry.organizationId,
+      // Omit oldValues, newValues, metadata which may contain sensitive data
+      hasOldValues: !!entry.oldValues,
+      hasNewValues: !!entry.newValues,
+      hasMetadata: !!entry.metadata,
+    };
+    console.error("[AUDIT] Failed to log audit entry:", error, safeEntry);
   }
 }
 

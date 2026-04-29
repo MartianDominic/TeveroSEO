@@ -92,10 +92,19 @@ async function checkConnectionRateLimit(ip: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    // On Redis error, allow connection (fail open for availability)
-    log.warn("Rate limit check failed, allowing connection", {
+    // SECURITY: Fail-closed in production to prevent rate limit bypass
+    if (process.env.NODE_ENV === "production") {
+      log.error(
+        "Rate limit check failed, blocking connection for safety",
+        error instanceof Error ? error : new Error(String(error)),
+        { ip }
+      );
+      return false; // Fail closed in production
+    }
+    // In development, allow through with warning
+    log.warn("Rate limit check failed, allowing connection in development", {
       ip,
-      error: error instanceof Error ? error.message : String(error),
+      errorMessage: error instanceof Error ? error.message : String(error),
     });
     return true;
   }

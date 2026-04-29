@@ -12,6 +12,8 @@ import { db } from "@/db/index";
 import { proposals } from "@/db/proposal-schema";
 import { VALID_TRANSITIONS, canTransition } from "@/server/features/proposals/services/ProposalService";
 import { createLogger } from "@/server/lib/logger";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { AppError } from "@/server/lib/errors";
 
 const log = createLogger({ module: "api-proposals-stage" });
 
@@ -35,6 +37,9 @@ export const Route = createFileRoute("/api/proposals/stage")({
     handlers: {
       PATCH: async ({ request }: { request: Request }) => {
         try {
+          // SECURITY: Require authentication before processing
+          const authContext = await requireApiAuth(request);
+
           const body = await request.json();
           const { proposalId, status: newStatus } = UpdateStageSchema.parse(body);
 
@@ -49,6 +54,20 @@ export const Route = createFileRoute("/api/proposals/stage")({
             return Response.json(
               { success: false, error: "Proposal not found" },
               { status: 404 }
+            );
+          }
+
+          // SECURITY: Verify user has access to this proposal's workspace (CRIT-03-E fix)
+          if (proposal.workspaceId !== authContext.organizationId) {
+            log.warn("Unauthorized proposal access attempt", {
+              proposalId,
+              userOrgId: authContext.organizationId,
+              proposalOrgId: proposal.workspaceId,
+              userId: authContext.userId,
+            });
+            return Response.json(
+              { success: false, error: "Access denied to this proposal" },
+              { status: 403 }
             );
           }
 
@@ -102,6 +121,14 @@ export const Route = createFileRoute("/api/proposals/stage")({
 
           return Response.json({ success: true, data: updated });
         } catch (error) {
+          if (error instanceof AppError) {
+            const status = error.code === "UNAUTHENTICATED" ? 401 : error.code === "FORBIDDEN" ? 403 : 400;
+            return Response.json(
+              { success: false, error: error.message },
+              { status }
+            );
+          }
+
           if (error instanceof z.ZodError) {
             return Response.json(
               { success: false, error: error.issues },
