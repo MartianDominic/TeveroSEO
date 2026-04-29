@@ -4,6 +4,11 @@
 
 export { cn } from "./lib/utils";
 export * from "./lib/tokens";
+export * from "./lib/status-config";
+export { formatRelativeTime, formatFullTimestamp, formatShortTime } from "./lib/format-time";
+
+export { Checklist, ChecklistItem } from "./components/checklist";
+export type { ChecklistProps, ChecklistItemProps } from "./components/checklist";
 
 export { ProgressBar, progressBarVariants, progressBarFillVariants } from "./components/progress-bar";
 export type { ProgressBarProps } from "./components/progress-bar";
@@ -106,6 +111,9 @@ export {
 } from "./components/sheet";
 
 export { Skeleton } from "./components/skeleton";
+
+export { StepIndicator } from "./components/step-indicator";
+export type { StepIndicatorProps } from "./components/step-indicator";
 
 export { Slider } from "./components/slider";
 
