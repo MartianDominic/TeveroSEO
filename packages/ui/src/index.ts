@@ -234,3 +234,33 @@ export type { IntentBadgeProps, SearchIntent } from "./components/intent-badge";
 
 export { CountBadge } from "./components/count-badge";
 export type { CountBadgeProps } from "./components/count-badge";
+
+// Phase 44-06 UX State Components
+export { EmptyState, emptyStateVariants } from "./components/empty-state";
+export type { EmptyStateProps, EmptyStateAction } from "./components/empty-state";
+
+export { ErrorState, errorStateVariants } from "./components/error-state";
+export type { ErrorStateProps } from "./components/error-state";
+
+export { LoadingSkeleton, loadingSkeletonVariants } from "./components/loading-skeleton";
+export type { LoadingSkeletonProps } from "./components/loading-skeleton";
+
+export { DataStateWrapper } from "./components/data-state-wrapper";
+export type { DataStateWrapperProps } from "./components/data-state-wrapper";
+
+// Phase 44-07: Accessibility Foundation
+export { FocusTrap } from "./components/focus-trap";
+export type { FocusTrapProps } from "./components/focus-trap";
+
+export { SkipToMain } from "./components/skip-to-main";
+export type { SkipToMainProps } from "./components/skip-to-main";
+
+export { AriaLive } from "./components/aria-live";
+export type { AriaLiveProps } from "./components/aria-live";
+
+export {
+  KeyboardPatterns,
+  useKeyboardNavigation,
+  getKeyboardAction,
+} from "./lib/keyboard-patterns";
+export type { KeyboardAction, KeyboardPatternName } from "./lib/keyboard-patterns";
