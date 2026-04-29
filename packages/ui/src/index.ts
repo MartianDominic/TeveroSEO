@@ -3,6 +3,7 @@
 // Keep sorted alphabetically by component file.
 
 export { cn } from "./lib/utils";
+export * from "./lib/tokens";
 
 export { Badge, badgeVariants } from "./components/badge";
 export type { BadgeProps } from "./components/badge";
