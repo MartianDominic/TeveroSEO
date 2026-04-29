@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["vitest/globals", "@testing-library/jest-dom"],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -13,5 +14,5 @@
     "isolatedModules": true,
     "jsx": "preserve"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "vitest.setup.ts"]
 }
