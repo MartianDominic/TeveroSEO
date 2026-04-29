@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../lib/utils";
-import { formatShortTime } from "../lib/format-time";
+import { formatTime } from "../lib/format-time";
 
 // ---------------------------------------------------------------------------
 // TodayFeedItemProps
@@ -80,7 +80,7 @@ export function TodayFeedItem({
   onClick,
   className,
 }: TodayFeedItemProps) {
-  const formattedTime = formatShortTime(timestamp);
+  const formattedTime = formatTime(timestamp);
   const tagColors = tag ? TAG_VARIANTS[tag.variant] : null;
 
   return (

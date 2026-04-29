@@ -166,7 +166,7 @@ export type { MetricCardProps, MetricDelta } from "./components/metric-card";
 export {
   PageTitle,
   SectionTitle,
-  CardTitle as TypographyCardTitle,
+  TypographyCardTitle,
   Eyebrow,
   SmallCaps,
   Mono,
