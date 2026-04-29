@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Unified Product
 current_plan: 1
 status: executing
-last_updated: "2026-04-26T21:36:44.013Z"
+last_updated: "2026-04-29T22:14:19.737Z"
 last_activity: 2026-04-26 -- Phase --phase execution started
 progress:
   total_phases: 14
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **43-05:** Schema and services pre-existed from security audit; focused on migration + UI; vi.hoisted() for mock function hoisting; three-tab UI (Rules, Discovery, Settings)
 - **41-04:** Wix categories API already implemented via WixBlogService.list_categories(); Connection test uses platform dispatch pattern; Workspace opportunities aggregates up to 20 per client
 - **41-02:** Traffic status thresholds: dropped <= -20%, growing >= 10%, stable in between; ranking positive change = improvement (lower position is better)
 - **41-03:** Use auto_publish as proxy for auto_optimize; CTR opportunity threshold 50% of expected; 3 AM UTC daily cycle with 5s rate limit between clients
@@ -179,7 +180,18 @@ None currently.
 | Phase | Title | Status |
 |-------|-------|--------|
 | 42 | Keyword Intelligence Infrastructure | Planning |
-| 43 | Prospect Keyword Pipeline | Planning |
+| 43 | Prospect Keyword Pipeline | In Progress (Plan 05/06 complete) |
+
+### Phase 43 Progress
+
+| Plan | Name | Status |
+|------|------|--------|
+| 43-01 | Entry Point Architecture + Schema | Complete |
+| 43-02 | Quick Check + Competitor Spy | Complete |
+| 43-03 | CSV Import + Metric Detection | Complete |
+| 43-04 | Prioritization Engine + UI | Complete |
+| 43-05 | Scraping Customization + AI Extraction | Complete |
+| 43-06 | Proposal Generation + Copywriting AI | Pending |
 
 ## Next Up
 
