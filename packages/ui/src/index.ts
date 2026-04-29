@@ -5,6 +5,9 @@
 export { cn } from "./lib/utils";
 export * from "./lib/tokens";
 
+export { ProgressBar, progressBarVariants, progressBarFillVariants } from "./components/progress-bar";
+export type { ProgressBarProps } from "./components/progress-bar";
+
 export { Badge, badgeVariants } from "./components/badge";
 export type { BadgeProps } from "./components/badge";
 
