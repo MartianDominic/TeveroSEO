@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
-current_plan: 1
+milestone: v6.0
+milestone_name: Agency Pipeline & Design System
+current_plan: 2
 status: executing
-last_updated: "2026-04-29T22:14:19.737Z"
-last_activity: 2026-04-26 -- Phase --phase execution started
+last_updated: "2026-04-30T03:25:00.000Z"
+last_activity: 2026-04-30 -- Phase 44 Plan 01 complete (Token Foundation)
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
-  percent: 100
+  total_phases: 10
+  completed_phases: 0
+  total_plans: 8
+  completed_plans: 1
+  percent: 12
 ---
 
 # Project State
@@ -23,7 +23,7 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase --phase — 43
+**Current focus:** Phase 44 — Component Library Foundation
 
 ## Current Position
 
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **44-01:** Use @theme inline for Tailwind v4 token mapping (CSS-first approach); export all token categories as TypeScript const objects for type safety; configure vitest with 80% coverage thresholds
 - **43-05:** Schema and services pre-existed from security audit; focused on migration + UI; vi.hoisted() for mock function hoisting; three-tab UI (Rules, Discovery, Settings)
 - **41-04:** Wix categories API already implemented via WixBlogService.list_categories(); Connection test uses platform dispatch pattern; Workspace opportunities aggregates up to 20 per client
 - **41-02:** Traffic status thresholds: dropped <= -20%, growing >= 10%, stable in between; ranking positive change = improvement (lower position is better)
@@ -198,14 +199,20 @@ None currently.
 
 ## Next Up
 
-**v5.2 Keyword Intelligence** — Full-stack keyword matching with knowledge graphs, embeddings, and prospect workflow.
+**v6.0 Agency Pipeline & Design System** — Complete agency CRM with v6 design compliance, proposal-to-payment flows, and professional reporting.
 
 Current:
 
-- Phase 42: Infrastructure (FalkorDB, LightRAG, jina-v3, crawler) — 20h
-- Phase 43: Prospect Pipeline (CSV, UI, mapping, recommendations) — 35h
+- Phase 44: Component Library Foundation — 73h (design tokens + 41 components)
+- Phase 45: Data Foundation — 12h (contracts, invoices, onboarding schemas)
+- Phase 46-47: Proposal System — 24h (lifecycle + 43-06 deferred UI)
+- Phase 48: Contract & Payment — 20h (e-signature + Stripe)
+- Phase 49-51: Onboarding & Dashboard — 32h (checklist + kanban + MRR)
+- Phase 52: v6 UI Compliance — 12h (Phase 43 UI updates)
+- Phase 53: Reports & PDF — 24h (scheduling + white-label)
 
 Design docs:
 
-- `.planning/keyword-intelligence/` — 18 research documents
-- `.planning/PROSPECT-KEYWORD-PIPELINE-ANALYSIS.md` — Gap analysis
+- `.planning/design/design-system-v6.md` — Design system specification
+- `.planning/design/gsd-phase0-component-library.md` — Phase 44 detailed plan
+- `.planning/design/v7-master-design-architecture.md` — User journey architecture

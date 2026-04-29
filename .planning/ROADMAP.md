@@ -1582,3 +1582,172 @@ compositeScore = (
   - [ ] 43-06-PLAN.md — Proposal Generation + Copywriting AI (Wave 4) — DEFERRED to Phase 46-47 (UI requires design-system-v6)
 
 ---
+
+## v6.0 Agency Pipeline & Design System
+
+Transform the platform into a complete agency CRM with v6 design system compliance, proposal-to-payment flows, and professional reporting.
+
+---
+
+### Phase 44: Component Library Foundation
+**Goal**: Establish the shared design token layer and component library that all v6 UI depends on. Design tokens from design-system-v6.md mapped to Tailwind, 41 extracted/new components, Storybook documentation, 80%+ test coverage.
+**Depends on**: Phase 43 (keyword pipeline complete)
+**Requirements**: All subsequent UI phases require this foundation
+**Working directory**: `packages/ui/`, `apps/web/`
+**Success Criteria** (what must be TRUE):
+  1. CSS tokens file (`packages/ui/src/lib/tokens.css`) contains all v6 design tokens
+  2. Tailwind config extended with token mappings (bg-canvas, text-accent, shadow-card, etc.)
+  3. Geist/Newsreader fonts loading via next/font
+  4. All 41 components implemented and exported from packages/ui
+  5. Storybook stories for all components
+  6. 80%+ test coverage verified
+  7. No design system violations (12px floor, ghost-edge shadows, single accent color)
+**Estimated effort**: 73 hours (~9 days)
+**Plans**: 8 plans
+  - [x] 44-01-PLAN.md — Tokens Foundation: CSS variables + Tailwind extension + font loading (Sprint 0A)
+  - [ ] 44-02-PLAN.md — Extraction Tasks: ProgressBar, status-config, formatRelativeTime, CardActionMenu, StepIndicator (Sprint 0B)
+  - [ ] 44-03-PLAN.md — New Primitives Part 1: Checklist, PipelineStageCard, KanbanColumn, TodayFeedItem (Sprint 0C)
+  - [ ] 44-04-PLAN.md — New Primitives Part 2: EntityCard, StepWizard, SegmentedProgressBar, MetricCard, Typography (Sprint 0C)
+  - [ ] 44-05-PLAN.md — v6/v7 Components: TierBreakdownTable, ConnectionStatusCard, DropCausesPanel, ReportPreviewCard, HealthGauge, OpsStrip (Sprint 5)
+  - [ ] 44-06-PLAN.md — UX State Components: EmptyState, ErrorState, LoadingSkeleton, DataStateWrapper (Sprint 6)
+  - [ ] 44-07-PLAN.md — Accessibility Foundation: Motion preferences, FocusTrap, SkipToMain, keyboard patterns, ARIA live (Sprint 7)
+  - [ ] 44-08-PLAN.md — Stories & Tests: 14 Storybook stories + 14 unit test files + coverage verification (Sprint 0D)
+
+---
+
+### Phase 45: Data Foundation
+**Goal**: Create database schema for agency pipeline: contracts, invoices, onboarding_checklists, pipeline_activities tables. Repository layer and Zod validation.
+**Depends on**: Phase 44 (component library for later UI phases)
+**Requirements**: Schema foundation for Phase 46-53 features
+**Working directory**: `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. `contracts` table with state machine (draft → sent → signed → executed)
+  2. `invoices` table with Stripe integration fields
+  3. `onboarding_checklists` table with JSONB items structure
+  4. `pipeline_activities` table for polymorphic activity feed
+  5. Repository layer with CRUD + state transitions
+  6. Zod schemas for API validation
+  7. Migrations apply cleanly to fresh database
+**Estimated effort**: 12 hours
+**Plans**: 4 plans
+  - [ ] 45-01-PLAN.md — Contract Schema: CONTRACT_STATE enum, e-signature fields, relations (Wave 1)
+  - [ ] 45-02-PLAN.md — Invoice Schema: INVOICE_STATE enum, Stripe fields, line items JSONB (Wave 1)
+  - [ ] 45-03-PLAN.md — Onboarding & Activity Schemas: checklists table, pipeline_activities polymorphic (Wave 2)
+  - [ ] 45-04-PLAN.md — Repository Layer: CRUD services, state machine helpers, Zod validation (Wave 2)
+
+---
+
+### Phase 46-47: Proposal System
+**Goal**: Complete proposal lifecycle from draft to accepted. Includes deferred 43-06 UI (proposal generation + copywriting AI) with v6 compliance.
+**Depends on**: Phase 45 (data foundation), Phase 44 (component library)
+**Requirements**: End-to-end proposal flow before contracts
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Send proposal flow with email integration (Resend + Loops)
+  2. Client-facing proposal page (public, token-based access)
+  3. View tracking pixel/beacon for engagement signals
+  4. Accept/reject flow with state transitions
+  5. Proposal list with status indicators
+  6. Activity logging to pipeline_activities
+  7. Deferred 43-06 UI integrated: AI copywriting, recommendations display
+  8. All UI follows v6 design system
+**Estimated effort**: 24 hours
+**Plans**: 4 plans
+  - [ ] 46-01-PLAN.md — Proposal Backend Wire-up: server actions connecting to open-seo-main services (Wave 1)
+  - [ ] 46-02-PLAN.md — Send Flow + Client Page: email sending, public view page, token auth (Wave 2)
+  - [ ] 47-01-PLAN.md — Accept/Reject + Activity: state transitions, pipeline_activities logging (Wave 3)
+  - [ ] 47-02-PLAN.md — AI Copywriting Integration: 43-06 deferred UI, recommendations display, v6 compliance (Wave 4)
+
+---
+
+### Phase 48: Contract & Payment
+**Goal**: E-signature integration (Dokobit) and Stripe invoicing for signed proposals. Automated flow: accepted → signed → paid.
+**Depends on**: Phase 46-47 (proposal acceptance triggers contract)
+**Requirements**: Payment before onboarding
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Contract generated from accepted proposal
+  2. E-signature flow via Dokobit (client_signed → fully_executed)
+  3. Invoice created automatically after signing
+  4. Stripe payment link sent with invoice
+  5. Payment webhook updates invoice status
+  6. State transitions: signed → paid triggers onboarding
+  7. Contract and invoice views in prospect detail
+**Estimated effort**: 20 hours
+**Plans**: 4 plans
+  - [ ] 48-01-PLAN.md — Contract Generation: create from proposal, state machine, Dokobit integration (Wave 1)
+  - [ ] 48-02-PLAN.md — E-Signature Flow: signing UI, webhook handlers, signature records (Wave 2)
+  - [ ] 48-03-PLAN.md — Invoice & Stripe: invoice generation, payment links, webhook handlers (Wave 3)
+  - [ ] 48-04-PLAN.md — Payment → Onboarding Trigger: state transitions, onboarding checklist creation (Wave 4)
+
+---
+
+### Phase 49-51: Onboarding & Agency Dashboard
+**Goal**: Automated onboarding with checklist system and agency command center dashboard with pipeline kanban, Today's tasks, MRR metrics.
+**Depends on**: Phase 48 (payment triggers onboarding)
+**Requirements**: Complete prospect → client conversion flow
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Onboarding checklist auto-created on payment
+  2. Service tier determines checklist items (starter/growth/enterprise)
+  3. Auto-complete items via OAuth and system events
+  4. Progress tracking with visual indicators
+  5. Pipeline kanban with drag-and-drop between stages
+  6. Today's tasks feed (what I need to do now)
+  7. MRR metrics card with trend
+  8. Retention signals and churn risk indicators
+  9. Prospect → client conversion on checklist completion
+**Estimated effort**: 32 hours
+**Plans**: 6 plans
+  - [ ] 49-01-PLAN.md — Onboarding Engine: auto-create checklist, item completion service (Wave 1)
+  - [ ] 49-02-PLAN.md — Checklist UI: progress view, item actions, OAuth triggers (Wave 2)
+  - [ ] 50-01-PLAN.md — Pipeline Kanban: drag-and-drop, stage filtering, quick actions (Wave 3)
+  - [ ] 50-02-PLAN.md — Today's Tasks Feed: priority algorithm, action buttons, filtering (Wave 3)
+  - [ ] 51-01-PLAN.md — MRR & Retention: metrics calculation, dashboard card, trend sparklines (Wave 4)
+  - [ ] 51-02-PLAN.md — Prospect Conversion: checklist completion → client creation, v6 compliance audit (Wave 4)
+
+---
+
+### Phase 52: v6 UI Compliance
+**Goal**: Update Phase 43 UI components to v6 design system compliance. 23 files from keyword pipeline need token/shadow/typography updates.
+**Depends on**: Phase 44 (component library provides tokens)
+**Requirements**: All UI consistent before reports
+**Working directory**: `apps/web/`
+**Success Criteria** (what must be TRUE):
+  1. All 23 Phase 43 UI files updated to use v6 tokens
+  2. Ghost-edge shadows replace 1px borders on cards
+  3. 12px minimum text floor enforced
+  4. Newsreader/Geist typography applied
+  5. Single emerald accent color
+  6. No animate-pulse (use skeleton shimmer)
+  7. prefers-reduced-motion respected
+**Estimated effort**: 12 hours
+**Plans**: 3 plans
+  - [ ] 52-01-PLAN.md — Keyword Pipeline v6: KeywordTable, ScoreWeightEditor, tier badges (Wave 1)
+  - [ ] 52-02-PLAN.md — Scrape Config v6: RuleEditor, SelectorDiscoveryPanel, FieldEditor (Wave 2)
+  - [ ] 52-03-PLAN.md — Import/Export v6: ColumnMapper, CSV preview, QuickCheck UI (Wave 3)
+
+---
+
+### Phase 53: Reports & PDF Generation
+**Goal**: Client-facing PDF reports with scheduling and white-label branding. SEO, performance, and custom report types.
+**Depends on**: Phase 51 (dashboard metrics for reports)
+**Requirements**: Professional deliverables for agency clients
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Report builder with section selection
+  2. PDF generation via Puppeteer
+  3. White-label branding (agency logo, colors, footer)
+  4. Report scheduling (weekly/monthly)
+  5. Email delivery with PDF attachment
+  6. Report history per client
+  7. Template system for report types
+  8. Preview before generation
+**Estimated effort**: 24 hours
+**Plans**: 4 plans
+  - [ ] 53-01-PLAN.md — Report Builder: section selection, preview, data aggregation (Wave 1)
+  - [ ] 53-02-PLAN.md — PDF Generation: Puppeteer rendering, chart snapshots, white-label (Wave 2)
+  - [ ] 53-03-PLAN.md — Scheduling & Delivery: cron jobs, email with attachment, history tracking (Wave 3)
+  - [ ] 53-04-PLAN.md — Templates & Polish: report templates, UI refinements, v6 compliance (Wave 4)
+
+---
