@@ -11,7 +11,7 @@
  * - Transform functions (trim, lowercase, number, price)
  */
 
-import { useState } from "react";
+// React hooks imported as needed
 import {
   Button,
   Card,

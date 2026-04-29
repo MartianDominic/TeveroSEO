@@ -140,6 +140,62 @@ Phase 48 (Onboarding):
 
 ---
 
+## Phase 43 UI Files Requiring v6 Compliance
+
+> **Added:** 2026-04-30
+> **Reason:** These files were created during Phase 43 execution BEFORE the v6 design phases (44-53) were planned. They need to be included in Phase 49-52 page migrations for v6 token updates.
+
+### Keyword Pipeline UI (23 files)
+
+**Prospect Keywords (Phase 49/50):**
+```
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/page.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/actions.ts
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/components/KeywordTable.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/components/TierFilter.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/components/ScoreWeightEditor.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/import/page.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/keywords/import/actions.ts
+apps/web/src/app/(shell)/prospects/keywords/page.tsx
+apps/web/src/app/(shell)/prospects/keywords/components/EntrySelector.tsx
+apps/web/src/app/(shell)/prospects/keywords/quick-check/page.tsx
+apps/web/src/app/(shell)/prospects/keywords/quick-check/actions.ts
+apps/web/src/app/(shell)/prospects/keywords/competitor-spy/page.tsx
+apps/web/src/app/(shell)/prospects/keywords/competitor-spy/actions.ts
+```
+
+**Scrape Config UI (Phase 50/51):**
+```
+apps/web/src/app/(shell)/prospects/[prospectId]/scrape-config/page.tsx
+apps/web/src/app/(shell)/prospects/[prospectId]/scrape-config/actions.ts
+apps/web/src/app/(shell)/prospects/[prospectId]/scrape-config/components/RuleEditor.tsx
+```
+
+**Client Keywords (Phase 50):**
+```
+apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/keywords/page.tsx
+apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/keywords/[keywordId]/page.tsx
+```
+
+### Required v6 Updates Per File
+
+Each file needs:
+1. **Shadows:** Replace any `shadow-*` with `--shadow-ghost-edge` or `--shadow-hover-lift`
+2. **Colors:** Replace hardcoded colors with `--accent-600` (single accent) or semantic grays
+3. **Typography:** Ensure `--font-display` (Newsreader) for headings, `--font-body` (Geist) for text
+4. **Spacing:** Use `--space-*` tokens (12px floor)
+5. **Motion:** Replace any `animate-pulse` with `--ease-micro` 100ms transitions
+
+### Assignment to Phases
+
+| Phase | Files to Update |
+|-------|-----------------|
+| Phase 49 | prospects/keywords/* (entry point) |
+| Phase 50 | prospects/[prospectId]/keywords/*, clients/*/keywords/* |
+| Phase 51 | prospects/[prospectId]/scrape-config/* |
+
+---
+
 ## High Priority Additions
 
 ### 5. Create Lead Management Plan (NEW Phase 44.5)

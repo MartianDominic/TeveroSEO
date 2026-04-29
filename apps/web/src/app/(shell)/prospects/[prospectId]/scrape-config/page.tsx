@@ -70,7 +70,7 @@ export default function ScrapeConfigPage() {
   const params = useParams();
   const prospectId = params.prospectId as string;
 
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, _startTransition] = useTransition();
   const [config, setConfig] = useState<ScrapeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,12 +90,12 @@ export default function ScrapeConfigPage() {
   // Rule testing state
   const [testUrl, setTestUrl] = useState("");
   const [testHtml, setTestHtml] = useState("");
-  const [testRuleIndex, setTestRuleIndex] = useState<number | null>(null);
+  const [_testRuleIndex, setTestRuleIndex] = useState<number | null>(null);
   const [testResult, setTestResult] = useState<{
     matched: boolean;
     data: Record<string, string | null> | null;
   } | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
+  const [_isTesting, setIsTesting] = useState(false);
 
   // Local extraction rules state (for editing)
   const [localRules, setLocalRules] = useState<ExtractionRule[]>([]);
