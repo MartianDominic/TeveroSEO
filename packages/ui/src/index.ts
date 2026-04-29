@@ -180,3 +180,13 @@ export type { NumProps, NumDeltaProps } from "./components/numerals";
 
 export { RelativeTimestamp } from "./components/relative-timestamp";
 export type { RelativeTimestampProps } from "./components/relative-timestamp";
+
+// Phase 44-05 Components
+export { HealthGauge } from "./components/health-gauge";
+export type { HealthGaugeProps } from "./components/health-gauge";
+
+export { SeverityDots } from "./components/severity-dots";
+export type { SeverityDotsProps } from "./components/severity-dots";
+
+export { TierBreakdownTable } from "./components/tier-breakdown-table";
+export type { TierBreakdownTableProps, Finding } from "./components/tier-breakdown-table";
