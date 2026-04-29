@@ -219,3 +219,18 @@ export type {
   OpsStripItemType,
   OpsStripItemStatus,
 } from "./components/ops-strip";
+
+export { VelocityStrip } from "./components/velocity-strip";
+export type { VelocityStripProps } from "./components/velocity-strip";
+
+export { PeriodSelector } from "./components/period-selector";
+export type { PeriodSelectorProps, PeriodValue } from "./components/period-selector";
+
+export { KeyboardShortcutHint } from "./components/keyboard-shortcut-hint";
+export type { KeyboardShortcutHintProps } from "./components/keyboard-shortcut-hint";
+
+export { IntentBadge } from "./components/intent-badge";
+export type { IntentBadgeProps, SearchIntent } from "./components/intent-badge";
+
+export { CountBadge } from "./components/count-badge";
+export type { CountBadgeProps } from "./components/count-badge";
