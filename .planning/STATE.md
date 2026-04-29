@@ -96,6 +96,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **44-03:** Compound components pattern for Checklist/ChecklistItem and KanbanColumn/KanbanCard; KanbanColumn uses role="listbox" with KanbanCard role="option"; TodayFeedItem uses 44px fixed timestamp column
+- **44-02:** Use CSS var() syntax for v6 tokens in ProgressBar CVA variants; add getStatusConfig helper for status lookups; fix format-time export naming to match actual functions
 - **44-01:** Use @theme inline for Tailwind v4 token mapping (CSS-first approach); export all token categories as TypeScript const objects for type safety; configure vitest with 80% coverage thresholds
 - **43-05:** Schema and services pre-existed from security audit; focused on migration + UI; vi.hoisted() for mock function hoisting; three-tab UI (Rules, Discovery, Settings)
 - **41-04:** Wix categories API already implemented via WixBlogService.list_categories(); Connection test uses platform dispatch pattern; Workspace opportunities aggregates up to 20 per client
