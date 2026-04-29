@@ -190,3 +190,32 @@ export type { SeverityDotsProps } from "./components/severity-dots";
 
 export { TierBreakdownTable } from "./components/tier-breakdown-table";
 export type { TierBreakdownTableProps, Finding } from "./components/tier-breakdown-table";
+
+export { ConnectionStatusCard } from "./components/connection-status-card";
+export type {
+  ConnectionStatusCardProps,
+  ConnectionService,
+  ConnectionStatus,
+} from "./components/connection-status-card";
+
+export { DropCausesPanel } from "./components/drop-causes-panel";
+export type {
+  DropCausesPanelProps,
+  DropCause,
+  DropCauseType,
+} from "./components/drop-causes-panel";
+
+export { ReportPreviewCard } from "./components/report-preview-card";
+export type {
+  ReportPreviewCardProps,
+  ReportType,
+  ReportStatus,
+} from "./components/report-preview-card";
+
+export { OpsStrip } from "./components/ops-strip";
+export type {
+  OpsStripProps,
+  OpsStripItem,
+  OpsStripItemType,
+  OpsStripItemStatus,
+} from "./components/ops-strip";
