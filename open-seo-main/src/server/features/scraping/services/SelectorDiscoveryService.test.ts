@@ -10,14 +10,18 @@ import {
   type SelectorDiscoveryResult,
 } from "./SelectorDiscoveryService";
 
-// Mock Anthropic client
+// Mock Anthropic client with hoisted mock function
+const { mockCreate } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+}));
+
 vi.mock("@anthropic-ai/sdk", () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn(),
-      },
-    })),
+    default: class MockAnthropic {
+      messages = {
+        create: mockCreate,
+      };
+    },
   };
 });
 
@@ -102,18 +106,9 @@ const BLOG_HTML = `
 
 describe("SelectorDiscoveryService", () => {
   let service: SelectorDiscoveryService;
-  let mockCreate: ReturnType<typeof vi.fn>;
 
-  beforeEach(async () => {
-    const Anthropic = (await import("@anthropic-ai/sdk")).default;
-    mockCreate = vi.fn();
-    (Anthropic as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      () => ({
-        messages: {
-          create: mockCreate,
-        },
-      }),
-    );
+  beforeEach(() => {
+    mockCreate.mockReset();
     service = new SelectorDiscoveryService();
   });
 
