@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
@@ -7,12 +8,28 @@ import { checkRateLimit } from "@/lib/middleware/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface GenerateReportRequest {
-  clientId: string;
-  reportType?: string;
-  dateRange?: { start: string; end: string };
-  locale?: string;
-}
+/**
+ * Zod schema for report generation request validation.
+ * HIGH-INPUT-01 fix: Add comprehensive validation with length constraints.
+ */
+const generateReportSchema = z.object({
+  clientId: z.string().uuid("clientId must be a valid UUID"),
+  reportType: z.enum(["seo", "content", "technical", "full", "performance", "backlinks"])
+    .optional()
+    .default("full"),
+  dateRange: z.object({
+    start: z.string().datetime("start must be a valid ISO datetime"),
+    end: z.string().datetime("end must be a valid ISO datetime"),
+  }).optional().refine(
+    (range) => !range || new Date(range.start) <= new Date(range.end),
+    { message: "start date must be before or equal to end date" }
+  ),
+  locale: z.string()
+    .max(10, "locale must be at most 10 characters")
+    .regex(/^[a-z]{2}(-[A-Z]{2})?$/, "locale must be in format 'en' or 'en-US'")
+    .optional()
+    .default("en"),
+});
 
 interface GenerateReportResponse {
   reportId: string;
@@ -52,15 +69,32 @@ export async function POST(req: Request) {
     const csrfError = validateCsrf(req);
     if (csrfError) return csrfError;
 
-    const body: GenerateReportRequest = await req.json();
-
-    // Validate required field
-    if (!body.clientId) {
+    // HIGH-INPUT-01 fix: Comprehensive Zod validation
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
       return NextResponse.json(
-        { error: "clientId is required" },
+        { error: "Invalid JSON body" },
         { status: 400 },
       );
     }
+
+    const validation = generateReportSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: validation.error.issues.map((i) => ({
+            field: i.path.join("."),
+            message: i.message,
+          })),
+        },
+        { status: 400 },
+      );
+    }
+
+    const body = validation.data;
 
     // CRITICAL: Verify user has access to this client before generating report
     await requireClientAccess(body.clientId);

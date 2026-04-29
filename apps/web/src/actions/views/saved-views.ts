@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
-import { getFastApi } from "@/lib/server-fetch";
+import { getFastApi, postFastApi, patchFastApi, deleteFastApi } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type {
   SavedView,
@@ -224,11 +224,7 @@ export async function createSavedViewWithConfig(
     workspaceId: validatedWorkspaceId,
   };
 
-  const response = await getFastApi<SavedViewApiResponse>("/api/dashboard/views", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const response = await postFastApi<SavedViewApiResponse>("/api/dashboard/views", body);
 
   return transformView(response);
 }
@@ -271,11 +267,7 @@ export async function updateSavedViewWithConfig(
     body.sortDir = validatedInput.config.sortDir;
   }
 
-  await getFastApi(`/api/dashboard/views/${validatedViewId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  await patchFastApi(`/api/dashboard/views/${validatedViewId}`, body);
 }
 
 /**
@@ -300,9 +292,7 @@ export async function deleteSavedViewById(viewId: string): Promise<void> {
     throw new Error("Access denied: You do not own this view");
   }
 
-  await getFastApi(`/api/dashboard/views/${validatedViewId}`, {
-    method: "DELETE",
-  });
+  await deleteFastApi(`/api/dashboard/views/${validatedViewId}`);
 }
 
 /**
@@ -319,9 +309,7 @@ export async function setDefaultViewById(viewId: string, workspaceId: string): P
   // Validate workspace membership before setting default view
   await validateWorkspaceMembership(validatedWorkspaceId, auth);
 
-  await getFastApi(`/api/dashboard/views/${validatedViewId}/default`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId: validatedWorkspaceId }),
+  await postFastApi(`/api/dashboard/views/${validatedViewId}/default`, {
+    workspaceId: validatedWorkspaceId,
   });
 }

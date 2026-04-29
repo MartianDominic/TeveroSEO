@@ -12,6 +12,7 @@ import { updateGoalSchema } from "@/server/features/goals/types";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 
 const log = createLogger({ module: "api/clients/goals/goalId" });
 
@@ -26,7 +27,8 @@ export const Route = createFileRoute("/api/clients/$clientId/goals/$goalId")({
         params: { clientId: string; goalId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           const goal = await GoalService.getGoal(params.goalId);
 
@@ -66,7 +68,8 @@ export const Route = createFileRoute("/api/clients/$clientId/goals/$goalId")({
         params: { clientId: string; goalId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = updateGoalSchema.safeParse(body);
@@ -121,7 +124,8 @@ export const Route = createFileRoute("/api/clients/$clientId/goals/$goalId")({
         params: { clientId: string; goalId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           // Verify goal exists and belongs to client
           const existing = await GoalService.getGoal(params.goalId);

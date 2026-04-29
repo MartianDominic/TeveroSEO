@@ -9,6 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import {
   getClientAlerts,
   getUnacknowledgedCount,
@@ -31,9 +32,11 @@ export const Route = createFileRoute("/api/clients/$clientId/alerts")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const url = new URL(request.url);
           const status = url.searchParams.get("status") as
             | "pending"
@@ -96,7 +99,10 @@ export const Route = createFileRoute("/api/clients/$clientId/alerts")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+
+          const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
 
           const body = (await request.json()) as {
             alertId: string;

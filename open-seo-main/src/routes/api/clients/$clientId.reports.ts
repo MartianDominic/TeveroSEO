@@ -11,6 +11,7 @@ import { eq, desc } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 
 const log = createLogger({ module: "api/clients/:clientId/reports" });
 
@@ -26,9 +27,11 @@ export const Route = createFileRoute("/api/clients/$clientId/reports")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const clientReports = await db
             .select()
             .from(reports)

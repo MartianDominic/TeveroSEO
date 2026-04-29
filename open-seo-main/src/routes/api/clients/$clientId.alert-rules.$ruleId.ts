@@ -9,6 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { updateAlertRuleById, deleteAlertRuleById } from "@/services/alerts";
 
 const log = createLogger({ module: "api/clients/:clientId/alert-rules/:ruleId" });
@@ -25,9 +26,11 @@ export const Route = createFileRoute("/api/clients/$clientId/alert-rules/$ruleId
         params: { clientId: string; ruleId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId, ruleId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const body = (await request.json()) as {
             enabled?: boolean;
             threshold?: number | null;
@@ -72,9 +75,10 @@ export const Route = createFileRoute("/api/clients/$clientId/alert-rules/$ruleId
         params: { clientId: string; ruleId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId, ruleId } = params;
+          await requireClientAccess(authContext.userId, clientId);
 
           await deleteAlertRuleById(ruleId, clientId);
 

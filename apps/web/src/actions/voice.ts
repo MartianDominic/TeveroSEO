@@ -69,16 +69,25 @@ const removeProtectionRuleSchema = z.object({
 
 const industrySchema = z.string().max(100, "Industry name too long").optional();
 
-export async function getVoiceProfile(clientId: string): Promise<VoiceProfile | null> {
+/**
+ * ActionResult type for voice actions that need to distinguish "no data" from "error".
+ */
+type VoiceActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+export async function getVoiceProfile(clientId: string): Promise<VoiceActionResult<VoiceProfile | null>> {
   try {
     const validated = clientIdSchema.parse(clientId);
     const auth = await requireActionAuth();
     // SECURITY: Organization-level filtering for multi-tenant isolation
     await validateOrganizationAccess(validated, auth);
-    return apiFetchVoiceProfile(validated);
+    const data = await apiFetchVoiceProfile(validated);
+    return { success: true, data };
   } catch (error) {
-    console.error("[getVoiceProfile]", { message: error instanceof Error ? error.message : "Unknown error" });
-    return null;
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getVoiceProfile]", { message });
+    return { success: false, error: message };
   }
 }
 
@@ -118,16 +127,18 @@ export async function analyzeVoice(
   }
 }
 
-export async function getProtectionRules(clientId: string): Promise<ProtectionRule[]> {
+export async function getProtectionRules(clientId: string): Promise<VoiceActionResult<ProtectionRule[]>> {
   try {
     const validated = clientIdSchema.parse(clientId);
     const auth = await requireActionAuth();
     // SECURITY: Organization-level filtering for multi-tenant isolation
     await validateOrganizationAccess(validated, auth);
-    return apiFetchProtectionRules(validated);
+    const data = await apiFetchProtectionRules(validated);
+    return { success: true, data };
   } catch (error) {
-    console.error("[getProtectionRules]", { message: error instanceof Error ? error.message : "Unknown error" });
-    return [];
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getProtectionRules]", { message });
+    return { success: false, error: message };
   }
 }
 
@@ -160,14 +171,16 @@ export async function removeProtectionRule(clientId: string, ruleId: string): Pr
   }
 }
 
-export async function getVoiceTemplates(industry?: string): Promise<VoiceTemplate[]> {
+export async function getVoiceTemplates(industry?: string): Promise<VoiceActionResult<VoiceTemplate[]>> {
   try {
     const validated = industrySchema.parse(industry);
     // Voice templates are public/shared, but require authentication
     await requireActionAuth();
-    return apiFetchVoiceTemplates(validated);
+    const data = await apiFetchVoiceTemplates(validated);
+    return { success: true, data };
   } catch (error) {
-    console.error("[getVoiceTemplates]", { message: error instanceof Error ? error.message : "Unknown error" });
-    return [];
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[getVoiceTemplates]", { message });
+    return { success: false, error: message };
   }
 }

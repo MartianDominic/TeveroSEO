@@ -14,6 +14,7 @@ import {
   timestamp,
   unique,
   index,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
 
@@ -40,10 +41,15 @@ export const seoGscSnapshots = pgTable(
     syncedAt: timestamp("synced_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+
+    // Soft delete - analytics data is irreplaceable (can't re-sync historical GSC data)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("uq_seo_gsc_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_gsc_snapshots_client_date").on(table.clientId, table.date),
+    index("ix_seo_gsc_snapshots_deleted").on(table.isDeleted),
   ],
 );
 
@@ -104,10 +110,15 @@ export const seoGa4Snapshots = pgTable(
     syncedAt: timestamp("synced_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+
+    // Soft delete - analytics data is irreplaceable (can't re-sync historical GA4 data)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("uq_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
+    index("ix_seo_ga4_snapshots_deleted").on(table.isDeleted),
   ],
 );
 

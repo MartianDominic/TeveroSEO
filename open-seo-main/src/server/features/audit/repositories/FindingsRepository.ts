@@ -95,12 +95,29 @@ async function insertFindings(
 }
 
 /**
+ * Pagination options for query results.
+ */
+interface PaginationOptions {
+  /** Maximum number of results to return */
+  limit?: number;
+  /** Number of results to skip (for offset-based pagination) */
+  offset?: number;
+}
+
+/**
  * Get all findings for an audit.
  * @param auditId - The audit ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation. If provided,
  *                   verifies the audit belongs to this client before returning findings.
+ * @param options - Pagination options (limit defaults to 500, offset defaults to 0)
  */
-async function getFindingsByAudit(auditId: string, clientId?: string) {
+async function getFindingsByAudit(
+  auditId: string,
+  clientId?: string,
+  options: PaginationOptions = {}
+) {
+  const { limit = 500, offset = 0 } = options;
+
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
@@ -108,6 +125,8 @@ async function getFindingsByAudit(auditId: string, clientId?: string) {
 
   return db.query.auditFindings.findMany({
     where: eq(auditFindings.auditId, auditId),
+    limit,
+    offset,
   });
 }
 
@@ -116,8 +135,15 @@ async function getFindingsByAudit(auditId: string, clientId?: string) {
  * @param pageId - The page ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation. If provided,
  *                   verifies the page's audit belongs to this client before returning findings.
+ * @param options - Pagination options (limit defaults to 200, offset defaults to 0)
  */
-async function getFindingsByPage(pageId: string, clientId?: string) {
+async function getFindingsByPage(
+  pageId: string,
+  clientId?: string,
+  options: PaginationOptions = {}
+) {
+  const { limit = 200, offset = 0 } = options;
+
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyPageOwnership(pageId, clientId);
@@ -125,6 +151,8 @@ async function getFindingsByPage(pageId: string, clientId?: string) {
 
   return db.query.auditFindings.findMany({
     where: eq(auditFindings.pageId, pageId),
+    limit,
+    offset,
   });
 }
 
@@ -133,8 +161,16 @@ async function getFindingsByPage(pageId: string, clientId?: string) {
  * @param auditId - The audit ID to fetch findings for
  * @param severity - The severity level to filter by
  * @param clientId - Optional client ID for ownership validation
+ * @param options - Pagination options (limit defaults to 100, offset defaults to 0)
  */
-async function getFailedFindingsBySeverity(auditId: string, severity: string, clientId?: string) {
+async function getFailedFindingsBySeverity(
+  auditId: string,
+  severity: string,
+  clientId?: string,
+  options: PaginationOptions = {}
+) {
+  const { limit = 100, offset = 0 } = options;
+
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
@@ -146,6 +182,8 @@ async function getFailedFindingsBySeverity(auditId: string, severity: string, cl
       eq(auditFindings.severity, severity),
       eq(auditFindings.passed, false)
     ),
+    limit,
+    offset,
   });
 }
 
@@ -153,8 +191,15 @@ async function getFailedFindingsBySeverity(auditId: string, severity: string, cl
  * Get all failed findings for an audit.
  * @param auditId - The audit ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation
+ * @param options - Pagination options (limit defaults to 500, offset defaults to 0)
  */
-async function getFailedFindingsByAudit(auditId: string, clientId?: string) {
+async function getFailedFindingsByAudit(
+  auditId: string,
+  clientId?: string,
+  options: PaginationOptions = {}
+) {
+  const { limit = 500, offset = 0 } = options;
+
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
@@ -165,6 +210,8 @@ async function getFailedFindingsByAudit(auditId: string, clientId?: string) {
       eq(auditFindings.auditId, auditId),
       eq(auditFindings.passed, false)
     ),
+    limit,
+    offset,
   });
 }
 

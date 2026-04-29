@@ -44,9 +44,12 @@ export const Route = createFileRoute("/api/changes/$changeId")({
           }
 
           // 3. Validate client ownership - user must have access to the change's client
-          const headers = new Headers(request.headers);
-          headers.set("x-client-id", change.clientId);
-          await resolveClientId(headers, request.url);
+          // Note: clientId can be null if the client was deleted (soft delete preserves change records)
+          if (change.clientId) {
+            const headers = new Headers(request.headers);
+            headers.set("x-client-id", change.clientId);
+            await resolveClientId(headers, request.url);
+          }
 
           return Response.json({ success: true, data: change });
         } catch (error) {

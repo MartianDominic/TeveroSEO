@@ -47,7 +47,9 @@ export function BulkActionBar({
         const params = new URLSearchParams({
           clientIds: clientIds.join(","),
         });
-        const response = await fetch(`/api/dashboard/export?${params}`);
+        const response = await fetch(`/api/dashboard/export?${params}`, {
+          signal: AbortSignal.timeout(30_000),
+        });
         if (!response.ok) throw new Error("Export failed");
 
         const blob = await response.blob();
@@ -78,6 +80,7 @@ export function BulkActionBar({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clientIds }),
+          signal: AbortSignal.timeout(30_000),
         });
         if (!response.ok) throw new Error("Report generation failed");
         // Reports are queued for background processing

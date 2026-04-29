@@ -205,6 +205,8 @@ function collectDependentIds(node: DependencyNode): string[] {
 /**
  * Check if reverting a set of changes would create orphaned dependencies.
  * Returns changes that would have their beforeValue become invalid.
+ *
+ * Uses batch prefetching to avoid N+1 query problem.
  */
 export async function checkRevertSafety(
   changeIds: string[]
@@ -223,29 +225,63 @@ export async function checkRevertSafety(
     .from(siteChanges)
     .where(inArray(siteChanges.id, changeIds));
 
+  if (changes.length === 0) {
+    return { safe: true, orphanedChanges: [], warnings: [] };
+  }
+
+  // Collect unique resource/field combinations for batch query
+  const resourceFields = new Set<string>();
+  const changesWithAfterValue = changes.filter((c) => c.afterValue);
+  for (const change of changesWithAfterValue) {
+    resourceFields.add(`${change.resourceId}:${change.field}`);
+  }
+
+  // Get the earliest createdAt to use as a lower bound
+  const earliestCreatedAt = changesWithAfterValue.reduce(
+    (min, c) => (c.createdAt < min ? c.createdAt : min),
+    changesWithAfterValue[0]?.createdAt ?? new Date()
+  );
+
+  // Prefetch all potential dependents in a single query
+  // Filter by resource IDs that are in our change set
+  const resourceIds = [...new Set(changesWithAfterValue.map((c) => c.resourceId))];
+  const fields = [...new Set(changesWithAfterValue.map((c) => c.field))];
+
+  const allPotentialDependents = await db
+    .select()
+    .from(siteChanges)
+    .where(
+      and(
+        inArray(siteChanges.resourceId, resourceIds),
+        inArray(siteChanges.field, fields),
+        gt(siteChanges.createdAt, earliestCreatedAt),
+        eq(siteChanges.status, 'verified')
+      )
+    );
+
+  // Group dependents by resourceId:field:beforeValue for O(1) lookup
+  const dependentsByKey = new Map<string, SiteChangeSelect[]>();
+  for (const dependent of allPotentialDependents) {
+    if (dependent.beforeValue) {
+      const key = `${dependent.resourceId}:${dependent.field}:${dependent.beforeValue}`;
+      const existing = dependentsByKey.get(key) ?? [];
+      existing.push(dependent);
+      dependentsByKey.set(key, existing);
+    }
+  }
+
   const orphanedChanges: SiteChangeSelect[] = [];
   const warnings: string[] = [];
+  const changeIdSet = new Set(changeIds);
 
-  // For each change, check if any non-reverted change depends on it
-  for (const change of changes) {
-    if (!change.afterValue) continue;
+  // Check each change using prefetched data (no additional DB queries)
+  for (const change of changesWithAfterValue) {
+    const key = `${change.resourceId}:${change.field}:${change.afterValue}`;
+    const dependents = dependentsByKey.get(key) ?? [];
 
-    const dependents = await db
-      .select()
-      .from(siteChanges)
-      .where(
-        and(
-          eq(siteChanges.resourceId, change.resourceId),
-          eq(siteChanges.field, change.field),
-          gt(siteChanges.createdAt, change.createdAt),
-          eq(siteChanges.beforeValue, change.afterValue),
-          eq(siteChanges.status, 'verified')
-        )
-      );
-
-    // Check if any dependent is NOT in the revert set
+    // Filter to only dependents created after this specific change
     for (const dependent of dependents) {
-      if (!changeIds.includes(dependent.id)) {
+      if (dependent.createdAt > change.createdAt && !changeIdSet.has(dependent.id)) {
         orphanedChanges.push(dependent);
         warnings.push(
           `Change ${dependent.id} depends on ${change.id} but is not being reverted`

@@ -39,6 +39,14 @@ import {
   SUPPORT_URL,
 } from "@/lib/seo/shared";
 import { z } from "zod";
+import {
+  AuditStatusSchema,
+  CrawlProgressArraySchema,
+  AuditHistoryArraySchema,
+  type AuditStatus,
+  type CrawlProgressEntry,
+  type AuditHistoryEntry,
+} from "@/lib/validations/api-response-schemas";
 
 // Zod schema for audit results validation
 const AuditResultsSchema = z.object({
@@ -60,25 +68,6 @@ const AuditResultsSchema = z.object({
   })).optional(),
 });
 import { safeFirst, safeFormatTime } from "@/lib/utils/safe-parse";
-
-interface AuditStatus {
-  status: string;
-  pagesCrawled: number;
-  pagesTotal: number;
-  lighthouseTotal: number;
-  lighthouseCompleted: number;
-  lighthouseFailed: number;
-  currentPhase: string | null;
-  startUrl: string;
-  startedAt: string;
-}
-
-interface CrawlProgressEntry {
-  url: string;
-  statusCode: number | null;
-  title: string | null;
-  crawledAt: number;
-}
 
 export default function SiteAuditPage() {
   const params = useParams<{ clientId: string; projectId: string }>();
@@ -214,13 +203,9 @@ function LaunchView({
   });
 
   const historyData = historyQuery.data;
-  const history = (historyData?.success ? historyData.data : []) as Array<{
-    id: string;
-    startUrl: string;
-    status: string;
-    startedAt: string;
-    pagesCrawled: number;
-  }>;
+  const historyRaw = historyData?.success ? historyData.data : [];
+  const historyParsed = AuditHistoryArraySchema.safeParse(historyRaw);
+  const history: AuditHistoryEntry[] = historyParsed.success ? historyParsed.data : [];
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
@@ -429,7 +414,9 @@ function AuditDetail({
     );
   }
 
-  const status = statusData as AuditStatus;
+  // Validate status data with Zod schema instead of unsafe type assertion
+  const statusParsed = statusData ? AuditStatusSchema.safeParse(statusData) : null;
+  const status = statusParsed?.success ? statusParsed.data : null;
   const showSupportCta =
     isFailed || (isComplete && status && status.pagesCrawled <= 1);
 
@@ -550,7 +537,9 @@ function ProgressCard({
     refetchInterval: 1500,
   });
 
-  const crawledUrls = (crawlProgressQuery.data ?? []) as CrawlProgressEntry[];
+  const crawlProgressRaw = crawlProgressQuery.data ?? [];
+  const crawlProgressParsed = CrawlProgressArraySchema.safeParse(crawlProgressRaw);
+  const crawledUrls: CrawlProgressEntry[] = crawlProgressParsed.success ? crawlProgressParsed.data : [];
 
   return (
     <div className="space-y-3">

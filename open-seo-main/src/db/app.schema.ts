@@ -52,11 +52,16 @@ export const projects = pgTable(
     name: text("name").notNull(),
     domain: text("domain"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+    // Soft delete columns (migration 0038)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     // Unique constraint to prevent duplicate project names per organization
     // Used by getOrCreateDefaultProject() atomic upsert
     uniqueIndex("uq_projects_org_name").on(table.organizationId, table.name),
+    // Index for efficient soft delete filtering
+    index("projects_is_deleted_idx").on(table.isDeleted),
   ],
 );
 
@@ -172,6 +177,9 @@ export const audits = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
     // Audit trail column (HIGH-DB-009)
     updatedBy: text("updated_by"),
+    // Soft delete / archive columns (migration 0038)
+    isArchived: boolean("is_archived").notNull().default(false),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("audits_project_id_idx").on(table.projectId),
@@ -180,6 +188,8 @@ export const audits = pgTable(
       table.clientId,
       desc(table.startedAt),
     ),
+    // Index for efficient soft delete filtering
+    index("audits_is_archived_idx").on(table.isArchived),
     // Check constraints added via migration 0032
   ],
 );

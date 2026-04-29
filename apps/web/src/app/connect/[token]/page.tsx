@@ -11,13 +11,14 @@
  */
 
 import type { InviteValidation } from "@tevero/types";
+import { getAiWriterUrl, getPublicAiWriterUrl } from "@/lib/env";
 
 type PageProps = {
   params: Promise<{ token: string }>;
 };
 
-const BACKEND_URL =
-  process.env.AI_WRITER_URL || "http://localhost:8000";
+/** AI Writer URL from centralized env (validated at startup) */
+const BACKEND_URL = getAiWriterUrl();
 
 /**
  * Validate invite token - server-side fetch (no auth required).
@@ -46,8 +47,8 @@ async function validateInvite(token: string): Promise<InviteValidation | null> {
  * Build the Google OAuth URL for the given token.
  */
 function getGoogleOAuthUrl(token: string): string {
-  const publicUrl =
-    process.env.NEXT_PUBLIC_AI_WRITER_URL || "http://localhost:8000";
+  // Use public-facing URL for client redirects (validated at startup)
+  const publicUrl = getPublicAiWriterUrl();
   return `${publicUrl}/api/auth/google/start?token=${encodeURIComponent(token)}`;
 }
 

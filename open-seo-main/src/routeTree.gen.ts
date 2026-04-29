@@ -63,8 +63,10 @@ import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/
 import { Route as PTokenPaymentSuccessRouteImport } from './routes/p/$token/payment/success'
 import { Route as ApiWorkspacesWorkspaceIdTrafficDataRouteImport } from './routes/api/workspaces/$workspaceId/traffic-data'
 import { Route as ApiWorkspacesWorkspaceIdRankingDataRouteImport } from './routes/api/workspaces/$workspaceId/ranking-data'
+import { Route as ApiWorkspacesWorkspaceIdMembershipRouteImport } from './routes/api/workspaces/$workspaceId/membership'
 import { Route as ApiWorkspacesWorkspaceIdClientsRouteImport } from './routes/api/workspaces/$workspaceId/clients'
 import { Route as ApiSeoVoiceClientIdRouteImport } from './routes/api/seo/voice.$clientId'
+import { Route as ApiSeoProjectsProjectIdRouteImport } from './routes/api/seo/projects.$projectId'
 import { Route as ApiSeoLinksSuggestionsRouteImport } from './routes/api/seo/links/suggestions'
 import { Route as ApiSeoContentValidateRouteImport } from './routes/api/seo/content.validate'
 import { Route as ApiReportsIdDownloadRouteImport } from './routes/api/reports/$id.download'
@@ -393,6 +395,12 @@ const ApiWorkspacesWorkspaceIdRankingDataRoute =
     path: '/api/workspaces/$workspaceId/ranking-data',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWorkspacesWorkspaceIdMembershipRoute =
+  ApiWorkspacesWorkspaceIdMembershipRouteImport.update({
+    id: '/api/workspaces/$workspaceId/membership',
+    path: '/api/workspaces/$workspaceId/membership',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWorkspacesWorkspaceIdClientsRoute =
   ApiWorkspacesWorkspaceIdClientsRouteImport.update({
     id: '/api/workspaces/$workspaceId/clients',
@@ -403,6 +411,11 @@ const ApiSeoVoiceClientIdRoute = ApiSeoVoiceClientIdRouteImport.update({
   id: '/api/seo/voice/$clientId',
   path: '/api/seo/voice/$clientId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSeoProjectsProjectIdRoute = ApiSeoProjectsProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => ApiSeoProjectsRoute,
 } as any)
 const ApiSeoLinksSuggestionsRoute = ApiSeoLinksSuggestionsRouteImport.update({
   id: '/api/seo/links/suggestions',
@@ -772,7 +785,7 @@ export interface FileRoutesByFullPath {
   '/api/seo/keyword-mapping': typeof ApiSeoKeywordMappingRoute
   '/api/seo/keyword-rankings': typeof ApiSeoKeywordRankingsRoute
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
-  '/api/seo/projects': typeof ApiSeoProjectsRoute
+  '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
@@ -807,8 +820,10 @@ export interface FileRoutesByFullPath {
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
   '/api/seo/content/validate': typeof ApiSeoContentValidateRoute
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
+  '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
+  '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
@@ -883,7 +898,7 @@ export interface FileRoutesByTo {
   '/api/seo/keyword-mapping': typeof ApiSeoKeywordMappingRoute
   '/api/seo/keyword-rankings': typeof ApiSeoKeywordRankingsRoute
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
-  '/api/seo/projects': typeof ApiSeoProjectsRoute
+  '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
@@ -916,8 +931,10 @@ export interface FileRoutesByTo {
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
   '/api/seo/content/validate': typeof ApiSeoContentValidateRoute
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
+  '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
+  '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
@@ -997,7 +1014,7 @@ export interface FileRoutesById {
   '/api/seo/keyword-mapping': typeof ApiSeoKeywordMappingRoute
   '/api/seo/keyword-rankings': typeof ApiSeoKeywordRankingsRoute
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
-  '/api/seo/projects': typeof ApiSeoProjectsRoute
+  '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
@@ -1032,8 +1049,10 @@ export interface FileRoutesById {
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
   '/api/seo/content/validate': typeof ApiSeoContentValidateRoute
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
+  '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
+  '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
@@ -1146,8 +1165,10 @@ export interface FileRouteTypes {
     | '/api/reports/$id/download'
     | '/api/seo/content/validate'
     | '/api/seo/links/suggestions'
+    | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
     | '/api/workspaces/$workspaceId/clients'
+    | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
@@ -1255,8 +1276,10 @@ export interface FileRouteTypes {
     | '/api/reports/$id/download'
     | '/api/seo/content/validate'
     | '/api/seo/links/suggestions'
+    | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
     | '/api/workspaces/$workspaceId/clients'
+    | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
@@ -1370,8 +1393,10 @@ export interface FileRouteTypes {
     | '/api/reports/$id/download'
     | '/api/seo/content/validate'
     | '/api/seo/links/suggestions'
+    | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
     | '/api/workspaces/$workspaceId/clients'
+    | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
@@ -1444,7 +1469,7 @@ export interface RootRouteChildren {
   ApiSeoKeywordMappingRoute: typeof ApiSeoKeywordMappingRoute
   ApiSeoKeywordRankingsRoute: typeof ApiSeoKeywordRankingsRoute
   ApiSeoKeywordsRoute: typeof ApiSeoKeywordsRoute
-  ApiSeoProjectsRoute: typeof ApiSeoProjectsRoute
+  ApiSeoProjectsRoute: typeof ApiSeoProjectsRouteWithChildren
   ApiSeoVoiceTemplatesRoute: typeof ApiSeoVoiceTemplatesRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiBrandingIndexRoute: typeof ApiBrandingIndexRoute
@@ -1466,6 +1491,7 @@ export interface RootRouteChildren {
   ApiSeoLinksSuggestionsRoute: typeof ApiSeoLinksSuggestionsRouteWithChildren
   ApiSeoVoiceClientIdRoute: typeof ApiSeoVoiceClientIdRouteWithChildren
   ApiWorkspacesWorkspaceIdClientsRoute: typeof ApiWorkspacesWorkspaceIdClientsRoute
+  ApiWorkspacesWorkspaceIdMembershipRoute: typeof ApiWorkspacesWorkspaceIdMembershipRoute
   ApiWorkspacesWorkspaceIdRankingDataRoute: typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   ApiWorkspacesWorkspaceIdTrafficDataRoute: typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   ApiAuditPagesPageIdFindingsRoute: typeof ApiAuditPagesPageIdFindingsRoute
@@ -1865,6 +1891,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkspacesWorkspaceIdRankingDataRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workspaces/$workspaceId/membership': {
+      id: '/api/workspaces/$workspaceId/membership'
+      path: '/api/workspaces/$workspaceId/membership'
+      fullPath: '/api/workspaces/$workspaceId/membership'
+      preLoaderRoute: typeof ApiWorkspacesWorkspaceIdMembershipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workspaces/$workspaceId/clients': {
       id: '/api/workspaces/$workspaceId/clients'
       path: '/api/workspaces/$workspaceId/clients'
@@ -1878,6 +1911,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/seo/voice/$clientId'
       preLoaderRoute: typeof ApiSeoVoiceClientIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/seo/projects/$projectId': {
+      id: '/api/seo/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/api/seo/projects/$projectId'
+      preLoaderRoute: typeof ApiSeoProjectsProjectIdRouteImport
+      parentRoute: typeof ApiSeoProjectsRoute
     }
     '/api/seo/links/suggestions': {
       id: '/api/seo/links/suggestions'
@@ -2493,6 +2533,18 @@ const ApiSeoBriefsRouteWithChildren = ApiSeoBriefsRoute._addFileChildren(
   ApiSeoBriefsRouteChildren,
 )
 
+interface ApiSeoProjectsRouteChildren {
+  ApiSeoProjectsProjectIdRoute: typeof ApiSeoProjectsProjectIdRoute
+}
+
+const ApiSeoProjectsRouteChildren: ApiSeoProjectsRouteChildren = {
+  ApiSeoProjectsProjectIdRoute: ApiSeoProjectsProjectIdRoute,
+}
+
+const ApiSeoProjectsRouteWithChildren = ApiSeoProjectsRoute._addFileChildren(
+  ApiSeoProjectsRouteChildren,
+)
+
 interface ApiClientsClientIdAlertRulesRouteChildren {
   ApiClientsClientIdAlertRulesRuleIdRoute: typeof ApiClientsClientIdAlertRulesRuleIdRoute
 }
@@ -2574,7 +2626,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSeoKeywordMappingRoute: ApiSeoKeywordMappingRoute,
   ApiSeoKeywordRankingsRoute: ApiSeoKeywordRankingsRoute,
   ApiSeoKeywordsRoute: ApiSeoKeywordsRoute,
-  ApiSeoProjectsRoute: ApiSeoProjectsRoute,
+  ApiSeoProjectsRoute: ApiSeoProjectsRouteWithChildren,
   ApiSeoVoiceTemplatesRoute: ApiSeoVoiceTemplatesRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiBrandingIndexRoute: ApiBrandingIndexRoute,
@@ -2598,6 +2650,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSeoLinksSuggestionsRoute: ApiSeoLinksSuggestionsRouteWithChildren,
   ApiSeoVoiceClientIdRoute: ApiSeoVoiceClientIdRouteWithChildren,
   ApiWorkspacesWorkspaceIdClientsRoute: ApiWorkspacesWorkspaceIdClientsRoute,
+  ApiWorkspacesWorkspaceIdMembershipRoute:
+    ApiWorkspacesWorkspaceIdMembershipRoute,
   ApiWorkspacesWorkspaceIdRankingDataRoute:
     ApiWorkspacesWorkspaceIdRankingDataRoute,
   ApiWorkspacesWorkspaceIdTrafficDataRoute:

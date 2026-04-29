@@ -65,9 +65,16 @@ export default function VoiceSettingsPage() {
     setLoadError(false);
 
     Promise.all([getVoiceProfile(clientId), getVoiceTemplates()])
-      .then(([profileData, templatesData]) => {
-        setProfile(profileData);
-        setTemplates(templatesData);
+      .then(([profileResult, templatesResult]) => {
+        if (profileResult.success) {
+          setProfile(profileResult.data);
+        }
+        if (templatesResult.success) {
+          setTemplates(templatesResult.data);
+        }
+        if (!profileResult.success || !templatesResult.success) {
+          setLoadError(true);
+        }
       })
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));

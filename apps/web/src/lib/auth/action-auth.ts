@@ -12,6 +12,9 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { env } from '@/lib/env';
 
+/** Auth check timeout (15 seconds - shorter than data fetches for security) */
+const AUTH_TIMEOUT_MS = 15_000;
+
 /**
  * Authentication context for server actions.
  */
@@ -144,6 +147,7 @@ export async function validateWorkspaceMembership(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
         },
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       }
     );
 
@@ -225,6 +229,7 @@ export async function validateClientOwnership(
           userId: authContext.userId,
           orgId: authContext.orgId
         }),
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       }
     );
 
@@ -308,6 +313,7 @@ export async function validateProspectOwnership(
           userId: authContext.userId,
           orgId: authContext.orgId
         }),
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       }
     );
 
@@ -378,6 +384,7 @@ export async function validateProposalOwnership(
           userId: authContext.userId,
           orgId: authContext.orgId
         }),
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
       }
     );
 

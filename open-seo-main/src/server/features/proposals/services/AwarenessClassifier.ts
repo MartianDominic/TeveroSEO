@@ -196,6 +196,14 @@ export class AwarenessClassifier {
       { maxRetries: 3, baseDelayMs: 1000 }
     );
 
+    // Bounds check: ensure response has content
+    if (!response.content || response.content.length === 0) {
+      log.error("Empty response from Claude", new Error("Empty content array"), {
+        domain: input.domain,
+      });
+      throw new Error("Empty response from Claude API");
+    }
+
     const content = response.content[0];
     if (content.type !== "text") {
       throw new Error("Unexpected response type");

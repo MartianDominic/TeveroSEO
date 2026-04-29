@@ -29,11 +29,9 @@ export const siteChanges = pgTable(
   {
     id: text("id").primaryKey(),
     clientId: uuid("client_id")
-      .notNull()
-      .references(() => clients.id, { onDelete: "cascade" }),
+      .references(() => clients.id, { onDelete: "set null" }),
     connectionId: text("connection_id")
-      .notNull()
-      .references(() => siteConnections.id, { onDelete: "cascade" }),
+      .references(() => siteConnections.id, { onDelete: "set null" }),
 
     // Classification
     changeType: text("change_type").notNull(), // 'meta_title', 'meta_description', 'h1', 'image_alt', etc.
@@ -73,6 +71,10 @@ export const siteChanges = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // Soft delete - preserves SEO change history for rollback
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("ix_site_changes_client").on(table.clientId),
@@ -83,6 +85,7 @@ export const siteChanges = pgTable(
     index("ix_site_changes_batch").on(table.batchId),
     index("ix_site_changes_created").on(table.createdAt),
     index("ix_site_changes_reverted").on(table.revertedAt),
+    index("ix_site_changes_deleted").on(table.isDeleted),
     // H-02: Site change status must be valid enum value
     check("chk_site_change_status_valid", sql`status IN ('pending', 'applied', 'verified', 'reverted', 'failed')`),
   ]

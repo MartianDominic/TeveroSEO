@@ -4,6 +4,11 @@
  * Phase 16 Plan 04: Schedule settings UI.
  */
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
+/** Standard API timeout (30 seconds) */
+const API_TIMEOUT_MS = 30_000;
+
 /**
  * Report schedule data from API.
  */
@@ -45,7 +50,9 @@ interface ScheduleListResponse {
  * Fetch all schedules for a client.
  */
 export async function getSchedules(clientId: string): Promise<ReportSchedule[]> {
-  const res = await fetch(`/api/clients/${clientId}/schedules`);
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/schedules`, {
+    timeout: API_TIMEOUT_MS,
+  });
   if (!res.ok) {
     return [];
   }
@@ -60,10 +67,11 @@ export async function createSchedule(
   clientId: string,
   data: ScheduleInput,
 ): Promise<ReportSchedule> {
-  const res = await fetch(`/api/clients/${clientId}/schedules`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/schedules`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Create failed" }));
@@ -80,10 +88,11 @@ export async function updateSchedule(
   scheduleId: string,
   data: Partial<ScheduleInput>,
 ): Promise<ReportSchedule> {
-  const res = await fetch(`/api/clients/${clientId}/schedules/${scheduleId}`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/schedules/${scheduleId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Update failed" }));
@@ -99,8 +108,9 @@ export async function deleteSchedule(
   clientId: string,
   scheduleId: string,
 ): Promise<void> {
-  const res = await fetch(`/api/clients/${clientId}/schedules/${scheduleId}`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/schedules/${scheduleId}`, {
     method: "DELETE",
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Delete failed" }));

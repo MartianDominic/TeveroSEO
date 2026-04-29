@@ -180,11 +180,16 @@ export default function ConnectionsPage() {
   const handleDirectConnect = useCallback(
     (_provider: OAuthProvider) => {
       // For direct connect, redirect to OAuth flow with client_id
-      const publicUrl =
-        process.env.NEXT_PUBLIC_AI_WRITER_URL || "http://localhost:8000";
+      // NEXT_PUBLIC_AI_WRITER_URL must be configured - no unsafe localhost fallback
+      const publicUrl = process.env.NEXT_PUBLIC_AI_WRITER_URL;
+      if (!publicUrl) {
+        console.error("[Connections] NEXT_PUBLIC_AI_WRITER_URL not configured");
+        showToast("OAuth service not configured. Contact support.", "error");
+        return;
+      }
       window.location.href = `${publicUrl}/api/auth/google/start?client_id=${clientId}`;
     },
-    [clientId]
+    [clientId, showToast]
   );
 
   const handleSendInvite = useCallback(

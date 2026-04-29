@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { getClientAlertRules, upsertAlertRule, createAlertRule } from "@/services/alerts";
 
 const log = createLogger({ module: "api/clients/:clientId/alert-rules" });
@@ -26,9 +27,11 @@ export const Route = createFileRoute("/api/clients/$clientId/alert-rules")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const rules = await getClientAlertRules(clientId);
 
           return Response.json(
@@ -71,9 +74,11 @@ export const Route = createFileRoute("/api/clients/$clientId/alert-rules")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const body = (await request.json()) as {
             alertType: string;
             enabled: boolean;
@@ -136,9 +141,11 @@ export const Route = createFileRoute("/api/clients/$clientId/alert-rules")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const body = (await request.json()) as {
             alertType: "ranking_drop" | "sync_failure" | "connection_expiry";
             enabled?: boolean;

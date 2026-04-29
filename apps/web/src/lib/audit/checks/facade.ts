@@ -24,11 +24,14 @@ import * as crypto from "crypto";
  */
 const REQUEST_TIMEOUT_MS = 120_000;
 
-/** Configurable open-seo-main URL */
-const OPEN_SEO_URL =
-  process.env.OPEN_SEO_URL ??
-  process.env.NEXT_PUBLIC_OPEN_SEO_URL ??
-  "http://localhost:3001";
+/**
+ * Get Open SEO URL from centralized env (validated at startup).
+ * Using dynamic import to avoid module initialization issues.
+ */
+async function getOpenSeoUrlAsync(): Promise<string> {
+  const { getOpenSeoUrl } = await import("@/lib/env");
+  return getOpenSeoUrl();
+}
 
 /** Internal API key for service-to-service auth */
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -93,6 +96,9 @@ export async function runAllChecks(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
+    // Get URL from centralized env (validated at startup)
+    const openSeoUrl = await getOpenSeoUrlAsync();
+
     const requestBody = JSON.stringify({
       html,
       url,
@@ -100,7 +106,7 @@ export async function runAllChecks(
       tiers: options.tiers ?? [1, 2, 3, 4],
     });
 
-    const response = await fetch(`${OPEN_SEO_URL}/api/audit/run-checks`, {
+    const response = await fetch(`${openSeoUrl}/api/audit/run-checks`, {
       method: "POST",
       headers: getInternalAuthHeaders(requestBody),
       body: requestBody,

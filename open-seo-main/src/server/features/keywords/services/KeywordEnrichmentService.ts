@@ -111,20 +111,46 @@ export class KeywordEnrichmentService {
         );
     }
 
-    // Update cached
+    // Update cached - batch by grouping keywords with same metrics
     result.cached = fromCache.length;
-    for (const kw of fromCache) {
-      await db
-        .update(prospectKeywords)
-        .set({
-          searchVolume: kw.searchVolume,
-          keywordDifficulty: kw.keywordDifficulty,
-          cpc: kw.cpc,
-          competition: kw.competition,
-          enrichmentStatus: "cached",
-          enrichedAt: new Date(),
-        })
-        .where(eq(prospectKeywords.id, kw.id));
+    if (fromCache.length > 0) {
+      // Group cached keywords by their metric values for batch updates
+      const updateGroups = new Map<
+        string,
+        { ids: string[]; metrics: CachedMetrics }
+      >();
+      const enrichedAt = new Date();
+
+      for (const kw of fromCache) {
+        const key = `${kw.searchVolume}|${kw.keywordDifficulty}|${kw.cpc}|${kw.competition}`;
+        if (!updateGroups.has(key)) {
+          updateGroups.set(key, {
+            ids: [],
+            metrics: {
+              searchVolume: kw.searchVolume,
+              keywordDifficulty: kw.keywordDifficulty,
+              cpc: kw.cpc,
+              competition: kw.competition,
+            },
+          });
+        }
+        updateGroups.get(key)!.ids.push(kw.id);
+      }
+
+      // Execute batch updates - one query per unique metric combination
+      for (const { ids, metrics } of updateGroups.values()) {
+        await db
+          .update(prospectKeywords)
+          .set({
+            searchVolume: metrics.searchVolume,
+            keywordDifficulty: metrics.keywordDifficulty,
+            cpc: metrics.cpc,
+            competition: metrics.competition,
+            enrichmentStatus: "cached",
+            enrichedAt,
+          })
+          .where(inArray(prospectKeywords.id, ids));
+      }
     }
 
     // Batch API calls
@@ -143,40 +169,81 @@ export class KeywordEnrichmentService {
           metrics.map((m) => [m.keyword.toLowerCase(), m])
         );
 
+        // Separate enriched and failed keywords for batch processing
+        const enrichedKeywords: Array<{
+          id: string;
+          normalizedKeyword: string;
+          metrics: CachedMetrics;
+        }> = [];
+        const failedIds: string[] = [];
+
         for (const kw of batch) {
           const metric = metricsMap.get(kw.normalizedKeyword);
           if (metric) {
-            // Update DB
-            await db
-              .update(prospectKeywords)
-              .set({
+            enrichedKeywords.push({
+              id: kw.id,
+              normalizedKeyword: kw.normalizedKeyword,
+              metrics: {
                 searchVolume: metric.searchVolume,
                 keywordDifficulty: metric.competition * 100, // Convert to 0-100 scale
                 cpc: metric.cpc,
                 competition: metric.competition,
-                enrichmentStatus: "enriched",
-                enrichmentCostCents: COST_PER_KEYWORD_CENTS,
-                enrichedAt: new Date(),
-              })
-              .where(eq(prospectKeywords.id, kw.id));
-
-            // Cache the result
-            await this.setCache(kw.normalizedKeyword, {
-              searchVolume: metric.searchVolume,
-              keywordDifficulty: metric.competition * 100,
-              cpc: metric.cpc,
-              competition: metric.competition,
+              },
             });
-
-            result.enriched++;
           } else {
-            // Mark as failed (keyword not found in API response)
+            failedIds.push(kw.id);
+          }
+        }
+
+        // Batch update failed keywords
+        if (failedIds.length > 0) {
+          await db
+            .update(prospectKeywords)
+            .set({ enrichmentStatus: "failed" })
+            .where(inArray(prospectKeywords.id, failedIds));
+          result.failed += failedIds.length;
+        }
+
+        // Batch update enriched keywords - group by same metric values
+        if (enrichedKeywords.length > 0) {
+          const enrichedAt = new Date();
+          const updateGroups = new Map<
+            string,
+            { ids: string[]; metrics: CachedMetrics }
+          >();
+
+          for (const kw of enrichedKeywords) {
+            const key = `${kw.metrics.searchVolume}|${kw.metrics.keywordDifficulty}|${kw.metrics.cpc}|${kw.metrics.competition}`;
+            if (!updateGroups.has(key)) {
+              updateGroups.set(key, { ids: [], metrics: kw.metrics });
+            }
+            updateGroups.get(key)!.ids.push(kw.id);
+          }
+
+          // Execute batch updates - one query per unique metric combination
+          for (const { ids, metrics: m } of updateGroups.values()) {
             await db
               .update(prospectKeywords)
-              .set({ enrichmentStatus: "failed" })
-              .where(eq(prospectKeywords.id, kw.id));
-            result.failed++;
+              .set({
+                searchVolume: m.searchVolume,
+                keywordDifficulty: m.keywordDifficulty,
+                cpc: m.cpc,
+                competition: m.competition,
+                enrichmentStatus: "enriched",
+                enrichmentCostCents: COST_PER_KEYWORD_CENTS,
+                enrichedAt,
+              })
+              .where(inArray(prospectKeywords.id, ids));
           }
+
+          // Cache all results (parallel for performance)
+          await Promise.all(
+            enrichedKeywords.map((kw) =>
+              this.setCache(kw.normalizedKeyword, kw.metrics)
+            )
+          );
+
+          result.enriched += enrichedKeywords.length;
         }
 
         result.totalCostCents += batch.length * COST_PER_KEYWORD_CENTS;

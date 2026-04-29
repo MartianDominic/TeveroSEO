@@ -252,6 +252,12 @@ export class ProtectionRulesService {
     userId: string
   ): Promise<BulkImportResult> {
     const lines = csvContent.trim().split("\n");
+
+    // Bounds check: ensure CSV has at least header row
+    if (lines.length === 0) {
+      throw new Error("CSV content is empty");
+    }
+
     const header = lines[0];
     const dataLines = lines.slice(1);
 

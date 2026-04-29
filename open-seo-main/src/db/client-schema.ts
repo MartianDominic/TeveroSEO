@@ -14,6 +14,7 @@ import {
   index,
   uniqueIndex,
   check,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
@@ -87,12 +88,18 @@ export const clients = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // Soft delete support - prevents catastrophic cascade deletes
+    isDeleted: boolean("is_deleted").default(false).notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("ix_clients_workspace").on(table.workspaceId),
     index("ix_clients_status").on(table.status),
     uniqueIndex("ix_clients_workspace_domain").on(table.workspaceId, table.domain),
     index("ix_clients_converted_prospect").on(table.convertedFromProspectId),
+    // Partial index for active (non-deleted) clients - speeds up common queries
+    index("ix_clients_active").on(table.workspaceId, table.isDeleted),
     // H-01: Client status must be valid enum value
     check("chk_client_status_valid", sql`status IN ('onboarding', 'active', 'paused', 'churned')`),
   ],

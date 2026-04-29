@@ -15,6 +15,7 @@ import {
   voiceComplianceService,
 } from "@/server/features/voice";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 
@@ -39,8 +40,9 @@ export const Route = createFileRoute("/api/seo/voice/$clientId/preview")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
 
           if (!clientId) {
             throw new AppError("VALIDATION_ERROR", "Missing clientId");

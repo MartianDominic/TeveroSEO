@@ -19,8 +19,48 @@ import { AppError } from "@/server/lib/errors";
 
 const log = createLogger({ module: "api/detect-platform" });
 
+/**
+ * List of blocked internal/private addresses for SSRF protection.
+ * HIGH-INPUT-02: Prevent requests to internal infrastructure.
+ */
+const BLOCKED_PATTERNS = [
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "169.254.169.254", // AWS metadata
+  "metadata.google.internal", // GCP metadata
+  "10.", // Private Class A
+  "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+  "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", // Private Class B
+  "192.168.", // Private Class C
+  "::1", // IPv6 localhost
+  "[::1]",
+];
+
+/**
+ * Check if domain matches any blocked internal pattern.
+ */
+function isBlockedDomain(domain: string): boolean {
+  const lower = domain.toLowerCase();
+  return BLOCKED_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+/**
+ * Zod schema for platform detection with SSRF protection.
+ * HIGH-INPUT-02: Validate domain format and block internal addresses.
+ */
 const DetectPlatformSchema = z.object({
-  domain: z.string().min(1, "Domain is required"),
+  domain: z.string()
+    .min(1, "Domain is required")
+    .max(253, "Domain must be at most 253 characters")
+    .regex(
+      /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/,
+      "Invalid domain format"
+    )
+    .refine(
+      (domain) => !isBlockedDomain(domain),
+      { message: "Internal addresses are not allowed" }
+    ),
 });
 
 export const Route = createFileRoute("/api/detect-platform")({

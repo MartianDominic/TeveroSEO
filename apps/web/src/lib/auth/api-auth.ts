@@ -123,8 +123,10 @@ async function verifyClientAccess(
   clientId: string,
   orgId?: string
 ): Promise<boolean> {
-  // Get backend URL from environment
-  const backendUrl = process.env.AI_WRITER_URL ?? 'http://localhost:8000';
+  // Get backend URL from centralized env (validated at startup)
+  // Import inline to avoid circular dependency with env.ts
+  const { getAiWriterUrl } = await import('@/lib/env');
+  const backendUrl = getAiWriterUrl();
 
   // Get session token for backend authentication
   const sessionToken = await getSessionToken();

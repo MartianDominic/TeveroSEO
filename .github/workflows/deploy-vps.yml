@@ -71,7 +71,7 @@ jobs:
 
       - name: Run tests
         working-directory: open-seo-main
-        run: pnpm test -- --run || true
+        run: pnpm test -- --run
 
   deploy:
     name: Deploy open-seo to VPS
@@ -136,6 +136,10 @@ jobs:
           echo "[deploy] complete"
           REMOTE
 
+      - name: Store current SHA for rollback
+        id: sha
+        run: echo "CURRENT_SHA=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Verify open-seo health
         shell: bash
         env:
@@ -161,4 +165,27 @@ jobs:
           echo "[verify] services did not become healthy in 90s"
           docker compose -f docker-compose.vps.yml logs --tail=100 open-seo open-seo-worker
           exit 1
+          REMOTE
+
+      - name: Rollback on failure
+        if: failure()
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          PREV_SHA: ${{ steps.sha.outputs.CURRENT_SHA }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=30"
+          echo "[rollback] Rolling back to previous commit: ${PREV_SHA}~1"
+          ssh $SSH_OPTS "$VPS_USER@$VPS_HOST" bash -s -- "${PREV_SHA}" <<'REMOTE'
+          set -euo pipefail
+          PREV_SHA="$1"
+          cd /home/deploy/TeveroSEO
+          echo "[rollback] Resetting to ${PREV_SHA}~1"
+          git fetch origin
+          git reset --hard "${PREV_SHA}~1"
+          echo "[rollback] Rebuilding open-seo + open-seo-worker"
+          docker compose -f docker-compose.vps.yml up -d --build open-seo open-seo-worker
+          echo "[rollback] Complete"
           REMOTE

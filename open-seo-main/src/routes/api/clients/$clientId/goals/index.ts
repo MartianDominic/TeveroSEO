@@ -14,6 +14,7 @@ import {
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 
 const log = createLogger({ module: "api/clients/goals" });
 
@@ -28,7 +29,8 @@ export const Route = createFileRoute("/api/clients/$clientId/goals/")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           const goals = await GoalService.listClientGoals(params.clientId);
 
@@ -59,7 +61,8 @@ export const Route = createFileRoute("/api/clients/$clientId/goals/")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           const body = (await request.json()) as Record<string, unknown>;
 

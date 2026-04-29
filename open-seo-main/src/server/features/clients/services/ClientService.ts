@@ -137,12 +137,17 @@ export const ClientService = {
 
   /**
    * Find client by ID.
+   * By default, excludes soft-deleted clients.
    */
-  async findById(id: string): Promise<ClientSelect | null> {
+  async findById(id: string, includeDeleted = false): Promise<ClientSelect | null> {
+    const whereClause = includeDeleted
+      ? eq(clients.id, id)
+      : and(eq(clients.id, id), eq(clients.isDeleted, false));
+
     const [client] = await db
       .select()
       .from(clients)
-      .where(eq(clients.id, id))
+      .where(whereClause)
       .limit(1);
 
     return client ?? null;
@@ -150,16 +155,21 @@ export const ClientService = {
 
   /**
    * Find all clients for a workspace with pagination.
+   * By default, excludes soft-deleted clients.
    */
   async findByWorkspace(
     workspaceId: string,
-    options: { page?: number; pageSize?: number; status?: ClientStatus } = {}
+    options: { page?: number; pageSize?: number; status?: ClientStatus; includeDeleted?: boolean } = {}
   ): Promise<PaginatedClients> {
     const page = Math.max(1, options.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, options.pageSize ?? 20));
     const offset = (page - 1) * pageSize;
 
-    let whereClause = eq(clients.workspaceId, workspaceId);
+    // Start with workspace filter and soft-delete filter
+    let whereClause = options.includeDeleted
+      ? eq(clients.workspaceId, workspaceId)
+      : and(eq(clients.workspaceId, workspaceId), eq(clients.isDeleted, false))!;
+
     if (options.status) {
       whereClause = and(whereClause, eq(clients.status, options.status))!;
     }
@@ -247,12 +257,107 @@ export const ClientService = {
   },
 
   /**
-   * Delete client with audit logging.
+   * Soft delete client with audit logging.
+   * This is the preferred delete method - marks client as deleted without
+   * removing data, allowing for recovery.
    */
-  async delete(id: string, auditContext: AuditContext): Promise<void> {
+  async softDelete(id: string, auditContext: AuditContext): Promise<void> {
     const audit = withAudit<ClientSelect>("client", auditContext);
 
     // Get current values for audit log
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(and(eq(clients.id, id), eq(clients.isDeleted, false)))
+      .limit(1);
+
+    if (!client) {
+      throw new AppError("NOT_FOUND", `Client not found or already deleted: ${id}`);
+    }
+
+    const now = new Date();
+
+    const [updated] = await db
+      .update(clients)
+      .set({
+        isDeleted: true,
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(clients.id, id))
+      .returning();
+
+    // Log the soft deletion
+    await audit.logUpdate(id, client, updated, {
+      operation: "soft_delete",
+      reason: "user_requested",
+    });
+
+    // CRITICAL: Invalidate all authorization caches for this client.
+    // This ensures users who had access can no longer access the deleted client.
+    try {
+      await invalidateAllClientAccessCaches(id);
+      log.info("Invalidated auth cache after client soft deletion", { clientId: id });
+    } catch (cacheErr) {
+      // Cache invalidation failure is logged but not fatal.
+      // The cache has a 5-minute TTL so stale entries will expire.
+      log.warn("Failed to invalidate auth cache after client soft deletion", {
+        clientId: id,
+        error: cacheErr instanceof Error ? cacheErr.message : String(cacheErr),
+      });
+    }
+  },
+
+  /**
+   * Restore a soft-deleted client with audit logging.
+   */
+  async restore(id: string, auditContext: AuditContext): Promise<ClientSelect> {
+    const audit = withAudit<ClientSelect>("client", auditContext);
+
+    // Get current values - must be deleted
+    const [client] = await db
+      .select()
+      .from(clients)
+      .where(and(eq(clients.id, id), eq(clients.isDeleted, true)))
+      .limit(1);
+
+    if (!client) {
+      throw new AppError("NOT_FOUND", `Deleted client not found: ${id}`);
+    }
+
+    const now = new Date();
+
+    const [restored] = await db
+      .update(clients)
+      .set({
+        isDeleted: false,
+        deletedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(clients.id, id))
+      .returning();
+
+    // Log the restoration
+    await audit.logUpdate(id, client, restored, {
+      operation: "restore",
+      reason: "user_requested",
+    });
+
+    log.info("Client restored from soft delete", { clientId: id });
+
+    return restored;
+  },
+
+  /**
+   * Hard delete client with audit logging.
+   * WARNING: This permanently removes the client and all related data.
+   * Use softDelete() instead for normal operations.
+   * This should only be used for admin operations or data cleanup.
+   */
+  async hardDelete(id: string, auditContext: AuditContext): Promise<void> {
+    const audit = withAudit<ClientSelect>("client", auditContext);
+
+    // Get current values for audit log (include deleted clients)
     const [client] = await db
       .select()
       .from(clients)
@@ -265,24 +370,33 @@ export const ClientService = {
 
     await db.delete(clients).where(eq(clients.id, id));
 
-    // Log the deletion
+    // Log the hard deletion
     await audit.logDelete(id, client, {
-      reason: "user_requested",
+      reason: "hard_delete",
+      wasAlreadySoftDeleted: client.isDeleted,
     });
 
     // CRITICAL: Invalidate all authorization caches for this client.
     // This ensures users who had access can no longer access the deleted client.
     try {
       await invalidateAllClientAccessCaches(id);
-      log.info("Invalidated auth cache after client deletion", { clientId: id });
+      log.info("Invalidated auth cache after client hard deletion", { clientId: id });
     } catch (cacheErr) {
       // Cache invalidation failure is logged but not fatal.
       // The cache has a 5-minute TTL so stale entries will expire.
-      log.warn("Failed to invalidate auth cache after client deletion", {
+      log.warn("Failed to invalidate auth cache after client hard deletion", {
         clientId: id,
         error: cacheErr instanceof Error ? cacheErr.message : String(cacheErr),
       });
     }
+  },
+
+  /**
+   * Delete client - alias for softDelete.
+   * @deprecated Use softDelete() explicitly for clarity.
+   */
+  async delete(id: string, auditContext: AuditContext): Promise<void> {
+    return this.softDelete(id, auditContext);
   },
 
   /**

@@ -10,9 +10,10 @@ import {
   fetchWithTimeout,
   DEFAULT_TIMEOUT_MS,
 } from "./fetch-with-timeout";
+import { getAiWriterUrl, getPublicAiWriterUrl } from "./env";
 
-const BACKEND_URL =
-  process.env.AI_WRITER_URL || "http://localhost:8000";
+/** AI Writer URL from centralized env (validated at startup) */
+const BACKEND_URL = getAiWriterUrl();
 
 /** OAuth operations timeout - 30 seconds default */
 const OAUTH_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;
@@ -147,8 +148,7 @@ export async function validateInvite(
  * Used by the magic link page to redirect to Google OAuth.
  */
 export function getGoogleOAuthUrl(token: string): string {
-  // Use the public-facing URL for client redirects
-  const publicUrl =
-    process.env.NEXT_PUBLIC_AI_WRITER_URL || "http://localhost:8000";
+  // Use the public-facing URL for client redirects (validated at startup)
+  const publicUrl = getPublicAiWriterUrl();
   return `${publicUrl}/api/auth/google/start?token=${encodeURIComponent(token)}`;
 }

@@ -25,13 +25,20 @@ export async function insertChanges(changes: SiteChangeInsert[]): Promise<SiteCh
 }
 
 /**
- * Get a change by ID.
+ * Get a change by ID (excludes soft-deleted by default).
  */
-export async function getChangeById(changeId: string): Promise<SiteChangeSelect | undefined> {
+export async function getChangeById(
+  changeId: string,
+  includeDeleted = false
+): Promise<SiteChangeSelect | undefined> {
+  const conditions = [eq(siteChanges.id, changeId)];
+  if (!includeDeleted) {
+    conditions.push(eq(siteChanges.isDeleted, false));
+  }
   const [change] = await db
     .select()
     .from(siteChanges)
-    .where(eq(siteChanges.id, changeId))
+    .where(and(...conditions))
     .limit(1);
   return change;
 }
@@ -39,6 +46,7 @@ export async function getChangeById(changeId: string): Promise<SiteChangeSelect 
 /**
  * Get changes for a client with filters.
  * All filters are applied at the database level to avoid in-memory filtering.
+ * Excludes soft-deleted records by default.
  */
 export async function getChangesByClient(
   clientId: string,
@@ -51,9 +59,15 @@ export async function getChangesByClient(
     dateTo?: Date;
     limit?: number;
     offset?: number;
+    includeDeleted?: boolean;
   }
 ): Promise<SiteChangeSelect[]> {
   const conditions = [eq(siteChanges.clientId, clientId)];
+
+  // Filter out soft-deleted records unless explicitly requested
+  if (!options?.includeDeleted) {
+    conditions.push(eq(siteChanges.isDeleted, false));
+  }
 
   if (options?.status) {
     conditions.push(eq(siteChanges.status, options.status));
@@ -92,26 +106,37 @@ export async function getChangesByClient(
 }
 
 /**
- * Get changes by batch ID.
+ * Get changes by batch ID (excludes soft-deleted by default).
  */
-export async function getChangesByBatch(batchId: string): Promise<SiteChangeSelect[]> {
+export async function getChangesByBatch(
+  batchId: string,
+  includeDeleted = false
+): Promise<SiteChangeSelect[]> {
+  const conditions = [eq(siteChanges.batchId, batchId)];
+  if (!includeDeleted) {
+    conditions.push(eq(siteChanges.isDeleted, false));
+  }
   return await db
     .select()
     .from(siteChanges)
-    .where(eq(siteChanges.batchId, batchId))
+    .where(and(...conditions))
     .orderBy(siteChanges.batchSequence);
 }
 
 /**
- * Get changes by resource ID.
+ * Get changes by resource ID (excludes soft-deleted by default).
  */
 export async function getChangesByResource(
   resourceId: string,
-  resourceType?: string
+  resourceType?: string,
+  includeDeleted = false
 ): Promise<SiteChangeSelect[]> {
   const conditions = [eq(siteChanges.resourceId, resourceId)];
   if (resourceType) {
     conditions.push(eq(siteChanges.resourceType, resourceType));
+  }
+  if (!includeDeleted) {
+    conditions.push(eq(siteChanges.isDeleted, false));
   }
 
   return await db
@@ -172,7 +197,7 @@ export async function markChangeFailed(changeId: string): Promise<SiteChangeSele
 }
 
 /**
- * Get the latest change for a specific field on a resource.
+ * Get the latest change for a specific field on a resource (excludes soft-deleted).
  */
 export async function getLatestChangeForField(
   resourceId: string,
@@ -183,7 +208,8 @@ export async function getLatestChangeForField(
     .from(siteChanges)
     .where(and(
       eq(siteChanges.resourceId, resourceId),
-      eq(siteChanges.field, field)
+      eq(siteChanges.field, field),
+      eq(siteChanges.isDeleted, false)
     ))
     .orderBy(desc(siteChanges.createdAt))
     .limit(1);
@@ -191,11 +217,61 @@ export async function getLatestChangeForField(
 }
 
 /**
- * Delete changes by IDs (for testing/cleanup).
+ * Hard delete changes by IDs (for testing/cleanup only).
+ * Use softDeleteChanges for production deletions.
  */
 export async function deleteChanges(changeIds: string[]): Promise<void> {
   if (changeIds.length === 0) return;
   await db.delete(siteChanges).where(inArray(siteChanges.id, changeIds));
+}
+
+/**
+ * Soft delete a change by ID.
+ * Preserves the record for rollback and audit purposes.
+ */
+export async function softDeleteChange(changeId: string): Promise<SiteChangeSelect | undefined> {
+  const [updated] = await db
+    .update(siteChanges)
+    .set({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(siteChanges.id, changeId))
+    .returning();
+  return updated;
+}
+
+/**
+ * Soft delete multiple changes by IDs.
+ */
+export async function softDeleteChanges(changeIds: string[]): Promise<number> {
+  if (changeIds.length === 0) return 0;
+  const result = await db
+    .update(siteChanges)
+    .set({
+      isDeleted: true,
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(inArray(siteChanges.id, changeIds));
+  return result.rowCount ?? 0;
+}
+
+/**
+ * Restore a soft-deleted change.
+ */
+export async function restoreChange(changeId: string): Promise<SiteChangeSelect | undefined> {
+  const [updated] = await db
+    .update(siteChanges)
+    .set({
+      isDeleted: false,
+      deletedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(siteChanges.id, changeId))
+    .returning();
+  return updated;
 }
 
 export const ChangeRepository = {
@@ -211,4 +287,7 @@ export const ChangeRepository = {
   markChangeFailed,
   getLatestChangeForField,
   deleteChanges,
+  softDeleteChange,
+  softDeleteChanges,
+  restoreChange,
 };

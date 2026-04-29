@@ -126,6 +126,7 @@ export function VoicePreviewPanel({ profile, clientId }: VoicePreviewPanelProps)
           topic: topic.trim(),
           keywords: [],
         }),
+        signal: AbortSignal.timeout(60_000), // 60s timeout for LLM operations
       });
 
       const json = (await res.json()) as {

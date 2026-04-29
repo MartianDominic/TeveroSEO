@@ -145,6 +145,11 @@ async function verifyProfileAccess(
     throw new AppError("NOT_FOUND", "Voice profile not found");
   }
 
+  // Note: clientId can be null if the client was deleted (soft delete preserves voice profiles)
+  if (!profile.clientId) {
+    throw new AppError("NOT_FOUND", "Voice profile's client no longer exists");
+  }
+
   await verifyClientAccess(profile.clientId, workspaceId);
 }
 

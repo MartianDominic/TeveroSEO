@@ -438,7 +438,10 @@ export default function ArticleLibraryPage() {
           )
         : [];
       setRankHistory((prev) => ({ ...prev, [article.id]: sorted }));
-    } catch {
+    } catch (e) {
+      console.error(`Failed to load rank history for article ${article.id}:`, e);
+      // Set empty array to indicate load was attempted but failed
+      // The UI will show "No ranking data yet" which is acceptable fallback
       setRankHistory((prev) => ({ ...prev, [article.id]: [] }));
     } finally {
       setRankLoading((prev) => ({ ...prev, [article.id]: false }));
@@ -466,26 +469,50 @@ export default function ArticleLibraryPage() {
   );
 
   /**
+   * Result of a bulk operation item processing.
+   */
+  interface BulkOperationResult {
+    success: boolean;
+    id: string;
+    error?: string;
+  }
+
+  /**
    * Process items with concurrency limit to avoid overwhelming the API.
    * Uses Promise.all with chunking for controlled parallelism.
+   * Returns results for each item to track partial failures.
    */
-  const processWithConcurrency = async <T,>(
+  const processWithConcurrency = async <T extends { id: string }>(
     items: T[],
     processor: (item: T) => Promise<void>,
     concurrencyLimit = 5
-  ): Promise<void> => {
+  ): Promise<BulkOperationResult[]> => {
+    const results: BulkOperationResult[] = [];
     // Process in batches of concurrencyLimit
     for (let i = 0; i < items.length; i += concurrencyLimit) {
       const batch = items.slice(i, i + concurrencyLimit);
-      await Promise.all(batch.map(processor));
+      const batchResults = await Promise.all(
+        batch.map(async (item) => {
+          try {
+            await processor(item);
+            return { success: true, id: item.id };
+          } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : "Unknown error";
+            console.error(`Bulk operation failed for item ${item.id}:`, e);
+            return { success: false, id: item.id, error: errorMessage };
+          }
+        })
+      );
+      results.push(...batchResults);
     }
+    return results;
   };
 
   const handleBulkGenerate = async () => {
     if (!clientId || generateCandidates.length === 0) return;
     setBulkLoading(true);
     try {
-      await processWithConcurrency(
+      const results = await processWithConcurrency(
         generateCandidates,
         async (article) => {
           await apiPost(
@@ -495,6 +522,20 @@ export default function ArticleLibraryPage() {
         },
         5 // 5 concurrent requests
       );
+
+      // Report partial failures to user
+      const failures = results.filter((r) => !r.success);
+      const successes = results.filter((r) => r.success);
+      if (failures.length > 0) {
+        const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
+        console.error(`Bulk generate: ${failures.length} failures:`, failures);
+        // Set error state to show banner (existing error state)
+        // Note: For a more robust solution, consider adding a toast component
+        alert(`${successes.length} article(s) queued for generation, ${failures.length} failed: ${failureMessages}`);
+      }
+    } catch (e) {
+      console.error("Bulk generate failed:", e);
+      alert(`Bulk generation failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);
       clearSelection();
@@ -508,13 +549,25 @@ export default function ArticleLibraryPage() {
     if (!clientId || approveCandidates.length === 0) return;
     setBulkLoading(true);
     try {
-      await processWithConcurrency(
+      const results = await processWithConcurrency(
         approveCandidates,
         async (article) => {
           await apiPost(`/api/articles/${article.id}/approve`, {});
         },
         5 // 5 concurrent requests
       );
+
+      // Report partial failures to user
+      const failures = results.filter((r) => !r.success);
+      const successes = results.filter((r) => r.success);
+      if (failures.length > 0) {
+        const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
+        console.error(`Bulk approve: ${failures.length} failures:`, failures);
+        alert(`${successes.length} article(s) approved, ${failures.length} failed: ${failureMessages}`);
+      }
+    } catch (e) {
+      console.error("Bulk approve failed:", e);
+      alert(`Bulk approval failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);
       clearSelection();
@@ -532,7 +585,7 @@ export default function ArticleLibraryPage() {
     if (!confirmed) return;
     setBulkLoading(true);
     try {
-      await processWithConcurrency(
+      const results = await processWithConcurrency(
         selectedArticles,
         async (article) => {
           await apiDelete(
@@ -541,6 +594,18 @@ export default function ArticleLibraryPage() {
         },
         5 // 5 concurrent requests
       );
+
+      // Report partial failures to user
+      const failures = results.filter((r) => !r.success);
+      const successes = results.filter((r) => r.success);
+      if (failures.length > 0) {
+        const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
+        console.error(`Bulk delete: ${failures.length} failures:`, failures);
+        alert(`${successes.length} article(s) deleted, ${failures.length} failed: ${failureMessages}`);
+      }
+    } catch (e) {
+      console.error("Bulk delete failed:", e);
+      alert(`Bulk deletion failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);
       clearSelection();

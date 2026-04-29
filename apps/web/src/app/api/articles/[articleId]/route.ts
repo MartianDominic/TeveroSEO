@@ -30,6 +30,18 @@ const articlePatchSchema = z.object({
   seo_score: z.number().min(0).max(100).optional(),
 }).strict(); // Reject unknown fields
 
+/**
+ * Zod schema for POST request body validation.
+ * Used for creating article sub-resources (e.g., publish, schedule).
+ * API-H07 fix: Validate input before passing to backend.
+ */
+const articlePostSchema = z.object({
+  action: z.enum(["publish", "unpublish", "schedule", "duplicate", "archive"]).optional(),
+  scheduledAt: z.string().datetime().optional(),
+  targetClientId: z.string().uuid().optional(), // For duplicate action
+  metadata: z.record(z.string().max(100), z.unknown()).optional(),
+}).strict(); // Reject unknown fields
+
 type Params = Promise<{ articleId: string }>;
 
 interface ArticleResponse {
@@ -224,8 +236,24 @@ export async function POST(req: Request, { params }: { params: Params }) {
 
     const { searchParams } = new URL(req.url);
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    const body = await req.json().catch(() => ({}));
-    const data = await postFastApi(`/api/articles/${articleId}${qs}`, body);
+
+    // API-H07 fix: Validate input before passing to backend
+    const rawBody = await req.json().catch(() => ({}));
+    const validation = articlePostSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: validation.error.issues.map((i) => ({
+            field: i.path.join("."),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const data = await postFastApi(`/api/articles/${articleId}${qs}`, validation.data);
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof AuthError) {

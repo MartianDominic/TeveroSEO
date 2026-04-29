@@ -11,6 +11,7 @@ import { linkSuggestions } from "@/db/link-schema";
 import { LinkApplyService } from "@/server/features/linking/services/LinkApplyService";
 import { VelocityService } from "@/server/features/linking/services/VelocityService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "api/seo/links/batch/apply-safe" });
@@ -28,8 +29,9 @@ export const Route = createFileRoute("/api/seo/links/batch/apply-safe")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }): Promise<Response> => {
+        let authContext;
         try {
-          await requireApiAuth(request);
+          authContext = await requireApiAuth(request);
         } catch {
           return Response.json(
             { success: false, error: "Unauthorized" } satisfies BatchApplyResponse,
@@ -50,6 +52,9 @@ export const Route = createFileRoute("/api/seo/links/batch/apply-safe")({
               { status: 400 }
             );
           }
+
+          // Verify user has access to this client
+          await requireClientAccess(authContext.userId, clientId);
 
           if (!connectionId) {
             return Response.json(

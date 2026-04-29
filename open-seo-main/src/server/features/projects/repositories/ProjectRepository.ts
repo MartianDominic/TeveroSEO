@@ -3,10 +3,19 @@ import { db } from "@/db";
 import { projects } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
 
-async function listProjects(organizationId: string) {
+async function listProjects(
+  organizationId: string,
+  options: { limit?: number; offset?: number } = {}
+) {
+  const { limit = 100, offset = 0 } = options;
   return db.query.projects.findMany({
-    where: eq(projects.organizationId, organizationId),
+    where: and(
+      eq(projects.organizationId, organizationId),
+      eq(projects.isDeleted, false),
+    ),
     orderBy: desc(projects.createdAt),
+    limit,
+    offset,
   });
 }
 
@@ -18,13 +27,17 @@ async function getProjectForOrganization(
     where: and(
       eq(projects.id, projectId),
       eq(projects.organizationId, organizationId),
+      eq(projects.isDeleted, false),
     ),
   });
 }
 
 async function getProjectById(projectId: string) {
   return db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
+    where: and(
+      eq(projects.id, projectId),
+      eq(projects.isDeleted, false),
+    ),
   });
 }
 
@@ -43,8 +56,41 @@ async function createProject(
   return id;
 }
 
+/**
+ * Soft delete a project by setting isDeleted=true and deletedAt=now().
+ * Preserves all audit history, keyword research, and content briefs.
+ */
 async function deleteProject(projectId: string, organizationId: string) {
   const project = await getProjectForOrganization(projectId, organizationId);
+  if (!project) {
+    throw new AppError("NOT_FOUND");
+  }
+
+  await db
+    .update(projects)
+    .set({
+      isDeleted: true,
+      deletedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.organizationId, organizationId),
+      ),
+    );
+}
+
+/**
+ * Permanently delete a project and all associated data.
+ * Use with caution - this cannot be undone.
+ */
+async function hardDeleteProject(projectId: string, organizationId: string) {
+  const project = await db.query.projects.findFirst({
+    where: and(
+      eq(projects.id, projectId),
+      eq(projects.organizationId, organizationId),
+    ),
+  });
   if (!project) {
     throw new AppError("NOT_FOUND");
   }
@@ -57,6 +103,48 @@ async function deleteProject(projectId: string, organizationId: string) {
         eq(projects.organizationId, organizationId),
       ),
     );
+}
+
+/**
+ * Restore a soft-deleted project.
+ */
+async function restoreProject(projectId: string, organizationId: string) {
+  const project = await db.query.projects.findFirst({
+    where: and(
+      eq(projects.id, projectId),
+      eq(projects.organizationId, organizationId),
+      eq(projects.isDeleted, true),
+    ),
+  });
+  if (!project) {
+    throw new AppError("NOT_FOUND");
+  }
+
+  await db
+    .update(projects)
+    .set({
+      isDeleted: false,
+      deletedAt: null,
+    })
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.organizationId, organizationId),
+      ),
+    );
+}
+
+/**
+ * List soft-deleted projects for potential restoration.
+ */
+async function listDeletedProjects(organizationId: string) {
+  return db.query.projects.findMany({
+    where: and(
+      eq(projects.organizationId, organizationId),
+      eq(projects.isDeleted, true),
+    ),
+    orderBy: desc(projects.deletedAt),
+  });
 }
 
 /**
@@ -106,9 +194,12 @@ async function getOrCreateDefaultProject(organizationId: string) {
 
 export const ProjectRepository = {
   listProjects,
+  listDeletedProjects,
   getProjectForOrganization,
   getProjectById,
   createProject,
   deleteProject,
+  hardDeleteProject,
+  restoreProject,
   getOrCreateDefaultProject,
 } as const;

@@ -142,9 +142,18 @@ export async function getGoalProjections(
     return projections;
   } catch (error) {
     console.error("[get-predictions] Error fetching goal projections:", error);
+    // Return empty array for graceful degradation, but log for debugging
+    // Callers should check array length and can use getGoalProjectionsWithStatus for error details
     return [];
   }
 }
+
+/**
+ * Result type for prediction functions that need error visibility.
+ */
+type PredictionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string; data: T };
 
 /**
  * Get predictive alerts for a specific client.
@@ -285,8 +294,41 @@ async function executeClientPredictions(clientId: string): Promise<PredictiveAle
     return alerts;
   } catch (error) {
     console.error("[get-predictions] Error fetching client predictions:", error);
+    // Return empty array for graceful degradation
+    // Error is logged for debugging; callers handle empty results
     return [];
   }
+}
+
+/**
+ * Get client predictions with explicit error status.
+ * Use this when you need to distinguish "no predictions" from "error fetching".
+ */
+export async function getClientPredictionsWithStatus(
+  clientId: string
+): Promise<PredictionResult<PredictiveAlert[]>> {
+  // Validate clientId format
+  const validatedClientId = clientIdSchema.parse(clientId);
+
+  const auth = await requireActionAuth();
+  await validateClientOwnership(validatedClientId, auth);
+
+  // Rate limit expensive ML prediction operations
+  await checkRateLimit(mlPredictionsLimiter, auth.userId);
+
+  // Deduplicate identical requests within 60s window
+  const requestHash = createRequestHash({ clientId: validatedClientId, type: "client-predictions-status" });
+
+  return deduplicateRequest(`predictions:client:status:${requestHash}`, async () => {
+    try {
+      const data = await executeClientPredictions(validatedClientId);
+      return { success: true, data };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("[get-predictions] Error in getClientPredictionsWithStatus:", error);
+      return { success: false, error: message, data: [] };
+    }
+  });
 }
 
 /**
@@ -399,7 +441,30 @@ export async function getPredictionCounts(
     const critical = predictions.filter((p) => p.severity === "critical").length;
     const warning = predictions.filter((p) => p.severity === "warning").length;
     return { critical, warning, total: predictions.length };
-  } catch {
+  } catch (error) {
+    console.error("[get-predictions] Error fetching prediction counts:", error);
+    // Return zeros for graceful degradation - badges will show 0 instead of breaking
     return { critical: 0, warning: 0, total: 0 };
   }
 }
+
+/**
+ * Get prediction counts with explicit error status.
+ */
+export async function getPredictionCountsWithStatus(
+  workspaceId: string
+): Promise<PredictionResult<{ critical: number; warning: number; total: number }>> {
+  try {
+    workspaceIdSchema.parse(workspaceId);
+    await requireActionAuth();
+    const predictions = await getWorkspacePredictions(workspaceId);
+    const critical = predictions.filter((p) => p.severity === "critical").length;
+    const warning = predictions.filter((p) => p.severity === "warning").length;
+    return { success: true, data: { critical, warning, total: predictions.length } };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[get-predictions] Error in getPredictionCountsWithStatus:", error);
+    return { success: false, error: message, data: { critical: 0, warning: 0, total: 0 } };
+  }
+}
+

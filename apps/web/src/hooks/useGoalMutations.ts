@@ -26,6 +26,9 @@ interface DeleteGoalInput {
   goalId: string;
 }
 
+/** Standard API timeout (30 seconds) */
+const API_TIMEOUT_MS = 30_000;
+
 /**
  * Placeholder server actions - wire these to actual implementations.
  */
@@ -34,6 +37,7 @@ async function updateGoalAction(input: UpdateGoalInput): Promise<void> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error("Failed to update goal");
@@ -45,6 +49,7 @@ async function deleteGoalAction(input: DeleteGoalInput): Promise<void> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error("Failed to delete goal");

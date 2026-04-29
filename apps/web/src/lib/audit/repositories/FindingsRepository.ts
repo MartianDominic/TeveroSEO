@@ -7,6 +7,7 @@
 
 import type { CheckResult, CheckSeverity, CheckCategory, CheckTier } from "../checks/types";
 import { getCheckById, getTierFromCheckId } from "../checks";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 /**
  * Audit Finding entity
@@ -173,7 +174,7 @@ class ApiFindingsRepository implements FindingsRepository {
     pageId: string,
     results: CheckResult[]
   ): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/audit/findings`, {
+    const response = await fetchWithTimeout(`${this.baseUrl}/api/audit/findings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -181,6 +182,7 @@ class ApiFindingsRepository implements FindingsRepository {
         pageId,
         results,
       }),
+      timeout: 30_000,
     });
 
     if (!response.ok) {
@@ -189,8 +191,9 @@ class ApiFindingsRepository implements FindingsRepository {
   }
 
   async getFindingsByAudit(auditId: string): Promise<AuditFinding[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/audit/findings?auditId=${auditId}`
+    const response = await fetchWithTimeout(
+      `${this.baseUrl}/api/audit/findings?auditId=${auditId}`,
+      { timeout: 30_000 }
     );
 
     if (!response.ok) {
@@ -204,8 +207,9 @@ class ApiFindingsRepository implements FindingsRepository {
     auditId: string,
     pageId: string
   ): Promise<AuditFinding[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&pageId=${pageId}`
+    const response = await fetchWithTimeout(
+      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&pageId=${pageId}`,
+      { timeout: 30_000 }
     );
 
     if (!response.ok) {
@@ -219,8 +223,9 @@ class ApiFindingsRepository implements FindingsRepository {
     auditId: string,
     severity: CheckSeverity
   ): Promise<AuditFinding[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&severity=${severity}`
+    const response = await fetchWithTimeout(
+      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&severity=${severity}`,
+      { timeout: 30_000 }
     );
 
     if (!response.ok) {
@@ -231,8 +236,9 @@ class ApiFindingsRepository implements FindingsRepository {
   }
 
   async getFailedFindingsByAudit(auditId: string): Promise<AuditFinding[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&passed=false`
+    const response = await fetchWithTimeout(
+      `${this.baseUrl}/api/audit/findings?auditId=${auditId}&passed=false`,
+      { timeout: 30_000 }
     );
 
     if (!response.ok) {
@@ -243,9 +249,9 @@ class ApiFindingsRepository implements FindingsRepository {
   }
 
   async deleteFindingsByAudit(auditId: string): Promise<void> {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${this.baseUrl}/api/audit/findings?auditId=${auditId}`,
-      { method: "DELETE" }
+      { method: "DELETE", timeout: 30_000 }
     );
 
     if (!response.ok) {

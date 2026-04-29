@@ -3,6 +3,7 @@
  * Phase 36: Content Brief Generation
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { BriefRepository } from "@/server/features/briefs/services/BriefRepository";
 import {
   createArticleFromBrief,
@@ -15,9 +16,13 @@ import { createLogger } from "@/server/lib/logger";
 const log = createLogger({ module: "api/seo/briefs/generate" });
 const repository = new BriefRepository();
 
-interface GenerateBody {
-  clientId: string;
-}
+/**
+ * Zod schema for brief generation request validation.
+ * HIGH-INPUT-03: Replace .catch(() => ({})) with proper validation.
+ */
+const generateBodySchema = z.object({
+  clientId: z.string().uuid("clientId must be a valid UUID"),
+});
 
 export const Route = createFileRoute("/api/seo/briefs/generate/$briefId")({
   server: {
@@ -26,11 +31,30 @@ export const Route = createFileRoute("/api/seo/briefs/generate/$briefId")({
         try {
           await requireApiAuth(request);
           const briefId = params.briefId;
-          const body = (await request.json().catch(() => ({}))) as GenerateBody;
 
-          if (!body.clientId) {
-            return Response.json({ error: "clientId required" }, { status: 400 });
+          // HIGH-INPUT-03: Proper JSON parsing with validation
+          let rawBody: unknown;
+          try {
+            rawBody = await request.json();
+          } catch {
+            return Response.json({ error: "Invalid JSON body" }, { status: 400 });
           }
+
+          const validation = generateBodySchema.safeParse(rawBody);
+          if (!validation.success) {
+            return Response.json(
+              {
+                error: "Invalid request body",
+                details: validation.error.issues.map((i) => ({
+                  field: i.path.join("."),
+                  message: i.message,
+                })),
+              },
+              { status: 400 }
+            );
+          }
+
+          const body = validation.data;
 
           const brief = await repository.findById(briefId);
           if (!brief) {

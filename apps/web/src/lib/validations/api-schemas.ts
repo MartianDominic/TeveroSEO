@@ -146,11 +146,92 @@ export type UpdateScheduleInput = z.infer<typeof updateScheduleSchema>;
 // Site Connection Schemas
 // ============================================
 
+/**
+ * List of blocked internal/private addresses for SSRF protection.
+ */
+const BLOCKED_DOMAIN_PATTERNS = [
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "169.254.169.254",
+  "metadata.google.internal",
+  "10.",
+  "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+  "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
+  "192.168.",
+  "::1",
+  "[::1]",
+];
+
+function isBlockedDomain(domain: string): boolean {
+  const lower = domain.toLowerCase();
+  return BLOCKED_DOMAIN_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
 export const detectPlatformSchema = z.object({
-  domain: z.string().min(1, "domain required"),
+  domain: z.string()
+    .min(1, "domain required")
+    .max(253, "domain must be at most 253 characters")
+    .regex(
+      /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$/,
+      "Invalid domain format"
+    )
+    .refine(
+      (domain) => !isBlockedDomain(domain),
+      { message: "Internal addresses are not allowed" }
+    ),
 });
 
 export type DetectPlatformInput = z.infer<typeof detectPlatformSchema>;
+
+// ============================================
+// Report Generation Schemas
+// ============================================
+
+export const generateReportSchema = z.object({
+  clientId: z.string().uuid("clientId must be a valid UUID"),
+  reportType: z.enum(["seo", "content", "technical", "full", "performance", "backlinks"])
+    .optional()
+    .default("full"),
+  dateRange: z.object({
+    start: z.string().datetime("start must be a valid ISO datetime"),
+    end: z.string().datetime("end must be a valid ISO datetime"),
+  }).optional().refine(
+    (range) => !range || new Date(range.start) <= new Date(range.end),
+    { message: "start date must be before or equal to end date" }
+  ),
+  locale: z.string()
+    .max(10, "locale must be at most 10 characters")
+    .regex(/^[a-z]{2}(-[A-Z]{2})?$/, "locale must be in format 'en' or 'en-US'")
+    .optional()
+    .default("en"),
+});
+
+export type GenerateReportInput = z.infer<typeof generateReportSchema>;
+
+// ============================================
+// Article Schemas
+// ============================================
+
+export const articlePostSchema = z.object({
+  action: z.enum(["publish", "unpublish", "schedule", "duplicate", "archive"]).optional(),
+  scheduledAt: z.string().datetime().optional(),
+  targetClientId: z.string().uuid().optional(),
+  metadata: z.record(z.string().max(100), z.unknown()).optional(),
+}).strict();
+
+export type ArticlePostInput = z.infer<typeof articlePostSchema>;
+
+// ============================================
+// Common Reusable Schemas
+// ============================================
+
+export const uuidSchema = z.string().uuid();
+export const dateRangeSchema = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+});
+export const domainSchema = detectPlatformSchema.shape.domain;
 
 // ============================================
 // Utility: Safe JSON Parse

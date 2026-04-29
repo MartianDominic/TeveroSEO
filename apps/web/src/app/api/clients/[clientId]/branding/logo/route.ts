@@ -12,11 +12,13 @@ import { deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { actionLimiters } from "@/lib/rate-limit/action-limiters";
 import { validateCsrf } from "@/lib/api/security";
 import { getClientIpFromRequest } from "@/lib/middleware/rate-limit";
+import { getOpenSeoUrl } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const OPEN_SEO_URL = process.env.OPEN_SEO_URL ?? "http://open-seo:3001";
+/** Open SEO URL from centralized env (validated at startup) */
+const OPEN_SEO_URL = getOpenSeoUrl();
 
 interface LogoResponse {
   logoUrl?: string;

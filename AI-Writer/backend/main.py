@@ -593,6 +593,10 @@ app.include_router(seo_analytics_router)
 # Dashboard API routes (metrics + saved views)
 app.include_router(dashboard_router)
 
+# Workspace team management routes (team metrics + client reassignment)
+from api.workspaces import router as workspaces_router
+app.include_router(workspaces_router)
+
 # Setup frontend serving using modular utilities
 frontend_serving.setup_frontend_serving()
 

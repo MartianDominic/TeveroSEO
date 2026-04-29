@@ -8,6 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { getUnprocessedDropEvents, getRecentDropEvents } from "@/services/rank-events";
 
 const log = createLogger({ module: "api/clients/:clientId/drop-events" });
@@ -24,9 +25,11 @@ export const Route = createFileRoute("/api/clients/$clientId/drop-events")({
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
 
           const { clientId } = params;
+          await requireClientAccess(authContext.userId, clientId);
+
           const url = new URL(request.url);
           const unprocessedOnly = url.searchParams.get("unprocessed") === "true";
 

@@ -13,6 +13,7 @@ import { eq, and, inArray, gte } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { requireClientAccess } from "@/server/middleware/authz";
 import { z } from "zod";
 
 const log = createLogger({ module: "api/clients/goals/snapshots-batch" });
@@ -53,7 +54,8 @@ export const Route = createFileRoute(
         params: { clientId: string };
       }) => {
         try {
-          await requireApiAuth(request);
+          const authContext = await requireApiAuth(request);
+          await requireClientAccess(authContext.userId, params.clientId);
 
           const url = new URL(request.url);
           const parsed = querySchema.safeParse({

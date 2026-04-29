@@ -547,10 +547,19 @@ function ContentGapsTab({
         `/api/client-intelligence/${clientId}/keyword-ideas?${params}`
       );
       setKeywordIdeas(Array.isArray(data) ? data : []);
-    } catch {
-      setIdeasError(
-        "Failed to load keyword ideas. Check DataForSEO configuration."
-      );
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Unknown error";
+      console.error("handleExplore failed:", e);
+      // Provide context-specific error message
+      if (errorMessage.includes("401") || errorMessage.includes("auth")) {
+        setIdeasError("Authentication required. Please refresh the page.");
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("AbortError")) {
+        setIdeasError("Request timed out. Please try again.");
+      } else if (errorMessage.includes("429") || errorMessage.includes("rate")) {
+        setIdeasError("Too many requests. Please wait a moment and try again.");
+      } else {
+        setIdeasError(`Failed to load keyword ideas: ${errorMessage}`);
+      }
       setKeywordIdeas([]);
     } finally {
       setIdeasLoading(false);
@@ -836,8 +845,19 @@ export default function ClientIntelligencePage() {
       await apiPost(`/api/client-intelligence/${clientId}/scrape`, {});
       // Re-fetch to show updated scrape_status
       await fetchIntelligence(clientId);
-    } catch {
-      setRerunError("Failed to start intelligence scrape.");
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Unknown error";
+      console.error("handleRunIntelligence failed:", e);
+      // Provide context-specific error message
+      if (errorMessage.includes("401") || errorMessage.includes("auth")) {
+        setRerunError("Authentication required. Please refresh the page.");
+      } else if (errorMessage.includes("429") || errorMessage.includes("rate")) {
+        setRerunError("Too many requests. Please wait before running again.");
+      } else if (errorMessage.includes("website_url") || errorMessage.includes("URL")) {
+        setRerunError("Client website URL not configured. Please set it in client settings.");
+      } else {
+        setRerunError(`Failed to start intelligence scrape: ${errorMessage}`);
+      }
     } finally {
       setRerunning(false);
     }

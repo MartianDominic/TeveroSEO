@@ -141,8 +141,7 @@ export const voiceProfiles = pgTable(
   {
     id: text("id").primaryKey(),
     clientId: uuid("client_id")
-      .notNull()
-      .references(() => clients.id, { onDelete: "cascade" }),
+      .references(() => clients.id, { onDelete: "set null" }),
 
     // Profile Basics
     voiceName: text("voice_name"),
@@ -204,9 +203,14 @@ export const voiceProfiles = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // Soft delete - preserves expensive learned brand voice data
+    isArchived: boolean("is_archived").notNull().default(false),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("ix_voice_profiles_client").on(table.clientId),
+    index("ix_voice_profiles_archived").on(table.isArchived),
     // H-04: Voice blend weight must be 0.0-1.0
     check("chk_voice_blend_weight_range", sql`voice_blend_weight IS NULL OR (voice_blend_weight >= 0 AND voice_blend_weight <= 1)`),
     // H-05: Formality level 1-10 (constraint in migration 0032)

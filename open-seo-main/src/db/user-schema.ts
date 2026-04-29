@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -35,8 +35,15 @@ export const organization = pgTable(
     logo: text("logo"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
     metadata: text("metadata"),
+    // Soft delete support - prevents catastrophic cascade deletes
+    isArchived: boolean("is_archived").default(false).notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
   },
-  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
+  (table) => [
+    uniqueIndex("organization_slug_uidx").on(table.slug),
+    // Index for active (non-archived) organizations
+    index("ix_organization_active").on(table.isArchived),
+  ],
 );
 
 export const member = pgTable(

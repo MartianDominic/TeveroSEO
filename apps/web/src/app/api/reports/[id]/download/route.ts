@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { downloadLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { validateClientOwnership } from "@/lib/auth/client-ownership";
+import { getOpenSeoUrl } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const OPEN_SEO_URL = process.env.OPEN_SEO_URL ?? "http://open-seo:3001";
+/** Open SEO URL from centralized env (validated at startup) */
+const OPEN_SEO_URL = getOpenSeoUrl();
 
 /**
  * Report metadata response from backend.

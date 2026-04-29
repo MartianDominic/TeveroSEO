@@ -9,39 +9,24 @@ import {
 import { getOpenSeo, patchOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import { generateAlertIdempotencyKey } from "@/lib/utils/idempotency";
+import {
+  AlertArraySchema,
+  AlertRuleArraySchema,
+  AlertRuleSchema,
+  AlertCountResponseSchema,
+  SuccessResponseSchema,
+  type Alert,
+  type AlertRule,
+} from "@/lib/validations/api-response-schemas";
 
-// Validation schemas
+// Re-export types for consumers
+export type { Alert, AlertRule };
+
+// Validation schemas for input
 const clientIdSchema = z.string().uuid("Invalid client ID format");
 const alertIdSchema = z.string().uuid("Invalid alert ID format");
 const statusSchema = z.enum(["pending", "acknowledged", "resolved", "dismissed"]).optional();
 const actionSchema = z.enum(["acknowledge", "resolve", "dismiss"]);
-
-export interface Alert {
-  id: string;
-  clientId: string;
-  alertType: string;
-  severity: "info" | "warning" | "critical";
-  status: "pending" | "acknowledged" | "resolved" | "dismissed";
-  title: string;
-  message: string;
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-  acknowledgedAt: string | null;
-  resolvedAt: string | null;
-  emailSentAt: string | null;
-}
-
-export interface AlertRule {
-  id: string;
-  clientId: string;
-  alertType: string;
-  enabled: boolean;
-  threshold: number | null;
-  severity: "info" | "warning" | "critical";
-  emailNotify: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 /**
  * Get alert count for badge display.
@@ -52,7 +37,12 @@ export async function getAlertCount(clientId: string): Promise<ActionResult<numb
     const auth = await requireActionAuth();
     await validateClientOwnership(validatedClientId, auth);
     const result = await getOpenSeo(`/api/clients/${validatedClientId}/alerts?count_only=true`);
-    return { success: true, data: (result as { count: number }).count ?? 0 };
+    const parsed = AlertCountResponseSchema.safeParse(result);
+    if (!parsed.success) {
+      console.error("[getAlertCount] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data.count };
   } catch (error) {
     console.error("[getAlertCount] Error:", error);
     return {
@@ -75,8 +65,13 @@ export async function getClientAlerts(
     const auth = await requireActionAuth();
     await validateClientOwnership(validatedClientId, auth);
     const query = validatedStatus ? `?status=${validatedStatus}` : "";
-    const data = await getOpenSeo(`/api/clients/${validatedClientId}/alerts${query}`) as Alert[];
-    return { success: true, data };
+    const rawData = await getOpenSeo(`/api/clients/${validatedClientId}/alerts${query}`);
+    const parsed = AlertArraySchema.safeParse(rawData);
+    if (!parsed.success) {
+      console.error("[getClientAlerts] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data };
   } catch (error) {
     console.error("[getClientAlerts] Error:", error);
     return {
@@ -100,11 +95,16 @@ export async function updateAlertStatus(
     const validatedAction = actionSchema.parse(action);
     const auth = await requireActionAuth();
     await validateClientOwnership(validatedClientId, auth);
-    const data = await patchOpenSeo(`/api/clients/${validatedClientId}/alerts`, {
+    const rawData = await patchOpenSeo(`/api/clients/${validatedClientId}/alerts`, {
       alertId: validatedAlertId,
       action: validatedAction,
-    }) as { success: boolean };
-    return { success: true, data };
+    });
+    const parsed = SuccessResponseSchema.safeParse(rawData);
+    if (!parsed.success) {
+      console.error("[updateAlertStatus] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data };
   } catch (error) {
     console.error("[updateAlertStatus] Error:", error);
     return {
@@ -122,8 +122,13 @@ export async function getAlertRules(clientId: string): Promise<ActionResult<Aler
     const validatedClientId = clientIdSchema.parse(clientId);
     const auth = await requireActionAuth();
     await validateClientOwnership(validatedClientId, auth);
-    const data = await getOpenSeo(`/api/clients/${validatedClientId}/alert-rules`) as AlertRule[];
-    return { success: true, data };
+    const rawData = await getOpenSeo(`/api/clients/${validatedClientId}/alert-rules`);
+    const parsed = AlertRuleArraySchema.safeParse(rawData);
+    if (!parsed.success) {
+      console.error("[getAlertRules] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data };
   } catch (error) {
     console.error("[getAlertRules] Error:", error);
     return {
@@ -169,8 +174,13 @@ export async function updateAlertConfig(
     // SECURITY: Verify user has access to this client before updating alert config
     await validateClientOwnership(validatedClientId, auth);
 
-    const data = await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, validatedUpdates) as { success: boolean };
-    return { success: true, data };
+    const rawData = await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, validatedUpdates);
+    const parsed = SuccessResponseSchema.safeParse(rawData);
+    if (!parsed.success) {
+      console.error("[updateAlertConfig] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data };
   } catch (error) {
     console.error("[updateAlertConfig] Error:", error);
     return {
@@ -220,12 +230,16 @@ export async function createAlertRule(
     });
 
     // HIGH-TXN-004 FIX: Use correct HTTP method (POST) for create operation
-    const data = await postOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, {
+    const rawData = await postOpenSeo(`/api/clients/${validatedClientId}/alert-rules`, {
       ...validatedRule,
       idempotencyKey, // Backend should use this to deduplicate
-    }) as AlertRule;
-
-    return { success: true, data };
+    });
+    const parsed = AlertRuleSchema.safeParse(rawData);
+    if (!parsed.success) {
+      console.error("[createAlertRule] Invalid response format:", parsed.error.message);
+      return { success: false, error: "Invalid response format from server" };
+    }
+    return { success: true, data: parsed.data };
   } catch (error) {
     console.error("[createAlertRule] Error:", error);
     return {

@@ -3,6 +3,11 @@
  * Client-side functions for CMS platform connections (WordPress, Shopify, etc.)
  */
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
+/** Standard API timeout (30 seconds) */
+const API_TIMEOUT_MS = 30_000;
+
 export interface SiteConnection {
   id: string;
   clientId: string;
@@ -42,10 +47,11 @@ export interface CreateConnectionInput {
  * Probes the domain for CMS fingerprints (WordPress REST API, Shopify CDN, etc.)
  */
 export async function detectPlatform(domain: string): Promise<DetectionResult> {
-  const res = await fetch("/api/site-connections/detect", {
+  const res = await fetchWithTimeout("/api/site-connections/detect", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain }),
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Failed to detect platform" }));
@@ -59,10 +65,11 @@ export async function detectPlatform(domain: string): Promise<DetectionResult> {
  * Credentials are encrypted server-side before storage.
  */
 export async function createSiteConnection(input: CreateConnectionInput): Promise<SiteConnection> {
-  const res = await fetch("/api/site-connections", {
+  const res = await fetchWithTimeout("/api/site-connections", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Failed to create connection" }));
@@ -76,7 +83,9 @@ export async function createSiteConnection(input: CreateConnectionInput): Promis
  * Returns connections with hasCredentials flag (never exposes actual credentials).
  */
 export async function getSiteConnections(clientId: string): Promise<SiteConnection[]> {
-  const res = await fetch(`/api/site-connections?clientId=${encodeURIComponent(clientId)}`);
+  const res = await fetchWithTimeout(`/api/site-connections?clientId=${encodeURIComponent(clientId)}`, {
+    timeout: API_TIMEOUT_MS,
+  });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Failed to fetch connections" }));
     throw new Error(error.error || "Failed to fetch connections");
@@ -89,8 +98,9 @@ export async function getSiteConnections(clientId: string): Promise<SiteConnecti
  * Updates connection status to 'active' on success or 'error' on failure.
  */
 export async function verifySiteConnection(connectionId: string): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch(`/api/site-connections/${connectionId}/verify`, {
+  const res = await fetchWithTimeout(`/api/site-connections/${connectionId}/verify`, {
     method: "POST",
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Failed to verify connection" }));
@@ -104,8 +114,9 @@ export async function verifySiteConnection(connectionId: string): Promise<{ succ
  * Removes the connection and associated encrypted credentials.
  */
 export async function deleteSiteConnection(connectionId: string): Promise<void> {
-  const res = await fetch(`/api/site-connections/${connectionId}`, {
+  const res = await fetchWithTimeout(`/api/site-connections/${connectionId}`, {
     method: "DELETE",
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: "Failed to delete connection" }));

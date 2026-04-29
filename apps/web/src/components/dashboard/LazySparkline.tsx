@@ -67,6 +67,7 @@ export function LazySparkline({
     setError(false);
 
     const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10s timeout for quick lookups
 
     try {
       const res = await fetch(`/api/sparkline/${clientId}/${metric}`, {
@@ -91,10 +92,14 @@ export function LazySparkline({
         setError(true);
       }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
 
-    return () => controller.abort();
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [isVisible, data, loading, clientId, metric]);
 
   useEffect(() => {

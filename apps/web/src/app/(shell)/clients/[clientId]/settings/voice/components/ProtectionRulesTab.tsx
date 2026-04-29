@@ -35,7 +35,13 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
     if (!clientId) return;
     setLoading(true);
     getProtectionRules(clientId)
-      .then(setRules)
+      .then((result) => {
+        if (result.success) {
+          setRules(result.data);
+        } else {
+          console.error("Failed to fetch protection rules:", result.error);
+        }
+      })
       .catch((err) => {
         console.error("Failed to fetch protection rules:", err);
       })

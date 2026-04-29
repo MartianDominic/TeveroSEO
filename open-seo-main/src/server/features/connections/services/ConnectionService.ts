@@ -139,13 +139,18 @@ export class ConnectionService {
    * Get all connections for a client.
    *
    * @param clientId - Client ID
+   * @param options - Pagination options (limit defaults to 50, offset defaults to 0)
    * @returns Array of connections without credentials
    */
   async getConnectionsForClient(
-    clientId: string
+    clientId: string,
+    options: { limit?: number; offset?: number } = {}
   ): Promise<ConnectionWithoutCredentials[]> {
+    const { limit = 50, offset = 0 } = options;
     const rows = await db.query.siteConnections.findMany({
       where: eq(siteConnections.clientId, clientId),
+      limit,
+      offset,
     });
 
     return rows.map((row) => this.stripCredentials(row));

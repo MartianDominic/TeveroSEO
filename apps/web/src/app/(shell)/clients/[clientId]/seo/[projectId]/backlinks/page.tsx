@@ -29,27 +29,14 @@ import {
   getBacklinksTopPages,
 } from "@/actions/seo/backlinks";
 import { extractHostname } from "@/lib/seo/shared";
-
-interface BacklinksOverview {
-  totalBacklinks: number;
-  referringDomains: number;
-  domainRank: number;
-  trustRank: number;
-  spamScore: number;
-}
-
-interface ReferringDomain {
-  domain: string;
-  backlinks: number;
-  domainRank: number;
-  firstSeen: string;
-}
-
-interface TopPage {
-  url: string;
-  backlinks: number;
-  referringDomains: number;
-}
+import {
+  BacklinksOverviewSchema,
+  ReferringDomainArraySchema,
+  TopPageArraySchema,
+  type BacklinksOverview,
+  type ReferringDomain,
+  type TopPage,
+} from "@/lib/validations/api-response-schemas";
 
 export default function BacklinksPage() {
   const params = useParams<{ clientId: string; projectId: string }>();
@@ -100,9 +87,18 @@ export default function BacklinksPage() {
     // Queries will auto-run due to enabled condition
   };
 
-  const overview = overviewQuery.data as BacklinksOverview | undefined;
-  const domains = (domainsQuery.data ?? []) as ReferringDomain[];
-  const pages = (pagesQuery.data ?? []) as TopPage[];
+  // Validate API responses with Zod schemas instead of unsafe type assertions
+  const overviewRaw = overviewQuery.data?.success ? overviewQuery.data.data : undefined;
+  const overviewParsed = overviewRaw ? BacklinksOverviewSchema.safeParse(overviewRaw) : null;
+  const overview: BacklinksOverview | undefined = overviewParsed?.success ? overviewParsed.data : undefined;
+
+  const domainsRaw = domainsQuery.data?.success ? domainsQuery.data.data : [];
+  const domainsParsed = ReferringDomainArraySchema.safeParse(domainsRaw);
+  const domains: ReferringDomain[] = domainsParsed.success ? domainsParsed.data : [];
+
+  const pagesRaw = pagesQuery.data?.success ? pagesQuery.data.data : [];
+  const pagesParsed = TopPageArraySchema.safeParse(pagesRaw);
+  const pages: TopPage[] = pagesParsed.success ? pagesParsed.data : [];
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">

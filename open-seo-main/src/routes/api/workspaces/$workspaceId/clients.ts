@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/workspaces/$workspaceId/clients")({
             );
           }
 
-          // Query clients for this workspace
+          // Query clients for this workspace (excluding soft-deleted)
           const workspaceClients = await db
             .select({
               id: clients.id,
@@ -93,7 +93,10 @@ export const Route = createFileRoute("/api/workspaces/$workspaceId/clients")({
               createdAt: clients.createdAt,
             })
             .from(clients)
-            .where(eq(clients.workspaceId, workspaceId))
+            .where(and(
+              eq(clients.workspaceId, workspaceId),
+              eq(clients.isDeleted, false)
+            ))
             .orderBy(desc(clients.createdAt));
 
           // Format response

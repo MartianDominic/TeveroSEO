@@ -127,7 +127,9 @@ export function ExportDialog({
           columns: selectedColumns.join(","),
         });
 
-        const response = await fetch(`/api/dashboard/export?${params}&format=json`);
+        const response = await fetch(`/api/dashboard/export?${params}&format=json`, {
+          signal: AbortSignal.timeout(30_000),
+        });
         if (!response.ok) throw new Error("Export failed");
         exportData = await response.json();
       }

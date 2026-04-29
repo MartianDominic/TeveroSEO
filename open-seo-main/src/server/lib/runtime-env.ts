@@ -106,6 +106,8 @@ export const REQUIRED_ENV_HOSTED = [
   "RESEND_API_KEY",
   // Cron Security (required for scheduled jobs)
   "CRON_SECRET",
+  // WebSocket (required for real-time metrics)
+  "WS_PORT",
 ] as const;
 
 /**

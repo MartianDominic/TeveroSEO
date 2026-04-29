@@ -4,6 +4,11 @@
  * Phase 16 Plan 04: Branding settings UI and report branding injection.
  */
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
+/** Standard API timeout (30 seconds) */
+const API_TIMEOUT_MS = 30_000;
+
 /**
  * Client branding data from API.
  */
@@ -34,7 +39,9 @@ export const DEFAULT_BRANDING: Omit<ClientBranding, "id" | "createdAt" | "update
  * Returns Tevero defaults if no custom branding exists.
  */
 export async function getBranding(clientId: string): Promise<ClientBranding> {
-  const res = await fetch(`/api/clients/${clientId}/branding`);
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/branding`, {
+    timeout: API_TIMEOUT_MS,
+  });
   if (!res.ok) {
     // Return defaults on error
     return { ...DEFAULT_BRANDING, clientId, createdAt: null, updatedAt: null };
@@ -58,10 +65,11 @@ export async function updateBranding(
   clientId: string,
   data: BrandingUpdateInput,
 ): Promise<ClientBranding> {
-  const res = await fetch(`/api/clients/${clientId}/branding`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/branding`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Update failed" }));
@@ -84,9 +92,10 @@ export async function uploadLogo(
   const formData = new FormData();
   formData.append("logo", file);
 
-  const res = await fetch(`/api/clients/${clientId}/branding/logo`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/branding/logo`, {
     method: "POST",
     body: formData,
+    timeout: API_TIMEOUT_MS,
   });
 
   if (!res.ok) {
@@ -100,8 +109,9 @@ export async function uploadLogo(
  * Delete logo for a client.
  */
 export async function deleteLogo(clientId: string): Promise<void> {
-  const res = await fetch(`/api/clients/${clientId}/branding/logo`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/branding/logo`, {
     method: "DELETE",
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Delete failed" }));
@@ -113,8 +123,9 @@ export async function deleteLogo(clientId: string): Promise<void> {
  * Reset branding to Tevero defaults.
  */
 export async function resetBranding(clientId: string): Promise<void> {
-  const res = await fetch(`/api/clients/${clientId}/branding`, {
+  const res = await fetchWithTimeout(`/api/clients/${clientId}/branding`, {
     method: "DELETE",
+    timeout: API_TIMEOUT_MS,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Reset failed" }));
