@@ -146,3 +146,37 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/tabs";
 
 export { Textarea } from "./components/textarea";
 export type { TextareaProps } from "./components/textarea";
+
+export { TodayFeedItem } from "./components/today-feed-item";
+export type { TodayFeedItemProps } from "./components/today-feed-item";
+
+// Phase 44-04 Components
+export { EntityCard } from "./components/entity-card";
+export type { EntityCardProps, EntityCardAvatar } from "./components/entity-card";
+
+export { StepWizard } from "./components/step-wizard";
+export type { StepWizardProps, WizardStep } from "./components/step-wizard";
+
+export { SegmentedProgressBar } from "./components/segmented-progress-bar";
+export type { SegmentedProgressBarProps, ProgressSegment } from "./components/segmented-progress-bar";
+
+export { MetricCard } from "./components/metric-card";
+export type { MetricCardProps, MetricDelta } from "./components/metric-card";
+
+export {
+  PageTitle,
+  SectionTitle,
+  CardTitle as TypographyCardTitle,
+  Eyebrow,
+  SmallCaps,
+  Mono,
+  Body,
+  Caption,
+} from "./components/typography";
+export type { TypographyProps } from "./components/typography";
+
+export { NumMega, NumHero, NumCard, NumRow, NumTiny, NumDelta } from "./components/numerals";
+export type { NumProps, NumDeltaProps } from "./components/numerals";
+
+export { RelativeTimestamp } from "./components/relative-timestamp";
+export type { RelativeTimestampProps } from "./components/relative-timestamp";
