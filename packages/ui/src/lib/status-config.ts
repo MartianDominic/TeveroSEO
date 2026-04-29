@@ -191,3 +191,21 @@ export type ProspectStatus = keyof typeof PROSPECT_STATUS;
 export type ClientStatus = keyof typeof CLIENT_STATUS;
 export type ArticleStatus = keyof typeof ARTICLE_STATUS;
 export type PipelineStage = keyof typeof PIPELINE_STAGE;
+
+/**
+ * Get status configuration from a status config map.
+ * Returns a default config if the status is not found.
+ */
+export function getStatusConfig(
+  configMap: Record<string, StatusConfig>,
+  status: string
+): StatusConfig {
+  return (
+    configMap[status] ?? {
+      label: status,
+      color: "bg-text-4",
+      bgColor: "bg-surface-2",
+      textColor: "text-text-3",
+    }
+  );
+}
