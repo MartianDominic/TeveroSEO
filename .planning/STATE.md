@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Agency Pipeline & Design System
-current_plan: 4
+current_plan: 5
 status: executing
-last_updated: "2026-04-30T03:32:00.000Z"
-last_activity: 2026-04-30 -- Phase 44 Plan 03 complete (New Primitives Part 1)
+last_updated: "2026-04-30T03:34:00.000Z"
+last_activity: 2026-04-30 -- Phase 44 Plan 04 complete (New Primitives Part 2)
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 8
-  completed_plans: 3
-  percent: 37
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **44-04:** Use React.ElementType for polymorphic typography; TypographyCardTitle to avoid card.tsx conflict; inline SVG sparkline; NumDelta infers direction from value sign
 - **44-03:** Compound components pattern for Checklist/ChecklistItem and KanbanColumn/KanbanCard; KanbanColumn uses role="listbox" with KanbanCard role="option"; TodayFeedItem uses 44px fixed timestamp column
 - **44-02:** Use CSS var() syntax for v6 tokens in ProgressBar CVA variants; add getStatusConfig helper for status lookups; fix format-time export naming to match actual functions
 - **44-01:** Use @theme inline for Tailwind v4 token mapping (CSS-first approach); export all token categories as TypeScript const objects for type safety; configure vitest with 80% coverage thresholds
