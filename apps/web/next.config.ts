@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
+import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * Security Headers Configuration
@@ -107,4 +108,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap config with next-intl plugin
+// The plugin expects the i18n request config at ./src/i18n/request.ts
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+export default withNextIntl(nextConfig);
