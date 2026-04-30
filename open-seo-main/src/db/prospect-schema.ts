@@ -157,6 +157,34 @@ export interface OpportunityKeyword {
   source: "ai_generated";
 }
 
+// Input mode types (Phase 56: Prospect Input Excellence)
+export const INPUT_MODES = [
+  "website",
+  "website_with_context",
+  "conversation",
+] as const;
+export type InputMode = (typeof INPUT_MODES)[number];
+
+export const CONFIRMATION_STATUSES = ["pending", "confirmed", "skipped"] as const;
+export type ConfirmationStatus = (typeof CONFIRMATION_STATUSES)[number];
+
+// Extracted data from AI analysis (Phase 56-02)
+export interface ExtractedProspectData {
+  businessName?: string;
+  industry?: string;
+  services?: string[];
+  targetAudience?: string;
+  keywords?: string[];
+  location?: string;
+  confidence: number; // 0-100
+}
+
+// User-confirmed extraction (Phase 56-03)
+export interface ConfirmedProspectData extends ExtractedProspectData {
+  confirmedAt: string; // ISO timestamp
+  confirmedBy: string; // User ID
+}
+
 /**
  * Prospects table - potential clients stored by domain.
  * One prospect per domain per workspace (unique constraint).
@@ -186,6 +214,12 @@ export const prospects = pgTable(
     country: text("country"), // ISO 3166-1 alpha-2
     priorityScore: real("priority_score"), // 0-100, auto-computed after analysis (Phase 30.5-03)
     pipelineStage: text("pipeline_stage").notNull().default("new"), // Phase 30.5-04: Sales funnel tracking
+    // Multi-modal input (Phase 56: Prospect Input Excellence)
+    inputMode: text("input_mode"), // 'website' | 'website_with_context' | 'conversation'
+    rawInput: text("raw_input"), // Original conversation/notes text (up to 50KB)
+    extractedData: jsonb("extracted_data").$type<ExtractedProspectData>(), // AI extraction before confirmation
+    confirmedData: jsonb("confirmed_data").$type<ConfirmedProspectData>(), // User-verified extraction
+    confirmationStatus: text("confirmation_status"), // 'pending' | 'confirmed' | 'skipped'
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
@@ -208,6 +242,10 @@ export const prospects = pgTable(
     check("chk_pipeline_stage_valid", sql`pipeline_stage IN ('new', 'analyzing', 'scored', 'qualified', 'contacted', 'negotiating', 'converted', 'archived')`),
     // Priority score constraint (already in migration 0032)
     check("chk_prospect_priority_range", sql`priority_score IS NULL OR (priority_score >= 0 AND priority_score <= 100)`),
+    // Input mode constraint (Phase 56)
+    check("chk_input_mode_valid", sql`input_mode IS NULL OR input_mode IN ('website', 'website_with_context', 'conversation')`),
+    // Confirmation status constraint (Phase 56)
+    check("chk_confirmation_status_valid", sql`confirmation_status IS NULL OR confirmation_status IN ('pending', 'confirmed', 'skipped')`),
   ],
 );
 
