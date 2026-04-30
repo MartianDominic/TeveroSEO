@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Unified Product
 current_plan: 1
 status: executing
-last_updated: "2026-04-30T11:22:12.772Z"
+last_updated: "2026-04-30T11:44:55.340Z"
 last_activity: 2026-04-30 -- Phase --phase execution started
 progress:
   total_phases: 14
@@ -150,6 +150,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - Extended existing webhook-schema.ts for incoming webhooks instead of creating new file
 - IP whitelist verification for Dokobit webhooks (no HMAC available)
 - Generic saveFile function in storage.ts for workspace-scoped documents
+- Contract status 'executed' (not 'paid'/'active') per contract-schema.ts constraints
+- OnboardingService does not transition contract status (already 'executed' after payment)
+- Dynamic import for OnboardingService prevents circular dependency
 
 ## v5.0 Phases Summary
 
