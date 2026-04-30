@@ -92,18 +92,18 @@ export function EntrySelector({ prospectId }: EntrySelectorProps) {
       {ENTRY_OPTIONS.map((option) => (
         <Card
           key={option.id}
-          className="cursor-pointer hover:border-primary transition-colors"
+          className="cursor-pointer shadow-card hover:shadow-lift hover:-translate-y-px transition-all duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
           onClick={() => handleSelect(option)}
         >
           <CardHeader className="flex flex-row items-center gap-4">
-            <div className="p-2 rounded-lg bg-muted">{option.icon}</div>
+            <div className="p-2 rounded-[var(--radius-input)] bg-surface-2">{option.icon}</div>
             <div>
               <CardTitle className="text-lg">{option.title}</CardTitle>
               <CardDescription>{option.description}</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-[12px] text-text-3">
               <span>
                 {option.workspace ? "Requires prospect" : "No workspace needed"}
               </span>
