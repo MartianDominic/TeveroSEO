@@ -1,7 +1,14 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn } from "@tevero/ui";
-import { Target, FileSearch, Users } from "lucide-react";
+/**
+ * ScenarioSelector - Proposal scenario selection with EntityCard pattern
+ * Phase 47-01: Updated with v6 design system compliance
+ *
+ * Uses v6 color tokens, a11y keyboard navigation, and recommended badge.
+ */
+
+import { Card, CardContent } from "@tevero/ui";
+import { FileSearch, FileText, Users, Check } from "lucide-react";
 import type { ProposalScenario } from "../actions";
 
 interface ScenarioSelectorProps {
@@ -9,103 +16,141 @@ interface ScenarioSelectorProps {
   onChange: (scenario: ProposalScenario) => void;
 }
 
-const scenarios: {
+interface ScenarioOption {
   id: ProposalScenario;
   title: string;
   description: string;
-  icon: typeof Target;
+  icon: React.ReactNode;
   sections: string[];
-}[] = [
+  recommended?: boolean;
+}
+
+const SCENARIOS: ScenarioOption[] = [
   {
     id: "focused",
-    title: "Focused SEO",
-    description: "Quick wins and prioritized keywords only",
-    icon: Target,
+    title: "Fokusuotas",
+    description: "Raktazodziu ir konkurentu analize su ROI projekcija",
+    icon: <FileSearch className="h-6 w-6" />,
     sections: [
-      "Executive Summary",
-      "Quick Wins Analysis",
-      "Priority Keywords",
-      "Investment",
-      "Agreement",
+      "Santrauka",
+      "Raktazodziu analize",
+      "Konkurentu palyginimas",
+      "Puslapiu zemelapiavimas",
+      "ROI projekcijos",
+      "Investicija",
     ],
+    recommended: true,
   },
   {
     id: "full_audit",
-    title: "Full Audit",
-    description: "Complete technical + content analysis",
-    icon: FileSearch,
+    title: "Pilnas auditas",
+    description: "Isami dabartines situacijos analize + visa fokusuoto turinys",
+    icon: <FileText className="h-6 w-6" />,
     sections: [
-      "Executive Summary",
-      "Current State Analysis",
-      "Technical Issues",
-      "Keyword Analysis",
-      "Competitor Comparison",
-      "Page Mapping",
-      "ROI Projections",
-      "Investment",
-      "Agreement",
+      "Santrauka",
+      "Dabartine situacija",
+      "Raktazodziu analize",
+      "Konkurentu palyginimas",
+      "Puslapiu zemelapiavimas",
+      "ROI projekcijos",
+      "Investicija",
     ],
   },
   {
     id: "competitor_only",
-    title: "Competitor Intelligence",
-    description: "Focus on competitor gap analysis",
-    icon: Users,
-    sections: [
-      "Executive Summary",
-      "Competitor Landscape",
-      "Gap Analysis",
-      "Opportunity Keywords",
-      "Investment",
-      "Agreement",
-    ],
+    title: "Konkurentu spy",
+    description: "Greitas konkurentu palyginimas be issamios analizes",
+    icon: <Users className="h-6 w-6" />,
+    sections: ["Santrauka", "Konkurentu palyginimas", "Investicija"],
   },
 ];
 
 export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {scenarios.map((scenario) => {
-        const Icon = scenario.icon;
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {SCENARIOS.map((scenario) => {
         const isSelected = value === scenario.id;
 
         return (
           <Card
             key={scenario.id}
-            className={cn(
-              "cursor-pointer transition-all hover:border-primary/50",
-              isSelected && "border-primary ring-2 ring-primary/20"
-            )}
+            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              isSelected
+                ? "ring-2 ring-[#0f4f3d] bg-[#eaf1ed]"
+                : "hover:bg-[#f8f8f3]"
+            }`}
             onClick={() => onChange(scenario.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onChange(scenario.id);
+              }
+            }}
           >
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
+            <CardContent className="p-6">
+              {/* Header with icon and selection indicator */}
+              <div className="flex items-start justify-between mb-4">
                 <div
-                  className={cn(
-                    "rounded-md p-2",
+                  className={`p-2 rounded-lg ${
                     isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
+                      ? "bg-[#0f4f3d] text-white"
+                      : "bg-[#f2f1eb] text-[#54545a]"
+                  }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  {scenario.icon}
                 </div>
-                <CardTitle className="text-base">{scenario.title}</CardTitle>
+                <div className="flex items-center gap-2">
+                  {scenario.recommended && (
+                    <span className="text-xs font-medium text-[#0f4f3d] bg-[#eaf1ed] px-2 py-0.5 rounded">
+                      Rekomenduojama
+                    </span>
+                  )}
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-[#0f4f3d] flex items-center justify-center">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                </div>
               </div>
-              <CardDescription>{scenario.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground">
-                <p className="font-medium mb-1">Includes:</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  {scenario.sections.slice(0, 4).map((section) => (
-                    <li key={section} className="text-xs">
+
+              {/* Title and description - v6 text colors */}
+              <h3
+                className="text-lg font-semibold mb-1"
+                style={{ color: "#14141a" }}
+              >
+                {scenario.title}
+              </h3>
+              <p className="text-sm mb-4" style={{ color: "#54545a" }}>
+                {scenario.description}
+              </p>
+
+              {/* Sections list with v6 styling */}
+              <div className="pt-4 border-t" style={{ borderColor: "#f2f1eb" }}>
+                <p
+                  className="text-xs font-medium uppercase tracking-wider mb-2"
+                  style={{ color: "#93939a" }}
+                >
+                  Iskeltos sekcijos
+                </p>
+                <ul className="space-y-1">
+                  {scenario.sections.slice(0, 4).map((section, i) => (
+                    <li
+                      key={i}
+                      className="text-xs flex items-center gap-1.5"
+                      style={{ color: "#54545a" }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: "#0f4f3d" }}
+                      />
                       {section}
                     </li>
                   ))}
                   {scenario.sections.length > 4 && (
-                    <li className="text-xs text-muted-foreground/70">
-                      +{scenario.sections.length - 4} more sections
+                    <li className="text-xs" style={{ color: "#93939a" }}>
+                      +{scenario.sections.length - 4} daugiau...
                     </li>
                   )}
                 </ul>
@@ -117,3 +162,5 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
     </div>
   );
 }
+
+ScenarioSelector.displayName = "ScenarioSelector";
