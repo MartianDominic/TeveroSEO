@@ -1,0 +1,476 @@
+================================================================================
+TRANSLATION LENGTH ANALYSIS
+================================================================================
+
+HIGH RISK (>50% longer) - May cause UI overflow
+--------------------------------------------------------------------------------
+  common.name
+    EN (4 chars): "Name"
+    LT (11 chars): "Pavadinimas"
+    Ratio: 2.75x
+
+  prospects.fields.name
+    EN (4 chars): "Name"
+    LT (11 chars): "Pavadinimas"
+    Ratio: 2.75x
+
+  clients.fields.name
+    EN (4 chars): "Name"
+    LT (11 chars): "Pavadinimas"
+    Ratio: 2.75x
+
+  prospects.statuses.won
+    EN (3 chars): "Won"
+    LT (8 chars): "Laimetas"
+    Ratio: 2.67x
+
+  invoices.fields.tax
+    EN (3 chars): "Tax"
+    LT (8 chars): "Mokestis"
+    Ratio: 2.67x
+
+  common.view
+    EN (4 chars): "View"
+    LT (10 chars): "Perziureti"
+    Ratio: 2.50x
+
+  common.save
+    EN (4 chars): "Save"
+    LT (9 chars): "Issaugoti"
+    Ratio: 2.25x
+
+  common.edit
+    EN (4 chars): "Edit"
+    LT (9 chars): "Redaguoti"
+    Ratio: 2.25x
+
+  prospects.statuses.lost
+    EN (4 chars): "Lost"
+    LT (9 chars): "Prarastas"
+    Ratio: 2.25x
+
+  nav.prospects
+    EN (9 chars): "Prospects"
+    LT (20 chars): "Potencialus klientai"
+    Ratio: 2.22x
+
+  prospects.title
+    EN (9 chars): "Prospects"
+    LT (20 chars): "Potencialus klientai"
+    Ratio: 2.22x
+
+  prospects.editProspect
+    EN (13 chars): "Edit Prospect"
+    LT (28 chars): "Redaguoti potencialu klienta"
+    Ratio: 2.15x
+
+  invoices.dueDate
+    EN (8 chars): "Due Date"
+    LT (17 chars): "Mokejimo terminas"
+    Ratio: 2.13x
+
+  invoices.fields.dueDate
+    EN (8 chars): "Due Date"
+    LT (17 chars): "Mokejimo terminas"
+    Ratio: 2.13x
+
+  common.email
+    EN (5 chars): "Email"
+    LT (10 chars): "El. pastas"
+    Ratio: 2.00x
+
+  prospects.fields.email
+    EN (5 chars): "Email"
+    LT (10 chars): "El. pastas"
+    Ratio: 2.00x
+
+  prospects.statuses.new
+    EN (3 chars): "New"
+    LT (6 chars): "Naujas"
+    Ratio: 2.00x
+
+  clients.fields.email
+    EN (5 chars): "Email"
+    LT (10 chars): "El. pastas"
+    Ratio: 2.00x
+
+  proposals.statuses.draft
+    EN (5 chars): "Draft"
+    LT (10 chars): "Juodrastis"
+    Ratio: 2.00x
+
+  proposals.statuses.sent
+    EN (4 chars): "Sent"
+    LT (8 chars): "Issiusta"
+    Ratio: 2.00x
+
+  agreements.signNow
+    EN (8 chars): "Sign Now"
+    LT (16 chars): "Pasirasyti dabar"
+    Ratio: 2.00x
+
+  agreements.statuses.draft
+    EN (5 chars): "Draft"
+    LT (10 chars): "Juodrastis"
+    Ratio: 2.00x
+
+  invoices.statuses.draft
+    EN (5 chars): "Draft"
+    LT (10 chars): "Juodrastis"
+    Ratio: 2.00x
+
+  invoices.statuses.sent
+    EN (4 chars): "Sent"
+    LT (8 chars): "Issiusta"
+    Ratio: 2.00x
+
+  invoices.statuses.paid
+    EN (4 chars): "Paid"
+    LT (8 chars): "Apmoketa"
+    Ratio: 2.00x
+
+  common.tryAgain
+    EN (9 chars): "Try again"
+    LT (17 chars): "Bandyti dar karta"
+    Ratio: 1.89x
+
+  errors.tryAgain
+    EN (9 chars): "Try again"
+    LT (17 chars): "Bandyti dar karta"
+    Ratio: 1.89x
+
+  settings.tabs.billing
+    EN (7 chars): "Billing"
+    LT (13 chars): "Atsiskaitymai"
+    Ratio: 1.86x
+
+  settings.billing
+    EN (7 chars): "Billing"
+    LT (13 chars): "Atsiskaitymai"
+    Ratio: 1.86x
+
+  common.export
+    EN (6 chars): "Export"
+    LT (11 chars): "Eksportuoti"
+    Ratio: 1.83x
+
+  agreements.statuses.signed
+    EN (6 chars): "Signed"
+    LT (11 chars): "Pasirasytas"
+    Ratio: 1.83x
+
+  invoices.markPaid
+    EN (12 chars): "Mark as Paid"
+    LT (22 chars): "Pazymeti kaip apmoketa"
+    Ratio: 1.83x
+
+  common.phone
+    EN (5 chars): "Phone"
+    LT (9 chars): "Telefonas"
+    Ratio: 1.80x
+
+  prospects.deleteProspect
+    EN (15 chars): "Delete Prospect"
+    LT (27 chars): "Istrinti potencialu klienta"
+    Ratio: 1.80x
+
+  prospects.fields.phone
+    EN (5 chars): "Phone"
+    LT (9 chars): "Telefonas"
+    Ratio: 1.80x
+
+  clients.fields.phone
+    EN (5 chars): "Phone"
+    LT (9 chars): "Telefonas"
+    Ratio: 1.80x
+
+  nav.dashboard
+    EN (9 chars): "Dashboard"
+    LT (16 chars): "Valdymo skydelis"
+    Ratio: 1.78x
+
+  dashboard.title
+    EN (9 chars): "Dashboard"
+    LT (16 chars): "Valdymo skydelis"
+    Ratio: 1.78x
+
+  nav.team
+    EN (4 chars): "Team"
+    LT (7 chars): "Komanda"
+    Ratio: 1.75x
+
+  nav.help
+    EN (4 chars): "Help"
+    LT (7 chars): "Pagalba"
+    Ratio: 1.75x
+
+  dashboard.activeProspects
+    EN (16 chars): "Active Prospects"
+    LT (28 chars): "Aktyvus potencialus klientai"
+    Ratio: 1.75x
+
+  prospects.noProspects
+    EN (16 chars): "No prospects yet"
+    LT (28 chars): "Potencialiu klientu dar nera"
+    Ratio: 1.75x
+
+  settings.tabs.team
+    EN (4 chars): "Team"
+    LT (7 chars): "Komanda"
+    Ratio: 1.75x
+
+  settings.team
+    EN (4 chars): "Team"
+    LT (7 chars): "Komanda"
+    Ratio: 1.75x
+
+  prospects.createProspect
+    EN (15 chars): "Create Prospect"
+    LT (26 chars): "Sukurti potencialu klienta"
+    Ratio: 1.73x
+
+  errors.goBack
+    EN (7 chars): "Go back"
+    LT (12 chars): "Grizti atgal"
+    Ratio: 1.71x
+
+  auth.signUp
+    EN (7 chars): "Sign up"
+    LT (12 chars): "Registruotis"
+    Ratio: 1.71x
+
+  common.update
+    EN (6 chars): "Update"
+    LT (10 chars): "Atnaujinti"
+    Ratio: 1.67x
+
+  common.import
+    EN (6 chars): "Import"
+    LT (10 chars): "Importuoti"
+    Ratio: 1.67x
+
+  common.select
+    EN (6 chars): "Select"
+    LT (10 chars): "Pasirinkti"
+    Ratio: 1.67x
+
+  prospects.lastContact
+    EN (12 chars): "Last Contact"
+    LT (20 chars): "Paskutinis kontaktas"
+    Ratio: 1.67x
+
+  proposals.statuses.viewed
+    EN (6 chars): "Viewed"
+    LT (10 chars): "Perziureta"
+    Ratio: 1.67x
+
+  dashboard.openInvoices
+    EN (13 chars): "Open Invoices"
+    LT (21 chars): "Neapmoketos saskaitos"
+    Ratio: 1.62x
+
+  common.close
+    EN (5 chars): "Close"
+    LT (8 chars): "Uzdaryti"
+    Ratio: 1.60x
+
+  common.notes
+    EN (5 chars): "Notes"
+    LT (8 chars): "Pastabos"
+    Ratio: 1.60x
+
+  common.selectAll
+    EN (10 chars): "Select All"
+    LT (16 chars): "Pasirinkti visus"
+    Ratio: 1.60x
+
+  common.learnMore
+    EN (10 chars): "Learn more"
+    LT (16 chars): "Suzinoti daugiau"
+    Ratio: 1.60x
+
+  dashboard.stats.totalProspects
+    EN (15 chars): "Total Prospects"
+    LT (24 chars): "Viso potencialiu klientu"
+    Ratio: 1.60x
+
+  prospects.notes
+    EN (5 chars): "Notes"
+    LT (8 chars): "Pastabos"
+    Ratio: 1.60x
+
+  prospects.fields.notes
+    EN (5 chars): "Notes"
+    LT (8 chars): "Pastabos"
+    Ratio: 1.60x
+
+  common.confirm
+    EN (7 chars): "Confirm"
+    LT (11 chars): "Patvirtinti"
+    Ratio: 1.57x
+
+  agreements.statuses.expired
+    EN (7 chars): "Expired"
+    LT (11 chars): "Pasibaigusi"
+    Ratio: 1.57x
+
+  auth.signIn
+    EN (7 chars): "Sign in"
+    LT (11 chars): "Prisijungti"
+    Ratio: 1.57x
+
+  common.clearAll
+    EN (9 chars): "Clear All"
+    LT (14 chars): "Isvalyti visus"
+    Ratio: 1.56x
+
+  prospects.statuses.proposal
+    EN (13 chars): "Proposal Sent"
+    LT (20 chars): "Pasiulymas issiustas"
+    Ratio: 1.54x
+
+  agreements.viewDocument
+    EN (13 chars): "View Document"
+    LT (20 chars): "Perziureti dokumenta"
+    Ratio: 1.54x
+
+MEDIUM RISK (30-50% longer) - Monitor for issues
+--------------------------------------------------------------------------------
+  common.next
+    EN: "Next" (4)
+    LT: "Toliau" (6)
+    Ratio: 1.50x
+
+  common.filter
+    EN: "Filter" (6)
+    LT: "Filtruoti" (9)
+    Ratio: 1.50x
+
+  nav.keywords
+    EN: "Keywords" (8)
+    LT: "Raktazodziai" (12)
+    Ratio: 1.50x
+
+  clients.addNew
+    EN: "Add New Client" (14)
+    LT: "Prideti nauja klienta" (21)
+    Ratio: 1.50x
+
+  prospects.statuses.qualified
+    EN: "Qualified" (9)
+    LT: "Kvalifikuotas" (13)
+    Ratio: 1.44x
+
+  nav.reports
+    EN: "Reports" (7)
+    LT: "Ataskaitos" (10)
+    Ratio: 1.43x
+
+  nav.logout
+    EN: "Log out" (7)
+    LT: "Atsijungti" (10)
+    Ratio: 1.43x
+
+  auth.resetPassword
+    EN: "Reset password" (14)
+    LT: "Atstatyti slaptazodi" (20)
+    Ratio: 1.43x
+
+  clients.fields.contractEnd
+    EN: "Contract End" (12)
+    LT: "Sutarties pabaiga" (17)
+    Ratio: 1.42x
+
+  common.optional
+    EN: "Optional" (8)
+    LT: "Neprivaloma" (11)
+    Ratio: 1.38x
+
+  common.cancel
+    EN: "Cancel" (6)
+    LT: "Atsaukti" (8)
+    Ratio: 1.33x
+
+  common.delete
+    EN: "Delete" (6)
+    LT: "Istrinti" (8)
+    Ratio: 1.33x
+
+  common.saving
+    EN: "Saving..." (9)
+    LT: "Issaugoma..." (12)
+    Ratio: 1.33x
+
+  common.submit
+    EN: "Submit" (6)
+    LT: "Pateikti" (8)
+    Ratio: 1.33x
+
+  common.yes
+    EN: "Yes" (3)
+    LT: "Taip" (4)
+    Ratio: 1.33x
+
+  common.all
+    EN: "All" (3)
+    LT: "Visi" (4)
+    Ratio: 1.33x
+
+  prospects.source
+    EN: "Source" (6)
+    LT: "Saltinis" (8)
+    Ratio: 1.33x
+
+  prospects.fields.source
+    EN: "Source" (6)
+    LT: "Saltinis" (8)
+    Ratio: 1.33x
+
+  proposals.sections.hero
+    EN: "Hero Section" (12)
+    LT: "Pagrindine dalis" (16)
+    Ratio: 1.33x
+
+  auth.forgotPassword
+    EN: "Forgot password?" (16)
+    LT: "Pamirsote slaptazodi?" (21)
+    Ratio: 1.31x
+
+================================================================================
+SUMMARY
+================================================================================
+Total strings analyzed: 224
+High risk (>1.5x):      66
+Medium risk (1.3-1.5x): 20
+Low risk (<=1.3x):      138
+Average ratio:          1.33x
+Maximum ratio:          2.75x
+
+================================================================================
+RECOMMENDATIONS BY CATEGORY
+================================================================================
+
+Navigation items at risk:
+  - nav.prospects: "Prospects" -> "Potencialus klientai" (2.22x)
+  - nav.dashboard: "Dashboard" -> "Valdymo skydelis" (1.78x)
+  - nav.team: "Team" -> "Komanda" (1.75x)
+  - nav.help: "Help" -> "Pagalba" (1.75x)
+
+Button labels at risk:
+  - prospects.createProspect: "Create Prospect" -> "Sukurti potencialu klienta" (1.73x)
+
+Table headers at risk:
+  - prospects.fields.name: "Name" -> "Pavadinimas" (2.75x)
+  - clients.fields.name: "Name" -> "Pavadinimas" (2.75x)
+  - invoices.fields.tax: "Tax" -> "Mokestis" (2.67x)
+  - invoices.fields.dueDate: "Due Date" -> "Mokejimo terminas" (2.13x)
+  - prospects.fields.email: "Email" -> "El. pastas" (2.00x)
+  - clients.fields.email: "Email" -> "El. pastas" (2.00x)
+  - prospects.fields.phone: "Phone" -> "Telefonas" (1.80x)
+  - clients.fields.phone: "Phone" -> "Telefonas" (1.80x)
+  - dashboard.stats.totalProspects: "Total Prospects" -> "Viso potencialiu klientu" (1.60x)
+  - prospects.fields.notes: "Notes" -> "Pastabos" (1.60x)
+
+Card titles at risk:
+  - prospects.title: "Prospects" -> "Potencialus klientai" (2.22x)
+  - dashboard.title: "Dashboard" -> "Valdymo skydelis" (1.78x)

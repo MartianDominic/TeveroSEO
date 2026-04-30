@@ -13,7 +13,8 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --filter './apps/*' --filter './packages/*' run test",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "analyze:lengths": "tsx scripts/analyze-translation-lengths.ts apps/web/messages/en.json apps/web/messages/lt.json"
   },
   "pnpm": {
     "overrides": {
