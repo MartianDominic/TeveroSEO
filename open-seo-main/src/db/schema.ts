@@ -75,3 +75,6 @@ export * from "./report-template-schema";
 
 // Payment settings schema (Phase 54)
 export * from "./workspace-payment-settings-schema";
+
+// Translation cache schema (Phase 55)
+export * from "./translation-cache-schema";
