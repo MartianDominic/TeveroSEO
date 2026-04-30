@@ -19,6 +19,7 @@ export { ReportList } from "./ReportList";
 export { ReportStatusBadge } from "./ReportStatusBadge";
 export { GenerateReportButton } from "./GenerateReportButton";
 export { ReportPreview } from "./ReportPreview";
+export { ReportHistoryTable } from "./ReportHistoryTable";
 
 // Report builder components (Phase 53)
 export { SectionSelector } from "./SectionSelector";
