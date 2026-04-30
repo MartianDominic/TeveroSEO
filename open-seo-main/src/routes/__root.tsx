@@ -1,4 +1,7 @@
 /// <reference types="vite/client" />
+// Initialize i18next before any React rendering
+import "@/i18n";
+
 import {
   ClientOnly,
   HeadContent,
