@@ -58,3 +58,8 @@ export * from "./webhook-schema";
 
 // Security and audit schemas
 export * from "./security-audit-schema";
+
+// Onboarding schemas
+export * from "./onboarding-schema";
+export * from "./magic-link-schema";
+export * from "./activity-schema";
