@@ -37,17 +37,17 @@ const QUICK_WIN_ICONS: Record<string, { icon: typeof Zap; label: string; color: 
   striking_distance: {
     icon: Target,
     label: "Striking Distance",
-    color: "text-orange-500",
+    color: "text-warning",
   },
   low_hanging: {
     icon: Sparkles,
     label: "Low Hanging Fruit",
-    color: "text-green-500",
+    color: "text-success",
   },
   fresh_opportunity: {
     icon: Zap,
     label: "Fresh Opportunity",
-    color: "text-blue-500",
+    color: "text-info",
   },
 };
 
@@ -100,7 +100,7 @@ export function KeywordTable({
   );
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-[var(--radius-card)] shadow-card bg-surface">
       <Table>
         <TableHeader>
           <TableRow>
@@ -163,10 +163,10 @@ export function KeywordTable({
                       <span
                         className={
                           keyword.keywordDifficulty <= 30
-                            ? "text-green-600"
+                            ? "text-success"
                             : keyword.keywordDifficulty <= 60
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                              ? "text-warning"
+                              : "text-error"
                         }
                       >
                         {keyword.keywordDifficulty.toFixed(0)}
@@ -204,12 +204,12 @@ export function KeywordTable({
                       <span
                         className={
                           keyword.compositeScore >= 0.75
-                            ? "text-red-600 font-semibold"
+                            ? "text-error font-semibold"
                             : keyword.compositeScore >= 0.5
-                              ? "text-orange-600"
+                              ? "text-warning"
                               : keyword.compositeScore >= 0.25
-                                ? "text-blue-600"
-                                : "text-gray-500"
+                                ? "text-info"
+                                : "text-text-3"
                         }
                       >
                         {(keyword.compositeScore * 100).toFixed(0)}
@@ -224,7 +224,7 @@ export function KeywordTable({
                         href={safeHref(keyword.mappedUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:underline"
+                        className="flex items-center gap-1 text-accent hover:underline"
                       >
                         <span className="truncate">{keyword.mappedUrl}</span>
                         <ExternalLink className="h-3 w-3 flex-shrink-0" />
