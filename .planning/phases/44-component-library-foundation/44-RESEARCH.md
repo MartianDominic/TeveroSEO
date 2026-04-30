@@ -686,17 +686,15 @@ export function EmptyState({
 
 **Note:** Most claims verified against npm registry or official documentation. The two assumptions above involve runtime compatibility that should be tested early in Sprint 0A.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Storybook Deployment Location**
+1. **Storybook Deployment Location** — RESOLVED
    - What we know: Storybook needs to be built and deployed for documentation
-   - What's unclear: Should it be a separate app in apps/ or integrated into packages/ui?
-   - Recommendation: Create `packages/ui/.storybook/` for configuration, build to `packages/ui/storybook-static/` for deployment
+   - Resolution: Create `packages/ui/.storybook/` for configuration, build to `packages/ui/storybook-static/` for deployment. This keeps Storybook co-located with the components it documents.
 
-2. **Test File Location**
+2. **Test File Location** — RESOLVED
    - What we know: apps/web has vitest configured, packages/ui does not
-   - What's unclear: Should UI package have its own test setup or use apps/web?
-   - Recommendation: Add vitest.config.ts to packages/ui for isolated component testing
+   - Resolution: Add vitest.config.ts to packages/ui for isolated component testing. This enables running UI tests independently without apps/web context.
 
 ## Environment Availability
 
