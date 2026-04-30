@@ -16,10 +16,18 @@ import {
 } from "@tevero/ui";
 import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useProspectWizardStore } from "@/stores/prospect-wizard-store";
+import {
+  useProspectWizardStore,
+  type ExtractionResult,
+} from "@/stores/prospect-wizard-store";
 import { WebsiteInputForm } from "./WebsiteInputForm";
 import { WebsiteContextForm } from "./WebsiteContextForm";
 import { ConversationInputForm } from "./ConversationInputForm";
+import { ExtractionConfirmation } from "./ExtractionConfirmation";
+import {
+  extractFromConversationAction,
+  confirmAndCreateProspectAction,
+} from "@/app/(shell)/prospects/actions";
 
 interface AddProspectModalProps {
   trigger?: React.ReactNode;
@@ -38,10 +46,14 @@ export function AddProspectModal({
     formData,
     isSubmitting,
     error,
+    extractedData,
     open,
     close,
     setMode,
     setError,
+    setStep,
+    setExtractedData,
+    setSubmitting,
     reset,
   } = useProspectWizardStore();
 
@@ -83,10 +95,73 @@ export function AddProspectModal({
     }
 
     setError(null);
-    // TODO: Plan 56-02 will implement the extraction action
-    // For now, just close the modal (temporary until AI integration)
-    close();
-    onSuccess?.();
+    setSubmitting(true);
+    setStep("progress");
+
+    try {
+      const content =
+        mode === "conversation"
+          ? formData.conversationText!
+          : formData.contextNotes || "";
+
+      const result = await extractFromConversationAction({
+        content,
+        inputMode: mode,
+        domain: formData.domain,
+        contextNotes:
+          mode === "website_with_context" ? formData.contextNotes : undefined,
+      });
+
+      if (!result.success) {
+        setError(result.error || t("errors.extractionFailed"));
+        setStep("input");
+        return;
+      }
+
+      setExtractedData(result.data);
+      setStep("confirmation");
+    } catch {
+      setError(t("errors.extractionFailed"));
+      setStep("input");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirm = async (confirmedData: ExtractionResult) => {
+    setSubmitting(true);
+    try {
+      const result = await confirmAndCreateProspectAction({
+        domain: formData.domain,
+        inputMode: mode,
+        rawInput:
+          mode === "conversation"
+            ? formData.conversationText
+            : formData.contextNotes,
+        confirmedData,
+      });
+
+      if (!result.success) {
+        setError(result.error || t("errors.createFailed"));
+        return;
+      }
+
+      close();
+      onSuccess?.();
+    } catch {
+      setError(t("errors.createFailed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReanalyze = (corrections: Partial<ExtractionResult>) => {
+    // Prepend corrections as context and return to input step
+    const correctionContext = `CORRECTIONS FROM USER:\n${JSON.stringify(corrections, null, 2)}\n\n`;
+    useProspectWizardStore.getState().setFormData({
+      contextNotes: correctionContext + (formData.contextNotes || ""),
+    });
+    setStep("input");
   };
 
   const isValid = (): boolean => {
@@ -171,15 +246,42 @@ export function AddProspectModal({
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={close} disabled={isSubmitting}>
-            {t("cancel")}
-          </Button>
-          <Button onClick={handleAnalyze} disabled={isSubmitting || !isValid()}>
-            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t("analyze")}
-          </Button>
-        </DialogFooter>
+        {step === "progress" && (
+          <div className="py-[var(--space-8)] flex flex-col items-center justify-center gap-[var(--space-4)]">
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <p className="text-[length:var(--type-body)] text-text-2">
+              Analyzing...
+            </p>
+          </div>
+        )}
+
+        {step === "confirmation" && extractedData && (
+          <div className="py-[var(--space-4)]">
+            <ExtractionConfirmation
+              extraction={extractedData}
+              onConfirm={handleConfirm}
+              onReanalyze={handleReanalyze}
+              isSubmitting={isSubmitting}
+            />
+            {error && (
+              <div className="mt-[var(--space-4)] p-[var(--space-3)] rounded-[var(--radius-input)] bg-error/10 text-error text-[length:var(--type-body)]">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+
+        {step !== "confirmation" && step !== "progress" && (
+          <DialogFooter>
+            <Button variant="outline" onClick={close} disabled={isSubmitting}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={handleAnalyze} disabled={isSubmitting || !isValid()}>
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t("analyze")}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
