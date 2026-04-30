@@ -16,10 +16,10 @@ interface TierFilterProps {
 }
 
 const TIERS = [
-  { id: "must_do", label: "Must-Do", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  { id: "should_do", label: "Should-Do", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-  { id: "nice_to_have", label: "Nice-to-Have", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  { id: "ignore", label: "Ignore", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200" },
+  { id: "must_do", label: "Must-Do", color: "bg-error-soft text-error" },
+  { id: "should_do", label: "Should-Do", color: "bg-warning-soft text-warning" },
+  { id: "nice_to_have", label: "Nice-to-Have", color: "bg-info-soft text-info" },
+  { id: "ignore", label: "Ignore", color: "bg-surface-2 text-text-3" },
 ] as const;
 
 export function TierFilter({ selected, onSelect, counts }: TierFilterProps) {
@@ -34,7 +34,7 @@ export function TierFilter({ selected, onSelect, counts }: TierFilterProps) {
         size="sm"
         onClick={() => onSelect(null)}
       >
-        All {counts && <span className="ml-1 text-xs">({totalCount})</span>}
+        All {counts && <span className="ml-1 text-[12px]">({totalCount})</span>}
       </Button>
       {TIERS.map((tier) => (
         <Button
@@ -45,12 +45,12 @@ export function TierFilter({ selected, onSelect, counts }: TierFilterProps) {
           className="gap-1"
         >
           <span
-            className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${tier.color}`}
+            className={`inline-block px-1.5 py-0.5 rounded text-[12px] font-medium ${tier.color}`}
           >
             {tier.label}
           </span>
           {counts && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[12px] text-text-3">
               ({counts[tier.id] || 0})
             </span>
           )}
