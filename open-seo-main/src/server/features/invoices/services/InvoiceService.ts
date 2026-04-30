@@ -13,6 +13,8 @@ import { proposals } from "@/db/proposal-schema";
 import { InvoiceRepository } from "../../contracts/repositories/InvoiceRepository";
 import { ActivityRepository } from "../../contracts/repositories/ActivityRepository";
 import { StripeService } from "./StripeService";
+import { PaymentProviderFactory } from "../../payments/PaymentProviderFactory";
+import type { PaymentProviderType } from "../../payments/types";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import { nanoid } from "nanoid";
@@ -125,12 +127,19 @@ export async function createFromContract(
 }
 
 /**
- * Send invoice to client via Stripe.
+ * Send invoice to client via selected payment provider.
+ * Phase 54-03: Updated to support multiple providers.
+ *
+ * @param invoiceId - Invoice to send
+ * @param customerEmail - Customer email address
+ * @param customerName - Customer display name
+ * @param preferredProvider - Optional provider preference ('stripe' | 'revolut')
  */
 export async function sendToClient(
   invoiceId: string,
   customerEmail: string,
   customerName: string,
+  preferredProvider?: PaymentProviderType,
 ): Promise<InvoiceSelect> {
   const invoice = await InvoiceRepository.getInvoiceById(invoiceId);
 
@@ -142,31 +151,33 @@ export async function sendToClient(
     throw new AppError("CONFLICT", `Cannot send invoice in ${invoice.status} status`);
   }
 
-  // Get or create Stripe customer
-  const customerId = await StripeService.getOrCreateCustomer(
-    customerEmail,
-    customerName,
-    invoice.clientId
-  );
-
-  // Create Stripe invoice
-  const stripeResult = await StripeService.createInvoice({
-    customerId,
-    contractId: invoice.contractId!,
-    setupFeeCents: invoice.lineItems.find((li: InvoiceLineItem) => li.description.includes("Setup"))?.totalCents || 0,
-    monthlyFeeCents: invoice.lineItems.find((li: InvoiceLineItem) => li.description.includes("Monthly"))?.totalCents || 0,
-    currency: invoice.currency || "EUR",
+  // Get payment provider (uses workspace settings or falls back to env)
+  const provider = await PaymentProviderFactory.getProvider({
+    workspaceId: invoice.workspaceId,
+    preferredProvider,
   });
 
-  // Update invoice with Stripe details
-  const updated = await InvoiceRepository.updateInvoiceStatus(
+  // Create payment session with selected provider
+  const session = await provider.createPaymentSession(invoice);
+
+  // Update invoice with provider-specific details
+  const updateFields: Parameters<typeof InvoiceRepository.updateInvoiceStatus>[2] = {
+    sentAt: new Date(),
+  };
+
+  if (session.provider === "stripe") {
+    updateFields.stripeInvoiceId = session.externalId;
+    updateFields.stripePaymentUrl = session.paymentUrl;
+  }
+
+  // Update invoice status and provider
+  const updated = await InvoiceRepository.updateInvoiceStatusWithProvider(
     invoiceId,
     "sent",
-    {
-      sentAt: new Date(),
-      stripeInvoiceId: stripeResult.stripeInvoiceId,
-      stripePaymentUrl: stripeResult.stripePaymentUrl,
-    }
+    session.provider,
+    session.provider === "revolut" ? session.externalId : undefined,
+    session.provider === "revolut" ? session.paymentUrl : undefined,
+    updateFields
   );
 
   // Log activity
@@ -178,22 +189,36 @@ export async function sendToClient(
     "sent"
   );
 
-  log.info("Invoice sent to client", { invoiceId, stripeInvoiceId: stripeResult.stripeInvoiceId });
+  log.info("Invoice sent to client", {
+    invoiceId,
+    provider: session.provider,
+    externalId: session.externalId,
+  });
+
   return updated!;
 }
 
 /**
- * Handle successful payment from Stripe webhook.
- * Per D-07: payment.succeeded → update contract status to "paid".
+ * Handle successful payment from webhook.
+ * Phase 54-03: Updated to support multiple providers.
+ * Per D-07: payment.succeeded → update contract status to "executed".
+ *
+ * @param externalId - Provider's invoice/order ID (stripeInvoiceId or revolutOrderId)
+ * @param paymentId - Provider's payment ID (stripePaymentIntentId or revolut payment ID)
+ * @param provider - Payment provider ('stripe' | 'revolut')
  */
 export async function handlePaymentSuccess(
-  stripeInvoiceId: string,
-  stripePaymentIntentId: string,
+  externalId: string,
+  paymentId: string,
+  provider: PaymentProviderType = "stripe",
 ): Promise<void> {
-  const invoice = await InvoiceRepository.getInvoiceByStripeId(stripeInvoiceId);
+  // Look up invoice by provider-specific ID
+  const invoice = provider === "revolut"
+    ? await InvoiceRepository.getInvoiceByRevolutOrderId(externalId)
+    : await InvoiceRepository.getInvoiceByStripeId(externalId);
 
   if (!invoice) {
-    log.warn("Invoice not found for Stripe ID", { stripeInvoiceId });
+    log.warn(`Invoice not found for ${provider} ID`, { externalId, provider });
     return; // Not our invoice
   }
 
@@ -202,13 +227,13 @@ export async function handlePaymentSuccess(
     return; // Idempotent
   }
 
-  // Update invoice to paid
+  // Update invoice to paid with provider-specific payment ID
   await InvoiceRepository.updateInvoiceStatus(
     invoice.id,
     "paid",
     {
       paidAt: new Date(),
-      stripePaymentIntentId,
+      ...(provider === "stripe" && { stripePaymentIntentId: paymentId }),
     }
   );
 
@@ -236,16 +261,21 @@ export async function handlePaymentSuccess(
     );
   }
 
-  // Log invoice status change
-  await ActivityRepository.recordStatusChange(
-    invoice.workspaceId,
-    "invoice",
-    invoice.id,
-    invoice.status,
-    "paid"
-  );
+  // Log invoice status change with provider info
+  await ActivityRepository.insertActivity({
+    id: nanoid(),
+    workspaceId: invoice.workspaceId,
+    entityType: "invoice",
+    entityId: invoice.id,
+    activityType: provider === "revolut" ? "revolut_payment_completed" : "paid",
+    activityData: { provider, paymentId, externalId },
+  });
 
-  log.info("Payment successful", { invoiceId: invoice.id, contractId: invoice.contractId });
+  log.info("Payment successful", {
+    invoiceId: invoice.id,
+    contractId: invoice.contractId,
+    provider,
+  });
 
   // Trigger onboarding checklist creation (Payment before onboarding requirement)
   if (invoice.contractId) {

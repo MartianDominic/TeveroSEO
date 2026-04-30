@@ -159,8 +159,8 @@ async function createProvider(
   }
 
   if (providerType === "revolut") {
-    // Revolut provider will be implemented in Plan 54-02
-    throw new Error("Revolut provider not yet implemented");
+    const { RevolutProvider } = await import("./providers/RevolutProvider");
+    return new RevolutProvider(credentials);
   }
 
   throw new Error(`Unknown provider type: ${providerType}`);

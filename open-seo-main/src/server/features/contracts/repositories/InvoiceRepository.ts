@@ -52,6 +52,21 @@ export async function getInvoiceByStripeId(
 }
 
 /**
+ * Get an invoice by Revolut order ID.
+ * Phase 54-03: Added for multi-provider support.
+ */
+export async function getInvoiceByRevolutOrderId(
+  revolutOrderId: string,
+): Promise<InvoiceSelect | undefined> {
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.revolutOrderId, revolutOrderId))
+    .limit(1);
+  return invoice;
+}
+
+/**
  * Get invoices for a workspace with optional filters.
  */
 export async function getInvoicesByWorkspace(
@@ -136,6 +151,42 @@ export async function updateInvoiceStatus(
 }
 
 /**
+ * Update invoice status with provider-specific fields.
+ * Phase 54-03: Added for multi-provider support.
+ */
+export async function updateInvoiceStatusWithProvider(
+  invoiceId: string,
+  status: InvoiceStatus,
+  paymentProvider: "stripe" | "revolut",
+  revolutOrderId?: string,
+  revolutCheckoutUrl?: string,
+  additionalFields?: Partial<
+    Pick<
+      InvoiceSelect,
+      | "sentAt"
+      | "paidAt"
+      | "stripeInvoiceId"
+      | "stripePaymentIntentId"
+      | "stripePaymentUrl"
+    >
+  >,
+): Promise<InvoiceSelect | undefined> {
+  const [updated] = await db
+    .update(invoices)
+    .set({
+      status,
+      paymentProvider,
+      updatedAt: new Date(),
+      ...(revolutOrderId && { revolutOrderId }),
+      ...(revolutCheckoutUrl && { revolutCheckoutUrl }),
+      ...additionalFields,
+    })
+    .where(eq(invoices.id, invoiceId))
+    .returning();
+  return updated;
+}
+
+/**
  * Update Stripe payment details.
  */
 export async function updateInvoiceStripeDetails(
@@ -168,9 +219,11 @@ export const InvoiceRepository = {
   insertInvoice,
   getInvoiceById,
   getInvoiceByStripeId,
+  getInvoiceByRevolutOrderId,
   getInvoicesByWorkspace,
   getInvoicesByClient,
   updateInvoiceStatus,
+  updateInvoiceStatusWithProvider,
   updateInvoiceStripeDetails,
   deleteInvoice,
 };

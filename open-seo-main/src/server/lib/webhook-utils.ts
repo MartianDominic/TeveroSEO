@@ -42,7 +42,7 @@ export function verifyDokobitIp(clientIp: string | null): boolean {
 export async function processWebhookIdempotently<T>(
   eventId: string,
   eventType: string,
-  source: "dokobit" | "stripe",
+  source: "dokobit" | "stripe" | "revolut",
   handler: () => Promise<T>
 ): Promise<T | null> {
   // Check if already processed
