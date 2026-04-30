@@ -4,11 +4,14 @@
  * Steps:
  * 1. Fetch report data from database
  * 2. Check cache (content hash match)
- * 3. Render to HTML
- * 4. Generate PDF via Puppeteer
- * 5. Write PDF to filesystem
- * 6. Update database with path and status
- * 7. Send email to recipients (if scheduled report)
+ * 3. Generate chart snapshots (if section requires)
+ * 4. Render selected sections to HTML
+ * 5. Generate PDF via Puppeteer
+ * 6. Write PDF to filesystem
+ * 7. Update database with path and status
+ * 8. Send email to recipients (if scheduled report)
+ *
+ * Phase 53 Plan 02: Updated to use section-based rendering with chart snapshots.
  */
 import type { Job } from "bullmq";
 import type { ReportJobData } from "@/server/queues/reportQueue";
@@ -32,9 +35,27 @@ import {
   type ReportLabels,
   type ReportBranding,
 } from "@/server/services/report/report-renderer";
+import {
+  renderSectionsToHTML,
+  type ReportSection,
+} from "@/server/services/report/section-renderer";
+import { snapshotCharts } from "@/server/services/report/chart-snapshot";
 import { writeFile, mkdir, unlink, access } from "node:fs/promises";
 import path from "node:path";
 import { REPORTS_DIR, sanitizePathComponent } from "../lib/storage";
+
+/**
+ * Default sections if none specified in job data.
+ * Includes all section types in standard order.
+ */
+const DEFAULT_SECTIONS: ReportSection[] = [
+  { type: "header", order: 0 },
+  { type: "summary_stats", order: 1 },
+  { type: "gsc_chart", order: 2 },
+  { type: "ga4_chart", order: 3 },
+  { type: "queries_table", order: 4 },
+  { type: "footer", order: 5 },
+];
 
 /**
  * Check if a partial PDF exists from a previous attempt.
@@ -60,13 +81,23 @@ async function checkExistingPdf(
 }
 
 /**
+ * Extended job data with sections support.
+ */
+interface ReportJobDataWithSections extends ReportJobData {
+  sections?: ReportSection[];
+}
+
+/**
  * Main processor function - exported as default for BullMQ sandboxed worker.
  */
 export default async function processReportJob(
-  job: Job<ReportJobData>,
+  job: Job<ReportJobDataWithSections>,
 ): Promise<void> {
   const { reportId, clientId, reportType, dateRange, locale, contentHash } =
     job.data;
+
+  // Use sections from job data or fall back to defaults
+  const sections = job.data.sections ?? DEFAULT_SECTIONS;
 
   const logger = createLogger({
     module: "report-processor",
@@ -213,15 +244,32 @@ export default async function processReportJob(
     // Step 5: Get localized labels
     const labels = getDefaultLabels(locale);
 
-    // Step 6: Render to HTML with branding
-    const html = renderReportToHTML(reportData, labels, branding);
-    logger.info("HTML rendered", { htmlLength: html.length });
+    // Step 6: Generate chart snapshots if chart sections are included
+    const hasGSCChart = sections.some((s) => s.type === "gsc_chart");
+    const hasGA4Chart = sections.some((s) => s.type === "ga4_chart");
 
-    // Step 7: Generate PDF
+    let chartUrls: Record<string, string> = {};
+    if (hasGSCChart || hasGA4Chart) {
+      logger.info("Generating chart snapshots", { gsc: hasGSCChart, ga4: hasGA4Chart });
+      chartUrls = await snapshotCharts(
+        hasGSCChart ? reportData.gscDaily : undefined,
+        hasGA4Chart ? reportData.ga4Daily : undefined,
+      );
+      logger.info("Chart snapshots completed", {
+        gscSnapshot: !!chartUrls.gsc,
+        ga4Snapshot: !!chartUrls.ga4,
+      });
+    }
+
+    // Step 7: Render selected sections to HTML with branding and chart snapshots
+    const html = renderSectionsToHTML(sections, reportData, labels, branding, chartUrls);
+    logger.info("HTML rendered", { htmlLength: html.length, sectionCount: sections.length });
+
+    // Step 8: Generate PDF
     const pdfBuffer = await generatePDF(html);
     logger.info("PDF generated", { pdfSize: pdfBuffer.byteLength });
 
-    // Step 8: Write to filesystem
+    // Step 9: Write to filesystem
     // File naming: {client_id}/{YYYY-MM-DD}_{report_type}.pdf per CONTEXT.md
     // SECURITY: Sanitize clientId to prevent path traversal
     const safeClientId = sanitizePathComponent(clientId);
@@ -234,7 +282,7 @@ export default async function processReportJob(
     await writeFile(pdfPath, pdfBuffer);
     logger.info("PDF written", { pdfPath });
 
-    // Step 9: Update database
+    // Step 10: Update database
     await db
       .update(reports)
       .set({
@@ -246,7 +294,7 @@ export default async function processReportJob(
 
     logger.info("Report generation complete");
 
-    // Step 10: Send email to recipients (if schedule exists with recipients)
+    // Step 11: Send email to recipients (if schedule exists with recipients)
     await sendReportEmailIfScheduled({
       clientId,
       clientName,
