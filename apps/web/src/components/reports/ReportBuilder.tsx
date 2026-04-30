@@ -24,6 +24,7 @@ import { useReportBuilder } from "@/lib/reports/builder";
 import { generateReport } from "@/lib/reports/actions";
 import { SectionSelector } from "./SectionSelector";
 import { ReportDataPreview } from "./ReportDataPreview";
+import { TemplateSelector } from "./TemplateSelector";
 
 interface ReportBuilderProps {
   /** Client UUID */
@@ -102,6 +103,18 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Template Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Template</Label>
+              <TemplateSelector
+                currentSections={config.sections}
+                onLoadTemplate={(sections, name) => {
+                  setSections(sections);
+                  setName(name);
+                }}
+              />
+            </div>
+
             {/* Report Name */}
             <div className="space-y-2">
               <Label htmlFor="report-name" className="text-sm font-medium">

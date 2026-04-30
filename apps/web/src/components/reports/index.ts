@@ -25,3 +25,4 @@ export { ReportHistoryTable } from "./ReportHistoryTable";
 export { SectionSelector } from "./SectionSelector";
 export { ReportDataPreview } from "./ReportDataPreview";
 export { ReportBuilder } from "./ReportBuilder";
+export { TemplateSelector } from "./TemplateSelector";
