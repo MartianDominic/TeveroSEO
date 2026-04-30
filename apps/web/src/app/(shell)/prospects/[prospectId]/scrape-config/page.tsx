@@ -348,13 +348,13 @@ export default function ScrapeConfigPage() {
 
       {/* Messages */}
       {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg flex items-center gap-2">
+        <div className="bg-error-soft text-error px-4 py-2 rounded-lg flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
           {error}
         </div>
       )}
       {successMessage && (
-        <div className="bg-green-500/10 text-green-600 px-4 py-2 rounded-lg flex items-center gap-2">
+        <div className="bg-success-soft text-success px-4 py-2 rounded-lg flex items-center gap-2">
           <Check className="h-4 w-4" />
           {successMessage}
         </div>
@@ -434,7 +434,7 @@ export default function ScrapeConfigPage() {
                 <div className="border rounded-lg p-3 bg-background">
                   {testResult.matched ? (
                     <>
-                      <div className="flex items-center gap-2 text-green-600 mb-2">
+                      <div className="flex items-center gap-2 text-success mb-2">
                         <Check className="h-4 w-4" />
                         <span className="font-medium">Rule Matched</span>
                       </div>

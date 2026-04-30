@@ -131,7 +131,7 @@ export function KeywordTable({
         <TableBody>
           {keywords.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-text-3">
                 No keywords found. Import keywords or run a discovery.
               </TableCell>
             </TableRow>
@@ -184,7 +184,7 @@ export function KeywordTable({
                         {tierBadge.label}
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className="text-text-3">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">
@@ -196,7 +196,7 @@ export function KeywordTable({
                         <quickWin.icon className="h-4 w-4" />
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className="text-text-3">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-mono">
@@ -230,7 +230,7 @@ export function KeywordTable({
                         <ExternalLink className="h-3 w-3 flex-shrink-0" />
                       </a>
                     ) : (
-                      <span className="text-muted-foreground">Not mapped</span>
+                      <span className="text-text-3">Not mapped</span>
                     )}
                   </TableCell>
                 </TableRow>

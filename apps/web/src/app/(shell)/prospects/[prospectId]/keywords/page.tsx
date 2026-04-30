@@ -172,7 +172,7 @@ export default function KeywordListPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Keywords</h1>
-            <p className="text-muted-foreground">
+            <p className="text-text-3">
               {total} keywords {selectedTier && `(filtered by ${selectedTier})`}
             </p>
           </div>
@@ -212,7 +212,7 @@ export default function KeywordListPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-lg">
+        <div className="bg-error-soft text-error px-4 py-2 rounded-lg">
           {error}
         </div>
       )}
@@ -248,7 +248,7 @@ export default function KeywordListPage() {
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
-        <Card className="bg-muted/50">
+        <Card className="bg-surface-2">
           <CardContent className="py-3 flex items-center justify-between">
             <span className="text-sm">
               {selectedIds.size} keyword{selectedIds.size !== 1 && "s"} selected
@@ -280,7 +280,7 @@ export default function KeywordListPage() {
       {/* Keyword Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-text-3" />
         </div>
       ) : (
         <KeywordTable
@@ -297,9 +297,9 @@ export default function KeywordListPage() {
       {!loading && keywords.length === 0 && !selectedTier && !showQuickWins && (
         <Card>
           <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <Search className="h-12 w-12 mx-auto text-text-3 mb-4" />
             <h3 className="text-lg font-medium mb-2">No keywords yet</h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-text-3 mb-4">
               Import keywords from a CSV or run a keyword discovery.
             </p>
             <Link href={`/prospects/${prospectId}/keywords/import` as Parameters<typeof Link>[0]["href"]}>

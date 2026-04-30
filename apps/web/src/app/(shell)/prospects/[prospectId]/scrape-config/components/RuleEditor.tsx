@@ -166,7 +166,7 @@ function FieldEditor({
         <div className="space-y-2">
           {field.selectors.map((selector, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <GripVertical className="h-4 w-4 text-text-3" />
               <Input
                 value={selector}
                 onChange={(e) => updateSelector(idx, e.target.value)}

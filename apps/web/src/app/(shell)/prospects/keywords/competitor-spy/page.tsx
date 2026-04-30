@@ -149,7 +149,7 @@ export default function CompetitorSpyPage() {
               <CardTitle className="flex items-center gap-2">
                 {resultDomain}
                 {cached && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-[12px]">
                     cached
                   </Badge>
                 )}

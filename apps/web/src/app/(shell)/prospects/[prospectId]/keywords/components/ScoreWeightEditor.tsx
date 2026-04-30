@@ -83,7 +83,7 @@ export function ScoreWeightEditor({
               <span title={WEIGHT_LABELS[key].description}>
                 {WEIGHT_LABELS[key].label}
               </span>
-              <span className="font-mono text-muted-foreground">
+              <span className="font-mono text-text-3">
                 {(weights[key] * 100).toFixed(0)}%
               </span>
             </div>
