@@ -196,7 +196,21 @@
       "errors": {
         "domainRequired": "Svetaines domenas yra privalomas",
         "invalidDomain": "Neteisingas domeno formatas. Naudokite formata: example.com",
-        "conversationTooShort": "Pokalbis turi buti bent 50 simboliu"
+        "conversationTooShort": "Pokalbis turi buti bent 50 simboliu",
+        "extractionFailed": "Nepavyko isanalizuoti turinio. Bandykite dar karta."
+      },
+      "progress": {
+        "title": "Analizuojama",
+        "stages": {
+          "connecting": "Jungiamasi",
+          "crawling": "Narsoma",
+          "extracting": "Isrenkama",
+          "analyzing": "Analizuojama",
+          "complete": "Baigta",
+          "error": "Klaida"
+        },
+        "connected": "Prisijungta",
+        "disconnected": "Jungiamasi is naujo..."
       }
     }
   },

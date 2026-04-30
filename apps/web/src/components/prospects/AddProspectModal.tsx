@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,12 @@ import {
 } from "@tevero/ui";
 import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { nanoid } from "nanoid";
 import { useProspectWizardStore } from "@/stores/prospect-wizard-store";
 import { WebsiteInputForm } from "./WebsiteInputForm";
 import { WebsiteContextForm } from "./WebsiteContextForm";
 import { ConversationInputForm } from "./ConversationInputForm";
+import { AnalysisProgress } from "./AnalysisProgress";
 
 interface AddProspectModalProps {
   trigger?: React.ReactNode;
@@ -40,14 +42,19 @@ export function AddProspectModal({
     error,
     open,
     close,
+    setStep,
     setMode,
     setError,
+    setSubmitting,
     reset,
   } = useProspectWizardStore();
+
+  const [progressId, setProgressId] = useState<string | null>(null);
 
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
+      setProgressId(null);
       reset();
     }
   }, [isOpen, reset]);
@@ -83,10 +90,22 @@ export function AddProspectModal({
     }
 
     setError(null);
+    setSubmitting(true);
+
+    // Generate a temporary ID for progress tracking
+    const tempProgressId = nanoid();
+    setProgressId(tempProgressId);
+    setStep("progress");
+
     // TODO: Plan 56-02 will implement the extraction action
-    // For now, just close the modal (temporary until AI integration)
-    close();
-    onSuccess?.();
+    // For now, simulate progress then close (temporary until AI integration)
+    // The progress display will run via SSE while we wait
+    setTimeout(() => {
+      setSubmitting(false);
+      setProgressId(null);
+      close();
+      onSuccess?.();
+    }, 6000); // Matches simulated SSE timing
   };
 
   const isValid = (): boolean => {
@@ -171,7 +190,25 @@ export function AddProspectModal({
           </div>
         )}
 
-        <DialogFooter>
+        {step === "progress" && (
+          <div className="py-[var(--space-6)]">
+            <AnalysisProgress
+              prospectId={progressId || undefined}
+              onComplete={() => {
+                // Progress display only - extraction handled by action
+              }}
+              onError={(errorMsg) => {
+                setError(errorMsg);
+                setStep("input");
+                setProgressId(null);
+                setSubmitting(false);
+              }}
+            />
+          </div>
+        )}
+
+        {step !== "confirmation" && step !== "progress" && (
+          <DialogFooter>
           <Button variant="outline" onClick={close} disabled={isSubmitting}>
             {t("cancel")}
           </Button>
@@ -180,6 +217,7 @@ export function AddProspectModal({
             {t("analyze")}
           </Button>
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

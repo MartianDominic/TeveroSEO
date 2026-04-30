@@ -142,7 +142,21 @@
       "errors": {
         "domainRequired": "Website domain is required",
         "invalidDomain": "Invalid domain format. Use format: example.com",
-        "conversationTooShort": "Conversation must be at least 50 characters"
+        "conversationTooShort": "Conversation must be at least 50 characters",
+        "extractionFailed": "Failed to analyze content. Please try again."
+      },
+      "progress": {
+        "title": "Analyzing",
+        "stages": {
+          "connecting": "Connecting",
+          "crawling": "Crawling",
+          "extracting": "Extracting",
+          "analyzing": "Analyzing",
+          "complete": "Complete",
+          "error": "Error"
+        },
+        "connected": "Connected",
+        "disconnected": "Reconnecting..."
       }
     }
   },
