@@ -1,105 +1,162 @@
 /**
- * ChecklistCompletionService - Event-driven checklist item completion.
- * Phase 49-51: Onboarding & Agency Dashboard
+ * ChecklistCompletionService
+ * Phase 51-02: Onboarding Checklist Completion
  *
- * Handles automatic checklist item completion when OAuth succeeds or system events fire.
- * Implements SC-03 (auto-complete items via OAuth and system events).
+ * Handles completing checklist items manually or via auto-complete events.
+ * Automatically triggers conversion check after each completion.
  */
-import { nanoid } from "nanoid";
 import { ChecklistRepository } from "../../contracts/repositories/ChecklistRepository";
-import { ActivityRepository } from "../../contracts/repositories/ActivityRepository";
+import { ConversionService, type ConversionSummary } from "./ConversionService";
+import { AppError } from "@/server/lib/errors";
+import { createLogger } from "@/server/lib/logger";
 import type { OnboardingChecklistSelect } from "@/db/onboarding-schema";
 
-/**
- * Supported auto-complete event types.
- * These events trigger automatic checklist item completion.
- */
-export type AutoCompleteEvent =
-  | "gsc_connected"
-  | "ga_connected"
-  | "cms_connected"
-  | "gbp_connected"
-  | "kickoff_completed";
+const log = createLogger({ module: "ChecklistCompletionService" });
 
 /**
- * Handle an auto-complete event by completing matching checklist items.
- *
- * Idempotent: If item is already completed, silently returns without error.
- * Logs activity when completion occurs.
- *
- * @param workspaceId - Workspace ID for activity logging
- * @param clientId - Client ID to find checklist
- * @param event - Event type that triggered completion
+ * Result of completing a checklist item.
+ * Includes updated checklist and optional conversion summary if triggered.
  */
-export async function handleAutoCompleteEvent(
-  workspaceId: string,
-  clientId: string,
-  event: AutoCompleteEvent
-): Promise<void> {
-  // Get checklist for client
-  const checklist = await ChecklistRepository.getChecklistByClient(clientId);
-  if (!checklist) {
-    // No checklist exists - early return without error
-    return;
-  }
-
-  // Find item with matching autoCompleteEvent that is not already completed
-  const item = checklist.items.find(
-    (i) => i.autoCompleteEvent === event && !i.completedAt
-  );
-
-  if (!item) {
-    // No matching incomplete item - idempotent return
-    return;
-  }
-
-  // Complete the item
-  await ChecklistRepository.completeChecklistItem(
-    checklist.id,
-    item.id,
-    "system"
-  );
-
-  // Log activity
-  await ActivityRepository.insertActivity({
-    id: nanoid(),
-    workspaceId,
-    entityType: "onboarding",
-    entityId: checklist.id,
-    activityType: "item_completed",
-    activityData: {
-      itemId: item.id,
-      event,
-      automatic: true,
-    },
-    actorId: null, // System action, no actor
-  });
+export interface CompleteItemResult {
+  checklist: OnboardingChecklistSelect;
+  conversionSummary: ConversionSummary | null;
 }
 
 /**
- * Manually complete a checklist item.
+ * Complete a checklist item manually.
+ * Called when user clicks the complete checkbox in UI.
  *
- * Completes item regardless of autoCompleteEvent field.
- * For items that require manual checkbox completion.
- *
- * @param checklistId - Checklist ID
- * @param itemId - Item ID within checklist
- * @param completedBy - User ID who completed
- * @returns Updated checklist or undefined if not found
+ * @param checklistId - ID of the checklist
+ * @param itemId - ID of the item to complete
+ * @param completedBy - User ID who completed the item
+ * @returns Updated checklist and conversion summary if triggered
+ * @throws AppError if checklist or item not found
  */
 export async function completeItemManually(
   checklistId: string,
   itemId: string,
   completedBy: string
-): Promise<OnboardingChecklistSelect | undefined> {
-  return ChecklistRepository.completeChecklistItem(
+): Promise<CompleteItemResult> {
+  const checklist = await ChecklistRepository.completeChecklistItem(
     checklistId,
     itemId,
     completedBy
   );
+
+  if (!checklist) {
+    throw new AppError("NOT_FOUND", "Checklist or item not found");
+  }
+
+  log.info("Checklist item completed manually", {
+    checklistId,
+    itemId,
+    completedBy,
+    completedCount: checklist.completedCount,
+    totalCount: checklist.totalCount,
+  });
+
+  // Check if this completion triggers conversion
+  const conversionSummary = await ConversionService.checkAndTriggerConversion(
+    checklistId,
+    checklist.workspaceId
+  );
+
+  if (conversionSummary) {
+    log.info("Conversion triggered by manual completion", {
+      checklistId,
+      clientId: conversionSummary.clientId,
+    });
+  }
+
+  return { checklist, conversionSummary };
+}
+
+/**
+ * Handle auto-complete event from external trigger (e.g., OAuth callback).
+ * Called when a system event should mark a checklist item complete.
+ *
+ * @param checklistId - ID of the checklist
+ * @param eventName - The auto-complete event name (e.g., "gsc_connected")
+ * @returns Updated checklist and conversion summary if triggered, null if no matching item
+ */
+export async function handleAutoCompleteEvent(
+  checklistId: string,
+  eventName: string
+): Promise<CompleteItemResult | null> {
+  const checklist = await ChecklistRepository.getChecklistById(checklistId);
+
+  if (!checklist) {
+    log.warn("Checklist not found for auto-complete event", {
+      checklistId,
+      eventName,
+    });
+    return null;
+  }
+
+  // Find item with matching autoCompleteEvent
+  const item = checklist.items.find(
+    (i) => i.autoCompleteEvent === eventName && !i.completedAt
+  );
+
+  if (!item) {
+    log.info("No matching incomplete item for auto-complete event", {
+      checklistId,
+      eventName,
+    });
+    return null;
+  }
+
+  // Complete the item
+  const updatedChecklist = await ChecklistRepository.completeChecklistItem(
+    checklistId,
+    item.id,
+    "system"
+  );
+
+  if (!updatedChecklist) {
+    throw new AppError("INTERNAL_ERROR", "Failed to complete checklist item");
+  }
+
+  log.info("Checklist item auto-completed", {
+    checklistId,
+    itemId: item.id,
+    eventName,
+    completedCount: updatedChecklist.completedCount,
+    totalCount: updatedChecklist.totalCount,
+  });
+
+  // Check if this completion triggers conversion
+  const conversionSummary = await ConversionService.checkAndTriggerConversion(
+    checklistId,
+    updatedChecklist.workspaceId
+  );
+
+  if (conversionSummary) {
+    log.info("Conversion triggered by auto-complete event", {
+      checklistId,
+      eventName,
+      clientId: conversionSummary.clientId,
+    });
+  }
+
+  return { checklist: updatedChecklist, conversionSummary };
+}
+
+/**
+ * Get checklist completion progress for a client.
+ *
+ * @param clientId - Client ID to get checklist for
+ * @returns Checklist with completion status, null if not found
+ */
+export async function getChecklistProgress(
+  clientId: string
+): Promise<OnboardingChecklistSelect | null> {
+  const checklist = await ChecklistRepository.getChecklistByClient(clientId);
+  return checklist ?? null;
 }
 
 export const ChecklistCompletionService = {
-  handleAutoCompleteEvent,
   completeItemManually,
+  handleAutoCompleteEvent,
+  getChecklistProgress,
 };
