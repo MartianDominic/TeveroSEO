@@ -26,6 +26,20 @@ export interface ContractSummary {
 }
 
 /**
+ * Invoice summary for payment tracking.
+ */
+export interface InvoiceSummary {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  totalCents: number;
+  currency: string;
+  stripePaymentUrl: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+/**
  * Response structure from open-seo contracts API.
  */
 interface ContractsApiResponse {
@@ -72,6 +86,48 @@ export async function getContracts(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch contracts",
+    };
+  }
+}
+
+/**
+ * Get invoice for a contract.
+ */
+export async function getInvoiceByContract(
+  contractId: string
+): Promise<ActionResult<InvoiceSummary | null>> {
+  const auth = await requireActionAuth();
+
+  // Validate contract ID format
+  const validatedContractId = contractIdSchema.safeParse(contractId);
+  if (!validatedContractId.success) {
+    return { success: false, error: validatedContractId.error.issues[0]?.message || "Invalid contract ID" };
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.set("contractId", validatedContractId.data);
+
+    const response = await getOpenSeo<{ success: boolean; data?: InvoiceSummary[]; error?: string }>(
+      `/api/invoices?${params.toString()}`
+    );
+
+    if (!response.success) {
+      return { success: false, error: response.error || "Failed to fetch invoice" };
+    }
+
+    // Return first invoice or null
+    const invoice = response.data?.[0] || null;
+
+    return {
+      success: true,
+      data: invoice,
+    };
+  } catch (error) {
+    console.error("Failed to fetch invoice:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch invoice",
     };
   }
 }
