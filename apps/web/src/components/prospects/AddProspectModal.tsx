@@ -188,7 +188,7 @@ export function AddProspectModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => (open ? open() : close())}>
+    <Dialog open={isOpen} onOpenChange={(isDialogOpen) => (isDialogOpen ? open() : close())}>
       {trigger && (
         <div
           onClick={open}
