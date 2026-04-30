@@ -1,6 +1,7 @@
 /**
  * Invoice lifecycle management service.
  * Phase 48: Contract & Payment
+ * Phase 55-05: Added localization support
  *
  * Per D-06: Invoice created after contract signed.
  * Per D-07: Payment webhook updates invoice and contract status.
@@ -15,11 +16,67 @@ import { ActivityRepository } from "../../contracts/repositories/ActivityReposit
 import { StripeService } from "./StripeService";
 import { PaymentProviderFactory } from "../../payments/PaymentProviderFactory";
 import type { PaymentProviderType } from "../../payments/types";
+import { getLanguageResolutionService } from "@/server/services/LanguageResolutionService";
+import { getTranslationService } from "@/server/services/translation/TranslationService";
+import type { SupportedLocale } from "@/server/services/translation/types";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import { nanoid } from "nanoid";
 
 const log = createLogger({ module: "InvoiceService" });
+
+/**
+ * Invoice labels for localization.
+ * Phase 55-05: Multi-language invoice support.
+ */
+export const INVOICE_LABELS = {
+  en: {
+    invoice: "Invoice",
+    invoiceNumber: "Invoice Number",
+    date: "Date",
+    dueDate: "Due Date",
+    billTo: "Bill To",
+    description: "Description",
+    quantity: "Quantity",
+    unitPrice: "Unit Price",
+    amount: "Amount",
+    subtotal: "Subtotal",
+    tax: "VAT",
+    total: "Total",
+    paymentTerms: "Payment Terms",
+    bankDetails: "Bank Details",
+    thankYou: "Thank you for your business!",
+  },
+  lt: {
+    invoice: "Saskaita faktura",
+    invoiceNumber: "Saskaitos numeris",
+    date: "Data",
+    dueDate: "Mokejimo terminas",
+    billTo: "Moketojas",
+    description: "Aprasymas",
+    quantity: "Kiekis",
+    unitPrice: "Vieneto kaina",
+    amount: "Suma",
+    subtotal: "Tarpine suma",
+    tax: "PVM",
+    total: "Is viso",
+    paymentTerms: "Mokejimo salygos",
+    bankDetails: "Banko rekvizitai",
+    thankYou: "Dekojame uz bendradarbiavima!",
+  },
+} as const;
+
+/**
+ * Invoice labels type.
+ */
+export type InvoiceLabels = typeof INVOICE_LABELS.en;
+
+/**
+ * Get invoice labels for a language.
+ */
+export function getInvoiceLabels(language: SupportedLocale): InvoiceLabels {
+  return INVOICE_LABELS[language] ?? INVOICE_LABELS.en;
+}
 
 /**
  * Create invoice from signed contract.
