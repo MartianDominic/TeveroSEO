@@ -306,12 +306,14 @@ export class TranslationService {
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> {
-    const result = await this.model.generateContent([
-      { role: "user", parts: [{ text: systemPrompt }] },
-      { role: "model", parts: [{ text: "Understood. I will translate English text to Lithuanian following these rules." }] },
-      { role: "user", parts: [{ text: userPrompt }] },
-    ]);
+    const chat = this.model.startChat({
+      history: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "model", parts: [{ text: "Understood. I will translate English text to Lithuanian following these rules." }] },
+      ],
+    });
 
+    const result = await chat.sendMessage(userPrompt);
     return result.response.text().trim();
   }
 
