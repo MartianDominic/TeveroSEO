@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Agency Pipeline & Design System
-current_plan: 46-02
-status: executing
-last_updated: "2026-04-30T10:12:00Z"
-last_activity: 2026-04-30 -- Phase 46-47 Plan 02 complete (public proposal page, view tracking, accept/reject)
+current_plan: 47-01-PLAN.md
+status: checkpoint
+last_updated: "2026-04-30T10:19:00Z"
+last_activity: 2026-04-30 -- Plan 47-01 tasks 1-3 complete (AI recommendations panel, v6 design compliance)
 progress:
   total_phases: 52
   completed_phases: 37
@@ -28,11 +28,11 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 46-47 (Proposal System) — IN PROGRESS
-Plan: 2/3
-Current Plan: 46-02-PLAN.md
-Plans: 2/3 complete
-Status: Executing Phase 46-47
-Last activity: 2026-04-30 -- Plan 46-02 complete (public proposal page, view tracking, accept/reject)
+Plan: 3/3
+Current Plan: 47-01-PLAN.md
+Plans: 3/3 complete (pending human verification checkpoint)
+Status: Checkpoint (human-verify)
+Last activity: 2026-04-30 -- Plan 47-01 tasks 1-3 complete (AI recommendations panel, v6 design compliance)
 
 ### Phase 41 Focus
 
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **47-01:** Fallback AI recommendations when backend endpoint not ready; auto-set awareness only when at default; Lithuanian UI labels for proposal builder
 - **46-02:** Add 'proposal' to ENTITY_TYPES; fire-and-forget beacon tracking; ProposalStatus from proposal-schema.ts for type safety
 - **46-01:** AUTH_CONFIG_MISSING error code for missing RESEND_API_KEY; Rate limit 20 sends/hr per user; STATUS_MAP for 9 proposal statuses to 4 Badge variants
 - **44-05:** SVG arc gauge uses circumference-based dasharray; SeverityDots shows numeral on overflow; ConnectionStatusCard detects 7-day token expiration; KeyboardShortcutHint maps keys to symbols; IntentBadge uses all-small-caps
