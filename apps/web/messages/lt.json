@@ -174,6 +174,30 @@
       "negotiation": "Derybos",
       "won": "Laimetas",
       "lost": "Prarastas"
+    },
+    "wizard": {
+      "title": "Prideti nauja prospekta",
+      "description": "Iveskite prospekto duomenis arba iklijuokite pokalbio teksta AI analizei.",
+      "modes": {
+        "website": "Svetaine",
+        "websiteWithContext": "Svetaine + Kontekstas",
+        "conversation": "Pokalbis"
+      },
+      "domain": "Svetaines domenas",
+      "domainHint": "Iveskite domena be https:// ar www.",
+      "contextNotes": "Konteksto pastabos",
+      "contextNotesPlaceholder": "Iklijuokite skambuciu pastabas, el. laisku gijas ar pardavimu konteksta cia...",
+      "contextNotesHint": "AI naudos si konteksta kartu su svetaines turiniu geresnei analizei.",
+      "conversationText": "Pokalbio tekstas",
+      "conversationTextPlaceholder": "Iklijuokite visa pardavimu skambucio teksta, el. laisku gija ar susitikimo pastabas cia...",
+      "minCharacters": "Minimalus {count} simboliu kiekis",
+      "analyze": "Analizuoti",
+      "cancel": "Atsaukti",
+      "errors": {
+        "domainRequired": "Svetaines domenas yra privalomas",
+        "invalidDomain": "Neteisingas domeno formatas. Naudokite formata: example.com",
+        "conversationTooShort": "Pokalbis turi buti bent 50 simboliu"
+      }
     }
   },
   "clients": {

@@ -1,0 +1,186 @@
+"use client";
+
+import { useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Button,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@tevero/ui";
+import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useProspectWizardStore } from "@/stores/prospect-wizard-store";
+import { WebsiteInputForm } from "./WebsiteInputForm";
+import { WebsiteContextForm } from "./WebsiteContextForm";
+import { ConversationInputForm } from "./ConversationInputForm";
+
+interface AddProspectModalProps {
+  trigger?: React.ReactNode;
+  onSuccess?: () => void;
+}
+
+export function AddProspectModal({
+  trigger,
+  onSuccess,
+}: AddProspectModalProps) {
+  const t = useTranslations("prospects.wizard");
+  const {
+    isOpen,
+    step,
+    mode,
+    formData,
+    isSubmitting,
+    error,
+    open,
+    close,
+    setMode,
+    setError,
+    reset,
+  } = useProspectWizardStore();
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen, reset]);
+
+  const handleAnalyze = async () => {
+    // Validate required fields based on mode
+    if (mode === "website" || mode === "website_with_context") {
+      if (!formData.domain?.trim()) {
+        setError(t("errors.domainRequired"));
+        return;
+      }
+      // Basic domain format validation
+      const domainRegex =
+        /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+      const cleanDomain = formData.domain
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .split("/")[0];
+      if (!domainRegex.test(cleanDomain)) {
+        setError(t("errors.invalidDomain"));
+        return;
+      }
+    }
+
+    if (mode === "conversation") {
+      if (
+        !formData.conversationText ||
+        formData.conversationText.length < 50
+      ) {
+        setError(t("errors.conversationTooShort"));
+        return;
+      }
+    }
+
+    setError(null);
+    // TODO: Plan 56-02 will implement the extraction action
+    // For now, just close the modal (temporary until AI integration)
+    close();
+    onSuccess?.();
+  };
+
+  const isValid = (): boolean => {
+    if (mode === "website" || mode === "website_with_context") {
+      return Boolean(formData.domain?.trim());
+    }
+    if (mode === "conversation") {
+      return Boolean(
+        formData.conversationText && formData.conversationText.length >= 50
+      );
+    }
+    return false;
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => (open ? open() : close())}>
+      {trigger && (
+        <div
+          onClick={open}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && open()}
+        >
+          {trigger}
+        </div>
+      )}
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
+        </DialogHeader>
+
+        {step === "input" && (
+          <div className="py-[var(--space-4)]">
+            <Tabs
+              value={mode}
+              onValueChange={(v) => setMode(v as typeof mode)}
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="website" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t("modes.website")}</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="website_with_context"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {t("modes.websiteWithContext")}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="conversation"
+                  className="flex items-center gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {t("modes.conversation")}
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-[var(--space-4)]">
+                <TabsContent value="website">
+                  <WebsiteInputForm />
+                </TabsContent>
+                <TabsContent value="website_with_context">
+                  <WebsiteContextForm />
+                </TabsContent>
+                <TabsContent value="conversation">
+                  <ConversationInputForm />
+                </TabsContent>
+              </div>
+            </Tabs>
+
+            {error && (
+              <div className="mt-[var(--space-4)] p-[var(--space-3)] rounded-[var(--radius-input)] bg-error/10 text-error text-[length:var(--type-body)]">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={close} disabled={isSubmitting}>
+            {t("cancel")}
+          </Button>
+          <Button onClick={handleAnalyze} disabled={isSubmitting || !isValid()}>
+            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {t("analyze")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

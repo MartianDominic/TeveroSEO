@@ -120,6 +120,30 @@
       "negotiation": "Negotiation",
       "won": "Won",
       "lost": "Lost"
+    },
+    "wizard": {
+      "title": "Add New Prospect",
+      "description": "Enter prospect details or paste a conversation transcript for AI analysis.",
+      "modes": {
+        "website": "Website",
+        "websiteWithContext": "Website + Context",
+        "conversation": "Conversation"
+      },
+      "domain": "Website Domain",
+      "domainHint": "Enter domain without https:// or www.",
+      "contextNotes": "Context Notes",
+      "contextNotesPlaceholder": "Paste call notes, email threads, or sales context here...",
+      "contextNotesHint": "AI will use this context along with website content for better analysis.",
+      "conversationText": "Conversation Transcript",
+      "conversationTextPlaceholder": "Paste the full sales call transcript, email thread, or meeting notes here...",
+      "minCharacters": "Minimum {count} characters required",
+      "analyze": "Analyze",
+      "cancel": "Cancel",
+      "errors": {
+        "domainRequired": "Website domain is required",
+        "invalidDomain": "Invalid domain format. Use format: example.com",
+        "conversationTooShort": "Conversation must be at least 50 characters"
+      }
     }
   },
   "clients": {
