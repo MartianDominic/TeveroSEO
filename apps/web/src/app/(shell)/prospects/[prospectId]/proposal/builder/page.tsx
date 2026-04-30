@@ -21,6 +21,7 @@ import {
 import { Loader2, FileText, Eye, ArrowLeft, ArrowRight } from "lucide-react";
 import { ScenarioSelector } from "./components/ScenarioSelector";
 import { SectionEditor } from "./components/SectionEditor";
+import { RecommendationsPanel } from "./components/RecommendationsPanel";
 import {
   generateProposal,
   type ProposalScenario,
@@ -136,13 +137,27 @@ export default function ProposalBuilderPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold mb-2">
+              <h2
+                className="text-lg font-semibold mb-2"
+                style={{ color: "#14141a" }}
+              >
                 Customize Content
               </h2>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm mb-4" style={{ color: "#54545a" }}>
                 Adjust the awareness level and agency positioning.
               </p>
             </div>
+
+            {/* AI Recommendations Panel - shows detected awareness */}
+            <RecommendationsPanel
+              prospectId={prospectId}
+              onAwarenessDetected={(level) => {
+                // Auto-set awareness level from AI detection if still at default
+                if (awarenessLevel === "problem-aware") {
+                  setAwarenessLevel(level);
+                }
+              }}
+            />
 
             <Card>
               <CardHeader>
@@ -392,8 +407,10 @@ export default function ProposalBuilderPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Prospect
         </Button>
-        <h1 className="text-2xl font-bold">Proposal Builder</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold" style={{ color: "#14141a" }}>
+          Proposal Builder
+        </h1>
+        <p style={{ color: "#54545a" }}>
           Generate an AI-powered proposal with copywriting frameworks
         </p>
       </div>
