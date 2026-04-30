@@ -1652,11 +1652,10 @@ Transform the platform into a complete agency CRM with v6 design system complian
   7. Deferred 43-06 UI integrated: AI copywriting, recommendations display
   8. All UI follows v6 design system
 **Estimated effort**: 24 hours
-**Plans**: 4 plans
-  - [ ] 46-01-PLAN.md — Proposal Backend Wire-up: server actions connecting to open-seo-main services (Wave 1)
-  - [ ] 46-02-PLAN.md — Send Flow + Client Page: email sending, public view page, token auth (Wave 2)
-  - [ ] 47-01-PLAN.md — Accept/Reject + Activity: state transitions, pipeline_activities logging (Wave 3)
-  - [ ] 47-02-PLAN.md — AI Copywriting Integration: 43-06 deferred UI, recommendations display, v6 compliance (Wave 4)
+**Plans**: 3 plans
+  - [ ] 46-01-PLAN.md — Email + Proposal List: Resend integration, proposal table UI (Wave 1)
+  - [ ] 46-02-PLAN.md — Public View + Accept/Reject: client-facing page, view tracking, state transitions (Wave 2)
+  - [ ] 47-01-PLAN.md — AI Recommendations + v6: deferred 43-06 UI, design compliance (Wave 3)
 
 ---
 
