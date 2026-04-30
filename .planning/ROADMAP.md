@@ -1745,10 +1745,10 @@ Transform the platform into a complete agency CRM with v6 design system complian
   8. Preview before generation
 **Estimated effort**: 24 hours
 **Plans**: 4 plans
-  - [ ] 53-01-PLAN.md — Report Builder: section selection, preview, data aggregation (Wave 1)
-  - [ ] 53-02-PLAN.md — PDF Generation: Puppeteer rendering, chart snapshots, white-label (Wave 2)
-  - [ ] 53-03-PLAN.md — Scheduling & Delivery: cron jobs, email with attachment, history tracking (Wave 3)
-  - [ ] 53-04-PLAN.md — Templates & Polish: report templates, UI refinements, v6 compliance (Wave 4)
+  - [x] 53-01-PLAN.md — Report Builder: section selection, preview, data aggregation (Wave 1)
+  - [x] 53-02-PLAN.md — PDF Generation: Puppeteer rendering, chart snapshots, white-label (Wave 2)
+  - [x] 53-03-PLAN.md — Scheduling & Delivery: cron jobs, email with attachment, history tracking (Wave 3)
+  - [x] 53-04-PLAN.md — Templates & Polish: report templates, UI refinements, v6 compliance (Wave 4)
 
 ---
 
