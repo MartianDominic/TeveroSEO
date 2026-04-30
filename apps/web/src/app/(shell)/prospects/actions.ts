@@ -516,3 +516,60 @@ export async function extractFromConversationAction(
     };
   }
 }
+
+// Confirm and create prospect schemas (Phase 56-03)
+const confirmAndCreateSchema = z.object({
+  domain: z.string().optional(),
+  inputMode: z.enum(["website", "website_with_context", "conversation"]),
+  rawInput: z.string().max(50000).optional(),
+  confirmedData: z.object({
+    businessName: z.string().optional(),
+    industry: z.string().optional(),
+    services: z.array(z.string()).optional(),
+    targetAudience: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    location: z.string().optional(),
+    confidence: z.number().min(0).max(100),
+  }),
+});
+
+export interface ConfirmResult {
+  prospectId: string;
+  domain: string;
+}
+
+/**
+ * Confirm extraction and create prospect.
+ * Phase 56: Prospect Input Excellence
+ */
+export async function confirmAndCreateProspectAction(
+  data: z.infer<typeof confirmAndCreateSchema>
+): Promise<ActionResult<ConfirmResult>> {
+  await requireActionAuth();
+
+  // Validate input
+  const validated = confirmAndCreateSchema.safeParse(data);
+  if (!validated.success) {
+    return { success: false, error: validated.error.issues[0]?.message || "Invalid input" };
+  }
+
+  try {
+    const result = await postOpenSeo<{ success: boolean; data: ConfirmResult; error?: string }>(
+      "/api/prospects/confirm",
+      validated.data
+    );
+
+    if (!result.success) {
+      return { success: false, error: result.error || "Failed to create prospect" };
+    }
+
+    revalidatePath("/prospects");
+    return { success: true, data: result.data };
+  } catch (error) {
+    logError("confirmAndCreateProspectAction", error, { inputMode: data.inputMode });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
+}

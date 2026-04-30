@@ -142,7 +142,34 @@
       "errors": {
         "domainRequired": "Website domain is required",
         "invalidDomain": "Invalid domain format. Use format: example.com",
-        "conversationTooShort": "Conversation must be at least 50 characters"
+        "conversationTooShort": "Conversation must be at least 50 characters",
+        "extractionFailed": "Failed to extract information. Please try again.",
+        "createFailed": "Failed to create prospect. Please try again."
+      },
+      "confirmation": {
+        "title": "Review Extracted Information",
+        "confidenceLabel": "AI Confidence",
+        "lowConfidenceWarning": "Low confidence extraction. Please review and correct the information below.",
+        "businessName": "Business Name",
+        "businessNamePlaceholder": "Enter business name",
+        "industry": "Industry",
+        "industryPlaceholder": "Select industry",
+        "services": "Services",
+        "servicesPlaceholder": "Strategy, Operations, HR",
+        "servicesHint": "Separate multiple services with commas",
+        "targetAudience": "Target Audience",
+        "targetAudiencePlaceholder": "e.g., SMBs, Enterprise, B2C consumers",
+        "location": "Location",
+        "locationPlaceholder": "e.g., Chicago, IL",
+        "keywords": "Suggested Keywords",
+        "reanalyze": "Re-analyze",
+        "confirmAndContinue": "Confirm & Continue"
+      },
+      "keywords": {
+        "add": "Add",
+        "addPlaceholder": "Add keyword...",
+        "remove": "Remove {keyword}",
+        "selected": "{count} of {total} keywords selected"
       }
     }
   },
