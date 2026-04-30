@@ -69,3 +69,6 @@ export * from "./pipeline-config-schema";
 
 // Tasks schema (Phase 49-51)
 export * from "./tasks-schema";
+
+// Report templates schema (Phase 53)
+export * from "./report-template-schema";
