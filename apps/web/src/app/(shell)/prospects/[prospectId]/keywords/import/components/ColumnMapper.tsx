@@ -51,14 +51,14 @@ export function ColumnMapper({ mappings, onChange }: ColumnMapperProps) {
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 0.9) {
       return (
-        <Badge variant="default" className="ml-2 text-xs">
+        <Badge className="ml-2 text-[12px] bg-success-soft text-success">
           Auto
         </Badge>
       );
     }
     if (confidence >= 0.7) {
       return (
-        <Badge variant="secondary" className="ml-2 text-xs">
+        <Badge className="ml-2 text-[12px] bg-info-soft text-info">
           Likely
         </Badge>
       );
@@ -67,6 +67,7 @@ export function ColumnMapper({ mappings, onChange }: ColumnMapperProps) {
   };
 
   return (
+    <div className="rounded-[var(--radius-card)] shadow-card bg-surface overflow-hidden">
     <Table>
       <TableHeader>
         <TableRow>
@@ -101,12 +102,13 @@ export function ColumnMapper({ mappings, onChange }: ColumnMapperProps) {
                 </SelectContent>
               </Select>
             </TableCell>
-            <TableCell className="text-muted-foreground text-sm truncate max-w-[200px]">
+            <TableCell className="text-text-3 text-[12px] truncate max-w-[200px]">
               {mapping.sampleValue}
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }
