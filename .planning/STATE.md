@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-current_plan: 3
-status: executing
-last_updated: "2026-04-30T15:45:29Z"
-last_activity: 2026-04-30 -- Phase 52 Plan 02 completed (v6 UI compliance for scrape-config)
+current_plan: 1
+status: planning
+last_updated: "2026-04-30T15:54:09Z"
+last_activity: 2026-04-30 -- Phase 52 complete (v6 UI compliance 3/3 plans)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_plans: 59
+  completed_plans: 59
   percent: 100
 ---
 
@@ -27,12 +27,12 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 52 (v6 UI Compliance) — EXECUTING
+Phase: 52 (v6 UI Compliance) — COMPLETE
 Plan: 3 of 3
 Current Plan: 3
-Plans: 2/3 complete
-Status: Executing Phase 52
-Last activity: 2026-04-30 -- Phase 52 Plan 02 completed (v6 UI compliance for scrape-config)
+Plans: 3/3 complete
+Status: Phase 52 Complete
+Last activity: 2026-04-30 -- Phase 52 Plan 03 completed (v6 UI compliance for import/export + client keywords)
 
 ### Phase 41 Focus
 
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **52-03:** shadow-lift hover pattern for EntrySelector; bg-accent-soft for selected states; border-hairline-2 for dividers; text-accent for links
 - **52-02:** cn() utility for shadow-card merging; text-error over text-destructive for v6 semantic colors; bg-accent-soft text-accent-ink for primary badges; var(--radius-input) for nested panels
 - **52-01:** text-[12px] over text-xs for WCAG floor; remove dark mode variants (v6 tokens handle theming); bg-surface-2 for neutral ignore tier; var(--success/error/text-3) in chart components
 - **47-01:** Fallback AI recommendations when backend endpoint not ready; auto-set awareness only when at default; Lithuanian UI labels for proposal builder
@@ -224,7 +225,7 @@ None currently.
 | 46-47 | Proposal System | ✓ Complete |
 | 48 | Contract & Payment | ✓ Complete |
 | 49-51 | Onboarding & Dashboard | In Progress |
-| 52 | v6 UI Compliance | In Progress (1/3 plans) |
+| 52 | v6 UI Compliance | Complete (3/3 plans) |
 | 53 | Reports & PDF | Pending |
 
 ### Phase 45 Summary (2026-04-30)
