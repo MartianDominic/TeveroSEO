@@ -38,6 +38,11 @@ export const organization = pgTable(
     // Soft delete support - prevents catastrophic cascade deletes
     isArchived: boolean("is_archived").default(false).notNull(),
     archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
+    // Language settings (Phase 55-04)
+    defaultLanguage: text("default_language").default("en"),
+    supportedLanguages: text("supported_languages").array().default(["en"]),
+    country: text("country"), // ISO 3166-1 alpha-2 (LT, US, etc.)
+    formality: text("formality").default("formal"), // 'formal' | 'informal'
   },
   (table) => [
     uniqueIndex("organization_slug_uidx").on(table.slug),

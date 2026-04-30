@@ -81,6 +81,10 @@ export const clients = pgTable(
     // Target keywords imported from analysis
     targetKeywords: jsonb("target_keywords").$type<string[]>(),
 
+    // Language preferences (Phase 55-04) - null = inherit from workspace
+    preferredLanguage: text("preferred_language"),
+    country: text("country"), // ISO 3166-1 alpha-2
+
     // Standard timestamps
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
