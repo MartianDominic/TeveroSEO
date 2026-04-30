@@ -246,6 +246,18 @@ export async function handlePaymentSuccess(
   );
 
   log.info("Payment successful", { invoiceId: invoice.id, contractId: invoice.contractId });
+
+  // Trigger onboarding checklist creation (Payment before onboarding requirement)
+  if (invoice.contractId) {
+    try {
+      const { OnboardingService } = await import("../../onboarding/services/OnboardingService");
+      await OnboardingService.createFromContract(invoice.contractId, invoice.workspaceId);
+      log.info("Onboarding triggered", { contractId: invoice.contractId });
+    } catch (error) {
+      // Log but don't fail - onboarding can be created manually
+      log.error("Failed to create onboarding checklist", error instanceof Error ? error : new Error(String(error)));
+    }
+  }
 }
 
 export const InvoiceService = {
