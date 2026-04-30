@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: Agency Pipeline & Design System
 current_plan: 1
 status: planning
-last_updated: "2026-04-30T03:00:00.000Z"
-last_activity: 2026-04-30 -- Phase 44 COMPLETE (Component Library Foundation)
+last_updated: "2026-04-30T03:38:00.000Z"
+last_activity: 2026-04-30 -- Phase 45 COMPLETE (Data Foundation)
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 2
+  total_plans: 12
+  completed_plans: 12
   percent: 100
 ---
 
@@ -23,16 +23,16 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase 45 — Data Foundation
+**Current focus:** Phase 46-47 — Proposal System
 
 ## Current Position
 
-Phase: 43 (Prospect Keyword Pipeline) — COMPLETE
-Plan: 5/6 (1 deferred to P46-47)
+Phase: 45 (Data Foundation) — COMPLETE
+Plan: 4/4
 Current Plan: N/A
-Plans: 5/6 complete (43-06 deferred)
-Status: Phase 43 Complete
-Last activity: 2026-04-30 -- Phase 43 completed (43-05 AI Selector Discovery)
+Plans: 4/4 complete
+Status: Phase 45 Complete
+Last activity: 2026-04-30 -- Phase 45 completed (contracts, invoices, onboarding, activities schemas + repositories)
 
 ### Phase 41 Focus
 
@@ -201,14 +201,42 @@ None currently.
 **Phase 43 Status:** COMPLETE (5/6 plans done, 1 deferred)
 **Deferred:** 43-06 UI components require design-system-v6 foundation; backend services remain in plan scope for future execution.
 
+## v6.0 Phases Summary
+
+| Phase | Title | Status |
+|-------|-------|--------|
+| 44 | Component Library Foundation | ✓ Complete |
+| 45 | Data Foundation | ✓ Complete |
+| 46-47 | Proposal System | Pending |
+| 48 | Contract & Payment | Pending |
+| 49-51 | Onboarding & Dashboard | Pending |
+| 52 | v6 UI Compliance | Pending |
+| 53 | Reports & PDF | Pending |
+
+### Phase 45 Summary (2026-04-30)
+
+Database schemas and repository layer for agency pipeline:
+
+| Plan | Focus | Tests |
+|------|-------|-------|
+| 45-01 | Contract schema with state machine | 9 |
+| 45-02 | Invoice schema with Stripe/JSONB | 14 |
+| 45-03 | Onboarding + Activity schemas | 25 |
+| 45-04 | Repositories + Zod validation | 32 |
+
+Key deliverables:
+- 4 Drizzle schemas (contracts, invoices, onboarding_checklists, pipeline_activities)
+- 4 repository modules with namespace exports
+- 4 Zod validation schemas
+- State machine transitions with optimistic locking
+- 71+ tests passing
+
 ## Next Up
 
 **v6.0 Agency Pipeline & Design System** — Complete agency CRM with v6 design compliance, proposal-to-payment flows, and professional reporting.
 
-Current:
+Remaining:
 
-- Phase 44: Component Library Foundation — 73h (design tokens + 41 components)
-- Phase 45: Data Foundation — 12h (contracts, invoices, onboarding schemas)
 - Phase 46-47: Proposal System — 24h (lifecycle + 43-06 deferred UI)
 - Phase 48: Contract & Payment — 20h (e-signature + Stripe)
 - Phase 49-51: Onboarding & Dashboard — 32h (checklist + kanban + MRR)
