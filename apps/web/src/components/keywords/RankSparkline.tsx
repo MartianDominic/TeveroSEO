@@ -19,7 +19,7 @@ interface RankSparklineProps {
 export function RankSparkline({ data, onClick }: RankSparklineProps) {
   if (data.length === 0) {
     return (
-      <div className="w-24 h-8 flex items-center justify-center text-xs text-muted-foreground">
+      <div className="w-24 h-8 flex items-center justify-center text-[12px] text-text-3">
         No data
       </div>
     );
@@ -38,10 +38,10 @@ export function RankSparkline({ data, onClick }: RankSparklineProps) {
   const declined = lastPosition > firstPosition;
 
   const strokeColor = improved
-    ? "hsl(142.1 76.2% 36.3%)" // green-600
+    ? "var(--success)"
     : declined
-      ? "hsl(0 84.2% 60.2%)" // red-500
-      : "hsl(var(--muted-foreground))";
+      ? "var(--error)"
+      : "var(--text-3)";
 
   return (
     <div

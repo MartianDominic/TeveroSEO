@@ -59,7 +59,7 @@ export function RankHistoryChart({ data30, data90 }: RankHistoryChartProps) {
           Position: <span className="font-bold">{point.position}</span>
         </p>
         {point.url && (
-          <p className="text-xs text-muted-foreground truncate max-w-48">
+          <p className="text-[12px] text-text-3 truncate max-w-48">
             {point.url}
           </p>
         )}
@@ -68,7 +68,7 @@ export function RankHistoryChart({ data30, data90 }: RankHistoryChartProps) {
             {point.serpFeatures.map((feature) => (
               <span
                 key={feature}
-                className="text-xs bg-muted px-1.5 py-0.5 rounded"
+                className="text-[12px] bg-surface-2 px-1.5 py-0.5 rounded"
               >
                 {feature.replace(/_/g, " ")}
               </span>
@@ -134,12 +134,12 @@ export function RankHistoryChart({ data30, data90 }: RankHistoryChartProps) {
           {/* Reference lines for top 10 and top 3 */}
           <ReferenceLine
             y={10}
-            stroke="hsl(var(--muted))"
+            stroke="var(--text-3)"
             strokeDasharray="5 5"
           />
           <ReferenceLine
             y={3}
-            stroke="hsl(142.1 76.2% 36.3%)"
+            stroke="var(--success)"
             strokeDasharray="5 5"
           />
           <Line
@@ -153,13 +153,13 @@ export function RankHistoryChart({ data30, data90 }: RankHistoryChartProps) {
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="flex justify-center gap-4 mt-2 text-xs text-muted-foreground">
+      <div className="flex justify-center gap-4 mt-2 text-[12px] text-text-3">
         <span>
-          <span className="inline-block w-3 h-0.5 bg-green-500 mr-1 align-middle" />
+          <span className="inline-block w-3 h-0.5 bg-success mr-1 align-middle" />
           Top 3
         </span>
         <span>
-          <span className="inline-block w-3 h-0.5 bg-muted mr-1 align-middle" />
+          <span className="inline-block w-3 h-0.5 bg-text-3 mr-1 align-middle" />
           Top 10
         </span>
       </div>
