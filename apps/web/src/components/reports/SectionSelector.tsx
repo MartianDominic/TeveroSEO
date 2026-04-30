@@ -97,10 +97,10 @@ const SortableSectionItem: FC<SortableSectionItemProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg",
-        "border border-[var(--hairline)]",
-        "transition-shadow duration-200",
-        isDragging && "shadow-lg z-10",
+        "flex items-center gap-3 p-3 rounded-lg",
+        "bg-surface border border-hairline",
+        "hover:bg-surface-2 hover:shadow-sm transition-all",
+        isDragging && "shadow-md opacity-80 z-10",
         !isEnabled && "opacity-60"
       )}
     >
@@ -108,7 +108,7 @@ const SortableSectionItem: FC<SortableSectionItemProps> = ({
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab text-[var(--text-3)] hover:text-[var(--text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 rounded"
+        className="cursor-grab text-text-3 hover:text-text-2 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded"
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-5 w-5" />
@@ -121,19 +121,19 @@ const SortableSectionItem: FC<SortableSectionItemProps> = ({
         aria-label={`Include ${meta?.label ?? section.type} section`}
       />
 
-      <Icon className="h-5 w-5 text-[var(--accent)]" />
+      <Icon className="h-5 w-5 text-accent" />
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[var(--text-1)]">
+        <p className="text-sm font-medium text-text-1">
           {meta?.label ?? section.type}
         </p>
-        <p className="text-xs text-[var(--text-3)] truncate">
+        <p className="text-xs text-text-3 truncate">
           {meta?.description ?? ""}
         </p>
       </div>
 
       {meta?.required && (
-        <span className="text-xs text-[var(--text-3)] bg-[var(--surface-2)] px-2 py-0.5 rounded">
+        <span className="text-xs text-text-3 bg-surface-2 px-2 py-0.5 rounded-sm shrink-0">
           Required
         </span>
       )}
