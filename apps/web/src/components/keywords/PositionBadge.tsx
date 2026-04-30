@@ -37,8 +37,8 @@ export function PositionBadge({
       variant="outline"
       className={cn(
         "font-mono",
-        improved && "text-green-600 border-green-200 bg-green-50",
-        declined && "text-red-500 border-red-200 bg-red-50",
+        improved && "text-success border-accent-line bg-success-soft",
+        declined && "text-error border-error-soft bg-error-soft",
         className,
       )}
     >
@@ -46,13 +46,13 @@ export function PositionBadge({
       {improved && (
         <>
           <ArrowUp className="h-3 w-3 inline" />
-          <span className="text-xs ml-0.5">+{change}</span>
+          <span className="text-[12px] ml-0.5">+{change}</span>
         </>
       )}
       {declined && (
         <>
           <ArrowDown className="h-3 w-3 inline" />
-          <span className="text-xs ml-0.5">{change}</span>
+          <span className="text-[12px] ml-0.5">{change}</span>
         </>
       )}
       {!improved && !declined && change !== null && (

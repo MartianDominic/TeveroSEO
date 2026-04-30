@@ -34,12 +34,12 @@ export default function ProspectKeywordsError({
             We encountered an issue loading the keyword research data. Please try again.
           </p>
           {error.digest && (
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-muted-foreground text-[12px] mt-1">
               Error ID: {error.digest}
             </p>
           )}
           {process.env.NODE_ENV === "development" && (
-            <pre className="text-xs text-muted-foreground mt-2 overflow-auto p-2 bg-muted rounded text-left">
+            <pre className="text-[12px] text-muted-foreground mt-2 overflow-auto p-2 bg-muted rounded text-left">
               {error.message}
             </pre>
           )}
