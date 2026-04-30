@@ -21,6 +21,7 @@ import { organization } from "./user-schema";
  */
 export const ENTITY_TYPES = [
   "prospect",
+  "proposal",
   "contract",
   "invoice",
   "client",
