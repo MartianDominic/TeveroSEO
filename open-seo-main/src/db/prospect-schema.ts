@@ -181,6 +181,9 @@ export const prospects = pgTable(
     // FK constraint defined in migration 0036 (circular import prevention).
     // FK-03: SET NULL on delete preserves prospect history when client is removed.
     convertedClientId: uuid("converted_client_id"),
+    // Language preferences (Phase 55-04) - null = inherit from workspace
+    preferredLanguage: text("preferred_language"),
+    country: text("country"), // ISO 3166-1 alpha-2
     priorityScore: real("priority_score"), // 0-100, auto-computed after analysis (Phase 30.5-03)
     pipelineStage: text("pipeline_stage").notNull().default("new"), // Phase 30.5-04: Sales funnel tracking
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
