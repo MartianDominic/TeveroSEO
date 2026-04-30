@@ -27,8 +27,7 @@ const log = createLogger({ module: "api/contracts/send" });
  *   }
  * }
  */
-// @ts-expect-error Route type not yet in FileRoutesByPath
-export const Route = createFileRoute("/api/contracts/$contractId/send")({
+export const Route = createFileRoute("/api/contracts/$contractId/-send")({
   server: {
     handlers: {
       POST: async ({ request, params }: { request: Request; params: { contractId: string } }) => {

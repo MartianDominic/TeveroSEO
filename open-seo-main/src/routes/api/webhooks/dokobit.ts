@@ -21,7 +21,6 @@ const dokobitWebhookSchema = z.object({
   signer_name: z.string().optional(),
 });
 
-// @ts-expect-error Route type not yet in FileRoutesByPath
 export const Route = createFileRoute("/api/webhooks/dokobit")({
   server: {
     handlers: {

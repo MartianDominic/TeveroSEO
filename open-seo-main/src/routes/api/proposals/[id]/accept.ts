@@ -17,8 +17,7 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "api/proposals/accept" });
 
-// @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
-export const Route = createFileRoute("/api/proposals/$id/accept")({
+export const Route = createFileRoute("/api/proposals/id/accept")({
   server: {
     handlers: {
       POST: async ({ params }: { params: { id: string } }) => {

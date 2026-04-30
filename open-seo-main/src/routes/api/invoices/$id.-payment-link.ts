@@ -15,8 +15,7 @@ import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 const log = createLogger({ module: "api/invoices/payment-link" });
 
-// @ts-expect-error Route type not yet in FileRoutesByPath
-export const Route = createFileRoute("/api/invoices/$id/payment-link")({
+export const Route = createFileRoute("/api/invoices/$id/-payment-link")({
   server: {
     handlers: {
       GET: async ({ request, params }: { request: Request; params: { id: string } }) => {

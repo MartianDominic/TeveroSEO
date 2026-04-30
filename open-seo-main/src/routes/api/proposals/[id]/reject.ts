@@ -33,8 +33,7 @@ const RejectSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
-// @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
-export const Route = createFileRoute("/api/proposals/$id/reject")({
+export const Route = createFileRoute("/api/proposals/id/reject")({
   server: {
     handlers: {
       POST: async ({

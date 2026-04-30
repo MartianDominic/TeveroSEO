@@ -57,8 +57,7 @@ const SendProposalSchema = z.object({
  *   }
  * }
  */
-// @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
-export const Route = createFileRoute("/api/proposals/$id/send")({
+export const Route = createFileRoute("/api/proposals/id/send")({
   server: {
     handlers: {
       POST: async ({ request, params }: { request: Request; params: { id: string } }) => {

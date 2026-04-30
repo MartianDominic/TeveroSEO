@@ -28,7 +28,6 @@ const TrackSchema = z.object({
   ipAddress: z.string().optional(),
 });
 
-// @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
 export const Route = createFileRoute("/api/proposals/track")({
   server: {
     handlers: {
