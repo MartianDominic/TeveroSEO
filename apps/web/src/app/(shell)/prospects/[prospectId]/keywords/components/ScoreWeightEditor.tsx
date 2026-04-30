@@ -67,7 +67,7 @@ export function ScoreWeightEditor({
   }
 
   return (
-    <Card className="w-80">
+    <Card className="w-80 shadow-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           Score Weights
@@ -97,10 +97,10 @@ export function ScoreWeightEditor({
         ))}
 
         <div
-          className={`text-sm p-2 rounded ${
+          className={`text-[12px] p-2 rounded-[var(--radius-input)] ${
             isValid
-              ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
-              : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+              ? "bg-success-soft text-success"
+              : "bg-error-soft text-error"
           }`}
         >
           Total: {(total * 100).toFixed(0)}%{" "}
