@@ -40,6 +40,24 @@ export interface InvoiceSummary {
 }
 
 /**
+ * Contract detail with content, invoice, and activities.
+ */
+export interface ContractDetail extends ContractSummary {
+  content: {
+    sections: Array<{ title: string; body: string }>;
+    terms: string;
+    signatures: Array<{ role: string; name?: string }>;
+  };
+  invoice: InvoiceSummary | null;
+  activities: Array<{
+    id: string;
+    activityType: string;
+    activityData: Record<string, unknown>;
+    createdAt: string;
+  }>;
+}
+
+/**
  * Response structure from open-seo contracts API.
  */
 interface ContractsApiResponse {
@@ -128,6 +146,42 @@ export async function getInvoiceByContract(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch invoice",
+    };
+  }
+}
+
+/**
+ * Get contract detail with full lifecycle data.
+ */
+export async function getContractDetail(
+  contractId: string
+): Promise<ActionResult<ContractDetail>> {
+  const auth = await requireActionAuth();
+
+  // Validate contract ID format
+  const validatedContractId = contractIdSchema.safeParse(contractId);
+  if (!validatedContractId.success) {
+    return { success: false, error: validatedContractId.error.issues[0]?.message || "Invalid contract ID" };
+  }
+
+  try {
+    const response = await getOpenSeo<{ success: boolean; data?: ContractDetail; error?: string }>(
+      `/api/contracts/${validatedContractId.data}/status`
+    );
+
+    if (!response.success || !response.data) {
+      return { success: false, error: response.error || "Failed to fetch contract detail" };
+    }
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Failed to fetch contract detail:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch contract detail",
     };
   }
 }
