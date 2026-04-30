@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Agency Pipeline & Design System
-current_plan: 1
-status: planning
-last_updated: "2026-04-30T03:38:00.000Z"
-last_activity: 2026-04-30 -- Phase 45 COMPLETE (Data Foundation)
+current_plan: 46-01
+status: executing
+last_updated: "2026-04-30T10:03:00Z"
+last_activity: 2026-04-30 -- Phase 46-47 Plan 01 complete (EmailService, send endpoint, proposal list UI)
 progress:
-  total_phases: 10
-  completed_phases: 2
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 52
+  completed_phases: 37
+  total_plans: 179
+  completed_plans: 177
+  percent: 99
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 45 (Data Foundation) — COMPLETE
-Plan: 4/4
-Current Plan: N/A
-Plans: 4/4 complete
-Status: Phase 45 Complete
-Last activity: 2026-04-30 -- Phase 45 completed (contracts, invoices, onboarding, activities schemas + repositories)
+Phase: 46-47 (Proposal System) — IN PROGRESS
+Plan: 1/3
+Current Plan: 46-01-PLAN.md
+Plans: 1/3 complete
+Status: Executing Phase 46-47
+Last activity: 2026-04-30 -- Plan 46-01 complete (EmailService, send endpoint, proposal list UI)
 
 ### Phase 41 Focus
 
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **46-01:** AUTH_CONFIG_MISSING error code for missing RESEND_API_KEY; Rate limit 20 sends/hr per user; STATUS_MAP for 9 proposal statuses to 4 Badge variants
 - **44-05:** SVG arc gauge uses circumference-based dasharray; SeverityDots shows numeral on overflow; ConnectionStatusCard detects 7-day token expiration; KeyboardShortcutHint maps keys to symbols; IntentBadge uses all-small-caps
 - **44-04:** Use React.ElementType for polymorphic typography; TypographyCardTitle to avoid card.tsx conflict; inline SVG sparkline; NumDelta infers direction from value sign
 - **44-03:** Compound components pattern for Checklist/ChecklistItem and KanbanColumn/KanbanCard; KanbanColumn uses role="listbox" with KanbanCard role="option"; TodayFeedItem uses 44px fixed timestamp column
@@ -207,7 +208,7 @@ None currently.
 |-------|-------|--------|
 | 44 | Component Library Foundation | ✓ Complete |
 | 45 | Data Foundation | ✓ Complete |
-| 46-47 | Proposal System | Pending |
+| 46-47 | Proposal System | In Progress (1/3 plans) |
 | 48 | Contract & Payment | Pending |
 | 49-51 | Onboarding & Dashboard | Pending |
 | 52 | v6 UI Compliance | Pending |
@@ -225,6 +226,7 @@ Database schemas and repository layer for agency pipeline:
 | 45-04 | Repositories + Zod validation | 32 |
 
 Key deliverables:
+
 - 4 Drizzle schemas (contracts, invoices, onboarding_checklists, pipeline_activities)
 - 4 repository modules with namespace exports
 - 4 Zod validation schemas
