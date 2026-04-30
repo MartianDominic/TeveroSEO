@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 
 const geist = Geist({
@@ -27,10 +28,12 @@ export const metadata: Metadata = {
   description: "TeveroSEO unified platform",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+
   return (
     <ClerkProvider>
-      <html lang="en" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`}>
+      <html lang={locale} className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`}>
         <body className="min-h-screen bg-canvas text-text-2 antialiased font-sans">
           {children}
         </body>
