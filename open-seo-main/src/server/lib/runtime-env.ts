@@ -193,3 +193,13 @@ export function validateSiteEncryptionKey(): void {
 export const REQUIRED_ENV_CONNECTIONS = [
   "SITE_ENCRYPTION_KEY",
 ] as const;
+
+/**
+ * Environment variables for Dokobit e-signature integration.
+ * Optional at startup but required when using contract signing features.
+ */
+export const OPTIONAL_ENV_DOKOBIT = [
+  "DOKOBIT_ACCESS_TOKEN",
+  "DOKOBIT_API_URL",
+  "DOKOBIT_WEBHOOK_URL",
+] as const;
