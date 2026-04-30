@@ -224,7 +224,73 @@ async function sendForSigning(
   };
 }
 
+/**
+ * Handle Dokobit signing completion webhook.
+ * Per D-03: Webhook callback on completion.
+ * Per D-04: Store signed PDF in workspace storage.
+ */
+async function handleSigningComplete(
+  sessionId: string,
+  signerName: string,
+): Promise<ContractSelect> {
+  const { db } = await import("@/db");
+  const { contracts } = await import("@/db/contract-schema");
+  const { eq } = await import("drizzle-orm");
+  const { saveFile } = await import("@/server/lib/storage");
+
+  // Find contract by Dokobit session ID
+  const [contract] = await db
+    .select()
+    .from(contracts)
+    .where(eq(contracts.dokobitSessionId, sessionId))
+    .limit(1);
+
+  if (!contract) {
+    throw new AppError("NOT_FOUND", "Contract not found for session");
+  }
+
+  if (contract.status !== "sent") {
+    throw new AppError("CONFLICT", `Cannot sign contract in ${contract.status} status`);
+  }
+
+  // Download signed PDF from Dokobit
+  const signedDoc = await DokobitService.downloadSignedDocument(sessionId);
+
+  // Store signed PDF in workspace storage per D-04
+  const pdfPath = `contracts/${contract.workspaceId}/${contract.id}/signed.pdf`;
+  await saveFile(pdfPath, Buffer.from(signedDoc.signedPdfBase64, "base64"));
+
+  // Transition to signed
+  const updatedContract = await ContractRepository.transitionContractState(
+    contract.id,
+    "sent",
+    "signed",
+    {
+      signedAt: new Date(),
+      signedPdfUrl: pdfPath,
+      signerName,
+    },
+  );
+
+  if (!updatedContract) {
+    throw new AppError("CONFLICT", "Contract status changed during processing");
+  }
+
+  // Log activity
+  await ActivityRepository.recordStatusChange(
+    contract.workspaceId,
+    "contract",
+    contract.id,
+    "sent",
+    "signed",
+  );
+
+  log.info("Contract signed", { contractId: contract.id, signerName });
+  return updatedContract;
+}
+
 export const ContractService = {
   createFromProposal,
   sendForSigning,
+  handleSigningComplete,
 };

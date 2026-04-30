@@ -243,3 +243,33 @@ export async function getBrandingLogoPath(
   }
   return null;
 }
+
+/**
+ * Generic file storage for workspace-scoped files.
+ * Phase 48-02: Used for signed contract PDFs.
+ *
+ * @param relativePath - Relative path from data root (e.g., "contracts/workspace123/contract456/signed.pdf")
+ * @param buffer - File content
+ * @returns Full filesystem path to saved file
+ * @throws Error if path contains invalid characters (path traversal protection)
+ */
+export async function saveFile(relativePath: string, buffer: Buffer): Promise<string> {
+  // Security: Prevent path traversal
+  if (relativePath.includes("..") || relativePath.startsWith("/")) {
+    throw new Error(`Invalid file path: ${relativePath}`);
+  }
+
+  const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
+  const fullPath = path.join(dataDir, relativePath);
+
+  // Ensure directory exists
+  const dir = path.dirname(fullPath);
+  await mkdir(dir, { recursive: true });
+
+  // Write file
+  await writeFile(fullPath, buffer);
+
+  log.info("File saved", { path: fullPath, size: buffer.length });
+
+  return fullPath;
+}
