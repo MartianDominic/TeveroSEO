@@ -1802,3 +1802,118 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [x] 55-08-PLAN.md — Text Fitting & Polish: CSS adjustments, short variants, QA (Wave 4)
 
 ---
+
+## v7.0 Onboarding Excellence
+
+**Focus:** World-class prospect-to-client onboarding experience with Google Docs-like editing, split payments, and flawless user journeys.
+
+### Phase 56: Prospect Input Excellence
+**Goal**: Make the core value proposition real — "paste anything, get brilliant insights" with conversation dump parsing, confirmation flows, and real-time progress.
+**Depends on**: Phase 55 (i18n complete)
+**Design doc**: `.planning/phases/56-prospect-input-excellence/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Add Prospect button is enabled and functional
+  2. Three input modes work: website URL, website + context, conversation dump
+  3. AI extraction from conversation produces: business name, industry, services, keywords
+  4. Confirmation screen shows before analysis with edit capability
+  5. Real-time progress feedback shows during analysis
+**Estimated effort**: 40-50 hours
+**Plans**: 4 plans
+  - [ ] 56-01-PLAN.md — Schema + Add Prospect Modal + Website Input (Wave 1)
+  - [ ] 56-02-PLAN.md — Conversation Extractor + AI Integration (Wave 1)
+  - [ ] 56-03-PLAN.md — Confirmation Flow UI + Edit Capabilities (Wave 2)
+  - [ ] 56-04-PLAN.md — Progress Feedback (SSE) + Polish (Wave 2)
+
+---
+
+### Phase 57: Proposal Editor Revolution
+**Goal**: Transform proposal editing into Google Docs meets website builder — inline editing, drag-and-drop sections, auto-save, version history.
+**Depends on**: Phase 56 (prospect input complete)
+**Design doc**: `.planning/phases/57-proposal-editor-revolution/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Click any text to edit inline (TipTap editor)
+  2. Drag sections to reorder with smooth animation
+  3. Add custom sections (text, image, testimonial, case study, video)
+  4. Auto-save within 2 seconds of last change
+  5. Clone proposal creates full copy with one click
+  6. View and restore previous versions
+  7. Magic link generation for manual sending
+**Estimated effort**: 50-60 hours
+**Plans**: 5 plans
+  - [ ] 57-01-PLAN.md — Schema + Inline Editing (TipTap) (Wave 1)
+  - [ ] 57-02-PLAN.md — Drag-and-Drop Sections (@dnd-kit) (Wave 1)
+  - [ ] 57-03-PLAN.md — Custom Sections + Add Section Menu (Wave 2)
+  - [ ] 57-04-PLAN.md — Auto-Save + Version History (Wave 2)
+  - [ ] 57-05-PLAN.md — Clone + Undo/Redo + Magic Link (Wave 3)
+
+---
+
+### Phase 58: Service Catalog & Extra Services
+**Goal**: Enable structured service packages with add-on services (GMB SEO, Google Reviews, Website, CRM/Booking) as proposal line items.
+**Depends on**: Phase 57 (proposal editor complete)
+**Design doc**: `.planning/phases/58-service-catalog/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Service catalog exists with default templates (SEO tiers + add-ons)
+  2. Agencies can create/edit/delete service templates
+  3. Proposal builder shows service selector with packages and add-ons
+  4. Prices can be customized per proposal
+  5. Selected services appear in generated agreements
+  6. Service terms auto-included in agreement
+**Estimated effort**: 35-45 hours
+**Plans**: 4 plans
+  - [ ] 58-01-PLAN.md — Schema + Service Templates CRUD (Wave 1)
+  - [ ] 58-02-PLAN.md — Service Selector Component (Wave 1)
+  - [ ] 58-03-PLAN.md — Proposal Integration + Pricing (Wave 2)
+  - [ ] 58-04-PLAN.md — Agreement Integration + Terms (Wave 2)
+
+---
+
+### Phase 59: Agreement & Signing Excellence
+**Goal**: Create a 3-click signing experience with client contract viewing page and polished UX.
+**Depends on**: Phase 58 (service catalog complete)
+**Design doc**: `.planning/phases/59-agreement-excellence/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Client contract page `/c/:token` exists and renders agreement
+  2. Agreement shows real data from prospect/workspace (no placeholders)
+  3. Preview modal shows exactly what client will see
+  4. Magic link generation works
+  5. Mobile-responsive viewing with progress indicator
+  6. Dokobit signing completes successfully
+  7. Success page shows with PDF download
+**Estimated effort**: 45-55 hours
+**Plans**: 5 plans
+  - [ ] 59-01-PLAN.md — Variable Resolution Service (Wave 1)
+  - [ ] 59-02-PLAN.md — Client Contract Page `/c/:token` (Wave 1)
+  - [ ] 59-03-PLAN.md — Preview Modal + Magic Link (Wave 2)
+  - [ ] 59-04-PLAN.md — Signing Flow + Success Page (Wave 2)
+  - [ ] 59-05-PLAN.md — PDF Quality + Polish (Wave 3)
+
+---
+
+### Phase 60: Payment Flexibility & Split Payments
+**Goal**: Enable split payments (2-3 installments) with clear UX for both agency configuration and client selection.
+**Depends on**: Phase 59 (agreement flow complete)
+**Design doc**: `.planning/phases/60-payment-flexibility/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Split payment toggle in workspace settings
+  2. Client can choose payment plan (full, 2 payments, 3 payments)
+  3. First installment processed via Stripe/Revolut
+  4. Payment schedule created with future installments
+  5. Agency dashboard shows all installments with tracking
+  6. Client can view their payment schedule
+  7. Automated reminders sent before due dates
+  8. Discount codes can be applied at checkout
+**Estimated effort**: 45-55 hours
+**Plans**: 5 plans
+  - [ ] 60-01-PLAN.md — Schema + Payment Schedule Service (Wave 1)
+  - [ ] 60-02-PLAN.md — Plan Selector UI + Checkout Flow (Wave 1)
+  - [ ] 60-03-PLAN.md — Agency Dashboard + Tracking (Wave 2)
+  - [ ] 60-04-PLAN.md — Discount Codes (Wave 2)
+  - [ ] 60-05-PLAN.md — Reminders + Polish (Wave 3)
+
+---
