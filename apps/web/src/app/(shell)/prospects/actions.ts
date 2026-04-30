@@ -385,6 +385,37 @@ const bulkAnalyzeSchema = z.object({
   targetLanguage: z.string().max(10, "Language code too long").optional(),
 });
 
+// Extraction schemas (Phase 56-02)
+const extractFromConversationSchema = z.object({
+  content: z
+    .string()
+    .min(50, "Content must be at least 50 characters")
+    .max(50000, "Content exceeds maximum length"),
+  inputMode: z.enum(["website", "website_with_context", "conversation"]),
+  domain: z.string().optional(),
+  contextNotes: z.string().max(50000, "Context notes too long").optional(),
+});
+
+export interface ExtractionResult {
+  businessName?: string;
+  industry?: string;
+  services?: string[];
+  targetAudience?: string;
+  keywords?: string[];
+  location?: string;
+  confidence: number;
+  platform?: {
+    platform: string;
+    confidence: string;
+    signals: Array<{
+      type: string;
+      platform: string;
+      weight: number;
+      found: string;
+    }>;
+  };
+}
+
 /**
  * Bulk queue analysis for multiple prospects.
  * Respects daily quota - queues up to remaining limit.
@@ -438,6 +469,47 @@ export async function bulkAnalyzeAction(
     return { success: true, data: result };
   } catch (error) {
     logError("bulkAnalyzeAction", error, { prospectCount: prospectIds.length, analysisType: options?.analysisType });
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
+}
+
+/**
+ * Extract business information from conversation text using AI.
+ * Phase 56: Prospect Input Excellence
+ */
+export async function extractFromConversationAction(
+  data: z.infer<typeof extractFromConversationSchema>,
+): Promise<ActionResult<ExtractionResult>> {
+  await requireActionAuth();
+
+  // Validate input
+  const validated = extractFromConversationSchema.safeParse(data);
+  if (!validated.success) {
+    return {
+      success: false,
+      error: validated.error.issues[0]?.message || "Invalid input",
+    };
+  }
+
+  try {
+    const result = await postOpenSeo<{
+      success: boolean;
+      data: ExtractionResult;
+      error?: string;
+    }>("/api/prospects/extract", validated.data);
+
+    if (!result.success) {
+      return { success: false, error: result.error || "Extraction failed" };
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    logError("extractFromConversationAction", error, {
+      inputMode: data.inputMode,
+    });
     return {
       success: false,
       error: sanitizeErrorForClient(error),
