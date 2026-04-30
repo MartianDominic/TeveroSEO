@@ -66,3 +66,6 @@ export * from "./activity-schema";
 
 // Pipeline configuration schema
 export * from "./pipeline-config-schema";
+
+// Tasks schema (Phase 49-51)
+export * from "./tasks-schema";
