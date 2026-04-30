@@ -1674,10 +1674,10 @@ Transform the platform into a complete agency CRM with v6 design system complian
   7. Contract and invoice views in prospect detail
 **Estimated effort**: 20 hours
 **Plans**: 4 plans
-  - [ ] 48-01-PLAN.md — Contract Generation: create from proposal, state machine, Dokobit integration (Wave 1)
-  - [ ] 48-02-PLAN.md — E-Signature Flow: signing UI, webhook handlers, signature records (Wave 2)
-  - [ ] 48-03-PLAN.md — Invoice & Stripe: invoice generation, payment links, webhook handlers (Wave 3)
-  - [ ] 48-04-PLAN.md — Payment → Onboarding Trigger: state transitions, onboarding checklist creation (Wave 4)
+  - [x] 48-01-PLAN.md — Contract Generation: create from proposal, state machine, Dokobit integration (Wave 1)
+  - [x] 48-02-PLAN.md — E-Signature Flow: signing UI, webhook handlers, signature records (Wave 2)
+  - [x] 48-03-PLAN.md — Invoice & Stripe: invoice generation, payment links, webhook handlers (Wave 3)
+  - [x] 48-04-PLAN.md — Payment → Onboarding Trigger: state transitions, onboarding checklist creation (Wave 4)
 
 ---
 
@@ -1749,5 +1749,56 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 53-02-PLAN.md — PDF Generation: Puppeteer rendering, chart snapshots, white-label (Wave 2)
   - [ ] 53-03-PLAN.md — Scheduling & Delivery: cron jobs, email with attachment, history tracking (Wave 3)
   - [ ] 53-04-PLAN.md — Templates & Polish: report templates, UI refinements, v6 compliance (Wave 4)
+
+---
+
+### Phase 54: Multi-Provider Payments (Revolut + Stripe)
+**Goal**: Extend Phase 48's Stripe-only payment integration to support multiple providers. Agencies choose which provider(s) prospects/clients see at checkout. Full Revolut Merchant API integration.
+**Depends on**: Phase 48 (contract & payment system exists)
+**Design doc**: `.planning/phases/54-multi-provider-payments/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. `workspace_payment_settings` table stores per-workspace provider config with encrypted credentials
+  2. Revolut orders created via Merchant API with checkout_url returned
+  3. Revolut webhooks verified (HMAC-SHA256) and ORDER_COMPLETED triggers invoice paid
+  4. Workspace settings UI allows enabling/disabling providers, setting default
+  5. When `allowClientChoice=true`, clients see provider selection at checkout
+  6. RevolutCheckout widget renders and processes payments (cards, Apple Pay, Google Pay, Revolut Pay)
+  7. E2E test passes: invoice → Revolut payment → webhook → onboarding triggered
+**Estimated effort**: 34-44 hours
+**Plans**: 5 plans
+  - [ ] 54-01-PLAN.md — Schema + Provider Abstraction: workspace_payment_settings, PaymentProvider interface, factory (Wave 1)
+  - [ ] 54-02-PLAN.md — RevolutProvider Implementation: orders API, webhook verification, status mapping (Wave 2)
+  - [ ] 54-03-PLAN.md — Webhook Handlers + InvoiceService: /api/webhooks/revolut, multi-provider handlePaymentSuccess (Wave 2)
+  - [ ] 54-04-PLAN.md — Payment Settings UI + Client Choice: provider cards, credential input, PaymentMethodSelector (Wave 3)
+  - [ ] 54-05-PLAN.md — Checkout Widget + E2E: RevolutCheckoutWidget, payment request buttons, full flow tests (Wave 4)
+
+---
+
+### Phase 55: Full Platform Internationalization (i18n)
+**Goal**: Complete internationalization with Lithuanian as primary target. Claude→Gemini translation wrapper for top-notch Lithuanian localization. Multi-tenant language settings (workspace/prospect level). Text fitting for 20-40% longer translations.
+**Depends on**: Phase 54 (invoices need translation)
+**Design doc**: `.planning/phases/55-platform-i18n/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`, `AI-Writer/`
+**Success Criteria** (what must be TRUE):
+  1. All UI strings extracted and translated to Lithuanian (~500 strings)
+  2. Gemini Translation Service with caching achieves >80% cache hit rate
+  3. Workspace language settings control default language + formality (jūs/tu)
+  4. Prospect-level language override for outbound communications
+  5. Proposals generate in prospect's preferred language with proper formality
+  6. Agreements use pre-approved Lithuanian legal templates
+  7. Language switcher in header, instant switch, preference persisted
+  8. No text overflow in Lithuanian UI (short variants + responsive CSS)
+  9. ICU plural forms work correctly for Lithuanian (one/few/many/other)
+**Estimated effort**: 70-88 hours
+**Plans**: 8 plans
+  - [ ] 55-01-PLAN.md — i18n Framework Setup: next-intl, i18next, routing, middleware (Wave 1)
+  - [ ] 55-02-PLAN.md — Gemini Translation Service: API wrapper, caching, quality validation (Wave 1)
+  - [ ] 55-03-PLAN.md — UI String Extraction & Translation: extract ~500 strings, batch translate (Wave 2)
+  - [ ] 55-04-PLAN.md — Multi-Tenant Language Settings: workspace/prospect preferences, resolution (Wave 2)
+  - [ ] 55-05-PLAN.md — Dynamic Content Translation: proposals, emails, reports (Wave 3)
+  - [ ] 55-06-PLAN.md — Agreements & Legal: Lithuanian templates, variable substitution (Wave 3)
+  - [ ] 55-07-PLAN.md — Language Switcher & UX: header switcher, prospect override, preview (Wave 4)
+  - [ ] 55-08-PLAN.md — Text Fitting & Polish: CSS adjustments, short variants, QA (Wave 4)
 
 ---
