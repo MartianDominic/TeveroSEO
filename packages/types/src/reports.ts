@@ -80,3 +80,38 @@ export interface ReportMetadata {
   /** Error message if generation failed */
   errorMessage?: string;
 }
+
+/**
+ * Section metadata for UI display in the report builder.
+ * Used to render the section selector with labels, descriptions, and icons.
+ */
+export interface ReportSectionMeta {
+  /** The type of section */
+  type: ReportSectionType;
+  /** Human-readable label for UI */
+  label: string;
+  /** Description explaining what the section contains */
+  description: string;
+  /** Lucide icon name for visual identification */
+  icon: string;
+  /** If true, section cannot be deselected (header/footer) */
+  required?: boolean;
+}
+
+/**
+ * Builder state for report configuration.
+ * Used by useReportBuilder hook to manage report creation state.
+ */
+export interface ReportBuilderConfig {
+  /** Report display name */
+  name: string;
+  /** Selected sections with order */
+  sections: ReportSection[];
+  /** Date range for data aggregation */
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  /** Locale for formatting (e.g., "en", "lt") */
+  locale: string;
+}
