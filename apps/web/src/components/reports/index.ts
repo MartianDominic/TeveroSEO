@@ -23,3 +23,4 @@ export { ReportPreview } from "./ReportPreview";
 // Report builder components (Phase 53)
 export { SectionSelector } from "./SectionSelector";
 export { ReportDataPreview } from "./ReportDataPreview";
+export { ReportBuilder } from "./ReportBuilder";
