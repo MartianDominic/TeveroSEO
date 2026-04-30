@@ -1,18 +1,9 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Button,
-} from "@tevero/ui";
-import { Download, Eye } from "lucide-react";
-import { ReportStatusBadge } from "./ReportStatusBadge";
+import { Button } from "@tevero/ui";
+import { Plus, Settings } from "lucide-react";
+import { ReportHistoryTable } from "./ReportHistoryTable";
 import type { ReportMetadata } from "@tevero/types";
 
 interface ReportListProps {
@@ -20,67 +11,63 @@ interface ReportListProps {
   clientId: string;
 }
 
+/**
+ * Report list component with action buttons and history table.
+ * Provides navigation to create new reports and configure schedules.
+ */
 export function ReportList({ reports, clientId }: ReportListProps) {
-  if (reports.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>No reports generated yet.</p>
-        <p className="text-sm mt-2">
-          Generate your first report to see it here.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Report Type</TableHead>
-          <TableHead>Date Range</TableHead>
-          <TableHead>Language</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Generated</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {reports.map((report) => (
-          <TableRow key={report.id}>
-            <TableCell className="font-medium">
-              {report.reportType === "monthly-seo" ? "Monthly SEO Report" : report.reportType}
-            </TableCell>
-            <TableCell>
-              {report.dateRange.start} to {report.dateRange.end}
-            </TableCell>
-            <TableCell className="uppercase">{report.locale}</TableCell>
-            <TableCell>
-              <ReportStatusBadge status={report.status} />
-            </TableCell>
-            <TableCell>
-              {report.generatedAt
-                ? formatDistanceToNow(new Date(report.generatedAt), { addSuffix: true })
-                : "-"}
-            </TableCell>
-            <TableCell className="text-right space-x-2">
-              <Link href={`/clients/${clientId}/reports/${report.id}` as Parameters<typeof Link>[0]["href"]}>
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                  Preview
-                </Button>
-              </Link>
-              {report.status === "complete" && (
-                <a href={`/api/reports/${report.id}/download`} download>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-1" />
-                    PDF
-                  </Button>
-                </a>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-6">
+      {/* Action buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link
+            href={
+              `/clients/${clientId}/reports/new` as Parameters<
+                typeof Link
+              >[0]["href"]
+            }
+          >
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Report
+            </Button>
+          </Link>
+          <Link
+            href={
+              `/clients/${clientId}/settings/reports` as Parameters<
+                typeof Link
+              >[0]["href"]
+            }
+          >
+            <Button variant="outline">
+              <Settings className="h-4 w-4 mr-2" />
+              Schedule Settings
+            </Button>
+          </Link>
+        </div>
+        <div className="text-sm text-text-3">
+          {reports.filter((r) => r.status === "complete").length} reports generated
+        </div>
+      </div>
+
+      {/* Report history table */}
+      {reports.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-text-3 mb-4">No reports yet</p>
+          <Link
+            href={
+              `/clients/${clientId}/reports/new` as Parameters<
+                typeof Link
+              >[0]["href"]
+            }
+          >
+            <Button>Create Your First Report</Button>
+          </Link>
+        </div>
+      ) : (
+        <ReportHistoryTable reports={reports} clientId={clientId} />
+      )}
+    </div>
   );
 }
