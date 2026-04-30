@@ -131,3 +131,40 @@
     opacity: 0.7;
   }
 }
+
+/* Locale transition styles */
+[data-locale-transitioning="true"] main {
+  opacity: 0.7;
+  transition: opacity 150ms ease-out;
+}
+
+[data-locale-transitioning="true"] main::after {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: locale-spinner 0.6s linear infinite;
+}
+
+@keyframes locale-spinner {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-locale-transitioning="true"] main {
+    transition: none;
+  }
+
+  [data-locale-transitioning="true"] main::after {
+    animation: none;
+    border-top-color: var(--hairline);
+  }
+}

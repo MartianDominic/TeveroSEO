@@ -2,6 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface TopBarProps {
   className?: string;
@@ -37,8 +38,10 @@ export const TopBar: React.FC<TopBarProps> = ({ className, onOpen }) => {
         </kbd>
       </button>
 
-      {/* Right: empty — UserButton moved to sidebar bottom */}
-      <div className="w-[60px]" />
+      {/* Right: Language switcher */}
+      <div className="flex items-center gap-2">
+        <LanguageSwitcher />
+      </div>
     </header>
   );
 };
