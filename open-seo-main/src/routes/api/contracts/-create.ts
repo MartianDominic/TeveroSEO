@@ -57,7 +57,7 @@ export const Route = createFileRoute("/api/contracts/create")({
             return Response.json(
               {
                 success: false,
-                error: validationResult.error.errors[0]?.message || "Invalid request",
+                error: validationResult.error.issues[0]?.message || "Invalid request",
               },
               { status: 400 }
             );

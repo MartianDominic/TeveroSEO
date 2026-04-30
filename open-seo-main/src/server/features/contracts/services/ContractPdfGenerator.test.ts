@@ -3,7 +3,7 @@
  * Phase 48-01: Contract Generation - Task 2
  */
 import { describe, it, expect } from "vitest";
-import { generateContractPdf } from "./ContractPdfGenerator";
+import { generateContractPdf } from "./ContractPdfGenerator.js";
 import type { ContractContent } from "@/db/contract-schema";
 
 describe("ContractPdfGenerator", () => {

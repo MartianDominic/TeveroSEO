@@ -68,14 +68,14 @@ async function createSigningSession(
 
     if (!response.ok) {
       const errorText = await response.text();
-      log.error("Dokobit API error", { status: response.status, error: errorText });
+      log.error("Dokobit API error", undefined, { status: response.status, errorText });
       throw new AppError("DOKOBIT_API_ERROR", `Dokobit API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { session_id?: string; url?: string };
 
     if (!data.session_id || !data.url) {
-      log.error("Dokobit response missing required fields", { data });
+      log.error("Dokobit response missing required fields", undefined, { responseData: JSON.stringify(data) });
       throw new AppError("DOKOBIT_API_ERROR", "Invalid Dokobit response");
     }
 
@@ -87,7 +87,7 @@ async function createSigningSession(
     };
   } catch (error) {
     if (error instanceof AppError) throw error;
-    log.error("Dokobit API request failed", { error });
+    log.error("Dokobit API request failed", error instanceof Error ? error : undefined, { errorMessage: error instanceof Error ? error.message : String(error) });
     throw new AppError("EXTERNAL_SERVICE_ERROR", "Failed to create signing session");
   }
 }
@@ -119,10 +119,10 @@ async function downloadSignedDocument(
       throw new AppError("DOKOBIT_API_ERROR", `Download failed: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { file_content?: string; signer_name?: string };
 
     return {
-      signedPdfBase64: data.file_content,
+      signedPdfBase64: data.file_content || "",
       signerName: data.signer_name || "Unknown",
       signedAt: new Date(),
     };

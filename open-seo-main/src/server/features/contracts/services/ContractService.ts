@@ -11,8 +11,8 @@ import { AppError } from "@/server/lib/errors";
 import * as ContractRepository from "../repositories/ContractRepository";
 import * as ActivityRepository from "../repositories/ActivityRepository";
 import { ProposalService } from "../../proposals/services/ProposalService";
-import { DokobitService } from "./DokobitService";
-import { generateContractPdf } from "./ContractPdfGenerator";
+import { DokobitService } from "./DokobitService.js";
+import { generateContractPdf } from "./ContractPdfGenerator.js";
 import type { ContractStatus, ContractContent, ContractSelect } from "@/db/contract-schema";
 import type { ProposalContent } from "@/db/proposal-schema";
 

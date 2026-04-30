@@ -32,6 +32,9 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   WEBHOOK_DELETE_FAILED: "Failed to delete webhook. Please try again.",
   // External API errors
   GSC_API_ERROR: "Failed to connect to Google Search Console. Please try again.",
+  DOKOBIT_API_ERROR: "Failed to connect to e-signature service. Please try again.",
+  // Contract state machine errors
+  CONTRACT_INVALID_STATE: "Invalid contract state transition. Please check contract status.",
 };
 
 export function getStandardErrorMessage(

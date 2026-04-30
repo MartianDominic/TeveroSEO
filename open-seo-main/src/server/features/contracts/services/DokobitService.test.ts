@@ -21,14 +21,14 @@ vi.mock("@/server/lib/logger", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch as any;
 
-import { DokobitService } from "./DokobitService";
+import { DokobitService } from "./DokobitService.js";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 
 describe("DokobitService.createSigningSession", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getOptionalEnvValue).mockImplementation((key) => {
+    vi.mocked(getOptionalEnvValue).mockImplementation((key: string) => {
       if (key === "DOKOBIT_ACCESS_TOKEN") return Promise.resolve("test_token_123");
       if (key === "DOKOBIT_API_URL") return Promise.resolve("https://beta.dokobit.com");
       return Promise.resolve(undefined);
@@ -141,7 +141,7 @@ describe("DokobitService.createSigningSession", () => {
 describe("DokobitService.downloadSignedDocument", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getOptionalEnvValue).mockImplementation((key) => {
+    vi.mocked(getOptionalEnvValue).mockImplementation((key: string) => {
       if (key === "DOKOBIT_ACCESS_TOKEN") return Promise.resolve("test_token_123");
       if (key === "DOKOBIT_API_URL") return Promise.resolve("https://beta.dokobit.com");
       return Promise.resolve(undefined);

@@ -15,15 +15,15 @@ vi.mock("@/db", () => ({
 vi.mock("../repositories/ContractRepository");
 vi.mock("../repositories/ActivityRepository");
 vi.mock("../../proposals/services/ProposalService");
-vi.mock("./DokobitService");
-vi.mock("./ContractPdfGenerator");
+vi.mock("./DokobitService.js");
+vi.mock("./ContractPdfGenerator.js");
 
-import { ContractService, VALID_TRANSITIONS, canTransition } from "./ContractService";
+import { ContractService, VALID_TRANSITIONS, canTransition } from "./ContractService.js";
 import * as ContractRepository from "../repositories/ContractRepository";
 import * as ActivityRepository from "../repositories/ActivityRepository";
 import * as ProposalService from "../../proposals/services/ProposalService";
-import * as DokobitService from "./DokobitService";
-import * as ContractPdfGenerator from "./ContractPdfGenerator";
+import * as DokobitService from "./DokobitService.js";
+import * as ContractPdfGenerator from "./ContractPdfGenerator.js";
 
 describe("ContractService - State Machine", () => {
   it("VALID_TRANSITIONS allows draft -> sent", () => {
