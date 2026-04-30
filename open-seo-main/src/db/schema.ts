@@ -78,3 +78,6 @@ export * from "./workspace-payment-settings-schema";
 
 // Translation cache schema (Phase 55)
 export * from "./translation-cache-schema";
+
+// Agreement templates schema (Phase 55)
+export * from "./agreement-template-schema";
