@@ -24,13 +24,13 @@ export default function QuickCheckError({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-8">
-      <AlertTriangle className="h-12 w-12 text-destructive" />
+      <AlertTriangle className="h-12 w-12 text-error" />
       <h2 className="text-xl font-semibold">Unable to load quick check</h2>
-      <p className="text-muted-foreground text-center max-w-md">
+      <p className="text-text-3 text-center max-w-md">
         We encountered an error loading the quick check section. Please try again.
       </p>
       {error.digest && (
-        <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
+        <p className="text-text-3 text-[12px]">Error ID: {error.digest}</p>
       )}
       <div className="flex gap-3 mt-2">
         <Button variant="outline" onClick={() => router.push('/prospects/keywords' as Parameters<typeof router.push>[0])}>

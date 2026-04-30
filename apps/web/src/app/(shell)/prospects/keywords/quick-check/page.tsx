@@ -109,10 +109,9 @@ export default function QuickCheckPage() {
 
   const getCompetitionBadge = (level: "low" | "medium" | "high") => {
     const colors = {
-      low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      medium:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      high: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      low: "bg-success-soft text-success",
+      medium: "bg-warning-soft text-warning",
+      high: "bg-error-soft text-error",
     };
     return (
       <Badge variant="outline" className={colors[level]}>
@@ -122,21 +121,21 @@ export default function QuickCheckPage() {
   };
 
   const getDifficultyColor = (kd: number) => {
-    if (kd < 30) return "text-green-600 dark:text-green-400";
-    if (kd < 60) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (kd < 30) return "text-success";
+    if (kd < 60) return "text-warning";
+    return "text-error";
   };
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Quick Keyword Check</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-text-3 mt-2">
           Check up to 20 keywords instantly without creating a prospect
         </p>
       </div>
 
-      <Card className="mb-8">
+      <Card className="mb-8 shadow-card">
         <CardHeader>
           <CardTitle>Enter Keywords (one per line)</CardTitle>
         </CardHeader>
@@ -150,7 +149,7 @@ export default function QuickCheckPage() {
 
           <div className="flex justify-between items-center mt-4">
             <span
-              className={`text-sm ${keywordCount > 20 ? "text-red-500" : "text-muted-foreground"}`}
+              className={`text-[12px] ${keywordCount > 20 ? "text-error" : "text-text-3"}`}
             >
               {keywordCount}/20 keywords
             </span>
@@ -160,16 +159,16 @@ export default function QuickCheckPage() {
             </Button>
           </div>
 
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+          {error && <p className="text-error text-[12px] mt-2">{error}</p>}
         </CardContent>
       </Card>
 
       {results.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <div>
               <CardTitle>Results</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-[12px] text-text-3 mt-1">
                 Combined: {totalVolume.toLocaleString()}/mo search volume |
                 Cost: ${(costCents / 100).toFixed(3)}
               </p>
@@ -200,7 +199,7 @@ export default function QuickCheckPage() {
           </CardHeader>
           <CardContent>
             {shareUrl && (
-              <div className="mb-4 p-3 bg-muted rounded-lg flex items-center justify-between">
+              <div className="mb-4 p-3 bg-surface-2 rounded-[var(--radius-input)] flex items-center justify-between">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <span className="text-sm font-medium">Share link:</span>
                   <code className="text-sm truncate">{shareUrl}</code>
@@ -212,7 +211,7 @@ export default function QuickCheckPage() {
                   className="flex-shrink-0"
                 >
                   {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check className="h-4 w-4 text-success" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -220,7 +219,7 @@ export default function QuickCheckPage() {
               </div>
             )}
 
-            <div className="rounded-md border">
+            <div className="rounded-[var(--radius-card)] shadow-card bg-surface overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
