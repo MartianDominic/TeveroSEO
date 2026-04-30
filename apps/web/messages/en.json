@@ -4,16 +4,20 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
     "loading": "Loading...",
+    "saving": "Saving...",
     "submit": "Submit",
     "back": "Back",
     "next": "Next",
+    "previous": "Previous",
     "close": "Close",
     "confirm": "Confirm",
     "search": "Search",
     "filter": "Filter",
-    "create": "Create",
-    "update": "Update",
+    "export": "Export",
+    "import": "Import",
     "view": "View",
     "actions": "Actions",
     "status": "Status",
@@ -31,9 +35,16 @@
     "all": "All",
     "none": "None",
     "select": "Select",
+    "selectAll": "Select All",
+    "clearAll": "Clear All",
     "selected": "Selected",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "noResults": "No results found",
+    "tryAgain": "Try again",
+    "learnMore": "Learn more",
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
+    "items": "{count, plural, one {# item} other {# items}}"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -58,19 +69,28 @@
     "recentActivity": "Recent Activity",
     "quickActions": "Quick Actions",
     "overview": "Overview",
-    "stats": "Statistics",
+    "stats": {
+      "title": "Statistics",
+      "totalProspects": "Total Prospects",
+      "activeClients": "Active Clients",
+      "pendingProposals": "Pending Proposals",
+      "monthlyRevenue": "Monthly Revenue"
+    },
     "activeProspects": "Active Prospects",
     "pendingProposals": "Pending Proposals",
     "openInvoices": "Open Invoices",
-    "monthlyRevenue": "Monthly Revenue"
+    "monthlyRevenue": "Monthly Revenue",
+    "noActivity": "No recent activity"
   },
   "prospects": {
     "title": "Prospects",
+    "count": "{count, plural, one {# prospect} other {# prospects}}",
     "addNew": "Add New Prospect",
     "noProspects": "No prospects yet",
     "contactInfo": "Contact Information",
     "communicationLanguage": "Communication Language",
     "communicationLanguageDesc": "Language used for proposals, agreements, and emails",
+    "inheritFromWorkspace": "Inherit from Workspace",
     "company": "Company",
     "website": "Website",
     "source": "Source",
@@ -82,49 +102,136 @@
     "createProspect": "Create Prospect",
     "editProspect": "Edit Prospect",
     "deleteProspect": "Delete Prospect",
-    "convertToClient": "Convert to Client"
+    "convertToClient": "Convert to Client",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "company": "Company",
+      "website": "Website",
+      "source": "Source",
+      "notes": "Notes"
+    },
+    "statuses": {
+      "new": "New",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "proposal": "Proposal Sent",
+      "negotiation": "Negotiation",
+      "won": "Won",
+      "lost": "Lost"
+    }
+  },
+  "clients": {
+    "title": "Clients",
+    "count": "{count, plural, one {# client} other {# clients}}",
+    "addNew": "Add New Client",
+    "noClients": "No clients yet",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "company": "Company",
+      "website": "Website",
+      "contractStart": "Contract Start",
+      "contractEnd": "Contract End"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "churned": "Churned"
+    }
   },
   "proposals": {
     "title": "Proposals",
+    "count": "{count, plural, one {# proposal} other {# proposals}}",
     "create": "Create Proposal",
-    "draft": "Draft",
-    "sent": "Sent",
-    "viewed": "Viewed",
-    "accepted": "Accepted",
-    "rejected": "Rejected",
-    "expired": "Expired",
+    "createNew": "Create New Proposal",
+    "generate": "Generate Proposal",
     "preview": "Preview",
     "send": "Send Proposal",
     "duplicate": "Duplicate",
-    "templateSelect": "Select Template"
+    "templateSelect": "Select Template",
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "viewed": "Viewed",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "expired": "Expired"
+    },
+    "sections": {
+      "hero": "Hero Section",
+      "problem": "Problem Statement",
+      "solution": "Proposed Solution",
+      "pricing": "Pricing",
+      "timeline": "Timeline",
+      "terms": "Terms & Conditions"
+    }
   },
   "agreements": {
     "title": "Agreements",
+    "count": "{count, plural, one {# agreement} other {# agreements}}",
     "create": "Create Agreement",
-    "draft": "Draft",
-    "pendingSignature": "Pending Signature",
-    "signed": "Signed",
-    "active": "Active",
-    "expired": "Expired",
-    "terminated": "Terminated",
+    "createNew": "Create New Agreement",
+    "sign": "Sign Agreement",
+    "download": "Download",
+    "viewDocument": "View Document",
     "signNow": "Sign Now",
-    "viewDocument": "View Document"
+    "statuses": {
+      "draft": "Draft",
+      "pendingSignature": "Pending Signature",
+      "signed": "Signed",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    }
   },
   "invoices": {
     "title": "Invoices",
+    "count": "{count, plural, one {# invoice} other {# invoices}}",
     "create": "Create Invoice",
-    "draft": "Draft",
-    "sent": "Sent",
-    "paid": "Paid",
-    "overdue": "Overdue",
-    "cancelled": "Cancelled",
+    "createNew": "Create New Invoice",
+    "send": "Send Invoice",
+    "markPaid": "Mark as Paid",
     "sendReminder": "Send Reminder",
-    "markAsPaid": "Mark as Paid",
     "dueDate": "Due Date",
-    "invoiceNumber": "Invoice Number"
+    "invoiceNumber": "Invoice Number",
+    "fields": {
+      "number": "Invoice Number",
+      "date": "Invoice Date",
+      "dueDate": "Due Date",
+      "amount": "Amount",
+      "tax": "Tax",
+      "total": "Total"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "cancelled": "Cancelled"
+    }
   },
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "general": "General",
+      "profile": "Profile",
+      "workspace": "Workspace",
+      "team": "Team",
+      "billing": "Billing",
+      "integrations": "Integrations",
+      "notifications": "Notifications",
+      "security": "Security"
+    },
+    "language": {
+      "title": "Language",
+      "select": "Select Language",
+      "default": "Default Language",
+      "timezone": "Timezone",
+      "currency": "Currency"
+    },
     "general": "General",
     "profile": "Profile",
     "workspace": "Workspace",
@@ -133,7 +240,7 @@
     "integrations": "Integrations",
     "notifications": "Notifications",
     "security": "Security",
-    "language": "Language",
+    "language_label": "Language",
     "timezone": "Timezone",
     "currency": "Currency",
     "defaultLanguage": "Default Language",
@@ -141,14 +248,22 @@
   },
   "errors": {
     "notFound": "Page not found",
+    "notFoundDesc": "The page you're looking for doesn't exist.",
     "notFoundDescription": "The page you're looking for doesn't exist.",
     "unauthorized": "Unauthorized",
+    "unauthorizedDesc": "You don't have permission to access this page.",
     "unauthorizedDescription": "You don't have permission to access this page.",
+    "serverError": "Server Error",
+    "serverErrorDesc": "An unexpected error occurred on the server.",
     "generic": "Something went wrong",
     "genericDescription": "An unexpected error occurred. Please try again.",
     "networkError": "Network error",
+    "networkErrorDesc": "Unable to connect to the server.",
     "networkErrorDescription": "Unable to connect to the server.",
     "validationError": "Validation error",
+    "requiredField": "This field is required",
+    "invalidEmail": "Please enter a valid email address",
+    "invalidUrl": "Please enter a valid URL",
     "goBack": "Go back",
     "goHome": "Go to homepage",
     "tryAgain": "Try again"

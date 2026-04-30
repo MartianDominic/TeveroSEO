@@ -4,16 +4,20 @@
     "cancel": "Atsaukti",
     "delete": "Istrinti",
     "edit": "Redaguoti",
+    "create": "Sukurti",
+    "update": "Atnaujinti",
     "loading": "Kraunama...",
+    "saving": "Issaugoma...",
     "submit": "Pateikti",
     "back": "Atgal",
     "next": "Toliau",
+    "previous": "Ankstesnis",
     "close": "Uzdaryti",
     "confirm": "Patvirtinti",
     "search": "Ieskoti",
     "filter": "Filtruoti",
-    "create": "Sukurti",
-    "update": "Atnaujinti",
+    "export": "Eksportuoti",
+    "import": "Importuoti",
     "view": "Perziureti",
     "actions": "Veiksmai",
     "status": "Busena",
@@ -31,9 +35,16 @@
     "all": "Visi",
     "none": "Nera",
     "select": "Pasirinkti",
+    "selectAll": "Pasirinkti visus",
+    "clearAll": "Isvalyti visus",
     "selected": "Pasirinkta",
     "required": "Privaloma",
-    "optional": "Neprivaloma"
+    "optional": "Neprivaloma",
+    "noResults": "Rezultatu nerasta",
+    "tryAgain": "Bandyti dar karta",
+    "learnMore": "Suzinoti daugiau",
+    "daysAgo": "{count, plural, one {pries # diena} few {pries # dienas} many {pries # dienu} other {pries # dienu}}",
+    "items": "{count, plural, one {# elementas} few {# elementai} many {# elementu} other {# elementu}}"
   },
   "nav": {
     "dashboard": "Valdymo skydelis",
@@ -54,23 +65,32 @@
   },
   "dashboard": {
     "title": "Valdymo skydelis",
-    "welcome": "Sveiki sugriže, {name}",
+    "welcome": "Sveiki sugrize, {name}",
     "recentActivity": "Naujausia veikla",
     "quickActions": "Greiti veiksmai",
     "overview": "Apzvalga",
-    "stats": "Statistika",
+    "stats": {
+      "title": "Statistika",
+      "totalProspects": "Viso potencialiu klientu",
+      "activeClients": "Aktyvus klientai",
+      "pendingProposals": "Laukiantys pasiulymai",
+      "monthlyRevenue": "Menesines pajamos"
+    },
     "activeProspects": "Aktyvus potencialus klientai",
     "pendingProposals": "Laukiantys pasiulymai",
     "openInvoices": "Neapmoketos saskaitos",
-    "monthlyRevenue": "Menesines pajamos"
+    "monthlyRevenue": "Menesines pajamos",
+    "noActivity": "Nera naujausios veiklos"
   },
   "prospects": {
     "title": "Potencialus klientai",
+    "count": "{count, plural, one {# potencialus klientas} few {# potencialus klientai} many {# potencialiu klientu} other {# potencialiu klientu}}",
     "addNew": "Prideti nauja",
     "noProspects": "Potencialiu klientu dar nera",
     "contactInfo": "Kontaktine informacija",
     "communicationLanguage": "Komunikacijos kalba",
     "communicationLanguageDesc": "Kalba naudojama pasiulymams, sutartims ir el. laiskams",
+    "inheritFromWorkspace": "Paveldeti is darbo erdves",
     "company": "Imone",
     "website": "Svetaine",
     "source": "Saltinis",
@@ -82,49 +102,136 @@
     "createProspect": "Sukurti potencialu klienta",
     "editProspect": "Redaguoti potencialu klienta",
     "deleteProspect": "Istrinti potencialu klienta",
-    "convertToClient": "Paversti klientu"
+    "convertToClient": "Paversti klientu",
+    "fields": {
+      "name": "Pavadinimas",
+      "email": "El. pastas",
+      "phone": "Telefonas",
+      "company": "Imone",
+      "website": "Svetaine",
+      "source": "Saltinis",
+      "notes": "Pastabos"
+    },
+    "statuses": {
+      "new": "Naujas",
+      "contacted": "Susisiekta",
+      "qualified": "Kvalifikuotas",
+      "proposal": "Pasiulymas issiustas",
+      "negotiation": "Derybos",
+      "won": "Laimetas",
+      "lost": "Prarastas"
+    }
+  },
+  "clients": {
+    "title": "Klientai",
+    "count": "{count, plural, one {# klientas} few {# klientai} many {# klientu} other {# klientu}}",
+    "addNew": "Prideti nauja klienta",
+    "noClients": "Klientu dar nera",
+    "fields": {
+      "name": "Pavadinimas",
+      "email": "El. pastas",
+      "phone": "Telefonas",
+      "company": "Imone",
+      "website": "Svetaine",
+      "contractStart": "Sutarties pradzia",
+      "contractEnd": "Sutarties pabaiga"
+    },
+    "statuses": {
+      "active": "Aktyvus",
+      "inactive": "Neaktyvus",
+      "churned": "Prarastas"
+    }
   },
   "proposals": {
     "title": "Pasiulymai",
+    "count": "{count, plural, one {# pasiulymas} few {# pasiulymai} many {# pasiulymu} other {# pasiulymu}}",
     "create": "Sukurti pasiulyma",
-    "draft": "Juodrastis",
-    "sent": "Issiusta",
-    "viewed": "Perziureta",
-    "accepted": "Priimta",
-    "rejected": "Atmesta",
-    "expired": "Pasibaige",
+    "createNew": "Sukurti nauja pasiulyma",
+    "generate": "Generuoti pasiulyma",
     "preview": "Perziura",
     "send": "Siusti pasiulyma",
     "duplicate": "Dubliuoti",
-    "templateSelect": "Pasirinkti sablona"
+    "templateSelect": "Pasirinkti sablona",
+    "statuses": {
+      "draft": "Juodrastis",
+      "sent": "Issiusta",
+      "viewed": "Perziureta",
+      "accepted": "Priimta",
+      "rejected": "Atmesta",
+      "expired": "Pasibaige"
+    },
+    "sections": {
+      "hero": "Pagrindine dalis",
+      "problem": "Problemos aprasas",
+      "solution": "Siulomas sprendimas",
+      "pricing": "Kainodara",
+      "timeline": "Grafikas",
+      "terms": "Salygos"
+    }
   },
   "agreements": {
     "title": "Sutartys",
+    "count": "{count, plural, one {# sutartis} few {# sutartys} many {# sutarciu} other {# sutarciu}}",
     "create": "Sukurti sutarti",
-    "draft": "Juodrastis",
-    "pendingSignature": "Laukia paraso",
-    "signed": "Pasirasytas",
-    "active": "Aktyvi",
-    "expired": "Pasibaigusi",
-    "terminated": "Nutraukta",
+    "createNew": "Sukurti nauja sutarti",
+    "sign": "Pasirasyti sutarti",
+    "download": "Atsisiusti",
+    "viewDocument": "Perziureti dokumenta",
     "signNow": "Pasirasyti dabar",
-    "viewDocument": "Perziureti dokumenta"
+    "statuses": {
+      "draft": "Juodrastis",
+      "pendingSignature": "Laukia paraso",
+      "signed": "Pasirasytas",
+      "active": "Aktyvi",
+      "expired": "Pasibaigusi",
+      "terminated": "Nutraukta"
+    }
   },
   "invoices": {
     "title": "Saskaitos",
+    "count": "{count, plural, one {# saskaita} few {# saskaitos} many {# saskaitu} other {# saskaitu}}",
     "create": "Sukurti saskaita",
-    "draft": "Juodrastis",
-    "sent": "Issiusta",
-    "paid": "Apmoketa",
-    "overdue": "Veluoja",
-    "cancelled": "Atsaukta",
+    "createNew": "Sukurti nauja saskaita",
+    "send": "Siusti saskaita",
+    "markPaid": "Pazymeti kaip apmoketa",
     "sendReminder": "Siusti priminima",
-    "markAsPaid": "Pazymeti kaip apmoketa",
     "dueDate": "Mokejimo terminas",
-    "invoiceNumber": "Saskaitos numeris"
+    "invoiceNumber": "Saskaitos numeris",
+    "fields": {
+      "number": "Saskaitos numeris",
+      "date": "Saskaitos data",
+      "dueDate": "Mokejimo terminas",
+      "amount": "Suma",
+      "tax": "Mokestis",
+      "total": "Viso"
+    },
+    "statuses": {
+      "draft": "Juodrastis",
+      "sent": "Issiusta",
+      "paid": "Apmoketa",
+      "overdue": "Veluoja",
+      "cancelled": "Atsaukta"
+    }
   },
   "settings": {
     "title": "Nustatymai",
+    "tabs": {
+      "general": "Bendrieji",
+      "profile": "Profilis",
+      "workspace": "Darbo erdve",
+      "team": "Komanda",
+      "billing": "Atsiskaitymai",
+      "integrations": "Integracijos",
+      "notifications": "Pranesimai",
+      "security": "Saugumas"
+    },
+    "language": {
+      "title": "Kalba",
+      "select": "Pasirinkti kalba",
+      "default": "Numatytoji kalba",
+      "timezone": "Laiko zona",
+      "currency": "Valiuta"
+    },
     "general": "Bendrieji",
     "profile": "Profilis",
     "workspace": "Darbo erdve",
@@ -133,7 +240,7 @@
     "integrations": "Integracijos",
     "notifications": "Pranesimai",
     "security": "Saugumas",
-    "language": "Kalba",
+    "language_label": "Kalba",
     "timezone": "Laiko zona",
     "currency": "Valiuta",
     "defaultLanguage": "Numatytoji kalba",
@@ -141,14 +248,22 @@
   },
   "errors": {
     "notFound": "Puslapis nerastas",
+    "notFoundDesc": "Puslapis, kurio ieskote, neegzistuoja.",
     "notFoundDescription": "Puslapis, kurio ieskote, neegzistuoja.",
     "unauthorized": "Neautorizuota",
+    "unauthorizedDesc": "Neturite teises pasiekti si puslapi.",
     "unauthorizedDescription": "Neturite teises pasiekti si puslapi.",
+    "serverError": "Serverio klaida",
+    "serverErrorDesc": "Serveryje ivyko netiketa klaida.",
     "generic": "Kazkas nutiko",
     "genericDescription": "Ivyko netiketa klaida. Bandykite dar karta.",
     "networkError": "Tinklo klaida",
+    "networkErrorDesc": "Nepavyko prisijungti prie serverio.",
     "networkErrorDescription": "Nepavyko prisijungti prie serverio.",
     "validationError": "Tikrinimo klaida",
+    "requiredField": "Sis laukas yra privalomas",
+    "invalidEmail": "Iveskite teisinga el. pasto adresa",
+    "invalidUrl": "Iveskite teisinga URL adresa",
     "goBack": "Grizti atgal",
     "goHome": "Eiti i pagrindini",
     "tryAgain": "Bandyti dar karta"
