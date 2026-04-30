@@ -86,3 +86,35 @@ export const webhookEvents = pgTable("webhook_events", {
     .notNull()
     .defaultNow(),
 });
+
+/**
+ * Incoming webhook events tracking for idempotent processing.
+ * Phase 48: Contract & Payment
+ *
+ * Prevents duplicate webhook processing by tracking event IDs from external services.
+ */
+export const WEBHOOK_STATUS = ["processing", "processed", "failed"] as const;
+export type WebhookStatus = (typeof WEBHOOK_STATUS)[number];
+
+export const incomingWebhookEvents = pgTable(
+  "incoming_webhook_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    eventType: text("event_type").notNull(),
+    source: text("source").notNull(), // "dokobit" | "stripe"
+    status: text("status").notNull().default("processing"),
+    receivedAt: timestamp("received_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true, mode: "date" }),
+    error: text("error"),
+  },
+  (table) => [
+    index("ix_incoming_webhook_events_type").on(table.eventType),
+    index("ix_incoming_webhook_events_source").on(table.source),
+    index("ix_incoming_webhook_events_status").on(table.status),
+  ]
+);
+
+export type IncomingWebhookEventSelect = typeof incomingWebhookEvents.$inferSelect;
+export type IncomingWebhookEventInsert = typeof incomingWebhookEvents.$inferInsert;

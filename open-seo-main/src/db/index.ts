@@ -17,6 +17,7 @@ import * as schema from "./schema";
 
 // Schema exports
 export * from "./schema";
+export * from "./webhook-schema";
 
 // Database connection - require explicit configuration
 const connectionString = process.env.DATABASE_URL;
