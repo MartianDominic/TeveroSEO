@@ -11,7 +11,7 @@
 import { useTranslations } from "next-intl";
 import { useMediaQuery } from "./useMediaQuery";
 
-type TranslationValues = Record<string, string | number | boolean>;
+type TranslationValues = Record<string, string | number | Date>;
 
 interface ResponsiveTranslationResult {
   /**

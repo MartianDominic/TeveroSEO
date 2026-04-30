@@ -274,7 +274,7 @@ export default function PaymentSettingsPage() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Provider used when clients don't choose a payment method.
+              Provider used when clients do not choose a payment method.
             </p>
           </div>
 

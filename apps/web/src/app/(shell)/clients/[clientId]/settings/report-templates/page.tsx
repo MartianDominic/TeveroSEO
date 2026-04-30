@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+type AnyRoute = Parameters<typeof redirect>[0];
 import Link from "next/link";
 import {
   Card,
@@ -151,7 +152,7 @@ export default async function TemplateSettingsPage({
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(clientId)) {
-    redirect("/clients");
+    redirect("/clients" as AnyRoute);
   }
 
   return (

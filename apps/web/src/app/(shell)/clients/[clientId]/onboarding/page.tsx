@@ -27,7 +27,7 @@ export default async function OnboardingPage({ params }: PageProps) {
 
   // Redirect to completion page if 100% done
   if (checklist.completedCount === checklist.totalCount) {
-    redirect(`/clients/${clientId}/onboarding/complete`);
+    redirect(`/clients/${clientId}/onboarding/complete` as never);
   }
 
   return (

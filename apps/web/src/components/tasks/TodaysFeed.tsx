@@ -146,7 +146,7 @@ export function TodaysFeed({
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="flex items-center gap-2 text-base">
             <ListTodo className="h-4 w-4" />
-            Today's Tasks
+            Today&apos;s Tasks
           </CardTitle>
 
           <div className="flex items-center gap-2">

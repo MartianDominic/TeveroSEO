@@ -3,6 +3,8 @@ import { PageHeader } from "@tevero/ui";
 import { ReportBuilder } from "@/components/reports/ReportBuilder";
 import { getOpenSeo } from "@/lib/server-fetch";
 
+type AnyRoute = Parameters<typeof redirect>[0];
+
 /**
  * New Report Page
  *
@@ -36,7 +38,7 @@ export default async function NewReportPage({ params }: NewReportPageProps) {
 
   // Validate UUID format (T-53-02: input validation)
   if (!UUID_REGEX.test(clientId)) {
-    redirect("/clients");
+    redirect("/clients" as AnyRoute);
   }
 
   // Fetch client to validate ownership
