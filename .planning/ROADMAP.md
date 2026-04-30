@@ -1724,7 +1724,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
 **Estimated effort**: 12 hours
 **Plans**: 3 plans
   - [x] 52-01-PLAN.md — Keyword Pipeline v6: KeywordTable, ScoreWeightEditor, tier badges (Wave 1)
-  - [ ] 52-02-PLAN.md — Scrape Config v6: RuleEditor, SelectorDiscoveryPanel, FieldEditor (Wave 2)
+  - [x] 52-02-PLAN.md — Scrape Config v6: RuleEditor, SelectorDiscoveryPanel, FieldEditor (Wave 2)
   - [ ] 52-03-PLAN.md — Import/Export v6: ColumnMapper, CSV preview, QuickCheck UI (Wave 3)
 
 ---
