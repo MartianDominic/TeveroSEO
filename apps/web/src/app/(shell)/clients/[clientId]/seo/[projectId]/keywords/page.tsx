@@ -176,7 +176,7 @@ export default function KeywordsPage() {
         <h1 className="text-2xl font-semibold">Keyword Research</h1>
 
         {/* Search Form */}
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="pt-6 space-y-4">
             <div className="flex gap-4">
               <div className="flex-1 space-y-2">
@@ -249,7 +249,7 @@ export default function KeywordsPage() {
 
         {/* Results */}
         {results.length > 0 && (
-          <Card>
+          <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
@@ -261,8 +261,8 @@ export default function KeywordsPage() {
                 {results.map((result) => (
                   <div
                     key={result.keyword}
-                    className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-muted/50 ${
-                      selectedKeywords.has(result.keyword) ? "bg-primary/10" : ""
+                    className={`flex items-center justify-between p-2 rounded-[var(--radius-input)] cursor-pointer hover:bg-surface-2 ${
+                      selectedKeywords.has(result.keyword) ? "bg-accent-soft" : ""
                     }`}
                     onClick={() => toggleKeyword(result.keyword)}
                   >
@@ -275,7 +275,7 @@ export default function KeywordsPage() {
                       />
                       <span className="font-medium">{result.keyword}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4 text-[12px] text-text-3">
                       <span>{result.searchVolume.toLocaleString()} vol</span>
                       <Badge variant="outline">
                         {(result.competition * 100).toFixed(0)}% comp
@@ -290,23 +290,23 @@ export default function KeywordsPage() {
         )}
 
         {/* Saved Keywords */}
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Saved Keywords ({saved.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {savedQuery.isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
               </div>
             ) : saved.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">
+              <p className="text-[12px] text-text-3 py-4">
                 No saved keywords yet. Research and save keywords above.
               </p>
             ) : (
               <div className="space-y-1">
                 {/* Header row */}
-                <div className="flex items-center justify-between p-2 text-sm text-muted-foreground border-b mb-2">
+                <div className="flex items-center justify-between p-2 text-[12px] text-text-3 border-b border-hairline-2 mb-2">
                   <span>Keyword</span>
                   <div className="flex items-center gap-4">
                     <span className="w-24 text-center">Trend</span>
@@ -323,7 +323,7 @@ export default function KeywordsPage() {
                   return (
                     <div
                       key={kw.id}
-                      className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      className="flex items-center justify-between p-2 rounded-[var(--radius-input)] hover:bg-surface-2 cursor-pointer"
                       onClick={() =>
                         router.push(
                           `/clients/${clientId}/seo/${projectId}/keywords/${kw.id}` as Parameters<typeof router.push>[0],
@@ -332,7 +332,7 @@ export default function KeywordsPage() {
                     >
                       <div className="flex items-center gap-4">
                         <span className="font-medium">{kw.keyword}</span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-[12px] text-text-3">
                           {kw.searchVolume.toLocaleString()} vol
                         </span>
                       </div>

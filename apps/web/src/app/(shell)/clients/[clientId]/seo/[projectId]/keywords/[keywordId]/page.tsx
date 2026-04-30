@@ -83,7 +83,7 @@ export default function KeywordDetailPage() {
         ) : (
           <>
             {/* Current Position Card */}
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle>Current Position</CardTitle>
               </CardHeader>
@@ -99,7 +99,7 @@ export default function KeywordDetailPage() {
                       href={safeHref(latest.url)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                      className="text-[12px] text-text-3 hover:text-text-1 flex items-center gap-1"
                     >
                       {(() => {
                         try {
@@ -116,12 +116,12 @@ export default function KeywordDetailPage() {
                 {/* SERP Features */}
                 {latest?.serpFeatures && latest.serpFeatures.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-sm text-muted-foreground mb-2">
+                    <p className="text-[12px] text-text-3 mb-2">
                       SERP Features Present
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {latest.serpFeatures.map((feature) => (
-                        <Badge key={feature} variant="secondary">
+                        <Badge key={feature} className="bg-surface-2 text-text-2">
                           {feature.replace(/_/g, " ")}
                         </Badge>
                       ))}
@@ -132,7 +132,7 @@ export default function KeywordDetailPage() {
             </Card>
 
             {/* Position History Chart */}
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle>Position History</CardTitle>
               </CardHeader>
