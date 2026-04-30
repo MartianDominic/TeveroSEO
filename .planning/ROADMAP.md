@@ -1695,7 +1695,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   5. Pipeline kanban with drag-and-drop between stages
   6. Today's tasks feed (what I need to do now)
   7. MRR metrics card with trend
-  8. Retention signals and churn risk indicators
+  8. One-time payment tracking per client (setup fees, project work)
+  9. Retention signals and churn risk indicators
   9. Prospect → client conversion on checklist completion
 **Estimated effort**: 32 hours
 **Plans**: 6 plans
