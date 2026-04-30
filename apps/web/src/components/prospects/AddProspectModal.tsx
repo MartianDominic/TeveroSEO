@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import {
 } from "@tevero/ui";
 import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { nanoid } from "nanoid";
 import {
   useProspectWizardStore,
   type ExtractionResult,
@@ -24,6 +25,7 @@ import { WebsiteInputForm } from "./WebsiteInputForm";
 import { WebsiteContextForm } from "./WebsiteContextForm";
 import { ConversationInputForm } from "./ConversationInputForm";
 import { ExtractionConfirmation } from "./ExtractionConfirmation";
+import { AnalysisProgress } from "./AnalysisProgress";
 import {
   extractFromConversationAction,
   confirmAndCreateProspectAction,
@@ -49,17 +51,20 @@ export function AddProspectModal({
     extractedData,
     open,
     close,
+    setStep,
     setMode,
     setError,
-    setStep,
     setExtractedData,
     setSubmitting,
     reset,
   } = useProspectWizardStore();
 
+  const [progressId, setProgressId] = useState<string | null>(null);
+
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
+      setProgressId(null);
       reset();
     }
   }, [isOpen, reset]);
@@ -96,6 +101,10 @@ export function AddProspectModal({
 
     setError(null);
     setSubmitting(true);
+
+    // Generate a temporary ID for progress tracking
+    const tempProgressId = nanoid();
+    setProgressId(tempProgressId);
     setStep("progress");
 
     try {
@@ -115,6 +124,7 @@ export function AddProspectModal({
       if (!result.success) {
         setError(result.error || t("errors.extractionFailed"));
         setStep("input");
+        setProgressId(null);
         return;
       }
 
@@ -125,6 +135,7 @@ export function AddProspectModal({
       setStep("input");
     } finally {
       setSubmitting(false);
+      setProgressId(null);
     }
   };
 
@@ -247,11 +258,19 @@ export function AddProspectModal({
         )}
 
         {step === "progress" && (
-          <div className="py-[var(--space-8)] flex flex-col items-center justify-center gap-[var(--space-4)]">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-            <p className="text-[length:var(--type-body)] text-text-2">
-              Analyzing...
-            </p>
+          <div className="py-[var(--space-6)]">
+            <AnalysisProgress
+              prospectId={progressId || undefined}
+              onComplete={() => {
+                // Progress display only - extraction handled by action
+              }}
+              onError={(errorMsg) => {
+                setError(errorMsg);
+                setStep("input");
+                setProgressId(null);
+                setSubmitting(false);
+              }}
+            />
           </div>
         )}
 

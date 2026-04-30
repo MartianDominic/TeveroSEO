@@ -197,33 +197,20 @@
         "domainRequired": "Svetaines domenas yra privalomas",
         "invalidDomain": "Neteisingas domeno formatas. Naudokite formata: example.com",
         "conversationTooShort": "Pokalbis turi buti bent 50 simboliu",
-        "extractionFailed": "Nepavyko isrinkti informacijos. Bandykite dar karta.",
-        "createFailed": "Nepavyko sukurti prospekto. Bandykite dar karta."
+        "extractionFailed": "Nepavyko isanalizuoti turinio. Bandykite dar karta."
       },
-      "confirmation": {
-        "title": "Perziureti isrinkta informacija",
-        "confidenceLabel": "AI pasitikejimas",
-        "lowConfidenceWarning": "Zemas pasitikejimo lygis. Perziurekite ir pataisykite informacija zemiau.",
-        "businessName": "Imones pavadinimas",
-        "businessNamePlaceholder": "Iveskite imones pavadinima",
-        "industry": "Industrija",
-        "industryPlaceholder": "Pasirinkite industrija",
-        "services": "Paslaugos",
-        "servicesPlaceholder": "Strategija, Operacijos, HR",
-        "servicesHint": "Atskirkite paslaugas kableliais",
-        "targetAudience": "Tiksline auditorija",
-        "targetAudiencePlaceholder": "pvz., MVV, Korporacijos, B2C vartotojai",
-        "location": "Vieta",
-        "locationPlaceholder": "pvz., Vilnius",
-        "keywords": "Siulomi raktazodziai",
-        "reanalyze": "Analizuoti is naujo",
-        "confirmAndContinue": "Patvirtinti ir testi"
-      },
-      "keywords": {
-        "add": "Prideti",
-        "addPlaceholder": "Prideti raktazodi...",
-        "remove": "Pasalinti {keyword}",
-        "selected": "{count} is {total} raktazodziu pasirinkta"
+      "progress": {
+        "title": "Analizuojama",
+        "stages": {
+          "connecting": "Jungiamasi",
+          "crawling": "Narsoma",
+          "extracting": "Isrenkama",
+          "analyzing": "Analizuojama",
+          "complete": "Baigta",
+          "error": "Klaida"
+        },
+        "connected": "Prisijungta",
+        "disconnected": "Jungiamasi is naujo..."
       }
     }
   },
