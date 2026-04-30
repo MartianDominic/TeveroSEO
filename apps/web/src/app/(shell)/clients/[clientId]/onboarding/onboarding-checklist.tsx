@@ -80,7 +80,7 @@ export function OnboardingChecklist({
 
           // If conversion happened, redirect to complete page
           if (result.conversionSummary) {
-            router.push(`/clients/${clientId}/onboarding/complete`);
+            router.push(`/clients/${clientId}/onboarding/complete` as never);
           } else {
             router.refresh();
           }

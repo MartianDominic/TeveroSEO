@@ -1,0 +1,253 @@
+/**
+ * i18n Layout Fixes
+ *
+ * CSS rules to handle longer Lithuanian translations (20-40% longer than English)
+ * and prevent UI overflow issues across different viewport sizes.
+ */
+
+/* ===== Navigation Items ===== */
+.nav-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+@media (max-width: 768px) {
+  .nav-item {
+    white-space: normal;
+    word-wrap: break-word;
+    hyphens: auto;
+    max-width: none;
+  }
+}
+
+/* ===== Button Text ===== */
+.btn-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.btn-text-compact {
+  max-width: 120px;
+}
+
+/* ===== Table Headers ===== */
+th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+th[data-truncate="true"] {
+  max-width: 150px;
+}
+
+/* ===== Card Titles ===== */
+.card-title {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.card-title-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Form Labels ===== */
+.form-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-label-wrap {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* ===== Toast Messages ===== */
+.toast-message {
+  max-width: 300px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ===== Breadcrumb Items ===== */
+.breadcrumb-item {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumb-item:first-child,
+.breadcrumb-item:last-child {
+  max-width: none;
+}
+
+/* ===== Dropdown Menu Items ===== */
+.dropdown-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+/* ===== Stat Cards ===== */
+.stat-label {
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-value {
+  white-space: nowrap;
+}
+
+/* ===== Badge/Tag Text ===== */
+.badge-text {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Sidebar Navigation ===== */
+.sidebar-nav-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-nav-item {
+  max-width: 0;
+  opacity: 0;
+}
+
+/* ===== Tab Labels ===== */
+.tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+@media (max-width: 640px) {
+  .tab-label {
+    max-width: 80px;
+  }
+}
+
+/* ===== Lithuanian-Specific Overrides ===== */
+[lang="lt"] {
+  /* Slightly tighter letter spacing for Lithuanian */
+  letter-spacing: -0.01em;
+}
+
+[lang="lt"] .nav-item {
+  font-size: 0.875rem;
+  max-width: 200px;
+}
+
+[lang="lt"] .btn-primary,
+[lang="lt"] .btn-secondary {
+  font-size: 0.875rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+[lang="lt"] th {
+  font-size: 0.75rem;
+}
+
+[lang="lt"] .stat-label {
+  font-size: 0.8125rem;
+}
+
+[lang="lt"] .tab-label {
+  font-size: 0.8125rem;
+  max-width: 120px;
+}
+
+[lang="lt"] .dropdown-item {
+  font-size: 0.875rem;
+}
+
+/* ===== Responsive Breakpoint Adjustments ===== */
+@media (max-width: 1024px) {
+  [lang="lt"] .nav-item {
+    max-width: 160px;
+  }
+
+  [lang="lt"] .stat-label {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  [lang="lt"] .nav-item {
+    font-size: 0.8125rem;
+    max-width: none;
+  }
+
+  [lang="lt"] .btn-primary,
+  [lang="lt"] .btn-secondary {
+    font-size: 0.8125rem;
+  }
+
+  .tab-label {
+    max-width: 60px;
+  }
+
+  [lang="lt"] .tab-label {
+    max-width: 50px;
+  }
+}
+
+/* ===== Utility Classes ===== */
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-wrap-lt {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.text-nowrap {
+  white-space: nowrap;
+}
+
+/* ===== Tooltip Trigger for Truncated Text ===== */
+.truncate-with-tooltip {
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate-with-tooltip[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 50;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-input);
+  white-space: normal;
+  max-width: 200px;
+  word-wrap: break-word;
+}

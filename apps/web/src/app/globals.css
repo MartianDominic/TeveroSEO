@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@tevero/ui/src/lib/tokens.css";
+@import "../styles/i18n-fixes.css";
 
 @theme inline {
   /* ===== Colors - Map v6 tokens to Tailwind utilities ===== */

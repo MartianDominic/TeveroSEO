@@ -26,13 +26,14 @@ export default async function OnboardingCompletePage({ params }: PageProps) {
   }
 
   // If not complete, redirect back to onboarding
+  const onboardingPath = `/clients/${clientId}/onboarding`;
   if (checklist.completedCount !== checklist.totalCount) {
-    redirect(`/clients/${clientId}/onboarding`);
+    redirect(onboardingPath as never);
   }
 
   // If client not active, something went wrong - redirect to onboarding
   if (client.status !== "active") {
-    redirect(`/clients/${clientId}/onboarding`);
+    redirect(onboardingPath as never);
   }
 
   // Determine connected services from credential items
