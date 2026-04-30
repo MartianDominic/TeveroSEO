@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-current_plan: 1
+current_plan: 2
 status: executing
-last_updated: "2026-04-30T11:44:55.340Z"
-last_activity: 2026-04-30 -- Phase --phase execution started
+last_updated: "2026-04-30T15:37:40Z"
+last_activity: 2026-04-30 -- Phase 52 Plan 01 completed (v6 UI compliance for keyword pipeline)
 progress:
   total_phases: 14
   completed_phases: 14
@@ -23,16 +23,16 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase 49-51 — Onboarding & Agency Dashboard
+**Current focus:** Phase --phase — 52
 
 ## Current Position
 
-Phase: 49-51 (Onboarding & Dashboard) — PENDING
-Plan: 0 of TBD
-Current Plan: 0
-Plans: 0/? (discuss phase needed)
-Status: Ready for discuss phase
-Last activity: 2026-04-30 Phase 48 verified complete
+Phase: 52 (v6 UI Compliance) — EXECUTING
+Plan: 2 of 3
+Current Plan: 2
+Plans: 1/3 complete
+Status: Executing Phase 52
+Last activity: 2026-04-30 -- Phase 52 Plan 01 completed (v6 UI compliance for keyword pipeline)
 
 ### Phase 41 Focus
 
@@ -95,6 +95,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **52-01:** text-[12px] over text-xs for WCAG floor; remove dark mode variants (v6 tokens handle theming); bg-surface-2 for neutral ignore tier; var(--success/error/text-3) in chart components
 - **47-01:** Fallback AI recommendations when backend endpoint not ready; auto-set awareness only when at default; Lithuanian UI labels for proposal builder
 - **46-02:** Add 'proposal' to ENTITY_TYPES; fire-and-forget beacon tracking; ProposalStatus from proposal-schema.ts for type safety
 - **46-01:** AUTH_CONFIG_MISSING error code for missing RESEND_API_KEY; Rate limit 20 sends/hr per user; STATUS_MAP for 9 proposal statuses to 4 Badge variants
@@ -222,7 +223,7 @@ None currently.
 | 46-47 | Proposal System | ✓ Complete |
 | 48 | Contract & Payment | ✓ Complete |
 | 49-51 | Onboarding & Dashboard | In Progress |
-| 52 | v6 UI Compliance | Pending |
+| 52 | v6 UI Compliance | In Progress (1/3 plans) |
 | 53 | Reports & PDF | Pending |
 
 ### Phase 45 Summary (2026-04-30)
@@ -262,4 +263,4 @@ Design docs:
 - `.planning/design/gsd-phase0-component-library.md` — Phase 44 detailed plan
 - `.planning/design/v7-master-design-architecture.md` — User journey architecture
 
-**Planned Phase:** 48 (Contract & Payment) — 4 plans — 2026-04-30T10:53:59.611Z
+**Planned Phase:** 52 (v6 UI Compliance) — 3 plans — 2026-04-30T15:31:37.047Z
