@@ -1,20 +1,27 @@
 /**
  * BullMQ sandboxed processor for scheduled report generation.
  *
- * Finds due schedules (nextRun <= now, enabled=true) and:
- * 1. Creates a report record in pending status
- * 2. Enqueues report generation job
- * 3. Updates schedule: lastRun = now, nextRun = calculateNextRun()
+ * Two-phase process:
+ * 1. Finds due schedules (nextRun <= now, enabled=true) and:
+ *    - Creates a report record in pending status with scheduleId link
+ *    - Enqueues report generation job
+ *    - Updates schedule: lastRun = now, nextRun = calculateNextRun()
+ * 2. Polls for completed scheduled reports and sends delivery emails
  */
 import type { Job } from "bullmq";
 import type { ScheduleJobData } from "@/server/queues/scheduleQueue";
 import { createLogger } from "@/server/lib/logger";
 import { db } from "@/db";
-import { reportSchedules, reports } from "@/db/schema";
-import { eq, and, lte } from "drizzle-orm";
+import { reportSchedules, reports, clients } from "@/db/schema";
+import { eq, and, lte, isNotNull, isNull } from "drizzle-orm";
 import { enqueueReportGeneration } from "@/server/queues/reportQueue";
 import { computeReportHash } from "@/server/services/report/content-hasher";
+import { sendReportEmail } from "@/server/lib/email";
+import { reportDeliveryTemplate } from "@/server/lib/email-templates";
 import CronParser from "cron-parser";
+
+/** T-53-09: Rate limit for email sends per schedule check cycle */
+const MAX_EMAILS_PER_RUN = 50;
 
 /**
  * Calculate the next run time based on cron expression and timezone.
@@ -113,7 +120,7 @@ export default async function processScheduleJob(
       // CRITICAL-TXN-001 FIX: Wrap report creation + schedule update in transaction
       // This ensures atomicity - either both succeed or both rollback
       const [newReport] = await db.transaction(async (tx) => {
-        // Create report record in pending status
+        // Create report record in pending status with schedule link
         const [report] = await tx
           .insert(reports)
           .values({
@@ -124,6 +131,7 @@ export default async function processScheduleJob(
             locale: schedule.locale,
             contentHash,
             status: "pending",
+            scheduleId: schedule.id, // Link to schedule for email delivery
           })
           .returning();
 
@@ -170,5 +178,113 @@ export default async function processScheduleJob(
 
   logger.info("Schedule check complete", {
     processed: dueSchedules.length,
+  });
+
+  // Phase 2: Send emails for completed scheduled reports
+  await sendCompletedReportEmails(logger);
+}
+
+/**
+ * Find completed scheduled reports and send delivery emails.
+ * T-53-09: Limited to MAX_EMAILS_PER_RUN per cycle to prevent email floods.
+ */
+async function sendCompletedReportEmails(
+  parentLogger: ReturnType<typeof createLogger>,
+): Promise<void> {
+  const logger = createLogger({ module: "schedule-processor-email" });
+
+  // Find reports that:
+  // - Have a scheduleId (are scheduled, not manual)
+  // - Status is "complete"
+  // - Have a pdfPath
+  // - Haven't been emailed yet (emailSentAt is null)
+  const completedReports = await db
+    .select({
+      report: reports,
+      schedule: reportSchedules,
+      clientName: clients.name,
+    })
+    .from(reports)
+    .innerJoin(reportSchedules, eq(reportSchedules.id, reports.scheduleId))
+    .innerJoin(clients, eq(clients.id, reports.clientId))
+    .where(
+      and(
+        isNotNull(reports.scheduleId),
+        eq(reports.status, "complete"),
+        isNotNull(reports.pdfPath),
+        isNull(reports.emailSentAt),
+      ),
+    )
+    .limit(MAX_EMAILS_PER_RUN);
+
+  if (completedReports.length === 0) {
+    logger.debug("No completed reports pending email delivery");
+    return;
+  }
+
+  logger.info("Found completed reports for email delivery", {
+    count: completedReports.length,
+  });
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const { report, schedule, clientName } of completedReports) {
+    const reportLogger = createLogger({
+      module: "schedule-processor-email",
+      reportId: report.id,
+      clientId: report.clientId,
+    });
+
+    try {
+      // T-53-08: Recipients are stored in schedule and validated as email format
+      if (!schedule.recipients || schedule.recipients.length === 0) {
+        reportLogger.warn("No recipients configured for schedule", {
+          scheduleId: schedule.id,
+        });
+        continue;
+      }
+
+      const downloadUrl = `${process.env.APP_URL ?? "https://app.tevero.io"}/api/reports/${report.id}/download`;
+
+      const { subject, html } = reportDeliveryTemplate({
+        clientName,
+        reportType: report.reportType,
+        dateRange: { start: report.dateRangeStart, end: report.dateRangeEnd },
+        downloadUrl,
+        locale: report.locale,
+      });
+
+      await sendReportEmail({
+        to: schedule.recipients,
+        subject,
+        html,
+        pdfPath: report.pdfPath!,
+        downloadUrl,
+      });
+
+      // Mark as emailed
+      await db
+        .update(reports)
+        .set({ emailSentAt: new Date() })
+        .where(eq(reports.id, report.id));
+
+      reportLogger.info("Report email sent", {
+        recipients: schedule.recipients.length,
+      });
+      successCount++;
+    } catch (err) {
+      reportLogger.error(
+        "Failed to send report email",
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      failCount++;
+      // Continue with next report - don't fail the entire job
+    }
+  }
+
+  logger.info("Email delivery phase complete", {
+    success: successCount,
+    failed: failCount,
   });
 }

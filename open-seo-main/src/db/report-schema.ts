@@ -13,6 +13,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
+import { reportSchedules } from "./schedule-schema";
 
 /**
  * Report status enum values.
@@ -54,6 +55,12 @@ export const reports = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Schedule link for automated reports (null for manual reports)
+    scheduleId: uuid("schedule_id").references(() => reportSchedules.id, {
+      onDelete: "set null",
+    }),
+    // Email delivery tracking (null until email sent)
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
   },
   (table) => [
     index("ix_reports_client_id").on(table.clientId),
@@ -62,6 +69,7 @@ export const reports = pgTable(
       table.contentHash,
     ),
     index("ix_reports_status").on(table.status),
+    index("ix_reports_schedule_id").on(table.scheduleId),
   ],
 );
 
