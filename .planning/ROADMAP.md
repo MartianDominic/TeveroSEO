@@ -1805,19 +1805,22 @@ Transform the platform into a complete agency CRM with v6 design system complian
 
 ## v7.0 Onboarding Excellence
 
-**Focus:** World-class prospect-to-client onboarding experience with Google Docs-like editing, split payments, and flawless user journeys.
+**Focus:** World-class prospect-to-client onboarding experience with template systems, drag-and-drop variables, multi-signer agreements, split payments, OAuth integrations, agency command center, engagement automation, and flawless user journeys. Full EN/LT i18n throughout.
+**Phases:** 56-62 (7 phases, ~360-435 hours total)
 
 ### Phase 56: Prospect Input Excellence
 **Goal**: Make the core value proposition real — "paste anything, get brilliant insights" with conversation dump parsing, confirmation flows, and real-time progress.
 **Depends on**: Phase 55 (i18n complete)
 **Design doc**: `.planning/phases/56-prospect-input-excellence/DESIGN.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: All UI, forms, and AI outputs support EN/LT
 **Success Criteria** (what must be TRUE):
   1. Add Prospect button is enabled and functional
   2. Three input modes work: website URL, website + context, conversation dump
   3. AI extraction from conversation produces: business name, industry, services, keywords
   4. Confirmation screen shows before analysis with edit capability
-  5. Real-time progress feedback shows during analysis
+  5. Real-time progress feedback shows during analysis (SSE)
+  6. Platform detection identifies WordPress, Shopify, Wix, etc.
 **Estimated effort**: 40-50 hours
 **Plans**: 4 plans
   - [ ] 56-01-PLAN.md — Schema + Add Prospect Modal + Website Input (Wave 1)
@@ -1828,25 +1831,33 @@ Transform the platform into a complete agency CRM with v6 design system complian
 ---
 
 ### Phase 57: Proposal Editor Revolution
-**Goal**: Transform proposal editing into Google Docs meets website builder — inline editing, drag-and-drop sections, auto-save, version history.
+**Goal**: Transform proposal editing into Google Docs meets website builder — template system, inline editing, drag-and-drop variables, AI generation, auto-save, version history.
 **Depends on**: Phase 56 (prospect input complete)
 **Design doc**: `.planning/phases/57-proposal-editor-revolution/DESIGN.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: All UI, templates, and variable labels support EN/LT
 **Success Criteria** (what must be TRUE):
-  1. Click any text to edit inline (TipTap editor)
-  2. Drag sections to reorder with smooth animation
-  3. Add custom sections (text, image, testimonial, case study, video)
-  4. Auto-save within 2 seconds of last change
-  5. Clone proposal creates full copy with one click
-  6. View and restore previous versions
-  7. Magic link generation for manual sending
-**Estimated effort**: 50-60 hours
-**Plans**: 5 plans
-  - [ ] 57-01-PLAN.md — Schema + Inline Editing (TipTap) (Wave 1)
-  - [ ] 57-02-PLAN.md — Drag-and-Drop Sections (@dnd-kit) (Wave 1)
-  - [ ] 57-03-PLAN.md — Custom Sections + Add Section Menu (Wave 2)
-  - [ ] 57-04-PLAN.md — Auto-Save + Version History (Wave 2)
-  - [ ] 57-05-PLAN.md — Clone + Undo/Redo + Magic Link (Wave 3)
+  1. Template selector when creating proposal
+  2. Click any text to edit inline (TipTap editor)
+  3. Drag variables from palette into content (colored chips)
+  4. Drag sections to reorder with smooth animation
+  5. Add custom sections (text, image, testimonial, case study, video)
+  6. Auto-save within 2 seconds of last change
+  7. Clone proposal creates full copy with one click
+  8. View and restore previous versions
+  9. AI generates personalized content from audit/prospect data
+  10. Magic link generation for manual sending
+  11. Variable resolution shows live preview values
+**Estimated effort**: 60-70 hours
+**Plans**: 8 plans
+  - [ ] 57-01-PLAN.md — Schema + Template CRUD + i18n Setup (Wave 1)
+  - [ ] 57-02-PLAN.md — Variable System + Resolution Service (Wave 1)
+  - [ ] 57-03-PLAN.md — Inline Editing (TipTap) + Variable Chips (Wave 2)
+  - [ ] 57-04-PLAN.md — Drag-and-Drop Sections (@dnd-kit) (Wave 2)
+  - [ ] 57-05-PLAN.md — Custom Sections + Add Section Menu (Wave 3)
+  - [ ] 57-06-PLAN.md — Auto-Save + Version History (Wave 3)
+  - [ ] 57-07-PLAN.md — AI Content Generation (Wave 4)
+  - [ ] 57-08-PLAN.md — Clone + Undo/Redo + Magic Link (Wave 4)
 
 ---
 
@@ -1855,6 +1866,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
 **Depends on**: Phase 57 (proposal editor complete)
 **Design doc**: `.planning/phases/58-service-catalog/DESIGN.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: Service names, descriptions, and terms in EN/LT
 **Success Criteria** (what must be TRUE):
   1. Service catalog exists with default templates (SEO tiers + add-ons)
   2. Agencies can create/edit/delete service templates
@@ -1872,25 +1884,33 @@ Transform the platform into a complete agency CRM with v6 design system complian
 ---
 
 ### Phase 59: Agreement & Signing Excellence
-**Goal**: Create a 3-click signing experience with client contract viewing page and polished UX.
+**Goal**: Create a 3-click signing experience with template system, multi-signer support, pre-signing capability, and polished client contract page.
 **Depends on**: Phase 58 (service catalog complete)
 **Design doc**: `.planning/phases/59-agreement-excellence/DESIGN.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: All agreements, UI, and emails in EN/LT
 **Success Criteria** (what must be TRUE):
-  1. Client contract page `/c/:token` exists and renders agreement
-  2. Agreement shows real data from prospect/workspace (no placeholders)
-  3. Preview modal shows exactly what client will see
-  4. Magic link generation works
-  5. Mobile-responsive viewing with progress indicator
-  6. Dokobit signing completes successfully
-  7. Success page shows with PDF download
-**Estimated effort**: 45-55 hours
-**Plans**: 5 plans
-  - [ ] 59-01-PLAN.md — Variable Resolution Service (Wave 1)
-  - [ ] 59-02-PLAN.md — Client Contract Page `/c/:token` (Wave 1)
-  - [ ] 59-03-PLAN.md — Preview Modal + Magic Link (Wave 2)
-  - [ ] 59-04-PLAN.md — Signing Flow + Success Page (Wave 2)
-  - [ ] 59-05-PLAN.md — PDF Quality + Polish (Wave 3)
+  1. Template selector when creating agreement
+  2. Drag-and-drop variables in template editor
+  3. Configure 1-3 signers with roles (provider + client(s))
+  4. Sequential signing (provider first) works
+  5. Pre-signing flow: agency signs before sending to client
+  6. Client contract page `/c/:token` renders beautifully
+  7. Language toggle switches EN/LT seamlessly
+  8. Multi-signer status tracking works
+  9. Dokobit signing completes (Smart-ID, Mobile-ID)
+  10. Success page shows with PDF download
+  11. PDF has professional formatting with agency branding
+**Estimated effort**: 55-65 hours
+**Plans**: 8 plans
+  - [ ] 59-01-PLAN.md — Schema + Template System + i18n (Wave 1)
+  - [ ] 59-02-PLAN.md — Multi-Signer Architecture + Dokobit (Wave 1)
+  - [ ] 59-03-PLAN.md — Variable Resolution Service (Wave 2)
+  - [ ] 59-04-PLAN.md — Client Contract Page `/c/:token` (Wave 2)
+  - [ ] 59-05-PLAN.md — Template Editor + Variable Drag-Drop (Wave 3)
+  - [ ] 59-06-PLAN.md — Pre-Signing Flow (Wave 3)
+  - [ ] 59-07-PLAN.md — PDF Generation + Branding (Wave 4)
+  - [ ] 59-08-PLAN.md — Success Page + Status Tracking (Wave 4)
 
 ---
 
@@ -1899,6 +1919,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
 **Depends on**: Phase 59 (agreement flow complete)
 **Design doc**: `.planning/phases/60-payment-flexibility/DESIGN.md`
 **Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: Payment UI, emails, and reminders in EN/LT
 **Success Criteria** (what must be TRUE):
   1. Split payment toggle in workspace settings
   2. Client can choose payment plan (full, 2 payments, 3 payments)
@@ -1915,5 +1936,76 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 60-03-PLAN.md — Agency Dashboard + Tracking (Wave 2)
   - [ ] 60-04-PLAN.md — Discount Codes (Wave 2)
   - [ ] 60-05-PLAN.md — Reminders + Polish (Wave 3)
+
+---
+
+### Phase 61: Platform Integration Excellence
+**Goal**: Implement OAuth for top 15 platforms with intelligent fallback, eliminating friction when prospects connect their websites.
+**Depends on**: Phase 56 (prospect input complete)
+**Design doc**: `.planning/phases/61-platform-integration/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: Connection UI and error messages in EN/LT
+**Platform Tiers**:
+  - **Tier 1 (Must Have)**: Google Search Console, Google Analytics, Google Business Profile, WordPress.com, Shopify
+  - **Tier 2 (Should Have)**: Wix, Squarespace, Webflow, HubSpot CMS
+  - **Tier 3 (Nice to Have)**: BigCommerce, Magento, Drupal, Ghost, Bing Webmaster
+  - **Tier 4 (Always)**: Universal fallback crawler with Puppeteer/Playwright for JS-heavy sites
+**Success Criteria** (what must be TRUE):
+  1. Google OAuth (GSC + GA + GBP) works end-to-end
+  2. Shopify OAuth installs app and fetches data
+  3. WordPress Application Passwords validated and stored
+  4. Wix OAuth works for basic site data
+  5. Token refresh runs automatically before expiry
+  6. Fallback crawler handles JS-rendered sites (Puppeteer)
+  7. Connection status visible in dashboard
+  8. Manual sync triggers work
+  9. Disconnect properly revokes tokens
+  10. Encrypted token storage (AES-256-GCM)
+**Estimated effort**: 55-65 hours
+**Plans**: 6 plans
+  - [ ] 61-01-PLAN.md — Schema + Token Encryption + OAuth Base (Wave 1)
+  - [ ] 61-02-PLAN.md — Google OAuth (GSC, GA, GBP) (Wave 1)
+  - [ ] 61-03-PLAN.md — Shopify + Wix OAuth (Wave 2)
+  - [ ] 61-04-PLAN.md — WordPress App Passwords + Other Platforms (Wave 2)
+  - [ ] 61-05-PLAN.md — Fallback Crawler + Playwright (Wave 3)
+  - [ ] 61-06-PLAN.md — Token Refresh Worker + Dashboard UI (Wave 3)
+
+---
+
+### Phase 62: Agency Command Center & Pipeline Intelligence
+**Goal**: Build the unified operations hub for agencies — real-time pipeline visibility, engagement workflow engine with anti-annoyance safeguards, smart alerts for at-risk deals, and win/loss analytics.
+**Depends on**: Phase 56 (i18n complete), Phase 57 (proposals), Phase 59 (agreements)
+**Design doc**: `.planning/phases/62-agency-command-center/DESIGN.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**i18n**: All dashboard UI, alerts, and workflow messages in EN/LT
+**Core Features**:
+  - **Pipeline Dashboard**: Today Bar, Pipeline Cards, Revenue Pipeline, Funnel Visualization
+  - **Engagement Workflows**: Automated follow-up sequences with snooze ("follow up May 27th") support
+  - **Anti-Annoyance**: Max 3 touches/week, 48h cooldown, skip on response
+  - **Smart Alerts**: High-value stuck deals, win rate decline, contracts expiring
+  - **Quick Actions**: Send reminder, mark lost, snooze, add note from anywhere
+  - **Win/Loss Analytics**: Lost deal reasons, cycle time tracking, conversion funnels
+**Success Criteria** (what must be TRUE):
+  1. Dashboard loads all pipeline metrics in < 1.5s
+  2. Today Action Bar shows overdue, due today, awaiting you, new counts
+  3. Pipeline cards show real-time prospect/proposal/contract/invoice counts
+  4. Engagement workflow starts automatically on proposal_sent trigger
+  5. Snooze functionality works ("follow up on May 27th")
+  6. Anti-annoyance safeguards prevent over-touching
+  7. Smart alerts detect high-value stuck deals (> 7 days, > 5000 EUR)
+  8. Activity feed updates in real-time via Socket.IO
+  9. Quick actions execute from needs attention list
+  10. Lost deal tracking captures reason and competitor
+  11. All UI supports EN/LT language toggle
+**Estimated effort**: 70-85 hours
+**Plans**: 8 plans
+  - [ ] 62-01-PLAN.md — Database Schema + Migrations (Wave 1)
+  - [ ] 62-02-PLAN.md — Follow-up System + Rules Engine (Wave 1)
+  - [ ] 62-03-PLAN.md — Engagement Workflow Engine + BullMQ Workers (Wave 1)
+  - [ ] 62-04-PLAN.md — Pipeline Metrics Worker + Materialized Views (Wave 2)
+  - [ ] 62-05-PLAN.md — Command Center Dashboard Core (Wave 2)
+  - [ ] 62-06-PLAN.md — Needs Attention List + Quick Actions (Wave 2)
+  - [ ] 62-07-PLAN.md — Smart Alerts + Activity Feed (Socket.IO) (Wave 3)
+  - [ ] 62-08-PLAN.md — Win/Loss Analytics + i18n + E2E Tests (Wave 3)
 
 ---

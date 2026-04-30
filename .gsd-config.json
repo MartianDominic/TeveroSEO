@@ -1,0 +1,10 @@
+{
+  "model_profile": "quality",
+  "workflow": {
+    "skip_discuss": true,
+    "ui_phase": true,
+    "ui_review": true,
+    "code_review": true,
+    "verifier_enabled": true
+  }
+}
