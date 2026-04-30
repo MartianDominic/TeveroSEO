@@ -58,3 +58,6 @@ export * from "./webhook-schema";
 
 // Security and audit schemas
 export * from "./security-audit-schema";
+
+// Tasks schema (Phase 49-51)
+export * from "./tasks-schema";
