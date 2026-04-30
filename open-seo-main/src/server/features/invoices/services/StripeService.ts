@@ -1,17 +1,24 @@
 /**
  * Stripe API integration service.
  * Phase 48: Contract & Payment
+ * Phase 54: Refactored to use StripeProvider internally
+ *
+ * This service is maintained for backwards compatibility.
+ * New code should use PaymentProviderFactory instead.
  *
  * Handles invoice creation, payment links, and webhook verification.
  * Per D-05: Use Stripe for invoicing (already in stack).
  */
 import Stripe from "stripe";
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "StripeService" });
 
+/**
+ * @deprecated Use PaymentProviderFactory.getProvider() instead.
+ * This lazy-init pattern is kept for backwards compatibility.
+ */
 let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe {
@@ -158,6 +165,11 @@ export async function getOrCreateCustomer(
   return customer.id;
 }
 
+/**
+ * @deprecated Use PaymentProviderFactory.getProvider() for new code.
+ * This namespace export is kept for backwards compatibility with
+ * existing code that imports from StripeService.
+ */
 export const StripeService = {
   createInvoice,
   verifyWebhook,
