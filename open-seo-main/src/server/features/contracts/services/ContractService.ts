@@ -1,18 +1,30 @@
 /**
  * Contract management service.
  * Phase 48-01: Contract Generation
+ * Phase 55-06: Agreement template integration with language support
  *
  * Provides contract lifecycle management from proposal acceptance through
  * e-signature and payment integration.
  */
 import { nanoid } from "nanoid";
+import { eq, and } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
+import { db } from "@/db";
+import {
+  agreementTemplates,
+  generatedAgreements,
+  type AgreementLanguage,
+  type GeneratedAgreementSelect,
+  type GeneratedAgreementInsert,
+} from "@/db/agreement-template-schema";
 import * as ContractRepository from "../repositories/ContractRepository";
 import * as ActivityRepository from "../repositories/ActivityRepository";
 import { ProposalService } from "../../proposals/services/ProposalService";
 import { DokobitService } from "./DokobitService.js";
 import { generateContractPdf } from "./ContractPdfGenerator.js";
+import { getTemplateSubstitutionService } from "./TemplateSubstitutionService";
+import { getLanguageResolutionService } from "@/server/services/LanguageResolutionService";
 import type { ContractStatus, ContractContent, ContractSelect } from "@/db/contract-schema";
 import type { ProposalContent } from "@/db/proposal-schema";
 
@@ -289,8 +301,249 @@ async function handleSigningComplete(
   return updatedContract;
 }
 
+/**
+ * Generate a contract number in SEO-YYYY-NNNN format.
+ * T-55-13: Versioning for legal compliance tracking.
+ */
+function generateContractNumber(): string {
+  const year = new Date().getFullYear();
+  const randomPart = Math.floor(1000 + Math.random() * 9000);
+  return `SEO-${year}-${randomPart}`;
+}
+
+/**
+ * Get an agreement template by ID or by language.
+ */
+async function getTemplate(
+  templateId?: string,
+  language: AgreementLanguage = "en"
+): Promise<typeof agreementTemplates.$inferSelect | null> {
+  if (templateId) {
+    const [template] = await db
+      .select()
+      .from(agreementTemplates)
+      .where(eq(agreementTemplates.id, templateId))
+      .limit(1);
+    return template || null;
+  }
+
+  // Get active template for language and type
+  const [template] = await db
+    .select()
+    .from(agreementTemplates)
+    .where(
+      and(
+        eq(agreementTemplates.language, language),
+        eq(agreementTemplates.type, "seo-services"),
+        eq(agreementTemplates.isActive, true)
+      )
+    )
+    .limit(1);
+
+  return template || null;
+}
+
+/**
+ * Options for generating an agreement from a template.
+ */
+interface GenerateAgreementOptions {
+  templateId?: string;
+  prospectId?: string;
+  clientId?: string;
+  proposalId?: string;
+  workspaceId: string;
+  variableValues: Record<string, string | number | string[]>;
+  language?: AgreementLanguage;
+  formality?: "formal" | "informal";
+}
+
+/**
+ * Generate an agreement from a template with variable substitution.
+ * Phase 55-06: Agreement generation with language support.
+ */
+async function generateAgreement(
+  options: GenerateAgreementOptions
+): Promise<{
+  id: string;
+  content: string;
+  language: AgreementLanguage;
+  warnings: string[];
+}> {
+  const langService = getLanguageResolutionService();
+  const substitutionService = getTemplateSubstitutionService();
+
+  // Resolve target language
+  let targetLanguage = options.language;
+  if (!targetLanguage) {
+    const resolved = await langService.resolveForCommunication(
+      options.workspaceId,
+      options.prospectId || options.clientId || null,
+      options.prospectId ? "prospect" : "client"
+    );
+    targetLanguage = resolved.locale as AgreementLanguage;
+  }
+
+  // Get template for target language
+  const template = await getTemplate(options.templateId, targetLanguage);
+  if (!template) {
+    throw new AppError("NOT_FOUND", `No active template found for language: ${targetLanguage}`);
+  }
+
+  // Perform variable substitution
+  const result = await substitutionService.substituteVariables(
+    template.sections,
+    template.variables,
+    options.variableValues,
+    targetLanguage,
+    options.formality || "formal"
+  );
+
+  if (!result.success) {
+    throw new AppError("VALIDATION_ERROR", `Template substitution failed: ${result.errors.join(", ")}`);
+  }
+
+  // Store generated agreement
+  const agreementId = nanoid();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+  const agreementData: GeneratedAgreementInsert = {
+    id: agreementId,
+    templateId: template.id,
+    templateVersion: template.version,
+    prospectId: options.prospectId || null,
+    clientId: options.clientId || null,
+    proposalId: options.proposalId || null,
+    workspaceId: options.workspaceId,
+    language: targetLanguage,
+    renderedContent: result.content,
+    variableValues: options.variableValues,
+    status: "draft",
+    createdAt: now,
+    expiresAt,
+  };
+
+  await db.insert(generatedAgreements).values(agreementData);
+
+  log.info("Agreement generated", {
+    agreementId,
+    templateId: template.id,
+    language: targetLanguage,
+    warnings: result.warnings.length,
+  });
+
+  return {
+    id: agreementId,
+    content: result.content,
+    language: targetLanguage,
+    warnings: result.warnings,
+  };
+}
+
+/**
+ * Create an agreement from a proposal.
+ * Builds variable values from proposal, prospect, and workspace data.
+ */
+async function createAgreementFromProposal(
+  proposalId: string,
+  prospectId: string,
+  workspaceId: string
+): Promise<GeneratedAgreementSelect> {
+  // Fetch proposal
+  const proposal = await ProposalService.findById(proposalId);
+  if (!proposal) {
+    throw new AppError("NOT_FOUND", "Proposal not found");
+  }
+
+  if (proposal.workspaceId !== workspaceId) {
+    throw new AppError("NOT_FOUND", "Proposal not found");
+  }
+
+  // Build variable values from proposal content
+  const content = proposal.content;
+  const contractNumber = generateContractNumber();
+
+  const variableValues: Record<string, string | number | string[]> = {
+    contractNumber,
+    city: "Vilnius", // TODO: Get from workspace settings
+    contractDate: new Date().toISOString().split("T")[0],
+
+    // Provider defaults (TODO: Get from workspace settings)
+    providerName: "TeveroSEO",
+    providerCode: "123456789",
+    providerAddress: "Gedimino pr. 1, Vilnius",
+    providerRepresentative: "Director",
+    providerBasis: "the Articles of Association",
+    providerBank: "Swedbank",
+    providerAccount: "LT00 0000 0000 0000 0000",
+    providerPosition: "Director",
+
+    // Client placeholders (should be filled from prospect/client data)
+    clientName: "{{clientName}}", // Will be filled by caller
+    clientCode: "{{clientCode}}",
+    clientAddress: "{{clientAddress}}",
+    clientRepresentative: "{{clientRepresentative}}",
+    clientBasis: "the Articles of Association",
+    clientBank: "",
+    clientAccount: "",
+    clientPosition: "Director",
+
+    // Service details from proposal
+    websiteUrl: content.hero?.headline || "example.com",
+    scopeDescription: content.investment?.inclusions?.join(". ") || "",
+
+    // Financial from proposal
+    setupFee: content.investment?.setupFee || 0,
+    monthlyFee: content.investment?.monthlyFee || 0,
+    currency: "EUR",
+    vatStatus: "excluding VAT",
+
+    // Standard terms
+    startDate: new Date().toISOString().split("T")[0],
+    contractDuration: 12,
+    renewalPeriod: 12,
+    noticePeriod: 30,
+    confidentialityYears: 2,
+    liabilityMonths: 3,
+    terminationNoticeDays: 30,
+  };
+
+  // Generate the agreement
+  const result = await generateAgreement({
+    proposalId,
+    prospectId,
+    workspaceId,
+    variableValues,
+  });
+
+  // Fetch and return the generated agreement
+  const [agreement] = await db
+    .select()
+    .from(generatedAgreements)
+    .where(eq(generatedAgreements.id, result.id))
+    .limit(1);
+
+  // Log activity
+  await ActivityRepository.insertActivity({
+    id: nanoid(),
+    workspaceId,
+    entityType: "agreement",
+    entityId: result.id,
+    activityType: "created",
+    activityData: { proposalId, prospectId, language: result.language },
+    actorId: null,
+  });
+
+  return agreement;
+}
+
 export const ContractService = {
   createFromProposal,
   sendForSigning,
   handleSigningComplete,
+  // Phase 55-06: Agreement template methods
+  generateContractNumber,
+  getTemplate,
+  generateAgreement,
+  createAgreementFromProposal,
 };
