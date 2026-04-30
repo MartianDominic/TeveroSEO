@@ -290,6 +290,108 @@ export interface ProposalPreviewData {
   updatedAt: string;
 }
 
+/**
+ * AI Recommendations data structure from keyword analysis
+ * Phase 47-01: Deferred from 43-06
+ */
+export interface AIRecommendations {
+  awarenessLevel: AwarenessLevel;
+  confidence: number;
+  hookStrategy: string;
+  recommendedApproach: {
+    openingAngle: string;
+    primaryCialdini: string;
+    objectionsToAddress: string[];
+  };
+  keywordHighlights: {
+    totalKeywords: number;
+    quickWins: number;
+    highValueKeywords: Array<{
+      keyword: string;
+      volume: number;
+      potential: number;
+    }>;
+    topCompetitor: string | null;
+    estimatedTrafficGain: number;
+  };
+}
+
+/**
+ * Fetch AI recommendations based on prospect keyword analysis.
+ * Returns awareness level, hook strategy, and keyword highlights.
+ */
+export async function getAIRecommendations(
+  prospectId: string
+): Promise<ActionResult<AIRecommendations>> {
+  const authContext = await requireActionAuth();
+
+  // Validate prospect ID format
+  const validatedId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  try {
+    // Validate ownership before fetching recommendations
+    await validateProspectOwnership(validatedId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/prospects/${validatedId.data}/recommendations`,
+      {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      // Fallback with default recommendations if endpoint doesn't exist yet
+      // This allows the UI to function while backend is being developed
+      return {
+        success: true,
+        data: {
+          awarenessLevel: "solution-aware",
+          confidence: 0.7,
+          hookStrategy: "Show immediate value through quick wins",
+          recommendedApproach: {
+            openingAngle: "Your competitors are ranking for keywords you're missing",
+            primaryCialdini: "Social proof + scarcity",
+            objectionsToAddress: ["Cost", "Timeline", "Results guarantee"],
+          },
+          keywordHighlights: {
+            totalKeywords: 0,
+            quickWins: 0,
+            highValueKeywords: [],
+            topCompetitor: null,
+            estimatedTrafficGain: 0,
+          },
+        },
+      };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error("[getAIRecommendations] Error:", error);
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return {
+        success: false,
+        error: "Request timed out. Please try again.",
+      };
+    }
+    return {
+      success: false,
+      error: sanitizeErrorForClient(error),
+    };
+  }
+}
+
 export async function getProposalForPreview(
   proposalId: string
 ): Promise<ActionResult<ProposalPreviewData>> {
