@@ -58,3 +58,6 @@ export * from "./webhook-schema";
 
 // Security and audit schemas
 export * from "./security-audit-schema";
+
+// Pipeline configuration schema
+export * from "./pipeline-config-schema";
