@@ -72,3 +72,6 @@ export * from "./tasks-schema";
 
 // Report templates schema (Phase 53)
 export * from "./report-template-schema";
+
+// Payment settings schema (Phase 54)
+export * from "./workspace-payment-settings-schema";

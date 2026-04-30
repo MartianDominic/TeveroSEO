@@ -1,10 +1,15 @@
 /**
  * Invoice schema for agency billing pipeline
  * Phase 45-02: Invoice lifecycle tracking with Stripe integration
+ * Phase 54-01: Extended for multi-provider payment support
  *
  * Supports invoice states: draft -> sent -> paid/overdue -> cancelled/refunded
  * Line items stored as JSONB for flexibility
  * Amounts in cents for precision (no floating point errors)
+ *
+ * Payment providers:
+ * - Stripe: Original integration (stripeInvoiceId, stripePaymentIntentId, stripePaymentUrl)
+ * - Revolut: Added Phase 54 (revolutOrderId, revolutCheckoutUrl)
  */
 import {
   pgTable,
@@ -90,10 +95,17 @@ export const invoices = pgTable(
     totalCents: integer("total_cents").notNull(),
     currency: text("currency").default("EUR"),
 
+    // Payment provider selection (Phase 54-01)
+    paymentProvider: text("payment_provider").default("stripe"),
+
     // Stripe integration (T-45-06: not secrets, access control at repo layer)
     stripeInvoiceId: text("stripe_invoice_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripePaymentUrl: text("stripe_payment_url"),
+
+    // Revolut integration (Phase 54-01)
+    revolutOrderId: text("revolut_order_id"),
+    revolutCheckoutUrl: text("revolut_checkout_url"),
 
     // Status with CHECK constraint (T-45-04)
     status: text("status").notNull().default("draft"),
@@ -118,11 +130,18 @@ export const invoices = pgTable(
     index("ix_invoices_contract").on(table.contractId),
     index("ix_invoices_status").on(table.status),
     index("ix_invoices_stripe").on(table.stripeInvoiceId),
+    index("ix_invoices_revolut").on(table.revolutOrderId),
 
     // T-45-04: Database-level constraint for valid status values
     check(
       "chk_invoice_status_valid",
       sql`status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled', 'refunded')`
+    ),
+
+    // T-54-01: Database-level constraint for valid payment provider values
+    check(
+      "chk_invoice_payment_provider_valid",
+      sql`payment_provider IS NULL OR payment_provider IN ('stripe', 'revolut')`
     ),
   ]
 );
