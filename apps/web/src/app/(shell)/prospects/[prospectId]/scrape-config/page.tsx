@@ -308,7 +308,7 @@ export default function ScrapeConfigPage() {
     return (
       <div className="container mx-auto py-8">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-8 w-8 animate-spin text-text-3" />
         </div>
       </div>
     );
@@ -331,7 +331,7 @@ export default function ScrapeConfigPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Scrape Configuration</h1>
-            <p className="text-muted-foreground">
+            <p className="text-text-3">
               Configure custom extraction rules for this prospect
             </p>
           </div>
@@ -362,14 +362,14 @@ export default function ScrapeConfigPage() {
 
       {/* Platform Detection */}
       {platformInfo && (
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <Globe className="h-5 w-5 text-muted-foreground" />
+              <Globe className="h-5 w-5 text-text-3" />
               <span className="text-sm">Detected Platform:</span>
               <Badge className={platformInfo.color}>{platformInfo.label}</Badge>
               {config?.platformVersion && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-text-3">
                   v{config.platformVersion}
                 </span>
               )}
@@ -390,7 +390,7 @@ export default function ScrapeConfigPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Extraction Rules</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-text-3">
                 Define how to extract data from different page types
               </p>
             </div>
@@ -401,7 +401,7 @@ export default function ScrapeConfigPage() {
           </div>
 
           {/* Test Panel */}
-          <Card className="bg-muted/30">
+          <Card className="shadow-card bg-surface-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <TestTube className="h-4 w-4" />
@@ -426,7 +426,7 @@ export default function ScrapeConfigPage() {
                   value={testHtml}
                   onChange={(e) => setTestHtml(e.target.value)}
                   placeholder="Paste HTML content here..."
-                  className="font-mono text-xs h-32"
+                  className="font-mono text-[12px] h-32"
                 />
               </div>
 
@@ -445,12 +445,12 @@ export default function ScrapeConfigPage() {
                               key={key}
                               className="flex items-start gap-2"
                             >
-                              <span className="font-medium text-muted-foreground min-w-20">
+                              <span className="font-medium text-text-3 min-w-20">
                                 {key}:
                               </span>
                               <span className="break-all">
                                 {value || (
-                                  <span className="text-muted-foreground italic">
+                                  <span className="text-text-3 italic">
                                     null
                                   </span>
                                 )}
@@ -472,11 +472,11 @@ export default function ScrapeConfigPage() {
 
           {/* Rules List */}
           {localRules.length === 0 ? (
-            <Card>
+            <Card className="shadow-card">
               <CardContent className="py-12 text-center">
-                <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <Settings className="h-12 w-12 mx-auto text-text-3 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No extraction rules</h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-text-3 mb-4">
                   Create custom rules or use AI to discover selectors
                 </p>
                 <div className="flex items-center justify-center gap-3">
@@ -506,7 +506,7 @@ export default function ScrapeConfigPage() {
 
         {/* AI Discovery Tab */}
         <TabsContent value="discovery" className="space-y-4">
-          <Card>
+          <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -532,9 +532,9 @@ export default function ScrapeConfigPage() {
                   value={discoveryHtml}
                   onChange={(e) => setDiscoveryHtml(e.target.value)}
                   placeholder="Paste the HTML source of a product page..."
-                  className="font-mono text-xs h-48"
+                  className="font-mono text-[12px] h-48"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[12px] text-text-3 mt-1">
                   Tip: Right-click on a product page and select &quot;View Page
                   Source&quot; to get the HTML
                 </p>
@@ -553,7 +553,7 @@ export default function ScrapeConfigPage() {
 
               {/* Discovery Results */}
               {discoveryResult && (
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                <div className="border rounded-[var(--radius-card)] p-4 space-y-4 bg-surface-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Badge
@@ -565,7 +565,7 @@ export default function ScrapeConfigPage() {
                         {PLATFORM_INFO[discoveryResult.platform]?.label ||
                           discoveryResult.platform}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-text-3">
                         {Math.round(discoveryResult.platformConfidence * 100)}%
                         confidence
                       </span>
@@ -590,11 +590,11 @@ export default function ScrapeConfigPage() {
                         >
                           <div className="space-y-1">
                             <div className="font-medium">{selector.field}</div>
-                            <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                            <code className="text-[12px] bg-surface-2 px-1 py-0.5 rounded">
                               {selector.selector}
                             </code>
                             {selector.fallback && (
-                              <code className="text-xs bg-muted px-1 py-0.5 rounded ml-1 text-muted-foreground">
+                              <code className="text-[12px] bg-surface-2 px-1 py-0.5 rounded ml-1 text-text-3">
                                 fallback: {selector.fallback}
                               </code>
                             )}
@@ -612,7 +612,7 @@ export default function ScrapeConfigPage() {
                               {selector.confidence}%
                             </Badge>
                             {selector.sampleValue && (
-                              <div className="text-xs text-muted-foreground mt-1 max-w-40 truncate">
+                              <div className="text-[12px] text-text-3 mt-1 max-w-40 truncate">
                                 &quot;{selector.sampleValue}&quot;
                               </div>
                             )}
@@ -648,11 +648,11 @@ export default function ScrapeConfigPage() {
                     {config.aiSelectors.map((selector, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between p-2 rounded bg-muted/50"
+                        className="flex items-center justify-between p-2 rounded bg-surface-2"
                       >
                         <div>
                           <span className="font-medium">{selector.field}</span>
-                          <code className="text-xs ml-2">{selector.selector}</code>
+                          <code className="text-[12px] ml-2">{selector.selector}</code>
                         </div>
                         <Badge variant="outline">{selector.confidence}%</Badge>
                       </div>
@@ -666,7 +666,7 @@ export default function ScrapeConfigPage() {
 
         {/* Crawl Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <Card>
+          <Card className="shadow-card">
             <CardHeader>
               <CardTitle>Crawl Settings</CardTitle>
               <CardDescription>
@@ -751,7 +751,7 @@ export default function ScrapeConfigPage() {
                     placeholder="/products/*&#10;/collections/*&#10;/pages/*"
                     className="font-mono text-sm h-32"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-[12px] text-text-3 mt-1">
                     Only crawl URLs matching these patterns
                   </p>
                 </div>
@@ -764,7 +764,7 @@ export default function ScrapeConfigPage() {
                     placeholder="/cart&#10;/checkout&#10;/account/*"
                     className="font-mono text-sm h-32"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-[12px] text-text-3 mt-1">
                     Skip URLs matching these patterns
                   </p>
                 </div>
