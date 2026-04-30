@@ -63,3 +63,6 @@ export * from "./security-audit-schema";
 export * from "./onboarding-schema";
 export * from "./magic-link-schema";
 export * from "./activity-schema";
+
+// Pipeline configuration schema
+export * from "./pipeline-config-schema";
