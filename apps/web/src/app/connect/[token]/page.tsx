@@ -1,17 +1,24 @@
 /**
  * Magic link landing page for client self-authorization.
+ * Phase 49-51: Onboarding & Agency Dashboard
  *
  * PUBLIC ROUTE - No Clerk authentication required.
  * Middleware already allows /connect/(.*) as public.
  *
+ * Supports two flows:
+ * 1. Legacy invite validation (AI-Writer invites)
+ * 2. Onboarding magic links (D-02: white-label branding)
+ *
  * Flow:
- * 1. Validate invite token via backend API
- * 2. If invalid/expired: show user-friendly error (not 500)
- * 3. If valid: show Connect with Google button
+ * 1. Try onboarding magic link validation first
+ * 2. Fall back to legacy invite validation
+ * 3. If invalid/expired: show user-friendly error (not 500)
+ * 4. If valid: show Connect with Google button with appropriate branding
  */
 
 import type { InviteValidation } from "@tevero/types";
 import { getAiWriterUrl, getPublicAiWriterUrl } from "@/lib/env";
+import { validateMagicLink, type MagicLinkValidation } from "@/lib/api/onboarding";
 
 type PageProps = {
   params: Promise<{ token: string }>;
@@ -54,10 +61,70 @@ function getGoogleOAuthUrl(token: string): string {
 
 export default async function ConnectPage({ params }: PageProps) {
   const { token } = await params;
+
+  // Try onboarding magic link validation first (Phase 49-51)
+  const magicLinkValidation = await validateMagicLink(token);
+
+  // If valid onboarding magic link, show white-label page (D-02)
+  if (magicLinkValidation.valid) {
+    const { branding } = magicLinkValidation;
+
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-background"
+        style={
+          {
+            "--accent-color": branding?.primaryColor || "#10b981",
+          } as React.CSSProperties
+        }
+      >
+        <div className="max-w-md text-center p-8">
+          {/* D-02: Agency logo or name - no platform branding */}
+          {branding?.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={branding.name}
+              className="mx-auto h-12 mb-6 object-contain"
+            />
+          ) : (
+            <h2 className="text-xl font-semibold mb-6 text-foreground">
+              {branding?.name || "Onboarding"}
+            </h2>
+          )}
+
+          <h1 className="text-2xl font-semibold text-foreground">
+            Complete Your Onboarding
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            Connect your Google accounts to get started with {branding?.name}.
+          </p>
+
+          {/* OAuth buttons */}
+          <div className="mt-8 space-y-3">
+            <a
+              href={`/api/oauth/google-search-console?token=${token}`}
+              className="block w-full rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              Connect Google Search Console
+            </a>
+            <a
+              href={`/api/oauth/google-analytics?token=${token}`}
+              className="block w-full rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              Connect Google Analytics
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fall back to legacy invite validation
   const invite = await validateInvite(token);
 
-  // Invalid or expired invite - show user-friendly error page
+  // Invalid or expired - show user-friendly error page
   if (!invite || !invite.valid) {
+    const reason = magicLinkValidation.reason;
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="max-w-md text-center p-8">
@@ -77,18 +144,19 @@ export default async function ConnectPage({ params }: PageProps) {
             </svg>
           </div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Link Expired or Invalid
+            Link Expired
           </h1>
           <p className="mt-3 text-muted-foreground">
-            This invite link has expired or has already been used. Please
-            contact your agency for a new link.
+            This onboarding link has{" "}
+            {reason === "used" ? "already been used" : "expired"}.
+            Please contact your agency for a new link.
           </p>
         </div>
       </div>
     );
   }
 
-  // Valid invite - show connect page
+  // Valid legacy invite - show connect page
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="max-w-md text-center p-8">
