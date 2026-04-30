@@ -79,14 +79,14 @@ export default function CompetitorSpyPage() {
   const getPositionBadge = (position: number) => {
     if (position <= 3) {
       return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+        <Badge className="bg-success-soft text-success">
           #{position}
         </Badge>
       );
     }
     if (position <= 10) {
       return (
-        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+        <Badge className="bg-info-soft text-info">
           #{position}
         </Badge>
       );
@@ -108,12 +108,12 @@ export default function CompetitorSpyPage() {
     <div className="container mx-auto py-8 max-w-5xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Competitor Spy</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-text-3 mt-2">
           Discover what keywords your competitors are ranking for
         </p>
       </div>
 
-      <Card className="mb-8">
+      <Card className="mb-8 shadow-card">
         <CardHeader>
           <CardTitle>Enter Competitor Domain</CardTitle>
         </CardHeader>
@@ -138,12 +138,12 @@ export default function CompetitorSpyPage() {
             </Button>
           </div>
 
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+          {error && <p className="text-error text-[12px] mt-2">{error}</p>}
         </CardContent>
       </Card>
 
       {results.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <div>
               <CardTitle className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export default function CompetitorSpyPage() {
                   </Badge>
                 )}
               </CardTitle>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-4 text-[12px] text-text-3 mt-1">
                 <span>{results.length} keywords</span>
                 <span className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
@@ -172,7 +172,7 @@ export default function CompetitorSpyPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-[var(--radius-card)] shadow-card bg-surface overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -202,14 +202,14 @@ export default function CompetitorSpyPage() {
                             href={safeHref(kw.url)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center text-blue-600 hover:underline text-sm truncate max-w-[180px]"
+                            className="flex items-center text-accent hover:underline text-[12px] truncate max-w-[180px]"
                             title={kw.url}
                           >
                             {formatUrl(kw.url)}
                             <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-text-3">-</span>
                         )}
                       </TableCell>
                     </TableRow>
