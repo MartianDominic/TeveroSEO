@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
-current_phase: "54 (Multi-Provider Payments) — 5 plans — 2026-04-30T19:45:00Z"
-current_plan: 1
-status: executing
-last_updated: "2026-04-30T17:18:12.869Z"
+milestone: v6.0
+milestone_name: Agency Pipeline & Design System
+current_phase: "55 (Platform i18n) — 8 plans — COMPLETE"
+current_plan: 8
+status: complete
+last_updated: "2026-04-30T21:30:00.000Z"
 last_activity: 2026-04-30
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 13
+  completed_plans: 13
   percent: 100
 ---
 
@@ -24,15 +24,14 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase 54 — Multi-Provider Payments
+**Current focus:** v6.0 Milestone Complete
 
 ## Current Position
 
-Phase: 54 (Multi-Provider Payments) — EXECUTING
-Plan: 4 of 5
-Current Plan: 1
-Plans: 1/5 complete
-Status: Ready to execute
+Phase: 55 (Platform i18n) — COMPLETE
+Plan: 8 of 8
+Plans: 8/8 complete
+Status: Milestone v6.0 complete
 Last activity: 2026-04-30
 
 ### Phase 41 Focus
@@ -236,8 +235,8 @@ None currently.
 | 49-51 | Onboarding & Dashboard | ✓ Complete |
 | 52 | v6 UI Compliance | ✓ Complete |
 | 53 | Reports & PDF | ✓ Complete |
-| 54 | Multi-Provider Payments | Planning |
-| 55 | Platform i18n | Pending |
+| 54 | Multi-Provider Payments | ✓ Complete |
+| 55 | Platform i18n | ✓ Complete |
 
 ### Phase 45 Summary (2026-04-30)
 
@@ -260,16 +259,32 @@ Key deliverables:
 
 ## Next Up
 
-**v6.0 Agency Pipeline & Design System** — Phase 53 complete. Continuing to payment and i18n phases.
+**v6.0 Agency Pipeline & Design System** — COMPLETE (2026-04-30)
 
-Remaining:
+All 12 phases complete:
+- Phase 44: Component Library Foundation
+- Phase 45: Data Foundation
+- Phases 46-47: Proposal System
+- Phase 48: Contract & Payment
+- Phases 49-51: Onboarding & Dashboard
+- Phase 52: v6 UI Compliance
+- Phase 53: Reports & PDF
+- Phase 54: Multi-Provider Payments (Revolut + Stripe)
+- Phase 55: Platform i18n (Lithuanian localization)
 
-- Phase 54: Multi-Provider Payments — 34-44h (Revolut + Stripe)
-- Phase 55: Platform i18n — 70-88h (Lithuanian localization)
+### Phase 55 Summary (2026-04-30)
 
-Design docs:
+Full platform internationalization with Lithuanian as primary target:
 
-- `.planning/phases/54-multi-provider-payments/DESIGN.md` — Multi-provider payment architecture
-- `.planning/phases/55-platform-i18n/DESIGN.md` — Internationalization architecture
+| Plan | Focus | Key Deliverables |
+|------|-------|------------------|
+| 55-01 | i18n Framework Setup | next-intl, i18next, routing middleware |
+| 55-02 | Gemini Translation Service | API wrapper, SHA256 caching, quality validation |
+| 55-03 | UI String Extraction | 254 translation keys, ICU plurals |
+| 55-04 | Multi-Tenant Language Settings | workspace/prospect preferences, 6-step resolution |
+| 55-05 | Dynamic Content Translation | ProposalTranslationService, email templates, invoices |
+| 55-06 | Legal Agreement Templates | Lithuanian SEO services template, variable substitution |
+| 55-07 | Language Switcher UI | Header switcher, ProspectLanguageField, preview toggle |
+| 55-08 | Text Fitting & QA | Length analysis (66 high-risk), CSS overflow fixes, _short variants |
 
-**Current Phase:** 54 (Multi-Provider Payments) — 5 plans — 2026-04-30T19:45:00Z
+**Milestone v6.0: COMPLETE**

@@ -1767,11 +1767,11 @@ Transform the platform into a complete agency CRM with v6 design system complian
   7. E2E test passes: invoice → Revolut payment → webhook → onboarding triggered
 **Estimated effort**: 34-44 hours
 **Plans**: 5 plans
-  - [ ] 54-01-PLAN.md — Schema + Provider Abstraction: workspace_payment_settings, PaymentProvider interface, factory (Wave 1)
-  - [ ] 54-02-PLAN.md — RevolutProvider Implementation: orders API, webhook verification, status mapping (Wave 2)
-  - [ ] 54-03-PLAN.md — Webhook Handlers + InvoiceService: /api/webhooks/revolut, multi-provider handlePaymentSuccess (Wave 2)
-  - [ ] 54-04-PLAN.md — Payment Settings UI + Client Choice: provider cards, credential input, PaymentMethodSelector (Wave 3)
-  - [ ] 54-05-PLAN.md — Checkout Widget + E2E: RevolutCheckoutWidget, payment request buttons, full flow tests (Wave 4)
+  - [x] 54-01-PLAN.md — Schema + Provider Abstraction: workspace_payment_settings, PaymentProvider interface, factory (Wave 1)
+  - [x] 54-02-PLAN.md — RevolutProvider Implementation: orders API, webhook verification, status mapping (Wave 2)
+  - [x] 54-03-PLAN.md — Webhook Handlers + InvoiceService: /api/webhooks/revolut, multi-provider handlePaymentSuccess (Wave 2)
+  - [x] 54-04-PLAN.md — Payment Settings UI + Client Choice: provider cards, credential input, PaymentMethodSelector (Wave 3)
+  - [x] 54-05-PLAN.md — Checkout Widget + E2E: RevolutCheckoutWidget, payment request buttons, full flow tests (Wave 4)
 
 ---
 
@@ -1792,13 +1792,13 @@ Transform the platform into a complete agency CRM with v6 design system complian
   9. ICU plural forms work correctly for Lithuanian (one/few/many/other)
 **Estimated effort**: 70-88 hours
 **Plans**: 8 plans
-  - [ ] 55-01-PLAN.md — i18n Framework Setup: next-intl, i18next, routing, middleware (Wave 1)
-  - [ ] 55-02-PLAN.md — Gemini Translation Service: API wrapper, caching, quality validation (Wave 1)
-  - [ ] 55-03-PLAN.md — UI String Extraction & Translation: extract ~500 strings, batch translate (Wave 2)
-  - [ ] 55-04-PLAN.md — Multi-Tenant Language Settings: workspace/prospect preferences, resolution (Wave 2)
-  - [ ] 55-05-PLAN.md — Dynamic Content Translation: proposals, emails, reports (Wave 3)
-  - [ ] 55-06-PLAN.md — Agreements & Legal: Lithuanian templates, variable substitution (Wave 3)
-  - [ ] 55-07-PLAN.md — Language Switcher & UX: header switcher, prospect override, preview (Wave 4)
-  - [ ] 55-08-PLAN.md — Text Fitting & Polish: CSS adjustments, short variants, QA (Wave 4)
+  - [x] 55-01-PLAN.md — i18n Framework Setup: next-intl, i18next, routing, middleware (Wave 1)
+  - [x] 55-02-PLAN.md — Gemini Translation Service: API wrapper, caching, quality validation (Wave 1)
+  - [x] 55-03-PLAN.md — UI String Extraction & Translation: extract ~500 strings, batch translate (Wave 2)
+  - [x] 55-04-PLAN.md — Multi-Tenant Language Settings: workspace/prospect preferences, resolution (Wave 2)
+  - [x] 55-05-PLAN.md — Dynamic Content Translation: proposals, emails, reports (Wave 3)
+  - [x] 55-06-PLAN.md — Agreements & Legal: Lithuanian templates, variable substitution (Wave 3)
+  - [x] 55-07-PLAN.md — Language Switcher & UX: header switcher, prospect override, preview (Wave 4)
+  - [x] 55-08-PLAN.md — Text Fitting & Polish: CSS adjustments, short variants, QA (Wave 4)
 
 ---
