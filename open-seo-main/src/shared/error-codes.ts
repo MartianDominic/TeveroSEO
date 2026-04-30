@@ -24,6 +24,9 @@ const ERROR_CODES = [
   "WEBHOOK_DELETE_FAILED",
   // External API errors
   "GSC_API_ERROR",
+  "DOKOBIT_API_ERROR",
+  // Contract state machine errors
+  "CONTRACT_INVALID_STATE",
 ] as const;
 
 export const errorCodeSchema = z.enum(ERROR_CODES);
