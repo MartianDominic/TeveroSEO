@@ -27,6 +27,7 @@ import {
   SelectValue,
   Switch,
   Badge,
+  cn,
 } from "@tevero/ui";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -92,11 +93,11 @@ function FieldEditor({
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+    <div className="border rounded-[var(--radius-input)] p-4 bg-surface-2 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs">Field Name</Label>
+            <Label className="text-[12px] text-text-3">Field Name</Label>
             <Input
               value={field.name}
               onChange={(e) => updateField({ name: e.target.value })}
@@ -105,7 +106,7 @@ function FieldEditor({
             />
           </div>
           <div>
-            <Label className="text-xs">Type</Label>
+            <Label className="text-[12px] text-text-3">Type</Label>
             <Select
               value={field.type}
               onValueChange={(v) =>
@@ -129,7 +130,7 @@ function FieldEditor({
           variant="ghost"
           size="sm"
           onClick={onDelete}
-          className="text-destructive hover:text-destructive h-8"
+          className="text-error hover:text-error h-8"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -137,7 +138,7 @@ function FieldEditor({
 
       {field.type === "attribute" && (
         <div>
-          <Label className="text-xs">Attribute Name</Label>
+          <Label className="text-[12px] text-text-3">Attribute Name</Label>
           <Input
             value={field.attribute || ""}
             onChange={(e) => updateField({ attribute: e.target.value })}
@@ -149,14 +150,14 @@ function FieldEditor({
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <Label className="text-xs">
+          <Label className="text-[12px] text-text-3">
             CSS Selectors (first match wins, fallbacks below)
           </Label>
           <Button
             variant="ghost"
             size="sm"
             onClick={addSelector}
-            className="h-6 text-xs"
+            className="h-6 text-[12px]"
           >
             <Plus className="h-3 w-3 mr-1" />
             Add Fallback
@@ -177,7 +178,7 @@ function FieldEditor({
                 className="h-8 flex-1"
               />
               {idx === 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge className="text-[12px] bg-accent-soft text-accent-ink">
                   Primary
                 </Badge>
               )}
@@ -197,7 +198,7 @@ function FieldEditor({
       </div>
 
       <div>
-        <Label className="text-xs">Transform</Label>
+        <Label className="text-[12px] text-text-3">Transform</Label>
         <Select
           value={field.transform || ""}
           onValueChange={(v) =>
@@ -256,7 +257,7 @@ export function RuleEditor({
   };
 
   return (
-    <Card className={!rule.enabled ? "opacity-60" : undefined}>
+    <Card className={cn("shadow-card", !rule.enabled && "opacity-60")}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -267,7 +268,7 @@ export function RuleEditor({
             <CardTitle className="text-base font-medium">
               {rule.name || "Untitled Rule"}
             </CardTitle>
-            <Badge variant="outline">{rule.pageType}</Badge>
+            <Badge variant="outline" className="text-[12px]">{rule.pageType}</Badge>
           </div>
           <div className="flex items-center gap-2">
             {onTest && (
@@ -280,7 +281,7 @@ export function RuleEditor({
                 variant="ghost"
                 size="sm"
                 onClick={onDelete}
-                className="text-destructive hover:text-destructive"
+                className="text-error hover:text-error"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -338,7 +339,7 @@ export function RuleEditor({
               onChange={(e) => updateRule({ urlPattern: e.target.value })}
               placeholder="e.g., /products/*, /collections/*"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[12px] text-text-3 mt-1">
               Use * for wildcards. Example: /products/* matches all product URLs.
             </p>
           </div>
