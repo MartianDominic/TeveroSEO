@@ -1,0 +1,125 @@
+"use server";
+
+import { z } from "zod";
+import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+import { revalidatePath } from "next/cache";
+import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
+
+// Validation schemas
+const contractIdSchema = z.string().min(1, "Invalid contract ID");
+const prospectIdSchema = z.string().min(1, "Invalid prospect ID");
+
+/**
+ * Contract summary for list view.
+ */
+export interface ContractSummary {
+  id: string;
+  title: string;
+  status: string;
+  proposalId: string | null;
+  clientId: string | null;
+  dokobitSessionId: string | null;
+  signedAt: string | null;
+  signerName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Response structure from open-seo contracts API.
+ */
+interface ContractsApiResponse {
+  success: boolean;
+  data?: ContractSummary[];
+  error?: string;
+}
+
+/**
+ * Get all contracts for a prospect.
+ */
+export async function getContracts(
+  prospectId: string
+): Promise<ActionResult<ContractSummary[]>> {
+  const auth = await requireActionAuth();
+
+  // Validate prospect ID format
+  const validatedProspectId = prospectIdSchema.safeParse(prospectId);
+  if (!validatedProspectId.success) {
+    return { success: false, error: validatedProspectId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  try {
+    // Validate ownership
+    await validateProspectOwnership(validatedProspectId.data, auth);
+
+    const params = new URLSearchParams();
+    params.set("prospectId", validatedProspectId.data);
+
+    const response = await getOpenSeo<ContractsApiResponse>(
+      `/api/contracts?${params.toString()}`
+    );
+
+    if (!response.success || !response.data) {
+      return { success: false, error: response.error || "Failed to fetch contracts" };
+    }
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Failed to fetch contracts:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch contracts",
+    };
+  }
+}
+
+/**
+ * Send contract for e-signature.
+ */
+export async function sendContract(
+  contractId: string,
+  prospectId: string
+): Promise<ActionResult<{ signingUrl: string }>> {
+  const auth = await requireActionAuth();
+
+  // Validate inputs
+  const validatedContractId = contractIdSchema.safeParse(contractId);
+  const validatedProspectId = prospectIdSchema.safeParse(prospectId);
+
+  if (!validatedContractId.success) {
+    return { success: false, error: validatedContractId.error.issues[0]?.message || "Invalid contract ID" };
+  }
+  if (!validatedProspectId.success) {
+    return { success: false, error: validatedProspectId.error.issues[0]?.message || "Invalid prospect ID" };
+  }
+
+  try {
+    // Validate ownership
+    await validateProspectOwnership(validatedProspectId.data, auth);
+
+    const response = await postOpenSeo<{ success: boolean; data?: { signingUrl: string }; error?: string }>(
+      `/api/contracts/${validatedContractId.data}/send`,
+      {}
+    );
+
+    if (!response.success || !response.data) {
+      return { success: false, error: response.error || "Failed to send contract" };
+    }
+
+    revalidatePath(`/prospects/${validatedProspectId.data}/contracts`);
+
+    return {
+      success: true,
+      data: { signingUrl: response.data.signingUrl },
+    };
+  } catch (error) {
+    console.error("Failed to send contract:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send contract",
+    };
+  }
+}
