@@ -13,3 +13,11 @@ export {
   type OAuthPlatform,
   type TokenSet,
 } from "./GoogleOAuthProvider";
+
+export {
+  WordPressAppPasswordProvider,
+  type WordPressCredentials,
+  type WordPressUserInfo,
+  type WordPressSiteInfo,
+  type ValidationResult,
+} from "./WordPressAppPasswordProvider";
