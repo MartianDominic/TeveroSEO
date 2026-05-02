@@ -27,3 +27,9 @@ export {
   startPipelineMetricsWorker,
   stopPipelineMetricsWorker,
 } from "./pipeline-metrics-worker";
+
+// Phase 62: Agency Command Center - Alert Detection Worker
+export {
+  startAlertDetectionWorker,
+  stopAlertDetectionWorker,
+} from "./alert-detection-worker";
