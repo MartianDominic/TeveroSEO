@@ -69,7 +69,7 @@ export function PipelineFunnel({
         <ResponsiveContainer width="100%" height={300}>
           <FunnelChart>
             <Tooltip
-              formatter={(value: number) => value.toLocaleString()}
+              formatter={(value) => (typeof value === 'number' ? value.toLocaleString() : String(value))}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

@@ -12,7 +12,7 @@ import {
 } from "../repositories/WorkflowRepository";
 import type {
   WorkflowInstanceSelect,
-  WorkflowStatus,
+  WorkflowInstanceStatus,
   EntityType,
 } from "@/db";
 import { createLogger } from "@/server/lib/logger";

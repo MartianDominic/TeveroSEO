@@ -104,7 +104,7 @@ function AlertCard({
             <div className="mt-2 ml-6">
               {alert.actionUrl ? (
                 <Link
-                  href={alert.actionUrl}
+                  href={alert.actionUrl as string}
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   {alert.suggestedAction}

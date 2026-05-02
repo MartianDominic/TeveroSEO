@@ -17,7 +17,7 @@ import {
   type WorkflowInstanceInsert,
   type WorkflowEventSelect,
   type WorkflowEventInsert,
-  type WorkflowStatus,
+  type WorkflowInstanceStatus,
   type WorkflowEventType,
   type EntityType,
 } from "@/db";
