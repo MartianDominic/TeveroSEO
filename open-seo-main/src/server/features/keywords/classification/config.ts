@@ -38,8 +38,11 @@ export const GROK_CONFIG = {
  * Gemini Flash Lite configuration for Grok fallback.
  */
 export const GEMINI_CONFIG = {
-  model: "gemini-2.5-flash-lite-preview-06-17",
-  maxTokens: 4000,
+  /** Gemini model for Pass 1 fallback */
+  model: "gemini-2.5-flash-lite",
+  /** Maximum output tokens */
+  maxTokens: 4096,
+  /** Temperature for classification */
   temperature: 0.1,
 } as const;
 

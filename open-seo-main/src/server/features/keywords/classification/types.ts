@@ -21,6 +21,36 @@ export const KeywordTypeEnum = z.enum([
 export type KeywordType = z.infer<typeof KeywordTypeEnum>;
 
 /**
+ * Negative associations for filtering adjacent verticals.
+ * Critical for avoiding semantically similar but contextually wrong keywords.
+ *
+ * Example: Embroidery company that BUYS embroidery should EXCLUDE
+ * "embroidery services" because they don't SELL embroidery.
+ */
+export interface NegativeAssociations {
+  /** Services the business explicitly does NOT provide */
+  notServices: string[];
+  /** Known competitor types or domains to exclude */
+  competitors: string[];
+  /** Related but wrong verticals (e.g., hair salon != hair transplant clinic) */
+  adjacentVerticals: string[];
+  /** Intent signals indicating wrong audience (e.g., "free", "DIY" for B2B) */
+  wrongIntent: string[];
+}
+
+/**
+ * Business context for classification decisions.
+ * Provides classifier with understanding of what the business does/doesn't do.
+ */
+export interface BusinessContext {
+  businessName: string;
+  industry: string;
+  services: string[];
+  targetAudience: string;
+  negativeAssociations?: NegativeAssociations;
+}
+
+/**
  * Single keyword classification result.
  */
 export const ClassificationItemSchema = z.object({
@@ -46,45 +76,10 @@ export const ClassificationResponseSchema = z.object({
 export type ClassificationResponse = z.infer<typeof ClassificationResponseSchema>;
 
 /**
- * Business context for classification decisions.
- * Provides classifier with understanding of what the business does/doesn't do.
- */
-export interface BusinessContext {
-  businessName: string;
-  industry: string;
-  services: string[];
-  targetAudience: string;
-  negativeAssociations?: NegativeAssociations;
-}
-
-/**
- * Negative associations for filtering adjacent verticals.
- * Critical for avoiding semantically similar but contextually wrong keywords.
- *
- * Example: Embroidery company that BUYS embroidery should EXCLUDE
- * "embroidery services" because they don't SELL embroidery.
- */
-export interface NegativeAssociations {
-  /** Services the business explicitly does NOT provide */
-  notServices: string[];
-  /** Known competitor types or domains to exclude */
-  competitors: string[];
-  /** Related but wrong verticals (e.g., hair salon != hair transplant clinic) */
-  adjacentVerticals: string[];
-  /** Intent signals indicating wrong audience (e.g., "free", "DIY" for B2B) */
-  wrongIntent: string[];
-}
-
-/**
  * Classified keyword with pass information.
  * Tracks which pass (1 or 2) made the final classification.
  */
-export interface ClassifiedKeyword {
-  keyword: string;
-  include: boolean;
-  confidence: number;
-  type: KeywordType | null;
-  reasoning: string;
+export interface ClassifiedKeyword extends ClassificationItem {
   /** Which pass made the final decision (1=Grok, 2=Claude) */
   pass: 1 | 2;
 }

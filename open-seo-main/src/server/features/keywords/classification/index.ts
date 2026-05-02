@@ -25,3 +25,8 @@ export {
 
 // Classifiers
 export { GrokClassifier, CircuitOpenError } from "./GrokClassifier";
+export { GeminiClassifier } from "./GeminiClassifier";
+
+// Pipeline
+export { ClassificationPipeline, createClassificationPipeline } from "./ClassificationPipeline";
+export type { ClassificationStats, PipelineConfig } from "./ClassificationPipeline";
