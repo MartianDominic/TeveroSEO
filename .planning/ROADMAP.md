@@ -1965,12 +1965,12 @@ Transform the platform into a complete agency CRM with v6 design system complian
   10. Encrypted token storage (AES-256-GCM)
 **Estimated effort**: 55-65 hours
 **Plans**: 6 plans
-  - [ ] 61-01-PLAN.md — Schema + Token Encryption + OAuth Base (Wave 1)
-  - [ ] 61-02-PLAN.md — Google OAuth (GSC, GA, GBP) (Wave 1)
-  - [ ] 61-03-PLAN.md — Shopify + Wix OAuth (Wave 2)
-  - [ ] 61-04-PLAN.md — WordPress App Passwords + Other Platforms (Wave 2)
-  - [ ] 61-05-PLAN.md — Fallback Crawler + Playwright (Wave 3)
-  - [ ] 61-06-PLAN.md — Token Refresh Worker + Dashboard UI (Wave 3)
+  - [x] 61-01-PLAN.md — Schema + Token Encryption + OAuth Base (Wave 1)
+  - [x] 61-02-PLAN.md — Google OAuth (GSC, GA, GBP) (Wave 1)
+  - [x] 61-03-PLAN.md — Shopify + Wix OAuth (Wave 2)
+  - [x] 61-04-PLAN.md — WordPress App Passwords + Other Platforms (Wave 2)
+  - [x] 61-05-PLAN.md — Fallback Crawler + Playwright (Wave 3)
+  - [x] 61-06-PLAN.md — Token Refresh Worker + Dashboard UI (Wave 3)
 
 ---
 
