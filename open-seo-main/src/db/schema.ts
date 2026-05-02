@@ -102,10 +102,113 @@ export {
 // Service catalog schema (Phase 58)
 export * from "./service-catalog-schema";
 
-// Agreement signers schema (Phase 59)
-export * from "./schema/agreement-signers-schema";
-
 // Platform OAuth schemas (Phase 61)
 export * from "./platform-connection-schema";
 export * from "./oauth-state-schema";
 export * from "./platform-data-cache-schema";
+
+// Command Center schemas (Phase 62)
+// NOTE: Using explicit re-exports to avoid naming collisions with existing schemas
+// (activity-schema.ts has ENTITY_TYPES, dashboard-schema.ts has dashboardViews)
+export {
+  followUps,
+  followUpRules,
+  FOLLOW_UP_TYPES,
+  FOLLOW_UP_STATUS,
+  FOLLOW_UP_PRIORITY,
+  ENTITY_TYPES as CC_ENTITY_TYPES,
+  RULE_ACTION_TYPES,
+  followUpsRelations,
+  followUpRulesRelations,
+  type FollowUpSelect,
+  type FollowUpInsert,
+  type FollowUpRuleSelect,
+  type FollowUpRuleInsert,
+  type EntityType as CCEntityType,
+  type FollowUpType,
+  type FollowUpStatus,
+  type FollowUpPriority,
+  type RuleActionType,
+  type FollowUpMetadata,
+  type TriggerConditions,
+  type ActionConfig,
+} from "./schema/follow-ups";
+
+export {
+  workflowTemplates,
+  workflowTemplatesRelations,
+  WORKFLOW_TRIGGER_EVENTS,
+  type WorkflowTemplateSelect,
+  type WorkflowTemplateInsert,
+  type WorkflowTriggerEvent,
+  type WorkflowStep,
+  type WorkflowStepType,
+  type WaitConfig,
+  type EmailConfig,
+  type TaskConfig,
+  type ConditionConfig,
+  type WebhookConfig,
+  type AlertConfig,
+} from "./schema/workflow-templates";
+
+export {
+  workflowInstances,
+  workflowEvents,
+  workflowInstancesRelations,
+  workflowEventsRelations,
+  WORKFLOW_INSTANCE_STATUS,
+  WORKFLOW_EVENT_TYPES,
+  type WorkflowInstanceSelect,
+  type WorkflowInstanceInsert,
+  type WorkflowEventSelect,
+  type WorkflowEventInsert,
+  type WorkflowInstanceStatus,
+  type WorkflowEventType,
+  type WorkflowContext,
+  type WorkflowEventResult,
+} from "./schema/workflow-instances";
+
+export {
+  dealOutcomes,
+  dealOutcomesRelations,
+  LOSS_REASONS,
+  DEAL_OUTCOMES,
+  DEAL_ENTITY_TYPES,
+  type DealOutcomeSelect,
+  type DealOutcomeInsert,
+  type LossReason,
+  type DealOutcome,
+  type DealEntityType,
+} from "./schema/deal-outcomes";
+
+export {
+  pipelineMetrics,
+  pipelineMetricsRelations,
+  type PipelineMetricsSelect,
+  type PipelineMetricsInsert,
+} from "./schema/pipeline-metrics";
+
+export {
+  smartAlerts,
+  smartAlertsRelations,
+  ALERT_SEVERITIES,
+  type SmartAlertSelect,
+  type SmartAlertInsert,
+  type AlertSeverity,
+} from "./schema/smart-alerts";
+
+export {
+  ccDashboardViews,
+  ccDashboardViewsRelations,
+  type CCDashboardViewSelect,
+  type CCDashboardViewInsert,
+  type DashboardFilters,
+  type DashboardLayout,
+} from "./schema/dashboard-views";
+
+export {
+  notificationPreferences,
+  notificationPreferencesRelations,
+  type NotificationPreferencesSelect,
+  type NotificationPreferencesInsert,
+} from "./schema/notification-preferences";
