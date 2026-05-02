@@ -8,6 +8,8 @@
 - ✅ **v4.0 Prospecting & Sales** — Phases 26–30.5 (complete 2026-04-22)
 - ✅ **v5.0 Autonomous SEO Pipeline** — Phases 31–40 (complete 2026-04-25)
 - ✅ **v5.1 Production Hardening** — Phase 41 (complete 2026-04-26)
+- ⏳ **v7.0 Onboarding Excellence** — Phases 56–62 (in progress)
+- 📋 **v7.1 Platform Intelligence** — Phases 63–65 (planned)
 
 ## Phases
 
@@ -2007,5 +2009,85 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 62-06-PLAN.md — Needs Attention List + Quick Actions (Wave 2)
   - [ ] 62-07-PLAN.md — Smart Alerts + Activity Feed (Socket.IO) (Wave 3)
   - [ ] 62-08-PLAN.md — Win/Loss Analytics + i18n + E2E Tests (Wave 3)
+
+---
+
+## v7.1 Platform Intelligence
+
+**Focus:** Advanced keyword intelligence, crawling infrastructure optimization, and GraphRAG foundation for intelligent retrieval. Enables 100-200 ON-POINT keywords per prospect with 98% cost reduction through singleflight and delta crawling.
+**Phases:** 63-65 (3 phases, ~112 hours total)
+
+### Phase 63: Keyword Intelligence
+**Goal**: Generate 100-200 ON-POINT keywords per prospect using Grok 4.1 classification cascade, autocomplete APIs, and adaptive intent detection.
+**Depends on**: Phase 62 (v7.0 complete)
+**Context doc**: `.planning/phases/63-keyword-intelligence/63-CONTEXT.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Key Features**:
+  - **Grok 4.1 Classification**: $0.20/1M input, Pass 1 filters 80% of keywords
+  - **Claude Sonnet Pass 2**: Handles remaining 20% uncertain keywords
+  - **Negative Association Extraction**: Filter adjacent verticals automatically
+  - **Human Confirmation Toggle**: Confirm/autonomous mode near input
+  - **Adaptive Intent Detection**: Route by detected intent, not fixed pipeline
+**Success Criteria** (what must be TRUE):
+  1. 100-200 classified keywords per prospect (not 1000s)
+  2. Pass 1 (Grok 4.1) filters 80% of keywords
+  3. Adjacent verticals excluded via negative associations
+  4. Confirmation toggle works in both modes
+  5. Intent detection routes correctly for quick_check vs full_analysis
+**Estimated effort**: 38 hours
+**Plans**: 3 plans
+  - [ ] 63-01-PLAN.md — Business Context + Classification Foundation (Wave 1)
+  - [ ] 63-02-PLAN.md — Keyword Universe Builder + Integration (Wave 1)
+  - [ ] 63-03-PLAN.md — Human Confirmation Toggle + Adaptive Intent (Wave 2)
+
+---
+
+### Phase 64: Crawling Infrastructure
+**Goal**: Implement world-class crawling infrastructure with singleflight deduplication, delta crawling, and queue lane separation.
+**Depends on**: Phase 63 (keyword intelligence complete)
+**Context doc**: `.planning/phases/64-crawling-infrastructure/64-CONTEXT.md`
+**Working directory**: `open-seo-main/`
+**Key Features**:
+  - **Crawl Singleflight**: Redis `SET NX EX` prevents 98% duplicate crawl cost
+  - **Delta Crawling**: L0→L1→L2→L3 cascade skips unchanged content
+  - **Queue Lanes**: Fast API (<1m SLA) vs Heavy Crawl (<15m SLA)
+  - **Metrics Dashboard**: Real-time cost savings visualization
+**Success Criteria** (what must be TRUE):
+  1. Duplicate crawl requests coalesced (98% cost reduction)
+  2. Delta crawling achieves 80%+ cache hit rate
+  3. Fast lane completes in <1m, heavy lane in <15m
+  4. Metrics dashboard shows real savings
+**Estimated effort**: 34 hours
+**Plans**: 4 plans
+  - [ ] 64-01-PLAN.md — Crawl Singleflight (Wave 1)
+  - [ ] 64-02-PLAN.md — Delta Crawling Cascade (Wave 1)
+  - [ ] 64-03-PLAN.md — Fast/Heavy Queue Lanes (Wave 2)
+  - [ ] 64-04-PLAN.md — Integration & E2E Testing (Wave 2)
+
+---
+
+### Phase 65: GraphRAG Foundation
+**Goal**: Implement LightRAG + FalkorDB for per-tenant knowledge graphs enabling intelligent retrieval.
+**Depends on**: Phase 64 (crawling infrastructure complete)
+**Context doc**: `.planning/phases/65-graphrag-foundation/65-CONTEXT.md`
+**Working directory**: `open-seo-main/`
+**Key Features**:
+  - **FalkorDB**: Per-tenant graph storage with Cypher queries
+  - **LightRAG**: Lightweight RAG orchestration
+  - **jina-embeddings-v3**: Lithuanian-optimized embeddings
+  - **pgvector + pgvectorscale**: Vector storage with DiskANN indexes
+  - **Hybrid Retrieval**: Vector similarity + graph traversal
+**Success Criteria** (what must be TRUE):
+  1. Per-tenant knowledge graphs created on workspace init
+  2. Embeddings generated via jina-embeddings-v3
+  3. GraphRAG retrieval returns relevant context
+  4. Works on $50/mo VPS (CPU-only, no GPU)
+  5. Retrieval latency <500ms p95
+**Estimated effort**: 40 hours
+**Plans**: 4 plans
+  - [ ] 65-01-PLAN.md — FalkorDB Schema + Per-Tenant Graphs (Wave 1)
+  - [ ] 65-02-PLAN.md — LightRAG Integration (Wave 1)
+  - [ ] 65-03-PLAN.md — Retrieval Pipeline (Wave 2)
+  - [ ] 65-04-PLAN.md — Integration & Testing (Wave 2)
 
 ---

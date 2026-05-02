@@ -91,16 +91,44 @@ The codebase does NOT currently use the autocomplete endpoint. Available:
 
 ## 2. Classification Architecture
 
-### Four-Tier Classification System
+### Simplified Binary Relevance + Type Categorization
 
-Based on the problem statement, keywords should be classified into 4 tiers:
+**UPDATE (2026-04-30):** Simplified from 4-tier to binary relevance based on user feedback. Prospects need 100-200 keywords that are ALL on-point — no tiers of "kinda relevant". Either relevant or not.
 
-| Tier | Definition | UI Treatment | Example (B2B jackets) |
-|------|------------|--------------|----------------------|
-| **PURE** | Direct business match, high purchase intent | Auto-include, green | "darbo striukės su logotipu" |
-| **ADJACENT** | Related vertical, may drive traffic | Review required, yellow | "reklaminė apranga" |
-| **COMMERCIAL** | Commercial intent but weak fit | Low priority, gray | "striukės kaina" |
-| **EXCLUDE** | Wrong business model or competitor service | Auto-exclude, red strikethrough | "siuvinėjimo paslaugos" |
+#### Binary Relevance Gate
+
+| Decision | Threshold | Result |
+|----------|-----------|--------|
+| **INCLUDE** | confidence >= 0.85 | In final keyword set |
+| **EXCLUDE** | confidence < 0.85 | Filtered out (never shown) |
+
+No tiers. Binary. Every keyword in the output should be one the prospect would actually target.
+
+#### Type Categorization (post-relevance)
+
+Once keywords pass the relevance gate, categorize by **what they're useful for** (not relevance level):
+
+| Type | Example | Use |
+|------|---------|-----|
+| `product` | "darbo striukės su logotipu" | Product/service pages |
+| `long_tail` | "darbo striukės statybininkams" | pSEO landing pages |
+| `question` | "kaip išsirinkti darbo striukes" | Blog/educational content |
+| `local` | "įmonių uniformos Vilniuje" | Location pages |
+| `comparison` | "darbo striukės vs liemenės" | Comparison content |
+
+#### Human-in-the-Loop Setting
+
+```typescript
+interface ProspectWizardSettings {
+  keyword_confirmation: 'always' | 'never' | 'low_confidence';
+}
+```
+
+| Setting | Behavior |
+|---------|----------|
+| `always` | Human must confirm keyword list before proceeding |
+| `never` | Auto-proceed with AI selection (fast mode) |
+| `low_confidence` | Only pause if average confidence < 0.9 |
 
 ### Business Context Schema
 

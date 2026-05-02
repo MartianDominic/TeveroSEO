@@ -1,13 +1,19 @@
 # Phase 56: Prospect Input Excellence - Context
 
 **Gathered:** 2026-04-30
-**Status:** Ready for planning
+**Status:** Ready for execution
 **Mode:** Auto-generated (discuss skipped per user request)
 
 <domain>
 ## Phase Boundary
 
-Make the core value proposition real — "paste anything, get brilliant insights" with conversation dump parsing, confirmation flows, and real-time progress.
+Make the core value proposition real — "paste anything, get brilliant insights" with conversation dump parsing, confirmation flows, real-time progress, AND strict keyword intelligence with zero contextual drift.
+
+**Expanded Scope (56.1):** Keyword Intelligence Pipeline
+- 4-stage pipeline: Context Extraction → Universe Generation → AI Classification → pSEO Patterns
+- Strict business context enforcement (no more "siuvinėjimo paslaugos" mixed with B2B jackets)
+- Tiered keyword classification with manual override UI
+- PAA, autocomplete, pSEO pattern generation
 
 </domain>
 
@@ -22,6 +28,12 @@ Key guidance from DESIGN.md:
 - Confirmation flow required before analysis proceeds
 - SSE for real-time progress feedback
 - v6 design system tokens and patterns
+
+Key guidance from 56-KEYWORD-INTELLIGENCE.md:
+- XML meta-prompts for each AI stage
+- Zod schemas for structured outputs
+- 4-tier keyword classification (Pure, Adjacent, Commercial, Exclude)
+- Business context extraction with negative associations
 
 </decisions>
 

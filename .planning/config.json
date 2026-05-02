@@ -12,5 +12,7 @@
   },
   "graphify": {
     "enabled": true
-  }
+  },
+  "executor_model": "opus",
+  "verifier_model": "opus"
 }
