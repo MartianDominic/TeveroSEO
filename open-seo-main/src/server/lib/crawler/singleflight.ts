@@ -99,14 +99,11 @@ export class Singleflight<T> {
 
     // Attempt to acquire lock atomically with TTL
     // Uses SET key value NX EX seconds (atomic, not separate SETNX + EXPIRE)
+    // Cast to unknown first for ioredis 5.x compatibility with positional args
     const workerId = `${String(process.pid)}:${String(Date.now())}`;
-    const acquired = await this.redis.set(
-      lockKey,
-      workerId,
-      "NX",
-      "EX",
-      LOCK_TTL_SECONDS
-    );
+    const acquired = await (this.redis as unknown as {
+      set(key: string, value: string, nx: "NX", ex: "EX", ttl: number): Promise<string | null>;
+    }).set(lockKey, workerId, "NX", "EX", LOCK_TTL_SECONDS);
 
     if (acquired === "OK") {
       // We are the leader - execute the function
