@@ -21,3 +21,9 @@ export { startFailedAuditsWorker, stopFailedAuditsWorker } from "./failed-audits
 
 // Phase 62: Agency Command Center - Follow-up Worker
 export { startFollowUpWorker, stopFollowUpWorker } from "./follow-up-worker";
+
+// Phase 62: Agency Command Center - Pipeline Metrics Worker
+export {
+  startPipelineMetricsWorker,
+  stopPipelineMetricsWorker,
+} from "./pipeline-metrics-worker";

@@ -56,6 +56,10 @@ export * from "./automation-schema";
 export * from "./proposal-schema";
 export * from "./webhook-schema";
 
+// Contract and invoice schemas (Phase 45)
+export * from "./contract-schema";
+export * from "./invoice-schema";
+
 // Security and audit schemas
 export * from "./security-audit-schema";
 
