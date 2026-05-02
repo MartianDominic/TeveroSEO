@@ -1,4 +1,65 @@
 {
+  "serviceCatalog": {
+    "title": "Paslaugu katalogas",
+    "addNew": "Prideti paslauga",
+    "duplicate": "Kopijuoti",
+    "edit": "Redaguoti",
+    "delete": "Istrinti",
+    "confirmDelete": "Ar tikrai norite istrinti sia paslauga?",
+    "categories": {
+      "seo_package": "SEO paketas",
+      "addon": "Papildoma paslauga",
+      "one_time": "Vienkartine paslauga"
+    },
+    "pricingTypes": {
+      "monthly": "Menesinis",
+      "one_time": "Vienkartinis",
+      "per_unit": "Uz vieneta"
+    },
+    "fields": {
+      "name": "Paslaugos pavadinimas",
+      "description": "Aprasymas",
+      "category": "Kategorija",
+      "pricingType": "Kainodaros tipas",
+      "basePrice": "Bazine kaina",
+      "setupFee": "Paleidimo mokestis",
+      "inclusions": "Kas itraukta",
+      "terms": "Sutarties salygos",
+      "icon": "Ikona"
+    },
+    "form": {
+      "create": "Kurti paslauga",
+      "update": "Atnaujinti paslauga",
+      "cancel": "Atsaukti",
+      "save": "Issaugoti paslauga"
+    },
+    "empty": "Paslaugu dar nera. Pridekite pirma paslaugos sablona.",
+    "systemTemplate": "Sistemos sablonas",
+    "customTemplate": "Pasirinktinis sablonas",
+    "perMonth": "/men.",
+    "oneTime": "vienkartinis",
+    "fromPrice": "nuo {price}",
+    "services": {
+      "starterSeo": "Pradinis SEO",
+      "growthSeo": "Augimo SEO",
+      "enterpriseSeo": "Imones SEO",
+      "gmbOptimization": "GMB SEO optimizavimas",
+      "googleReviews": "Google atsiliepimu valdymas",
+      "websiteDesign": "Svetaines dizainas",
+      "crmSetup": "CRM ir automatizavimo saranka",
+      "bookingSystem": "Rezervaciju sistema"
+    },
+    "selector": {
+      "corePackage": "Pagrindinis SEO paketas",
+      "addOns": "Papildomos paslaugos",
+      "summary": "Santrauka",
+      "monthlyTotal": "Menesine suma",
+      "oneTimeSetup": "Vienkartinis mokestis",
+      "firstMonth": "Pirmo menesio suma",
+      "recommended": "Rekomenduojama",
+      "addCustom": "Prideti pasirinktine paslauga"
+    }
+  },
   "report": {
     "title": "Menesiné SEO Ataskaita",
     "subtitle": "Veiklos Apzvalga",

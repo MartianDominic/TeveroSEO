@@ -1,4 +1,65 @@
 {
+  "serviceCatalog": {
+    "title": "Service Catalog",
+    "addNew": "Add Service",
+    "duplicate": "Duplicate",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this service?",
+    "categories": {
+      "seo_package": "SEO Package",
+      "addon": "Add-On Service",
+      "one_time": "One-Time Service"
+    },
+    "pricingTypes": {
+      "monthly": "Monthly",
+      "one_time": "One-Time",
+      "per_unit": "Per Unit"
+    },
+    "fields": {
+      "name": "Service Name",
+      "description": "Description",
+      "category": "Category",
+      "pricingType": "Pricing Type",
+      "basePrice": "Base Price",
+      "setupFee": "Setup Fee",
+      "inclusions": "What's Included",
+      "terms": "Agreement Terms",
+      "icon": "Icon"
+    },
+    "form": {
+      "create": "Create Service",
+      "update": "Update Service",
+      "cancel": "Cancel",
+      "save": "Save Service"
+    },
+    "empty": "No services yet. Add your first service template.",
+    "systemTemplate": "System Template",
+    "customTemplate": "Custom Template",
+    "perMonth": "/month",
+    "oneTime": "one-time",
+    "fromPrice": "from {price}",
+    "services": {
+      "starterSeo": "Starter SEO",
+      "growthSeo": "Growth SEO",
+      "enterpriseSeo": "Enterprise SEO",
+      "gmbOptimization": "GMB SEO Optimization",
+      "googleReviews": "Google Reviews Management",
+      "websiteDesign": "Website Design",
+      "crmSetup": "CRM & Automation Setup",
+      "bookingSystem": "Booking System"
+    },
+    "selector": {
+      "corePackage": "Core SEO Package",
+      "addOns": "Add-On Services",
+      "summary": "Summary",
+      "monthlyTotal": "Monthly Total",
+      "oneTimeSetup": "One-Time Setup",
+      "firstMonth": "First Month Total",
+      "recommended": "Recommended",
+      "addCustom": "Add Custom Service"
+    }
+  },
   "report": {
     "title": "Monthly SEO Report",
     "subtitle": "Performance Overview",
