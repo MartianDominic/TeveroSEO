@@ -84,3 +84,6 @@ export * from "./agreement-template-schema";
 
 // Proposal templates schema (Phase 57)
 export * from "./proposal-template-schema";
+
+// Variable definitions schema (Phase 57)
+export * from "./variable-definitions-schema";

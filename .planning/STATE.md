@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Proposal Editor Revolution
 status: executing
-last_updated: "2026-05-02T10:23:42Z"
-last_activity: 2026-05-02 -- Phase 57 Plan 01 completed
+last_updated: "2026-05-02T10:30:00Z"
+last_activity: 2026-05-02 -- Phase 57 Wave 1 complete (Plans 01+02)
 progress:
-  total_phases: 62
+  total_phases: 65
   completed_phases: 42
   total_plans: 217
-  completed_plans: 201
+  completed_plans: 202
   percent: 93
 ---
 
@@ -94,6 +94,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **57-01:** Three-layer template hierarchy (system/workspace/instance); soft delete via isArchived; sectionOrder jsonb array; i18n suffix pattern (name, nameEn, nameLt)
+- **57-02:** 6 variable categories (client/provider/pricing/audit/dates/custom); entity path resolution with dot notation; computed functions for dynamic values; drag transfer uses text/plain + application/x-variable
 - **52-03:** shadow-lift hover pattern for EntrySelector; bg-accent-soft for selected states; border-hairline-2 for dividers; text-accent for links
 - **52-02:** cn() utility for shadow-card merging; text-error over text-destructive for v6 semantic colors; bg-accent-soft text-accent-ink for primary badges; var(--radius-input) for nested panels
 - **52-01:** text-[12px] over text-xs for WCAG floor; remove dark mode variants (v6 tokens handle theming); bg-surface-2 for neutral ignore tier; var(--success/error/text-3) in chart components
