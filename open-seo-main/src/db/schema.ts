@@ -101,3 +101,8 @@ export {
 
 // Service catalog schema (Phase 58)
 export * from "./service-catalog-schema";
+
+// Platform OAuth schemas (Phase 61)
+export * from "./platform-connection-schema";
+export * from "./oauth-state-schema";
+export * from "./platform-data-cache-schema";
