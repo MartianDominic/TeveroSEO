@@ -125,7 +125,7 @@ export function ServiceCard({ service }: Props) {
               {isSystemTemplate && (
                 <Lock
                   className="h-3 w-3 text-muted-foreground"
-                  title="System template (read-only)"
+                  aria-label="System template (read-only)"
                 />
               )}
             </div>
