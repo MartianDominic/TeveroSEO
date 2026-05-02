@@ -109,3 +109,9 @@ export * from "./schema/agreement-signers-schema";
 export * from "./platform-connection-schema";
 export * from "./oauth-state-schema";
 export * from "./platform-data-cache-schema";
+
+// Command Center schemas (Phase 62)
+export * from "./schema/workflow-templates";
+export * from "./schema/workflow-instances";
+export * from "./schema/follow-ups";
+export * from "./schema/smart-alerts";
