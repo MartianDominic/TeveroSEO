@@ -166,6 +166,7 @@ export function DuplicateButton({
         onDuplicated?.(newProposalId);
 
         // Navigate to the new proposal
+        // @ts-expect-error Route type not yet defined in next-safe-navigation
         router.push(`/proposals/${newProposalId}/edit`);
       }
     } catch (err) {
