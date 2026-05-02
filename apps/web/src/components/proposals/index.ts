@@ -77,3 +77,15 @@ export type {
 // Delete Confirmation Dialog (57-05)
 export { DeleteSectionDialog } from "./DeleteSectionDialog";
 export type { DeleteSectionDialogProps } from "./DeleteSectionDialog";
+
+// Undo/Redo Buttons (57-08)
+export { UndoRedoButtons } from "./UndoRedoButtons";
+export type { UndoRedoButtonsProps } from "./UndoRedoButtons";
+
+// Duplicate Button (57-08)
+export { DuplicateButton } from "./DuplicateButton";
+export type { DuplicateButtonProps } from "./DuplicateButton";
+
+// Share Modal (57-08)
+export { ShareModal } from "./ShareModal";
+export type { ShareModalProps } from "./ShareModal";
