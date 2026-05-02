@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff, CheckCircle, XCircle, Package, CreditCard, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 import {
   Button,
@@ -970,6 +971,43 @@ export default function GlobalSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
       <PageHeader title="Global Settings" subtitle="Platform configuration and API integrations" />
+
+      {/* Quick Links to Settings Sub-pages */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 mb-8">
+        <Link href="/settings/services" className="group">
+          <div className="rounded-lg border border-border bg-card p-4 hover:border-primary transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                  <Package className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">Service Catalog</h3>
+                  <p className="text-xs text-muted-foreground">Manage service templates for proposals</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/settings/payments" className="group">
+          <div className="rounded-lg border border-border bg-card p-4 hover:border-primary transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">Payment Settings</h3>
+                  <p className="text-xs text-muted-foreground">Configure payment providers</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+          </div>
+        </Link>
+      </div>
 
       <Tabs defaultValue="api" className="mt-6">
         <TabsList>
