@@ -155,9 +155,9 @@ Generate a personalized hero/introduction section for an SEO proposal.
 </task>
 
 <context>
-Company: ${ctx.prospect?.companyName || ctx.prospect?.domain || "Client"}
-Domain: ${ctx.prospect?.domain || "unknown"}
-Industry: ${ctx.prospect?.industry || "not specified"}
+Company: ${sanitizeForPrompt(ctx.prospect?.companyName) !== "not specified" ? sanitizeForPrompt(ctx.prospect?.companyName) : sanitizeForPrompt(ctx.prospect?.domain)}
+Domain: ${sanitizeForPrompt(ctx.prospect?.domain)}
+Industry: ${sanitizeForPrompt(ctx.prospect?.industry)}
 ${ctx.analysis?.organicTraffic ? `Current monthly traffic: ${ctx.analysis.organicTraffic}` : ""}
 ${ctx.analysis?.keywordGaps?.length ? `Quick win opportunities: ${ctx.analysis.keywordGaps.filter(k => k.difficulty < 50).length}` : ""}
 ${ctx.analysis?.auditScore !== undefined ? `Audit score: ${ctx.analysis.auditScore}/100` : ""}
@@ -190,8 +190,8 @@ Generate a current state analysis section for an SEO proposal.
 </task>
 
 <context>
-Company: ${ctx.prospect?.companyName || "Client"}
-Domain: ${ctx.prospect?.domain || "unknown"}
+Company: ${sanitizeForPrompt(ctx.prospect?.companyName)}
+Domain: ${sanitizeForPrompt(ctx.prospect?.domain)}
 ${ctx.analysis?.domainMetrics ? `
 Domain metrics:
 - Organic traffic: ${ctx.analysis.domainMetrics.organicTraffic || "N/A"}
@@ -238,8 +238,8 @@ Generate an opportunities section for an SEO proposal.
 </task>
 
 <context>
-Company: ${ctx.prospect?.companyName || "Client"}
-Domain: ${ctx.prospect?.domain || "unknown"}
+Company: ${sanitizeForPrompt(ctx.prospect?.companyName)}
+Domain: ${sanitizeForPrompt(ctx.prospect?.domain)}
 ${ctx.analysis?.keywordGaps?.length ? `
 Top keyword opportunities:
 ${ctx.analysis.keywordGaps.slice(0, 10).map(k =>
@@ -286,9 +286,9 @@ Generate ROI projections section for an SEO proposal.
 </task>
 
 <context>
-Company: ${ctx.prospect?.companyName || "Client"}
-Domain: ${ctx.prospect?.domain || "unknown"}
-Industry: ${ctx.prospect?.industry || "not specified"}
+Company: ${sanitizeForPrompt(ctx.prospect?.companyName)}
+Domain: ${sanitizeForPrompt(ctx.prospect?.domain)}
+Industry: ${sanitizeForPrompt(ctx.prospect?.industry)}
 ${ctx.analysis?.organicTraffic ? `Current monthly traffic: ${ctx.analysis.organicTraffic}` : ""}
 ${ctx.analysis?.keywordGaps?.length ? `
 Opportunity traffic potential: ${ctx.analysis.keywordGaps.reduce((sum, k) => sum + k.searchVolume, 0)} monthly searches
@@ -340,13 +340,31 @@ const LLMResponseSchema = z.object({
 });
 
 /**
+ * Sanitize user-provided strings for use in AI prompts.
+ * Prevents prompt injection by removing special characters.
+ */
+function sanitizeForPrompt(value: string | null | undefined): string {
+  if (!value) return "not specified";
+  return value
+    .replace(/[{}]/g, "") // Remove braces that could be interpreted as template syntax
+    .replace(/<[^>]+>/g, "") // Strip HTML tags
+    .replace(/[\r\n]+/g, " ") // Normalize newlines
+    .trim()
+    .slice(0, 500); // Limit length
+}
+
+/**
  * ProposalAIGenerationService class.
  */
 export class ProposalAIGenerationService {
   private anthropic: Anthropic;
 
   constructor() {
-    this.anthropic = new Anthropic();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error("ANTHROPIC_API_KEY environment variable is required for AI generation");
+    }
+    this.anthropic = new Anthropic({ apiKey });
   }
 
   /**
