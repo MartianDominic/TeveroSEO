@@ -22,11 +22,16 @@ import { Loader2, FileText, Eye, ArrowLeft, ArrowRight } from "lucide-react";
 import { ScenarioSelector } from "./components/ScenarioSelector";
 import { SectionEditor } from "./components/SectionEditor";
 import { RecommendationsPanel } from "./components/RecommendationsPanel";
+import { ServiceSelector } from "@/components/proposals/ServiceSelector";
 import {
   generateProposal,
+  getServicesForWorkspace,
+  updateProposalServices,
   type ProposalScenario,
   type AwarenessLevel,
   type GeneratedSection,
+  type ServiceTemplate,
+  type ProposalServiceInput,
 } from "./actions";
 import { WithErrorBoundary } from "@/components/with-error-boundary";
 
@@ -64,6 +69,10 @@ export default function ProposalBuilderPage() {
   const [sections, setSections] = useState<GeneratedSection[]>([]);
   const [isPending, startTransition] = useTransition();
 
+  // Service catalog state (Phase 58-03)
+  const [availableServices, setAvailableServices] = useState<ServiceTemplate[]>([]);
+  const [serviceSelections, setServiceSelections] = useState<ProposalServiceInput[]>([]);
+
   // Local toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -72,6 +81,15 @@ export default function ProposalBuilderPage() {
     const timer = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Load available services on mount (Phase 58-03)
+  useEffect(() => {
+    getServicesForWorkspace().then((result) => {
+      if (result.success && result.data) {
+        setAvailableServices(result.data.services || []);
+      }
+    });
+  }, []);
 
   const handleGenerate = () => {
     startTransition(async () => {
@@ -108,6 +126,24 @@ export default function ProposalBuilderPage() {
   const handlePreview = () => {
     if (!proposalId) return;
     router.push(`/prospects/${prospectId}/proposal/preview?id=${proposalId}` as Parameters<typeof router.push>[0]);
+  };
+
+  // Save service selections before generating proposal (Phase 58-03)
+  const handleSaveServices = async () => {
+    if (!proposalId) {
+      // If no proposal yet, just proceed to generate
+      handleGenerate();
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await updateProposalServices(proposalId, serviceSelections);
+      if (result.success) {
+        handleGenerate();
+      } else {
+        setToast({ message: result.error || "Failed to save services", type: "error" });
+      }
+    });
   };
 
   const renderStepContent = () => {
@@ -242,73 +278,41 @@ export default function ProposalBuilderPage() {
                 Set Pricing
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Configure the investment section pricing.
+                Select services and configure pricing for this proposal.
               </p>
             </div>
 
+            {/* Service Selector (Phase 58-03) */}
+            {availableServices.length > 0 && (
+              <ServiceSelector
+                services={availableServices}
+                selections={serviceSelections}
+                onSelectionsChange={setServiceSelections}
+                currency="EUR"
+                locale="en"
+              />
+            )}
+
+            {/* Contract Duration */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Pricing Configuration</CardTitle>
+                <CardTitle className="text-base">Contract Duration</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="setup-fee">Setup Fee (EUR)</Label>
-                    <Input
-                      id="setup-fee"
-                      type="number"
-                      min={0}
-                      max={1000000}
-                      value={pricing.setupFee}
-                      onChange={(e) => {
-                        const numValue = parseInt(e.target.value) || 0;
-                        const validated = Math.max(0, Math.min(numValue, 1000000));
-                        setPricing({ ...pricing, setupFee: validated });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="monthly-fee">Monthly Fee (EUR)</Label>
-                    <Input
-                      id="monthly-fee"
-                      type="number"
-                      min={0}
-                      max={1000000}
-                      value={pricing.monthlyFee}
-                      onChange={(e) => {
-                        const numValue = parseInt(e.target.value) || 0;
-                        const validated = Math.max(0, Math.min(numValue, 1000000));
-                        setPricing({ ...pricing, monthlyFee: validated });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contract-months">Contract (months)</Label>
-                    <Input
-                      id="contract-months"
-                      type="number"
-                      min={1}
-                      max={60}
-                      value={pricing.contractMonths}
-                      onChange={(e) => {
-                        const numValue = parseInt(e.target.value) || 1;
-                        const validated = Math.max(1, Math.min(numValue, 60));
-                        setPricing({ ...pricing, contractMonths: validated });
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Contract Value:</span>
-                    <span className="font-semibold">
-                      {(
-                        pricing.setupFee +
-                        pricing.monthlyFee * pricing.contractMonths
-                      ).toLocaleString()}{" "}
-                      EUR
-                    </span>
-                  </div>
+              <CardContent>
+                <div className="max-w-xs">
+                  <Label htmlFor="contract-months">Contract Length (months)</Label>
+                  <Input
+                    id="contract-months"
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={pricing.contractMonths}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 1;
+                      const validated = Math.max(1, Math.min(numValue, 60));
+                      setPricing({ ...pricing, contractMonths: validated });
+                    }}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -317,7 +321,7 @@ export default function ProposalBuilderPage() {
               <Button variant="outline" onClick={() => setStep("customize")}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
-              <Button onClick={handleGenerate} disabled={isPending}>
+              <Button onClick={handleSaveServices} disabled={isPending}>
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

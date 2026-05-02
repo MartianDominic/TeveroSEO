@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 import { requireActionAuth, validateProspectOwnership, validateProposalOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
@@ -451,5 +452,203 @@ export async function getProposalForPreview(
       success: false,
       error: sanitizeErrorForClient(error),
     };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Service Catalog Actions (Phase 58-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Service template data from API.
+ */
+export interface ServiceTemplate {
+  id: string;
+  name: string;
+  nameEn?: string | null;
+  nameLt?: string | null;
+  category: "seo_package" | "addon" | "one_time";
+  pricingType: "monthly" | "one_time" | "per_unit";
+  basePriceCents: number | null;
+  setupFeeCents?: number | null;
+  inclusions?: string[] | null;
+  icon?: string | null;
+  isSystemTemplate?: boolean;
+}
+
+/**
+ * Proposal service selection input.
+ */
+export interface ProposalServiceInput {
+  serviceTemplateId: string;
+  customPriceCents?: number | null;
+  customSetupCents?: number | null;
+  quantity?: number;
+  isIncluded: boolean;
+}
+
+/**
+ * Fetch all available service templates for the workspace.
+ */
+export async function getServicesForWorkspace(): Promise<
+  ActionResult<{ services: ServiceTemplate[] }>
+> {
+  try {
+    await requireActionAuth();
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(`${env.OPEN_SEO_URL}/api/services`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // Response wasn't JSON
+      }
+      console.error("[getServicesForWorkspace] API error:", response.status, errorMessage);
+      return { success: false, error: "Failed to fetch services" };
+    }
+
+    const result = await response.json();
+    return { success: true, data: { services: result.services || [] } };
+  } catch (error) {
+    console.error("[getServicesForWorkspace] Error:", error);
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return { success: false, error: "Request timed out" };
+    }
+    return { success: false, error: sanitizeErrorForClient(error) };
+  }
+}
+
+/**
+ * Fetch services selected for a specific proposal.
+ */
+export async function getProposalServices(
+  proposalId: string
+): Promise<ActionResult<{ services: ProposalServiceInput[] }>> {
+  const authContext = await requireActionAuth();
+
+  // Validate proposal ID
+  const validatedId = proposalIdSchema.safeParse(proposalId);
+  if (!validatedId.success) {
+    return { success: false, error: "Invalid proposal ID" };
+  }
+
+  try {
+    await validateProposalOwnership(validatedId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/proposals/${validatedId.data}/services`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("[getProposalServices] API error:", response.status);
+      return { success: false, error: "Failed to fetch proposal services" };
+    }
+
+    const result = await response.json();
+    return { success: true, data: { services: result.services || [] } };
+  } catch (error) {
+    console.error("[getProposalServices] Error:", error);
+    return { success: false, error: sanitizeErrorForClient(error) };
+  }
+}
+
+// Validation schema for service updates
+const updateServicesSchema = z.object({
+  services: z.array(
+    z.object({
+      serviceTemplateId: z.string().uuid(),
+      customPriceCents: z.number().int().min(0).max(100_000_000).nullable().optional(),
+      customSetupCents: z.number().int().min(0).max(100_000_000).nullable().optional(),
+      quantity: z.number().int().min(1).max(100).default(1),
+      isIncluded: z.boolean(),
+    })
+  ),
+});
+
+/**
+ * Update service selections for a proposal.
+ */
+export async function updateProposalServices(
+  proposalId: string,
+  selections: ProposalServiceInput[]
+): Promise<ActionResult<{ services: ProposalServiceInput[] }>> {
+  const authContext = await requireActionAuth();
+
+  // Validate proposal ID
+  const validatedProposalId = proposalIdSchema.safeParse(proposalId);
+  if (!validatedProposalId.success) {
+    return { success: false, error: "Invalid proposal ID" };
+  }
+
+  // Validate selections
+  const validatedInput = updateServicesSchema.safeParse({ services: selections });
+  if (!validatedInput.success) {
+    return {
+      success: false,
+      error: validatedInput.error.issues[0]?.message || "Invalid service selection",
+    };
+  }
+
+  try {
+    await validateProposalOwnership(validatedProposalId.data, authContext);
+
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    const response = await fetch(
+      `${env.OPEN_SEO_URL}/api/proposals/${validatedProposalId.data}/services`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ services: validatedInput.data.services }),
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // Response wasn't JSON
+      }
+      console.error("[updateProposalServices] API error:", response.status, errorMessage);
+      return { success: false, error: "Failed to update services" };
+    }
+
+    const result = await response.json();
+
+    return { success: true, data: { services: result.services || [] } };
+  } catch (error) {
+    console.error("[updateProposalServices] Error:", error);
+    return { success: false, error: sanitizeErrorForClient(error) };
   }
 }
