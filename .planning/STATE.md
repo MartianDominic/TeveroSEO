@@ -93,6 +93,8 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **64-02:** L0 treated as negative-only signal for Shopify-like platforms; Accept weak ETags (W/ prefix) per Cloudflare; 30s timeout for conditional GET
+- **64-01:** SET NX EX for atomic lock (not separate SETNX + EXPIRE); Subscribe before check pattern for lost wakeup prevention; Tenant-prefixed keys for isolation
 - **62-04:** Pre-computed aggregations in pipeline_metrics; 5-min refresh via BullMQ repeatable; stale-while-revalidate at 10 min; cents for financial precision; pct*10000 for conversion rate precision; in-memory rate limiting (1 req/workspace/min)
 - **57-07:** Context checkboxes dynamically show availability; 4 tone presets (professional/friendly/technical/urgent); Section prompts return structured JSON; Confidence scoring based on JSON validity, length, structure; AI-generated content creates version with changeType: ai_generated
 - **57-08:** 50 state limit for temporal history; platform detection for Mac vs Windows shortcuts; 32-char nanoid tokens for magic links (~10^57 entropy); 30-day default expiry; Beacon API for page leave duration tracking
@@ -360,4 +362,30 @@ Full platform internationalization with Lithuanian as primary target:
 
 **Phase 59: COMPLETE** — 3-click signing experience with multi-signer support, sequential/parallel signing modes, pre-signing flow, professional PDF generation with custom fonts, EN/LT localization, Dokobit Smart-ID/Mobile-ID integration.
 
-**Next Phase:** 62 (Agency Command Center)
+## v7.1 Phases Summary
+
+| Phase | Title | Status |
+|-------|-------|--------|
+| 63 | AI Search Optimization | Pending |
+| 64 | Crawling Infrastructure | Wave 1 In Progress |
+| 65 | Job Queue Excellence | Pending |
+| 66 | Platform Observability | Pending |
+
+### Phase 64 Progress (2026-05-02)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 64-01 | Crawl Singleflight (Redis SET NX EX) | ✓ Complete |
+| 64-02 | Delta Crawling Cascade (L0-L3) | ✓ Complete |
+| 64-03 | Queue Lane Separation | Pending (Wave 2) |
+| 64-04 | Metrics Dashboard | Pending (Wave 2) |
+
+**Wave 1 Status:** COMPLETE
+
+Key deliverables:
+- Redis singleflight with SET NX EX atomic locks
+- Delta cascade L0->L1->L2->L3 orchestration
+- Conditional GET with ETag/Last-Modified support
+- 17 tests across both modules
+
+**Next:** Wave 2 (64-03, 64-04) - Queue lane separation and metrics dashboard
