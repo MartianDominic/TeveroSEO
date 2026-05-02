@@ -28,6 +28,7 @@ const TrackSchema = z.object({
   ipAddress: z.string().optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/track")({
   server: {
     handlers: {

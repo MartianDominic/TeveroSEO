@@ -80,9 +80,9 @@ export const Route = createFileRoute("/api/proposals/[id]/generate")({
             );
           }
 
-          // Rate limit
+          // Rate limit per user (not per proposal to prevent bypass)
           const rateLimitResult = await rateLimit({
-            key: `proposal-ai-gen:${proposalId}`,
+            key: `ai-gen:${authContext.userId}`,
             ...AI_GEN_RATE_LIMIT,
           });
 

@@ -9,13 +9,13 @@
  * - T-56-04: Rate limited to 50 extractions per day per workspace
  * - T-56-05: Input sanitized, max 50KB content
  */
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   extractFromConversation,
   type ExtractedProspectData,
 } from "@/server/features/prospects/services/ConversationExtractor";
-import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { AppError } from "@/server/lib/errors";
 import { logger } from "@/server/lib/logger";
 
@@ -58,55 +58,60 @@ const extractRequestSchema = z.object({
   contextNotes: z.string().max(50000, "Context notes exceed 50KB limit").optional(),
 });
 
-export const APIRoute = createAPIFileRoute("/api/prospects/extract")({
-  POST: async ({ request }) => {
-    try {
-      const ctx = await requireAuthenticatedContext();
-      const workspaceId = ctx.organizationId;
+// @ts-expect-error - Route path not in FileRoutesByPath yet
+export const Route = createFileRoute("/api/prospects/extract")({
+  server: {
+    handlers: {
+      POST: async ({ request }: { request: Request }) => {
+        try {
+          const auth = await requireApiAuth(request);
+          const workspaceId = auth.organizationId;
 
-      // Check rate limit
-      checkRateLimit(workspaceId);
+          // Check rate limit
+          checkRateLimit(workspaceId);
 
-      // Parse and validate request body
-      const body = await request.json();
-      const validated = extractRequestSchema.safeParse(body);
+          // Parse and validate request body
+          const body = await request.json();
+          const validated = extractRequestSchema.safeParse(body);
 
-      if (!validated.success) {
-        return Response.json(
-          {
-            success: false,
-            error: validated.error.issues[0]?.message || "Invalid input",
-          },
-          { status: 400 },
-        );
-      }
+          if (!validated.success) {
+            return Response.json(
+              {
+                success: false,
+                error: validated.error.issues[0]?.message || "Invalid input",
+              },
+              { status: 400 },
+            );
+          }
 
-      // Run extraction
-      const result = await extractFromConversation(validated.data);
+          // Run extraction
+          const result = await extractFromConversation(validated.data);
 
-      logger.info("Extraction completed", {
-        workspaceId,
-        inputMode: validated.data.inputMode,
-        confidence: result.confidence,
-      });
+          logger.info("Extraction completed", {
+            workspaceId,
+            inputMode: validated.data.inputMode,
+            confidence: result.confidence,
+          });
 
-      return Response.json({ success: true, data: result });
-    } catch (error) {
-      if (error instanceof AppError) {
-        const status =
-          error.code === "RATE_LIMIT"
-            ? 429
-            : error.code === "VALIDATION_ERROR"
-              ? 400
-              : 500;
-        return Response.json({ success: false, error: error.message }, { status });
-      }
+          return Response.json({ success: true, data: result });
+        } catch (error) {
+          if (error instanceof AppError) {
+            const status =
+              error.code === "RATE_LIMIT"
+                ? 429
+                : error.code === "VALIDATION_ERROR"
+                  ? 400
+                  : 500;
+            return Response.json({ success: false, error: error.message }, { status });
+          }
 
-      logger.error("Extraction endpoint error", { error });
-      return Response.json(
-        { success: false, error: "An unexpected error occurred" },
-        { status: 500 },
-      );
-    }
+          logger.error("Extraction endpoint error", error instanceof Error ? error : new Error(String(error)));
+          return Response.json(
+            { success: false, error: "An unexpected error occurred" },
+            { status: 500 },
+          );
+        }
+      },
+    },
   },
 });

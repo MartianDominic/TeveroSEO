@@ -48,13 +48,13 @@ const variableDefinitionSchema = z.object({
  * Branding settings schema.
  */
 const brandingSettingsSchema = z.object({
-  logoUrl: z.string().url().max(2000).optional().nullable(),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
-  secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
-  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
-  fontFamily: z.string().max(100).optional().nullable(),
-  headerStyle: z.enum(["centered", "left-aligned", "minimal"]).optional().nullable(),
-  footerText: z.string().max(500).optional().nullable(),
+  logoUrl: z.string().url().max(2000).optional(),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  fontFamily: z.string().max(100).optional(),
+  headerStyle: z.enum(["centered", "left-aligned", "minimal"]).optional(),
+  footerText: z.string().max(500).optional(),
 });
 
 /**
@@ -75,6 +75,7 @@ const updateTemplateSchema = z.object({
   isPublished: z.boolean().optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/templates/proposals/$templateId")({
   server: {
     handlers: {

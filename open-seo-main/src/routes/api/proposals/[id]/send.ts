@@ -57,6 +57,7 @@ const SendProposalSchema = z.object({
  *   }
  * }
  */
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/id/send")({
   server: {
     handlers: {

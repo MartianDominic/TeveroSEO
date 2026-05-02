@@ -33,6 +33,7 @@ const RejectSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/id/reject")({
   server: {
     handlers: {

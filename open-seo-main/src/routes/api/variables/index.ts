@@ -14,7 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
-import { getClerkAuth } from "@/server/lib/clerk-auth";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { VARIABLE_CATEGORIES } from "@/db/variable-definitions-schema";
 
 /**
@@ -38,11 +38,11 @@ const CreateVariableSchema = z.object({
   description: z.string().max(500).optional(),
   descriptionEn: z.string().max(500).optional(),
   descriptionLt: z.string().max(500).optional(),
-  category: z.enum(VARIABLE_CATEGORIES).optional(),
+  category: z.enum(VARIABLE_CATEGORIES as unknown as readonly [string, ...string[]]).optional(),
   sourceType: z.enum(["entity", "computed", "custom", "input"]).optional(),
   sourcePath: z.string().max(200).optional(),
   format: z.enum(["text", "currency", "date", "number", "percentage", "list"]).optional(),
-  formatOptions: z.record(z.unknown()).optional(),
+  formatOptions: z.record(z.string(), z.unknown()).optional(),
   defaultValue: z.string().max(1000).optional(),
   isRequired: z.boolean().optional(),
   validationRules: z
@@ -61,10 +61,11 @@ const CreateVariableSchema = z.object({
  * Query params for list endpoint.
  */
 const ListQuerySchema = z.object({
-  locale: z.enum(["en", "lt"]).optional().default("en"),
-  grouped: z.enum(["true", "false"]).optional().default("false"),
+  locale: z.enum(["en", "lt"]).optional(),
+  grouped: z.enum(["true", "false"]).optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/")({
   server: {
     handlers: {
@@ -75,13 +76,7 @@ export const Route = createFileRoute("/api/variables/")({
       GET: async ({ request }: { request: Request }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
 
           // Parse query params
           const url = new URL(request.url);
@@ -97,19 +92,20 @@ export const Route = createFileRoute("/api/variables/")({
             );
           }
 
-          const { locale, grouped } = params.data;
+          const locale = params.data.locale ?? "en";
+          const grouped = params.data.grouped ?? "false";
 
           // Fetch variables
           if (grouped === "true") {
             const categories = await VariableDefinitionService.listByCategory(
-              auth.orgId,
+              auth.organizationId,
               locale as "en" | "lt"
             );
             return Response.json({ data: categories });
           }
 
           const variables = await VariableDefinitionService.listAll(
-            auth.orgId,
+            auth.organizationId,
             locale as "en" | "lt"
           );
 
@@ -130,13 +126,7 @@ export const Route = createFileRoute("/api/variables/")({
       POST: async ({ request }: { request: Request }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
 
           // Parse and validate body
           const body = (await request.json()) as Record<string, unknown>;
@@ -158,7 +148,8 @@ export const Route = createFileRoute("/api/variables/")({
           // Create variable
           const created = await VariableDefinitionService.create({
             ...parsed.data,
-            workspaceId: auth.orgId,
+            workspaceId: auth.organizationId,
+            category: parsed.data.category as "custom" | "client" | "audit" | "provider" | "pricing" | "dates" | undefined,
           });
 
           return Response.json({ data: created }, { status: 201 });

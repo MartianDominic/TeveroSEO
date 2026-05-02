@@ -6,141 +6,195 @@
  * POST /api/proposals/:id/versions - Create new version (used by auto-save)
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { json } from "@tanstack/react-router-server";
 import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
 import { VersionService } from "@/server/features/proposals/services/VersionService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { AppError } from "@/server/lib/errors";
-import { CHANGE_TYPES, type ChangeType } from "@/db/schema/proposal-versions";
+import type { ProposalChangeType } from "@/db/schema";
 
 const log = createLogger({ module: "api/proposals/versions" });
 
 /**
  * Schema for creating a new version
  */
+const CHANGE_TYPE_VALUES = [
+  "content_edit",
+  "section_reorder",
+  "section_add",
+  "section_delete",
+  "ai_generated",
+  "restore",
+  "initial",
+] as const;
+
 const CreateVersionSchema = z.object({
-  content: z.record(z.unknown()),
+  content: z.record(z.string(), z.unknown()),
   sectionOrder: z.array(z.string()).optional(),
-  changeType: z.enum(CHANGE_TYPES as unknown as [ChangeType, ...ChangeType[]]),
+  changeType: z.enum(CHANGE_TYPE_VALUES),
   changeDescription: z.string().optional(),
   changeDescriptionEn: z.string().optional(),
   changeDescriptionLt: z.string().optional(),
   changedSections: z.array(z.string()).optional(),
-  significantOnly: z.boolean().optional().default(true),
+  significantOnly: z.boolean().optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/[id]/versions")({
-  /**
-   * GET /api/proposals/:id/versions
-   * List all versions for a proposal
-   */
-  async beforeLoad({ params, context }) {
-    const { id: proposalId } = params;
-    const { auth } = await requireApiAuth(context);
+  server: {
+    handlers: {
+      /**
+       * GET /api/proposals/:id/versions
+       * List all versions for a proposal
+       */
+      GET: async ({
+        request,
+        params,
+      }: {
+        request: Request;
+        params: { id: string };
+      }) => {
+        try {
+          const { id: proposalId } = params;
+          const auth = await requireApiAuth(request);
 
-    log.info("Listing proposal versions", { proposalId, userId: auth.userId });
+          log.info("Listing proposal versions", { proposalId, userId: auth.userId });
 
-    const versions = await VersionService.listVersions(proposalId);
+          const versions = await VersionService.listVersions(proposalId);
 
-    return json({
-      success: true,
-      data: {
-        versions,
-        count: versions.length,
+          return Response.json({
+            success: true,
+            data: {
+              versions,
+              count: versions.length,
+            },
+          });
+        } catch (error) {
+          if (error instanceof AppError) {
+            return Response.json(
+              { success: false, error: error.message },
+              { status: error.code === "UNAUTHENTICATED" ? 401 : 500 }
+            );
+          }
+          log.error("Failed to list versions", error instanceof Error ? error : new Error(String(error)));
+          return Response.json(
+            { success: false, error: "Failed to list versions" },
+            { status: 500 }
+          );
+        }
       },
-    });
+
+      /**
+       * POST /api/proposals/:id/versions
+       * Create new version
+       */
+      POST: async ({
+        request,
+        params,
+      }: {
+        request: Request;
+        params: { id: string };
+      }) => {
+        try {
+          const { id: proposalId } = params;
+          const auth = await requireApiAuth(request);
+
+          const body = await request.json();
+          const parsed = CreateVersionSchema.safeParse(body);
+
+          if (!parsed.success) {
+            return Response.json(
+              {
+                success: false,
+                error: "Invalid request body",
+                details: parsed.error.issues,
+              },
+              { status: 400 }
+            );
+          }
+
+          const {
+            content,
+            sectionOrder,
+            changeType,
+            changeDescription,
+            changeDescriptionEn,
+            changeDescriptionLt,
+            changedSections,
+            significantOnly,
+          } = parsed.data;
+
+          log.info("Creating proposal version", {
+            proposalId,
+            changeType,
+            significantOnly,
+            userId: auth.userId,
+          });
+
+          let version;
+
+          if (significantOnly !== false) {
+            // Only create if significant changes detected
+            version = await VersionService.createVersionIfSignificant({
+              proposalId,
+              content: content as never,
+              sectionOrder,
+              changeType,
+              changeDescription,
+              changeDescriptionEn,
+              changeDescriptionLt,
+              changedSections,
+              createdBy: auth.userId,
+            });
+
+            if (!version) {
+              return Response.json({
+                success: true,
+                data: {
+                  version: null,
+                  message: "No significant changes detected",
+                },
+              });
+            }
+          } else {
+            // Always create version
+            version = await VersionService.createVersion({
+              proposalId,
+              content: content as never,
+              sectionOrder,
+              changeType,
+              changeDescription,
+              changeDescriptionEn,
+              changeDescriptionLt,
+              changedSections,
+              createdBy: auth.userId,
+            });
+          }
+
+          log.info("Version created", {
+            proposalId,
+            versionId: version.id,
+            versionNumber: version.versionNumber,
+          });
+
+          return Response.json({
+            success: true,
+            data: { version },
+          });
+        } catch (error) {
+          if (error instanceof AppError) {
+            return Response.json(
+              { success: false, error: error.message },
+              { status: error.code === "UNAUTHENTICATED" ? 401 : 500 }
+            );
+          }
+          log.error("Failed to create version", error instanceof Error ? error : new Error(String(error)));
+          return Response.json(
+            { success: false, error: "Failed to create version" },
+            { status: 500 }
+          );
+        }
+      },
+    },
   },
 });
-
-/**
- * POST handler - Create new version
- */
-export const action = async ({ params, request, context }: {
-  params: { id: string };
-  request: Request;
-  context: unknown;
-}) => {
-  const { id: proposalId } = params;
-  const { auth } = await requireApiAuth(context);
-
-  const body = await request.json();
-  const parsed = CreateVersionSchema.safeParse(body);
-
-  if (!parsed.success) {
-    throw new AppError({
-      code: "VALIDATION_ERROR",
-      message: "Invalid request body",
-      details: parsed.error.errors,
-    });
-  }
-
-  const {
-    content,
-    sectionOrder,
-    changeType,
-    changeDescription,
-    changeDescriptionEn,
-    changeDescriptionLt,
-    changedSections,
-    significantOnly,
-  } = parsed.data;
-
-  log.info("Creating proposal version", {
-    proposalId,
-    changeType,
-    significantOnly,
-    userId: auth.userId,
-  });
-
-  let version;
-
-  if (significantOnly) {
-    // Only create if significant changes detected
-    version = await VersionService.createVersionIfSignificant({
-      proposalId,
-      content: content as never,
-      sectionOrder,
-      changeType,
-      changeDescription,
-      changeDescriptionEn,
-      changeDescriptionLt,
-      changedSections,
-      createdBy: auth.userId,
-    });
-
-    if (!version) {
-      return json({
-        success: true,
-        data: {
-          version: null,
-          message: "No significant changes detected",
-        },
-      });
-    }
-  } else {
-    // Always create version
-    version = await VersionService.createVersion({
-      proposalId,
-      content: content as never,
-      sectionOrder,
-      changeType,
-      changeDescription,
-      changeDescriptionEn,
-      changeDescriptionLt,
-      changedSections,
-      createdBy: auth.userId,
-    });
-  }
-
-  log.info("Version created", {
-    proposalId,
-    versionId: version.id,
-    versionNumber: version.versionNumber,
-  });
-
-  return json({
-    success: true,
-    data: { version },
-  });
-};

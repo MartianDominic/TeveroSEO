@@ -20,13 +20,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableResolutionService } from "@/server/features/proposals/services/VariableResolutionService";
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
-import { getClerkAuth } from "@/server/lib/clerk-auth";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { AppError } from "@/server/lib/errors";
 
 const ResolveRequestSchema = z.object({
-  locale: z.enum(["en", "lt"]).optional().default("en"),
-  customValues: z.record(z.string()).optional().default({}),
+  locale: z.enum(["en", "lt"]).optional(),
+  customValues: z.record(z.string(), z.string()).optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/[id]/resolve")({
   server: {
     handlers: {
@@ -43,13 +45,8 @@ export const Route = createFileRoute("/api/proposals/[id]/resolve")({
       }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
+          const orgId = auth.organizationId;
 
           // Verify proposal exists and belongs to workspace
           const proposal = await ProposalService.findById(params.id);
@@ -61,7 +58,7 @@ export const Route = createFileRoute("/api/proposals/[id]/resolve")({
             );
           }
 
-          if (proposal.workspaceId !== auth.orgId) {
+          if (proposal.workspaceId !== orgId) {
             return Response.json(
               { error: "Proposal not found" },
               { status: 404 }
@@ -88,8 +85,8 @@ export const Route = createFileRoute("/api/proposals/[id]/resolve")({
           // Resolve variables
           const resolved = await VariableResolutionService.resolveVariables(
             params.id,
-            parsed.data.locale as "en" | "lt",
-            parsed.data.customValues
+            (parsed.data.locale ?? "en") as "en" | "lt",
+            parsed.data.customValues ?? {}
           );
 
           return Response.json({ data: resolved });

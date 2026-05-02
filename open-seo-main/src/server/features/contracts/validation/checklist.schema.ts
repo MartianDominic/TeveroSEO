@@ -16,9 +16,7 @@ const checklistItemSchema = z.object({
 
 export const createChecklistSchema = z.object({
   clientId: z.string().uuid("Invalid client ID"),
-  serviceTier: z.enum(SERVICE_TIERS, {
-    errorMap: () => ({ message: "Invalid service tier" }),
-  }),
+  serviceTier: z.enum(SERVICE_TIERS as unknown as readonly [string, ...string[]]),
   items: z.array(checklistItemSchema).min(1, "At least one item required"),
   totalCount: z.number().int().positive(),
 });

@@ -115,7 +115,7 @@ export class EmailService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error("Failed to send email", { error: errorMessage, options });
+      log.error("Failed to send email", error instanceof Error ? error : new Error(errorMessage));
 
       return {
         success: false,

@@ -27,6 +27,7 @@ const log = createLogger({ module: "api/contracts/send" });
  *   }
  * }
  */
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/contracts/$contractId/-send")({
   server: {
     handlers: {

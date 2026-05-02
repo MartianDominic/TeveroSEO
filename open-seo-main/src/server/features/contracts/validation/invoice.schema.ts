@@ -27,9 +27,7 @@ export const createInvoiceSchema = z.object({
 
 export const updateInvoiceStatusSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required"),
-  status: z.enum(INVOICE_STATUS, {
-    errorMap: () => ({ message: "Invalid invoice status" }),
-  }),
+  status: z.enum(INVOICE_STATUS as unknown as readonly [string, ...string[]]),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;

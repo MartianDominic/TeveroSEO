@@ -8,7 +8,10 @@ import { db } from "@/db";
 import { agreementTemplates } from "../agreement-template-schema";
 import { SEO_SERVICES_TEMPLATE_LT } from "@/server/features/contracts/templates/seo-services-lt";
 import { SEO_SERVICES_TEMPLATE_EN } from "@/server/features/contracts/templates/seo-services-en";
-import { createId } from "@paralleldrive/cuid2";
+import { nanoid } from "nanoid";
+
+// Use nanoid as cuid2 replacement
+const createId = () => nanoid();
 
 /**
  * Seed agreement templates into the database.

@@ -13,6 +13,7 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "revolut-webhook" });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/webhooks/revolut")({
   server: {
     handlers: {

@@ -39,9 +39,7 @@ export const updateContractSchema = z.object({
 
 export const transitionContractSchema = z.object({
   contractId: z.string().min(1, "Contract ID is required"),
-  toState: z.enum(CONTRACT_STATUS, {
-    errorMap: () => ({ message: "Invalid contract status" }),
-  }),
+  toState: z.enum(CONTRACT_STATUS as unknown as readonly [string, ...string[]]),
 });
 
 export type CreateContractInput = z.infer<typeof createContractSchema>;

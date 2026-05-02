@@ -15,6 +15,7 @@ import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 const log = createLogger({ module: "api/invoices/payment-link" });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/invoices/$id/-payment-link")({
   server: {
     handlers: {

@@ -102,6 +102,7 @@ const listTemplatesQuerySchema = z.object({
   includeArchived: z.coerce.boolean().default(false),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/templates/proposals/")({
   server: {
     handlers: {

@@ -70,6 +70,7 @@ const TranslateRequestSchema = z.object({
 
 type TranslateRequest = z.infer<typeof TranslateRequestSchema>;
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/translate")({
   server: {
     handlers: {

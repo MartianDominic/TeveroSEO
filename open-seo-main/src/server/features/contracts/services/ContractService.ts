@@ -375,12 +375,18 @@ async function generateAgreement(
   // Resolve target language
   let targetLanguage = options.language;
   if (!targetLanguage) {
-    const resolved = await langService.resolveForCommunication(
-      options.workspaceId,
-      options.prospectId || options.clientId || null,
-      options.prospectId ? "prospect" : "client"
-    );
-    targetLanguage = resolved.locale as AgreementLanguage;
+    const entityId = options.prospectId || options.clientId;
+    if (entityId) {
+      const resolved = await langService.resolveForCommunication(
+        options.workspaceId,
+        entityId,
+        options.prospectId ? "prospect" : "client"
+      );
+      targetLanguage = resolved.locale as AgreementLanguage;
+    } else {
+      // Default to English if no entity ID
+      targetLanguage = "en" as AgreementLanguage;
+    }
   }
 
   // Get template for target language

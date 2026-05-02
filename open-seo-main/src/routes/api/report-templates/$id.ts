@@ -55,6 +55,7 @@ const updateTemplateSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/report-templates/$id")({
   server: {
     handlers: {

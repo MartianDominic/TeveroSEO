@@ -89,7 +89,15 @@ export * from "./proposal-template-schema";
 export * from "./variable-definitions-schema";
 
 // Proposal versions schema (Phase 57)
-export * from "./schema/proposal-versions";
+// NOTE: Re-export with renamed types to avoid collision with change-schema.ts
+export {
+  proposalVersions,
+  proposalVersionsRelations,
+  type ProposalVersionSelect,
+  type ProposalVersionInsert,
+  CHANGE_TYPES as PROPOSAL_CHANGE_TYPES,
+  type ChangeType as ProposalChangeType,
+} from "./schema/proposal-versions";
 
 // Service catalog schema (Phase 58)
 export * from "./service-catalog-schema";

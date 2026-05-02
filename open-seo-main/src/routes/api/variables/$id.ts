@@ -14,7 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
-import { getClerkAuth } from "@/server/lib/clerk-auth";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 /**
  * Zod schema for updating a variable.
@@ -27,7 +27,7 @@ const UpdateVariableSchema = z.object({
   descriptionEn: z.string().max(500).optional(),
   descriptionLt: z.string().max(500).optional(),
   format: z.enum(["text", "currency", "date", "number", "percentage", "list"]).optional(),
-  formatOptions: z.record(z.unknown()).optional(),
+  formatOptions: z.record(z.string(), z.unknown()).optional(),
   defaultValue: z.string().max(1000).optional(),
   isRequired: z.boolean().optional(),
   validationRules: z
@@ -42,6 +42,7 @@ const UpdateVariableSchema = z.object({
   displayOrder: z.number().int().min(0).max(1000).optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/$id")({
   server: {
     handlers: {
@@ -58,13 +59,7 @@ export const Route = createFileRoute("/api/variables/$id")({
       }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
 
           const variable = await VariableDefinitionService.findById(params.id);
 
@@ -78,7 +73,7 @@ export const Route = createFileRoute("/api/variables/$id")({
           // Check access - system variables or own workspace variables
           if (
             variable.workspaceId !== null &&
-            variable.workspaceId !== auth.orgId
+            variable.workspaceId !== auth.organizationId
           ) {
             return Response.json(
               { error: "Variable not found" },
@@ -109,13 +104,7 @@ export const Route = createFileRoute("/api/variables/$id")({
       }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
 
           // Parse and validate body
           const body = (await request.json()) as Record<string, unknown>;
@@ -137,7 +126,7 @@ export const Route = createFileRoute("/api/variables/$id")({
           // Update variable
           const updated = await VariableDefinitionService.update(
             params.id,
-            auth.orgId,
+            auth.organizationId,
             parsed.data
           );
 
@@ -181,16 +170,10 @@ export const Route = createFileRoute("/api/variables/$id")({
       }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          const auth = await requireApiAuth(request);
 
           // Delete variable
-          await VariableDefinitionService.delete(params.id, auth.orgId);
+          await VariableDefinitionService.delete(params.id, auth.organizationId);
 
           return Response.json({ success: true });
         } catch (error) {

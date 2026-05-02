@@ -383,7 +383,7 @@ export const VariableResolutionService = {
       .limit(1);
 
     // Load latest analysis
-    let analysis = null;
+    let analysis: ResolutionContext["analysis"] = null;
     if (proposal.prospectId) {
       const [analysisRow] = await db
         .select({
@@ -395,7 +395,19 @@ export const VariableResolutionService = {
         .orderBy(prospectAnalyses.createdAt)
         .limit(1);
 
-      analysis = analysisRow ?? null;
+      if (analysisRow) {
+        analysis = {
+          domainMetrics: analysisRow.domainMetrics
+            ? {
+                organicTraffic: analysisRow.domainMetrics.organicTraffic,
+                organicKeywords: analysisRow.domainMetrics.organicKeywords,
+              }
+            : undefined,
+          opportunityKeywords: analysisRow.opportunityKeywords?.map((k) => ({
+            keyword: typeof k === "string" ? k : k.keyword,
+          })),
+        };
+      }
     }
 
     return {
@@ -425,7 +437,7 @@ export const VariableResolutionService = {
     // Load context
     const context = await this.loadContext(proposalId, locale, customValues);
 
-    // Load variable definitions (system + workspace)
+    // Load variable definitions (system + workspace) with safety limit
     const workspaceId = context.proposal?.workspaceId;
     const definitions = await db
       .select()
@@ -438,7 +450,8 @@ export const VariableResolutionService = {
             : isNull(variableDefinitions.workspaceId)
         )
       )
-      .orderBy(variableDefinitions.displayOrder);
+      .orderBy(variableDefinitions.displayOrder)
+      .limit(500); // Safety limit to prevent unbounded queries
 
     // Resolve each variable
     const resolved: ResolvedVariables = {};

@@ -13,6 +13,7 @@ const ERROR_CODES = [
   "BACKLINKS_NOT_ENABLED",
   "BACKLINKS_BILLING_ISSUE",
   "RATE_LIMITED",
+  "RATE_LIMIT", // Alias for RATE_LIMITED
   "CONFLICT",
   "EXTERNAL_SERVICE_ERROR",
   "INTERNAL_ERROR",
@@ -27,6 +28,9 @@ const ERROR_CODES = [
   "DOKOBIT_API_ERROR",
   // Contract state machine errors
   "CONTRACT_INVALID_STATE",
+  // Prospect/extraction errors
+  "CONFIG_ERROR",
+  "EXTRACTION_ERROR",
 ] as const;
 
 export const errorCodeSchema = z.enum(ERROR_CODES);

@@ -35,6 +35,10 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   DOKOBIT_API_ERROR: "Failed to connect to e-signature service. Please try again.",
   // Contract state machine errors
   CONTRACT_INVALID_STATE: "Invalid contract state transition. Please check contract status.",
+  // Prospect/extraction errors
+  CONFIG_ERROR: "A configuration error occurred. Please check system settings.",
+  EXTRACTION_ERROR: "Failed to extract information from the provided content.",
+  RATE_LIMIT: "Too many requests. Please wait and try again.",
 };
 
 export function getStandardErrorMessage(

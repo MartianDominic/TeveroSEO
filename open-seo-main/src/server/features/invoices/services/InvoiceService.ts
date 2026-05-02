@@ -69,7 +69,7 @@ export const INVOICE_LABELS = {
 /**
  * Invoice labels type.
  */
-export type InvoiceLabels = typeof INVOICE_LABELS.en;
+export type InvoiceLabels = (typeof INVOICE_LABELS)[keyof typeof INVOICE_LABELS];
 
 /**
  * Get invoice labels for a language.

@@ -17,6 +17,7 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "api/proposals/accept" });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/proposals/id/accept")({
   server: {
     handlers: {

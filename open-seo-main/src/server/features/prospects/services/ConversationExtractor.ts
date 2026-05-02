@@ -9,10 +9,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import {
-  detectPlatform,
-  type DetectionResult,
-} from "@/server/features/connections/services/PlatformDetector";
+import { detectPlatform } from "@/server/features/connections/services/PlatformDetector";
+import type { DetectionResult } from "@/server/features/connections/types";
 import { AppError } from "@/server/lib/errors";
 import { logger } from "@/server/lib/logger";
 
@@ -177,7 +175,7 @@ export async function extractFromConversation(
     return result;
   } catch (error) {
     // Don't expose internal errors
-    logger.error("Extraction failed", { error, inputMode: input.inputMode });
+    logger.error("Extraction failed", error instanceof Error ? error : new Error(String(error)));
     throw new AppError(
       "EXTRACTION_ERROR",
       "Failed to extract information. Please try again.",

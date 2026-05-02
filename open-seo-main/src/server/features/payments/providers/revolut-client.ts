@@ -175,7 +175,7 @@ export function createRevolutClient(config: RevolutClientConfig) {
     try {
       data = text ? JSON.parse(text) : undefined;
     } catch {
-      log.error("Failed to parse Revolut response", { text });
+      log.error("Failed to parse Revolut response", new Error(`Invalid JSON: ${text.slice(0, 100)}`));
       throw new RevolutClientError(
         "Invalid JSON response from Revolut",
         response.status
@@ -185,10 +185,7 @@ export function createRevolutClient(config: RevolutClientConfig) {
     // Handle errors
     if (!response.ok) {
       const apiError = data as RevolutApiError | undefined;
-      log.error("Revolut API error", {
-        status: response.status,
-        error: apiError,
-      });
+      log.error("Revolut API error", new Error(`HTTP ${response.status}: ${apiError?.message ?? "Unknown error"}`));
       throw new RevolutClientError(
         apiError?.message ?? `HTTP ${response.status}`,
         response.status,

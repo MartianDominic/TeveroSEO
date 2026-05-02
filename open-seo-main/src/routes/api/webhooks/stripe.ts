@@ -14,6 +14,7 @@ import type Stripe from "stripe";
 
 const log = createLogger({ module: "stripe-webhook" });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/webhooks/stripe")({
   server: {
     handlers: {

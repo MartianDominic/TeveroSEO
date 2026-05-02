@@ -8,9 +8,9 @@
  *
  * T-49-08: Rate limit enforced at 10 links per checklist per hour.
  */
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { getSession } from "@/server/lib/session";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { MagicLinkService } from "@/server/features/onboarding/services/MagicLinkService";
 import { ChecklistRepository } from "@/server/features/contracts/repositories/ChecklistRepository";
 
@@ -19,76 +19,80 @@ const requestSchema = z.object({
   itemId: z.string().min(1, "itemId is required"),
 });
 
-export const APIRoute = createAPIFileRoute("/api/onboarding/magic-link")({
-  POST: async ({ request }) => {
-    // T-49-06: Require authenticated session
-    const session = await getSession(request);
-    if (!session?.user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
+// @ts-expect-error - Route path not in FileRoutesByPath yet
+export const Route = createFileRoute("/api/onboarding/magic-link")({
+  server: {
+    handlers: {
+      POST: async ({ request }: { request: Request }) => {
+        try {
+          // T-49-06: Require authenticated session
+          await requireApiAuth(request);
 
-    // Parse and validate request body
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid JSON body" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
+          // Parse and validate request body
+          let body: unknown;
+          try {
+            body = await request.json();
+          } catch {
+            return Response.json(
+              { success: false, error: "Invalid JSON body" },
+              { status: 400 }
+            );
+          }
 
-    const parsed = requestSchema.safeParse(body);
-    if (!parsed.success) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Invalid request",
-          details: parsed.error.flatten().fieldErrors,
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
+          const parsed = requestSchema.safeParse(body);
+          if (!parsed.success) {
+            return Response.json(
+              {
+                success: false,
+                error: "Invalid request",
+                details: parsed.error.flatten().fieldErrors,
+              },
+              { status: 400 }
+            );
+          }
 
-    // Verify checklist exists and get workspaceId
-    const checklist = await ChecklistRepository.getChecklistById(
-      parsed.data.checklistId
-    );
+          // Verify checklist exists and get workspaceId
+          const checklist = await ChecklistRepository.getChecklistById(
+            parsed.data.checklistId
+          );
 
-    if (!checklist) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Checklist not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
-    }
+          if (!checklist) {
+            return Response.json(
+              { success: false, error: "Checklist not found" },
+              { status: 404 }
+            );
+          }
 
-    // Verify item exists in checklist
-    const item = checklist.items.find((i) => i.id === parsed.data.itemId);
-    if (!item) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Item not found in checklist" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
-    }
+          // Verify item exists in checklist
+          const item = checklist.items.find((i) => i.id === parsed.data.itemId);
+          if (!item) {
+            return Response.json(
+              { success: false, error: "Item not found in checklist" },
+              { status: 404 }
+            );
+          }
 
-    // Generate magic link
-    const result = await MagicLinkService.generateMagicLink(
-      checklist.workspaceId,
-      checklist.clientId,
-      parsed.data.checklistId,
-      parsed.data.itemId
-    );
+          // Generate magic link
+          const result = await MagicLinkService.generateMagicLink(
+            checklist.workspaceId,
+            checklist.clientId,
+            parsed.data.checklistId,
+            parsed.data.itemId
+          );
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        url: result.url,
-        expiresAt: result.expiresAt.toISOString(),
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
+          return Response.json({
+            success: true,
+            url: result.url,
+            expiresAt: result.expiresAt.toISOString(),
+          });
+        } catch (error) {
+          console.error("Error generating magic link:", error);
+          return Response.json(
+            { success: false, error: "Internal server error" },
+            { status: 500 }
+          );
+        }
+      },
+    },
   },
 });

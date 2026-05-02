@@ -7,12 +7,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
-import { getClerkAuth } from "@/server/lib/clerk-auth";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 const QuerySchema = z.object({
-  locale: z.enum(["en", "lt"]).optional().default("en"),
+  locale: z.enum(["en", "lt"]).optional(),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/categories")({
   server: {
     handlers: {
@@ -23,13 +24,7 @@ export const Route = createFileRoute("/api/variables/categories")({
       GET: async ({ request }: { request: Request }) => {
         try {
           // Get auth context
-          const auth = await getClerkAuth(request);
-          if (!auth?.userId || !auth?.orgId) {
-            return Response.json(
-              { error: "Unauthorized" },
-              { status: 401 }
-            );
-          }
+          await requireApiAuth(request);
 
           // Parse query params
           const url = new URL(request.url);
@@ -45,7 +40,7 @@ export const Route = createFileRoute("/api/variables/categories")({
           }
 
           const categories = VariableDefinitionService.getCategories(
-            params.data.locale as "en" | "lt"
+            (params.data.locale ?? "en") as "en" | "lt"
           );
 
           return Response.json({ data: categories });

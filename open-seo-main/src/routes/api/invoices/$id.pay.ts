@@ -22,6 +22,7 @@ const createSessionSchema = z.object({
   provider: z.enum(["stripe", "revolut"]),
 });
 
+// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/invoices/$id/pay")({
   server: {
     handlers: {
@@ -49,19 +50,18 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
 
           const availableProviders: string[] = [];
           let primaryProvider = "stripe";
-          let allowClientChoice = false;
-          let revolutPublicKey: string | undefined;
+          const allowClientChoice = false; // TODO: Add to DecryptedPaymentSettings
+          let revolutMerchantId: string | undefined;
 
           if (settings) {
             if (settings.stripeEnabled) {
               availableProviders.push("stripe");
             }
-            if (settings.revolutEnabled && settings.revolutPublicKey) {
+            if (settings.revolutEnabled && settings.revolutApiKey) {
               availableProviders.push("revolut");
-              revolutPublicKey = settings.revolutPublicKey;
+              revolutMerchantId = settings.revolutMerchantId ?? undefined;
             }
-            primaryProvider = settings.primaryProvider;
-            allowClientChoice = settings.allowClientChoice;
+            primaryProvider = settings.defaultProvider;
           } else {
             availableProviders.push("stripe");
           }
@@ -81,7 +81,7 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
                 availableProviders,
                 primaryProvider,
                 allowClientChoice,
-                revolutPublicKey,
+                revolutMerchantId,
                 existingCheckoutUrl:
                   invoice.stripePaymentUrl || invoice.revolutCheckoutUrl,
                 existingProvider: invoice.paymentProvider,
@@ -152,50 +152,36 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
             );
           }
 
-          const paymentProvider = await PaymentProviderFactory.getProvider(
-            invoice.workspaceId,
-            provider
-          );
-
-          const protocol = request.headers.get("x-forwarded-proto") || "https";
-          const host = request.headers.get("host") || "localhost:3000";
-          const baseUrl = `${protocol}://${host}`;
-
-          const session = await paymentProvider.createSession({
-            invoiceId: invoice.id,
-            amountCents: invoice.totalCents,
-            currency: invoice.currency || "EUR",
-            description: `Invoice ${invoice.invoiceNumber}`,
-            customerEmail: undefined,
-            metadata: {
-              workspaceId: invoice.workspaceId,
-              invoiceNumber: invoice.invoiceNumber,
-            },
-            successUrl: `${baseUrl}/invoices/${invoice.id}/success`,
-            cancelUrl: `${baseUrl}/invoices/${invoice.id}/pay`,
+          const paymentProvider = await PaymentProviderFactory.getProvider({
+            workspaceId: invoice.workspaceId,
+            preferredProvider: provider,
           });
 
+          // Create payment session using the provider's interface
+          const session = await paymentProvider.createPaymentSession(invoice);
+
           if (provider === "revolut") {
-            await InvoiceRepository.updateInvoice(invoice.id, {
-              paymentProvider: "revolut",
-              revolutOrderId: session.id,
-              revolutCheckoutUrl: session.checkoutUrl,
-            });
+            await InvoiceRepository.updateInvoiceStatusWithProvider(
+              invoice.id,
+              invoice.status as "draft" | "sent" | "paid" | "overdue" | "cancelled" | "refunded",
+              "revolut",
+              session.externalId,
+              session.paymentUrl
+            );
           } else {
-            await InvoiceRepository.updateInvoice(invoice.id, {
-              paymentProvider: "stripe",
-              stripePaymentIntentId: session.id,
-              stripePaymentUrl: session.checkoutUrl,
+            await InvoiceRepository.updateInvoiceStripeDetails(invoice.id, {
+              stripePaymentIntentId: session.externalId,
+              stripePaymentUrl: session.paymentUrl,
             });
           }
 
           return Response.json({
             success: true,
             data: {
-              sessionId: session.id,
-              checkoutUrl: session.checkoutUrl,
+              sessionId: session.externalId,
+              checkoutUrl: session.paymentUrl,
               token: session.token,
-              publicKey: provider === "revolut" ? settings.revolutPublicKey : undefined,
+              merchantId: provider === "revolut" ? settings.revolutMerchantId : undefined,
             },
           });
         } catch (error) {
