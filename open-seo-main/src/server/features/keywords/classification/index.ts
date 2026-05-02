@@ -23,5 +23,5 @@ export {
   CLAUDE_CONFIG,
 } from "./config";
 
-// Classifiers (to be added)
-// export { GrokClassifier } from "./GrokClassifier";
+// Classifiers
+export { GrokClassifier, CircuitOpenError } from "./GrokClassifier";
