@@ -1,0 +1,107 @@
+{
+  "viewer": {
+    "title": "Service Agreement",
+    "progress": "{{current}} of {{total}} sections",
+    "consent": "I have read and agree to the terms of this agreement",
+    "signWithSmartId": "Sign with Smart-ID",
+    "signWithMobileId": "Sign with Mobile-ID",
+    "signWithIdCard": "Sign with ID Card",
+    "waitingForPreviousSigner": "Waiting for {{name}} to sign first",
+    "alreadySigned": "You have already signed this agreement",
+    "agreementFullySigned": "This agreement has been fully executed",
+    "needHelp": "Need help? Contact {{email}}"
+  },
+  "success": {
+    "title": "Agreement Successfully Signed!",
+    "agreementNumber": "Agreement number",
+    "signedAt": "Signed",
+    "signedVia": "Signed via",
+    "downloadPdf": "Download PDF",
+    "whatsNext": "What's next?",
+    "steps": {
+      "confirmation": "You'll receive a confirmation email with the agreement copy",
+      "contact": "Our team will contact you within 24 hours",
+      "planning": "We'll begin SEO work planning"
+    }
+  },
+  "status": {
+    "pending": "Pending",
+    "invited": "Invited",
+    "viewed": "Viewed",
+    "signing": "Signing",
+    "signed": "Signed",
+    "declined": "Declined"
+  },
+  "editor": {
+    "title": "Agreement Template Editor",
+    "preview": "Preview",
+    "save": "Save",
+    "variables": "Variables",
+    "addClause": "Add Clause",
+    "signerConfig": "Signature Requirements",
+    "providerSignatures": "Provider Signatures",
+    "clientSignatures": "Client Signatures",
+    "signingOrder": "Signing Order",
+    "sequential": "Sequential (Provider signs first, then Client)",
+    "parallel": "Parallel (Any order)",
+    "enablePreSigning": "Enable pre-signing (Provider signs before sending to client)",
+    "required": "Required",
+    "optional": "Optional",
+    "addSigner": "Add Signer Requirement",
+    "defaultTitle": "Default title"
+  },
+  "create": {
+    "title": "Create Agreement",
+    "template": "Template",
+    "selectTemplate": "Select a template",
+    "agreementDetails": "Agreement Details",
+    "startDate": "Start Date",
+    "duration": "Duration",
+    "signingCity": "Signing City",
+    "signers": "Signers",
+    "provider": "Provider (You)",
+    "client": "Client",
+    "name": "Name",
+    "jobTitle": "Title",
+    "email": "Email",
+    "addClientSigner": "Add Another Client Signer",
+    "signingOptions": "Signing Options",
+    "signNowThenSend": "Sign now as provider, then send to client",
+    "signNowRecommended": "Recommended",
+    "sendForParallel": "Send to all parties for parallel signing",
+    "cancel": "Cancel",
+    "createAndSign": "Create & Sign"
+  },
+  "months": {
+    "1": "1 month",
+    "3": "3 months",
+    "6": "6 months",
+    "12": "12 months",
+    "indefinite": "Indefinite"
+  },
+  "preSigning": {
+    "signingMode": "Signing Mode",
+    "sequential": "Sequential",
+    "sequentialDescription": "Signers sign in order. Provider signs first, then client receives invitation.",
+    "parallel": "Parallel",
+    "parallelDescription": "All signers receive invitations simultaneously. Any order allowed.",
+    "signers": "Signers",
+    "noSigners": "No signers configured yet. Add at least one signer to proceed.",
+    "addSigner": "Add Signer",
+    "addSignerTitle": "Add Signer",
+    "signerName": "Name",
+    "signerEmail": "Email",
+    "signerPhone": "Phone",
+    "signerRole": "Role",
+    "signerTitle": "Title / Position",
+    "sending": "Sending...",
+    "sendInvitations": "Send Invitations",
+    "invitationsSent": "Invitations Sent Successfully",
+    "sequentialSentMessage": "The first signer has been notified. Subsequent signers will be notified after each signature.",
+    "parallelSentMessage": "All {{count}} signers have been notified via email."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "adding": "Adding..."
+  }
+}

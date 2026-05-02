@@ -1,0 +1,107 @@
+{
+  "viewer": {
+    "title": "Paslaugu sutartis",
+    "progress": "{{current}} is {{total}} skyriu",
+    "consent": "Perskaiciau ir sutinku su sios sutarties salygomis",
+    "signWithSmartId": "Pasirasyti su Smart-ID",
+    "signWithMobileId": "Pasirasyti su Mobile-ID",
+    "signWithIdCard": "Pasirasyti su tapatybes kortele",
+    "waitingForPreviousSigner": "Laukiama {{name}} paraso",
+    "alreadySigned": "Jus jau pasiraset sia sutarti",
+    "agreementFullySigned": "Si sutartis jau pilnai ivykdyta",
+    "needHelp": "Reikia pagalbos? Susisiekite {{email}}"
+  },
+  "success": {
+    "title": "Sutartis sekmingai pasiraysyta!",
+    "agreementNumber": "Sutarties numeris",
+    "signedAt": "Pasiraysyta",
+    "signedVia": "Pasirasymo budas",
+    "downloadPdf": "Atsisiusti PDF",
+    "whatsNext": "Kas toliau?",
+    "steps": {
+      "confirmation": "Gausite patvirtinima el. pastu su sutarties kopija",
+      "contact": "Musu komanda susisieks su jumis per 24 valandas",
+      "planning": "Pradesime SEO darbu planavima"
+    }
+  },
+  "status": {
+    "pending": "Laukiama",
+    "invited": "Pakviesta",
+    "viewed": "Perziureta",
+    "signing": "Pasirasineja",
+    "signed": "Pasiraysyta",
+    "declined": "Atmesta"
+  },
+  "editor": {
+    "title": "Sutarties sablono redaktorius",
+    "preview": "Perziura",
+    "save": "Issaugoti",
+    "variables": "Kintamieji",
+    "addClause": "Prideti skyriu",
+    "signerConfig": "Paraso reikalavimai",
+    "providerSignatures": "Teikejo parasai",
+    "clientSignatures": "Kliento parasai",
+    "signingOrder": "Pasirasymo tvarka",
+    "sequential": "Nuosekli (Pirma teikjas, po to klientas)",
+    "parallel": "Lygiagreti (Bet kokia tvarka)",
+    "enablePreSigning": "Leisti isankstini pasirasyma (Teikjas pasiraso pries siunciant klientui)",
+    "required": "Butinas",
+    "optional": "Nebutinas",
+    "addSigner": "Prideti paraso reikalavima",
+    "defaultTitle": "Numatytoji pareigos"
+  },
+  "create": {
+    "title": "Sukurti sutarti",
+    "template": "Sablonas",
+    "selectTemplate": "Pasirinkite sablona",
+    "agreementDetails": "Sutarties duomenys",
+    "startDate": "Pradzios data",
+    "duration": "Trukme",
+    "signingCity": "Pasirasymo miestas",
+    "signers": "Pasirasytojai",
+    "provider": "Teikjas (Jus)",
+    "client": "Klientas",
+    "name": "Vardas",
+    "jobTitle": "Pareigos",
+    "email": "El. pastas",
+    "addClientSigner": "Prideti dar viena kliento atstova",
+    "signingOptions": "Pasirasymo parinktys",
+    "signNowThenSend": "Pasirasyti dabar, tada siusti klientui",
+    "signNowRecommended": "Rekomenduojama",
+    "sendForParallel": "Siusti visiems lygiagreciu pasirasinejimui",
+    "cancel": "Atsaukti",
+    "createAndSign": "Sukurti ir pasirasyti"
+  },
+  "months": {
+    "1": "1 menuo",
+    "3": "3 menesiai",
+    "6": "6 menesiai",
+    "12": "12 menesiu",
+    "indefinite": "Neterminuota"
+  },
+  "preSigning": {
+    "signingMode": "Pasirasymo budas",
+    "sequential": "Nuoseklus",
+    "sequentialDescription": "Pasirasytojai pasiraso eileje. Pirma teikjas, po to klientas gauna kvietima.",
+    "parallel": "Lygiagretus",
+    "parallelDescription": "Visi pasirasytojai gauna kvietimus vienu metu. Bet kokia tvarka.",
+    "signers": "Pasirasytojai",
+    "noSigners": "Dar nera sukonfigoruotu pasirasytoju. Pridekite bent viena.",
+    "addSigner": "Prideti pasirasytoja",
+    "addSignerTitle": "Prideti pasirasytoja",
+    "signerName": "Vardas",
+    "signerEmail": "El. pastas",
+    "signerPhone": "Telefonas",
+    "signerRole": "Vaidmuo",
+    "signerTitle": "Pareigos",
+    "sending": "Siunciama...",
+    "sendInvitations": "Siusti kvietimus",
+    "invitationsSent": "Kvietimai sekmingai issiusti",
+    "sequentialSentMessage": "Pirmas pasirasytojas informuotas. Kiti bus informuoti po kiekvieno paraso.",
+    "parallelSentMessage": "Visi {{count}} pasirasytojai informuoti el. pastu."
+  },
+  "common": {
+    "cancel": "Atsaukti",
+    "adding": "Pridedama..."
+  }
+}
