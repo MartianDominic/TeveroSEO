@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 57 (Proposal Editor Revolution) — EXECUTING
-Plan: 2 of 8
-Plans: 1/8 complete (v7.0)
-Status: Plan 57-01 completed
-Last activity: 2026-05-02 -- Phase 57 Plan 01 completed (Schema + Template CRUD + i18n)
+Plan: Wave 2 (57-03 complete)
+Plans: 3/8 complete (v7.0)
+Status: Wave 2 complete — 57-03 TipTap Inline Editing done
+Last activity: 2026-05-02 -- 57-03 TipTap + Variable chips complete
 
 ### Phase 41 Focus
 
@@ -94,6 +94,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **57-01:** Three-layer template hierarchy (system/workspace/instance); soft delete via isArchived; sectionOrder jsonb array; i18n suffix pattern (name, nameEn, nameLt)
+- **57-03:** TipTap with StarterKit as rich text foundation; variable nodes as inline atoms (cannot split); category colors match palette; red dashed border for unresolved; VariableProvider fetches all in single request; character count excludes variable markup
 - **57-02:** 6 variable categories (client/provider/pricing/audit/dates/custom); entity path resolution with dot notation; computed functions for dynamic values; drag transfer uses text/plain + application/x-variable
 - **52-03:** shadow-lift hover pattern for EntrySelector; bg-accent-soft for selected states; border-hairline-2 for dividers; text-accent for links
 - **52-02:** cn() utility for shadow-card merging; text-error over text-destructive for v6 semantic colors; bg-accent-soft text-accent-ink for primary badges; var(--radius-input) for nested panels
