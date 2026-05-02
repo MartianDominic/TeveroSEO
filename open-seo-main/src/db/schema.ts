@@ -81,3 +81,6 @@ export * from "./translation-cache-schema";
 
 // Agreement templates schema (Phase 55)
 export * from "./agreement-template-schema";
+
+// Proposal templates schema (Phase 57)
+export * from "./proposal-template-schema";
