@@ -286,7 +286,10 @@ export default function ProposalBuilderPage() {
             {availableServices.length > 0 && (
               <ServiceSelector
                 services={availableServices}
-                selections={serviceSelections}
+                selections={serviceSelections.map((s) => ({
+                  ...s,
+                  quantity: s.quantity ?? 1,
+                }))}
                 onSelectionsChange={setServiceSelections}
                 currency="EUR"
                 locale="en"
