@@ -2001,14 +2001,14 @@ Transform the platform into a complete agency CRM with v6 design system complian
   11. All UI supports EN/LT language toggle
 **Estimated effort**: 70-85 hours
 **Plans**: 8 plans
-  - [ ] 62-01-PLAN.md — Database Schema + Migrations (Wave 1)
-  - [ ] 62-02-PLAN.md — Follow-up System + Rules Engine (Wave 1)
-  - [ ] 62-03-PLAN.md — Engagement Workflow Engine + BullMQ Workers (Wave 1)
-  - [ ] 62-04-PLAN.md — Pipeline Metrics Worker + Materialized Views (Wave 2)
-  - [ ] 62-05-PLAN.md — Command Center Dashboard Core (Wave 2)
-  - [ ] 62-06-PLAN.md — Needs Attention List + Quick Actions (Wave 2)
-  - [ ] 62-07-PLAN.md — Smart Alerts + Activity Feed (Socket.IO) (Wave 3)
-  - [ ] 62-08-PLAN.md — Win/Loss Analytics + i18n + E2E Tests (Wave 3)
+  - [x] 62-01-PLAN.md — Database Schema + Migrations (Wave 1)
+  - [x] 62-02-PLAN.md — Follow-up System + Rules Engine (Wave 1)
+  - [x] 62-03-PLAN.md — Engagement Workflow Engine + BullMQ Workers (Wave 1)
+  - [x] 62-04-PLAN.md — Pipeline Metrics Worker + Materialized Views (Wave 2)
+  - [x] 62-05-PLAN.md — Command Center Dashboard Core (Wave 2)
+  - [x] 62-06-PLAN.md — Needs Attention List + Quick Actions (Wave 2)
+  - [x] 62-07-PLAN.md — Smart Alerts + Activity Feed (Socket.IO) (Wave 3)
+  - [x] 62-08-PLAN.md — Win/Loss Analytics + i18n + E2E Tests (Wave 3)
 
 ---
 
