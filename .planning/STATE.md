@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Proposal Editor Revolution
 status: executing
-last_updated: "2026-05-02T10:53:03Z"
-last_activity: 2026-05-02 -- Phase 57 Plan 04 complete (Drag-and-Drop Sections)
+last_updated: "2026-05-02T11:12:00Z"
+last_activity: 2026-05-02 -- Phase 57 Plan 08 complete (Clone + Undo/Redo + Magic Link)
 progress:
   total_phases: 65
   completed_phases: 42
   total_plans: 217
-  completed_plans: 203
-  percent: 94
+  completed_plans: 206
+  percent: 95
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 57 (Proposal Editor Revolution) — EXECUTING
-Plan: Wave 4 complete (57-05 done)
-Plans: 5/8 complete (v7.0)
-Status: Wave 4 complete — 57-05 Custom Sections + Add Section Menu done
-Last activity: 2026-05-02 -- 57-05 8 section types with CRUD API complete
+Plan: Wave 5 (57-08 complete, 57-07 in progress)
+Plans: 7/8 complete (v7.0)
+Status: Plan 57-08 complete; 57-07 AI Generation remaining
+Last activity: 2026-05-02 -- 57-08 Clone + Undo/Redo + Magic Link complete
 
 ### Phase 41 Focus
 
@@ -93,7 +93,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **57-08:** 50 state limit for temporal history; platform detection for Mac vs Windows shortcuts; 32-char nanoid tokens for magic links (~10^57 entropy); 30-day default expiry; Beacon API for page leave duration tracking
 - **57-01:** Three-layer template hierarchy (system/workspace/instance); soft delete via isArchived; sectionOrder jsonb array; i18n suffix pattern (name, nameEn, nameLt)
+- **57-06:** 2s debounce auto-save via use-debounce; SaveIndicator with 3 states (saving/saved/error); proposal_versions table with changeType enum; VersionHistory sidebar with restore confirmation
 - **57-05:** 8 custom section types (text/image/testimonial/case_study/video/comparison/timeline/custom); SECTION_TYPE_CONFIGS registry; video platform detection (YouTube/Vimeo/Loom); section data as JSON in content field
 - **57-03:** TipTap with StarterKit as rich text foundation; variable nodes as inline atoms (cannot split); category colors match palette; red dashed border for unresolved; VariableProvider fetches all in single request; character count excludes variable markup
 - **57-02:** 6 variable categories (client/provider/pricing/audit/dates/custom); entity path resolution with dot notation; computed functions for dynamic values; drag transfer uses text/plain + application/x-variable
