@@ -3,19 +3,45 @@
 /**
  * Proposal view component for public proposal page.
  * Phase 46-47: Proposal System
+ * Phase 58-04: Service Catalog Integration
  *
  * Renders the proposal content with hero, current state, opportunities,
  * investment details, and next steps. Includes beacon image for view tracking.
+ * Supports structured services from Phase 58 service catalog.
  */
 
 import type { PublicProposal } from "../actions";
+import { ServicesSection } from "./ServicesSection";
+
+interface ServiceWithSelection {
+  id: string;
+  name: string;
+  nameEn?: string | null;
+  nameLt?: string | null;
+  category: "seo_package" | "addon" | "one_time";
+  pricingType: "monthly" | "one_time" | "per_unit";
+  basePriceCents: number | null;
+  setupFeeCents?: number | null;
+  inclusions?: string[] | null;
+  icon?: string | null;
+  customPriceCents?: number | null;
+  customSetupCents?: number | null;
+  quantity: number;
+}
 
 interface ProposalViewProps {
   proposal: PublicProposal;
   token: string;
+  services?: ServiceWithSelection[];
+  locale?: string;
 }
 
-export function ProposalView({ proposal, token }: ProposalViewProps) {
+export function ProposalView({
+  proposal,
+  token,
+  services = [],
+  locale = "lt",
+}: ProposalViewProps) {
   const { content, brandConfig, setupFeeCents, monthlyFeeCents, currency } =
     proposal;
 
@@ -168,58 +194,67 @@ export function ProposalView({ proposal, token }: ProposalViewProps) {
         </div>
       </div>
 
-      {/* Investment Card */}
-      <div
-        className="bg-white rounded-xl shadow-sm overflow-hidden"
-        style={{ borderColor: primaryColor, borderWidth: 2 }}
-      >
+      {/* Services/Investment section - Phase 58-04 */}
+      {services.length > 0 ? (
+        <ServicesSection
+          services={services}
+          currency={currency || "EUR"}
+          locale={locale}
+        />
+      ) : (
+        /* Legacy Investment Card (fallback when no structured services) */
         <div
-          className="px-6 py-4"
-          style={{ backgroundColor: `${primaryColor}10` }}
+          className="bg-white rounded-xl shadow-sm overflow-hidden"
+          style={{ borderColor: primaryColor, borderWidth: 2 }}
         >
-          <h2
-            className="text-xl font-semibold"
-            style={{ fontFamily: "Newsreader, serif" }}
+          <div
+            className="px-6 py-4"
+            style={{ backgroundColor: `${primaryColor}10` }}
           >
-            Investicija
-          </h2>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div
-                className="text-3xl font-bold"
-                style={{ fontFamily: "Newsreader, serif", color: primaryColor }}
-              >
-                {formatCurrency(setupFeeCents)}
+            <h2
+              className="text-xl font-semibold"
+              style={{ fontFamily: "Newsreader, serif" }}
+            >
+              Investicija
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: "Newsreader, serif", color: primaryColor }}
+                >
+                  {formatCurrency(setupFeeCents)}
+                </div>
+                <div className="text-sm text-gray-500">Pradinis mokestis</div>
               </div>
-              <div className="text-sm text-gray-500">Pradinis mokestis</div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div
+                  className="text-3xl font-bold"
+                  style={{ fontFamily: "Newsreader, serif", color: primaryColor }}
+                >
+                  {formatCurrency(monthlyFeeCents)}
+                </div>
+                <div className="text-sm text-gray-500">Menesinis mokestis</div>
+              </div>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div
-                className="text-3xl font-bold"
-                style={{ fontFamily: "Newsreader, serif", color: primaryColor }}
-              >
-                {formatCurrency(monthlyFeeCents)}
-              </div>
-              <div className="text-sm text-gray-500">Menesinis mokestis</div>
+            <div>
+              <h4 className="font-semibold mb-3 text-gray-900">Kas ieina:</h4>
+              <ul className="space-y-2">
+                {content.investment.inclusions.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-gray-700">
+                    <span style={{ color: primaryColor }} className="mt-0.5">
+                      &#10003;
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <div>
-            <h4 className="font-semibold mb-3 text-gray-900">Kas ieina:</h4>
-            <ul className="space-y-2">
-              {content.investment.inclusions.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-gray-700">
-                  <span style={{ color: primaryColor }} className="mt-0.5">
-                    &#10003;
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* ROI Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

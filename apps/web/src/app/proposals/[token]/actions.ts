@@ -62,6 +62,23 @@ export interface PublicProposal {
 const getOpenSeoUrl = () =>
   process.env.OPEN_SEO_API_URL || "http://localhost:3001";
 
+// Service with selection data (merged from template + proposal selection)
+export interface ServiceWithSelection {
+  id: string;
+  name: string;
+  nameEn?: string | null;
+  nameLt?: string | null;
+  category: "seo_package" | "addon" | "one_time";
+  pricingType: "monthly" | "one_time" | "per_unit";
+  basePriceCents: number | null;
+  setupFeeCents?: number | null;
+  inclusions?: string[] | null;
+  icon?: string | null;
+  customPriceCents?: number | null;
+  customSetupCents?: number | null;
+  quantity: number;
+}
+
 /**
  * Fetch proposal by public token.
  * Returns proposal data for rendering or error state.
@@ -147,5 +164,40 @@ export async function rejectProposal(
     return { success: true };
   } catch {
     return { success: false, error: "network_error" };
+  }
+}
+
+/**
+ * Fetch resolved services for a proposal.
+ * Phase 58-04: Service Catalog Integration
+ *
+ * Returns services with template data merged with proposal selection data.
+ * Called by public proposal page to display service line items.
+ */
+export async function getProposalServices(
+  proposalId: string
+): Promise<{ success: boolean; data?: ServiceWithSelection[]; error?: string }> {
+  try {
+    const response = await fetch(
+      `${getOpenSeoUrl()}/api/proposals/${proposalId}/services/resolved`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      // Services are optional - return empty array if not found
+      if (response.status === 404) {
+        return { success: true, data: [] };
+      }
+      const data = await response.json().catch(() => ({}));
+      return { success: false, error: data.error || "Failed to fetch services" };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.services || [] };
+  } catch {
+    // Services are optional - return empty array on network error
+    return { success: true, data: [] };
   }
 }
