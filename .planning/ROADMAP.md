@@ -2015,7 +2015,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
 ## v7.1 Platform Intelligence
 
 **Focus:** Advanced keyword intelligence, crawling infrastructure optimization, and GraphRAG foundation for intelligent retrieval. Enables 100-200 ON-POINT keywords per prospect with 98% cost reduction through singleflight and delta crawling.
-**Phases:** 63-65 (3 phases, ~112 hours total)
+**Phases:** 63-66 (4 phases, ~190 hours total)
 
 ### Phase 63: Keyword Intelligence
 **Goal**: Generate 100-200 ON-POINT keywords per prospect using Grok 4.1 classification cascade, autocomplete APIs, and adaptive intent detection.
@@ -2089,5 +2089,40 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 65-02-PLAN.md — LightRAG Integration (Wave 1)
   - [ ] 65-03-PLAN.md — Retrieval Pipeline (Wave 2)
   - [ ] 65-04-PLAN.md — Integration & Testing (Wave 2)
+
+---
+
+### Phase 66: Platform Unification Excellence
+**Goal**: Enable ANY website to connect to TeveroSEO in under 2 minutes via script-first onboarding. Provide the simplest possible integration with progressive OAuth enhancement for power users.
+**Depends on**: Phase 65 (v7.1 complete), Phase 61 (OAuth services), Phase 31/33 (Write adapters), Phase 39 (CMS publishers)
+**Context doc**: `.planning/phases/66-platform-unification/66-CONTEXT.md`
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Key Features**:
+  - **TeveroPixel Script**: <5KB async script, copy-paste one line, works on ANY website
+  - **Real-time Verification**: Detect installation within 10 seconds
+  - **Platform Detection**: Auto-detect CMS with 95%+ accuracy
+  - **CMS-Specific Guides**: Step-by-step with screenshots for 15+ platforms
+  - **Developer Handoff**: Magic link flow for non-technical users
+  - **DOM Change Approval**: Inject meta/schema/links with user approval
+  - **PlatformIntegrationFacade**: Unified API bridging P61 OAuth, P31/33 adapters, P39 publishers
+**Success Criteria** (what must be TRUE):
+  1. DIY connection < 2 minutes, developer handoff < 24 hours
+  2. Pixel script < 5KB gzipped, load time < 100ms
+  3. Verification detection < 10 seconds
+  4. Platform detection accuracy > 95%
+  5. DIY success rate > 70%, onboarding completion > 80%
+**Estimated effort**: 78 hours
+**Plans**: 11 plans
+  - [ ] 66-01-PLAN.md — Database schema + pixel script generation (Wave 1)
+  - [ ] 66-02-PLAN.md — Pixel collector endpoint + real-time verification (Wave 1)
+  - [ ] 66-03-PLAN.md — Platform detection + CMS-specific guides (Wave 1)
+  - [ ] 66-04-PLAN.md — Connection wizard UI (Wave 2)
+  - [ ] 66-05-PLAN.md — Developer handoff flow + magic links (Wave 2)
+  - [ ] 66-06-PLAN.md — Verification UI + success/error states (Wave 2)
+  - [ ] 66-07-PLAN.md — DOM change approval system (Wave 3)
+  - [ ] 66-08-PLAN.md — Pixel analytics dashboard (Wave 3)
+  - [ ] 66-09-PLAN.md — PlatformIntegrationFacade + OAuth enhancement (Wave 3)
+  - [ ] 66-10-PLAN.md — i18n (EN + LT translations) (Wave 4)
+  - [ ] 66-11-PLAN.md — E2E tests + documentation (Wave 4)
 
 ---
