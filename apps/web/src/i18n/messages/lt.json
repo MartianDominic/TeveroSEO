@@ -16,5 +16,129 @@
     "wow": "Sav/Sav",
     "generatedBy": "Sukurta Tevero",
     "generatedAt": "Sukurta {date, date, medium}, {time, time, short}"
+  },
+  "proposalEditor": {
+    "title": "Redaguoti pasiulyma",
+    "newProposal": "Naujas pasiulymas",
+    "untitled": "Be pavadinimo",
+    "saveStatus": {
+      "saving": "Issaugoma...",
+      "saved": "Issaugota",
+      "error": "Issaugoti nepavyko",
+      "lastSaved": "Paskutini karta issaugota {time, time, short}"
+    },
+    "sections": {
+      "title": "Sekcijos",
+      "addSection": "Prideti sekcija",
+      "deleteSection": "Istrinti sekcija",
+      "moveUp": "Perkelti aukstyn",
+      "moveDown": "Perkelti zemyn",
+      "reorder": "Vilkite, kad pertvarkytumet",
+      "required": "Privaloma",
+      "optional": "Neprivaloma",
+      "locked": "Sios sekcijos redaguoti negalima",
+      "empty": "Sekciju dar nera. Pridekite sekcija, kad pradetumete."
+    },
+    "sectionTypes": {
+      "hero": "Pagrindine",
+      "introduction": "Ivadas",
+      "current_state": "Dabartine busena",
+      "opportunities": "Galimybes",
+      "methodology": "Metodologija",
+      "timeline": "Terminas",
+      "pricing": "Kainodara",
+      "case_studies": "Atveju analizes",
+      "team": "Komanda",
+      "next_steps": "Kiti zingsniai",
+      "terms": "Salygos",
+      "custom": "Pasirinkta sekcija"
+    },
+    "variables": {
+      "title": "Kintamieji",
+      "search": "Ieskoti kintamuju...",
+      "categories": {
+        "client": "Klientas",
+        "provider": "Tiekejas",
+        "pricing": "Kainodara",
+        "audit": "Audito rezultatai",
+        "dates": "Datos",
+        "custom": "Pasirinkta"
+      },
+      "addCustom": "Prideti pasirinkta kintamaji",
+      "dragTip": "Vilkite kintamuosius i turini",
+      "noVariables": "Kintamieji neapibrezieti",
+      "missingValue": "Truksta reiksmes"
+    },
+    "ai": {
+      "generateTitle": "Generuoti su DI",
+      "generating": "Generuojama turinys...",
+      "regenerate": "Generuoti is naujo",
+      "tone": "Tonas ir stilius",
+      "sections": "Sekcijos generavimui",
+      "selectSections": "Pasirinkite bent viena sekcija",
+      "generationComplete": "Turinys sekmingai sugeneruotas",
+      "generationFailed": "Nepavyko sugeneruoti turinio"
+    },
+    "toolbar": {
+      "undo": "Atsuakti",
+      "redo": "Grąžinti",
+      "bold": "Pusjuodis",
+      "italic": "Kursyvas",
+      "underline": "Pabrauktas",
+      "strikethrough": "Perbrauktas",
+      "link": "Iterpti nuoroda",
+      "bulletList": "Zenklintas sarasas",
+      "numberedList": "Numeruotas sarasas",
+      "heading1": "Antraste 1",
+      "heading2": "Antraste 2",
+      "heading3": "Antraste 3",
+      "paragraph": "Pastraipa",
+      "insertVariable": "Iterpti kintamaji"
+    },
+    "version": {
+      "history": "Versiju istorija",
+      "restore": "Atkurti",
+      "preview": "Perziura",
+      "current": "Dabartine versija",
+      "noVersions": "Ankstesniu versiju nera"
+    },
+    "templates": {
+      "title": "Sablonai",
+      "useTemplate": "Naudoti sablona",
+      "createFromTemplate": "Kurti is sablono",
+      "systemTemplates": "Sistemos sablonai",
+      "workspaceTemplates": "Darbo erdves sablonai",
+      "noTemplates": "Sablonu nera",
+      "duplicate": "Kopijuoti sablona",
+      "setAsDefault": "Nustatyti kaip numatytuji"
+    },
+    "preview": {
+      "title": "Perziura",
+      "desktop": "Kompiuteris",
+      "mobile": "Mobilusis",
+      "print": "Spausdinti"
+    },
+    "actions": {
+      "save": "Issaugoti",
+      "saveAndClose": "Issaugoti ir uzdaryti",
+      "discard": "Atmesti pakeitimus",
+      "publish": "Publikuoti",
+      "unpublish": "Atpublikuoti",
+      "delete": "Istrinti",
+      "duplicate": "Kopijuoti",
+      "export": "Eksportuoti",
+      "share": "Dalintis"
+    },
+    "validation": {
+      "nameRequired": "Sablono pavadinimas privalomas",
+      "nameTooLong": "Sablono pavadinimas per ilgas",
+      "contentTooLong": "Sekcijos turinys virsija maksimalu ilgi",
+      "invalidVariable": "Neteisingas kintamojo formatas"
+    },
+    "confirmations": {
+      "deleteSection": "Ar tikrai norite istrinti sia sekcija?",
+      "discardChanges": "Turite neissaugotu pakeitimu. Ar tikrai norite ju atsisakyti?",
+      "deleteTemplate": "Ar tikrai norite istrinti si sablona?"
+    }
   }
 }
