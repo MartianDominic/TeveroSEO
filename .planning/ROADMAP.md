@@ -1851,15 +1851,15 @@ Transform the platform into a complete agency CRM with v6 design system complian
   10. Magic link generation for manual sending
   11. Variable resolution shows live preview values
 **Estimated effort**: 60-70 hours
-**Plans**: 8 plans
-  - [ ] 57-01-PLAN.md — Schema + Template CRUD + i18n Setup (Wave 1)
-  - [ ] 57-02-PLAN.md — Variable System + Resolution Service (Wave 1)
-  - [ ] 57-03-PLAN.md — Inline Editing (TipTap) + Variable Chips (Wave 2)
-  - [ ] 57-04-PLAN.md — Drag-and-Drop Sections (@dnd-kit) (Wave 2)
-  - [ ] 57-05-PLAN.md — Custom Sections + Add Section Menu (Wave 3)
-  - [ ] 57-06-PLAN.md — Auto-Save + Version History (Wave 3)
-  - [ ] 57-07-PLAN.md — AI Content Generation (Wave 4)
-  - [ ] 57-08-PLAN.md — Clone + Undo/Redo + Magic Link (Wave 4)
+**Plans**: 8 plans (8/8 complete)
+  - [x] 57-01-PLAN.md — Schema + Template CRUD + i18n Setup (Wave 1)
+  - [x] 57-02-PLAN.md — Variable System + Resolution Service (Wave 1)
+  - [x] 57-03-PLAN.md — Inline Editing (TipTap) + Variable Chips (Wave 2)
+  - [x] 57-04-PLAN.md — Drag-and-Drop Sections (@dnd-kit) (Wave 2)
+  - [x] 57-05-PLAN.md — Custom Sections + Add Section Menu (Wave 3)
+  - [x] 57-06-PLAN.md — Auto-Save + Version History (Wave 3)
+  - [x] 57-07-PLAN.md — AI Content Generation (Wave 4)
+  - [x] 57-08-PLAN.md — Clone + Undo/Redo + Magic Link (Wave 4)
 
 ---
 
