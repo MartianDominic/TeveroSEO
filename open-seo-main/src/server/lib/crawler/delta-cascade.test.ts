@@ -10,10 +10,14 @@ import type { SitemapUrl } from "./sitemap-parser";
 import type { DeltaSyncService } from "./delta-sync";
 import type { CachedHeaders, ConditionalGetResult } from "./conditional-get";
 
-// Mock conditional-get
-vi.mock("./conditional-get", () => ({
-  conditionalGet: vi.fn(),
-}));
+// Mock conditional-get with all exports
+vi.mock("./conditional-get", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./conditional-get")>();
+  return {
+    ...actual,
+    conditionalGet: vi.fn(),
+  };
+});
 
 // Mock delta-sync (keep pure functions, mock class)
 vi.mock("./delta-sync", async (importOriginal) => {
