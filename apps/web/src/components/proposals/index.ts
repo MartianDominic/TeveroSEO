@@ -42,3 +42,38 @@ export type {
   TemplateSectionType,
   TEMPLATE_SECTION_TYPES,
 } from "./types";
+
+// Add Section Menu (57-05)
+export { AddSectionMenu } from "./AddSectionMenu";
+export type { AddSectionMenuProps, CustomSectionType } from "./AddSectionMenu";
+export { CUSTOM_SECTION_TYPES, SECTION_TYPE_CONFIGS } from "./AddSectionMenu";
+
+// Custom Section Components (57-05)
+export {
+  TextSection,
+  ImageSection,
+  TestimonialSection,
+  CaseStudySection,
+  VideoSection,
+  ComparisonSection,
+  TimelineSection,
+  DEFAULT_SECTION_DATA,
+} from "./sections";
+export type {
+  TextSectionData,
+  ImageSectionData,
+  TestimonialSectionData,
+  CaseStudyMetric,
+  CaseStudySectionData,
+  VideoPlatform,
+  VideoSectionData,
+  ComparisonItem,
+  ComparisonSectionData,
+  TimelinePhase,
+  TimelineSectionData,
+  CustomSectionData,
+} from "./sections";
+
+// Delete Confirmation Dialog (57-05)
+export { DeleteSectionDialog } from "./DeleteSectionDialog";
+export type { DeleteSectionDialogProps } from "./DeleteSectionDialog";
