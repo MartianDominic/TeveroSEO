@@ -30,7 +30,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import { organization, users } from "./user-schema";
+import { organization, user } from "./user-schema";
 
 // Entity types for polymorphic reference
 export const ENTITY_TYPES = [
@@ -139,10 +139,10 @@ export const followUps = pgTable(
     status: text("status").notNull().default("pending"),
 
     // Assignment
-    assignedTo: text("assigned_to").references(() => users.id),
+    assignedTo: text("assigned_to").references(() => user.id),
     createdBy: text("created_by")
       .notNull()
-      .references(() => users.id),
+      .references(() => user.id),
 
     // Priority
     priority: text("priority").notNull().default("medium"),
@@ -265,13 +265,13 @@ export const followUpsRelations = relations(followUps, ({ one }) => ({
     fields: [followUps.workspaceId],
     references: [organization.id],
   }),
-  assignedUser: one(users, {
+  assignedUser: one(user, {
     fields: [followUps.assignedTo],
-    references: [users.id],
+    references: [user.id],
   }),
-  creator: one(users, {
+  creator: one(user, {
     fields: [followUps.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
 }));
 

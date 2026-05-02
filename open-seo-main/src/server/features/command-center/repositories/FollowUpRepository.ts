@@ -64,21 +64,18 @@ export async function findByWorkspace(
     conditions.push(eq(followUps.assignedTo, filters.assignedTo));
   }
 
-  let query = db
+  const baseQuery = db
     .select()
     .from(followUps)
     .where(and(...conditions))
-    .orderBy(asc(followUps.scheduledAt));
+    .orderBy(asc(followUps.scheduledAt))
+    .$dynamic();
 
-  if (filters?.limit) {
-    query = query.limit(filters.limit);
-  }
+  // Apply pagination if provided
+  const limitValue = filters?.limit ?? 100;
+  const offsetValue = filters?.offset ?? 0;
 
-  if (filters?.offset) {
-    query = query.offset(filters.offset);
-  }
-
-  return await query;
+  return await baseQuery.limit(limitValue).offset(offsetValue);
 }
 
 /**

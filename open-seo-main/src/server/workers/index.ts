@@ -14,3 +14,6 @@ export { startPlanWorker, stopPlanWorker } from "./plan-worker";
 
 // Infrastructure: Dead Letter Queue Workers
 export { startFailedAuditsWorker, stopFailedAuditsWorker } from "./failed-audits-worker";
+
+// Phase 62: Agency Command Center - Follow-up Worker
+export { startFollowUpWorker, stopFollowUpWorker } from "./follow-up-worker";
