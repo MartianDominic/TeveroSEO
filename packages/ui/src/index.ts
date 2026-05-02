@@ -55,6 +55,8 @@ export {
 // NOTE: CommandDialog is NOT exported — it does not exist in command.tsx source.
 // Plan 03 should not import CommandDialog from @tevero/ui.
 
+export { Alert, AlertTitle, AlertDescription, alertVariants } from "./components/alert";
+
 export {
   AlertDialog,
   AlertDialogPortal,

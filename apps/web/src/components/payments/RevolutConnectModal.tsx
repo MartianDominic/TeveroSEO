@@ -15,11 +15,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  Button,
+  Input,
+  Label,
+  Alert,
+  AlertDescription,
+} from "@tevero/ui";
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 
 interface RevolutConnectModalProps {

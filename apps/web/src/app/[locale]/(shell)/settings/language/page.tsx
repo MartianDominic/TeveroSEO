@@ -10,18 +10,23 @@
 import { useState, useEffect } from "react";
 import { useOrganization } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+  Label,
+  Checkbox,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  Alert,
+  AlertDescription,
+} from "@tevero/ui";
 import { Loader2, Save, AlertCircle, CheckCircle2, Globe, Languages } from "lucide-react";
 
 type SupportedLocale = "en" | "lt";

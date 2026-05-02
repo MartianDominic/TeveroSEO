@@ -9,19 +9,24 @@
  */
 import { useState, useEffect } from "react";
 import { useOrganization } from "@clerk/nextjs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  Label,
+  Switch,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  Alert,
+  AlertDescription,
+} from "@tevero/ui";
 import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import { ProviderCard, PaymentProviderType } from "@/components/payments/ProviderCard";
 import { RevolutConnectModal, RevolutCredentials } from "@/components/payments/RevolutConnectModal";
