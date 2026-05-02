@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
+milestone: v7.0
+milestone_name: Proposal Editor Revolution
 status: executing
-last_updated: "2026-04-30T20:12:18.531Z"
-last_activity: 2026-04-30 -- Phase --phase execution started
+last_updated: "2026-05-02T10:22:00Z"
+last_activity: 2026-05-02 -- Phase 57 Plan 02 complete
 progress:
-  total_phases: 61
+  total_phases: 65
   completed_phases: 42
   total_plans: 209
-  completed_plans: 200
+  completed_plans: 201
   percent: 96
 ---
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **57-02:** 6 variable categories (client/provider/pricing/audit/dates/custom); entity path resolution with dot notation; computed functions for dynamic values; drag transfer uses text/plain + application/x-variable
 - **52-03:** shadow-lift hover pattern for EntrySelector; bg-accent-soft for selected states; border-hairline-2 for dividers; text-accent for links
 - **52-02:** cn() utility for shadow-card merging; text-error over text-destructive for v6 semantic colors; bg-accent-soft text-accent-ink for primary badges; var(--radius-input) for nested panels
 - **52-01:** text-[12px] over text-xs for WCAG floor; remove dark mode variants (v6 tokens handle theming); bg-surface-2 for neutral ignore tier; var(--success/error/text-3) in chart components
