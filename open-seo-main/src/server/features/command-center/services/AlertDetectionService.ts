@@ -116,28 +116,44 @@ export const ALERT_RULES: AlertRule[] = [
       const sevenDaysAgo = subDays(new Date(), 7);
 
       // Find proposals > 5000 EUR with no update in 7+ days
+      // Use setupFeeCents + (monthlyFeeCents * 12) as annual value approximation
       const stuckDeals = await dbClient.query.proposals.findMany({
         where: and(
           eq(proposals.workspaceId, workspace.id),
           inArray(proposals.status, ["sent", "viewed"]),
-          gte(proposals.totalValueCents, 500000), // 5000 EUR
           lte(proposals.updatedAt, sevenDaysAgo)
         ),
-        orderBy: [desc(proposals.totalValueCents)],
-        limit: 1,
+        with: {
+          prospect: {
+            columns: { companyName: true },
+          },
+        },
+        orderBy: [desc(proposals.monthlyFeeCents)],
+        limit: 10, // Get more candidates, filter in JS
       });
 
-      if (stuckDeals.length === 0) return null;
+      // Filter for high-value deals (> 5000 EUR annual value)
+      const highValueStuck = stuckDeals.filter((deal) => {
+        const setupFee = deal.setupFeeCents ?? 0;
+        const monthlyFee = deal.monthlyFeeCents ?? 0;
+        const annualValue = setupFee + monthlyFee * 12;
+        return annualValue >= 500000; // 5000 EUR
+      });
 
-      const deal = stuckDeals[0];
+      if (highValueStuck.length === 0) return null;
+
+      const deal = highValueStuck[0];
       const daysSinceUpdate = daysSince(deal.updatedAt);
+      const totalValueCents =
+        (deal.setupFeeCents ?? 0) + (deal.monthlyFeeCents ?? 0) * 12;
+      const clientName = deal.prospect?.companyName ?? "Unknown";
 
       return {
         workspaceId: workspace.id,
         alertType: "high_value_stuck",
         severity: "high",
         title: "High-value deal stuck",
-        description: `Proposal for ${deal.clientName} (${formatCurrency(deal.totalValueCents ?? 0)}) has no activity in ${daysSinceUpdate} days`,
+        description: `Proposal for ${clientName} (${formatCurrency(totalValueCents)}) has no activity in ${daysSinceUpdate} days`,
         entityType: "proposal",
         entityId: deal.id,
         metricCurrent: daysSinceUpdate.toString(),

@@ -198,18 +198,20 @@ describe("AlertDetectionService", () => {
   });
 
   describe("high_value_stuck rule", () => {
-    it("should detect proposals > 5000 EUR with no update in 7+ days", async () => {
+    it("should detect proposals > 5000 EUR annual value with no update in 7+ days", async () => {
       const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
 
-      // Mock stuck deal
+      // Mock stuck deal with high annual value
+      // setupFeeCents: 100000 (1000 EUR) + monthlyFeeCents: 50000 * 12 (6000 EUR/year) = 7000 EUR annual
       mockDbQuery.proposals.findMany.mockResolvedValue([
         {
           id: "prop-123",
           workspaceId: mockWorkspaceId,
-          clientName: "Big Corp",
-          totalValueCents: 1000000, // 10,000 EUR
+          setupFeeCents: 100000, // 1000 EUR
+          monthlyFeeCents: 50000, // 500 EUR/month = 6000 EUR/year
           status: "sent",
           updatedAt: eightDaysAgo,
+          prospect: { companyName: "Big Corp" },
         },
       ]);
 
@@ -233,6 +235,35 @@ describe("AlertDetectionService", () => {
 
     it("should return null if no stuck high-value deals", async () => {
       mockDbQuery.proposals.findMany.mockResolvedValue([]);
+
+      const workspace = { id: mockWorkspaceId, name: "Test Workspace" };
+      const metrics = createMetrics();
+
+      const rule = ALERT_RULES.find((r) => r.type === "high_value_stuck")!;
+      const alert = await rule.detectFn(
+        metrics,
+        workspace as any,
+        { query: mockDbQuery } as any
+      );
+
+      expect(alert).toBeNull();
+    });
+
+    it("should return null if proposals are low value", async () => {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+
+      // Mock low value deal (annual < 5000 EUR)
+      mockDbQuery.proposals.findMany.mockResolvedValue([
+        {
+          id: "prop-123",
+          workspaceId: mockWorkspaceId,
+          setupFeeCents: 10000, // 100 EUR
+          monthlyFeeCents: 10000, // 100 EUR/month = 1200 EUR/year -> total 1300 EUR
+          status: "sent",
+          updatedAt: eightDaysAgo,
+          prospect: { companyName: "Small Corp" },
+        },
+      ]);
 
       const workspace = { id: mockWorkspaceId, name: "Test Workspace" };
       const metrics = createMetrics();
@@ -390,10 +421,11 @@ describe("AlertDetectionService", () => {
         {
           id: "prop-123",
           workspaceId: mockWorkspaceId,
-          clientName: "Big Corp",
-          totalValueCents: 1000000,
+          setupFeeCents: 100000,
+          monthlyFeeCents: 50000,
           status: "sent",
           updatedAt: eightDaysAgo,
+          prospect: { companyName: "Big Corp" },
         },
       ]);
 
@@ -452,10 +484,11 @@ describe("AlertDetectionService", () => {
         {
           id: "prop-123",
           workspaceId: mockWorkspaceId,
-          clientName: "Big Corp",
-          totalValueCents: 1000000,
+          setupFeeCents: 100000,
+          monthlyFeeCents: 50000,
           status: "sent",
           updatedAt: eightDaysAgo,
+          prospect: { companyName: "Big Corp" },
         },
       ]);
 
