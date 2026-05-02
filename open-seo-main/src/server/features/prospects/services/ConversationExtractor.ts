@@ -18,6 +18,14 @@ const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const MIN_CONTENT_LENGTH = 50;
 const MAX_CONTENT_LENGTH = 50000;
 
+// Negative associations schema for keyword filtering
+const NegativeAssociationsSchema = z.object({
+  notServices: z.array(z.string()).default([]),
+  competitors: z.array(z.string()).default([]),
+  adjacentVerticals: z.array(z.string()).default([]),
+  wrongIntent: z.array(z.string()).default([]),
+});
+
 // Zod schema for validating AI response
 const ExtractionResultSchema = z.object({
   businessName: z.string().optional(),
@@ -27,6 +35,8 @@ const ExtractionResultSchema = z.object({
   keywords: z.array(z.string()).optional().default([]),
   location: z.string().optional(),
   confidence: z.number().min(0).max(100).default(0),
+  // Phase 63: Negative associations for keyword filtering
+  negativeAssociations: NegativeAssociationsSchema.optional(),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractionResultSchema>;
@@ -60,13 +70,22 @@ Required output format (JSON):
   "targetAudience": "Who they serve (B2B, B2C, specific segments)",
   "keywords": ["Relevant SEO keywords based on their business"],
   "location": "City, State/Country if mentioned",
-  "confidence": 0-100 (how confident you are in the overall extraction)
+  "confidence": 0-100 (how confident you are in the overall extraction),
+  "negativeAssociations": {
+    "notServices": ["Services this business does NOT provide"],
+    "competitors": ["Known competitor types or brands"],
+    "adjacentVerticals": ["Related but wrong business types"],
+    "wrongIntent": ["Intent signals indicating wrong audience"]
+  }
 }
 
 Guidelines:
 - For keywords, generate 5-10 relevant SEO keywords based on their business
 - Confidence score: 90+ = very clear info, 70-89 = most info present, 50-69 = partial info, <50 = limited info
 - If the text is nonsense or unrelated to business, return confidence: 0
+- For negativeAssociations: identify what this business does NOT do, even if similar-sounding
+  - Example: A company that BUYS embroidery should have "embroidery services" in notServices
+  - Example: A hair salon should have "hair transplant" in adjacentVerticals
 
 TEXT TO ANALYZE:
 `;
