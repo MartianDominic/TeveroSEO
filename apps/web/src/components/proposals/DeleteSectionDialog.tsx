@@ -20,7 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tevero/ui";
 
 export interface DeleteSectionDialogProps {
   /** Whether the dialog is open */

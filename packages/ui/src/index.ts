@@ -56,6 +56,20 @@ export {
 // Plan 03 should not import CommandDialog from @tevero/ui.
 
 export {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "./components/alert-dialog";
+
+export {
   Dialog,
   DialogPortal,
   DialogOverlay,

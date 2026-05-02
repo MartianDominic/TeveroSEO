@@ -26,8 +26,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -36,7 +34,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@tevero/ui";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -311,7 +309,7 @@ export function VersionHistory({
           </Button>
         </SheetTrigger>
 
-        <SheetContent side="right" className="w-[400px] sm:w-[450px] p-0">
+        <SheetContent className="w-[400px] sm:w-[450px] p-0">
           <SheetHeader className="px-4 py-3 border-b">
             <SheetTitle className="flex items-center gap-2">
               <History className="h-5 w-5" />
@@ -340,14 +338,14 @@ export function VersionHistory({
       {/* Restore confirmation dialog */}
       <AlertDialog
         open={!!restoreTarget}
-        onOpenChange={(open) => !open && setRestoreTarget(null)}
+        onOpenChange={(open: boolean) => !open && setRestoreTarget(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("restoreConfirm.title")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("restoreConfirm.description", {
-                version: restoreTarget?.versionNumber,
+                version: restoreTarget?.versionNumber ?? 0,
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>

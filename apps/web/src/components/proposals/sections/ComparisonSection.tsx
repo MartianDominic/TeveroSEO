@@ -13,7 +13,7 @@ import { type FC } from "react";
 import { Scale, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@tevero/ui";
 import { Button } from "@/components/ui/button";
 
 export interface ComparisonItem {

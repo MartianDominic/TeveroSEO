@@ -29,7 +29,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@tevero/ui";
 
 /**
  * Custom section types for proposals.

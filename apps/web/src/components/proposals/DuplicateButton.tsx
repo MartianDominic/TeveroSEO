@@ -24,10 +24,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@tevero/ui/dialog";
+  Label,
+  Checkbox,
+} from "@tevero/ui";
 import { Input } from "@/components/ui/input";
-import { Label } from "@tevero/ui/label";
-import { Checkbox } from "@tevero/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@ import { type FC, useMemo } from "react";
 import { Video, Link, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@tevero/ui";
 import { Badge } from "@/components/ui/badge";
 
 export type VideoPlatform = "youtube" | "vimeo" | "loom" | "unknown";

@@ -34,9 +34,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@tevero/ui/dialog";
+  Label,
+} from "@tevero/ui";
 import { Input } from "@/components/ui/input";
-import { Label } from "@tevero/ui/label";
 import {
   Tooltip,
   TooltipContent,
