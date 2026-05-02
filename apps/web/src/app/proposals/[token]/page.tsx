@@ -1,12 +1,14 @@
 /**
  * Public proposal page.
  * Phase 46-47: Proposal System
+ * Phase 58-04: Service Catalog Integration
  *
  * Server component that fetches proposal by token and renders the view.
  * No authentication required - token provides access.
+ * Now includes structured services from service catalog.
  */
 import { notFound } from "next/navigation";
-import { getPublicProposal } from "./actions";
+import { getPublicProposal, getProposalServices } from "./actions";
 import { ProposalView } from "./components/ProposalView";
 import { AcceptRejectButtons } from "./components/AcceptRejectButtons";
 
@@ -94,10 +96,19 @@ export default async function PublicProposalPage({ params }: Props) {
 
   const proposal = result.data!;
 
+  // Fetch resolved services (Phase 58-04)
+  const servicesResult = await getProposalServices(proposal.id);
+  const services = servicesResult.success ? servicesResult.data || [] : [];
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-3xl mx-auto px-4">
-        <ProposalView proposal={proposal} token={token} />
+        <ProposalView
+          proposal={proposal}
+          token={token}
+          services={services}
+          locale="lt"
+        />
 
         {/* Accept/Reject Section */}
         <div className="mt-12 pt-8 border-t border-gray-200">
