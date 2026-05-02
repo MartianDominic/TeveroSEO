@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
+  type PieLabelRenderProps,
 } from "recharts";
 import { useTranslations } from "next-intl";
 
@@ -45,39 +46,28 @@ interface LossReasonChartProps {
 
 /**
  * Custom label renderer for pie chart segments.
- * Shows reason name and percentage.
+ * Shows percentage for segments >= 5%.
  */
-function renderCustomizedLabel({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  name,
-  percentage,
-}: {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  name: string;
-  percentage: number;
-}) {
-  const RADIAN = Math.PI / 180;
-  const radius = outerRadius + 25;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+function renderCustomizedLabel(props: PieLabelRenderProps) {
+  const { cx, cy, midAngle, outerRadius, payload } = props;
+
+  // Extract percentage from payload
+  const percentage = (payload as { percentage?: number })?.percentage ?? 0;
 
   // Only show label for segments with >= 5% to avoid clutter
   if (percentage < 5) return null;
+
+  const RADIAN = Math.PI / 180;
+  const radius = (outerRadius as number) + 25;
+  const x = (cx as number) + radius * Math.cos(-(midAngle as number) * RADIAN);
+  const y = (cy as number) + radius * Math.sin(-(midAngle as number) * RADIAN);
 
   return (
     <text
       x={x}
       y={y}
       fill="hsl(var(--foreground))"
-      textAnchor={x > cx ? "start" : "end"}
+      textAnchor={x > (cx as number) ? "start" : "end"}
       dominantBaseline="central"
       fontSize={11}
     >
@@ -125,7 +115,7 @@ export function LossReasonChart({ data }: LossReasonChartProps) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number, name: string) => [value, name]}
+          formatter={(value) => [value, ""]}
           contentStyle={{
             backgroundColor: "hsl(var(--card))",
             border: "1px solid hsl(var(--border))",

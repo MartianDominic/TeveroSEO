@@ -372,5 +372,112 @@
     "forgotPassword": "Forgot password?",
     "resetPassword": "Reset password",
     "continueWith": "Continue with {provider}"
+  },
+  "commandCenter": {
+    "dashboard": {
+      "title": "Command Center",
+      "today": {
+        "overdue": "Overdue",
+        "dueToday": "Due Today",
+        "awaitingYou": "Awaiting You",
+        "new": "New"
+      },
+      "pipeline": {
+        "prospects": "Prospects",
+        "proposals": "Proposals",
+        "agreements": "Agreements",
+        "payments": "Payments"
+      },
+      "needsAttention": {
+        "title": "Needs Attention",
+        "empty": "All caught up!",
+        "priority": {
+          "critical": "Critical",
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low"
+        }
+      },
+      "revenue": {
+        "title": "Revenue Pipeline",
+        "thisMonth": "This Month",
+        "lastMonth": "Last Month",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue"
+      },
+      "funnel": {
+        "title": "Conversion Funnel",
+        "winRate": "Win Rate",
+        "avgCycle": "Avg Cycle"
+      },
+      "alerts": {
+        "title": "Smart Alerts",
+        "dismiss": "Dismiss"
+      },
+      "activity": {
+        "title": "Activity Feed",
+        "empty": "No recent activity",
+        "connected": "Connected",
+        "disconnected": "Disconnected"
+      }
+    },
+    "actions": {
+      "sendReminder": "Send Reminder",
+      "markLost": "Mark as Lost",
+      "snooze": "Snooze",
+      "addNote": "Add Note",
+      "followUpOn": "Follow up on"
+    },
+    "workflow": {
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "snoozed": "Snoozed until {date}",
+        "completed": "Completed",
+        "won": "Won",
+        "lost": "Lost"
+      }
+    },
+    "analytics": {
+      "winLoss": {
+        "title": "Win/Loss Analytics",
+        "winRate": "Win Rate",
+        "avgCycle": "Avg Cycle Time",
+        "won": "Won",
+        "lost": "Lost"
+      },
+      "lossReasons": {
+        "title": "Loss Reasons",
+        "empty": "No lost deals to analyze"
+      },
+      "competitors": {
+        "title": "Top Competitors"
+      }
+    },
+    "lossReasons": {
+      "too_expensive": "Too Expensive",
+      "budget_cut": "Budget Cut",
+      "competitor_cheaper": "Competitor Cheaper",
+      "bad_timing": "Bad Timing",
+      "project_delayed": "Project Delayed",
+      "internal_changes": "Internal Changes",
+      "wrong_fit": "Wrong Fit",
+      "scope_mismatch": "Scope Mismatch",
+      "different_direction": "Different Direction",
+      "chose_competitor": "Chose Competitor",
+      "went_internal": "Went Internal",
+      "found_alternative": "Found Alternative",
+      "unresponsive": "Unresponsive",
+      "ghosted": "Ghosted",
+      "decision_maker_left": "Decision Maker Left",
+      "unknown": "Unknown",
+      "other": "Other"
+    },
+    "common": {
+      "days": "days",
+      "cancel": "Cancel",
+      "save": "Save",
+      "send": "Send"
+    }
   }
 }

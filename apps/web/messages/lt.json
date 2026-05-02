@@ -432,5 +432,112 @@
     "forgotPassword": "Pamirsote slaptazodi?",
     "resetPassword": "Atstatyti slaptazodi",
     "continueWith": "Testi su {provider}"
+  },
+  "commandCenter": {
+    "dashboard": {
+      "title": "Valdymo centras",
+      "today": {
+        "overdue": "Veluojantys",
+        "dueToday": "Siandien",
+        "awaitingYou": "Laukia jusu",
+        "new": "Nauji"
+      },
+      "pipeline": {
+        "prospects": "Potencialus klientai",
+        "proposals": "Pasiulymai",
+        "agreements": "Sutartys",
+        "payments": "Mokejimai"
+      },
+      "needsAttention": {
+        "title": "Reikia demesio",
+        "empty": "Viskas atlikta!",
+        "priority": {
+          "critical": "Kritinis",
+          "high": "Aukstas",
+          "medium": "Vidutinis",
+          "low": "Zemas"
+        }
+      },
+      "revenue": {
+        "title": "Pajamu srautas",
+        "thisMonth": "Si menesi",
+        "lastMonth": "Praeita menesi",
+        "outstanding": "Neapmoketa",
+        "overdue": "Pradelsta"
+      },
+      "funnel": {
+        "title": "Konversijos piltuveli",
+        "winRate": "Laimejimo rodiklis",
+        "avgCycle": "Vid. ciklas"
+      },
+      "alerts": {
+        "title": "Ismanieji ispeimai",
+        "dismiss": "Atmesti"
+      },
+      "activity": {
+        "title": "Veiklos srautas",
+        "empty": "Nera naujausios veiklos",
+        "connected": "Prisijungta",
+        "disconnected": "Atsijungta"
+      }
+    },
+    "actions": {
+      "sendReminder": "Siusti priminima",
+      "markLost": "Pazymeti kaip prarasta",
+      "snooze": "Atideti",
+      "addNote": "Prideti pastaba",
+      "followUpOn": "Susisiekti"
+    },
+    "workflow": {
+      "status": {
+        "active": "Aktyvus",
+        "paused": "Pristabdytas",
+        "snoozed": "Atidetas iki {date}",
+        "completed": "Uzbaigtas",
+        "won": "Laimetas",
+        "lost": "Prarastas"
+      }
+    },
+    "analytics": {
+      "winLoss": {
+        "title": "Laimejimo/Pralaimejimo analize",
+        "winRate": "Laimejimo rodiklis",
+        "avgCycle": "Vid. ciklo laikas",
+        "won": "Laimeta",
+        "lost": "Prarasta"
+      },
+      "lossReasons": {
+        "title": "Pralaimejimo priezastys",
+        "empty": "Nera prarastu sandoriu analizei"
+      },
+      "competitors": {
+        "title": "Pagrindiniai konkurentai"
+      }
+    },
+    "lossReasons": {
+      "too_expensive": "Per brangu",
+      "budget_cut": "Biudzetas sumazintas",
+      "competitor_cheaper": "Konkurentas pigesnis",
+      "bad_timing": "Netinkamas laikas",
+      "project_delayed": "Projektas atidetas",
+      "internal_changes": "Vidaus pakeitimai",
+      "wrong_fit": "Netinkamas",
+      "scope_mismatch": "Apimties neatitikimas",
+      "different_direction": "Kita kryptis",
+      "chose_competitor": "Pasirinko konkurenta",
+      "went_internal": "Atliko viduje",
+      "found_alternative": "Rado alternatyva",
+      "unresponsive": "Neatsako",
+      "ghosted": "Dingo",
+      "decision_maker_left": "Sprend. priem. isejo",
+      "unknown": "Nezinoma",
+      "other": "Kita"
+    },
+    "common": {
+      "days": "dienos",
+      "cancel": "Atsaukti",
+      "save": "Issaugoti",
+      "send": "Siusti"
+    }
   }
 }
