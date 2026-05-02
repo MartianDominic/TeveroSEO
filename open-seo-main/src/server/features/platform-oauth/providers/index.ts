@@ -21,3 +21,7 @@ export {
   type WordPressSiteInfo,
   type ValidationResult,
 } from "./WordPressAppPasswordProvider";
+
+export { WixOAuthProvider, WIX_SCOPES } from "./WixOAuthProvider";
+
+export { ShopifyOAuthProvider, SHOPIFY_SCOPES } from "./ShopifyOAuthProvider";
