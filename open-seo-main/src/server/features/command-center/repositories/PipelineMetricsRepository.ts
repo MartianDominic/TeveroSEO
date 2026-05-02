@@ -9,9 +9,11 @@
  */
 import { eq, sql, and, lt, or, isNull } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { pipelineMetrics, type PipelineMetricsSelect, type PipelineMetricsInsert, organization } from "@/db";
-import { getDb, type DrizzleClient } from "@/db/client";
+import { db, pipelineMetrics, type PipelineMetricsSelect, type PipelineMetricsInsert, organization } from "@/db";
 import { createLogger } from "@/server/lib/logger";
+
+// Type for the Drizzle database client
+type DrizzleClient = typeof db;
 
 const log = createLogger({ module: "PipelineMetricsRepository" });
 
@@ -28,14 +30,14 @@ export interface PipelineMetricsRepositoryInterface {
  * Repository for pipeline_metrics table operations.
  */
 export class PipelineMetricsRepository implements PipelineMetricsRepositoryInterface {
-  constructor(private readonly db: DrizzleClient = getDb()) {}
+  constructor(private readonly dbClient: DrizzleClient = db) {}
 
   /**
    * Get metrics for a workspace.
    * Returns null if no metrics exist.
    */
   async getByWorkspace(workspaceId: string): Promise<PipelineMetricsSelect | null> {
-    const result = await this.db.query.pipelineMetrics.findFirst({
+    const result = await this.dbClient.query.pipelineMetrics.findFirst({
       where: eq(pipelineMetrics.workspaceId, workspaceId),
     });
     return result ?? null;
@@ -50,7 +52,7 @@ export class PipelineMetricsRepository implements PipelineMetricsRepositoryInter
 
     if (existing) {
       // Update existing row
-      await this.db
+      await this.dbClient
         .update(pipelineMetrics)
         .set({
           ...data,
@@ -60,7 +62,7 @@ export class PipelineMetricsRepository implements PipelineMetricsRepositoryInter
       log.debug("Updated pipeline metrics", { workspaceId });
     } else {
       // Insert new row
-      await this.db.insert(pipelineMetrics).values({
+      await this.dbClient.insert(pipelineMetrics).values({
         id: nanoid(),
         workspaceId,
         ...data,
@@ -79,12 +81,12 @@ export class PipelineMetricsRepository implements PipelineMetricsRepositoryInter
     const staleThreshold = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
 
     // Get all workspaces
-    const allWorkspaces = await this.db.query.organization.findMany({
+    const allWorkspaces = await this.dbClient.query.organization.findMany({
       columns: { id: true },
     });
 
     // Get workspaces with fresh metrics
-    const freshMetrics = await this.db.query.pipelineMetrics.findMany({
+    const freshMetrics = await this.dbClient.query.pipelineMetrics.findMany({
       where: and(
         sql`${pipelineMetrics.computedAt} > ${staleThreshold}`
       ),

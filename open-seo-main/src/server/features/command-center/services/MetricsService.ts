@@ -18,6 +18,7 @@
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
+  db,
   pipelineMetrics,
   prospects,
   proposals,
@@ -27,12 +28,14 @@ import {
   type PipelineMetricsSelect,
   type PipelineMetricsInsert,
 } from "@/db";
-import { getDb, type DrizzleClient } from "@/db/client";
 import {
   PipelineMetricsRepository,
   type PipelineMetricsRepositoryInterface,
 } from "../repositories/PipelineMetricsRepository";
 import { createLogger } from "@/server/lib/logger";
+
+// Type for the Drizzle database client
+type DrizzleClient = typeof db;
 
 const log = createLogger({ module: "MetricsService" });
 
@@ -121,7 +124,7 @@ export interface CycleTimes {
 export class MetricsService {
   constructor(
     private readonly metricsRepo: PipelineMetricsRepositoryInterface,
-    private readonly db: DrizzleClient = getDb()
+    private readonly dbClient: DrizzleClient = db
   ) {}
 
   /**
@@ -200,7 +203,7 @@ export class MetricsService {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Count by pipeline_stage using GROUP BY
-    const stageCountsResult = await this.db
+    const stageCountsResult = await this.dbClient
       .select({
         stage: prospects.pipelineStage,
         count: sql<number>`COUNT(*)::int`,
@@ -215,7 +218,7 @@ export class MetricsService {
     }
 
     // Count converted in last 30 days
-    const converted30dResult = await this.db
+    const converted30dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -229,7 +232,7 @@ export class MetricsService {
       );
 
     // Count archived in last 30 days
-    const archived30dResult = await this.db
+    const archived30dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -261,7 +264,7 @@ export class MetricsService {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Count by status using GROUP BY
-    const statusCountsResult = await this.db
+    const statusCountsResult = await this.dbClient
       .select({
         status: proposals.status,
         count: sql<number>`COUNT(*)::int`,
@@ -276,7 +279,7 @@ export class MetricsService {
     }
 
     // Count declined in last 30 days
-    const declined30dResult = await this.db
+    const declined30dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -290,7 +293,7 @@ export class MetricsService {
       );
 
     // Count expired in last 30 days
-    const expired30dResult = await this.db
+    const expired30dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -321,7 +324,7 @@ export class MetricsService {
     const now = new Date();
 
     // Count by status using GROUP BY
-    const statusCountsResult = await this.db
+    const statusCountsResult = await this.dbClient
       .select({
         status: contracts.status,
         count: sql<number>`COUNT(*)::int`,
@@ -336,7 +339,7 @@ export class MetricsService {
     }
 
     // Count contracts expiring in next 7 days
-    const expiring7dResult = await this.db
+    const expiring7dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -367,7 +370,7 @@ export class MetricsService {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Count by status using GROUP BY
-    const statusCountsResult = await this.db
+    const statusCountsResult = await this.dbClient
       .select({
         status: invoices.status,
         count: sql<number>`COUNT(*)::int`,
@@ -382,7 +385,7 @@ export class MetricsService {
     }
 
     // Count paid in last 30 days
-    const paid30dResult = await this.db
+    const paid30dResult = await this.dbClient
       .select({
         count: sql<number>`COUNT(*)::int`,
       })
@@ -415,7 +418,7 @@ export class MetricsService {
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
     // Proposal pipeline values by status
-    const proposalValuesResult = await this.db
+    const proposalValuesResult = await this.dbClient
       .select({
         status: proposals.status,
         total: sql<number>`COALESCE(SUM(COALESCE(${proposals.setupFeeCents}, 0) + COALESCE(${proposals.monthlyFeeCents}, 0) * 12), 0)::int`,
@@ -430,7 +433,7 @@ export class MetricsService {
     }
 
     // Revenue this month (paid invoices)
-    const revenueThisMonthResult = await this.db
+    const revenueThisMonthResult = await this.dbClient
       .select({
         total: sql<number>`COALESCE(SUM(${invoices.totalCents}), 0)::int`,
       })
@@ -444,7 +447,7 @@ export class MetricsService {
       );
 
     // Revenue last month
-    const revenueLastMonthResult = await this.db
+    const revenueLastMonthResult = await this.dbClient
       .select({
         total: sql<number>`COALESCE(SUM(${invoices.totalCents}), 0)::int`,
       })
@@ -459,7 +462,7 @@ export class MetricsService {
       );
 
     // Outstanding (sent but not paid)
-    const outstandingResult = await this.db
+    const outstandingResult = await this.dbClient
       .select({
         total: sql<number>`COALESCE(SUM(${invoices.totalCents}), 0)::int`,
       })
@@ -472,7 +475,7 @@ export class MetricsService {
       );
 
     // Overdue amount
-    const overdueResult = await this.db
+    const overdueResult = await this.dbClient
       .select({
         total: sql<number>`COALESCE(SUM(${invoices.totalCents}), 0)::int`,
       })
@@ -505,7 +508,7 @@ export class MetricsService {
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
     // Win rate from deal_outcomes in last 90 days
-    const winRateResult = await this.db
+    const winRateResult = await this.dbClient
       .select({
         total: sql<number>`COUNT(*)::int`,
         won: sql<number>`COUNT(*) FILTER (WHERE ${dealOutcomes.outcome} = 'won')::int`,
@@ -523,7 +526,7 @@ export class MetricsService {
     const winRatePct = total > 0 ? Math.round((won / total) * 10000) : 0;
 
     // Prospect to qualified rate (based on current data)
-    const prospectCounts = await this.db
+    const prospectCounts = await this.dbClient
       .select({
         total: sql<number>`COUNT(*)::int`,
         qualified: sql<number>`COUNT(*) FILTER (WHERE ${prospects.pipelineStage} IN ('qualified', 'contacted', 'negotiating', 'converted'))::int`,
@@ -539,7 +542,7 @@ export class MetricsService {
         : 0;
 
     // Qualified to proposal rate (prospects with proposals)
-    const qualifiedWithProposals = await this.db
+    const qualifiedWithProposals = await this.dbClient
       .select({
         qualified: sql<number>`COUNT(DISTINCT ${prospects.id})::int`,
         withProposal: sql<number>`COUNT(DISTINCT ${proposals.prospectId})::int`,
@@ -566,7 +569,7 @@ export class MetricsService {
         : 0;
 
     // Proposal to signed rate
-    const proposalCounts = await this.db
+    const proposalCounts = await this.dbClient
       .select({
         total: sql<number>`COUNT(*)::int`,
         signed: sql<number>`COUNT(*) FILTER (WHERE ${proposals.status} IN ('signed', 'paid', 'onboarded'))::int`,
@@ -596,7 +599,7 @@ export class MetricsService {
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
     // Average deal cycle from deal_outcomes
-    const cycleDaysResult = await this.db
+    const cycleDaysResult = await this.dbClient
       .select({
         avgDays: sql<number>`COALESCE(AVG(${dealOutcomes.cycleDays}), 0)::int`,
       })
@@ -610,7 +613,7 @@ export class MetricsService {
       );
 
     // Average collection time (sent to paid for invoices)
-    const collectionDaysResult = await this.db
+    const collectionDaysResult = await this.dbClient
       .select({
         avgDays: sql<number>`COALESCE(AVG(EXTRACT(EPOCH FROM (${invoices.paidAt} - ${invoices.sentAt})) / 86400), 0)::int`,
       })
