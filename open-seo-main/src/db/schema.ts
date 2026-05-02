@@ -90,3 +90,6 @@ export * from "./variable-definitions-schema";
 
 // Proposal versions schema (Phase 57)
 export * from "./schema/proposal-versions";
+
+// Service catalog schema (Phase 58)
+export * from "./service-catalog-schema";
