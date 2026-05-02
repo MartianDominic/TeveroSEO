@@ -239,14 +239,12 @@ export const DEFAULT_SERVICES: Omit<ServiceTemplateInsert, "id" | "createdAt" | 
  * Seed default services into the database.
  * Uses onConflictDoNothing to avoid duplicates on re-run.
  */
-export async function seedDefaultServices(db: {
-  insert: typeof import("drizzle-orm/pg-core").PgInsertBuilder.prototype.insert;
-}): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function seedDefaultServices(db: any): Promise<void> {
   const now = new Date();
 
   for (const service of DEFAULT_SERVICES) {
     const id = crypto.randomUUID();
-    // @ts-expect-error - db type is simplified for flexibility
     await db
       .insert(serviceTemplates)
       .values({
