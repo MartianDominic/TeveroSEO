@@ -37,3 +37,13 @@ export {
   type GBPInsights,
   type GBPFetchOptions,
 } from "./GoogleBusinessProfileService";
+
+// WordPress
+export {
+  WordPressService,
+  type WPPost,
+  type WPPage,
+  type WPCategory,
+  type WPTag,
+  type WordPressData,
+} from "./WordPressService";
