@@ -102,6 +102,9 @@ export {
 // Service catalog schema (Phase 58)
 export * from "./service-catalog-schema";
 
+// Agreement signers schema (Phase 59)
+export * from "./schema/agreement-signers-schema";
+
 // Platform OAuth schemas (Phase 61)
 export * from "./platform-connection-schema";
 export * from "./oauth-state-schema";

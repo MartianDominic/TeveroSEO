@@ -17,6 +17,7 @@ import {
   timestamp,
   index,
   check,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
@@ -69,6 +70,17 @@ export const workspacePaymentSettings = pgTable(
     revolutWebhookSecret: text("revolut_webhook_secret"), // Encrypted
     revolutMerchantId: text("revolut_merchant_id"), // Not secret, but kept here
 
+    // Split payment settings (Phase 60-01)
+    // D-04: Agency can enable/disable split payments and configure available plans
+    splitPaymentsEnabled: boolean("split_payments_enabled")
+      .notNull()
+      .default(false),
+    availablePlans: jsonb("available_plans")
+      .$type<string[]>()
+      .notNull()
+      .default(["full", "split_2", "split_3"]),
+    defaultPlan: text("default_plan").notNull().default("full"),
+
     // Standard timestamps
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
@@ -85,6 +97,12 @@ export const workspacePaymentSettings = pgTable(
     check(
       "chk_default_provider_valid",
       sql`default_provider IN ('stripe', 'revolut')`
+    ),
+
+    // Phase 60-01: Validate default_plan is a known plan type
+    check(
+      "chk_default_plan_valid",
+      sql`default_plan IN ('full', 'split_2', 'split_3')`
     ),
   ]
 );

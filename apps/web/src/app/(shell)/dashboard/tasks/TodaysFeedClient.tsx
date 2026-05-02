@@ -11,7 +11,10 @@
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { TodaysFeed, type AggregatedTask } from "@/components/tasks";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 import {
   completeTask,
   pinTask,
@@ -131,17 +134,17 @@ export function TodaysFeedClient({ initialTasks }: TodaysFeedClientProps) {
     switch (task.source) {
       case "pipeline":
         if (task.entityId) {
-          router.push(`/prospects/${task.entityId}`);
+          router.push(`/prospects/${task.entityId}` as AnyRoute);
         }
         break;
       case "checklist":
         if (task.clientId) {
-          router.push(`/onboarding/${task.clientId}`);
+          router.push(`/onboarding/${task.clientId}` as AnyRoute);
         }
         break;
       case "expiring":
         if (task.entityId) {
-          router.push(`/contracts/${task.entityId}`);
+          router.push(`/contracts/${task.entityId}` as AnyRoute);
         }
         break;
       default:

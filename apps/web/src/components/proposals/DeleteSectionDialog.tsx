@@ -85,7 +85,7 @@ export const DeleteSectionDialog: FC<DeleteSectionDialogProps> = ({
           <AlertDialogDescription>
             {sectionTitle ? (
               <>
-                {t.descriptionWithTitle} <strong>"{sectionTitle}"</strong>?
+                {t.descriptionWithTitle} <strong>&ldquo;{sectionTitle}&rdquo;</strong>?
               </>
             ) : (
               t.description

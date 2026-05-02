@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -12,6 +12,8 @@ import Link from "next/link";
 import { getContractDetail } from "../actions";
 import { SignatureStatus } from "../components/SignatureStatus";
 import { PaymentStatus } from "../components/PaymentStatus";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 
 export default async function ContractDetailPage({
   params,
@@ -41,7 +43,7 @@ export default async function ContractDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href={`/prospects/${params.prospectId}/contracts`}>
+        <Link href={`/prospects/${params.prospectId}/contracts` as AnyRoute}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Atgal

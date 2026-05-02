@@ -51,7 +51,7 @@ const updateServicesSchema = z.object({
  * Route definition - TanStack Start pattern.
  */
 // @ts-expect-error Route type not yet in FileRoutesByPath - regenerate with `pnpm tanstack-router generate`
-export const Route = createFileRoute("/api/proposals/[id]/services")({
+export const Route = createFileRoute("/api/proposals/id/services")({
   server: {
     handlers: {
       /**

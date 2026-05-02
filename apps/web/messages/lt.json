@@ -282,7 +282,66 @@
       "signed": "Pasirasytas",
       "active": "Aktyvi",
       "expired": "Pasibaigusi",
-      "terminated": "Nutraukta"
+      "terminated": "Nutraukta",
+      "sent": "Issiusta",
+      "viewed": "Perziureta",
+      "partiallySigned": "Dalinai pasirasytas",
+      "completed": "Baigta",
+      "cancelled": "Atsaukta"
+    },
+    "success": {
+      "title": "Sutartis sekmingai pasirasytas",
+      "thankYou": "Dekojame uz parasa",
+      "message": "Jusu parasas buvo uzregistruotas. Netrukus gausite patvirtinimo laiška.",
+      "document": "Dokumentas",
+      "signedAt": "Pasirasytas",
+      "signingProgress": "{signed} is {total} parasu",
+      "allSigned": "Visi parasai surinkti",
+      "downloadPdf": "Atsisiusti PDF",
+      "emailConfirmation": "Patvirtinimo laiskas buvo issiustas i jusu el. pasta.",
+      "closeTab": "Galite saugiai uzdaryti si skirtuka.",
+      "linkExpired": "Si pasirasymo nuoroda nebegalioja",
+      "linkExpiredDesc": "Sutarties pasirasymo nuoroda nebegalioja. Susisiekite su siunteju del naujos nuorodos.",
+      "alreadySigned": "Jus jau pasiraset sia sutarti",
+      "alreadySignedDesc": "Jusu parasas buvo uzregistruotas {date}."
+    },
+    "tracker": {
+      "title": "Sutarties busena",
+      "steps": {
+        "created": "Sukurta",
+        "sent": "Issiusta",
+        "viewed": "Perziureta",
+        "signing": "Pasirasymas",
+        "completed": "Baigta"
+      },
+      "signatureProgress": "Pasirasymo eiga",
+      "awaitingSignatures": "Laukiama parasu",
+      "allSignaturesCollected": "Visi parasai surinkti",
+      "signaturesCount": "{signed} is {total} parasu",
+      "cancelled": "Sutartis atsaukta",
+      "cancelledDesc": "Si sutartis buvo atsaukta ir nebegali buti pasirasytas."
+    },
+    "signers": {
+      "title": "Pasirasymo dalyviai",
+      "noSigners": "Nera pasirasymo dalyviu",
+      "status": {
+        "pending": "Laukiama",
+        "sent": "Issiusta",
+        "viewed": "Perziureta",
+        "signed": "Pasirasytas",
+        "declined": "Atmesta"
+      },
+      "signedAt": "Pasirasytas",
+      "viewedAt": "Perziureta",
+      "sentAt": "Issiusta",
+      "resend": "Siusti dar karta"
+    },
+    "actions": {
+      "send": "Siusti pasirasymui",
+      "remindAll": "Priminti visiems",
+      "cancel": "Atsaukti sutarti",
+      "downloadPdf": "Atsisiusti PDF",
+      "moreActions": "Veiksmai"
     }
   },
   "invoices": {

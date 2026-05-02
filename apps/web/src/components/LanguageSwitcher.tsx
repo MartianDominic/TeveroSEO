@@ -2,11 +2,13 @@
 
 import * as React from 'react';
 import { useLocale } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, redirect } from 'next/navigation';
 import { useTransition } from 'react';
 import { Globe, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { setStoredLocale, type SupportedLocale } from '@/lib/locale-storage';
+
+type AnyRoute = Parameters<typeof redirect>[0];
 import {
   Popover,
   PopoverTrigger,
@@ -107,7 +109,7 @@ export function LanguageSwitcher({
 
       // Navigate with transition
       startTransition(() => {
-        router.push(newPath);
+        router.push(newPath as AnyRoute);
         router.refresh();
       });
 

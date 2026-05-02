@@ -17,20 +17,32 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as PipelineDashboardRouteImport } from './routes/pipeline/dashboard'
 import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ApiWebhooksRouteImport } from './routes/api/webhooks'
+import { Route as ApiTranslateRouteImport } from './routes/api/translate'
 import { Route as ApiDetectPlatformRouteImport } from './routes/api/detect-platform'
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated.subscribe'
 import { Route as AppSupportRouteImport } from './routes/_app/support'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
+import { Route as ApiVariablesIndexRouteImport } from './routes/api/variables/index'
+import { Route as ApiServicesIndexRouteImport } from './routes/api/services/index'
 import { Route as ApiSchedulesIndexRouteImport } from './routes/api/schedules/index'
 import { Route as ApiReportsIndexRouteImport } from './routes/api/reports/index'
+import { Route as ApiReportTemplatesIndexRouteImport } from './routes/api/report-templates/index'
 import { Route as ApiGoalTemplatesIndexRouteImport } from './routes/api/goal-templates/index'
 import { Route as ApiConnectionsIndexRouteImport } from './routes/api/connections/index'
 import { Route as ApiChangesIndexRouteImport } from './routes/api/changes/index'
 import { Route as ApiBrandingIndexRouteImport } from './routes/api/branding/index'
 import { Route as AppProspectsIndexRouteImport } from './routes/_app/prospects/index'
 import { Route as AppProposalsIndexRouteImport } from './routes/_app/proposals/index'
+import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks/stripe'
+import { Route as ApiWebhooksRevolutRouteImport } from './routes/api/webhooks/revolut'
+import { Route as ApiWebhooksDokobitRouteImport } from './routes/api/webhooks/dokobit'
 import { Route as ApiWebhooksWebhookIdRouteImport } from './routes/api/webhooks.$webhookId'
+import { Route as ApiVariablesCategoriesRouteImport } from './routes/api/variables/categories'
+import { Route as ApiVariablesIdRouteImport } from './routes/api/variables/$id'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
+import { Route as ApiSettingsPaymentsRouteImport } from './routes/api/settings/payments'
+import { Route as ApiSettingsLanguageRouteImport } from './routes/api/settings/language'
+import { Route as ApiServicesServiceIdRouteImport } from './routes/api/services/$serviceId'
 import { Route as ApiSeoVoiceTemplatesRouteImport } from './routes/api/seo/voice-templates'
 import { Route as ApiSeoProjectsRouteImport } from './routes/api/seo/projects'
 import { Route as ApiSeoKeywordsRouteImport } from './routes/api/seo/keywords'
@@ -43,10 +55,19 @@ import { Route as ApiSeoAuditsRouteImport } from './routes/api/seo/audits'
 import { Route as ApiSchedulesIdRouteImport } from './routes/api/schedules/$id'
 import { Route as ApiRevertsPreviewRouteImport } from './routes/api/reverts/preview'
 import { Route as ApiRevertsExecuteRouteImport } from './routes/api/reverts/execute'
+import { Route as ApiReportsGenerateRouteImport } from './routes/api/reports/generate'
 import { Route as ApiReportsIdRouteImport } from './routes/api/reports/$id'
+import { Route as ApiReportTemplatesIdRouteImport } from './routes/api/report-templates/$id'
+import { Route as ApiProspectsExtractRouteImport } from './routes/api/prospects/extract'
+import { Route as ApiProspectsConfirmRouteImport } from './routes/api/prospects/confirm'
+import { Route as ApiProposalsTrackRouteImport } from './routes/api/proposals/track'
 import { Route as ApiProposalsStageRouteImport } from './routes/api/proposals/stage'
 import { Route as ApiProposalsAnalyticsRouteImport } from './routes/api/proposals/analytics'
+import { Route as ApiPaymentsStatsRouteImport } from './routes/api/payments/stats'
+import { Route as ApiPaymentsInstallmentsRouteImport } from './routes/api/payments/installments'
 import { Route as ApiPatternsPatternIdRouteImport } from './routes/api/patterns/$patternId'
+import { Route as ApiOnboardingMagicLinkRouteImport } from './routes/api/onboarding/magic-link'
+import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onboarding/complete-item'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
 import { Route as ApiCronAutomationsRouteImport } from './routes/api/cron/automations'
@@ -59,12 +80,15 @@ import { Route as ApiAdminDlqRouteImport } from './routes/api/admin/dlq'
 import { Route as AppProspectsProspectIdRouteImport } from './routes/_app/prospects/$prospectId'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
+import { Route as ApiTemplatesProposalsIndexRouteImport } from './routes/api/templates/proposals/index'
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
 import { Route as PTokenPaymentSuccessRouteImport } from './routes/p/$token/payment/success'
 import { Route as ApiWorkspacesWorkspaceIdTrafficDataRouteImport } from './routes/api/workspaces/$workspaceId/traffic-data'
 import { Route as ApiWorkspacesWorkspaceIdRankingDataRouteImport } from './routes/api/workspaces/$workspaceId/ranking-data'
 import { Route as ApiWorkspacesWorkspaceIdMembershipRouteImport } from './routes/api/workspaces/$workspaceId/membership'
 import { Route as ApiWorkspacesWorkspaceIdClientsRouteImport } from './routes/api/workspaces/$workspaceId/clients'
+import { Route as ApiTemplatesProposalsTemplateIdRouteImport } from './routes/api/templates/proposals/$templateId'
+import { Route as ApiServicesServiceIdDuplicateRouteImport } from './routes/api/services/$serviceId.duplicate'
 import { Route as ApiSeoVoiceClientIdRouteImport } from './routes/api/seo/voice.$clientId'
 import { Route as ApiSeoProjectsProjectIdRouteImport } from './routes/api/seo/projects.$projectId'
 import { Route as ApiSeoLinksSuggestionsRouteImport } from './routes/api/seo/links/suggestions'
@@ -72,8 +96,23 @@ import { Route as ApiSeoContentValidateRouteImport } from './routes/api/seo/cont
 import { Route as ApiReportsIdDownloadRouteImport } from './routes/api/reports/$id.download'
 import { Route as ApiProspectsProspectIdScrapeConfigRouteImport } from './routes/api/prospects/$prospectId.scrape-config'
 import { Route as ApiProspectsProspectIdReportRouteImport } from './routes/api/prospects/$prospectId.report'
+import { Route as ApiProposalsPublicTokenRouteImport } from './routes/api/proposals/public/$token'
+import { Route as ApiProposalsChar91idChar93VersionsRouteImport } from './routes/api/proposals/[id]/versions'
+import { Route as ApiProposalsChar91idChar93ServicesRouteImport } from './routes/api/proposals/[id]/services'
+import { Route as ApiProposalsChar91idChar93SendRouteImport } from './routes/api/proposals/[id]/send'
+import { Route as ApiProposalsChar91idChar93ResolveRouteImport } from './routes/api/proposals/[id]/resolve'
+import { Route as ApiProposalsChar91idChar93RejectRouteImport } from './routes/api/proposals/[id]/reject'
+import { Route as ApiProposalsChar91idChar93LinkRouteImport } from './routes/api/proposals/[id]/link'
+import { Route as ApiProposalsChar91idChar93GenerateRouteImport } from './routes/api/proposals/[id]/generate'
+import { Route as ApiProposalsChar91idChar93DuplicateRouteImport } from './routes/api/proposals/[id]/duplicate'
+import { Route as ApiProposalsChar91idChar93AcceptRouteImport } from './routes/api/proposals/[id]/accept'
 import { Route as ApiProposalsProposalIdDeclineRouteImport } from './routes/api/proposals/$proposalId.decline'
+import { Route as ApiInvoicesIdScheduleRouteImport } from './routes/api/invoices/$id.schedule'
+import { Route as ApiInvoicesIdPayRouteImport } from './routes/api/invoices/$id.pay'
+import { Route as ApiInvoicesIdPaymentLinkRouteImport } from './routes/api/invoices/$id.-payment-link'
 import { Route as ApiInternalAnalyticsBackfillRouteImport } from './routes/api/internal/analytics/backfill'
+import { Route as ApiContractsIdStatusRouteImport } from './routes/api/contracts/$id.status'
+import { Route as ApiContractsContractIdSendRouteImport } from './routes/api/contracts/$contractId.-send'
 import { Route as ApiConnectionsIdVerifyRouteImport } from './routes/api/connections/$id.verify'
 import { Route as ApiClientsClientIdReportsRouteImport } from './routes/api/clients/$clientId.reports'
 import { Route as ApiClientsClientIdDropEventsRouteImport } from './routes/api/clients/$clientId.drop-events'
@@ -91,11 +130,13 @@ import { Route as AppProspectsProspectIdProposalRouteImport } from './routes/_ap
 import { Route as AppProposalsProposalIdEditRouteImport } from './routes/_app/proposals/$proposalId.edit'
 import { Route as AppClientsClientIdVoiceRouteRouteImport } from './routes/_app/clients/$clientId/voice/route'
 import { Route as ApiProspectsIdKeywordsIndexRouteImport } from './routes/api/prospects/$id/keywords/index'
+import { Route as ApiProposalsChar91idChar93SectionsIndexRouteImport } from './routes/api/proposals/[id]/sections/index'
 import { Route as ApiClientsClientIdGoalsIndexRouteImport } from './routes/api/clients/$clientId/goals/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
 import { Route as AppClientsClientIdVoiceIndexRouteImport } from './routes/_app/clients/$clientId/voice/index'
 import { Route as AppClientsClientIdConnectionsIndexRouteImport } from './routes/_app/clients/$clientId/connections/index'
 import { Route as AppClientsClientIdBriefsIndexRouteImport } from './routes/_app/clients/$clientId/briefs/index'
+import { Route as ApiTemplatesProposalsTemplateIdDuplicateRouteImport } from './routes/api/templates/proposals/$templateId.duplicate'
 import { Route as ApiSeoVoiceClientIdProtectionRulesRouteImport } from './routes/api/seo/voice.$clientId.protection-rules'
 import { Route as ApiSeoVoiceClientIdPreviewRouteImport } from './routes/api/seo/voice.$clientId.preview'
 import { Route as ApiSeoVoiceClientIdComplianceRouteImport } from './routes/api/seo/voice.$clientId.compliance'
@@ -110,6 +151,8 @@ import { Route as ApiSeoBriefsGenerateBriefIdRouteImport } from './routes/api/se
 import { Route as ApiSeoBriefsAnalyzeSerpMappingIdRouteImport } from './routes/api/seo/briefs.analyze-serp.$mappingId'
 import { Route as ApiProspectsIdKeywordsPrioritizeRouteImport } from './routes/api/prospects/$id/keywords/prioritize'
 import { Route as ApiProspectsIdKeywordsImportRouteImport } from './routes/api/prospects/$id/keywords/import'
+import { Route as ApiProposalsChar91idChar93ServicesResolvedRouteImport } from './routes/api/proposals/[id]/services/resolved'
+import { Route as ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport } from './routes/api/proposals/[id]/sections/[sid]'
 import { Route as ApiClientsClientIdGscDailyRouteImport } from './routes/api/clients/$clientId/gsc.daily'
 import { Route as ApiClientsClientIdGoalsGoalIdRouteImport } from './routes/api/clients/$clientId/goals/$goalId'
 import { Route as ApiClientsClientIdAlertRulesRuleIdRouteImport } from './routes/api/clients/$clientId.alert-rules.$ruleId'
@@ -122,6 +165,7 @@ import { Route as ApiSeoVoiceClientIdJobJobIdRouteImport } from './routes/api/se
 import { Route as ApiSeoLinksSuggestionsIdApplyRouteImport } from './routes/api/seo/links/suggestions.$id.apply'
 import { Route as ApiSeoLinksOpportunitiesIdRejectRouteImport } from './routes/api/seo/links/opportunities.$id.reject'
 import { Route as ApiSeoLinksOpportunitiesIdApproveRouteImport } from './routes/api/seo/links/opportunities.$id.approve'
+import { Route as ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRouteImport } from './routes/api/proposals/[id]/versions/[vid]/restore'
 import { Route as ApiClientsClientIdGoalsSnapshotsBatchRouteImport } from './routes/api/clients/$clientId/goals/snapshots.batch'
 import { Route as ProjectPProjectIdAuditIssuesResultIdRouteImport } from './routes/_project/p/$projectId/audit/issues/$resultId'
 
@@ -162,6 +206,11 @@ const ApiWebhooksRoute = ApiWebhooksRouteImport.update({
   path: '/api/webhooks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTranslateRoute = ApiTranslateRouteImport.update({
+  id: '/api/translate',
+  path: '/api/translate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDetectPlatformRoute = ApiDetectPlatformRouteImport.update({
   id: '/api/detect-platform',
   path: '/api/detect-platform',
@@ -182,6 +231,16 @@ const AppBillingRoute = AppBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const ApiVariablesIndexRoute = ApiVariablesIndexRouteImport.update({
+  id: '/api/variables/',
+  path: '/api/variables/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiServicesIndexRoute = ApiServicesIndexRouteImport.update({
+  id: '/api/services/',
+  path: '/api/services/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSchedulesIndexRoute = ApiSchedulesIndexRouteImport.update({
   id: '/api/schedules/',
   path: '/api/schedules/',
@@ -190,6 +249,11 @@ const ApiSchedulesIndexRoute = ApiSchedulesIndexRouteImport.update({
 const ApiReportsIndexRoute = ApiReportsIndexRouteImport.update({
   id: '/api/reports/',
   path: '/api/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportTemplatesIndexRoute = ApiReportTemplatesIndexRouteImport.update({
+  id: '/api/report-templates/',
+  path: '/api/report-templates/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGoalTemplatesIndexRoute = ApiGoalTemplatesIndexRouteImport.update({
@@ -222,14 +286,54 @@ const AppProposalsIndexRoute = AppProposalsIndexRouteImport.update({
   path: '/proposals/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
+  id: '/stripe',
+  path: '/stripe',
+  getParentRoute: () => ApiWebhooksRoute,
+} as any)
+const ApiWebhooksRevolutRoute = ApiWebhooksRevolutRouteImport.update({
+  id: '/revolut',
+  path: '/revolut',
+  getParentRoute: () => ApiWebhooksRoute,
+} as any)
+const ApiWebhooksDokobitRoute = ApiWebhooksDokobitRouteImport.update({
+  id: '/dokobit',
+  path: '/dokobit',
+  getParentRoute: () => ApiWebhooksRoute,
+} as any)
 const ApiWebhooksWebhookIdRoute = ApiWebhooksWebhookIdRouteImport.update({
   id: '/$webhookId',
   path: '/$webhookId',
   getParentRoute: () => ApiWebhooksRoute,
 } as any)
+const ApiVariablesCategoriesRoute = ApiVariablesCategoriesRouteImport.update({
+  id: '/api/variables/categories',
+  path: '/api/variables/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVariablesIdRoute = ApiVariablesIdRouteImport.update({
+  id: '/api/variables/$id',
+  path: '/api/variables/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe/webhook',
   path: '/api/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSettingsPaymentsRoute = ApiSettingsPaymentsRouteImport.update({
+  id: '/api/settings/payments',
+  path: '/api/settings/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSettingsLanguageRoute = ApiSettingsLanguageRouteImport.update({
+  id: '/api/settings/language',
+  path: '/api/settings/language',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiServicesServiceIdRoute = ApiServicesServiceIdRouteImport.update({
+  id: '/api/services/$serviceId',
+  path: '/api/services/$serviceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSeoVoiceTemplatesRoute = ApiSeoVoiceTemplatesRouteImport.update({
@@ -292,9 +396,34 @@ const ApiRevertsExecuteRoute = ApiRevertsExecuteRouteImport.update({
   path: '/api/reverts/execute',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReportsGenerateRoute = ApiReportsGenerateRouteImport.update({
+  id: '/api/reports/generate',
+  path: '/api/reports/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiReportsIdRoute = ApiReportsIdRouteImport.update({
   id: '/api/reports/$id',
   path: '/api/reports/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportTemplatesIdRoute = ApiReportTemplatesIdRouteImport.update({
+  id: '/api/report-templates/$id',
+  path: '/api/report-templates/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProspectsExtractRoute = ApiProspectsExtractRouteImport.update({
+  id: '/api/prospects/extract',
+  path: '/api/prospects/extract',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProspectsConfirmRoute = ApiProspectsConfirmRouteImport.update({
+  id: '/api/prospects/confirm',
+  path: '/api/prospects/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProposalsTrackRoute = ApiProposalsTrackRouteImport.update({
+  id: '/api/proposals/track',
+  path: '/api/proposals/track',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProposalsStageRoute = ApiProposalsStageRouteImport.update({
@@ -307,11 +436,32 @@ const ApiProposalsAnalyticsRoute = ApiProposalsAnalyticsRouteImport.update({
   path: '/api/proposals/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymentsStatsRoute = ApiPaymentsStatsRouteImport.update({
+  id: '/api/payments/stats',
+  path: '/api/payments/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaymentsInstallmentsRoute = ApiPaymentsInstallmentsRouteImport.update({
+  id: '/api/payments/installments',
+  path: '/api/payments/installments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPatternsPatternIdRoute = ApiPatternsPatternIdRouteImport.update({
   id: '/api/patterns/$patternId',
   path: '/api/patterns/$patternId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOnboardingMagicLinkRoute = ApiOnboardingMagicLinkRouteImport.update({
+  id: '/api/onboarding/magic-link',
+  path: '/api/onboarding/magic-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOnboardingCompleteItemRoute =
+  ApiOnboardingCompleteItemRouteImport.update({
+    id: '/api/onboarding/complete-item',
+    path: '/api/onboarding/complete-item',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiKeywordsQuickCheckRoute = ApiKeywordsQuickCheckRouteImport.update({
   id: '/api/keywords/quick-check',
   path: '/api/keywords/quick-check',
@@ -373,6 +523,12 @@ const ProjectPProjectIdRouteRoute = ProjectPProjectIdRouteRouteImport.update({
   path: '/p/$projectId',
   getParentRoute: () => ProjectRouteRoute,
 } as any)
+const ApiTemplatesProposalsIndexRoute =
+  ApiTemplatesProposalsIndexRouteImport.update({
+    id: '/api/templates/proposals/',
+    path: '/api/templates/proposals/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectPProjectIdIndexRoute = ProjectPProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -406,6 +562,18 @@ const ApiWorkspacesWorkspaceIdClientsRoute =
     id: '/api/workspaces/$workspaceId/clients',
     path: '/api/workspaces/$workspaceId/clients',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTemplatesProposalsTemplateIdRoute =
+  ApiTemplatesProposalsTemplateIdRouteImport.update({
+    id: '/api/templates/proposals/$templateId',
+    path: '/api/templates/proposals/$templateId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiServicesServiceIdDuplicateRoute =
+  ApiServicesServiceIdDuplicateRouteImport.update({
+    id: '/duplicate',
+    path: '/duplicate',
+    getParentRoute: () => ApiServicesServiceIdRoute,
   } as any)
 const ApiSeoVoiceClientIdRoute = ApiSeoVoiceClientIdRouteImport.update({
   id: '/api/seo/voice/$clientId',
@@ -444,16 +612,102 @@ const ApiProspectsProspectIdReportRoute =
     path: '/api/prospects/$prospectId/report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiProposalsPublicTokenRoute = ApiProposalsPublicTokenRouteImport.update({
+  id: '/api/proposals/public/$token',
+  path: '/api/proposals/public/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProposalsChar91idChar93VersionsRoute =
+  ApiProposalsChar91idChar93VersionsRouteImport.update({
+    id: '/api/proposals/id/versions',
+    path: '/api/proposals/id/versions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93ServicesRoute =
+  ApiProposalsChar91idChar93ServicesRouteImport.update({
+    id: '/api/proposals/id/services',
+    path: '/api/proposals/id/services',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93SendRoute =
+  ApiProposalsChar91idChar93SendRouteImport.update({
+    id: '/api/proposals/id/send',
+    path: '/api/proposals/id/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93ResolveRoute =
+  ApiProposalsChar91idChar93ResolveRouteImport.update({
+    id: '/api/proposals/id/resolve',
+    path: '/api/proposals/id/resolve',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93RejectRoute =
+  ApiProposalsChar91idChar93RejectRouteImport.update({
+    id: '/api/proposals/id/reject',
+    path: '/api/proposals/id/reject',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93LinkRoute =
+  ApiProposalsChar91idChar93LinkRouteImport.update({
+    id: '/api/proposals/id/link',
+    path: '/api/proposals/id/link',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93GenerateRoute =
+  ApiProposalsChar91idChar93GenerateRouteImport.update({
+    id: '/api/proposals/id/generate',
+    path: '/api/proposals/id/generate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93DuplicateRoute =
+  ApiProposalsChar91idChar93DuplicateRouteImport.update({
+    id: '/api/proposals/id/duplicate',
+    path: '/api/proposals/id/duplicate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiProposalsChar91idChar93AcceptRoute =
+  ApiProposalsChar91idChar93AcceptRouteImport.update({
+    id: '/api/proposals/id/accept',
+    path: '/api/proposals/id/accept',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiProposalsProposalIdDeclineRoute =
   ApiProposalsProposalIdDeclineRouteImport.update({
     id: '/api/proposals/$proposalId/decline',
     path: '/api/proposals/$proposalId/decline',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInvoicesIdScheduleRoute = ApiInvoicesIdScheduleRouteImport.update({
+  id: '/api/invoices/$id/schedule',
+  path: '/api/invoices/$id/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvoicesIdPayRoute = ApiInvoicesIdPayRouteImport.update({
+  id: '/api/invoices/$id/pay',
+  path: '/api/invoices/$id/pay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvoicesIdPaymentLinkRoute =
+  ApiInvoicesIdPaymentLinkRouteImport.update({
+    id: '/api/invoices/$id/-payment-link',
+    path: '/api/invoices/$id/-payment-link',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalAnalyticsBackfillRoute =
   ApiInternalAnalyticsBackfillRouteImport.update({
     id: '/api/internal/analytics/backfill',
     path: '/api/internal/analytics/backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiContractsIdStatusRoute = ApiContractsIdStatusRouteImport.update({
+  id: '/api/contracts/$id/status',
+  path: '/api/contracts/$id/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContractsContractIdSendRoute =
+  ApiContractsContractIdSendRouteImport.update({
+    id: '/api/contracts/$contractId/-send',
+    path: '/api/contracts/$contractId/-send',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiConnectionsIdVerifyRoute = ApiConnectionsIdVerifyRouteImport.update({
@@ -551,6 +805,12 @@ const ApiProspectsIdKeywordsIndexRoute =
     path: '/api/prospects/$id/keywords/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiProposalsChar91idChar93SectionsIndexRoute =
+  ApiProposalsChar91idChar93SectionsIndexRouteImport.update({
+    id: '/api/proposals/id/sections/',
+    path: '/api/proposals/id/sections/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiClientsClientIdGoalsIndexRoute =
   ApiClientsClientIdGoalsIndexRouteImport.update({
     id: '/api/clients/$clientId/goals/',
@@ -580,6 +840,12 @@ const AppClientsClientIdBriefsIndexRoute =
     id: '/clients/$clientId/briefs/',
     path: '/clients/$clientId/briefs/',
     getParentRoute: () => AppRouteRoute,
+  } as any)
+const ApiTemplatesProposalsTemplateIdDuplicateRoute =
+  ApiTemplatesProposalsTemplateIdDuplicateRouteImport.update({
+    id: '/duplicate',
+    path: '/duplicate',
+    getParentRoute: () => ApiTemplatesProposalsTemplateIdRoute,
   } as any)
 const ApiSeoVoiceClientIdProtectionRulesRoute =
   ApiSeoVoiceClientIdProtectionRulesRouteImport.update({
@@ -664,6 +930,18 @@ const ApiProspectsIdKeywordsImportRoute =
     path: '/api/prospects/$id/keywords/import',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiProposalsChar91idChar93ServicesResolvedRoute =
+  ApiProposalsChar91idChar93ServicesResolvedRouteImport.update({
+    id: '/resolved',
+    path: '/resolved',
+    getParentRoute: () => ApiProposalsChar91idChar93ServicesRoute,
+  } as any)
+const ApiProposalsChar91idChar93SectionsChar91sidChar93Route =
+  ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport.update({
+    id: '/api/proposals/id/sections/sid',
+    path: '/api/proposals/id/sections/sid',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiClientsClientIdGscDailyRoute =
   ApiClientsClientIdGscDailyRouteImport.update({
     id: '/api/clients/$clientId/gsc/daily',
@@ -736,6 +1014,12 @@ const ApiSeoLinksOpportunitiesIdApproveRoute =
     path: '/api/seo/links/opportunities/$id/approve',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute =
+  ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRouteImport.update({
+    id: '/vid/restore',
+    path: '/vid/restore',
+    getParentRoute: () => ApiProposalsChar91idChar93VersionsRoute,
+  } as any)
 const ApiClientsClientIdGoalsSnapshotsBatchRoute =
   ApiClientsClientIdGoalsSnapshotsBatchRouteImport.update({
     id: '/api/clients/$clientId/goals/snapshots/batch',
@@ -756,6 +1040,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof AppSupportRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/api/detect-platform': typeof ApiDetectPlatformRoute
+  '/api/translate': typeof ApiTranslateRoute
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
@@ -771,10 +1056,19 @@ export interface FileRoutesByFullPath {
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
+  '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
+  '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
+  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
+  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
+  '/api/proposals/track': typeof ApiProposalsTrackRoute
+  '/api/prospects/confirm': typeof ApiProspectsConfirmRoute
+  '/api/prospects/extract': typeof ApiProspectsExtractRoute
+  '/api/report-templates/$id': typeof ApiReportTemplatesIdRoute
   '/api/reports/$id': typeof ApiReportsIdRouteWithChildren
+  '/api/reports/generate': typeof ApiReportsGenerateRoute
   '/api/reverts/execute': typeof ApiRevertsExecuteRoute
   '/api/reverts/preview': typeof ApiRevertsPreviewRoute
   '/api/schedules/$id': typeof ApiSchedulesIdRoute
@@ -787,16 +1081,27 @@ export interface FileRoutesByFullPath {
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
   '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
+  '/api/services/$serviceId': typeof ApiServicesServiceIdRouteWithChildren
+  '/api/settings/language': typeof ApiSettingsLanguageRoute
+  '/api/settings/payments': typeof ApiSettingsPaymentsRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/variables/$id': typeof ApiVariablesIdRoute
+  '/api/variables/categories': typeof ApiVariablesCategoriesRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
+  '/api/webhooks/dokobit': typeof ApiWebhooksDokobitRoute
+  '/api/webhooks/revolut': typeof ApiWebhooksRevolutRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/proposals/': typeof AppProposalsIndexRoute
   '/prospects/': typeof AppProspectsIndexRoute
   '/api/branding/': typeof ApiBrandingIndexRoute
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
+  '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
   '/api/schedules/': typeof ApiSchedulesIndexRoute
+  '/api/services/': typeof ApiServicesIndexRoute
+  '/api/variables/': typeof ApiVariablesIndexRoute
   '/clients/$clientId/voice': typeof AppClientsClientIdVoiceRouteRouteWithChildren
   '/proposals/$proposalId/edit': typeof AppProposalsProposalIdEditRoute
   '/prospects/$prospectId/proposal': typeof AppProspectsProspectIdProposalRoute
@@ -813,8 +1118,23 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
+  '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
+  '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
+  '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
+  '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
+  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
+  '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
+  '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
+  '/api/proposals/id/generate': typeof ApiProposalsChar91idChar93GenerateRoute
+  '/api/proposals/id/link': typeof ApiProposalsChar91idChar93LinkRoute
+  '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
+  '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
+  '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
+  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
+  '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
+  '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
   '/api/prospects/$prospectId/scrape-config': typeof ApiProspectsProspectIdScrapeConfigRoute
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
@@ -822,12 +1142,15 @@ export interface FileRoutesByFullPath {
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
   '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
+  '/api/services/$serviceId/duplicate': typeof ApiServicesServiceIdDuplicateRoute
+  '/api/templates/proposals/$templateId': typeof ApiTemplatesProposalsTemplateIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
   '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
+  '/api/templates/proposals/': typeof ApiTemplatesProposalsIndexRoute
   '/clients/$clientId/briefs/$briefId': typeof AppClientsClientIdBriefsBriefIdRoute
   '/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
@@ -835,6 +1158,8 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
+  '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
+  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -849,14 +1174,17 @@ export interface FileRoutesByFullPath {
   '/api/seo/voice/$clientId/compliance': typeof ApiSeoVoiceClientIdComplianceRoute
   '/api/seo/voice/$clientId/preview': typeof ApiSeoVoiceClientIdPreviewRoute
   '/api/seo/voice/$clientId/protection-rules': typeof ApiSeoVoiceClientIdProtectionRulesRoute
+  '/api/templates/proposals/$templateId/duplicate': typeof ApiTemplatesProposalsTemplateIdDuplicateRoute
   '/clients/$clientId/briefs/': typeof AppClientsClientIdBriefsIndexRoute
   '/clients/$clientId/connections/': typeof AppClientsClientIdConnectionsIndexRoute
   '/clients/$clientId/voice/': typeof AppClientsClientIdVoiceIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/api/clients/$clientId/goals/': typeof ApiClientsClientIdGoalsIndexRoute
+  '/api/proposals/id/sections/': typeof ApiProposalsChar91idChar93SectionsIndexRoute
   '/api/prospects/$id/keywords/': typeof ApiProspectsIdKeywordsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
+  '/api/proposals/id/versions/vid/restore': typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -870,6 +1198,7 @@ export interface FileRoutesByTo {
   '/support': typeof AppSupportRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/api/detect-platform': typeof ApiDetectPlatformRoute
+  '/api/translate': typeof ApiTranslateRoute
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
@@ -884,10 +1213,19 @@ export interface FileRoutesByTo {
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
+  '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
+  '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
+  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
+  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
+  '/api/proposals/track': typeof ApiProposalsTrackRoute
+  '/api/prospects/confirm': typeof ApiProspectsConfirmRoute
+  '/api/prospects/extract': typeof ApiProspectsExtractRoute
+  '/api/report-templates/$id': typeof ApiReportTemplatesIdRoute
   '/api/reports/$id': typeof ApiReportsIdRouteWithChildren
+  '/api/reports/generate': typeof ApiReportsGenerateRoute
   '/api/reverts/execute': typeof ApiRevertsExecuteRoute
   '/api/reverts/preview': typeof ApiRevertsPreviewRoute
   '/api/schedules/$id': typeof ApiSchedulesIdRoute
@@ -900,16 +1238,27 @@ export interface FileRoutesByTo {
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
   '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
+  '/api/services/$serviceId': typeof ApiServicesServiceIdRouteWithChildren
+  '/api/settings/language': typeof ApiSettingsLanguageRoute
+  '/api/settings/payments': typeof ApiSettingsPaymentsRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/variables/$id': typeof ApiVariablesIdRoute
+  '/api/variables/categories': typeof ApiVariablesCategoriesRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
+  '/api/webhooks/dokobit': typeof ApiWebhooksDokobitRoute
+  '/api/webhooks/revolut': typeof ApiWebhooksRevolutRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/proposals': typeof AppProposalsIndexRoute
   '/prospects': typeof AppProspectsIndexRoute
   '/api/branding': typeof ApiBrandingIndexRoute
   '/api/changes': typeof ApiChangesIndexRoute
   '/api/connections': typeof ApiConnectionsIndexRoute
   '/api/goal-templates': typeof ApiGoalTemplatesIndexRoute
+  '/api/report-templates': typeof ApiReportTemplatesIndexRoute
   '/api/reports': typeof ApiReportsIndexRoute
   '/api/schedules': typeof ApiSchedulesIndexRoute
+  '/api/services': typeof ApiServicesIndexRoute
+  '/api/variables': typeof ApiVariablesIndexRoute
   '/proposals/$proposalId/edit': typeof AppProposalsProposalIdEditRoute
   '/prospects/$prospectId/proposal': typeof AppProspectsProspectIdProposalRoute
   '/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
@@ -924,8 +1273,23 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
+  '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
+  '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
+  '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
+  '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
+  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
+  '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
+  '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
+  '/api/proposals/id/generate': typeof ApiProposalsChar91idChar93GenerateRoute
+  '/api/proposals/id/link': typeof ApiProposalsChar91idChar93LinkRoute
+  '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
+  '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
+  '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
+  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
+  '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
+  '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
   '/api/prospects/$prospectId/scrape-config': typeof ApiProspectsProspectIdScrapeConfigRoute
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
@@ -933,12 +1297,15 @@ export interface FileRoutesByTo {
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
   '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
+  '/api/services/$serviceId/duplicate': typeof ApiServicesServiceIdDuplicateRoute
+  '/api/templates/proposals/$templateId': typeof ApiTemplatesProposalsTemplateIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
   '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
+  '/api/templates/proposals': typeof ApiTemplatesProposalsIndexRoute
   '/clients/$clientId/briefs/$briefId': typeof AppClientsClientIdBriefsBriefIdRoute
   '/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
@@ -946,6 +1313,8 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
+  '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
+  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -960,14 +1329,17 @@ export interface FileRoutesByTo {
   '/api/seo/voice/$clientId/compliance': typeof ApiSeoVoiceClientIdComplianceRoute
   '/api/seo/voice/$clientId/preview': typeof ApiSeoVoiceClientIdPreviewRoute
   '/api/seo/voice/$clientId/protection-rules': typeof ApiSeoVoiceClientIdProtectionRulesRoute
+  '/api/templates/proposals/$templateId/duplicate': typeof ApiTemplatesProposalsTemplateIdDuplicateRoute
   '/clients/$clientId/briefs': typeof AppClientsClientIdBriefsIndexRoute
   '/clients/$clientId/connections': typeof AppClientsClientIdConnectionsIndexRoute
   '/clients/$clientId/voice': typeof AppClientsClientIdVoiceIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/api/clients/$clientId/goals': typeof ApiClientsClientIdGoalsIndexRoute
+  '/api/proposals/id/sections': typeof ApiProposalsChar91idChar93SectionsIndexRoute
   '/api/prospects/$id/keywords': typeof ApiProspectsIdKeywordsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
+  '/api/proposals/id/versions/vid/restore': typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -984,6 +1356,7 @@ export interface FileRoutesById {
   '/_app/support': typeof AppSupportRoute
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/api/detect-platform': typeof ApiDetectPlatformRoute
+  '/api/translate': typeof ApiTranslateRoute
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
@@ -1000,10 +1373,19 @@ export interface FileRoutesById {
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
+  '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
+  '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
+  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
+  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
+  '/api/proposals/track': typeof ApiProposalsTrackRoute
+  '/api/prospects/confirm': typeof ApiProspectsConfirmRoute
+  '/api/prospects/extract': typeof ApiProspectsExtractRoute
+  '/api/report-templates/$id': typeof ApiReportTemplatesIdRoute
   '/api/reports/$id': typeof ApiReportsIdRouteWithChildren
+  '/api/reports/generate': typeof ApiReportsGenerateRoute
   '/api/reverts/execute': typeof ApiRevertsExecuteRoute
   '/api/reverts/preview': typeof ApiRevertsPreviewRoute
   '/api/schedules/$id': typeof ApiSchedulesIdRoute
@@ -1016,16 +1398,27 @@ export interface FileRoutesById {
   '/api/seo/keywords': typeof ApiSeoKeywordsRoute
   '/api/seo/projects': typeof ApiSeoProjectsRouteWithChildren
   '/api/seo/voice-templates': typeof ApiSeoVoiceTemplatesRoute
+  '/api/services/$serviceId': typeof ApiServicesServiceIdRouteWithChildren
+  '/api/settings/language': typeof ApiSettingsLanguageRoute
+  '/api/settings/payments': typeof ApiSettingsPaymentsRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
+  '/api/variables/$id': typeof ApiVariablesIdRoute
+  '/api/variables/categories': typeof ApiVariablesCategoriesRoute
   '/api/webhooks/$webhookId': typeof ApiWebhooksWebhookIdRoute
+  '/api/webhooks/dokobit': typeof ApiWebhooksDokobitRoute
+  '/api/webhooks/revolut': typeof ApiWebhooksRevolutRoute
+  '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/_app/proposals/': typeof AppProposalsIndexRoute
   '/_app/prospects/': typeof AppProspectsIndexRoute
   '/api/branding/': typeof ApiBrandingIndexRoute
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
+  '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
   '/api/schedules/': typeof ApiSchedulesIndexRoute
+  '/api/services/': typeof ApiServicesIndexRoute
+  '/api/variables/': typeof ApiVariablesIndexRoute
   '/_app/clients/$clientId/voice': typeof AppClientsClientIdVoiceRouteRouteWithChildren
   '/_app/proposals/$proposalId/edit': typeof AppProposalsProposalIdEditRoute
   '/_app/prospects/$prospectId/proposal': typeof AppProspectsProspectIdProposalRoute
@@ -1042,8 +1435,23 @@ export interface FileRoutesById {
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
+  '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
+  '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
+  '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
+  '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
+  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
+  '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
+  '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
+  '/api/proposals/id/generate': typeof ApiProposalsChar91idChar93GenerateRoute
+  '/api/proposals/id/link': typeof ApiProposalsChar91idChar93LinkRoute
+  '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
+  '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
+  '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
+  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
+  '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
+  '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
   '/api/prospects/$prospectId/scrape-config': typeof ApiProspectsProspectIdScrapeConfigRoute
   '/api/reports/$id/download': typeof ApiReportsIdDownloadRoute
@@ -1051,12 +1459,15 @@ export interface FileRoutesById {
   '/api/seo/links/suggestions': typeof ApiSeoLinksSuggestionsRouteWithChildren
   '/api/seo/projects/$projectId': typeof ApiSeoProjectsProjectIdRoute
   '/api/seo/voice/$clientId': typeof ApiSeoVoiceClientIdRouteWithChildren
+  '/api/services/$serviceId/duplicate': typeof ApiServicesServiceIdDuplicateRoute
+  '/api/templates/proposals/$templateId': typeof ApiTemplatesProposalsTemplateIdRouteWithChildren
   '/api/workspaces/$workspaceId/clients': typeof ApiWorkspacesWorkspaceIdClientsRoute
   '/api/workspaces/$workspaceId/membership': typeof ApiWorkspacesWorkspaceIdMembershipRoute
   '/api/workspaces/$workspaceId/ranking-data': typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   '/api/workspaces/$workspaceId/traffic-data': typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
   '/p/$token/payment/success': typeof PTokenPaymentSuccessRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
+  '/api/templates/proposals/': typeof ApiTemplatesProposalsIndexRoute
   '/_app/clients/$clientId/briefs/$briefId': typeof AppClientsClientIdBriefsBriefIdRoute
   '/_app/clients/$clientId/briefs/new': typeof AppClientsClientIdBriefsNewRoute
   '/_app/clients/$clientId/connections/new': typeof AppClientsClientIdConnectionsNewRoute
@@ -1064,6 +1475,8 @@ export interface FileRoutesById {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
+  '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
+  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1078,14 +1491,17 @@ export interface FileRoutesById {
   '/api/seo/voice/$clientId/compliance': typeof ApiSeoVoiceClientIdComplianceRoute
   '/api/seo/voice/$clientId/preview': typeof ApiSeoVoiceClientIdPreviewRoute
   '/api/seo/voice/$clientId/protection-rules': typeof ApiSeoVoiceClientIdProtectionRulesRoute
+  '/api/templates/proposals/$templateId/duplicate': typeof ApiTemplatesProposalsTemplateIdDuplicateRoute
   '/_app/clients/$clientId/briefs/': typeof AppClientsClientIdBriefsIndexRoute
   '/_app/clients/$clientId/connections/': typeof AppClientsClientIdConnectionsIndexRoute
   '/_app/clients/$clientId/voice/': typeof AppClientsClientIdVoiceIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/api/clients/$clientId/goals/': typeof ApiClientsClientIdGoalsIndexRoute
+  '/api/proposals/id/sections/': typeof ApiProposalsChar91idChar93SectionsIndexRoute
   '/api/prospects/$id/keywords/': typeof ApiProspectsIdKeywordsIndexRoute
   '/_project/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/api/clients/$clientId/goals/snapshots/batch': typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
+  '/api/proposals/id/versions/vid/restore': typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute
   '/api/seo/links/opportunities/$id/approve': typeof ApiSeoLinksOpportunitiesIdApproveRoute
   '/api/seo/links/opportunities/$id/reject': typeof ApiSeoLinksOpportunitiesIdRejectRoute
   '/api/seo/links/suggestions/$id/apply': typeof ApiSeoLinksSuggestionsIdApplyRoute
@@ -1101,6 +1517,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/subscribe'
     | '/api/detect-platform'
+    | '/api/translate'
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
@@ -1116,10 +1533,19 @@ export interface FileRouteTypes {
     | '/api/cron/automations'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
+    | '/api/onboarding/complete-item'
+    | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
+    | '/api/payments/installments'
+    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
+    | '/api/proposals/track'
+    | '/api/prospects/confirm'
+    | '/api/prospects/extract'
+    | '/api/report-templates/$id'
     | '/api/reports/$id'
+    | '/api/reports/generate'
     | '/api/reverts/execute'
     | '/api/reverts/preview'
     | '/api/schedules/$id'
@@ -1132,16 +1558,27 @@ export interface FileRouteTypes {
     | '/api/seo/keywords'
     | '/api/seo/projects'
     | '/api/seo/voice-templates'
+    | '/api/services/$serviceId'
+    | '/api/settings/language'
+    | '/api/settings/payments'
     | '/api/stripe/webhook'
+    | '/api/variables/$id'
+    | '/api/variables/categories'
     | '/api/webhooks/$webhookId'
+    | '/api/webhooks/dokobit'
+    | '/api/webhooks/revolut'
+    | '/api/webhooks/stripe'
     | '/proposals/'
     | '/prospects/'
     | '/api/branding/'
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
+    | '/api/report-templates/'
     | '/api/reports/'
     | '/api/schedules/'
+    | '/api/services/'
+    | '/api/variables/'
     | '/clients/$clientId/voice'
     | '/proposals/$proposalId/edit'
     | '/prospects/$prospectId/proposal'
@@ -1158,8 +1595,23 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
     | '/api/connections/$id/verify'
+    | '/api/contracts/$contractId/-send'
+    | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
+    | '/api/invoices/$id/-payment-link'
+    | '/api/invoices/$id/pay'
+    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
+    | '/api/proposals/id/accept'
+    | '/api/proposals/id/duplicate'
+    | '/api/proposals/id/generate'
+    | '/api/proposals/id/link'
+    | '/api/proposals/id/reject'
+    | '/api/proposals/id/resolve'
+    | '/api/proposals/id/send'
+    | '/api/proposals/id/services'
+    | '/api/proposals/id/versions'
+    | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
     | '/api/prospects/$prospectId/scrape-config'
     | '/api/reports/$id/download'
@@ -1167,12 +1619,15 @@ export interface FileRouteTypes {
     | '/api/seo/links/suggestions'
     | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
+    | '/api/services/$serviceId/duplicate'
+    | '/api/templates/proposals/$templateId'
     | '/api/workspaces/$workspaceId/clients'
     | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
     | '/p/$projectId/'
+    | '/api/templates/proposals/'
     | '/clients/$clientId/briefs/$briefId'
     | '/clients/$clientId/briefs/new'
     | '/clients/$clientId/connections/new'
@@ -1180,6 +1635,8 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
+    | '/api/proposals/id/sections/sid'
+    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1194,14 +1651,17 @@ export interface FileRouteTypes {
     | '/api/seo/voice/$clientId/compliance'
     | '/api/seo/voice/$clientId/preview'
     | '/api/seo/voice/$clientId/protection-rules'
+    | '/api/templates/proposals/$templateId/duplicate'
     | '/clients/$clientId/briefs/'
     | '/clients/$clientId/connections/'
     | '/clients/$clientId/voice/'
     | '/p/$projectId/audit/'
     | '/api/clients/$clientId/goals/'
+    | '/api/proposals/id/sections/'
     | '/api/prospects/$id/keywords/'
     | '/p/$projectId/audit/issues/$resultId'
     | '/api/clients/$clientId/goals/snapshots/batch'
+    | '/api/proposals/id/versions/vid/restore'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1215,6 +1675,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/subscribe'
     | '/api/detect-platform'
+    | '/api/translate'
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
@@ -1229,10 +1690,19 @@ export interface FileRouteTypes {
     | '/api/cron/automations'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
+    | '/api/onboarding/complete-item'
+    | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
+    | '/api/payments/installments'
+    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
+    | '/api/proposals/track'
+    | '/api/prospects/confirm'
+    | '/api/prospects/extract'
+    | '/api/report-templates/$id'
     | '/api/reports/$id'
+    | '/api/reports/generate'
     | '/api/reverts/execute'
     | '/api/reverts/preview'
     | '/api/schedules/$id'
@@ -1245,16 +1715,27 @@ export interface FileRouteTypes {
     | '/api/seo/keywords'
     | '/api/seo/projects'
     | '/api/seo/voice-templates'
+    | '/api/services/$serviceId'
+    | '/api/settings/language'
+    | '/api/settings/payments'
     | '/api/stripe/webhook'
+    | '/api/variables/$id'
+    | '/api/variables/categories'
     | '/api/webhooks/$webhookId'
+    | '/api/webhooks/dokobit'
+    | '/api/webhooks/revolut'
+    | '/api/webhooks/stripe'
     | '/proposals'
     | '/prospects'
     | '/api/branding'
     | '/api/changes'
     | '/api/connections'
     | '/api/goal-templates'
+    | '/api/report-templates'
     | '/api/reports'
     | '/api/schedules'
+    | '/api/services'
+    | '/api/variables'
     | '/proposals/$proposalId/edit'
     | '/prospects/$prospectId/proposal'
     | '/p/$projectId/ai'
@@ -1269,8 +1750,23 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
     | '/api/connections/$id/verify'
+    | '/api/contracts/$contractId/-send'
+    | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
+    | '/api/invoices/$id/-payment-link'
+    | '/api/invoices/$id/pay'
+    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
+    | '/api/proposals/id/accept'
+    | '/api/proposals/id/duplicate'
+    | '/api/proposals/id/generate'
+    | '/api/proposals/id/link'
+    | '/api/proposals/id/reject'
+    | '/api/proposals/id/resolve'
+    | '/api/proposals/id/send'
+    | '/api/proposals/id/services'
+    | '/api/proposals/id/versions'
+    | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
     | '/api/prospects/$prospectId/scrape-config'
     | '/api/reports/$id/download'
@@ -1278,12 +1774,15 @@ export interface FileRouteTypes {
     | '/api/seo/links/suggestions'
     | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
+    | '/api/services/$serviceId/duplicate'
+    | '/api/templates/proposals/$templateId'
     | '/api/workspaces/$workspaceId/clients'
     | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
     | '/p/$projectId'
+    | '/api/templates/proposals'
     | '/clients/$clientId/briefs/$briefId'
     | '/clients/$clientId/briefs/new'
     | '/clients/$clientId/connections/new'
@@ -1291,6 +1790,8 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
+    | '/api/proposals/id/sections/sid'
+    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1305,14 +1806,17 @@ export interface FileRouteTypes {
     | '/api/seo/voice/$clientId/compliance'
     | '/api/seo/voice/$clientId/preview'
     | '/api/seo/voice/$clientId/protection-rules'
+    | '/api/templates/proposals/$templateId/duplicate'
     | '/clients/$clientId/briefs'
     | '/clients/$clientId/connections'
     | '/clients/$clientId/voice'
     | '/p/$projectId/audit'
     | '/api/clients/$clientId/goals'
+    | '/api/proposals/id/sections'
     | '/api/prospects/$id/keywords'
     | '/p/$projectId/audit/issues/$resultId'
     | '/api/clients/$clientId/goals/snapshots/batch'
+    | '/api/proposals/id/versions/vid/restore'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1328,6 +1832,7 @@ export interface FileRouteTypes {
     | '/_app/support'
     | '/_authenticated/subscribe'
     | '/api/detect-platform'
+    | '/api/translate'
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
@@ -1344,10 +1849,19 @@ export interface FileRouteTypes {
     | '/api/cron/automations'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
+    | '/api/onboarding/complete-item'
+    | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
+    | '/api/payments/installments'
+    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
+    | '/api/proposals/track'
+    | '/api/prospects/confirm'
+    | '/api/prospects/extract'
+    | '/api/report-templates/$id'
     | '/api/reports/$id'
+    | '/api/reports/generate'
     | '/api/reverts/execute'
     | '/api/reverts/preview'
     | '/api/schedules/$id'
@@ -1360,16 +1874,27 @@ export interface FileRouteTypes {
     | '/api/seo/keywords'
     | '/api/seo/projects'
     | '/api/seo/voice-templates'
+    | '/api/services/$serviceId'
+    | '/api/settings/language'
+    | '/api/settings/payments'
     | '/api/stripe/webhook'
+    | '/api/variables/$id'
+    | '/api/variables/categories'
     | '/api/webhooks/$webhookId'
+    | '/api/webhooks/dokobit'
+    | '/api/webhooks/revolut'
+    | '/api/webhooks/stripe'
     | '/_app/proposals/'
     | '/_app/prospects/'
     | '/api/branding/'
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
+    | '/api/report-templates/'
     | '/api/reports/'
     | '/api/schedules/'
+    | '/api/services/'
+    | '/api/variables/'
     | '/_app/clients/$clientId/voice'
     | '/_app/proposals/$proposalId/edit'
     | '/_app/prospects/$prospectId/proposal'
@@ -1386,8 +1911,23 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
     | '/api/connections/$id/verify'
+    | '/api/contracts/$contractId/-send'
+    | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
+    | '/api/invoices/$id/-payment-link'
+    | '/api/invoices/$id/pay'
+    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
+    | '/api/proposals/id/accept'
+    | '/api/proposals/id/duplicate'
+    | '/api/proposals/id/generate'
+    | '/api/proposals/id/link'
+    | '/api/proposals/id/reject'
+    | '/api/proposals/id/resolve'
+    | '/api/proposals/id/send'
+    | '/api/proposals/id/services'
+    | '/api/proposals/id/versions'
+    | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
     | '/api/prospects/$prospectId/scrape-config'
     | '/api/reports/$id/download'
@@ -1395,12 +1935,15 @@ export interface FileRouteTypes {
     | '/api/seo/links/suggestions'
     | '/api/seo/projects/$projectId'
     | '/api/seo/voice/$clientId'
+    | '/api/services/$serviceId/duplicate'
+    | '/api/templates/proposals/$templateId'
     | '/api/workspaces/$workspaceId/clients'
     | '/api/workspaces/$workspaceId/membership'
     | '/api/workspaces/$workspaceId/ranking-data'
     | '/api/workspaces/$workspaceId/traffic-data'
     | '/p/$token/payment/success'
     | '/_project/p/$projectId/'
+    | '/api/templates/proposals/'
     | '/_app/clients/$clientId/briefs/$briefId'
     | '/_app/clients/$clientId/briefs/new'
     | '/_app/clients/$clientId/connections/new'
@@ -1408,6 +1951,8 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
+    | '/api/proposals/id/sections/sid'
+    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1422,14 +1967,17 @@ export interface FileRouteTypes {
     | '/api/seo/voice/$clientId/compliance'
     | '/api/seo/voice/$clientId/preview'
     | '/api/seo/voice/$clientId/protection-rules'
+    | '/api/templates/proposals/$templateId/duplicate'
     | '/_app/clients/$clientId/briefs/'
     | '/_app/clients/$clientId/connections/'
     | '/_app/clients/$clientId/voice/'
     | '/_project/p/$projectId/audit/'
     | '/api/clients/$clientId/goals/'
+    | '/api/proposals/id/sections/'
     | '/api/prospects/$id/keywords/'
     | '/_project/p/$projectId/audit/issues/$resultId'
     | '/api/clients/$clientId/goals/snapshots/batch'
+    | '/api/proposals/id/versions/vid/restore'
     | '/api/seo/links/opportunities/$id/approve'
     | '/api/seo/links/opportunities/$id/reject'
     | '/api/seo/links/suggestions/$id/apply'
@@ -1443,6 +1991,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   HealthzRoute: typeof HealthzRoute
   ApiDetectPlatformRoute: typeof ApiDetectPlatformRoute
+  ApiTranslateRoute: typeof ApiTranslateRoute
   ApiWebhooksRoute: typeof ApiWebhooksRouteWithChildren
   PTokenRoute: typeof PTokenRouteWithChildren
   PipelineDashboardRoute: typeof PipelineDashboardRoute
@@ -1455,10 +2004,19 @@ export interface RootRouteChildren {
   ApiCronAutomationsRoute: typeof ApiCronAutomationsRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
+  ApiOnboardingCompleteItemRoute: typeof ApiOnboardingCompleteItemRoute
+  ApiOnboardingMagicLinkRoute: typeof ApiOnboardingMagicLinkRoute
   ApiPatternsPatternIdRoute: typeof ApiPatternsPatternIdRoute
+  ApiPaymentsInstallmentsRoute: typeof ApiPaymentsInstallmentsRoute
+  ApiPaymentsStatsRoute: typeof ApiPaymentsStatsRoute
   ApiProposalsAnalyticsRoute: typeof ApiProposalsAnalyticsRoute
   ApiProposalsStageRoute: typeof ApiProposalsStageRoute
+  ApiProposalsTrackRoute: typeof ApiProposalsTrackRoute
+  ApiProspectsConfirmRoute: typeof ApiProspectsConfirmRoute
+  ApiProspectsExtractRoute: typeof ApiProspectsExtractRoute
+  ApiReportTemplatesIdRoute: typeof ApiReportTemplatesIdRoute
   ApiReportsIdRoute: typeof ApiReportsIdRouteWithChildren
+  ApiReportsGenerateRoute: typeof ApiReportsGenerateRoute
   ApiRevertsExecuteRoute: typeof ApiRevertsExecuteRoute
   ApiRevertsPreviewRoute: typeof ApiRevertsPreviewRoute
   ApiSchedulesIdRoute: typeof ApiSchedulesIdRoute
@@ -1471,32 +2029,58 @@ export interface RootRouteChildren {
   ApiSeoKeywordsRoute: typeof ApiSeoKeywordsRoute
   ApiSeoProjectsRoute: typeof ApiSeoProjectsRouteWithChildren
   ApiSeoVoiceTemplatesRoute: typeof ApiSeoVoiceTemplatesRoute
+  ApiServicesServiceIdRoute: typeof ApiServicesServiceIdRouteWithChildren
+  ApiSettingsLanguageRoute: typeof ApiSettingsLanguageRoute
+  ApiSettingsPaymentsRoute: typeof ApiSettingsPaymentsRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  ApiVariablesIdRoute: typeof ApiVariablesIdRoute
+  ApiVariablesCategoriesRoute: typeof ApiVariablesCategoriesRoute
   ApiBrandingIndexRoute: typeof ApiBrandingIndexRoute
   ApiChangesIndexRoute: typeof ApiChangesIndexRoute
   ApiConnectionsIndexRoute: typeof ApiConnectionsIndexRoute
   ApiGoalTemplatesIndexRoute: typeof ApiGoalTemplatesIndexRoute
+  ApiReportTemplatesIndexRoute: typeof ApiReportTemplatesIndexRoute
   ApiReportsIndexRoute: typeof ApiReportsIndexRoute
   ApiSchedulesIndexRoute: typeof ApiSchedulesIndexRoute
+  ApiServicesIndexRoute: typeof ApiServicesIndexRoute
+  ApiVariablesIndexRoute: typeof ApiVariablesIndexRoute
   ApiBrandingClientIdLogoRoute: typeof ApiBrandingClientIdLogoRoute
   ApiClientsClientIdAlertRulesRoute: typeof ApiClientsClientIdAlertRulesRouteWithChildren
   ApiClientsClientIdAlertsRoute: typeof ApiClientsClientIdAlertsRoute
   ApiClientsClientIdDropEventsRoute: typeof ApiClientsClientIdDropEventsRoute
   ApiClientsClientIdReportsRoute: typeof ApiClientsClientIdReportsRoute
+  ApiContractsContractIdSendRoute: typeof ApiContractsContractIdSendRoute
+  ApiContractsIdStatusRoute: typeof ApiContractsIdStatusRoute
   ApiInternalAnalyticsBackfillRoute: typeof ApiInternalAnalyticsBackfillRoute
+  ApiInvoicesIdPaymentLinkRoute: typeof ApiInvoicesIdPaymentLinkRoute
+  ApiInvoicesIdPayRoute: typeof ApiInvoicesIdPayRoute
+  ApiInvoicesIdScheduleRoute: typeof ApiInvoicesIdScheduleRoute
   ApiProposalsProposalIdDeclineRoute: typeof ApiProposalsProposalIdDeclineRoute
+  ApiProposalsChar91idChar93AcceptRoute: typeof ApiProposalsChar91idChar93AcceptRoute
+  ApiProposalsChar91idChar93DuplicateRoute: typeof ApiProposalsChar91idChar93DuplicateRoute
+  ApiProposalsChar91idChar93GenerateRoute: typeof ApiProposalsChar91idChar93GenerateRoute
+  ApiProposalsChar91idChar93LinkRoute: typeof ApiProposalsChar91idChar93LinkRoute
+  ApiProposalsChar91idChar93RejectRoute: typeof ApiProposalsChar91idChar93RejectRoute
+  ApiProposalsChar91idChar93ResolveRoute: typeof ApiProposalsChar91idChar93ResolveRoute
+  ApiProposalsChar91idChar93SendRoute: typeof ApiProposalsChar91idChar93SendRoute
+  ApiProposalsChar91idChar93ServicesRoute: typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
+  ApiProposalsChar91idChar93VersionsRoute: typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
+  ApiProposalsPublicTokenRoute: typeof ApiProposalsPublicTokenRoute
   ApiProspectsProspectIdReportRoute: typeof ApiProspectsProspectIdReportRoute
   ApiProspectsProspectIdScrapeConfigRoute: typeof ApiProspectsProspectIdScrapeConfigRoute
   ApiSeoContentValidateRoute: typeof ApiSeoContentValidateRoute
   ApiSeoLinksSuggestionsRoute: typeof ApiSeoLinksSuggestionsRouteWithChildren
   ApiSeoVoiceClientIdRoute: typeof ApiSeoVoiceClientIdRouteWithChildren
+  ApiTemplatesProposalsTemplateIdRoute: typeof ApiTemplatesProposalsTemplateIdRouteWithChildren
   ApiWorkspacesWorkspaceIdClientsRoute: typeof ApiWorkspacesWorkspaceIdClientsRoute
   ApiWorkspacesWorkspaceIdMembershipRoute: typeof ApiWorkspacesWorkspaceIdMembershipRoute
   ApiWorkspacesWorkspaceIdRankingDataRoute: typeof ApiWorkspacesWorkspaceIdRankingDataRoute
   ApiWorkspacesWorkspaceIdTrafficDataRoute: typeof ApiWorkspacesWorkspaceIdTrafficDataRoute
+  ApiTemplatesProposalsIndexRoute: typeof ApiTemplatesProposalsIndexRoute
   ApiAuditPagesPageIdFindingsRoute: typeof ApiAuditPagesPageIdFindingsRoute
   ApiClientsClientIdGoalsGoalIdRoute: typeof ApiClientsClientIdGoalsGoalIdRoute
   ApiClientsClientIdGscDailyRoute: typeof ApiClientsClientIdGscDailyRoute
+  ApiProposalsChar91idChar93SectionsChar91sidChar93Route: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   ApiProspectsIdKeywordsImportRoute: typeof ApiProspectsIdKeywordsImportRoute
   ApiProspectsIdKeywordsPrioritizeRoute: typeof ApiProspectsIdKeywordsPrioritizeRoute
   ApiSeoLinksBatchApplySafeRoute: typeof ApiSeoLinksBatchApplySafeRoute
@@ -1505,6 +2089,7 @@ export interface RootRouteChildren {
   ApiSeoLinksHealthClientIdRoute: typeof ApiSeoLinksHealthClientIdRoute
   ApiSeoLinksOpportunitiesClientIdRoute: typeof ApiSeoLinksOpportunitiesClientIdRoute
   ApiClientsClientIdGoalsIndexRoute: typeof ApiClientsClientIdGoalsIndexRoute
+  ApiProposalsChar91idChar93SectionsIndexRoute: typeof ApiProposalsChar91idChar93SectionsIndexRoute
   ApiProspectsIdKeywordsIndexRoute: typeof ApiProspectsIdKeywordsIndexRoute
   ApiClientsClientIdGoalsSnapshotsBatchRoute: typeof ApiClientsClientIdGoalsSnapshotsBatchRoute
   ApiSeoLinksOpportunitiesIdApproveRoute: typeof ApiSeoLinksOpportunitiesIdApproveRoute
@@ -1569,6 +2154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/translate': {
+      id: '/api/translate'
+      path: '/api/translate'
+      fullPath: '/api/translate'
+      preLoaderRoute: typeof ApiTranslateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/detect-platform': {
       id: '/api/detect-platform'
       path: '/api/detect-platform'
@@ -1597,6 +2189,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBillingRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/api/variables/': {
+      id: '/api/variables/'
+      path: '/api/variables'
+      fullPath: '/api/variables/'
+      preLoaderRoute: typeof ApiVariablesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/services/': {
+      id: '/api/services/'
+      path: '/api/services'
+      fullPath: '/api/services/'
+      preLoaderRoute: typeof ApiServicesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/schedules/': {
       id: '/api/schedules/'
       path: '/api/schedules'
@@ -1609,6 +2215,13 @@ declare module '@tanstack/react-router' {
       path: '/api/reports'
       fullPath: '/api/reports/'
       preLoaderRoute: typeof ApiReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/report-templates/': {
+      id: '/api/report-templates/'
+      path: '/api/report-templates'
+      fullPath: '/api/report-templates/'
+      preLoaderRoute: typeof ApiReportTemplatesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/goal-templates/': {
@@ -1653,6 +2266,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProposalsIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/api/webhooks/stripe': {
+      id: '/api/webhooks/stripe'
+      path: '/stripe'
+      fullPath: '/api/webhooks/stripe'
+      preLoaderRoute: typeof ApiWebhooksStripeRouteImport
+      parentRoute: typeof ApiWebhooksRoute
+    }
+    '/api/webhooks/revolut': {
+      id: '/api/webhooks/revolut'
+      path: '/revolut'
+      fullPath: '/api/webhooks/revolut'
+      preLoaderRoute: typeof ApiWebhooksRevolutRouteImport
+      parentRoute: typeof ApiWebhooksRoute
+    }
+    '/api/webhooks/dokobit': {
+      id: '/api/webhooks/dokobit'
+      path: '/dokobit'
+      fullPath: '/api/webhooks/dokobit'
+      preLoaderRoute: typeof ApiWebhooksDokobitRouteImport
+      parentRoute: typeof ApiWebhooksRoute
+    }
     '/api/webhooks/$webhookId': {
       id: '/api/webhooks/$webhookId'
       path: '/$webhookId'
@@ -1660,11 +2294,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksWebhookIdRouteImport
       parentRoute: typeof ApiWebhooksRoute
     }
+    '/api/variables/categories': {
+      id: '/api/variables/categories'
+      path: '/api/variables/categories'
+      fullPath: '/api/variables/categories'
+      preLoaderRoute: typeof ApiVariablesCategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/variables/$id': {
+      id: '/api/variables/$id'
+      path: '/api/variables/$id'
+      fullPath: '/api/variables/$id'
+      preLoaderRoute: typeof ApiVariablesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe/webhook': {
       id: '/api/stripe/webhook'
       path: '/api/stripe/webhook'
       fullPath: '/api/stripe/webhook'
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/settings/payments': {
+      id: '/api/settings/payments'
+      path: '/api/settings/payments'
+      fullPath: '/api/settings/payments'
+      preLoaderRoute: typeof ApiSettingsPaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/settings/language': {
+      id: '/api/settings/language'
+      path: '/api/settings/language'
+      fullPath: '/api/settings/language'
+      preLoaderRoute: typeof ApiSettingsLanguageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/services/$serviceId': {
+      id: '/api/services/$serviceId'
+      path: '/api/services/$serviceId'
+      fullPath: '/api/services/$serviceId'
+      preLoaderRoute: typeof ApiServicesServiceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/seo/voice-templates': {
@@ -1751,11 +2420,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRevertsExecuteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/reports/generate': {
+      id: '/api/reports/generate'
+      path: '/api/reports/generate'
+      fullPath: '/api/reports/generate'
+      preLoaderRoute: typeof ApiReportsGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/reports/$id': {
       id: '/api/reports/$id'
       path: '/api/reports/$id'
       fullPath: '/api/reports/$id'
       preLoaderRoute: typeof ApiReportsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/report-templates/$id': {
+      id: '/api/report-templates/$id'
+      path: '/api/report-templates/$id'
+      fullPath: '/api/report-templates/$id'
+      preLoaderRoute: typeof ApiReportTemplatesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prospects/extract': {
+      id: '/api/prospects/extract'
+      path: '/api/prospects/extract'
+      fullPath: '/api/prospects/extract'
+      preLoaderRoute: typeof ApiProspectsExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/prospects/confirm': {
+      id: '/api/prospects/confirm'
+      path: '/api/prospects/confirm'
+      fullPath: '/api/prospects/confirm'
+      preLoaderRoute: typeof ApiProspectsConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/track': {
+      id: '/api/proposals/track'
+      path: '/api/proposals/track'
+      fullPath: '/api/proposals/track'
+      preLoaderRoute: typeof ApiProposalsTrackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/proposals/stage': {
@@ -1772,11 +2476,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/payments/stats': {
+      id: '/api/payments/stats'
+      path: '/api/payments/stats'
+      fullPath: '/api/payments/stats'
+      preLoaderRoute: typeof ApiPaymentsStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/payments/installments': {
+      id: '/api/payments/installments'
+      path: '/api/payments/installments'
+      fullPath: '/api/payments/installments'
+      preLoaderRoute: typeof ApiPaymentsInstallmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/patterns/$patternId': {
       id: '/api/patterns/$patternId'
       path: '/api/patterns/$patternId'
       fullPath: '/api/patterns/$patternId'
       preLoaderRoute: typeof ApiPatternsPatternIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/onboarding/magic-link': {
+      id: '/api/onboarding/magic-link'
+      path: '/api/onboarding/magic-link'
+      fullPath: '/api/onboarding/magic-link'
+      preLoaderRoute: typeof ApiOnboardingMagicLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/onboarding/complete-item': {
+      id: '/api/onboarding/complete-item'
+      path: '/api/onboarding/complete-item'
+      fullPath: '/api/onboarding/complete-item'
+      preLoaderRoute: typeof ApiOnboardingCompleteItemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/keywords/quick-check': {
@@ -1863,6 +2595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdRouteRouteImport
       parentRoute: typeof ProjectRouteRoute
     }
+    '/api/templates/proposals/': {
+      id: '/api/templates/proposals/'
+      path: '/api/templates/proposals'
+      fullPath: '/api/templates/proposals/'
+      preLoaderRoute: typeof ApiTemplatesProposalsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_project/p/$projectId/': {
       id: '/_project/p/$projectId/'
       path: '/'
@@ -1904,6 +2643,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/workspaces/$workspaceId/clients'
       preLoaderRoute: typeof ApiWorkspacesWorkspaceIdClientsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/templates/proposals/$templateId': {
+      id: '/api/templates/proposals/$templateId'
+      path: '/api/templates/proposals/$templateId'
+      fullPath: '/api/templates/proposals/$templateId'
+      preLoaderRoute: typeof ApiTemplatesProposalsTemplateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/services/$serviceId/duplicate': {
+      id: '/api/services/$serviceId/duplicate'
+      path: '/duplicate'
+      fullPath: '/api/services/$serviceId/duplicate'
+      preLoaderRoute: typeof ApiServicesServiceIdDuplicateRouteImport
+      parentRoute: typeof ApiServicesServiceIdRoute
     }
     '/api/seo/voice/$clientId': {
       id: '/api/seo/voice/$clientId'
@@ -1954,6 +2707,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProspectsProspectIdReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/proposals/public/$token': {
+      id: '/api/proposals/public/$token'
+      path: '/api/proposals/public/$token'
+      fullPath: '/api/proposals/public/$token'
+      preLoaderRoute: typeof ApiProposalsPublicTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/versions': {
+      id: '/api/proposals/id/versions'
+      path: '/api/proposals/id/versions'
+      fullPath: '/api/proposals/id/versions'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93VersionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/services': {
+      id: '/api/proposals/id/services'
+      path: '/api/proposals/id/services'
+      fullPath: '/api/proposals/id/services'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/send': {
+      id: '/api/proposals/id/send'
+      path: '/api/proposals/id/send'
+      fullPath: '/api/proposals/id/send'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93SendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/resolve': {
+      id: '/api/proposals/id/resolve'
+      path: '/api/proposals/id/resolve'
+      fullPath: '/api/proposals/id/resolve'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93ResolveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/reject': {
+      id: '/api/proposals/id/reject'
+      path: '/api/proposals/id/reject'
+      fullPath: '/api/proposals/id/reject'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93RejectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/link': {
+      id: '/api/proposals/id/link'
+      path: '/api/proposals/id/link'
+      fullPath: '/api/proposals/id/link'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93LinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/generate': {
+      id: '/api/proposals/id/generate'
+      path: '/api/proposals/id/generate'
+      fullPath: '/api/proposals/id/generate'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/duplicate': {
+      id: '/api/proposals/id/duplicate'
+      path: '/api/proposals/id/duplicate'
+      fullPath: '/api/proposals/id/duplicate'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93DuplicateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/accept': {
+      id: '/api/proposals/id/accept'
+      path: '/api/proposals/id/accept'
+      fullPath: '/api/proposals/id/accept'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93AcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/proposals/$proposalId/decline': {
       id: '/api/proposals/$proposalId/decline'
       path: '/api/proposals/$proposalId/decline'
@@ -1961,11 +2784,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsProposalIdDeclineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/invoices/$id/schedule': {
+      id: '/api/invoices/$id/schedule'
+      path: '/api/invoices/$id/schedule'
+      fullPath: '/api/invoices/$id/schedule'
+      preLoaderRoute: typeof ApiInvoicesIdScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invoices/$id/pay': {
+      id: '/api/invoices/$id/pay'
+      path: '/api/invoices/$id/pay'
+      fullPath: '/api/invoices/$id/pay'
+      preLoaderRoute: typeof ApiInvoicesIdPayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invoices/$id/-payment-link': {
+      id: '/api/invoices/$id/-payment-link'
+      path: '/api/invoices/$id/-payment-link'
+      fullPath: '/api/invoices/$id/-payment-link'
+      preLoaderRoute: typeof ApiInvoicesIdPaymentLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/analytics/backfill': {
       id: '/api/internal/analytics/backfill'
       path: '/api/internal/analytics/backfill'
       fullPath: '/api/internal/analytics/backfill'
       preLoaderRoute: typeof ApiInternalAnalyticsBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contracts/$id/status': {
+      id: '/api/contracts/$id/status'
+      path: '/api/contracts/$id/status'
+      fullPath: '/api/contracts/$id/status'
+      preLoaderRoute: typeof ApiContractsIdStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contracts/$contractId/-send': {
+      id: '/api/contracts/$contractId/-send'
+      path: '/api/contracts/$contractId/-send'
+      fullPath: '/api/contracts/$contractId/-send'
+      preLoaderRoute: typeof ApiContractsContractIdSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/connections/$id/verify': {
@@ -2087,6 +2945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProspectsIdKeywordsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/proposals/id/sections/': {
+      id: '/api/proposals/id/sections/'
+      path: '/api/proposals/id/sections'
+      fullPath: '/api/proposals/id/sections/'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93SectionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/clients/$clientId/goals/': {
       id: '/api/clients/$clientId/goals/'
       path: '/api/clients/$clientId/goals'
@@ -2121,6 +2986,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clients/$clientId/briefs/'
       preLoaderRoute: typeof AppClientsClientIdBriefsIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/api/templates/proposals/$templateId/duplicate': {
+      id: '/api/templates/proposals/$templateId/duplicate'
+      path: '/duplicate'
+      fullPath: '/api/templates/proposals/$templateId/duplicate'
+      preLoaderRoute: typeof ApiTemplatesProposalsTemplateIdDuplicateRouteImport
+      parentRoute: typeof ApiTemplatesProposalsTemplateIdRoute
     }
     '/api/seo/voice/$clientId/protection-rules': {
       id: '/api/seo/voice/$clientId/protection-rules'
@@ -2220,6 +3092,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProspectsIdKeywordsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/proposals/id/services/resolved': {
+      id: '/api/proposals/id/services/resolved'
+      path: '/resolved'
+      fullPath: '/api/proposals/id/services/resolved'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRouteImport
+      parentRoute: typeof ApiProposalsChar91idChar93ServicesRoute
+    }
+    '/api/proposals/id/sections/sid': {
+      id: '/api/proposals/id/sections/sid'
+      path: '/api/proposals/id/sections/sid'
+      fullPath: '/api/proposals/id/sections/sid'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/clients/$clientId/gsc/daily': {
       id: '/api/clients/$clientId/gsc/daily'
       path: '/api/clients/$clientId/gsc/daily'
@@ -2303,6 +3189,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/seo/links/opportunities/$id/approve'
       preLoaderRoute: typeof ApiSeoLinksOpportunitiesIdApproveRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/proposals/id/versions/vid/restore': {
+      id: '/api/proposals/id/versions/vid/restore'
+      path: '/vid/restore'
+      fullPath: '/api/proposals/id/versions/vid/restore'
+      preLoaderRoute: typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRouteImport
+      parentRoute: typeof ApiProposalsChar91idChar93VersionsRoute
     }
     '/api/clients/$clientId/goals/snapshots/batch': {
       id: '/api/clients/$clientId/goals/snapshots/batch'
@@ -2461,10 +3354,16 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 interface ApiWebhooksRouteChildren {
   ApiWebhooksWebhookIdRoute: typeof ApiWebhooksWebhookIdRoute
+  ApiWebhooksDokobitRoute: typeof ApiWebhooksDokobitRoute
+  ApiWebhooksRevolutRoute: typeof ApiWebhooksRevolutRoute
+  ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
 }
 
 const ApiWebhooksRouteChildren: ApiWebhooksRouteChildren = {
   ApiWebhooksWebhookIdRoute: ApiWebhooksWebhookIdRoute,
+  ApiWebhooksDokobitRoute: ApiWebhooksDokobitRoute,
+  ApiWebhooksRevolutRoute: ApiWebhooksRevolutRoute,
+  ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
 }
 
 const ApiWebhooksRouteWithChildren = ApiWebhooksRoute._addFileChildren(
@@ -2545,6 +3444,17 @@ const ApiSeoProjectsRouteWithChildren = ApiSeoProjectsRoute._addFileChildren(
   ApiSeoProjectsRouteChildren,
 )
 
+interface ApiServicesServiceIdRouteChildren {
+  ApiServicesServiceIdDuplicateRoute: typeof ApiServicesServiceIdDuplicateRoute
+}
+
+const ApiServicesServiceIdRouteChildren: ApiServicesServiceIdRouteChildren = {
+  ApiServicesServiceIdDuplicateRoute: ApiServicesServiceIdDuplicateRoute,
+}
+
+const ApiServicesServiceIdRouteWithChildren =
+  ApiServicesServiceIdRoute._addFileChildren(ApiServicesServiceIdRouteChildren)
+
 interface ApiClientsClientIdAlertRulesRouteChildren {
   ApiClientsClientIdAlertRulesRuleIdRoute: typeof ApiClientsClientIdAlertRulesRuleIdRoute
 }
@@ -2558,6 +3468,36 @@ const ApiClientsClientIdAlertRulesRouteChildren: ApiClientsClientIdAlertRulesRou
 const ApiClientsClientIdAlertRulesRouteWithChildren =
   ApiClientsClientIdAlertRulesRoute._addFileChildren(
     ApiClientsClientIdAlertRulesRouteChildren,
+  )
+
+interface ApiProposalsChar91idChar93ServicesRouteChildren {
+  ApiProposalsChar91idChar93ServicesResolvedRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRoute
+}
+
+const ApiProposalsChar91idChar93ServicesRouteChildren: ApiProposalsChar91idChar93ServicesRouteChildren =
+  {
+    ApiProposalsChar91idChar93ServicesResolvedRoute:
+      ApiProposalsChar91idChar93ServicesResolvedRoute,
+  }
+
+const ApiProposalsChar91idChar93ServicesRouteWithChildren =
+  ApiProposalsChar91idChar93ServicesRoute._addFileChildren(
+    ApiProposalsChar91idChar93ServicesRouteChildren,
+  )
+
+interface ApiProposalsChar91idChar93VersionsRouteChildren {
+  ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute: typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute
+}
+
+const ApiProposalsChar91idChar93VersionsRouteChildren: ApiProposalsChar91idChar93VersionsRouteChildren =
+  {
+    ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute:
+      ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute,
+  }
+
+const ApiProposalsChar91idChar93VersionsRouteWithChildren =
+  ApiProposalsChar91idChar93VersionsRoute._addFileChildren(
+    ApiProposalsChar91idChar93VersionsRouteChildren,
   )
 
 interface ApiSeoLinksSuggestionsRouteChildren {
@@ -2594,12 +3534,28 @@ const ApiSeoVoiceClientIdRouteChildren: ApiSeoVoiceClientIdRouteChildren = {
 const ApiSeoVoiceClientIdRouteWithChildren =
   ApiSeoVoiceClientIdRoute._addFileChildren(ApiSeoVoiceClientIdRouteChildren)
 
+interface ApiTemplatesProposalsTemplateIdRouteChildren {
+  ApiTemplatesProposalsTemplateIdDuplicateRoute: typeof ApiTemplatesProposalsTemplateIdDuplicateRoute
+}
+
+const ApiTemplatesProposalsTemplateIdRouteChildren: ApiTemplatesProposalsTemplateIdRouteChildren =
+  {
+    ApiTemplatesProposalsTemplateIdDuplicateRoute:
+      ApiTemplatesProposalsTemplateIdDuplicateRoute,
+  }
+
+const ApiTemplatesProposalsTemplateIdRouteWithChildren =
+  ApiTemplatesProposalsTemplateIdRoute._addFileChildren(
+    ApiTemplatesProposalsTemplateIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   ProjectRouteRoute: ProjectRouteRouteWithChildren,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   HealthzRoute: HealthzRoute,
   ApiDetectPlatformRoute: ApiDetectPlatformRoute,
+  ApiTranslateRoute: ApiTranslateRoute,
   ApiWebhooksRoute: ApiWebhooksRouteWithChildren,
   PTokenRoute: PTokenRouteWithChildren,
   PipelineDashboardRoute: PipelineDashboardRoute,
@@ -2612,10 +3568,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronAutomationsRoute: ApiCronAutomationsRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
+  ApiOnboardingCompleteItemRoute: ApiOnboardingCompleteItemRoute,
+  ApiOnboardingMagicLinkRoute: ApiOnboardingMagicLinkRoute,
   ApiPatternsPatternIdRoute: ApiPatternsPatternIdRoute,
+  ApiPaymentsInstallmentsRoute: ApiPaymentsInstallmentsRoute,
+  ApiPaymentsStatsRoute: ApiPaymentsStatsRoute,
   ApiProposalsAnalyticsRoute: ApiProposalsAnalyticsRoute,
   ApiProposalsStageRoute: ApiProposalsStageRoute,
+  ApiProposalsTrackRoute: ApiProposalsTrackRoute,
+  ApiProspectsConfirmRoute: ApiProspectsConfirmRoute,
+  ApiProspectsExtractRoute: ApiProspectsExtractRoute,
+  ApiReportTemplatesIdRoute: ApiReportTemplatesIdRoute,
   ApiReportsIdRoute: ApiReportsIdRouteWithChildren,
+  ApiReportsGenerateRoute: ApiReportsGenerateRoute,
   ApiRevertsExecuteRoute: ApiRevertsExecuteRoute,
   ApiRevertsPreviewRoute: ApiRevertsPreviewRoute,
   ApiSchedulesIdRoute: ApiSchedulesIdRoute,
@@ -2628,27 +3593,57 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSeoKeywordsRoute: ApiSeoKeywordsRoute,
   ApiSeoProjectsRoute: ApiSeoProjectsRouteWithChildren,
   ApiSeoVoiceTemplatesRoute: ApiSeoVoiceTemplatesRoute,
+  ApiServicesServiceIdRoute: ApiServicesServiceIdRouteWithChildren,
+  ApiSettingsLanguageRoute: ApiSettingsLanguageRoute,
+  ApiSettingsPaymentsRoute: ApiSettingsPaymentsRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  ApiVariablesIdRoute: ApiVariablesIdRoute,
+  ApiVariablesCategoriesRoute: ApiVariablesCategoriesRoute,
   ApiBrandingIndexRoute: ApiBrandingIndexRoute,
   ApiChangesIndexRoute: ApiChangesIndexRoute,
   ApiConnectionsIndexRoute: ApiConnectionsIndexRoute,
   ApiGoalTemplatesIndexRoute: ApiGoalTemplatesIndexRoute,
+  ApiReportTemplatesIndexRoute: ApiReportTemplatesIndexRoute,
   ApiReportsIndexRoute: ApiReportsIndexRoute,
   ApiSchedulesIndexRoute: ApiSchedulesIndexRoute,
+  ApiServicesIndexRoute: ApiServicesIndexRoute,
+  ApiVariablesIndexRoute: ApiVariablesIndexRoute,
   ApiBrandingClientIdLogoRoute: ApiBrandingClientIdLogoRoute,
   ApiClientsClientIdAlertRulesRoute:
     ApiClientsClientIdAlertRulesRouteWithChildren,
   ApiClientsClientIdAlertsRoute: ApiClientsClientIdAlertsRoute,
   ApiClientsClientIdDropEventsRoute: ApiClientsClientIdDropEventsRoute,
   ApiClientsClientIdReportsRoute: ApiClientsClientIdReportsRoute,
+  ApiContractsContractIdSendRoute: ApiContractsContractIdSendRoute,
+  ApiContractsIdStatusRoute: ApiContractsIdStatusRoute,
   ApiInternalAnalyticsBackfillRoute: ApiInternalAnalyticsBackfillRoute,
+  ApiInvoicesIdPaymentLinkRoute: ApiInvoicesIdPaymentLinkRoute,
+  ApiInvoicesIdPayRoute: ApiInvoicesIdPayRoute,
+  ApiInvoicesIdScheduleRoute: ApiInvoicesIdScheduleRoute,
   ApiProposalsProposalIdDeclineRoute: ApiProposalsProposalIdDeclineRoute,
+  ApiProposalsChar91idChar93AcceptRoute: ApiProposalsChar91idChar93AcceptRoute,
+  ApiProposalsChar91idChar93DuplicateRoute:
+    ApiProposalsChar91idChar93DuplicateRoute,
+  ApiProposalsChar91idChar93GenerateRoute:
+    ApiProposalsChar91idChar93GenerateRoute,
+  ApiProposalsChar91idChar93LinkRoute: ApiProposalsChar91idChar93LinkRoute,
+  ApiProposalsChar91idChar93RejectRoute: ApiProposalsChar91idChar93RejectRoute,
+  ApiProposalsChar91idChar93ResolveRoute:
+    ApiProposalsChar91idChar93ResolveRoute,
+  ApiProposalsChar91idChar93SendRoute: ApiProposalsChar91idChar93SendRoute,
+  ApiProposalsChar91idChar93ServicesRoute:
+    ApiProposalsChar91idChar93ServicesRouteWithChildren,
+  ApiProposalsChar91idChar93VersionsRoute:
+    ApiProposalsChar91idChar93VersionsRouteWithChildren,
+  ApiProposalsPublicTokenRoute: ApiProposalsPublicTokenRoute,
   ApiProspectsProspectIdReportRoute: ApiProspectsProspectIdReportRoute,
   ApiProspectsProspectIdScrapeConfigRoute:
     ApiProspectsProspectIdScrapeConfigRoute,
   ApiSeoContentValidateRoute: ApiSeoContentValidateRoute,
   ApiSeoLinksSuggestionsRoute: ApiSeoLinksSuggestionsRouteWithChildren,
   ApiSeoVoiceClientIdRoute: ApiSeoVoiceClientIdRouteWithChildren,
+  ApiTemplatesProposalsTemplateIdRoute:
+    ApiTemplatesProposalsTemplateIdRouteWithChildren,
   ApiWorkspacesWorkspaceIdClientsRoute: ApiWorkspacesWorkspaceIdClientsRoute,
   ApiWorkspacesWorkspaceIdMembershipRoute:
     ApiWorkspacesWorkspaceIdMembershipRoute,
@@ -2656,9 +3651,12 @@ const rootRouteChildren: RootRouteChildren = {
     ApiWorkspacesWorkspaceIdRankingDataRoute,
   ApiWorkspacesWorkspaceIdTrafficDataRoute:
     ApiWorkspacesWorkspaceIdTrafficDataRoute,
+  ApiTemplatesProposalsIndexRoute: ApiTemplatesProposalsIndexRoute,
   ApiAuditPagesPageIdFindingsRoute: ApiAuditPagesPageIdFindingsRoute,
   ApiClientsClientIdGoalsGoalIdRoute: ApiClientsClientIdGoalsGoalIdRoute,
   ApiClientsClientIdGscDailyRoute: ApiClientsClientIdGscDailyRoute,
+  ApiProposalsChar91idChar93SectionsChar91sidChar93Route:
+    ApiProposalsChar91idChar93SectionsChar91sidChar93Route,
   ApiProspectsIdKeywordsImportRoute: ApiProspectsIdKeywordsImportRoute,
   ApiProspectsIdKeywordsPrioritizeRoute: ApiProspectsIdKeywordsPrioritizeRoute,
   ApiSeoLinksBatchApplySafeRoute: ApiSeoLinksBatchApplySafeRoute,
@@ -2668,6 +3666,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSeoLinksHealthClientIdRoute: ApiSeoLinksHealthClientIdRoute,
   ApiSeoLinksOpportunitiesClientIdRoute: ApiSeoLinksOpportunitiesClientIdRoute,
   ApiClientsClientIdGoalsIndexRoute: ApiClientsClientIdGoalsIndexRoute,
+  ApiProposalsChar91idChar93SectionsIndexRoute:
+    ApiProposalsChar91idChar93SectionsIndexRoute,
   ApiProspectsIdKeywordsIndexRoute: ApiProspectsIdKeywordsIndexRoute,
   ApiClientsClientIdGoalsSnapshotsBatchRoute:
     ApiClientsClientIdGoalsSnapshotsBatchRoute,

@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff, CheckCircle, XCircle, Package, CreditCard, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 
 import {
   Button,
@@ -974,7 +977,7 @@ export default function GlobalSettingsPage() {
 
       {/* Quick Links to Settings Sub-pages */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 mb-8">
-        <Link href="/settings/services" className="group">
+        <Link href={"/settings/services" as AnyRoute} className="group">
           <div className="rounded-lg border border-border bg-card p-4 hover:border-primary transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -991,7 +994,7 @@ export default function GlobalSettingsPage() {
           </div>
         </Link>
 
-        <Link href="/settings/payments" className="group">
+        <Link href={"/settings/payments" as AnyRoute} className="group">
           <div className="rounded-lg border border-border bg-card p-4 hover:border-primary transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

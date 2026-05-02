@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { getServices } from "./actions";
 import { ServiceTable } from "./components/ServiceTable";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 
 /**
  * Services Settings Page
@@ -41,7 +44,7 @@ export default function ServicesSettingsPage() {
     <div className="container max-w-5xl py-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Link href="/settings" className="hover:text-foreground transition-colors">
+        <Link href={"/settings" as AnyRoute} className="hover:text-foreground transition-colors">
           Settings
         </Link>
         <span>/</span>

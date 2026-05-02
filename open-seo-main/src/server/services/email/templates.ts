@@ -19,6 +19,7 @@ export interface EmailTemplate {
 
 /**
  * Available email template IDs.
+ * Phase 60-05: Added installment reminder templates.
  */
 export type EmailTemplateId =
   | "proposal-sent"
@@ -27,7 +28,11 @@ export type EmailTemplateId =
   | "agreement-signed"
   | "invoice-sent"
   | "invoice-reminder"
-  | "welcome";
+  | "welcome"
+  | "installment-reminder"
+  | "installment-due-today"
+  | "installment-overdue"
+  | "installment-overdue-urgent";
 
 /**
  * English email templates.
@@ -168,6 +173,98 @@ We look forward to helping you succeed online!
 Best regards,
 The {{companyName}} Team`,
     variables: ["recipientName", "businessName", "companyName", "accountManager", "dashboardLink"],
+  },
+
+  // Phase 60-05: Installment reminder templates (D-18 to D-20)
+  "installment-reminder": {
+    subject: "Payment Reminder: {{installmentAmount}} due {{dueDate}}",
+    body: `Dear {{recipientName}},
+
+This is a friendly reminder that your payment of {{installmentAmount}} for {{businessName}} is due on {{dueDate}}.
+
+Payment details:
+- Installment: {{installmentNumber}} of {{totalInstallments}}
+- Amount due: {{installmentAmount}}
+- Due date: {{dueDate}}
+- Remaining balance: {{remainingAmount}}
+
+You can pay online here:
+{{paymentLink}}
+
+If you have any questions about your payment plan, please don't hesitate to contact us.
+
+Best regards,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "remainingAmount", "paymentLink", "senderName"],
+  },
+
+  "installment-due-today": {
+    subject: "Payment Due Today: {{installmentAmount}}",
+    body: `Dear {{recipientName}},
+
+Your payment of {{installmentAmount}} for {{businessName}} is due today.
+
+Payment details:
+- Installment: {{installmentNumber}} of {{totalInstallments}}
+- Amount due: {{installmentAmount}}
+- Remaining after this payment: {{remainingAmount}}
+
+Please complete your payment today:
+{{paymentLink}}
+
+Thank you for your prompt attention.
+
+Best regards,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "remainingAmount", "paymentLink", "senderName"],
+  },
+
+  "installment-overdue": {
+    subject: "Overdue Payment: {{installmentAmount}}",
+    body: `Dear {{recipientName}},
+
+Your payment of {{installmentAmount}} for {{businessName}} is now overdue.
+
+Payment details:
+- Installment: {{installmentNumber}} of {{totalInstallments}}
+- Amount overdue: {{installmentAmount}}
+- Original due date: {{dueDate}}
+
+Please complete your payment as soon as possible:
+{{paymentLink}}
+
+If you're experiencing any difficulties, please contact us so we can discuss your options.
+
+Best regards,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "paymentLink", "senderName"],
+  },
+
+  "installment-overdue-urgent": {
+    subject: "Urgent: Payment {{installmentAmount}} is 7 days overdue",
+    body: `Dear {{recipientName}},
+
+This is an urgent notice regarding your overdue payment for {{businessName}}.
+
+Your payment of {{installmentAmount}} was due on {{dueDate}} and is now 7 days overdue.
+
+Payment details:
+- Installment: {{installmentNumber}} of {{totalInstallments}}
+- Amount overdue: {{installmentAmount}}
+- Original due date: {{dueDate}}
+
+Please complete your payment immediately:
+{{paymentLink}}
+
+If you're experiencing difficulties with payment, please contact us as soon as possible to discuss alternative arrangements.
+
+Best regards,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "paymentLink", "senderName"],
   },
 };
 
@@ -311,6 +408,98 @@ Laukiame galimybes padeti Jums augti internete!
 Pagarbiai,
 {{companyName}} komanda`,
     variables: ["recipientName", "businessName", "companyName", "accountManager", "dashboardLink"],
+  },
+
+  // Phase 60-05: Installment reminder templates (D-18 to D-20)
+  "installment-reminder": {
+    subject: "Mokejimo priminimas: {{installmentAmount}} iki {{dueDate}}",
+    body: `Gerbiamas(-a) {{recipientName}},
+
+Primename, kad Jusu mokejimas {{installmentAmount}} uz {{businessName}} turi buti atliktas iki {{dueDate}}.
+
+Mokejimo informacija:
+- Imoka: {{installmentNumber}} is {{totalInstallments}}
+- Mokejimo suma: {{installmentAmount}}
+- Terminas: {{dueDate}}
+- Likusi suma: {{remainingAmount}}
+
+Galite apmoketi internetu cia:
+{{paymentLink}}
+
+Jei turite klausimu apie mokejimo plana, susisiekite su mumis.
+
+Pagarbiai,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "remainingAmount", "paymentLink", "senderName"],
+  },
+
+  "installment-due-today": {
+    subject: "Mokejimas siandien: {{installmentAmount}}",
+    body: `Gerbiamas(-a) {{recipientName}},
+
+Jusu mokejimas {{installmentAmount}} uz {{businessName}} turi buti atliktas siandien.
+
+Mokejimo informacija:
+- Imoka: {{installmentNumber}} is {{totalInstallments}}
+- Mokejimo suma: {{installmentAmount}}
+- Likusi suma po sio mokejimo: {{remainingAmount}}
+
+Prasome atlikti mokejima siandien:
+{{paymentLink}}
+
+Dekojame uz punktualuma.
+
+Pagarbiai,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "remainingAmount", "paymentLink", "senderName"],
+  },
+
+  "installment-overdue": {
+    subject: "Veluojantis mokejimas: {{installmentAmount}}",
+    body: `Gerbiamas(-a) {{recipientName}},
+
+Jusu mokejimas {{installmentAmount}} uz {{businessName}} yra pradelstas.
+
+Mokejimo informacija:
+- Imoka: {{installmentNumber}} is {{totalInstallments}}
+- Pradelstas mokejimas: {{installmentAmount}}
+- Pradinis terminas: {{dueDate}}
+
+Prasome kuo greiciau atlikti mokejima:
+{{paymentLink}}
+
+Jei turite sunkumu su mokejimu, susisiekite su mumis ir aptarsime galimybes.
+
+Pagarbiai,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "paymentLink", "senderName"],
+  },
+
+  "installment-overdue-urgent": {
+    subject: "Skubu: Mokejimas {{installmentAmount}} pradelstas 7 dienas",
+    body: `Gerbiamas(-a) {{recipientName}},
+
+Tai skubus pranesimas apie Jusu pradelstas mokejimas uz {{businessName}}.
+
+Jusu mokejimas {{installmentAmount}} turejo buti atliktas {{dueDate}} ir yra pradelstas 7 dienas.
+
+Mokejimo informacija:
+- Imoka: {{installmentNumber}} is {{totalInstallments}}
+- Pradelstas mokejimas: {{installmentAmount}}
+- Pradinis terminas: {{dueDate}}
+
+Prasome nedelsiant atlikti mokejima:
+{{paymentLink}}
+
+Jei turite sunkumu su mokejimu, kuo greiciau susisiekite su mumis ir aptarsime alternatyvius sprendimus.
+
+Pagarbiai,
+{{senderName}}
+{{companyName}}`,
+    variables: ["recipientName", "businessName", "companyName", "installmentNumber", "totalInstallments", "installmentAmount", "dueDate", "paymentLink", "senderName"],
   },
 };
 

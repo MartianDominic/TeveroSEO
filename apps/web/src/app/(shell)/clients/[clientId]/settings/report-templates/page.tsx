@@ -160,7 +160,7 @@ export default async function TemplateSettingsPage({
       {/* Page Header */}
       <div className="mb-8">
         <Link
-          href={`/clients/${clientId}/settings`}
+          href={`/clients/${clientId}/settings` as AnyRoute}
           className="inline-flex items-center gap-2 text-sm text-[var(--text-3)] hover:text-[var(--text-1)] mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -181,7 +181,7 @@ export default async function TemplateSettingsPage({
             <CardTitle className="text-[var(--text-1)]">
               Saved Templates
             </CardTitle>
-            <Link href={`/clients/${clientId}/reports/new`}>
+            <Link href={`/clients/${clientId}/reports/new` as AnyRoute}>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Template

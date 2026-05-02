@@ -25,6 +25,10 @@ const updateSettingsSchema = z.object({
   paymentTermsDays: z.number().int().min(0).max(90).optional(),
   stripeEnabled: z.boolean().optional(),
   revolutEnabled: z.boolean().optional(),
+  // Phase 60-05: Split payment settings
+  splitPaymentsEnabled: z.boolean().optional(),
+  availablePlans: z.array(z.enum(["full", "split_2", "split_3"])).optional(),
+  defaultPlan: z.enum(["full", "split_2", "split_3"]).optional(),
 });
 
 const revolutConnectSchema = z.object({
@@ -57,6 +61,12 @@ interface PaymentSettingsResponse {
     connected: boolean;
     merchantId: string | null;
   };
+  // Phase 60-05: Split payment settings
+  splitPayments: {
+    enabled: boolean;
+    availablePlans: string[];
+    defaultPlan: string;
+  };
 }
 
 /**
@@ -72,6 +82,12 @@ function formatSettingsResponse(
       paymentTermsDays: 14,
       stripe: { enabled: false, connected: false, publishableKey: null },
       revolut: { enabled: false, connected: false, merchantId: null },
+      // Phase 60-05: Default split payment settings
+      splitPayments: {
+        enabled: false,
+        availablePlans: ["full", "split_2", "split_3"],
+        defaultPlan: "full",
+      },
     };
   }
 
@@ -88,6 +104,12 @@ function formatSettingsResponse(
       enabled: settings.revolutEnabled,
       connected: !!settings.revolutApiKey,
       merchantId: settings.revolutMerchantId,
+    },
+    // Phase 60-05: Split payment settings from workspace settings
+    splitPayments: {
+      enabled: (settings as any).splitPaymentsEnabled ?? false,
+      availablePlans: (settings as any).availablePlans ?? ["full", "split_2", "split_3"],
+      defaultPlan: (settings as any).defaultPlan ?? "full",
     },
   };
 }
@@ -139,7 +161,15 @@ export const Route = createFileRoute("/api/settings/payments")({
             );
           }
 
-          const { defaultProvider, stripeEnabled, revolutEnabled } = parsed.data;
+          const { defaultProvider, stripeEnabled, revolutEnabled, splitPaymentsEnabled, availablePlans, defaultPlan } = parsed.data;
+
+          // Phase 60-05: Validate defaultPlan is in availablePlans
+          if (defaultPlan && availablePlans && !availablePlans.includes(defaultPlan)) {
+            return Response.json(
+              { success: false, error: "Default plan must be one of the available plans" },
+              { status: 400 }
+            );
+          }
 
           // Validate default provider is enabled
           if (defaultProvider) {
@@ -166,7 +196,11 @@ export const Route = createFileRoute("/api/settings/payments")({
             defaultProvider,
             stripeEnabled,
             revolutEnabled,
-          });
+            // Phase 60-05: Include split payment settings
+            ...(splitPaymentsEnabled !== undefined && { splitPaymentsEnabled }),
+            ...(availablePlans !== undefined && { availablePlans }),
+            ...(defaultPlan !== undefined && { defaultPlan }),
+          } as any);
 
           // Clear provider cache on settings change
           PaymentProviderFactory.clearProviderCache(auth.organizationId);

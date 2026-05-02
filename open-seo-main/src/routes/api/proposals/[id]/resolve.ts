@@ -29,7 +29,7 @@ const ResolveRequestSchema = z.object({
 });
 
 // @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/[id]/resolve")({
+export const Route = createFileRoute("/api/proposals/id/resolve")({
   server: {
     handlers: {
       /**

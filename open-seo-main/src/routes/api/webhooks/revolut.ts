@@ -8,6 +8,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RevolutProvider } from "@/server/features/payments/providers/RevolutProvider";
 import { InvoiceService } from "@/server/features/invoices/services/InvoiceService";
+import { PaymentScheduleService } from "@/server/features/payments/services/PaymentScheduleService";
+import { PaymentScheduleRepository } from "@/server/features/payments/repositories/PaymentScheduleRepository";
 import { processWebhookIdempotently } from "@/server/lib/webhook-utils";
 import { createLogger } from "@/server/lib/logger";
 
@@ -54,21 +56,65 @@ export const Route = createFileRoute("/api/webhooks/revolut")({
             async () => {
               switch (event.type) {
                 case "ORDER_COMPLETED": {
-                  // Payment successful - mark invoice as paid
+                  // Payment successful
                   const data = event.data as {
                     order_id: string;
                     payments?: Array<{ id: string }>;
+                    metadata?: Record<string, string>;
                   };
                   const paymentId = data.payments?.[0]?.id ?? "";
+                  const installmentId = data.metadata?.installmentId;
 
-                  await InvoiceService.handlePaymentSuccess(
-                    event.orderId,
-                    paymentId,
-                    "revolut"
-                  );
+                  if (installmentId) {
+                    // Phase 60-05: This is an installment payment
+                    log.info("Processing Revolut installment payment", {
+                      installmentId,
+                      orderId: event.orderId,
+                      paymentId,
+                    });
+
+                    // Record the payment
+                    await PaymentScheduleService.recordPayment(
+                      installmentId,
+                      "revolut",
+                      paymentId
+                    );
+
+                    // Get the installment to find the schedule
+                    const installment = await PaymentScheduleRepository.getInstallmentById(installmentId);
+                    if (installment) {
+                      const nextInstallment = await PaymentScheduleService.getFirstUnpaidInstallment(
+                        installment.scheduleId
+                      );
+
+                      if (nextInstallment) {
+                        log.info("More installments pending (Revolut)", {
+                          nextInstallmentId: nextInstallment.id,
+                          nextDueAt: nextInstallment.dueAt,
+                        });
+                      } else {
+                        const schedule = await PaymentScheduleRepository.getScheduleById(
+                          installment.scheduleId
+                        );
+                        if (schedule) {
+                          log.info("All Revolut installments paid", {
+                            invoiceId: schedule.invoiceId,
+                          });
+                        }
+                      }
+                    }
+                  } else {
+                    // Regular invoice payment
+                    await InvoiceService.handlePaymentSuccess(
+                      event.orderId,
+                      paymentId,
+                      "revolut"
+                    );
+                  }
                   log.info("Revolut payment completed", {
                     orderId: event.orderId,
                     paymentId,
+                    isInstallment: !!installmentId,
                   });
                   break;
                 }

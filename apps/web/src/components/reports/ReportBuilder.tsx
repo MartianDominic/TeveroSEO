@@ -8,7 +8,9 @@
  */
 
 import { useState, type FC } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, redirect } from "next/navigation";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 import {
   Card,
   CardContent,
@@ -79,9 +81,9 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
       });
 
       if (result.success && result.data) {
-        router.push(`/clients/${clientId}/reports/${result.data.reportId}`);
+        router.push(`/clients/${clientId}/reports/${result.data.reportId}` as AnyRoute);
       } else {
-        setError(result.error ?? "Failed to generate report");
+        setError("error" in result ? result.error : "Failed to generate report");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");

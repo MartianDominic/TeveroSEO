@@ -222,7 +222,66 @@
       "signed": "Signed",
       "active": "Active",
       "expired": "Expired",
-      "terminated": "Terminated"
+      "terminated": "Terminated",
+      "sent": "Sent",
+      "viewed": "Viewed",
+      "partiallySigned": "Partially Signed",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "success": {
+      "title": "Agreement Signed Successfully",
+      "thankYou": "Thank you for signing",
+      "message": "Your signature has been recorded. You will receive a confirmation email shortly.",
+      "document": "Document",
+      "signedAt": "Signed at",
+      "signingProgress": "{signed} of {total} signatures",
+      "allSigned": "All signatures collected",
+      "downloadPdf": "Download PDF",
+      "emailConfirmation": "A confirmation email has been sent to your inbox.",
+      "closeTab": "You can safely close this tab.",
+      "linkExpired": "This signing link has expired",
+      "linkExpiredDesc": "The agreement signing link is no longer valid. Please contact the sender for a new link.",
+      "alreadySigned": "You have already signed this agreement",
+      "alreadySignedDesc": "Your signature was recorded on {date}."
+    },
+    "tracker": {
+      "title": "Agreement Status",
+      "steps": {
+        "created": "Created",
+        "sent": "Sent",
+        "viewed": "Viewed",
+        "signing": "Signing",
+        "completed": "Completed"
+      },
+      "signatureProgress": "Signature Progress",
+      "awaitingSignatures": "Awaiting signatures",
+      "allSignaturesCollected": "All signatures collected",
+      "signaturesCount": "{signed} of {total} signatures",
+      "cancelled": "Agreement Cancelled",
+      "cancelledDesc": "This agreement has been cancelled and can no longer be signed."
+    },
+    "signers": {
+      "title": "Signers",
+      "noSigners": "No signers added yet",
+      "status": {
+        "pending": "Pending",
+        "sent": "Sent",
+        "viewed": "Viewed",
+        "signed": "Signed",
+        "declined": "Declined"
+      },
+      "signedAt": "Signed",
+      "viewedAt": "Viewed",
+      "sentAt": "Sent",
+      "resend": "Resend"
+    },
+    "actions": {
+      "send": "Send for Signing",
+      "remindAll": "Remind All",
+      "cancel": "Cancel Agreement",
+      "downloadPdf": "Download PDF",
+      "moreActions": "Actions"
     }
   },
   "invoices": {

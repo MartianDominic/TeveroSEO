@@ -10,9 +10,12 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import confetti from "canvas-confetti";
 import { CheckCircle, ArrowRight, Zap } from "lucide-react";
 import { Card, CardContent, Button } from "@tevero/ui";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 
 export interface ConversionSummaryProps {
   clientId: string;
@@ -118,10 +121,10 @@ export function ConversionSummary({
       {/* Actions */}
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Button variant="outline" asChild>
-          <Link href="/pipeline">View Pipeline</Link>
+          <Link href={"/pipeline" as AnyRoute}>View Pipeline</Link>
         </Button>
         <Button asChild>
-          <Link href={`/clients/${clientId}`}>
+          <Link href={`/clients/${clientId}` as AnyRoute}>
             Go to Client Dashboard
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

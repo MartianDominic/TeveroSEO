@@ -8,7 +8,10 @@
  */
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { CreditCard, Loader2, ExternalLink } from "lucide-react";
+
+type AnyRoute = Parameters<typeof redirect>[0];
 import {
   PaymentMethodSelector,
   type PaymentProviderType,
@@ -96,7 +99,7 @@ export function InvoicePaymentClient({
   }, [invoice.id, selectedProvider]);
 
   const handleSuccess = useCallback(() => {
-    router.push(`/invoices/${invoice.id}/success`);
+    router.push(`/invoices/${invoice.id}/success` as AnyRoute);
   }, [router, invoice.id]);
 
   const handleError = useCallback((err: Error) => {
