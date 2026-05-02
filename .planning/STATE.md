@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 57 (Proposal Editor Revolution) — EXECUTING
-Plan: Wave 2 complete (57-04 done)
-Plans: 4/8 complete (v7.0)
-Status: Wave 2 complete — 57-04 Drag-and-Drop Sections done
-Last activity: 2026-05-02 -- 57-04 @dnd-kit section reordering complete
+Plan: Wave 4 complete (57-05 done)
+Plans: 5/8 complete (v7.0)
+Status: Wave 4 complete — 57-05 Custom Sections + Add Section Menu done
+Last activity: 2026-05-02 -- 57-05 8 section types with CRUD API complete
 
 ### Phase 41 Focus
 
@@ -94,6 +94,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **57-01:** Three-layer template hierarchy (system/workspace/instance); soft delete via isArchived; sectionOrder jsonb array; i18n suffix pattern (name, nameEn, nameLt)
+- **57-05:** 8 custom section types (text/image/testimonial/case_study/video/comparison/timeline/custom); SECTION_TYPE_CONFIGS registry; video platform detection (YouTube/Vimeo/Loom); section data as JSON in content field
 - **57-03:** TipTap with StarterKit as rich text foundation; variable nodes as inline atoms (cannot split); category colors match palette; red dashed border for unresolved; VariableProvider fetches all in single request; character count excludes variable markup
 - **57-02:** 6 variable categories (client/provider/pricing/audit/dates/custom); entity path resolution with dot notation; computed functions for dynamic values; drag transfer uses text/plain + application/x-variable
 - **52-03:** shadow-lift hover pattern for EntrySelector; bg-accent-soft for selected states; border-hairline-2 for dividers; text-accent for links
