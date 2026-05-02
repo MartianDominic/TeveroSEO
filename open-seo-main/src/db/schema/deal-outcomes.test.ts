@@ -35,10 +35,10 @@ import {
 
 // Dashboard views imports
 import {
-  dashboardViews,
-  dashboardViewsRelations,
-  type DashboardViewSelect,
-  type DashboardViewInsert,
+  ccDashboardViews,
+  ccDashboardViewsRelations,
+  type CCDashboardViewSelect,
+  type CCDashboardViewInsert,
 } from "./dashboard-views";
 
 // Notification preferences imports
@@ -197,32 +197,32 @@ describe("Smart Alerts Schema", () => {
 });
 
 describe("Dashboard Views Schema", () => {
-  describe("dashboardViews table", () => {
+  describe("ccDashboardViews table", () => {
     it("allows null user_id for shared views", () => {
       // user_id should be nullable
-      expect(dashboardViews.userId).toBeDefined();
+      expect(ccDashboardViews.userId).toBeDefined();
     });
 
     it("has required columns", () => {
-      expect(dashboardViews.id).toBeDefined();
-      expect(dashboardViews.workspaceId).toBeDefined();
-      expect(dashboardViews.name).toBeDefined();
-      expect(dashboardViews.isDefault).toBeDefined();
-      expect(dashboardViews.filters).toBeDefined();
-      expect(dashboardViews.layout).toBeDefined();
+      expect(ccDashboardViews.id).toBeDefined();
+      expect(ccDashboardViews.workspaceId).toBeDefined();
+      expect(ccDashboardViews.name).toBeDefined();
+      expect(ccDashboardViews.isDefault).toBeDefined();
+      expect(ccDashboardViews.filters).toBeDefined();
+      expect(ccDashboardViews.layout).toBeDefined();
     });
 
     it("exports type definitions", () => {
-      const selectType: DashboardViewSelect = {} as DashboardViewSelect;
-      const insertType: DashboardViewInsert = {} as DashboardViewInsert;
+      const selectType: CCDashboardViewSelect = {} as CCDashboardViewSelect;
+      const insertType: CCDashboardViewInsert = {} as CCDashboardViewInsert;
       expect(selectType).toBeDefined();
       expect(insertType).toBeDefined();
     });
   });
 
   describe("relations", () => {
-    it("defines dashboardViews relations", () => {
-      expect(dashboardViewsRelations).toBeDefined();
+    it("defines ccDashboardViews relations", () => {
+      expect(ccDashboardViewsRelations).toBeDefined();
     });
   });
 });

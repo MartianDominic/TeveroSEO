@@ -39,11 +39,12 @@ export interface DashboardLayout {
 }
 
 /**
- * Dashboard views table - saved view configurations.
+ * Command Center dashboard views table - saved view configurations.
+ * Uses cc_dashboard_views to avoid conflict with Phase 21 dashboard_views.
  * NULL user_id means shared workspace view.
  */
-export const dashboardViews = pgTable(
-  "dashboard_views",
+export const ccDashboardViews = pgTable(
+  "cc_dashboard_views",
   {
     id: text("id").primaryKey(),
     workspaceId: text("workspace_id")
@@ -71,23 +72,23 @@ export const dashboardViews = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("ix_dashboard_views_workspace").on(table.workspaceId),
-    index("ix_dashboard_views_user").on(table.userId),
+    index("ix_cc_dashboard_views_workspace").on(table.workspaceId),
+    index("ix_cc_dashboard_views_user").on(table.userId),
   ]
 );
 
 // Relations
-export const dashboardViewsRelations = relations(dashboardViews, ({ one }) => ({
+export const ccDashboardViewsRelations = relations(ccDashboardViews, ({ one }) => ({
   workspace: one(organization, {
-    fields: [dashboardViews.workspaceId],
+    fields: [ccDashboardViews.workspaceId],
     references: [organization.id],
   }),
   user: one(user, {
-    fields: [dashboardViews.userId],
+    fields: [ccDashboardViews.userId],
     references: [user.id],
   }),
 }));
 
 // Inferred types
-export type DashboardViewSelect = typeof dashboardViews.$inferSelect;
-export type DashboardViewInsert = typeof dashboardViews.$inferInsert;
+export type CCDashboardViewSelect = typeof ccDashboardViews.$inferSelect;
+export type CCDashboardViewInsert = typeof ccDashboardViews.$inferInsert;
