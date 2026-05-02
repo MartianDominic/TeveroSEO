@@ -26,6 +26,8 @@ export interface ExtractionResult {
   confidence: number;
 }
 
+export type ConfirmationMode = "confirm" | "autonomous";
+
 interface ProspectWizardState {
   isOpen: boolean;
   step: WizardStep;
@@ -34,6 +36,7 @@ interface ProspectWizardState {
   extractedData: ExtractionResult | null;
   isSubmitting: boolean;
   error: string | null;
+  confirmationMode: ConfirmationMode;
 
   // Actions
   open: () => void;
@@ -44,6 +47,7 @@ interface ProspectWizardState {
   setExtractedData: (data: ExtractionResult) => void;
   setSubmitting: (isSubmitting: boolean) => void;
   setError: (error: string | null) => void;
+  setConfirmationMode: (mode: ConfirmationMode) => void;
   reset: () => void;
 }
 
@@ -55,6 +59,7 @@ const initialState = {
   extractedData: null,
   isSubmitting: false,
   error: null,
+  confirmationMode: "confirm" as ConfirmationMode,
 };
 
 export const useProspectWizardStore = create<ProspectWizardState>((set) => ({
@@ -68,5 +73,6 @@ export const useProspectWizardStore = create<ProspectWizardState>((set) => ({
   setExtractedData: (data) => set({ extractedData: data }),
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
   setError: (error) => set({ error }),
+  setConfirmationMode: (confirmationMode) => set({ confirmationMode }),
   reset: () => set(initialState),
 }));
