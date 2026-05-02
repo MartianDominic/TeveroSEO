@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-02T17:58:55.880Z"
+last_updated: "2026-05-02T18:47:16.890Z"
 last_activity: 2026-05-02 -- Phase --phase execution started
 progress:
   total_phases: 14
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **62-04:** Pre-computed aggregations in pipeline_metrics; 5-min refresh via BullMQ repeatable; stale-while-revalidate at 10 min; cents for financial precision; pct*10000 for conversion rate precision; in-memory rate limiting (1 req/workspace/min)
 - **57-07:** Context checkboxes dynamically show availability; 4 tone presets (professional/friendly/technical/urgent); Section prompts return structured JSON; Confidence scoring based on JSON validity, length, structure; AI-generated content creates version with changeType: ai_generated
 - **57-08:** 50 state limit for temporal history; platform detection for Mac vs Windows shortcuts; 32-char nanoid tokens for magic links (~10^57 entropy); 30-day default expiry; Beacon API for page leave duration tracking
 - **57-01:** Three-layer template hierarchy (system/workspace/instance); soft delete via isArchived; sectionOrder jsonb array; i18n suffix pattern (name, nameEn, nameLt)
@@ -319,6 +320,19 @@ Full platform internationalization with Lithuanian as primary target:
 | 61-06 | Token Refresh Worker + Dashboard UI | ✓ Complete |
 
 **Phase 61: COMPLETE** — OAuth for 15 platforms with encrypted token storage, token refresh worker (15-minute scheduler), connection dashboard UI, and world-class tiered crawler (DataForSEO primary for JS sites, NO auto-Playwright burn).
+
+### Phase 62 Progress (2026-05-02)
+
+| Plan | Name | Status |
+|------|------|--------|
+| 62-01 | Schema + Base Types | ✓ Complete |
+| 62-02 | Follow-Up System | ✓ Complete |
+| 62-03 | Engagement Workflow Engine | ✓ Complete |
+| 62-04 | Pipeline Metrics Worker | ✓ Complete |
+| 62-05 | Dashboard Core UI | In Progress |
+| 62-06 | Needs Attention List | In Progress |
+| 62-07 | Deal Flow Board | Pending |
+| 62-08 | Automation Hub | Pending |
 
 ### Phase 58 Summary (2026-05-02)
 
