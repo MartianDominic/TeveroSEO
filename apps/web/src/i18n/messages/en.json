@@ -93,7 +93,8 @@
       "heading2": "Heading 2",
       "heading3": "Heading 3",
       "paragraph": "Paragraph",
-      "insertVariable": "Insert Variable"
+      "insertVariable": "Insert Variable",
+      "characters": "chars"
     },
     "version": {
       "history": "Version History",
