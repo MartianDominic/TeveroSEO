@@ -304,21 +304,21 @@ Full platform internationalization with Lithuanian as primary target:
 | 58 | Service Catalog & Extra Services | ✓ Complete |
 | 59 | Agreement & Signing Excellence | ✓ Complete |
 | 60 | Payment Flexibility | ✓ Complete |
-| 61 | Platform Integration | Complete |
-| 62 | Agency Command Center | Planned |
+| 61 | Platform Integration | ✓ Complete |
+| 62 | Agency Command Center | In Progress |
 
 ### Phase 61 Summary (2026-05-02)
 
 | Plan | Name | Status |
 |------|------|--------|
-| 61-01 | Schema + Token Encryption + OAuth Base | Complete |
-| 61-02 | Google OAuth (GSC, GA, GBP) | Complete |
-| 61-03 | Shopify + Wix OAuth | Complete |
-| 61-04 | WordPress App Passwords + Other Platforms | Complete |
-| 61-05 | Fallback Crawler + Playwright | Complete |
-| 61-06 | Token Refresh Worker + Dashboard UI | Complete |
+| 61-01 | Schema + Token Encryption + OAuth Base | ✓ Complete |
+| 61-02 | Google OAuth (GSC, GA, GBP) | ✓ Complete |
+| 61-03 | Shopify + Wix OAuth | ✓ Complete |
+| 61-04 | WordPress App Passwords + Other Platforms | ✓ Complete |
+| 61-05 | Universal Crawler (tiered providers) | ✓ Complete |
+| 61-06 | Token Refresh Worker + Dashboard UI | ✓ Complete |
 
-**Phase 61: COMPLETE** — OAuth for 15 platforms with encrypted token storage, token refresh worker (15-minute scheduler), connection dashboard UI, and Puppeteer fallback crawler.
+**Phase 61: COMPLETE** — OAuth for 15 platforms with encrypted token storage, token refresh worker (15-minute scheduler), connection dashboard UI, and world-class tiered crawler (DataForSEO primary for JS sites, NO auto-Playwright burn).
 
 ### Phase 58 Summary (2026-05-02)
 
@@ -346,4 +346,4 @@ Full platform internationalization with Lithuanian as primary target:
 
 **Phase 59: COMPLETE** — 3-click signing experience with multi-signer support, sequential/parallel signing modes, pre-signing flow, professional PDF generation with custom fonts, EN/LT localization, Dokobit Smart-ID/Mobile-ID integration.
 
-**Next Phase:** 60 (Client Portal)
+**Next Phase:** 62 (Agency Command Center)
