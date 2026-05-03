@@ -1,13 +1,16 @@
 /**
  * Embedding configuration for the Keyword Intelligence System.
  *
- * Phase 42-03: Unified Embedding Service
+ * Phase 65: Upgraded to 768-dim for GraphRAG
+ * (Previously Phase 42-03: Unified Embedding Service)
  *
  * This module defines configuration constants and types for the embedding service.
  * Uses jina-embeddings-v3 as primary model (best Lithuanian quality per ADR-002)
- * with Matryoshka truncation to 384-dim for storage efficiency.
+ * with Matryoshka truncation to 768-dim for optimal quality in GraphRAG.
  *
- * Reference: .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-002)
+ * Reference:
+ * - .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-002)
+ * - .planning/phases/65-graphrag-foundation/65-RESEARCH.md
  */
 
 /**
@@ -31,7 +34,7 @@ export interface EmbeddingInput {
  * Output from single embedding generation.
  */
 export interface EmbeddingOutput {
-  /** The embedding vector (384-dim after Matryoshka truncation) */
+  /** The embedding vector (768-dim after Matryoshka truncation) */
   embedding: number[];
   /** Model used for generation */
   model: EmbeddingModel;
@@ -45,7 +48,7 @@ export interface EmbeddingOutput {
  * Output from batch embedding generation.
  */
 export interface BatchEmbeddingOutput {
-  /** Array of embedding vectors (each 384-dim) */
+  /** Array of embedding vectors (each 768-dim) */
   embeddings: number[][];
   /** Model used for generation */
   model: EmbeddingModel;
@@ -73,9 +76,9 @@ export interface JinaEmbeddingResponse {
 /**
  * Unified embedding configuration.
  *
- * Key decisions (per ADR-002):
+ * Key decisions (per ADR-002, updated Phase 65):
  * - Model: jina-v3 for best Lithuanian quality
- * - Dimensions: 384 storage (Matryoshka truncated from 1024 native)
+ * - Dimensions: 768 storage (upgraded from 384 for better GraphRAG quality)
  * - Cache: 30-day TTL for embeddings
  * - Batch: 32 texts per API call
  */
@@ -89,8 +92,8 @@ export const EMBEDDING_CONFIG = {
   /** Native output dimension of jina-v3 */
   nativeDim: 1024,
 
-  /** Storage dimension after Matryoshka truncation */
-  storageDim: 384,
+  /** Storage dimension after Matryoshka truncation - UPGRADED from 384 for better Lithuanian quality */
+  storageDim: 768,
 
   /** Prefix for query embeddings (required by jina/e5 models) */
   queryPrefix: "query: ",
@@ -113,9 +116,15 @@ export const EMBEDDING_CONFIG = {
   /** Cache TTL for embeddings (30 days in seconds) */
   cacheTtlSeconds: 30 * 24 * 60 * 60,
 
-  /** Redis key prefix for embedding cache */
-  cacheKeyPrefix: "emb:v1:",
+  /** Redis key prefix for embedding cache - v2 to invalidate old 384-dim cache */
+  cacheKeyPrefix: "emb:v2:",
 } as const;
+
+/**
+ * Export embedding dimension constant for GraphRAG schema.
+ * Use this constant when defining halfvec types in database schemas.
+ */
+export const GRAPHRAG_EMBEDDING_DIM = 768;
 
 /**
  * Cache key generator for embeddings.
