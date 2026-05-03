@@ -364,3 +364,68 @@ export const extractClientId = {
     }
   },
 };
+
+// UUID regex for client ID format validation
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Validate client ID format at the frontend layer.
+ *
+ * Phase 68-02: Client Context Security (HIGH-03 FIX)
+ * Defense-in-depth validation before any backend calls.
+ *
+ * @param clientId - The client ID to validate (may be null/undefined)
+ * @returns Validated client ID (trimmed)
+ * @throws AuthError with 400 if missing/invalid format
+ */
+export function validateClientAccess(clientId: string | null | undefined): string {
+  if (!clientId || clientId.trim() === '') {
+    throw new AuthError('Client ID is required', 400);
+  }
+
+  const trimmed = clientId.trim();
+
+  // Validate UUID format
+  if (!UUID_RE.test(trimmed)) {
+    throw new AuthError('Invalid client ID format', 400);
+  }
+
+  return trimmed;
+}
+
+/**
+ * Pre-check client ownership before expensive backend calls.
+ *
+ * Phase 68-02: Client Context Security (HIGH-03 FIX)
+ * This is an optimization that can short-circuit denied access
+ * before making full API calls.
+ *
+ * Note: This uses a lightweight HEAD request to check access.
+ * The actual operation still needs full backend authorization.
+ *
+ * @param clientId - The validated client ID
+ * @param userId - The authenticated user ID
+ * @returns true if user has access
+ * @throws AuthError with 403 if access denied
+ */
+export async function checkClientOwnership(
+  clientId: string,
+  userId: string
+): Promise<boolean> {
+  // Pre-check ownership before expensive backend calls
+  const response = await fetch(`/api/clients/${clientId}/access`, {
+    method: 'HEAD',
+    headers: { 'X-User-ID': userId },
+    credentials: 'include',
+  });
+
+  if (response.status === 403) {
+    throw new AuthError('Access denied to client', 403);
+  }
+
+  if (response.status === 404) {
+    throw new AuthError('Client not found', 404);
+  }
+
+  return response.ok;
+}
