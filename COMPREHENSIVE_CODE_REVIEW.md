@@ -1,4903 +1,3858 @@
-# TeveroSEO Comprehensive Code Review
+# TeveroSEO Comprehensive Code Review v2
 
-**Generated:** 2026-05-03
+**Generated:** 2026-05-03 (Post-Fix Validation)
 **Reviewers:** 20 Opus Subagents
-**Scope:** Full platform integration, user journeys, bugs, logical issues
+**Scope:** Full platform integration validation, user journeys, remaining bugs
 
 ---
 
 ## Executive Summary
 
-### Review Completed: 2026-05-03
-
-**20 Opus subagents** conducted an exhaustive code review across the entire TeveroSEO platform (apps/web, open-seo-main, AI-Writer).
+**20 Opus subagents** completed deep analysis of the entire TeveroSEO platform (apps/web, open-seo-main, AI-Writer). This is a post-fix validation review following 156 fixes from the previous review.
 
 ### Issue Totals
 
 | Severity | Count | Description |
 |----------|-------|-------------|
-| **CRITICAL** | 18 | Production-breaking, security vulnerabilities, data loss risks |
+| **CRITICAL** | 7 | Production-breaking, security vulnerabilities, data loss risks |
 | **HIGH** | 54 | Significant bugs, broken journeys, major integration issues |
-| **MEDIUM** | 84 | Noticeable issues, suboptimal UX, minor bugs |
-| **LOW** | 68 | Code smells, optimization opportunities |
-| **TOTAL** | **224** | |
+| **MEDIUM** | 101 | Noticeable issues, suboptimal UX, minor bugs |
+| **LOW** | 25 | Code smells, optimization opportunities |
+| **TOTAL** | **187** | Down from 224 in previous review |
 
-### Top 10 Critical Issues (Immediate Action Required)
+### Top 10 Critical/High Issues (Immediate Action Required)
 
-| # | Agent | Issue | Impact |
-|---|-------|-------|--------|
-| 1 | 18 | Invoice payment proxy has NO authentication | Anyone can query invoices/create payment sessions |
-| 2 | 18 | FFmpeg command injection in video edit service | Remote code execution possible |
-| 3 | 13 | Platform connections API uses spoofable x-user-id header | Authentication bypass, OAuth credential theft |
-| 4 | 13 | /api/translate endpoint has no authentication | Unlimited Gemini API credit consumption |
-| 5 | 2 | Duplicate `clients` tables with incompatible schemas | Data inconsistency across services |
-| 6 | 4 | Unvalidated credentials field accepts arbitrary objects | Potential injection vectors |
-| 7 | 8 | SEO setup page missing - blocks entire audit journey | Core feature completely inaccessible |
-| 8 | 3 | Proposal beacon tracking token not validated | Unauthorized tracking manipulation |
-| 9 | 19 | N+1 query in dashboard metrics (50 queries per load) | Severe performance degradation |
-| 10 | 20 | Publishing pipeline missing transaction boundaries | Data corruption on partial failures |
+| # | Agent | Issue | File | Impact |
+|---|-------|-------|------|--------|
+| 1 | 7 | Proposal accept lacks rate limiting | `open-seo-main/.../accept.ts:23` | DoS on proposal state |
+| 2 | 7 | Cron processes all workspaces unbounded | `open-seo-main/.../automations.ts:29` | Memory exhaustion at scale |
+| 3 | 7 | Proposal accept lacks CSRF protection | `open-seo-main/.../accept.ts` | Malicious auto-accept links |
+| 4 | 5 | useEffect inside switch violates Rules of Hooks | `apps/web/.../connect/page.tsx:128` | React crash on step transition |
+| 5 | 15 | Client creation does not sync to open-seo-main | Cross-service | Onboarding 404 for new clients |
+| 6 | 15 | Backend URL validation missing | AI-Writer/backend | Accepts javascript:/data: schemes |
+| 7 | 9 | Dynamic SQL in cache eviction | AI-Writer/backend | Potential SQL injection risk |
+| 8 | 11 | Ranking worker bypasses DLQ | open-seo-main | Failed jobs lost |
+| 9 | 11 | APScheduler uses in-memory store in dev | AI-Writer | Jobs lost on restart |
+| 10 | 14 | N+1 UPDATE loops in FollowUpService | open-seo-main | Performance degradation |
 
 ### Critical Integration Gap
 
-**AI-Writer → open-seo-main calls are broken**: Internal link insertion and link graph updates fail with 401 because AI-Writer doesn't send authentication headers. This breaks the content publishing pipeline's link optimization features.
+**Client sync between services still needs work**: When a client is created in AI-Writer, it does not automatically propagate to open-seo-main. The onboarding checklist page returns 404 for newly created clients until manual sync occurs.
 
-### Top Priorities by Category
+### Significant Improvements Since v1 Review
 
-**Security (Fix This Week)**
-- Add authentication to invoice payment proxy
-- Sanitize FFmpeg parameters in video edit service
-- Replace x-user-id header auth with proper JWT validation
-- Fix X-Forwarded-For spoofing to fail closed
+1. **Auth security hardened** - No unprotected API routes found, all use proper Clerk/JWT validation
+2. **SSRF protection comprehensive** - Covers hex/octal IP encoding, IPv4-mapped IPv6, DNS fail-closed
+3. **Previous CRITICAL issues resolved** - Invoice proxy auth, FFmpeg injection, x-user-id header auth all fixed
+4. **XSS fully mitigated** - All HTML rendering uses properly configured DOMPurify sanitization
+5. **Database schemas aligned** - UUID type mismatch and table collisions resolved
 
-**User Journey (Blocking)**
-- Create `/clients/[clientId]/seo/setup` page
-- Add loading.tsx to critical routes (only 6 of 191 have them)
-- Add retry buttons to all error states
+### Priorities by Category
 
-**Performance (High Impact)**
-- Fix N+1 in `_compute_client_metrics()` - batch with window functions
-- Add LRU eviction to SQLAlchemy engine cache (memory leak)
-- Implement singleflight for portfolio aggregates
+**Architecture (This Sprint)**
+- Add rate limiting + CSRF to proposal accept endpoint
+- Paginate cron automation workspace processing
+- Fix useEffect Rules of Hooks violation in connect wizard
+- Implement client sync from AI-Writer to open-seo-main
 
-**Data Integrity**
-- Resolve duplicate clients table schemas
-- Add transaction boundaries to publishing pipeline
-- Fix voice_profiles CASCADE vs SET NULL conflict
+**Performance (Next Sprint)**
+- Fix N+1 UPDATE loops in FollowUpService (3 locations)
+- Add missing indexes on follow_ups.status
+- Increase worker concurrency from 1 for audit/crawl/linking
 
-### Strengths Identified
-
-Despite the issues found, the codebase demonstrates strong foundations:
-- Comprehensive Zod validation throughout
-- Robust SSRF protection with Unicode normalization
-- Timing-safe token comparisons
-- Multi-tier rate limiting with fail-closed behavior
-- Excellent BullMQ job queue implementation
-- Good transaction utilities with idempotency support
-- DOMPurify XSS prevention
-- Fernet encryption for credentials at rest
-
-### Detailed Findings
-
-See individual agent sections below for complete findings with file paths, code snippets, and remediation recommendations.
+**Code Quality (Backlog)**
+- Create @tevero/utils package for shared utilities (cn, fetchWithTimeout, currency)
+- Remove ~272 dead code instances identified by Agent 19
+- Add loading.tsx to 5+ critical routes missing progressive loading
 
 ---
 
-## Review Agents & Assignments
+## Review Agents
 
-| Agent | Domain | Focus Area |
-|-------|--------|------------|
-| 1 | Cross-App Integration | Service boundaries, API contracts, shared state |
-| 2 | Database Schema Consistency | client_id alignment, foreign keys, migrations |
-| 3 | Authentication Flow | Clerk integration, session handling, authorization |
-| 4 | API Contract Validation | Request/response shapes, error handling |
-| 5 | Server Actions (apps/web) | Next.js server actions, data mutations |
-| 6 | Middleware & Routing | Route protection, redirects, middleware chain |
-| 7 | Client Components & State | React state, hooks, client-side logic |
-| 8 | UI/UX User Journey | Critical flows, accessibility, edge cases |
-| 9 | Error Handling | Error boundaries, fallbacks, recovery |
-| 10 | BullMQ Job System | Queue processing, job lifecycle, retries |
-| 11 | SEO Audit Engine | Tier 1-4 checks, scoring logic, validation |
-| 12 | Drizzle Database Ops | Query patterns, N+1, transactions |
-| 13 | TanStack Start API | Route handlers, middleware, responses |
-| 14 | FastAPI Backend | Python endpoints, validation, async |
-| 15 | Content Pipeline | AI generation, quality gates, workflow |
-| 16 | Voice/Brand System | VoiceConstraintBuilder, profiles, consistency |
-| 17 | AI-Writer React UI | Component logic, state, integration |
-| 18 | Security Audit | OWASP Top 10, injection, auth bypass |
-| 19 | Performance Analysis | N+1, caching, bottlenecks, memory |
-| 20 | Data Flow Integrity | Cross-service consistency, race conditions |
-
----
-
-## Severity Legend
-
-- **CRITICAL**: Production-breaking, data loss, security vulnerability
-- **HIGH**: Significant bug, broken user journey, major integration issue
-- **MEDIUM**: Noticeable issue, suboptimal UX, minor bug
-- **LOW**: Code smell, optimization opportunity, minor inconsistency
+| # | Agent | Domain | Issues | Status |
+|---|-------|--------|--------|--------|
+| 1 | Cross-Service Integration | API boundaries, shared state, data flow | 0C/3H/6M/4L | Complete |
+| 2 | Database Consistency | Schema alignment, migrations, FKs | 0C/2H/5M | Complete |
+| 3 | Authentication Flow | Clerk, sessions, RBAC, token handling | 0C/2H/4M | Complete |
+| 4 | API Contract Validation | Types, Zod, OpenAPI, response shapes | 0C/2H/5M/4L | Complete |
+| 5 | apps/web Architecture | RSC, server actions, app router | 1C/3H/4M | Complete |
+| 6 | apps/web Components | UI, state, accessibility | 0C/7H/12M | Complete |
+| 7 | open-seo-main Architecture | TanStack Start, loaders, actions | 3C/5H/8M | Complete |
+| 8 | open-seo-main SEO Logic | Tier 1-4 audits, scoring, crawl | 0C/2H/4M/3L | Complete |
+| 9 | AI-Writer Backend | FastAPI, endpoints, Pydantic | 1C/6H/8M | Complete |
+| 10 | AI-Writer Frontend | React, hooks, API calls | 0C/3H/12M/5L | Complete |
+| 11 | BullMQ & Queue System | Jobs, retries, concurrency | 0C/3H/5M/2L | Complete |
+| 12 | Error Handling | Boundaries, recovery, logging | 0C/1H/3M | Complete |
+| 13 | Security Audit | OWASP, injection, secrets | 0C/0H/2M/3L | Complete |
+| 14 | Performance Analysis | N+1, caching, bundle size | 0C/3H/2M | Complete |
+| 15 | Client Onboarding Journey | Signup → workspace → first audit | 2C/3H/4M | Complete |
+| 16 | SEO Audit Workflow | Submit → crawl → report | 0C/3H/5M | Complete |
+| 17 | Content Pipeline | Voice → generate → publish | 0C/0H/2M/1L | Complete |
+| 18 | Code Duplication | DRY, shared utilities | 0C/4H/7M/3L | Complete |
+| 19 | Dead Code & Dependencies | Unused exports, stale deps | 0C/0H/10M | Complete |
+| 20 | Config & Environment | Env vars, secrets, nginx | 0C/2H/3M | Complete |
 
 ---
 
-## Agent 1: Cross-App Integration Review
-
-### Scope
-- Service communication between apps/web, open-seo-main, AI-Writer
-- Shared client_id entity consistency
-- API boundary contracts
-- nginx routing alignment
-
-### Findings
-
-#### Summary
-
-| Severity | Count | Key Issues |
-|----------|-------|------------|
-| CRITICAL | 0 | None identified |
-| HIGH | 4 | Missing API endpoints, auth header inconsistency, circuit breaker gap, error response mismatch |
-| MEDIUM | 5 | Timeout misalignment, hardcoded URLs in tests, redundant circuit breakers, missing correlation ID forwarding, inconsistent client_id naming |
-| LOW | 3 | Documentation gaps, CORS configuration differences, unused internal auth middleware |
-
----
-
-#### HIGH-01: AI-Writer calls open-seo-main endpoints without authentication
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/internal_link_inserter.py:315-327`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/auto_publish_executor.py:62-72`
-
-**Code:**
-```python
-# internal_link_inserter.py - no auth headers
-response = await client.post(
-    f"{self.open_seo_url}/api/seo/links/suggestions",
-    json={...},
-    timeout=30.0,
-)
-
-# auto_publish_executor.py - no auth headers  
-response = await client.post(
-    f"{open_seo_url}/api/seo/links/graph/update",
-    json={...},
-    timeout=30.0,
-)
-```
-
-**Issue:** Both `suggestions.ts` and `graph.update.ts` in open-seo-main require authentication via `requireApiAuth()` and `resolveUserContext()`. AI-Writer's calls do not include any authentication headers.
-
-**Impact:** All internal link insertion and link graph update calls will fail with 401 Unauthorized, breaking the content publishing pipeline's link optimization features.
-
-**Recommendation:** 
-1. Add `INTERNAL_API_KEY` environment variable to AI-Writer
-2. Include `X-Internal-Api-Key` header in all open-seo-main API calls
-3. Update open-seo-main endpoints to accept internal API key as alternative auth method
-
----
-
-#### HIGH-02: Duplicate circuit breaker implementations without shared state
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/utils/service-circuit-breakers.ts`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/intelligence/autonomous_pipeline.py:32-146`
-
-**Issue:** AI-Writer implements its own `CircuitBreaker` class for open-seo API calls, while apps/web has a separate implementation. These do not share state, so if open-seo-main goes down:
-- apps/web circuit breaker will open after 5 failures
-- AI-Writer circuit breaker will independently require 5 more failures before opening
-- Each application continues to hammer the failing service independently
-
-**Impact:** During service outages, the total failure count before circuit opens is doubled, increasing load on failing services and extending recovery time.
-
-**Recommendation:** Implement shared circuit breaker state via Redis, or at minimum align the circuit breaker configurations between applications.
-
----
-
-#### HIGH-03: Error response format mismatch between backends
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:117-184`
-- `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/seo/links/suggestions.ts:326`
-
-**Code:**
-```typescript
-// apps/web normalizes errors expecting: {"error": "message", "code": "ERROR_CODE"}
-// But open-seo-main returns:
-return Response.json(
-  { error: error.message },  // No 'code' field!
-  { status }
-);
-```
-
-**Issue:** open-seo-main error responses lack the `code` field that apps/web's `normalizeBackendError()` expects. This results in all open-seo errors being categorized as `BACKEND_ERROR` instead of specific error codes.
-
-**Impact:** Error handling in apps/web cannot differentiate between error types from open-seo-main, leading to generic error messages for users.
-
-**Recommendation:** Update all open-seo-main API error responses to include a `code` field matching the error type.
-
----
-
-#### HIGH-04: nginx routes Tevero WebSocket to open-seo-main without auth alignment
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/docker/nginx/nginx.conf:313-325`
-
-**Code:**
-```nginx
-# seowith.tevero.lt routes /ws/ to open-seo WebSocket server
-location /ws/ {
-    proxy_pass http://open-seo:3003;
-    ...
-}
-```
-
-**Issue:** Tevero Web clients (seowith.tevero.lt) connect to open-seo-main's WebSocket server directly, but authentication may not be properly shared between the two applications.
-
-**Impact:** WebSocket connections from Tevero Web may fail auth or receive events for wrong clients if session handling differs.
-
-**Recommendation:** Document the WebSocket architecture and verify authentication flows work correctly across the proxy boundary.
-
----
-
-#### MEDIUM-01: Timeout configuration inconsistency across services
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:73` (30s default)
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/voiceApi.ts:136` (60s for voice)
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/internal_link_inserter.py:325` (30s)
-- `/home/dominic/Documents/TeveroSEO/docker/nginx/nginx.conf:39-40` (300s proxy timeout)
-
-**Issue:** nginx's 300s timeout allows slow requests to continue, but apps/web and AI-Writer will timeout after 30s and potentially retry, causing duplicate requests.
-
-**Impact:** For long-running operations, clients may receive timeout errors while the backend continues processing.
-
-**Recommendation:** Align timeout configurations and implement request idempotency keys.
-
----
-
-#### MEDIUM-02: Hardcoded localhost URLs in test files may leak to production
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/tests/test_auto_publish_executor.py:1`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/alwrity_utils/rate_limiter.py`
-
-**Code:**
-```python
-os.environ.setdefault("OPEN_SEO_API_URL", "http://localhost:3001")
-```
-
-**Issue:** Test files set default URLs to localhost, which can contaminate production if env vars are not properly set.
-
-**Recommendation:** Remove `setdefault` calls and require explicit env var configuration with startup validation.
-
----
-
-#### MEDIUM-03: Missing X-Correlation-Id forwarding in AI-Writer
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:244-247`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/internal_link_inserter.py`
-
-**Issue:** apps/web generates `X-Correlation-Id` for distributed tracing, but AI-Writer's cross-service calls do not include correlation IDs.
-
-**Impact:** Cannot trace requests from AI-Writer through to open-seo-main.
-
-**Recommendation:** Update AI-Writer's HTTP client to generate and include `X-Correlation-Id` headers.
-
----
-
-#### MEDIUM-04: Inconsistent client_id parameter naming (camelCase vs snake_case)
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/internal_link_inserter.py:319` (camelCase: `clientId`)
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/models/client.py:96` (snake_case: `client_id`)
-- `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/seo/links/suggestions.ts:67` (camelCase: `clientId`)
-
-**Issue:** AI-Writer uses snake_case in database models but camelCase in API requests. This inconsistency requires careful mapping.
-
-**Recommendation:** Standardize on camelCase for APIs and snake_case for database columns. Document the convention.
-
----
-
-#### MEDIUM-05: AI-Writer internal auth not used for outgoing requests
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/middleware/internal_auth.py`
-
-**Issue:** AI-Writer defines `verify_internal_api_key()` for incoming requests but outgoing requests to open-seo-main do not use authentication.
-
-**Recommendation:** Implement symmetric internal auth for both incoming and outgoing requests.
-
----
-
-#### LOW-01: Missing documentation for cross-service API contracts
-
-**Issue:** No formal API contract documentation exists for AI-Writer <-> open-seo-main communication.
-
-**Recommendation:** Create OpenAPI specifications for all cross-service APIs.
-
----
-
-#### LOW-02: CORS configuration differs between AI-Writer app.py and main.py
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/app.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/main.py`
-
-**Issue:** Both files configure CORS independently with similar but not identical allowed origins.
-
-**Recommendation:** Extract CORS configuration to a shared module.
-
----
-
-#### LOW-03: Internal auth middleware defined but incomplete
-
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/middleware/internal_auth.py`
-
-**Issue:** The pattern exists for internal auth but is only used for `/internal/*` endpoints, not for outgoing calls.
-
-**Recommendation:** Complete the internal auth implementation for all cross-service communication.
-
----
-
-### Architecture Summary
-
-**Integration Flow:**
-```
-apps/web (Next.js 15, port 3002)
-    |-- getFastApi/postFastApi --> AI-Writer (FastAPI, port 8000)
-    |-- getOpenSeo/postOpenSeo --> open-seo-main (TanStack Start, port 3001)
-
-AI-Writer (FastAPI, port 8000)
-    |-- internal_link_inserter --> open-seo-main /api/seo/links/suggestions [BROKEN: No auth]
-    |-- auto_publish_executor --> open-seo-main /api/seo/links/graph/update [BROKEN: No auth]
-    |-- /internal/* --> Receives calls from open-seo-main (token management)
-
-open-seo-main (TanStack Start, port 3001)
-    |-- /api/internal/analytics/backfill --> AI-Writer [Uses INTERNAL_API_KEY]
-    |-- /api/seo/* --> Serves apps/web requests
-
-nginx (reverse proxy)
-    |-- seowith.tevero.lt --> tevero-web:3002 (apps/web)
-    |-- app.openseo.so --> open-seo:3001 (open-seo-main)
-    |-- app.alwrity.com --> ai-writer-backend:8000 (AI-Writer)
-```
-
-**Key Integration Gaps:**
-1. AI-Writer -> open-seo-main calls lack authentication (HIGH-01)
-2. Error response formats are inconsistent (HIGH-03)
-3. Circuit breakers are duplicated and not shared (HIGH-02)
-4. Correlation IDs break at AI-Writer boundary (MEDIUM-03)
-
----
-
-## Agent 2: Database Schema Consistency Review
-
-### Scope
-- client_id as shared entity across databases
-- Schema alignment between alwrity (AI-Writer) and open_seo (open-seo-main)
-- Foreign key integrity
-- Migration consistency
-
-### Findings
-
-**Full findings available in:** `/home/dominic/Documents/TeveroSEO/AGENT2_DATABASE_SCHEMA_REVIEW.md`
-
-#### Summary: 2 databases reviewed, 37+ tables with client_id references
-
-| Severity | Count | Key Issues |
-|----------|-------|------------|
-| CRITICAL | 1 | Duplicate clients tables with incompatible schemas |
-| HIGH | 4 | UUID type mismatch, missing FK on client_settings, conflicting CASCADE behaviors, content_planning orphan-prone tables |
-| MEDIUM | 4 | Timestamp mechanisms differ, soft delete pattern mismatch, missing FK indexes, deprecated aliases remain |
-| LOW | 2 | Nullable workspace_id, naming convention differences |
-| RESOLVED | 1 | gsc_snapshots naming collision (historical) |
-
-**Key Findings:**
-- **CRITICAL-01**: Both databases define `clients` table with incompatible column sets (12 vs 25+ columns, different nullable constraints)
-- **HIGH-03**: voice_profiles schema/migration conflict: ORM expects SET NULL, migration applies CASCADE - will delete learned voice data on client removal
-- **HIGH-04**: AI-Writer content_planning tables use `user_id: Integer` with no FK and incompatible with Clerk's string user IDs
-- **MEDIUM-01**: Timestamp updates are ORM-level only - raw SQL updates bypass `updated_at` tracking
-
-**Cross-Database Integrity:**
-- open_seo: 25+ tables reference clients.id with proper FK constraints
-- alwrity: 12 tables reference clients.id, some with ORM-level FK only
-
-**Priority Actions:**
-1. Designate single client source of truth (resolves CRITICAL-01)
-2. Fix voice_profiles CASCADE -> SET NULL mismatch (fixes HIGH-03)
-3. Verify AI-Writer client_settings FK exists at DB level (fixes HIGH-02)
-4. Refactor content_planning user_id to workspace_id or add proper FK (fixes HIGH-04)
-
----
-
-## Agent 3: Authentication Flow Review
-
-### Scope
-- Clerk integration in apps/web
-- Session handling across services
-- Authorization checks consistency
-- Token propagation
-
-### Findings
+## Agent Findings
+
+### Agent 5: apps/web Architecture Review
+
+**Status:** Complete
+**Routes Analyzed:** 73 page components across 197 route directories
+**Server Actions Found:** 19 action files (dashboard, prospects, seo/audit, voice, webhooks, etc.)
+**API Routes Found:** 60 route handlers
+**Issues Found:** 8 (1 CRITICAL, 3 HIGH, 4 MEDIUM)
 
 #### CRITICAL Issues
 
-**CRIT-AUTH-01: Invoice Payment Proxy Lacks Authentication**
-- **File:** `/apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts` (lines 1-62)
-- **Description:** The invoice payment proxy endpoint forwards requests to open-seo-main without any authentication. Both GET and POST handlers are completely unauthenticated, allowing anyone to query invoice details and potentially create payment sessions for any invoice ID.
-- **Attack Vector:** An attacker can enumerate invoice IDs and retrieve payment details, or create payment sessions for invoices they don't own.
-- **Remediation:** Add authentication (at minimum `requireAuth()`) and verify the requester has access to the invoice's associated client before proxying.
-
-**CRIT-AUTH-02: Proposal Beacon Tracking Token Not Validated**
-- **File:** `/apps/web/src/app/api/proposals/beacon/route.ts` (lines 28-71)
-- **Description:** The beacon endpoint accepts any token parameter without validation. While the comment says "No authentication required - tracking is best-effort," the token is passed directly to open-seo-main's `/api/proposals/track` endpoint. If the backend doesn't validate the token cryptographically, attackers could forge tracking events or enumerate proposal tokens.
-- **Attack Vector:** Attacker can brute-force or enumerate proposal tracking tokens and inject fake view events.
-- **Remediation:** Ensure open-seo-main validates tracking tokens cryptographically (signed with secret). Consider adding rate limiting on tracking requests.
+**CRIT-01: useEffect inside switch statement render function**
+- **File:** `/apps/web/src/app/connect/page.tsx:128`
+- **Problem:** React hook `useEffect` is called inside a switch case render block, violating the Rules of Hooks. Hooks must be called at the top level of a component, not conditionally.
+- **Code:**
+  ```tsx
+  case "verifying":
+    React.useEffect(() => {
+      startVerification();
+    }, []);
+  ```
+- **Impact:** This will cause React to throw a "Rendered more hooks than during the previous render" error when the step transitions to "verifying", potentially crashing the connection wizard.
+- **Fix:** Move the useEffect to the top level of the component and make it conditional:
+  ```tsx
+  // At component top level
+  React.useEffect(() => {
+    if (state.step === "verifying") {
+      startVerification();
+    }
+  }, [state.step, startVerification]);
+  ```
 
 #### HIGH Issues
 
-**HIGH-AUTH-01: AI-Writer Query Token Authentication Deprecated But Still Active**
-- **File:** `/AI-Writer/backend/middleware/auth_middleware.py` (lines 370-575)
-- **Description:** The `get_current_user_with_query_token` function still accepts tokens via query parameters for media endpoints (`/api/media/`, `/api/audio/`, `/api/assets/`). Query parameter tokens are logged as deprecated but remain functional. Tokens in URLs leak via browser history, server logs, and referrer headers.
-- **Attack Vector:** Tokens exposed in URL can be captured from logs, browser history, or via referrer headers and replayed.
-- **Remediation:** Set a hard deprecation date and remove query token support. Force clients to use Authorization header. Implement short-lived, signed URLs for media access.
+**HIGH-01: Client component used at page level when RSC would be better**
+- **File:** `/apps/web/src/app/(shell)/clients/page.tsx:1`
+- **Problem:** The entire Clients page is a client component (`"use client"`), but the data fetching pattern uses `useEffect` + store instead of RSC data fetching.
+- **Impact:** Slower initial load (waterfall fetch), unnecessary JavaScript bundle size, no streaming/suspense benefits.
+- **Fix:** Convert to Server Component with data fetching:
+  ```tsx
+  // page.tsx (Server Component)
+  import { getClients } from "./actions";
+  export default async function ClientsPage() {
+    const clients = await getClients();
+    return <ClientList initialClients={clients} />;
+  }
+  ```
 
-**HIGH-AUTH-02: Missing orgId Requirement in Wix OAuth Authorization**
-- **File:** `/apps/web/src/app/api/oauth/wix/authorize/route.ts` (lines 29-36)
-- **Description:** The endpoint requires both `userId` AND `orgId`, returning 401 if either is missing. However, users without organization membership (solo users) will be blocked from connecting Wix. This may be intentional but could block legitimate use cases.
-- **Impact:** Solo users without Clerk organization cannot use Wix integration.
-- **Remediation:** Document this as intentional or fall back to `userId` as `workspaceId` for solo users (matching the pattern in `auth-session.ts`).
+**HIGH-02: Client component at page level for settings**
+- **File:** `/apps/web/src/app/(shell)/settings/page.tsx:1`
+- **Problem:** Settings page is a large client component (1043 lines) with multiple tabs and API calls via `useEffect`. This should be split into Server Component page + Client Component tabs.
+- **Impact:** Large client bundle, slow initial paint, no progressive loading.
+- **Fix:** Keep page as RSC, pass initial data to client tab components. Use Suspense for each tab content.
 
-**HIGH-AUTH-03: Global Settings PATCH Requires org:admin Role Only**
-- **File:** `/apps/web/src/app/api/global-settings/route.ts` (lines 51-58)
-- **Description:** The `handlePatch` function checks `orgRole !== "org:admin"` to restrict global settings modification. However, `orgRole` could be undefined for users not in an organization, which would also fail the check (correctly). The issue is that the error message "Forbidden" doesn't distinguish between "not admin" and "not in organization."
-- **Impact:** Confusing error messages for users; potential logic issues if role checking is incomplete.
-- **Remediation:** Add explicit check for organization membership before role check. Provide distinct error messages.
-
-**HIGH-AUTH-04: JWT Clock Skew Leeway Reduced But Still Present**
-- **File:** `/AI-Writer/backend/middleware/auth_middleware.py` (lines 136-143)
-- **Description:** JWT verification allows 60-second leeway for clock skew. While documented as "reduced from 300 to minimize stolen token validity window," this still allows stolen tokens to be used for up to 60 seconds after expiry.
-- **Attack Vector:** Stolen expired tokens remain valid for up to 60 seconds.
-- **Remediation:** Consider implementing token binding (e.g., to IP or user-agent) for sensitive operations. Document the security tradeoff.
+**HIGH-03: Client component at page level for client dashboard**
+- **File:** `/apps/web/src/app/(shell)/clients/[clientId]/page.tsx:1`
+- **Problem:** The client dashboard is a 403-line client component with multiple useEffects and API calls. Could be RSC with client islands.
+- **Impact:** Waterfall data fetching, no streaming, unnecessary client JS.
+- **Fix:** Convert to RSC pattern like the dashboard page, which uses server-side data fetching with client components only for interactive parts.
 
 #### MEDIUM Issues
 
-**MED-AUTH-01: X-Forwarded-For Spoofing Warning Only in Production**
-- **File:** `/apps/web/src/lib/rate-limit/auth-limiter.ts` (lines 83-94)
-- **File:** `/apps/web/src/lib/middleware/rate-limit.ts` (lines 378-389)
-- **Description:** When `X-Forwarded-For` is present without valid `PROXY_SECRET`, the code logs a warning but still uses the header value. This could allow rate limit bypass in misconfigured production environments.
-- **Attack Vector:** Attacker spoofs X-Forwarded-For header to bypass IP-based rate limiting.
-- **Remediation:** Consider failing closed (rejecting request) when `PROXY_SECRET` is configured but not matched, rather than logging and proceeding.
+**MED-01: Missing loading.tsx for critical routes**
+- **Files missing loading.tsx:**
+  - `/apps/web/src/app/(shell)/clients/` (main clients list)
+  - `/apps/web/src/app/(shell)/prospects/` (main prospects list)
+  - `/apps/web/src/app/(shell)/pipeline/` (kanban board)
+  - `/apps/web/src/app/connect/` (connection wizard)
+  - `/apps/web/src/app/(dashboard)/command-center/`
+- **Impact:** No progressive loading UI during navigation, perceived slowness.
+- **Fix:** Add loading.tsx with skeleton UI matching the page layout.
 
-**MED-AUTH-02: Console.error in Client Ownership Module**
-- **File:** `/apps/web/src/lib/auth/client-ownership.ts`
-- **Description:** Using `console.error` in authentication code can leak sensitive information to browser console in development or to logs in production.
-- **Remediation:** Replace with structured logger that properly sanitizes output.
+**MED-02: Missing metadata exports for SEO**
+- **Files without metadata:**
+  - `/apps/web/src/app/(shell)/clients/page.tsx`
+  - `/apps/web/src/app/(shell)/settings/page.tsx`
+  - `/apps/web/src/app/(shell)/prospects/page.tsx`
+  - `/apps/web/src/app/(shell)/pipeline/page.tsx`
+- **Impact:** Poor SEO for internal pages (less critical), missing page titles in browser tabs.
+- **Fix:** Add `export const metadata = { title: "Page Name | Tevero" }` to each page.
 
-**MED-AUTH-03: Session Freshness Check Only for Sensitive Routes**
-- **File:** `/apps/web/middleware.ts` (lines 115-129)
-- **Description:** Session age validation (24-hour limit) only applies to routes matching `isSensitiveRoute` pattern. Routes like `/settings`, `/**/delete`, `/**/admin` are covered, but other sensitive actions (e.g., client deletion, voice profile modification) through server actions may not be covered.
-- **Impact:** Stale sessions can perform sensitive operations not caught by middleware.
-- **Remediation:** Consider adding session freshness validation in critical server actions that modify sensitive data.
+**MED-03: startVerification missing from useEffect deps**
+- **File:** `/apps/web/src/app/connect/page.tsx:128`
+- **Problem:** The useEffect in the verifying case is missing `startVerification` from its dependency array.
+- **Impact:** ESLint exhaustive-deps warning, potential stale closure issues.
+- **Fix:** Addressed by CRIT-01 fix.
 
-**MED-AUTH-04: Organization ID Defaults to User ID in JWT Auth**
-- **File:** `/open-seo-main/src/server/middleware/auth.ts` (lines 459-467)
-- **Description:** When authenticating via JWT, `organizationId` defaults to `clerkUserId` for "single-user" scenarios. This blurs the distinction between user and organization identities, which could cause issues if multi-tenancy is later introduced.
-- **Impact:** Potential data isolation issues when transitioning to multi-tenant model.
-- **Remediation:** Document this clearly. Consider using a distinct marker (e.g., `user:{userId}`) for personal workspaces.
+**MED-04: Inconsistent error boundary coverage**
+- **Problem:** Some routes have nested error.tsx files while others rely on parent boundaries. The coverage is good but not uniform.
+- **Routes with error.tsx:** 55 files
+- **Routes without (relying on parent):** Some nested client pages
+- **Impact:** Minor - parent boundaries still catch errors, but nested boundaries provide better UX with more contextual recovery.
 
-#### LOW Issues
+#### Route Coverage Analysis
 
-**LOW-AUTH-01: Inconsistent Authorization Check Methods Across Apps**
-- **Files:** Multiple
-- **Description:** Three different authorization patterns are used:
-  - `apps/web`: `requireActionAuth()` + `validateClientOwnership()` via server actions
-  - `AI-Writer`: `require_client_access` FastAPI dependency
-  - `open-seo-main`: `requireClientAccess()` function
-- **Impact:** Cognitive load for developers; risk of forgetting checks in new code.
-- **Remediation:** Consider creating shared authorization middleware documentation. Add linting rules to ensure authorization on client-scoped endpoints.
+| Route Segment | loading.tsx | error.tsx | Metadata | Status |
+|---------------|-------------|-----------|----------|--------|
+| `/` (root) | No | Yes | Yes | OK |
+| `/(shell)/dashboard` | Yes | Yes | No | Needs metadata |
+| `/(shell)/clients` | No | Yes | No | Needs loading, metadata |
+| `/(shell)/clients/[clientId]` | No | Yes | No | Needs loading |
+| `/(shell)/prospects` | No | Yes | No | Needs loading, metadata |
+| `/(shell)/prospects/[prospectId]` | No | Yes | No | Needs loading |
+| `/(shell)/pipeline` | No | Yes | No | Needs loading, metadata |
+| `/(shell)/settings` | Yes | Yes | No | Needs metadata |
+| `/(dashboard)/command-center` | No (inline) | No | No | Has inline Suspense |
+| `/proposals/[token]` | Yes | No | No | OK (public) |
+| `/connect` | No | No | No | Needs loading, error |
+| `/sign-in` | No | Yes | No | OK |
+| `/sign-up` | No | Yes | No | OK |
 
-**LOW-AUTH-02: API Key Prefix Hardcoded**
-- **File:** `/open-seo-main/src/server/middleware/auth.ts` (lines 122-135)
-- **Description:** API key format validation hardcodes the `oseo_` prefix. If the prefix needs to change, multiple code locations must be updated.
-- **Remediation:** Extract prefix to a constant or configuration.
+#### Strengths Identified
 
-**LOW-AUTH-03: CSRF Protection Uses Origin-Only Validation**
-- **File:** `/apps/web/src/lib/api/security.ts` (lines 42-69)
-- **Description:** CSRF protection validates Origin/Referer headers against allowed origins. While this is a valid approach, it could be strengthened with CSRF tokens for high-value operations.
-- **Remediation:** Consider adding CSRF tokens for critical operations (payments, data deletion). Current approach is acceptable for general API protection.
+1. **Server Actions with Proper Validation**: All server actions use Zod validation with comprehensive schemas. Example: `dashboard/actions.ts` validates UUIDs, array lengths, and filter values.
 
-**LOW-AUTH-04: /api/connections Uses Direct Auth Instead of Auth Helpers**
-- **File:** `/apps/web/src/app/api/connections/route.ts` (lines 28-30)
-- **Description:** This route calls `auth()` directly from Clerk instead of using the established `requireAuth()` helper. While functionally correct, it bypasses the consistent error handling in `api-auth.ts`.
-- **Remediation:** Refactor to use `requireAuth()` for consistency with other API routes.
+2. **Authorization in Server Actions**: Consistent use of `requireActionAuth()` followed by `validateClientOwnership()` or `validateProspectOwnership()` for resource access control.
 
-**LOW-AUTH-05: Missing X-User-Id in connections API Backend Call**
-- **File:** `/apps/web/src/app/api/connections/route.ts` (lines 43-48)
-- **Description:** The request to the backend only sends `x-user-id` header, but doesn't use the centralized `buildServiceHeaders()` from `server-fetch.ts` which includes correlation ID and proper token handling.
-- **Remediation:** Use `getOpenSeo()` from `server-fetch.ts` instead of raw `fetch()` for consistent service authentication.
+3. **Rate Limiting**: Server actions for expensive operations (audit, crawl, voice analysis) implement rate limiting via `checkRateLimit()`.
 
-**LOW-AUTH-06: Ownership Cache Invalidation May Not Cover All Membership Changes**
-- **File:** `/apps/web/src/lib/auth/client-ownership.ts` (lines 254-266)
-- **Description:** The ownership cache has a 2-minute TTL with invalidation functions (`invalidateOwnershipCache`, `invalidateClientCaches`, `invalidateUserCaches`). However, the documentation notes that webhook handlers should call these functions, but no automated integration with Clerk organization membership webhooks is visible.
-- **Impact:** Access changes may not be reflected for up to 2 minutes.
-- **Remediation:** Document the required webhook integrations. Consider implementing automatic cache invalidation in the Clerk webhook handler at `/apps/web/src/app/api/webhooks/clerk/route.ts`.
+4. **Error Boundary Strategy**: Good coverage with `WithErrorBoundary` HOC for component-level isolation and route-level `error.tsx` files.
 
-### Security Strengths Noted
+5. **RSC/Client Boundaries Done Right**: The dashboard page (`/(shell)/dashboard/page.tsx`) is an excellent example - Server Component fetches data in parallel, passes to client components only where needed.
 
-1. **Fail-Closed Pattern:** All authentication modules fail closed on errors (Redis unavailable, network errors, etc.), preventing auth bypass.
+6. **CSRF Protection**: API routes that mutate state include `validateCsrf(req)` checks.
 
-2. **Timing-Safe Comparisons:** Token/signature comparisons use `crypto.timingSafeEqual` to prevent timing attacks (`/apps/web/src/app/api/health/route.ts`, `/open-seo-main/src/server/middleware/auth.ts`).
+7. **Webhook Security**: Clerk webhook handler validates svix signatures and fails closed on configuration errors.
 
-3. **Rate Limiting on Auth Endpoints:** Comprehensive rate limiting on sign-in, sign-up, password reset, and email verification routes.
+8. **Parallel Data Fetching**: Pages like dashboard and command-center use `Promise.all()` for concurrent server-side fetches.
 
-4. **HMAC-Signed Internal API Requests:** Service-to-service communication between apps/web and AI-Writer uses HMAC-SHA256 signatures with timestamps to prevent replay attacks.
+9. **Error Sanitization**: `sanitizeErrorForClient()` prevents leaking internal error details to users.
 
-5. **User ID Derived from Verified Context:** `X-User-Id` header is always derived from verified Clerk auth context, never from client input (CRIT-11 fix documented in code).
-
-6. **Authorization Checks on All Client-Scoped Endpoints:** Server actions consistently call `validateClientOwnership()` before accessing client data.
-
-7. **JWT Signature Verification Required:** AI-Writer's auth middleware no longer allows unverified JWT fallback (security fix documented in code).
-
-### Recommendations Summary
-
-| Priority | Issue | Action |
-|----------|-------|--------|
-| P0 | CRIT-AUTH-01 | Add authentication to invoice proxy |
-| P0 | CRIT-AUTH-02 | Validate proposal tracking tokens |
-| P1 | HIGH-AUTH-01 | Remove query token auth |
-| P1 | HIGH-AUTH-04 | Document JWT leeway tradeoff |
-| P2 | MED-AUTH-01 | Fail closed on proxy secret mismatch |
-| P2 | MED-AUTH-03 | Add session freshness to sensitive actions |
-| P3 | LOW-AUTH-04 | Refactor connections API to use requireAuth() |
-| P3 | LOW-AUTH-05 | Use server-fetch helpers in connections API |
-| P3 | LOW-AUTH-06 | Document/implement ownership cache invalidation webhooks |
+10. **Graceful Degradation**: Dashboard page has fallback values for all data fetches, so partial failures don't crash the page.
 
 ---
 
-## Agent 4: API Contract Validation Review
 
-### Scope
-- Request/response schema consistency
-- Error response formats
-- Status code usage
-- Type safety across boundaries
+### Agent 9: AI-Writer Backend Review
 
-### Findings
-
-*Awaiting agent completion...*
-
----
-
-## Agent 5: Server Actions Review (apps/web)
-
-### Scope
-- All Next.js server actions in apps/web/src/actions/
-- Data mutation patterns
-- Error handling
-- Validation logic
-
-### Findings
-
-**Full findings available in:** `/home/dominic/Documents/TeveroSEO/AGENT5_SERVER_ACTIONS_REVIEW.md`
-
-#### Summary: 19 action files reviewed, 50+ exported actions
-
-| Severity | Count | Issues |
-|----------|-------|--------|
-| CRITICAL | 0 | - |
-| HIGH | 0 | - |
-| MEDIUM | 3 | IDOR-01: getWebhook validates ownership after fetch, IDOR-02: getChange validates after fetch, RACE-01: TOCTOU in updateWebhook |
-| LOW | 5 | ERR-01/02: Silent failures on validation, TYPE-01: Inconsistent return types, VALID-01/02: Missing rate limits and loose filter schema |
-
-**Key Findings:**
-- All actions use `requireActionAuth()` + ownership validation (good)
-- Zod schemas for input validation throughout (good)
-- Rate limiting on most mutations (good)
-- Idempotency keys for create operations (good)
-- Some actions fetch data before validating ownership - requires backend to enforce auth atomically
-- Inconsistent error return types in voice.ts and analytics modules
-
----
-
-## Agent 6: Middleware & Routing Review
-
-### Scope
-- apps/web/middleware.ts
-- Route protection logic
-- Redirect chains
-- Public vs protected routes
-
-### Findings
-
-#### MEDIUM-01: API Routes Excluded from Middleware Authentication Check
-**File:** `apps/web/middleware.ts` (line 142)
-**Pattern:** `matcher: ['/((?!api|trpc|_next|_vercel|.*\\..*).*)', '/']`
-
-The middleware matcher explicitly excludes all `/api/*` routes from middleware processing. While API routes implement their own authentication via `requireAuth()`, this creates a two-tier authentication system where:
-1. Page routes are protected by Clerk middleware
-2. API routes rely on individual route handlers calling `requireAuth()`
-
-**Risk:** If a developer forgets to add `requireAuth()` to a new API route, it will be publicly accessible.
-
-**Evidence:** The `/api/proposals/beacon` route intentionally has no auth (tracking pixel), and `/api/health` has optional auth. However, `/api/proposals/[proposalId]/accept` is also public (intentionally).
-
-**Recommendation:** Document explicitly which API routes are intentionally public and add a lint rule or code review checklist to ensure all new API routes include authentication.
-
----
-
-#### MEDIUM-02: Sensitive Route Pattern May Not Match All Admin Routes
-**File:** `apps/web/middleware.ts` (lines 52-62)
-**Pattern:**
-```typescript
-const isSensitiveRoute = createRouteMatcher([
-  "/settings(.*)",
-  "/(.*)/delete(.*)",
-  "/(.*)/admin(.*)",
-  "/admin(.*)",
-  // locale-prefixed versions...
-]);
-```
-
-**Issue:** The pattern `"/(.*)/delete(.*)"` uses a broad wildcard that matches any path containing `/delete` anywhere. However, `"/(.*)/admin(.*)"` requires `/admin` to be preceded by at least one path segment. This means `/admin` directly (without prefix) relies on the separate `"/admin(.*)"` pattern.
-
-**Recommendation:** Review and validate that the patterns correctly match all intended sensitive routes. Consider explicit testing of edge cases like `/lt/admin`, `/clients/123/admin/settings`, etc.
-
----
-
-#### LOW-01: Hardcoded Locale Prefix in Route Matchers
-**File:** `apps/web/middleware.ts` (lines 29-31, 43-48, 57-61)
-
-Route matchers duplicate the `/lt/` prefix for Lithuanian locale routes:
-```typescript
-const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  // ...
-  "/lt/sign-in(.*)",  // Hardcoded locale
-  "/lt/sign-up(.*)",
-  // ...
-]);
-```
-
-**Issue:** If a new locale is added (e.g., `/de/` for German), all three route matchers (`isPublicRoute`, `isAuthRoute`, `isSensitiveRoute`) must be manually updated.
-
-**Recommendation:** Generate locale-prefixed patterns programmatically from `routing.locales` to avoid maintenance burden:
-```typescript
-const locales = routing.locales; // ['en', 'lt']
-const publicPaths = ['/sign-in(.*)', '/sign-up(.*)'];
-const localizedPaths = publicPaths.flatMap(p => 
-  locales.filter(l => l !== routing.defaultLocale).map(l => `/${l}${p}`)
-);
-```
-
----
-
-#### LOW-02: Session Freshness Check Uses `Response.redirect` Instead of `NextResponse`
-**File:** `apps/web/middleware.ts` (lines 124-128)
-```typescript
-return Response.redirect(signInUrl);
-```
-
-**Issue:** Most of the middleware uses `NextResponse` patterns, but the session expiry redirect uses the native `Response.redirect`. While this works, it is inconsistent with the rest of the codebase.
-
-**Recommendation:** Use `NextResponse.redirect(signInUrl)` for consistency.
-
----
-
-#### INFO-01: Rate Limiting Correctly Fails Closed in Production
-**File:** `apps/web/src/lib/rate-limit/auth-limiter.ts` (lines 201-211)
-
-The auth rate limiter correctly implements fail-closed behavior in production when Redis is unavailable:
-```typescript
-if (process.env.NODE_ENV === "production") {
-  logger.error("[auth-limiter] Redis error on auth endpoint - BLOCKING request for safety", ...);
-  return { success: false, ... };
-}
-```
-
-This is a security best practice that prevents rate limit bypass during Redis outages.
-
----
-
-#### INFO-02: Security Headers Well Configured in next.config.ts
-**File:** `apps/web/next.config.ts` (lines 10-88)
-
-Security headers are comprehensively configured:
-- HSTS with preload
-- X-Frame-Options: DENY
-- X-Content-Type-Options: nosniff
-- CSP with restrictive policies
-- Permissions-Policy disabling unused features
-
-**Note:** CSP correctly disables `unsafe-eval` in production but allows it in development for HMR.
-
----
-
-#### INFO-03: CSRF Protection Implemented for State-Changing Operations
-**File:** `apps/web/src/lib/api/security.ts`
-
-The `validateCsrf()` function validates Origin/Referer headers for POST/PUT/PATCH/DELETE requests. All reviewed API routes (e.g., `/api/clients`, `/api/crawl`) correctly call this validation.
-
----
-
-#### INFO-04: IP Spoofing Protection in Place
-**Files:** 
-- `apps/web/src/lib/rate-limit/auth-limiter.ts` (lines 39-98)
-- `apps/web/src/lib/middleware/rate-limit.ts` (lines 346-440)
-
-Both rate limiters implement IP extraction with spoofing protection:
-1. Only trust X-Forwarded-For when `PROXY_SECRET` matches
-2. Support Cloudflare (`CF-Connecting-IP`) when `TRUST_CLOUDFLARE=true`
-3. Support Vercel (`x-vercel-forwarded-for`)
-4. Log warnings in production when headers are present without verification
-
----
-
-#### INFO-05: Public Routes Correctly Defined
-**File:** `apps/web/middleware.ts` (lines 23-32)
-
-Public routes that should allow unauthenticated access:
-- `/sign-in(.*)` - Authentication flow
-- `/sign-up(.*)` - Registration flow
-- `/connect/(.*)` - Magic link onboarding (intentionally public)
-- `/api/health` - Health check endpoint
-
-The `/connect/[token]` page correctly handles public access with token-based validation rather than session auth.
-
----
-
-### Route Protection Matrix
-
-| Route Pattern | Middleware Auth | API Auth | Notes |
-|--------------|-----------------|----------|-------|
-| `/sign-in`, `/sign-up` | Public | N/A | Auth pages |
-| `/connect/*` | Public | N/A | Magic link onboarding |
-| `/api/health` | Excluded | Optional | Health check |
-| `/api/webhooks/clerk` | Excluded | Svix signature | Clerk webhook |
-| `/api/proposals/beacon` | Excluded | None | Tracking pixel |
-| `/api/proposals/*/accept` | Excluded | Rate limit only | Public proposal acceptance |
-| `/api/clients`, `/api/crawl`, etc. | Excluded | `requireAuth()` | Standard API routes |
-| `/settings/*` | Protected + Session freshness | N/A | Sensitive pages |
-| `/**/delete/*`, `/**/admin/*` | Protected + Session freshness | N/A | Sensitive operations |
-| All other pages | Protected | N/A | Standard pages |
-
----
-
-### Summary
-
-The middleware and routing configuration is well-designed with proper security controls:
-- **Strengths:** Fail-closed rate limiting, CSRF protection, security headers, IP spoofing protection, session freshness for sensitive routes
-- **Areas for improvement:** Consider generating locale-prefixed patterns dynamically, document intentionally public API routes
-- **No critical or high severity issues found**
-
----
-
-## Agent 7: Client Components & State Review
-
-### Scope
-- React client components in apps/web
-- State management patterns
-- Hook usage
-- Client-side data fetching
-
-### Findings
-
-#### CRITICAL-7.1: Stale Closure in AIGenerationModal
-**File:** `/apps/web/src/components/proposals/AIGenerationModal.tsx:102-110`
-Initial state for `selectedContext` only computed once on mount. If `availableContext` prop changes, state stays stale. **Fix:** Use useEffect to sync with props.
-
-#### HIGH-7.2: Missing Cleanup in LazySparkline
-**File:** `/apps/web/src/components/dashboard/LazySparkline.tsx:63-104`
-AbortController cleanup returned from async function is unreachable. Risk of state updates on unmounted component. **Fix:** Move cleanup to useEffect.
-
-#### HIGH-7.3: Alert Polling Without Error Handling
-**File:** `/apps/web/src/components/alerts/AlertDrawer.tsx:46-54`
-setInterval continues on getAlertCount failure with no error handling. **Fix:** Add error handling, exponential backoff.
-
-#### HIGH-7.4: ProposalInlineEditor Double Cleanup
-**File:** `/apps/web/src/components/proposals/ProposalInlineEditor.tsx:253-258`
-Manual editor.destroy() conflicts with useEditor's internal cleanup. **Fix:** Remove the redundant useEffect.
-
-#### MEDIUM-7.5: ThemeContext Hydration Flash
-**File:** `/apps/web/src/contexts/ThemeContext.tsx:64-69`
-SSR returns 'dark' always; may flash before hydration syncs localStorage. **Fix:** Consider useSyncExternalStore.
-
-#### MEDIUM-7.6: PipelineKanban Snapshot Risk
-**File:** `/apps/web/src/components/pipeline/PipelineKanban.tsx:155-159`
-handleDragStart recreated on items change, may reference stale versions during drag. **Fix:** Use useRef for items.
-
-#### MEDIUM-7.7: Suppressed Dependency Warnings
-**File:** `/apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx:118-123`
-eslint-disable-next-line hides bugs; state may not reset on route changes. **Fix:** List explicit dependencies.
-
-#### MEDIUM-7.8: Navigator Access in Render
-**File:** `/apps/web/src/components/proposals/VersionHistory.tsx:168-169`
-navigator.language evaluated every render without memoization. **Fix:** Use useMemo.
-
-#### MEDIUM-7.9: Excessive useEffects
-**File:** `/apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx:118-167`
-Six useEffects create complex lifecycle. **Fix:** Use React Query for data fetching.
-
-#### MEDIUM-7.10: Stale temporalState
-**File:** `/apps/web/src/components/proposals/UndoRedoButtons.tsx:125`
-temporalState captured once may be stale. **Fix:** Access in callback handlers.
-
-#### LOW-7.11: Zustand for Server State
-**Files:** `clientStore.ts`, `analyticsStore.ts` - Should use TanStack Query per existing TODO.
-
-#### LOW-7.12: Missing Error Boundaries in Lists
-SectionList, PipelineKanban lack item-level error boundaries.
-
-#### LOW-7.13: Missing Type Guard in DateRangeSelector
-Select onValueChange passes string without validation for "30"|"90" union.
-
-### Summary: Critical:1, High:3, Medium:6, Low:3
-**Positive:** Good useCallback usage, proper WebSocket cleanup, DOMPurify sanitization, ErrorBoundary with Sentry
-**Improve:** Migrate Zustand server state to React Query, fix dependency arrays, add polling error handling
-
----
-
-## Agent 8: UI/UX User Journey Review
-
-### Scope
-- Critical user flows (onboarding, audit, content creation)
-- Navigation patterns
-- Edge case handling
-- Accessibility considerations
-
-### Findings
-
-#### CRITICAL: Broken User Flows
-
-**CRIT-01: SEO Setup Page Does Not Exist (Dead Link)**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/seo/page.tsx:141`
-- **Issue:** The SEO landing page links to `/clients/${clientId}/seo/setup` for creating a new SEO project, but this route does not exist. Users clicking "Create SEO Project" will encounter a 404 error.
-- **Impact:** Complete dead-end for users trying to start SEO audits on a new client. This breaks the entire SEO audit user journey.
-- **Recommendation:** Create `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/page.tsx` with project creation form.
-
-**CRIT-02: Missing Loading.tsx Files for Critical Routes**
-- **Location:** Multiple routes in `/apps/web/src/app/`
-- **Issue:** Only 6 `loading.tsx` files exist across 191 directories. Missing from `/sign-up`, `/sign-in`, `/proposals/[token]`, `/invoices/[id]`, `/connect`, `/clients/[clientId]/articles/new`, `/clients/[clientId]/onboarding`.
-- **Impact:** Users see blank screens during data fetching.
-- **Recommendation:** Add `loading.tsx` with skeletons to all page routes.
-
-#### HIGH: Edge Case Handling Issues
-
-**HIGH-01: AddClientModal Blocks Escape During Creation**
-- **Location:** `/apps/web/src/components/onboarding/AddClientModal.tsx:54-56`
-- **Issue:** When `step === "creating"`, the modal cannot be closed. If API hangs, users are trapped.
-- **Recommendation:** Add timeout (30s) with error state and cancel option.
-
-**HIGH-02: ConnectionWizard Has No Back Navigation**
-- **Location:** `/apps/web/src/components/connections/ConnectionWizard.tsx`
-- **Issue:** No way to go back from "credentials" step to fix wrong domain.
-- **Recommendation:** Add "Back" button in step 2.
-
-**HIGH-03: Voice Settings Error State Lacks Retry**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/settings/voice/page.tsx:134-148`
-- **Issue:** Error page shows no retry button.
-- **Recommendation:** Add "Retry" button.
-
-**HIGH-04: Analytics Page Date Range Closure Bug**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx:42-53`
-- **Issue:** `loadData()` captures old `dateRange` state due to closure.
-- **Recommendation:** Add `dateRange` to useEffect dependency array.
-
-#### MEDIUM: Loading State & UX Issues
-
-**MEDIUM-01: Full-Screen Loading Overlay Blocks Interaction**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx:163-166`
-- **Recommendation:** Replace with inline loading indicator.
-
-**MEDIUM-02: OnboardingChecklist Has No Error Handling**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/onboarding/onboarding-checklist.tsx:63-92`
-- **Recommendation:** Add toast or inline error message.
-
-**MEDIUM-03: Article Editor Missing Unsaved Changes Warning**
-- **Location:** `/apps/web/src/app/(shell)/clients/[clientId]/articles/[articleId]/page.tsx`
-- **Recommendation:** Add `beforeunload` event listener.
-
-**MEDIUM-04: Toast Notifications Not Accessible**
-- **Issue:** No `role="alert"` or `aria-live` regions for screen readers.
-
-#### MEDIUM: Accessibility Issues
-
-**MEDIUM-05: GettingStartedCard StepIndicator Not Accessible**
-- **Location:** `/apps/web/src/components/onboarding/GettingStartedCard.tsx:23-34`
-- **Recommendation:** Add `aria-label` for completion status.
-
-**MEDIUM-06: Limited ARIA Labels in Forms**
-- **Issue:** Slider, icon-only buttons, and collapsible sections lack aria-labels.
-
-**MEDIUM-07: Missing Focus Management After Modal Actions**
-- **Location:** `/apps/web/src/components/onboarding/AddClientModal.tsx`
-
-#### LOW: Minor UX Improvements
-
-**LOW-01:** Inconsistent Empty State Designs across pages.
-**LOW-02:** Client Dashboard always shows "No Articles" prompt even when articles exist (`page.tsx:372-390`).
-**LOW-03:** Help links `/help/seo-setup` and `/support` likely don't exist.
-**LOW-04:** No keyboard shortcut hints on main actions outside dashboard.
-
-### User Journey Summary
-
-| Journey | Status | Critical Issues |
-|---------|--------|-----------------|
-| Onboarding to first audit | **Broken** | SEO setup page missing |
-| SEO Audit | **Blocked** | Cannot create project |
-| Content Creation | Functional | Missing loading states |
-| Client Switching | Functional | No issues found |
-| Analytics | Functional | Date range closure bug |
-
-### Priority Recommendations
-
-1. **Immediate:** Create SEO setup page to unblock audit journey
-2. **High:** Add loading.tsx files to critical routes
-3. **High:** Add retry buttons to all error states
-4. **Medium:** Implement proper aria-labels
-5. **Medium:** Add beforeunload handler to article editor
-
----
-
-## Agent 9: Error Handling Review
-
-### Scope
-- Error boundaries in apps/web
-- Loading states
-- Fallback UI
-- Recovery mechanisms
-
-### Findings
-
-
-#### MEDIUM-ERR-01: Missing error boundaries on 28 page routes
-**Location:** Multiple page routes in `apps/web/src/app/`
-**Routes without error boundaries:**
-- `/connect`, `/connect/enhance`, `/c/[token]`, `/(dashboard)/command-center`
-- `/install/[token]`, `/invoices/[id]/pay`, `/invoices/[id]/success`
-- `/[locale]/c/[token]`, `/[locale]/c/[token]/success`, `/[locale]/(shell)/dashboard`
-- `/proposals/[token]`, `/p/[token]`
-- `/(shell)/clients/[clientId]/agreements/[agreementId]/pre-sign`
-- `/(shell)/clients/[clientId]/onboarding`, `/(shell)/clients/[clientId]/onboarding/complete`
-- `/(shell)/clients/[clientId]/reports/new`, `/(shell)/clients/[clientId]/settings/report-templates`
-- `/(shell)/dashboard/revenue`, `/(shell)/dashboard/tasks`, `/(shell)/pipeline`
-- `/(shell)/prospects/[prospectId]/contracts`, `/(shell)/prospects/[prospectId]/contracts/[contractId]`
-- `/(shell)/prospects/[prospectId]/proposals`, `/(shell)/prospects/[prospectId]/scrape-config`
-- `/(shell)/settings/payments`, `/(shell)/settings/services`
-
-**Impact:** Errors propagate to parent error boundaries, showing less specific error UI. Critical routes like `/invoices/[id]/pay` could show generic messages during payment flow.
-
-**Recommendation:** Add route-specific error.tsx files for critical user journeys (payment, onboarding, contracts).
-
----
-
-#### MEDIUM-ERR-02: Inconsistent error boundary implementations across routes
-**Location:** Various `error.tsx` files in `apps/web/src/app/`
-**Issue:** Error boundaries have inconsistent patterns:
-- **Sentry integration inconsistent:** Root `error.tsx` uses Sentry.captureException; `(shell)/error.tsx` only logs locally; `clients/[clientId]/error.tsx` uses custom `logError`
-- **Error message display inconsistent:** Some show `error.message` in development only (correct); Dashboard error shows `error.message` unconditionally (line 30)
-- **Recovery actions vary:** Some have "Go back" + "Try again"; some only "Try again"
-
-**Impact:** Inconsistent user experience and potential information leakage in dashboard error.
-
-**Recommendation:** Create a standardized `<ErrorBoundary>` component. Ensure all boundaries integrate with Sentry.
-
----
-
-#### HIGH-ERR-03: Dashboard error boundary exposes error.message in production
-**Location:** `apps/web/src/app/(shell)/dashboard/error.tsx:30`
-**Code:** `{error.message || "An unexpected error occurred while loading the dashboard."}`
-**Issue:** Unlike other error boundaries that wrap error.message display in `process.env.NODE_ENV === "development"`, this one always shows error.message.
-
-**Impact:** Internal error details could be exposed to users in production, potentially revealing implementation details.
-
-**Recommendation:** Wrap error.message display in development check, consistent with other error boundaries.
-
----
-
-#### LOW-ERR-04: Swallowed errors in catch blocks without logging
-**Location:** Multiple server actions
-**Files affected:**
-- `apps/web/src/actions/analytics/get-opportunities.ts:241` - catches error silently
-- `apps/web/src/actions/analytics/get-predictions.ts:99,114,202,401` - Multiple catches with no logging
-- `apps/web/src/actions/team/get-team-metrics.ts:102` - silently returns 'member' on error
-
-**Impact:** Errors are silently swallowed, making debugging difficult.
-
-**Recommendation:** Add `logger.warn()` calls in catch blocks before graceful degradation.
-
----
-
-#### LOW-ERR-05: Missing loading.tsx files for most routes
-**Location:** `apps/web/src/app/`
-**Issue:** Only 6 loading.tsx files exist for 72 page routes.
-
-**Impact:** Routes without loading.tsx show no loading indicator during server component rendering.
-
-**Recommendation:** Add loading.tsx files for data-heavy routes (prospects, articles, calendar, intelligence).
-
----
-
-#### MEDIUM-ERR-06: Graceful degradation returns empty results without error indication
-**Location:** Multiple server actions (`get-predictions.ts:148`, `get-opportunities.ts:218-222`)
-**Issue:** Some actions return empty results on error with no way for UI to distinguish "no data" from "error".
-
-**Impact:** UI may show "No data" when there's actually a backend error, confusing users.
-
-**Recommendation:** Consistently use result types like `{ success: true, data } | { success: false, error }`.
-
----
-
-#### MEDIUM-ERR-07: Limited not-found.tsx coverage
-**Location:** `apps/web/src/app/`
-**Issue:** Only 3 not-found.tsx files exist. Missing for SEO projects, articles, reports, proposals.
-
-**Impact:** When a specific resource is not found, users see a generic 404 instead of contextual messages.
-
-**Recommendation:** Add not-found.tsx for resource-specific routes.
-
----
-
-#### LOW-ERR-08: Retry logic exists but not consistently used
-**Location:** `apps/web/src/lib/utils/backoff.ts` and `apps/web/src/lib/internal-api/with-fallback.ts`
-**Issue:** Robust retry utilities exist but most server actions don't use them for transient failures.
-
-**Impact:** Transient network failures immediately result in errors rather than being retried.
-
-**Recommendation:** Use `withRetry` for critical data fetches.
-
----
-
-#### LOW-ERR-09: Voice actions throw generic errors instead of using ActionResult pattern
-**Location:** `apps/web/src/actions/voice.ts`
-**Issue:** Functions `saveVoiceProfile`, `analyzeVoice`, `addProtectionRule`, `removeProtectionRule` throw `new Error()` instead of returning `ActionResult<T>` like other actions.
-
-**Code example (line 107):** `throw new Error("Failed to save voice profile. Please try again.");`
-
-**Impact:** Inconsistent error handling pattern - callers must use try/catch instead of checking `success` property.
-
-**Recommendation:** Refactor to use `ActionResult<T>` return type consistent with alerts.ts, audit.ts patterns.
-
----
-
-#### INFO-ERR-10: AI-Writer has robust global exception handler
-**Location:** `AI-Writer/backend/main.py:224-276`
-**Observation:** AI-Writer implements a well-designed global exception handler that:
-- Logs full error details server-side for debugging
-- Captures exceptions in Sentry with request context
-- Returns generic error message to client (never exposes internal details)
-- Provides error_id for support correlation
-
-This is a **good pattern** that should be referenced for other services.
-
----
-
-#### INFO-ERR-11: Circuit breaker pattern well-implemented
-**Location:** `apps/web/src/lib/utils/circuit-breaker.ts`
-**Observation:** Robust circuit breaker implementation with:
-- State transitions (closed/open/half-open)
-- Configurable failure threshold and reset timeout
-- Sentry integration for state change monitoring
-- Global registry for monitoring all circuit states
-
-**Positive:** Used in health endpoint to report circuit breaker status.
-
----
-
-### Summary
-
-| Severity | Count | Categories |
-|----------|-------|------------|
-| HIGH | 1 | Error message exposure in production |
-| MEDIUM | 4 | Missing error boundaries, inconsistent implementations, silent degradation |
-| LOW | 5 | Swallowed errors, missing loading states, retry logic underutilization, inconsistent action patterns |
-| INFO | 2 | Positive patterns to maintain (AI-Writer exception handler, circuit breaker) |
-
-**Key Strengths Observed:**
-1. Comprehensive Sentry integration configured for client, server, and edge
-2. Root error boundary and global-error properly integrate with Sentry
-3. Error sanitization in `lib/errors/handler.ts` prevents sensitive data logging
-4. Robust retry utilities available (`withRetry`, `exponentialBackoff`, `fetchWithRetry`)
-5. Most error boundaries show error digest for support correlation
-6. AI-Writer global exception handler with Sentry integration and error ID correlation
-7. Circuit breaker pattern properly implemented with state monitoring
-8. open-seo-main uses DefaultCatchBoundary with TanStack Router integration
-
-**Priority Fixes:**
-1. Fix dashboard error boundary to not expose error.message in production (HIGH-ERR-03)
-2. Add error boundaries to critical routes (payment, onboarding, contracts) (MEDIUM-ERR-01)
-3. Add logging to silently swallowed catch blocks (LOW-ERR-04)
-4. Standardize error boundary implementation across routes (MEDIUM-ERR-02)
-5. Refactor voice.ts to use ActionResult pattern (LOW-ERR-09)
-
----
-
-## Agent 10: BullMQ Job System Review
-
-### Scope
-- Job queue configuration
-- Worker processing logic
-- Retry strategies
-- Dead letter handling
-
-### Findings
-
-#### Overall Assessment: WELL-IMPLEMENTED
-
-The BullMQ implementation is mature and follows best practices. The codebase has 19+ workers, shared Redis connection pooling, comprehensive DLQ handling, and graceful shutdown patterns. Most common issues have been proactively addressed with documented fix tags (BQ-05, BQ-06, HIGH-51, etc.).
-
----
-
-#### [LOW] Inconsistent DLQ Patterns Across Workers
-
-**Files affected:**
-- `/open-seo-main/src/server/workers/maintenance-worker.ts` - Uses global DLQ via `getDLQQueue()`
-- `/open-seo-main/src/server/workers/ranking-worker.ts` - Uses inline DLQ pattern (adds to same queue with `dlq:` prefix)
-- `/open-seo-main/src/server/workers/webhook-worker.ts` - Uses inline DLQ pattern
-- Most other workers - Use inline DLQ pattern
-
-**Issue:** Two different DLQ patterns exist in the codebase:
-1. **Global DLQ** (`getDLQQueue()`) - used by maintenance-worker, sends jobs to dedicated `dead-letter-queue`
-2. **Inline DLQ** (prefix `dlq:` on same queue) - used by most workers, adds DLQ jobs back to the source queue
-
-**Impact:** Low. Both patterns work correctly. The inconsistency could cause confusion when investigating failed jobs - operators need to check both the global DLQ and individual queue DLQs.
-
-**Recommendation:** Standardize on one pattern. The inline pattern is more common and self-contained; consider migrating maintenance-worker to match.
-
----
-
-#### [LOW] Potential Race Condition in Voice Analysis Lock Release
-
-**File:** `/open-seo-main/src/server/workers/voice-analysis-worker.ts:77-85`
-
-**Code:**
-```typescript
-// Always release the lock on failure (not just after max retries)
-// This allows the client to retry immediately if needed
-if (clientId && !job.name.startsWith("dlq:")) {
-  try {
-    await releaseVoiceAnalysisLock(clientId);
-```
-
-**Issue:** The lock is released on EVERY failure, including retries. This is documented as intentional ("allows the client to retry immediately"), but could cause a race condition:
-1. Job fails on attempt 1, lock released
-2. User manually triggers new job before retry #2
-3. Both jobs could now run concurrently
-
-**Impact:** Low. The 300-second Redis TTL provides a safety net, and voice analysis is rate-limited to 3 concurrent jobs anyway.
-
-**Recommendation:** Consider keeping the lock for retries and only releasing on final failure or success. The current approach is a design choice, not a bug.
-
----
-
-#### [LOW] Follow-Up Queue Uses Short Retry Delays
-
-**File:** `/open-seo-main/src/server/queues/followUpQueue.ts:56-64`
-
-**Code:**
-```typescript
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 1000, // 1s, 2s, 4s
-  },
-```
-
-**Issue:** The follow-up queue uses 1s/2s/4s retry delays, which is aggressive compared to other queues using 10s/20s/40s or 15s/30s/60s. This could cause rapid-fire retries if there's a transient database or network issue.
-
-**Impact:** Low. Follow-up processing is lightweight and the short delays are likely intentional for responsiveness.
-
-**Recommendation:** Consider increasing to 5s/10s/20s to match other queue patterns if transient failures become problematic.
-
----
-
-#### [LOW] Workers Not Listed in worker-entry.ts
-
-**Files:**
-- `/open-seo-main/src/server/workers/token-refresh-worker.ts` - exists but not in worker-entry.ts
-- `/open-seo-main/src/server/workers/graph-ingestion-worker.ts` - exists but not in worker-entry.ts
-- `/open-seo-main/src/server/workers/alert-detection-worker.ts` - exists but not in worker-entry.ts
-- `/open-seo-main/src/server/workers/workflow-worker.ts` - exists but not in worker-entry.ts
-
-**Issue:** Several workers exist but are not started via the central worker entry point.
-
-**Impact:** Low. These workers may be started elsewhere (server.ts for dev mode), started conditionally, or may be deprecated. Needs verification.
-
-**Recommendation:** Either add these workers to worker-entry.ts or document why they are excluded.
-
----
-
-#### [MEDIUM] Inconsistent Retry Backoff Strategies
-
-**Files and configurations:**
-- `auditQueue.ts`: 3 attempts, 10s/20s/40s backoff
-- `rankingQueue.ts`: 3 attempts, 10s/20s/40s backoff
-- `webhookQueue.ts`: 3 attempts, 60s/~5m/~30m backoff
-- `analyticsQueue.ts`: 3 attempts, 10s/20s/40s backoff
-- `followUpQueue.ts`: 3 attempts, 1s/2s/4s backoff
-- `onboardingQueue.ts`: 3 attempts, 5s/10s/20s backoff
-- `voiceAnalysisQueue.ts`: 3 attempts, 15s/30s/60s backoff
-- `pipelineQueue.ts` (phase): 1 attempt (intentional - children retry)
-- `pipelineQueue.ts` (plan): 3 attempts, 10s/20s/40s backoff
-
-**Issue:** The webhook queue uses much longer backoff delays (60s base vs 10s). While this may be intentional to handle webhook endpoints being temporarily down, the disparity is significant.
-
-**Impact:** Medium. Webhook failures take 30+ minutes to exhaust retries while other queues take ~1 minute.
-
-**Recommendation:** Document the rationale for different backoff strategies in queue comments. The webhook delays appear intentional but lack documentation.
-
----
-
-#### [LOW] No Queue Health Monitoring Endpoint
-
-**File:** `/open-seo-main/src/server/lib/queue-utils.ts:497-527`
-
-**Issue:** The `getQueueHealthReport` function exists but there is no evidence of a health check endpoint or dashboard exposing this data.
-
-**Impact:** Low. Operators lack visibility into queue health without manually calling this function.
-
-**Recommendation:** Add a `/api/admin/queues/health` endpoint that calls this for all queues.
-
----
-
-### Summary
-
-| Severity | Count | Description |
-|----------|-------|-------------|
-| CRITICAL | 0 | None found |
-| HIGH | 0 | None found |
-| MEDIUM | 1 | Inconsistent retry backoff documentation |
-| LOW | 5 | Pattern inconsistencies, missing workers in entry point |
-
-### Strengths Identified
-
-1. **Shared Redis Connection Pool** (`getSharedBullMQConnection`) - Prevents connection leaks with labeled connections
-2. **Comprehensive DLQ Handling** - All workers implement DLQ patterns for failed jobs
-3. **Graceful Shutdown** - All workers implement timeout-based graceful shutdown (25s typical)
-4. **Job Validation** - Zod schemas validate job data before processing (SSRF prevention)
-5. **Backpressure Protection** - `addJobWithBackpressure` prevents queue overflow
-6. **Sandboxed Processors** - CPU-intensive work runs in child processes
-7. **Idempotent Processing** - Jobs use `job.updateData()` for checkpoint-based resume
-8. **Lock Duration Configured** - All workers set explicit `lockDuration` and `maxStalledCount`
-9. **Rate Limiting** - Voice analysis uses Redis SETNX for per-client concurrency control
-10. **Cleanup Scheduler** - DLQ has 7-day retention with daily cleanup
-
-### Files Reviewed
-
-- `/open-seo-main/src/server/queues/*.ts` (17 queue definitions)
-- `/open-seo-main/src/server/workers/*.ts` (30+ worker files)
-- `/open-seo-main/src/server/workers/utils/*.ts` (base-worker, error-handler)
-- `/open-seo-main/src/server/lib/redis.ts`
-- `/open-seo-main/src/server/lib/queue-utils.ts`
-- `/open-seo-main/src/worker-entry.ts`
-
----
-
-## Agent 11: SEO Audit Engine Review
-
-### Scope
-- Tier 1-4 check implementations (107 checks)
-- Scoring algorithms
-- Validation logic
-- Result aggregation
-
-### Findings
-
-**Full findings available in:** `/home/dominic/Documents/TeveroSEO/AGENT_11_SEO_AUDIT_REVIEW.md`
-
-#### Summary: 17 Issues Found
-
+**Status:** Complete
+**Files Analyzed:** 55,395 lines across ~150 Python files
+**Routes Analyzed:** 335 route handlers
+**Models Found:** 48 Pydantic/SQLAlchemy models
+**Issues Found:** 
 | Severity | Count |
 |----------|-------|
-| CRITICAL | 0 |
-| HIGH | 4 |
-| MEDIUM | 7 |
-| LOW | 6 |
-
-#### HIGH Severity Issues
-
-| ID | File | Issue |
-|----|------|-------|
-| SEO-02 | `checks/scoring.ts` | **Score exceeds 100**: Base (60) + T1 (20) + T2 (10) + T3 (10) + T4 (4) = 104 points. No normalization - page passing all checks scores 104. |
-| SEO-05 | `checks/tier3/*.ts` | **Stubbed checks inflate scores**: T3-07 through T3-13 return `passed: true` with `skipped: true` when APIs not configured, incorrectly adding points. |
-| SEO-06 | `checks/tier4/*.ts` | **Tier 4 stubs**: T4-03, T4-04, T4-05 always return `passed: true` with "Topic cluster data required", inflating score by 1.2 points. |
-| SEO-17 | Various | **Quality gate not implemented**: The 80 score threshold for auto-publish is documented in CLAUDE.md but no actual implementation exists in AuditService. |
-
-#### MEDIUM Severity Issues
-
-| ID | File | Issue |
-|----|------|-------|
-| SEO-01 | `checks/index.ts` | Check count mismatch: CLAUDE.md says 107, code says 129, actual count differs. |
-| SEO-03 | `checks/scoring.ts` | Gate order precedence: Duplicate cap (50) is overridden by YMYL cap (60) when both fail. |
-| SEO-04 | `checks/scoring.ts` | CWV skipped checks return `severity: "info"`, affecting scoring incorrectly. |
-| SEO-07 | `checks/tier4/differentiation.ts` | T4-06 duplicate content always passes - fingerprint comparison not implemented. |
-| SEO-08 | `checks/tier1/heading-structure.ts` | T1-08 H1/title match uses strict containment, fails semantically related pairs. |
-| SEO-12 | `checks/tier2/content-quality.ts` | `extractText()` mutates shared Cheerio DOM, affecting subsequent tier checks. |
-| SEO-13 | `checks/runner.ts` | Error handling returns `severity: "high"` for all failures regardless of check severity. |
-
-#### LOW Severity Issues
-
-- SEO-09: T1-29 short paragraphs counts nav/footer paragraphs
-- SEO-10: T1-68 YMYL requires 2+ keywords, may miss edge cases
-- SEO-11: T2-01 reading level formula mishandles technical terms
-- SEO-14: T1-55 canonical check ignores query parameters
-- SEO-15: T1-67 noindex misses X-Robots-Tag HTTP header
-- SEO-16: No check ID deduplication in registry
-
-#### Key Recommendations
-
-1. **Fix scoring normalization** to cap at 100: `score = Math.min(100, Math.round((score / 104) * 100))`
-2. **Change skipped checks** to return `passed: false` or exclude from scoring
-3. **Clone Cheerio DOM** before mutation in `extractText()`: `const $clone = $.root().clone()`
-4. **Implement quality gate** enforcement in content pipeline: `if (score >= 80) { autoPublish() }`
-
-#### Files Reviewed
-
-- `/open-seo-main/src/server/lib/audit/checks/index.ts`
-- `/open-seo-main/src/server/lib/audit/checks/scoring.ts`
-- `/open-seo-main/src/server/lib/audit/checks/registry.ts`
-- `/open-seo-main/src/server/lib/audit/checks/runner.ts`
-- `/open-seo-main/src/server/lib/audit/checks/tier1/*.ts` (14 files)
-- `/open-seo-main/src/server/lib/audit/checks/tier2/*.ts` (7 files)
-- `/open-seo-main/src/server/lib/audit/checks/tier3/*.ts` (5 files)
-- `/open-seo-main/src/server/lib/audit/checks/tier4/*.ts` (3 files)
-- `/open-seo-main/src/server/features/audit/services/AuditService.ts`
+| CRITICAL | 1 |
+| HIGH | 6 |
+| MEDIUM | 8 |
 
 ---
 
-## Agent 12: Drizzle Database Operations Review
+#### CRITICAL Issues
 
-### Scope
-- Query patterns in open-seo-main
-- N+1 query detection
-- Transaction handling
-- Index usage
-
-### Findings
-
-#### HIGH-DB-001: N+1 Query Pattern in updateSectionOrder
-
-**File:** `/open-seo-main/src/server/features/proposals/repositories/template.repository.ts:220-245`
-**Issue:** Sequential UPDATE queries inside a for loop - if template has 20 sections, executes 20 queries.
-**Fix:** Use batch UPDATE with PostgreSQL unnest or CASE WHEN.
-
----
-
-#### HIGH-DB-002: N+1 Pattern in duplicateTemplate
-
-**File:** `/open-seo-main/src/server/features/proposals/repositories/template.repository.ts:272-356`
-**Issue:** Section duplication uses for loop with individual INSERTs.
-**Fix:** Use batch INSERT with values array and single .returning().
-
----
-
-#### HIGH-DB-003: Missing Transaction in createTemplate
-
-**File:** `/open-seo-main/src/server/features/proposals/repositories/template.repository.ts:158-192`
-**Issue:** Creates template and sections without transaction - partial failures leave orphaned records.
-**Fix:** Wrap in `db.transaction()`.
-
----
-
-#### MEDIUM-DB-004: Inefficient Count Query
-
-**File:** `/open-seo-main/src/server/features/services/repositories/service.repository.ts:178-195`
-**Issue:** Fetches all rows to count via `services.length`.
-**Fix:** Use `db.select({ count: count() })`.
-
----
-
-#### MEDIUM-DB-005: Sequential Queries in findTemplateById
-
-**File:** `/open-seo-main/src/server/features/proposals/repositories/template.repository.ts:70-93`
-**Issue:** Fetches template then sections sequentially.
-**Fix:** Use `Promise.all()` for parallel queries.
-
----
-
-#### MEDIUM-DB-006: Redundant Query After Insert
-
-**File:** `/open-seo-main/src/services/alerts.ts:252-292`
-**Issue:** After INSERT, performs separate SELECT to return created rule.
-**Fix:** Use `.returning()` clause on INSERT.
-
----
-
-#### LOW-DB-007: Missing Composite Indexes
-
-**Files:** `/open-seo-main/src/db/alert-schema.ts`, `/open-seo-main/src/services/alerts.ts`
-**Issue:** `getClientAlerts` filters by `(clientId, status)` and `(clientId, alertType)` without composite indexes.
-
----
-
-#### POSITIVE Findings
-
-- **POSITIVE-DB-001**: Transaction usage in schedule-processor.ts (lines 120-149)
-- **POSITIVE-DB-002**: N+1 prevention in ranking-processor.ts (batch queries with Promise.all)
-- **POSITIVE-DB-003**: Atomic upsert with onConflictDoUpdate in alerts.ts
-- **POSITIVE-DB-004**: Robust transaction utilities in lib/db/transaction.ts
-- **POSITIVE-DB-005**: Production-ready connection pool in db/index.ts
-
----
-
-### Summary
-
-| Severity | Count |
-|----------|-------|
-| CRITICAL | 0 |
-| HIGH | 3 |
-| MEDIUM | 3 |
-| LOW | 1 |
-| POSITIVE | 5 |
-
----
-
-## Agent 13: TanStack Start API Review
-
-### Scope
-- Route handler patterns
-- Middleware integration
-- Response formatting
-- Error handling
-
-### Findings
-
-#### CRITICAL-AUTH-01: Spoofable header authentication in platform-connections/$id.ts
-**Location:** `/open-seo-main/src/routes/api/platform-connections/$id.ts:29-33`
-**Issue:** Route uses `x-user-id` header for authentication, which is client-spoofable:
-
-```typescript
-GET: async ({ request, params }) => {
-  const userId = request.headers.get("x-user-id");  // SPOOFABLE!
-  const workspaceId = request.headers.get("x-workspace-id");
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // No JWT/API key validation performed
-```
-
-**Impact:** Any client can set arbitrary `x-user-id` headers to impersonate other users and access/delete their OAuth connections containing sensitive credentials.
-
-**Recommendation:** Replace with `requireApiAuth(request)` from `@/routes/api/seo/-middleware` as used consistently in other routes.
-
----
-
-#### CRITICAL-AUTH-02: Same spoofable header auth in platform-connections/$id.sync.ts
-**Location:** `/open-seo-main/src/routes/api/platform-connections/$id.sync.ts:27-30`
-**Issue:** Same vulnerability as CRITICAL-AUTH-01 - triggers manual sync of OAuth connections using spoofable headers.
-
-```typescript
-POST: async ({ request, params }) => {
-  const userId = request.headers.get("x-user-id");  // SPOOFABLE!
-  if (!userId) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-```
-
-**Impact:** Attacker can trigger syncs on any user's OAuth connections, potentially leaking synced data or causing service degradation.
-
-**Recommendation:** Replace with `requireApiAuth(request)`.
-
----
-
-#### HIGH-AUTH-03: Missing authentication on translation endpoint
-**Location:** `/open-seo-main/src/routes/api/translate.ts:85`
-**Issue:** Translation endpoint has no authentication:
-
-```typescript
-POST: async ({ request }: { request: Request }) => {
-  try {
-    const body = (await request.json()) as Record<string, unknown>;
-    // No await requireApiAuth(request);
-```
-
-**Impact:** Anyone can use the translation service, consuming Gemini API credits without authorization.
-
-**Recommendation:** Add `await requireApiAuth(request)` unless intentionally public.
-
----
-
-#### HIGH-AUTH-04: Pixel status endpoint lacks authorization check
-**Location:** `/open-seo-main/src/routes/api/pixel/$siteId.status.ts:26`
-**Issue:** Anyone can check pixel verification status for any siteId without authentication:
-
-```typescript
-GET: async ({ params }: { params: { siteId: string } }) => {
-  const siteIdParsed = SiteIdSchema.safeParse(params.siteId);
-  // No auth check - any siteId can be queried
-```
-
-**Impact:** Potential information disclosure about which sites have pixels installed and their verification status.
-
-**Recommendation:** Either add authentication or validate the request comes from the site owner's browser (origin check).
-
----
-
-#### MEDIUM-INCONSIST-01: Inconsistent response envelope format across routes
-**Locations:** Multiple routes
-**Issue:** Response formats vary inconsistently:
-
-1. `{ success: true, data: {...} }` - `/api/settings/payments`, `/api/onboarding/magic-link`
-2. `{ data: [...] }` - `/api/seo/briefs`, `/api/variables`
-3. `{ services: [...] }` - `/api/services`
-4. `{ connections: [...] }` - `/api/platform-connections`
-5. `{ count: N }` or raw arrays - `/api/clients/$clientId/alerts`
-6. Raw object without envelope - `/api/metrics/crawl`, `/api/connect/detect`
-
-**Impact:** API consumers must handle different response formats, increasing integration complexity.
-
-**Recommendation:** Standardize on `{ success: boolean, data?: T, error?: string, meta?: {...} }` envelope.
-
----
-
-#### MEDIUM-VAL-01: Some routes lack Zod validation for body parsing
-**Location:** `/open-seo-main/src/routes/api/clients/$clientId.alerts.ts:94-100`
-**Issue:** PATCH handler casts body without Zod validation:
-
-```typescript
-const body = (await request.json()) as {
-  alertId: string;
-  action: "acknowledge" | "resolve" | "dismiss";
-};
-const { alertId, action } = body;
-if (!alertId || !action) {  // Manual validation instead of Zod
-```
-
-**Impact:** TypeScript casting doesn't provide runtime validation; malformed requests may cause unexpected behavior.
-
-**Recommendation:** Use Zod schema like other routes:
-```typescript
-const AlertActionSchema = z.object({
-  alertId: z.string().min(1),
-  action: z.enum(["acknowledge", "resolve", "dismiss"]),
-});
-```
-
----
-
-#### MEDIUM-VAL-02: Missing validation for path parameters in some routes
-**Location:** `/open-seo-main/src/routes/api/platform-connections/$id.ts`
-**Issue:** `params.id` is used directly without validation:
-
-```typescript
-const connection = await platformConnectionService.getConnection(params.id);
-```
-
-**Recommendation:** Validate path parameters with Zod before use, especially for security-sensitive operations.
-
----
-
-#### MEDIUM-ERR-01: Some handlers don't catch AppError properly
-**Location:** `/open-seo-main/src/routes/api/connect/verify.ts:59-66`
-**Issue:** Error handler catches all errors but doesn't differentiate AppError:
-
-```typescript
-} catch (error) {
-  log.error("Connection verification error", error instanceof Error ? error : new Error(String(error)));
-  return Response.json({ error: "Internal error" }, { status: 500 });
-}
-```
-
-**Impact:** AppError with specific codes (UNAUTHENTICATED, FORBIDDEN) returns 500 instead of appropriate status.
-
-**Recommendation:** Add AppError handling like other routes:
-```typescript
-if (error instanceof AppError) {
-  const status = error.code === "UNAUTHENTICATED" ? 401 : ...;
-  return Response.json({ error: error.message }, { status });
-}
-```
-
----
-
-#### LOW-HTTP-01: POST used for retrieval in some endpoints
-**Location:** `/open-seo-main/src/routes/api/seo/domain.ts:32`
-**Issue:** POST method used to "Get domain overview":
-
-```typescript
-// POST /api/seo/domain - Get domain overview
-POST: async ({ request }: { request: Request }) => {
-```
-
-**Impact:** Violates REST semantics - GET should be used for retrieval, POST for creation.
-
-**Recommendation:** Change to GET with query parameters, or document as intentional RPC-style endpoint.
-
----
-
-#### LOW-CORS-01: Wildcard CORS on pixel/collect.ts is documented
-**Location:** `/open-seo-main/src/routes/api/pixel/collect.ts:12-20`
-**Status:** The wildcard CORS policy is well-documented in comments with security justification:
-- Analytics pixels must be embeddable on ANY customer website
-- No credentials are sent (no cookies/auth)
-- Event data is low-value (tampering only affects own metrics)
-- Site ownership validated via siteId + allowedOrigins DB check
-
-**Verdict:** Acceptable design decision with proper documentation.
-
----
-
-#### LOW-ASYNC-01: Fire-and-forget pattern without error propagation
-**Location:** `/open-seo-main/src/routes/api/pixel/collect.ts:143-156`
-**Issue:** Async processing uses fire-and-forget with only `.catch()` logging:
-
-```typescript
-Promise.all(events.map(async (event) => { ... }))
-  .catch((error) => {
-    log.error("Error processing pixel events", ...);
-  });
-// Returns 200 immediately without awaiting
-```
-
-**Status:** Intentional design for <50ms latency target. Well-documented and acceptable for analytics data.
-
----
-
-#### INFO-SEC-01: Admin DLQ endpoint uses timing-safe comparison
-**Location:** `/open-seo-main/src/routes/api/admin/dlq.ts:56-81`
-**Status:** Correct implementation using `timingSafeEqual` for internal API key validation. Network isolation should be enforced at infrastructure level.
-
----
-
-#### INFO-SEC-02: Cron endpoint properly secured
-**Location:** `/open-seo-main/src/routes/api/cron/automations.ts:40-76`
-**Status:** Uses timing-safe comparison for `CRON_SECRET` Bearer token. Endpoint disabled (503) if secret not configured. Good fail-closed behavior.
-
----
-
-#### INFO-AUTHZ-01: Good client access authorization pattern
-**Location:** `/open-seo-main/src/routes/api/clients/$clientId.alerts.ts:38`
-**Status:** Routes consistently use `requireClientAccess(authContext.userId, clientId)` for authorization after authentication. This validates the user->member->organization->client chain.
-
----
-
-### Summary
-
-| Severity | Count | Categories |
-|----------|-------|------------|
-| CRITICAL | 2 | Authentication bypass via spoofable headers |
-| HIGH | 2 | Missing authentication on endpoints |
-| MEDIUM | 4 | Inconsistent responses, missing validation, error handling |
-| LOW | 2 | HTTP semantics |
-
-**Key Strengths Observed:**
-1. Consistent use of `requireApiAuth` middleware in most routes
-2. Proper Zod validation on most request bodies
-3. Good SSRF protection with blocked pattern lists (detect-platform, connect/detect)
-4. Timing-safe comparison for internal API keys and cron secrets
-5. Well-documented security decisions (e.g., pixel CORS policy)
-6. Proper client access authorization via `requireClientAccess`
-7. Good error logging with structured context
-8. Rate limiting on heavy operations (audit start: 3/hour)
-
-**Priority Fixes:**
-1. **CRITICAL**: Replace spoofable `x-user-id` header auth in `platform-connections/$id.ts` and `$id.sync.ts` with `requireApiAuth`
-2. **HIGH**: Add authentication to `/api/translate` or document as intentionally public
-3. **HIGH**: Add authorization check to `/api/pixel/$siteId/status`
-4. **MEDIUM**: Standardize response envelope format across all routes
-
----
-
-## Agent 14: FastAPI Backend Review
-
-### Scope
-- Python endpoint implementations
-- Pydantic validation
-- Async patterns
-- Exception handling
-
-### Findings
-
-#### MEDIUM-ASYNC-01: Blocking `requests` calls in sync functions called from async context
-**Location:** Multiple service files in `/AI-Writer/backend/services/`
-**Files affected:**
-- `services/wavespeed/kling_animation.py:377,434`
-- `services/wavespeed/generators/video/face_swap.py:76,134,207,265`
-- `services/wavespeed/generators/speech.py:155,277,338,403,483,562,641`
-- `services/integrations/bing_oauth.py:50,290,486,691,826,872,918,958`
-- `services/llm_providers/image_generation/stability_provider.py:56`
-- `services/llm_providers/image_generation/wavespeed_face_swap_provider.py:229,267,289`
-
-**Issue:** Synchronous `requests` library is used for HTTP calls in functions that may be called from async FastAPI endpoints. While not always in async functions directly, these can block the event loop when called via `run_in_executor` without proper handling.
-
-**Impact:** Can cause request timeouts and degraded performance under concurrent load.
-
-**Recommendation:** Replace blocking `requests` calls with `httpx.AsyncClient` in async contexts, or ensure proper thread pool executor usage.
-
----
-
-#### MEDIUM-ASYNC-02: `time.sleep()` blocking calls in service code
-**Location:** Multiple service files
-**Files affected:**
-- `services/key_validators.py:60`
-- `services/intelligence/semantic_cache.py:212`
-- `services/wavespeed/generators/speech.py:168,290,353,356,359,416,496,575`
-- `services/integrations/bing_oauth.py:58,71`
-- `services/llm_providers/huggingface_provider.py:255,408`
-
-**Issue:** `time.sleep()` is a blocking call that can freeze the event loop if called from an async context.
-
-**Impact:** Under high concurrency, this can cause request timeouts and reduced throughput.
-
-**Recommendation:** Use `await asyncio.sleep()` in async functions or run blocking code in thread pool executors.
-
----
-
-#### HIGH-SEC-01: GSC OAuth callback uses `SessionLocal` import incorrectly
-**Location:** `/AI-Writer/backend/routers/gsc_auth.py:185-209`
-**Issue:** The callback handler imports `SessionLocal` from `services.database`, but `SessionLocal` is set to `None` in multi-tenant mode. This could cause `NoneType` errors.
-
+**CRIT-01: Dynamic SQL in Cache Eviction (Parameterized but Risky Pattern)**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/cache/persistent_research_cache.py:113`
 ```python
-from services.database import SessionLocal
-# ...
-db = SessionLocal()  # SessionLocal is None in multi-tenant mode
+placeholders = ','.join(['?' for _ in old_ids])
+conn.execute(f"DELETE FROM research_cache WHERE id IN ({placeholders})", old_ids)
 ```
-
-**Impact:** GSC OAuth callbacks may fail in production if triggered after migration to multi-tenant mode.
-
-**Recommendation:** Use `get_session_for_user(user_id)` instead of `SessionLocal()` directly.
+Issue: While the values are parameterized, the dynamic f-string construction of SQL is a risky pattern. The `old_ids` list comes from a prior query, but this pattern could be copied elsewhere unsafely.
+Fix: Use SQLAlchemy ORM delete with `.filter(Model.id.in_(old_ids))` for consistency and safety. Same issue in:
+- `persistent_content_cache.py:168`
+- `persistent_outline_cache.py:136`
 
 ---
 
-#### LOW-VAL-01: Missing URL validation in `get_seo_metrics_detailed` and `get_analysis_summary`
-**Location:** `/AI-Writer/backend/api/seo_dashboard.py:840-946`
-**Issue:** These functions add protocol prefix to URLs but do not validate against SSRF before processing:
+#### HIGH Issues
 
+**HIGH-01: Bare `except:` Clauses Throughout Codebase**
+Files: Multiple (30+ instances)
+```python
+# services/agent_framework.py:195, 201, 249, 264, 270, etc.
+except Exception:
+    pass  # Silent failure
+```
+Issue: Bare `except:` and `except Exception:` with silent pass swallows all errors including `KeyboardInterrupt`, `SystemExit`, making debugging impossible and hiding production issues.
+Fix: Catch specific exceptions or at minimum log the error:
+```python
+except (ValueError, RuntimeError) as e:
+    logger.warning(f"Non-critical error: {e}")
+```
+
+**HIGH-02: Missing Type Hints on Public Functions**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/seo_dashboard.py`
+```python
+def get_mock_seo_data(user_id: str = None) -> SEODashboardData:
+    # Missing Optional type hint for user_id
+```
+Issue: Functions with nullable parameters should use `Optional[str]` for type safety.
+Fix: `def get_mock_seo_data(user_id: Optional[str] = None) -> SEODashboardData:`
+
+**HIGH-03: Database Session Not Using Context Manager**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/seo_dashboard.py:230-239`
+```python
+db_session = get_db_session(user_id) if user_id else None
+if db_session:
+    try:
+        # ... use session
+    finally:
+        db_session.close()
+```
+Issue: While `finally` ensures close, this pattern is repeated 20+ times. Should use `contextlib.contextmanager` or dependency injection.
+Fix: Use the FastAPI `Depends(get_db)` pattern consistently, or wrap in context manager.
+
+**HIGH-04: MD5 Used for Cache Keys**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/cache/persistent_research_cache.py:85`
+```python
+return hashlib.md5(cache_string.encode('utf-8')).hexdigest()
+```
+Issue: MD5 is cryptographically broken. While not security-critical for cache keys, it sets a bad precedent.
+Fix: Use `hashlib.sha256()` for consistency with modern practices.
+
+**HIGH-05: Missing SSRF Validation on `get_seo_metrics_detailed`**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/seo_dashboard.py:840-903`
 ```python
 async def get_seo_metrics_detailed(url: str) -> SEOMetricsResponse:
     if not url.startswith(('http://', 'https://')):
         url = f"https://{url}"
-    # No SSRF validation before analyze
-    result = seo_analyzer.analyze_url_progressive(url)
+    # NO SSRF validation before seo_analyzer.analyze_url_progressive(url)
 ```
+Issue: The `url` parameter is not validated against SSRF before being passed to the analyzer, unlike `SEOAnalysisRequest` which has proper Pydantic validators.
+Fix: Add the same `validate_external_url()` check used in other endpoints.
 
-**Impact:** Potential SSRF vulnerability if `seo_analyzer.analyze_url_progressive` makes HTTP requests to the provided URL.
-
-**Recommendation:** Add `validate_external_url()` check before processing, consistent with other endpoints.
-
----
-
-#### LOW-CODE-01: Duplicate rate limit middleware in main.py
-**Location:** `/AI-Writer/backend/main.py:358-367`
-**Issue:** Two rate limiting middlewares are registered:
-1. `RateLimitMiddleware` class (line 358)
-2. `rate_limit_middleware` function (lines 364-367)
-
-This creates redundant rate limit checks and potential confusion about which limits apply.
-
-**Recommendation:** Remove the duplicate legacy `rate_limit_middleware` function and rely solely on `RateLimitMiddleware`.
-
----
-
-#### MEDIUM-ERR-01: Error message leakage in some endpoints
-**Location:** `/AI-Writer/backend/api/seo_dashboard.py:1343,1365`
-**Issue:** Some error handlers expose internal error details:
-
+**HIGH-06: Potential Information Leakage in Error Messages**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/articles.py:773`
 ```python
-except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Failed to run strategic insights: {str(e)}")
+error=f"Unexpected error: {str(e)}",
 ```
-
-**Impact:** Internal error messages could leak implementation details to clients.
-
-**Recommendation:** Log full error details server-side but return generic error messages to clients, consistent with the global exception handler pattern.
-
----
-
-#### LOW-TYPE-01: Type hint `any` used instead of `Any`
-**Location:** `/AI-Writer/backend/middleware/rate_limit.py:555`
-**Issue:** Lowercase `any` is used as a type hint instead of `typing.Any`:
-
+Issue: Exception messages can leak internal details (file paths, SQL errors, etc.)
+Fix: Log full error server-side, return generic message to client:
 ```python
-def get_rate_limit_status(...) -> Dict[str, any]:  # Should be Any
+logger.error(f"CMS test failed: {e}", exc_info=True)
+error="Connection test failed unexpectedly"
 ```
 
-**Impact:** Type checkers may not properly validate return types.
-
-**Recommendation:** Use `typing.Any` for proper type checking.
-
 ---
-
-#### HIGH-SEC-02: Production config validation could be bypassed
-**Location:** `/AI-Writer/backend/main.py:165-198`
-**Issue:** The `validate_production_config()` function only checks `ENV` environment variable, but production detection uses `NODE_ENV`:
-
-```python
-def validate_production_config():
-    env = os.getenv("ENV", "development").lower()
-    if env != "production":
-        return  # Only validate in production
-```
-
-But CORS configuration uses:
-```python
-is_production = os.getenv("NODE_ENV", "").lower() == "production"
-```
-
-**Impact:** Security flags might not be validated if `NODE_ENV=production` but `ENV` is not set, creating inconsistent production behavior.
-
-**Recommendation:** Align production detection across all checks to use a single canonical variable or check both.
-
----
-
-#### LOW-PERF-01: Per-request engine creation avoided but session management could be optimized
-**Location:** `/AI-Writer/backend/services/database.py:430-448`
-**Issue:** The `get_db` dependency creates a new `sessionmaker` on each request:
-
-```python
-def get_db(current_user: dict = Depends(get_current_user)):
-    engine = get_engine_for_user(user_id)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)  # Created each request
-    db = SessionLocal()
-```
-
-**Impact:** Minor overhead from creating sessionmaker instances repeatedly.
-
-**Recommendation:** Cache sessionmakers per user_id alongside engines.
-
----
-
-#### LOW-DOC-01: Deprecated function without clear migration path
-**Location:** `/AI-Writer/backend/services/database.py:463-479`
-**Issue:** `get_db_session()` is marked deprecated but is still used throughout the codebase. The deprecation warning mentions `get_session_for_user()` but doesn't enforce migration.
-
-**Recommendation:** Add deprecation warnings at runtime or use a code linter rule to flag usages.
-
----
-
-### Summary
-
-| Severity | Count | Categories |
-|----------|-------|------------|
-| HIGH | 2 | Security (OAuth session handling, production config) |
-| MEDIUM | 3 | Async patterns (blocking calls, time.sleep), Error handling |
-| LOW | 5 | Validation, Code quality, Type hints, Performance, Documentation |
-
-**Key Strengths Observed:**
-1. Comprehensive SSRF protection in URL validator with Unicode normalization, encoded IP detection
-2. Proper encryption service for sensitive credentials (Fernet)
-3. Global exception handler prevents information leakage
-4. Rate limiting with fail-closed behavior for external API endpoints
-5. Security headers middleware implements OWASP recommendations
-6. Thread-safe database engine caching with double-checked locking
-7. Timing-safe comparison for internal API key validation
-
-**Priority Fixes:**
-1. Fix GSC OAuth callback session handling (HIGH-SEC-01)
-2. Align production environment detection (HIGH-SEC-02)
-3. Add SSRF validation to remaining SEO endpoints (LOW-VAL-01)
-
----
-
-## Agent 15: Content Generation Pipeline Review
-
-### Scope
-- AI content generation flow
-- Quality gate implementation
-- Score >= 80 threshold logic
-- Auto-publish workflow
-
-### Findings
-
-#### Pipeline Architecture Overview
-
-The content generation pipeline follows this state lifecycle:
-```
-draft -> generating -> generated -> pending_review -> approved -> publishing -> published
-                                                                           \-> failed
-```
-
-Key components analyzed:
-- `/AI-Writer/backend/services/article_generation_service.py` - Core generation logic
-- `/AI-Writer/backend/services/auto_publish_executor.py` - Publishing orchestration
-- `/AI-Writer/backend/services/article_recovery_service.py` - Stuck article recovery
-- `/AI-Writer/backend/utils/llm_safety.py` - Prompt injection prevention
-- `/AI-Writer/backend/services/scheduler/__init__.py` - Cron job registration
-
----
-
-#### POSITIVE-GATE-01: Quality Gate Implementation is Fail-Closed (SECURE)
-**Location:** `/AI-Writer/backend/services/article_generation_service.py:56-127`
-**Assessment:** The quality gate correctly implements fail-closed behavior.
-
-```python
-async def check_quality_gate(content: str, keyword: str, client_id: str) -> QualityGateResult:
-    try:
-        # ... scoring logic ...
-        return QualityGateResult(passed=score >= QUALITY_GATE_THRESHOLD, score=score, ...)
-    except Exception as e:
-        logger.error(f"Quality gate check failed: {e}")
-        raise QualityGateError(f"Quality gate evaluation failed: {e}")
-```
-
-**Finding:** On any error during quality evaluation, the system raises `QualityGateError` rather than defaulting to pass. This prevents low-quality content from bypassing the gate due to evaluation failures. The threshold constant `QUALITY_GATE_THRESHOLD = 80` is correctly enforced.
-
----
-
-#### POSITIVE-SEC-01: Prompt Injection Prevention (SECURE)
-**Location:** `/AI-Writer/backend/utils/llm_safety.py`
-**Assessment:** Comprehensive prompt injection prevention is implemented.
-
-The `sanitize_user_input()` function:
-- Detects 60+ injection patterns (system prompts, role overrides, encoding attacks)
-- Strips control characters and escape sequences
-- Enforces length limits (50,000 char default)
-- Logs potential injection attempts for monitoring
-
-This sanitization is applied to all user-provided content before LLM prompt construction.
-
----
-
-#### POSITIVE-RECOVERY-01: Stuck Article Recovery Mechanisms
-**Location:** `/AI-Writer/backend/services/article_recovery_service.py`
-**Assessment:** Proper recovery sweeps prevent articles from being permanently stuck.
-
-- `publishing_recovery_sweep()`: Runs every 5 minutes, marks articles stuck in `PUBLISHING` state for >5 minutes as `FAILED`
-- `orphaned_approved_recovery_sweep()`: Runs every 15 minutes, re-queues `APPROVED` articles that missed their publish window by >1 hour
-
----
-
-#### POSITIVE-CONCURRENCY-01: Atomic Article Claiming
-**Location:** `/AI-Writer/backend/services/auto_publish_executor.py:87-115`
-**Assessment:** Uses `SELECT FOR UPDATE SKIP LOCKED` for safe concurrent claiming.
-
-```python
-article = session.query(ScheduledArticle).filter(
-    ScheduledArticle.status == 'approved',
-    ...
-).with_for_update(skip_locked=True).first()
-```
-
-This prevents double-claiming when multiple workers process the publish queue simultaneously.
-
----
-
-#### HIGH-ASYNC-01: Potential Race Condition in Daily Generation Cron
-**Location:** `/AI-Writer/backend/services/scheduler/__init__.py:303-328`
-**Issue:** The `_run_autonomous_cycles_sync()` wrapper has complex event loop handling that could cause issues.
-
-```python
-def _run_autonomous_cycles_sync():
-    try:
-        loop = asyncio.get_running_loop()
-        # If in async context, use run_coroutine_threadsafe
-        future = asyncio.run_coroutine_threadsafe(run_autonomous_cycles(), loop)
-        future.result(timeout=3600)
-    except RuntimeError:
-        # No running loop - create new one
-        asyncio.run(run_autonomous_cycles())
-```
-
-**Impact:** If APScheduler's `AsyncIOScheduler` is used, the `get_running_loop()` check may return a loop that is not the scheduler's internal loop, potentially causing deadlocks or thread-safety issues.
-
-**Recommendation:** Use APScheduler's native async job support with `AsyncIOScheduler` instead of sync wrappers, or ensure the executor type matches the coroutine handling strategy.
-
----
-
-#### MEDIUM-VOICE-01: Voice Profile Fetch Errors Are Silent But Safe
-**Location:** `/AI-Writer/backend/services/article_generation_service.py:129-180`
-**Issue:** Voice profile fetch failures fall back to generic constraints without alerting.
-
-```python
-async def fetch_voice_profile(client_id: str) -> Optional[dict]:
-    try:
-        # Fetch from open-seo API
-        response = await http_client.get(f"{OPEN_SEO_URL}/api/voice/{client_id}")
-        return response.json()
-    except Exception as e:
-        logger.warning(f"Failed to fetch voice profile for {client_id}: {e}")
-        return None  # Falls back to generic
-```
-
-**Impact:** Articles may be generated without the client's voice profile if the open-seo API is temporarily unavailable. While safe (generation continues), this could produce off-brand content.
-
-**Recommendation:** Add metric/alert for voice profile fetch failures; consider retry logic for transient network errors.
-
----
-
-#### MEDIUM-ASYNC-02: Nested Async Context Complexity
-**Location:** `/AI-Writer/backend/services/article_generation_service.py:936-977`
-**Issue:** The `daily_generation_cron()` function is async but called from APScheduler sync jobs via wrappers.
-
-The current approach of detecting whether an event loop exists and choosing between `run_coroutine_threadsafe` or `asyncio.run()` is fragile and difficult to test.
-
-**Recommendation:** Standardize on either fully async scheduling (using `AsyncIOScheduler`) or fully sync jobs with explicit thread pool executors.
-
----
-
-#### LOW-STATE-01: Article State Transition Not Enforced at DB Level
-**Location:** `/AI-Writer/backend/models/publishing.py:92-166`
-**Issue:** The status field is a plain `String(20)` without a CHECK constraint.
-
-```python
-status = Column(String(20), nullable=False, default="draft")
-# Comment says: "Status lifecycle (enforced at app layer only - no DB CHECK constraint)"
-```
-
-**Impact:** Invalid state transitions could occur if application logic has bugs. The database would accept any string value.
-
-**Recommendation:** Add a PostgreSQL CHECK constraint or use SQLAlchemy `Enum` type to enforce valid states at the database level.
-
----
-
-#### LOW-PUBLISH-01: Double-Publish Risk Without Idempotency Key
-**Location:** `/AI-Writer/backend/services/auto_publish_executor.py:140-180`
-**Issue:** CMS publish operations do not use idempotency keys.
-
-If a network timeout occurs after the CMS accepts the post but before the response is received, a retry could create duplicate posts.
-
-**Recommendation:** Generate and store an idempotency key per article; pass to CMS APIs that support it (WordPress, Webflow have custom header support).
-
----
-
-#### LOW-CONTENT-01: Minimal Content Validation Before Publish
-**Location:** `/AI-Writer/backend/services/auto_publish_executor.py:120-138`
-**Issue:** Content is published if status is `approved` without re-validating content exists.
-
-```python
-if article.status != 'approved':
-    return
-# Publishes article.content_html without null check
-```
-
-**Impact:** If `content_html` is somehow None (data corruption), the CMS publish would fail with unclear errors.
-
-**Recommendation:** Add explicit validation: `if not article.content_html: mark_failed("No content")`.
-
----
-
-### Summary
-
-| Severity | Count | Categories |
-|----------|-------|------------|
-| HIGH | 1 | Async/concurrency (event loop handling) |
-| MEDIUM | 2 | Voice profile resilience, async context complexity |
-| LOW | 3 | State enforcement, idempotency, content validation |
-
-**Key Strengths Observed:**
-1. Quality gate is fail-closed - no bypass on errors
-2. Prompt injection prevention with 60+ pattern detection
-3. Stuck article recovery sweeps every 5-15 minutes
-4. Atomic claiming with SELECT FOR UPDATE SKIP LOCKED
-5. Comprehensive test coverage in `test_article_generation_service.py`
-6. 3-retry exponential backoff (5, 30, 120 min) for publish failures
-
-**Priority Fixes:**
-1. Simplify async/sync boundary in scheduler (HIGH-ASYNC-01)
-2. Add alerting for voice profile fetch failures (MEDIUM-VOICE-01)
-3. Add idempotency keys for CMS publishes (LOW-PUBLISH-01)
-
-
----
-
-## Agent 16: Voice/Brand System Review
-
-### Scope
-- VoiceConstraintBuilder implementation
-- 40+ field profile management
-- Client voice consistency
-- Profile application logic
-
-### Findings
-
-*Awaiting agent completion...*
-
----
-
-## Agent 17: AI-Writer React UI Review
-
-### Scope
-- React component logic
-- State management (Zustand stores)
-- API integration (axios clients)
-- Error handling and user experience
-- Integration with apps/web shell
-
-### Findings
-
-#### CRITICAL Issues
-
-**[C17-01] No Double-Submit Prevention on Article Generation**
-- **File**: `/AI-Writer/frontend/src/pages/ArticleEditorPage.tsx` (lines 316-358)
-- **Issue**: The `handleGenerate` function sets `isGenerating` state but there is no request deduplication. If a user rapidly clicks the generate button, multiple API calls could fire before the disabled state takes effect due to React's async state updates.
-- **Impact**: Duplicate article generation, wasted AI tokens, inconsistent state
-- **Fix**: Add a ref-based guard to track in-flight requests
-
-**[C17-02] Silent Failure in Publishing Settings Update**
-- **File**: `/AI-Writer/frontend/src/stores/contentCalendarStore.ts` (lines 91-94)
-- **Issue**: `updatePublishingSettings` has no try/catch - if the API call fails, the error propagates uncaught and the user sees no feedback.
-- **Impact**: User believes settings are saved when they are not; potential data loss
-- **Fix**: Wrap in try/catch and provide error state
-
-#### HIGH Issues
-
-**[H17-01] Missing Error Boundary Around Individual Pages**
-- **File**: `/AI-Writer/frontend/src/App.tsx`
-- **Issue**: Only a single global ErrorBoundary wraps the entire app. If a component like `ArticleEditorPage` throws, the entire app crashes to the error screen.
-- **Impact**: Single component failure brings down entire app
-- **Fix**: Wrap each route's page component in a ComponentErrorBoundary
-
-**[H17-02] Race Condition in Client Store fetchClients**
-- **File**: `/AI-Writer/frontend/src/stores/clientStore.ts` (lines 38-53)
-- **Issue**: If `fetchClients` is called twice rapidly (navigation + component mount), both calls set `isLoading: true`, but only one will set `isLoading: false`. The second response may overwrite the first's data mid-operation.
-- **Impact**: Stale data, loading spinner stuck, inconsistent UI
-- **Fix**: Use abort controller or request ID to cancel/ignore stale responses
-
-**[H17-03] fetchArticles Not Called After Approve/Reject in Pipeline**
-- **File**: `/AI-Writer/frontend/src/pages/ContentCalendarPage.tsx` (lines 481-502)
-- **Issue**: After approve/reject, only `fetchPendingReview` is called, but `fetchArticles` is not. The Calendar View tab shows stale status.
-- **Impact**: Calendar shows wrong status until manual refresh
-- **Fix**: Also call `fetchArticles(activeClientId)` in the pipeline refresh
-
-**[H17-04] No Loading/Error State for Intelligence Status Fetch**
-- **File**: `/AI-Writer/frontend/src/pages/ClientDashboardPage.tsx` (lines 100-111)
-- **Issue**: Intelligence status fetch silently catches errors and sets status to `'not_started'`. No loading indicator shown.
-- **Impact**: User sees brief flash of "not started" even when intelligence is completed
-- **Fix**: Add explicit loading state for intelligence status
-
-**[H17-05] iframe SEO Audit Page Has No Loading State or Error Handling**
-- **File**: `/AI-Writer/frontend/src/pages/SeoAuditPage.tsx`
-- **Issue**: The iframe-based SEO audit page has no loading indicator, no error handling if iframe fails to load.
-- **Impact**: User sees blank screen if open-seo is down or slow to load
-- **Fix**: Add onLoad/onError handlers and a loading skeleton
 
 #### MEDIUM Issues
 
-**[M17-01] eslint-disable-next-line for useEffect Dependencies**
-- **Files**: ClientListPage.tsx:40, ClientDashboardPage.tsx:98, SubscriptionContext.tsx:134, AppShell.tsx:200
-- **Issue**: Several `useEffect` hooks disable the exhaustive-deps rule. This can mask real bugs.
-- **Fix**: Review each case; use `useCallback` for functions or add to dependency array
+**MED-01: Mutable Default Argument Pattern**
+File: Multiple locations
+```python
+def some_func(data: dict = {}):  # Mutable default!
+```
+Fix: Use `def some_func(data: Optional[dict] = None):` then `data = data or {}`
 
-**[M17-02] Inconsistent Error State Clearing**
-- **File**: `/AI-Writer/frontend/src/stores/analyticsStore.ts` (lines 53-60)
-- **Issue**: `fetchPublishingLogs` does not clear error state before fetching, unlike `fetchAnalytics`.
-- **Fix**: Add `error: null` to the set call at the start of `fetchPublishingLogs`
+**MED-02: Inconsistent Route Naming**
+```
+/api/seo-dashboard/data         # kebab-case
+/api/clients/{id}/test-cms-connection   # kebab-case  
+/api/workspaces/{id}/team       # lowercase
+```
+Issue: Mix of conventions. Should standardize on kebab-case for consistency.
 
-**[M17-03] Persist Store Rehydration Not Validated**
-- **File**: `/AI-Writer/frontend/src/stores/articleEditorStore.ts` (lines 115-119)
-- **Issue**: Persisted `article` object from localStorage is not validated on rehydration.
-- **Fix**: Add a version field and migration logic
+**MED-03: Missing Docstrings on Complex Functions**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/database.py:317-375`
+Issue: `get_engine_for_user()` is a critical function with complex LRU caching logic but docstring doesn't explain thread-safety guarantees.
+Fix: Add comprehensive docstrings explaining concurrency model.
 
-**[M17-04] Missing aria-labels on Icon-Only Buttons**
-- **File**: `/AI-Writer/frontend/src/components/shell/AppShell.tsx`
-- **Issue**: When sidebar is collapsed, nav buttons show only icons without aria-label.
-- **Fix**: Add `aria-label={item.label}` alongside `title`
+**MED-04: `print()` Statements Instead of Logger**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/images.py:235-247`
+```python
+print(f"""
+[SUBSCRIPTION] Image Generation
+├─ User: {user_id}
+...
+""")
+```
+Issue: `print()` bypasses structured logging, won't appear in production logs.
+Fix: Use `logger.info()` with structured data.
 
-**[M17-05] URL Validation Too Permissive in AddClientModal**
-- **File**: `/AI-Writer/frontend/src/components/onboarding/AddClientModal.tsx` (lines 76-80)
-- **Issue**: URL validation only checks for http:// or https:// prefix. Invalid URLs pass.
-- **Fix**: Use URL constructor to validate properly
+**MED-05: datetime.utcnow() Deprecated**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/middleware/authorization.py:77`
+```python
+def _utcnow():
+    return datetime.utcnow()
+```
+Issue: `datetime.utcnow()` is deprecated in Python 3.12+. Returns naive datetime.
+Fix: Use `datetime.now(timezone.utc)` (already done in `models/client.py` but not everywhere).
 
-**[M17-06] Polling Interval Too Frequent for Intelligence Status**
-- **File**: `/AI-Writer/frontend/src/pages/ClientDashboardPage.tsx` (lines 115-127)
-- **Issue**: Intelligence status polls every 5 seconds for 30-90 second operations.
-- **Fix**: Use exponential backoff or longer interval (15-30 seconds)
+**MED-06: Hardcoded Timeout Values**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/articles.py:666`
+```python
+GENERATION_TIMEOUT_SECONDS = 300
+```
+Issue: Hardcoded magic number. Should be configurable via environment.
+Fix: `GENERATION_TIMEOUT_SECONDS = int(os.getenv("ARTICLE_GENERATION_TIMEOUT", "300"))`
 
-**[M17-07] console.error in Production Code**
-- **File**: `/AI-Writer/frontend/src/stores/contentCalendarStore.ts` (line 86)
-- **Issue**: `console.error` statement left in production code.
-- **Fix**: Remove or gate behind development check
+**MED-07: Missing Rate Limiting on Batch Endpoints**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/seo_dashboard.py:948`
+Issue: `batch_analyze_urls` has 50 URL limit but no per-user rate limiting to prevent abuse.
+Fix: Add endpoint-specific rate limit decorator.
+
+**MED-08: Shadowing Built-in Names**
+File: `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/main.py:52`
+```python
+from typing import Dict, Any, Optional
+# Later uses Dict, List which shadow builtins
+```
+Issue: Minor but can cause confusion in Python 3.9+ where `dict`, `list` are valid type hints.
+Fix: Use lowercase `dict`, `list` for type hints in Python 3.9+.
+
+---
+
+#### Endpoint Security Matrix
+
+| Endpoint | Auth | Input Validation | Error Handling | SSRF Protection | Status |
+|----------|------|------------------|----------------|-----------------|--------|
+| `POST /api/clients` | Yes (Clerk) | Pydantic | Try/Rollback | N/A | OK |
+| `GET /api/clients/{id}` | Yes + RBAC | UUID validation | 404 masking | N/A | OK |
+| `PUT /api/clients/{id}/settings` | Yes + RBAC | Pydantic | Try/Rollback | N/A | OK |
+| `POST /api/clients/{id}/test-connection` | Yes + RBAC | Platform regex | Logged, generic | Yes (validate_url) | OK |
+| `POST /api/articles` | Yes + inline | Pydantic | 404 masking | N/A | OK |
+| `POST /api/articles/{id}/generate` | Yes + RBAC | UUID | SELECT FOR UPDATE | N/A | OK |
+| `GET /api/seo-dashboard/data` | Yes | None needed | Fallback to mock | N/A | OK |
+| `POST /api/seo-dashboard/analyze-comprehensive` | Yes | Pydantic SSRF | Logged | Yes | OK |
+| `GET /api/seo-dashboard/metrics-detailed` | Yes | URL param | HTTPException | **MISSING** | NEEDS FIX |
+| `POST /api/seo-dashboard/batch-analyze` | Yes | Pydantic SSRF | Logged | Yes | OK |
+| `GET /internal/tokens/{client_id}/{provider}` | X-Internal-Api-Key | UUID | 404/401 | N/A | OK |
+| `PUT /internal/tokens/{client_id}/{provider}` | X-Internal-Api-Key | Pydantic | Logged | N/A | OK |
+| `GET /api/workspaces/{id}/team` | Yes | UUID | 403/auto-create | N/A | OK |
+| `POST /api/workspaces/{id}/clients/{id}/reassign` | Yes + Admin | UUID | Rollback | N/A | OK |
+
+---
+
+#### Strengths Identified
+
+1. **Excellent Encryption Implementation** (`services/encryption.py`)
+   - Fernet (AES-128-CBC + HMAC-SHA256) properly implemented
+   - Fail-fast on missing FERNET_KEY
+   - Clear security contract documented
+
+2. **Comprehensive SSRF Protection** (`services/url_validator.py`)
+   - Blocks private IPs, localhost, link-local
+   - Handles encoded IPs (hex, octal, decimal, abbreviated)
+   - Unicode normalization to prevent homoglyph attacks
+   - DNS rebinding limitation clearly documented
+
+3. **Robust Authorization Middleware** (`middleware/authorization.py`)
+   - IDOR prevention via ClientUserAccess table
+   - Fail-closed when client_id missing (fixed from prior review)
+   - Global endpoints explicitly whitelisted
+   - Comprehensive audit logging
+
+4. **Production Config Validation** (`main.py:165-198`)
+   - Rejects dangerous flags in production (DISABLE_AUTH, DEBUG_MODE)
+   - Quality gate enforcement
+
+5. **Thread-Safe Database Engine Cache** (`services/database.py`)
+   - Double-checked locking pattern
+   - LRU eviction to prevent memory leak
+   - Proper connection disposal on cleanup
+
+6. **Timing-Safe API Key Comparison** (`api/internal.py:60`)
+   - Uses `hmac.compare_digest()` to prevent timing attacks
+
+7. **Atomic Status Transitions** (`api/articles.py`)
+   - `SELECT FOR UPDATE` prevents race conditions in approval workflow
+   - Idempotent generation endpoint design
+
+8. **Global Exception Handler** (`main.py:224-276`)
+   - Captures in Sentry with context
+   - Returns generic error to client
+   - Provides error_id for support correlation
+
+---
+
+#### Recommendations Summary
+
+1. **Immediate (CRITICAL/HIGH)**
+   - Replace raw SQL in cache services with SQLAlchemy ORM
+   - Add SSRF validation to `get_seo_metrics_detailed`
+   - Audit and fix bare `except:` clauses
+
+2. **Short-Term (HIGH/MEDIUM)**
+   - Standardize on `datetime.now(timezone.utc)`
+   - Replace `print()` with structured logging
+   - Add type hints to all public functions
+   - Make timeouts configurable via environment
+
+3. **Long-Term (MEDIUM)**
+   - Standardize route naming convention
+   - Add per-endpoint rate limiting
+   - Create context manager wrapper for DB sessions
+
+---
+
+### Agent 10: AI-Writer Frontend Review
+
+**Status:** Complete
+**Components Analyzed:** 68
+**API Calls Found:** 47
+**Issues Found:** CRITICAL: 0 | HIGH: 3 | MEDIUM: 12 | LOW: 5
+
+#### CRITICAL Issues
+
+*None found.*
+
+The codebase handles the primary XSS attack vector properly:
+- `ArticleEditorPage.tsx:125-133` uses DOMPurify with a strict allowlist configuration (`ARTICLE_SANITIZE_CONFIG`) before rendering AI-generated HTML via `dangerouslySetInnerHTML`
+- No raw innerHTML usage found
+- API tokens are managed via Clerk's `getToken()` (secure, not stored in localStorage as plain API keys)
+- No hardcoded secrets in client code (all via `process.env.REACT_APP_*`)
+
+#### HIGH Issues
+
+**HIGH-01: Missing Form Validation on Several API Submissions**
+- **File:** `pages/ClientSettingsPage.tsx:356-378` (WordPress settings)
+- **Problem:** WordPress URL, username, and password fields lack client-side validation before API submission. Invalid URLs could reach backend before validation.
+- **Fix:** Add URL validation similar to `AddClientModal.tsx:64-88` pattern; validate `wpUrl` is a valid URL before `handleSaveWpSettings()`.
+
+**HIGH-02: Race Condition in Article Generation Button**
+- **File:** `pages/ArticleEditorPage.tsx:316-359` (handleGenerate)
+- **Problem:** While there is a check for `isGenerating` at line 318, the button's `disabled` state at line 643 only checks `isGenerating || !currentArticle.title.trim()`. During the async gap between click and state update, double-clicks could fire duplicate requests.
+- **Fix:** Add immediate local loading state or use `useRef` for in-flight tracking to guarantee single submission.
+
+**HIGH-03: No Abort Controller for Long-Running Fetch Operations**
+- **Files:** `pages/ClientDashboardPage.tsx:93-98`, `pages/ContentCalendarPage.tsx:459-460`
+- **Problem:** `fetchAnalytics` and `fetchArticles` can be triggered repeatedly (navigation, client switch) without cancelling in-flight requests, leading to stale data races.
+- **Recommendation:** Apply the `useAbortController` pattern from `hooks/useAbortController.ts` to these fetch calls, similar to how `clientStore.ts:41-48` handles abort.
+
+#### MEDIUM Issues
+
+**MEDIUM-01: Component Size Exceeds Recommended Limits**
+- `ClientSettingsPage.tsx`: 1,130 lines (recommended max: 800)
+- `GlobalSettingsPage.tsx`: 1,024 lines
+- `ArticleLibraryPage.tsx`: 912 lines
+- **Fix:** Extract tab content into separate components (e.g., `ApiIntegrationsTab` is already extracted in GlobalSettingsPage - apply same pattern to ClientSettingsPage).
+
+**MEDIUM-02: Inconsistent Error State Reset Pattern**
+- **File:** `stores/analyticsStore.ts:42-50` vs `stores/analyticsStore.ts:53-62`
+- **Problem:** `fetchAnalytics` clears error at start (`error: null`), but `fetchPublishingLogs` does not. Inconsistent error handling across store methods.
+- **Fix:** Standardize error clearing at request start across all store fetch methods.
+
+**MEDIUM-03: Zustand Store Rehydration Without Validation**
+- **File:** `stores/articleEditorStore.ts:115-119`
+- **Problem:** Persisted `article` state is rehydrated without validation. Corrupted localStorage could cause crashes.
+- **Fix:** Add `merge` function with validation similar to `clientStore.ts:86-97`.
+
+**MEDIUM-04: Missing Accessibility Labels on Collapsed Navigation**
+- **File:** `components/shell/AppShell.tsx:228-257`
+- **Problem:** When sidebar is collapsed, nav buttons show only icons. While `title` is provided, `aria-label` is needed for screen readers.
+- **Status:** Already fixed at lines 232, 435 with aria-label. No action needed.
+
+**MEDIUM-05: URL Validation Regex Could Be More Strict**
+- **File:** `components/onboarding/AddClientModal.tsx:64-88`
+- **Problem:** Current validation allows any TLD 2-63 chars. Doesn't prevent reserved TLDs like `.local`, `.test`, `.invalid`.
+- **Impact:** Low - backend should re-validate.
+
+**MEDIUM-06: Polling Interval Not Adaptive**
+- **File:** `pages/ClientDashboardPage.tsx:114-147`
+- **Status:** Already implements adaptive polling (2s -> 10s). No action needed.
+
+**MEDIUM-07: Console.log Statements in Production Code**
+- **Files:** Multiple
+  - `hooks/useErrorHandler.ts:29`: `console.error('Error occurred:', errorState);`
+  - `components/App/TokenInstaller.tsx:14-16`: `console.log('TokenInstaller: Storing...')`
+  - `utils/toastNotifications.ts` (uses console as fallback)
+- **Fix:** Replace with logger utility from `utils/logger.ts` which respects NODE_ENV.
+
+**MEDIUM-08: Missing Error Boundary on Image Generation Panel**
+- **File:** `components/editor/ImageGenerationPanel.tsx`
+- **Problem:** If image generation fails catastrophically (network error during render), it could crash the entire ArticleEditorPage.
+- **Fix:** Wrap in `ComponentErrorBoundary` from `components/shared/ComponentErrorBoundary.tsx`.
+
+**MEDIUM-09: Stale Closure in useEffect Dependencies**
+- **File:** `contexts/SubscriptionContext.tsx:117-138`
+- **Problem:** `checkSubscription` is intentionally excluded from dependency array (using ref pattern). The code at lines 119-120 correctly implements the ref pattern.
+- **Status:** Already handled correctly. No action needed.
+
+**MEDIUM-10: localStorage Access Without Try-Catch in Some Locations**
+- **Files:** `App.tsx:48`, `utils/demoMode.ts:15`
+- **Problem:** localStorage access can throw in private browsing. Most locations handle this, but a few don't.
+- **Fix:** Wrap in try-catch like `pages/LoginPage.tsx:9-15`.
+
+**MEDIUM-11: GSC API Class Pattern Inconsistent With Other API Files**
+- **File:** `api/gsc.ts`
+- **Problem:** Uses class-based singleton pattern while other API files use functional exports. Creates inconsistent API surface.
+- **Impact:** Low - functional, but harder to tree-shake.
+
+**MEDIUM-12: No Loading State for Voice Templates in ClientSettingsPage**
+- **File:** `pages/ClientSettingsPage.tsx:566-578`
+- **Problem:** Voice template dropdown shows "None" option during load but no skeleton/spinner indicating data is loading.
+- **Fix:** Show skeleton placeholder while `voiceTemplates.length === 0 && !loaded`.
 
 #### LOW Issues
 
-**[L17-01] Magic Strings for Article Status** - Duplicated across files
-**[L17-02] Duplicate Client Type Definition** - Not exported/reused consistently
-**[L17-03] Hardcoded Color Values in Calendar** - `STATUS_HEX` may not match theme
-**[L17-04] Dead Code - Unused `isLoading` prop** - In ClientSwitcherPopoverContent
-**[L17-05] Subscription Polling Uses Fixed 5-Minute Interval** - Should be configurable
+**LOW-01:** `any` type usage at `pages/ClientListPage.tsx:119` (`const c = client as any;`) - should use proper interface extension
+**LOW-02:** Unused import in `stores/contentCalendarStore.ts` - `apiClient` methods could be narrowed
+**LOW-03:** Magic numbers in polling intervals (`pages/ClientDashboardPage.tsx:117-119`) - extract to constants
+**LOW-04:** Dialog title missing in some dialogs (accessibility) - most are handled, a few edge cases remain
+**LOW-05:** Inconsistent toast notification pattern - some components use local state, others use `utils/toastNotifications.ts`
 
-### Summary
+#### Component Health Summary
 
+| Component | API Integration | Error Handling | Loading States | Status |
+|-----------|----------------|----------------|----------------|--------|
+| App.tsx | OK (Clerk) | ErrorBoundary wraps all | Loading spinner | Healthy |
+| ArticleEditorPage | OK (apiClient, aiApiClient) | Try-catch, error state | Full skeleton | Healthy |
+| ClientDashboardPage | OK | ErrorBanner | Skeleton cards | Healthy |
+| ClientSettingsPage | OK | Try-catch, toast | Per-section loading | Healthy |
+| GlobalSettingsPage | OK | Per-tab error states | Full skeleton | Healthy |
+| ContentCalendarPage | OK | ErrorBanner | Skeleton calendar | Healthy |
+| ClientListPage | OK | Error state + retry | Skeleton grid | Healthy |
+| AddClientModal | OK | Form validation errors | Creating state | Healthy |
+| AppShell | OK | Silent fail on health | N/A (static) | Healthy |
+| ImageGenerationPanel | OK | Toast errors | Button spinner | Healthy |
+| LoginPage | N/A (Clerk) | N/A | N/A | Healthy |
+| ProtectedRoute | N/A | N/A | Loading spinner | Healthy |
+
+#### Strengths Identified
+
+1. **Solid API Client Architecture**: The `ApiClientSingleton` pattern with cooldown handling prevents request storms during backend outages.
+
+2. **Proper XSS Protection**: DOMPurify is correctly configured with a strict allowlist for AI-generated HTML content - the most critical security concern is well-handled.
+
+3. **Consistent Error Handling Pattern**: Most components follow the same pattern of loading state, error state, and success state.
+
+4. **Good Use of Zustand**: Stores are well-structured with proper TypeScript interfaces, immutable updates, and persistence configuration.
+
+5. **React 18 Patterns**: Proper use of `useCallback`, `useMemo`, and dependency arrays. No unnecessary re-renders observed.
+
+6. **Clerk Integration**: Auth token management is handled centrally via `TokenInstaller`, with proper cleanup on sign-out.
+
+7. **Adaptive Polling**: Dashboard polling starts fast and backs off, preventing server overload during long operations.
+
+8. **Component Composition**: Good separation between pages, shared components, and UI primitives (shadcn).
+
+---
+
+### Agent 6: apps/web Components Review
+
+**Status:** Complete
+**Components Analyzed:** 256
+**Hooks Found:** 25
+**Stores Found:** 8
+**Issues Found:** 3 CRITICAL, 7 HIGH, 12 MEDIUM
+
+#### CRITICAL Issues
+
+**CRITICAL-01: Potential XSS via unsanitized HTML in ExportButton dropdown**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/dashboard/ExportButton.tsx:153-167`
+- **Problem:** The popover dropdown buttons render without type="button", which defaults to type="submit" in some contexts. While not directly XSS, the buttons lack explicit roles.
+- **Fix:** Add `type="button"` to all `<button>` elements inside the popover to ensure predictable behavior.
+- **Status:** LOW RISK - No actual XSS, but follows defensive patterns.
+
+**CRITICAL-02: ThemeScript uses dangerouslySetInnerHTML with static content (FALSE POSITIVE)**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/contexts/ThemeContext.tsx:51-56`
+- **Analysis:** This is a hardcoded script string, not user input. Security comment is present. NOT AN ISSUE.
+
+**CRITICAL-03: All dangerouslySetInnerHTML usages verified safe**
+- **Analysis of all 7 occurrences:**
+  1. `ContractViewer.tsx:74` - Uses DOMPurify.sanitize() with ALLOWED_TAGS
+  2. `ReportFooter.tsx:53` - Uses sanitizeMinimalHtml() (DOMPurify wrapper)
+  3. `SafeAIOutput.tsx:116` - Uses DOMPurify.sanitize() with strict config
+  4. `SafeAIOutput.tsx:207` - Uses DOMPurify.sanitize()
+  5. `PreviewPane.tsx:237` - Uses sanitizeHtml() (DOMPurify wrapper) with restricted tags
+  6. `ThemeContext.tsx:51` - Static script, not user input
+- **Status:** NO CRITICAL XSS ISSUES - All HTML rendering is properly sanitized with DOMPurify
+
+#### HIGH Issues
+
+**HIGH-01: useEffect dependencies may cause stale closures in useVerificationPoll**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/hooks/use-verification-poll.ts:335`
+- **Problem:** The `checkNow` callback references `state.attempts` directly, which could be stale in rapid successive calls.
+- **Fix:** Use a ref for attempts count or include proper dependency in useCallback.
+
+**HIGH-02: Missing error display for WebhookForm create/update failures**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/webhooks/WebhookForm.tsx:86-107`
+- **Problem:** On create/update failure, only `logger.error` is called. No error state is shown to the user.
+- **Fix:** Add `const [error, setError] = useState<string | null>(null)` and display error message in the form.
+
+**HIGH-03: ExportButton lacks error state display**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/dashboard/ExportButton.tsx:131-139`
+- **Problem:** Export errors are only logged in development. Users see no feedback on failure.
+- **Fix:** Add error state and display a toast or inline error message.
+
+**HIGH-04: AlertDrawer polling silently ignores errors without user feedback**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/alerts/AlertDrawer.tsx:48-58`
+- **Problem:** Comment says "Silently ignore polling errors" - while this is intentional, persistent failures should trigger a retry indicator.
+- **Fix:** Add error count tracking; after 3 consecutive failures, show a subtle warning.
+
+**HIGH-05: VirtualizedTable missing accessible table headers**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/dashboard/VirtualizedTable.tsx:84-91`
+- **Problem:** The `<table>` lacks `role="grid"` for virtualized tables. Screen readers may not properly announce the grid structure.
+- **Fix:** Add `role="grid"` to the table and `role="gridcell"` to cells.
+
+**HIGH-06: ProposalStore equality check uses JSON.stringify (performance concern)**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/stores/proposalStore.ts:187-188`
+- **Problem:** `JSON.stringify(pastState) === JSON.stringify(currentState)` on every state change is expensive for large proposals.
+- **Fix:** Use a deep equality library like `fast-deep-equal` or implement shallow comparison for known structure.
+
+**HIGH-07: ReportPreview interval may fire after unmount (race condition)**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/reports/ReportPreview.tsx:22-37`
+- **Problem:** While `clearInterval` is called in cleanup, `setStatus` could still be called after unmount if the async operation completes.
+- **Fix:** Add mounted ref check before `setStatus`.
+
+#### MEDIUM Issues
+
+**MEDIUM-01: Icon-only button without aria-label in ExportButton dropdown**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/dashboard/ExportButton.tsx:153-167`
+- **Problem:** Buttons have text content but no explicit aria-label. While acceptable, icon+text buttons benefit from explicit labels.
+- **Fix:** Add `aria-label` for screen readers.
+
+**MEDIUM-02: Missing loading state indicator in WebhookForm submit**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/webhooks/WebhookForm.tsx:243`
+- **Problem:** Submit button shows "Saving..." text but no spinner/loading indicator visual.
+- **Fix:** Add `<Loader2 className="h-4 w-4 animate-spin" />` when isPending.
+
+**MEDIUM-03: CommandPalette search input lacks explicit label**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/dashboard/CommandPalette.tsx:148-154`
+- **Problem:** While placeholder text exists, screen readers need an explicit label.
+- **Fix:** Add `aria-label="Search commands"` to the input.
+
+**MEDIUM-04: PlatformDetected progress bar lacks accessible description**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/connect/platform-detected.tsx:108`
+- **Problem:** Progress bar value is visual only.
+- **Fix:** Add `aria-label="Detection progress"` and `aria-valuenow={progress}`.
+
+**MEDIUM-05: useScrollPosition assumes sessionStorage available**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/hooks/useScrollPosition.ts:31-39`
+- **Problem:** No try/catch around sessionStorage access, which can throw in private browsing or when storage quota is exceeded.
+- **Fix:** Wrap in try/catch.
+
+**MEDIUM-06: articleEditorStore persists to localStorage but lacks quota check**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/stores/articleEditorStore.ts:121`
+- **Problem:** Large articles (with htmlContent) could exceed localStorage quota.
+- **Fix:** Add error handling in persist middleware or limit what is persisted.
+
+**MEDIUM-07: clientStore fetchClients lacks request deduplication**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/stores/clientStore.ts:57-72`
+- **Problem:** Multiple simultaneous calls to fetchClients could trigger duplicate API requests.
+- **Fix:** Add request deduplication or migrate to TanStack Query (per TODO comment).
+
+**MEDIUM-08: useTableKeyboardNav may set negative focusedIndex**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/hooks/useTableKeyboardNav.ts:65`
+- **Problem:** `Math.max(prev - 1, 0)` works but initial -1 state combined with ArrowUp could cause confusion.
+- **Fix:** Add guard: `setFocusedIndex(prev => prev === -1 ? 0 : Math.max(prev - 1, 0))`.
+
+**MEDIUM-09: RealtimeMetrics component returns object, not JSX**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/seo/realtime-metrics.tsx:293`
+- **Problem:** Component named `RealtimeMetrics` but returns `{ isConnected, isAuthenticated, lastMetrics }` - it's actually a hook.
+- **Fix:** Rename to `useRealtimeMetrics` or wrap return in a component. Note: `useRealtimeMetrics` hook exists at line 299.
+
+**MEDIUM-10: useDebouncedCallback in useAutoSave could leak if dependency changes**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/hooks/useAutoSave.ts:170-172`
+- **Problem:** When `debounceMs` changes, the debounced function is recreated but pending invocations may not be cancelled.
+- **Fix:** Call `debouncedSave.cancel()` in effect cleanup when dependencies change.
+
+**MEDIUM-11: Badge click handlers in WebhookForm lack keyboard accessibility**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/components/webhooks/WebhookForm.tsx:213-226`
+- **Problem:** Badges use onClick but are not keyboard focusable (no tabIndex, no onKeyDown).
+- **Fix:** Add `tabIndex={0}` and `onKeyDown` handler for Enter/Space.
+
+**MEDIUM-12: useAnalysisProgress connect returns cleanup but effect doesn't use it properly**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/hooks/useAnalysisProgress.ts:140-146`
+- **Problem:** `connect()` returns a cleanup function, but the effect also calls `disconnect()` in cleanup, which is redundant.
+- **Fix:** Remove redundant `disconnect()` call or remove return from `connect()`.
+
+#### Component Health Summary
+
+| Component Category | Accessibility | State Management | Error Handling | Status |
+|-------------------|--------------|------------------|----------------|--------|
+| SafeAIOutput | Good | N/A | N/A | PASS |
+| ContractViewer | Good | N/A | N/A | PASS |
+| PreviewPane | Good | Good | Good | PASS |
+| ReportFooter | Good | N/A | N/A | PASS |
+| WebhookForm | NEEDS_FIX | Good | NEEDS_FIX | WARN |
+| ExportButton | NEEDS_FIX | Good | NEEDS_FIX | WARN |
+| AlertDrawer | Good | Good | NEEDS_FIX | WARN |
+| CommandPalette | NEEDS_FIX | Good | Good | WARN |
+| VirtualizedTable | NEEDS_FIX | Good | Good | WARN |
+| AddClientModal | Good | Good | Good | PASS |
+| DraggableCard | Good | N/A | N/A | PASS |
+| TopBar | Good | N/A | N/A | PASS |
+| PlatformDetected | NEEDS_FIX | Good | Good | WARN |
+| ReportPreview | Good | Good | NEEDS_FIX | WARN |
+| ErrorBoundary | Good | Good | Good | PASS |
+| ThemeProvider | Good | Good | Good | PASS |
+| LanguageProvider | Good | Good | Good | PASS |
+| useWebSocket | Good | Good | Good | PASS |
+| useVerificationPoll | Good | NEEDS_FIX | Good | WARN |
+| useAutoSave | Good | Good | Good | PASS |
+| useAnalysisProgress | Good | NEEDS_FIX | Good | WARN |
+| clientStore | N/A | NEEDS_FIX | Good | WARN |
+| proposalStore | N/A | NEEDS_FIX | N/A | WARN |
+| articleEditorStore | N/A | NEEDS_FIX | N/A | WARN |
+
+#### Strengths Identified
+
+1. **Excellent XSS Prevention:** All `dangerouslySetInnerHTML` usages are properly sanitized with DOMPurify using allowlist-based configurations. The `sanitizeHtml`, `sanitizeMinimalHtml`, and `SafeAIOutput` components demonstrate defense-in-depth security patterns.
+
+2. **Robust WebSocket Implementation:** The `useWebSocket` hook properly handles:
+   - JWT authentication with token refresh
+   - Exponential backoff for reconnection
+   - Cleanup of intervals and timeouts on unmount
+   - Zod schema validation for incoming messages
+   - Debouncing of auth state changes
+
+3. **Memory Leak Prevention:** Most hooks properly clean up:
+   - `useWebSocket`: Clears timeouts, intervals, and WebSocket on unmount
+   - `useVerificationPoll`: Uses AbortController and isPollingRef
+   - `useAnalysisProgress`: Properly closes EventSource in all code paths
+   - `RealtimeMetrics`: Uses refs to track cleanup state
+
+4. **Good ARIA Usage:** 86 ARIA attributes found across components including:
+   - Role attributes on navigation, lists, buttons
+   - aria-labels on icon-only buttons
+   - aria-selected and aria-activedescendant for keyboard navigation
+   - role="alert" for error messages
+
+5. **Zustand Best Practices:**
+   - Proper use of persist middleware for UI state
+   - Partialize to avoid persisting transient state
+   - Clear separation of state and actions
+
+6. **Error Boundaries:** Well-implemented `ErrorBoundary` class component with Sentry integration and fallback UI.
+
+7. **Keyboard Navigation:** `useTableKeyboardNav` hook provides vim-style (j/k) and standard arrow key navigation with proper ARIA attributes.
+
+8. **Loading States:** Most async components show loading indicators (Loader2 spinners, skeleton states).
+
+---
+
+
+### Agent 8: SEO Audit Logic Engine Review
+
+**Status:** Complete
+**Checks Analyzed:** 109 total (68 Tier 1 + 21 Tier 2 + 13 Tier 3 + 7 Tier 4)
+**Scoring Functions Found:** 3 (calculateOnPageScore, passesQualityGate, evaluateQualityGate)
+**Issues Found:** 
 | Severity | Count |
 |----------|-------|
-| CRITICAL | 2 |
-| HIGH | 5 |
-| MEDIUM | 7 |
-| LOW | 5 |
-| **Total** | **19** |
-
-### Priority Fixes
-
-1. **[C17-01]** Add double-submit prevention to article generation
-2. **[C17-02]** Add error handling to publishingSettings update
-3. **[H17-01]** Add per-page error boundaries
-4. **[H17-02]** Fix race condition in fetchClients
-
-### Integration Notes
-
-AI-Writer React frontend operates as standalone CRA at port 3000. Integration with apps/web shell via:
-- SeoAuditPage iframe with `?client_id=` param (lacks error/loading handling)
-- Shared Clerk tenant for auth
-- No direct component sharing between apps
-
-**Recommendation**: Consider migrating to microfrontend architecture or merging into apps/web for better code sharing.
+| CRITICAL | 0 |
+| HIGH | 2 |
+| MEDIUM | 4 |
+| LOW | 3 |
 
 ---
 
-## Agent 18: Security Audit Review
-
-### Scope
-- OWASP Top 10 vulnerabilities
-- SQL/NoSQL injection
-- XSS vulnerabilities
-- CSRF protection
-- Authentication bypass
-- Authorization flaws
-- Sensitive data exposure
-- Security misconfiguration
-
-### Findings
-
 #### CRITICAL Issues
 
-**CRIT-SEC-01: Invoice Payment Proxy Lacks Authentication (A07:2021 - Broken Access Control)**
-- **File:** `/apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts` (lines 1-62)
-- **OWASP Category:** A07:2021 - Identification and Authentication Failures
-- **Issue:** The invoice payment proxy endpoint forwards requests to open-seo-main without ANY authentication check. Both GET and POST handlers accept requests from anyone.
-- **Exploit Scenario:** 
-  1. Attacker enumerates invoice IDs (sequential or UUID patterns)
-  2. GET request retrieves payment details for any invoice
-  3. POST request creates payment sessions for invoices belonging to other users
-- **Impact:** Financial data exposure, unauthorized payment session creation, potential for payment fraud
-- **Remediation:**
+None identified. Scoring logic properly handles edge cases and division operations are protected.
+
+---
+
+#### HIGH Issues
+
+**HIGH-01: ScoreBreakdown Type Mismatch for tier3**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/types.ts:142-144`
+- **Problem:** The `ScoreBreakdown` interface declares `tier3: number` with comment "max 10 points", but the actual implementation in `scoring.ts:49` caps tier3 at 6 points. The comment is outdated but the type mismatch between documentation and implementation could cause confusion.
+- **Details:**
   ```typescript
-  import { requireAuth } from "@/lib/auth";
+  // types.ts says:
+  /** Tier 3 contribution (max 10 points) */
+  tier3: number;
   
-  export async function GET(request: NextRequest, { params }) {
-    const auth = await requireAuth();  // ADD THIS
-    const { id } = await params;
-    // Verify invoice ownership before proxying
-    await validateInvoiceOwnership(id, auth.userId);
-    // ... rest of handler
-  }
+  // scoring.ts says:
+  const TIER_MAXES = {
+    3: 6, // Tier 3: 13 checks * 0.8 weight = 10.4, capped at 6 (normalized)
+  };
   ```
+- **Impact:** Documentation mismatch. Could confuse developers extending the scoring system.
+- **Fix:** Update the comment in `types.ts:142` to `/** Tier 3 contribution (max 6 points) */`
 
-**CRIT-SEC-02: Command Injection Risk in Video Edit Service (A03:2021 - Injection)**
-- **File:** `/AI-Writer/backend/services/video_studio/edit_service.py` (lines 180-240, 300-390, 450-540)
-- **OWASP Category:** A03:2021 - Injection
-- **Issue:** User-provided parameters are passed to `subprocess.run()` FFmpeg commands. While the commands use list syntax (safer than shell=True), several parameters come directly from user input:
-  - `smoothing` parameter in stabilization (line 194)
-  - `font_size`, `font_color`, `background_color` in text overlay (line 305)
-  - `start_time`, `end_time` in trim operations (line 385)
-- **Current Mitigation:** Using `subprocess.run()` with list arguments prevents shell injection
-- **Residual Risk:** FFmpeg filter injection through unsanitized parameters
-- **Remediation:**
-  ```python
-  def _sanitize_ffmpeg_param(value: str, allowed_chars: str = "a-zA-Z0-9._-") -> str:
-      import re
-      if not re.match(f"^[{allowed_chars}]+$", str(value)):
-          raise ValueError(f"Invalid parameter value: {value}")
-      return str(value)
-  ```
-
----
-
-#### HIGH Issues
-
-**HIGH-SEC-01: Query Token Authentication Still Active for Media Endpoints (A07:2021)**
-- **File:** `/AI-Writer/backend/middleware/auth_middleware.py` (lines 370-575)
-- **OWASP Category:** A07:2021 - Identification and Authentication Failures
-- **Issue:** The `get_current_user_with_query_token` function accepts tokens via URL query parameters for media endpoints. Tokens appear in browser history, server access logs, referrer headers.
-- **Remediation:** Set hard deprecation date; implement signed, short-lived URLs with expiry
-
-**HIGH-SEC-02: Proposal Beacon Tracking Token Not Cryptographically Validated (A04:2021)**
-- **File:** `/apps/web/src/app/api/proposals/beacon/route.ts` (lines 28-71)
-- **OWASP Category:** A04:2021 - Insecure Design
-- **Issue:** The beacon endpoint accepts any `token` parameter without validation, enabling tracking injection and analytics manipulation.
-- **Remediation:** Use HMAC-signed tokens; validate signature server-side; add rate limiting per IP
-
-**HIGH-SEC-03: X-Forwarded-For Spoofing Allows Rate Limit Bypass (A05:2021)**
-- **File:** `/apps/web/src/lib/rate-limit/auth-limiter.ts` (lines 83-94)
-- **File:** `/apps/web/src/lib/middleware/rate-limit.ts` (lines 378-389)
-- **OWASP Category:** A05:2021 - Security Misconfiguration
-- **Issue:** When `X-Forwarded-For` is present without valid `PROXY_SECRET`, code logs warning but still uses spoofed header for rate limiting.
-- **Remediation:** Fail closed when PROXY_SECRET is configured but not matched
-
-**HIGH-SEC-04: Missing Authorization in Several API Routes (A01:2021)**
-- **Files Affected:**
-  - `/apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts` - No auth
-  - `/apps/web/src/app/api/proposals/beacon/route.ts` - No auth
-  - `/apps/web/src/app/api/content-calendar/route.ts` - Auth check incomplete
-- **Remediation:** Audit all API routes; add middleware-level auth enforcement
-
-**HIGH-SEC-05: JWT Clock Skew Allows Expired Token Usage (A07:2021)**
-- **File:** `/AI-Writer/backend/middleware/auth_middleware.py` (lines 136-143)
-- **Issue:** JWT verification allows 60-second leeway. Stolen tokens remain valid 60 seconds after expiry.
-- **Remediation:** Reduce leeway to 10 seconds; implement token binding
+**HIGH-02: Tier 4 Checks Always Skip Due to Missing Topic Cluster Data**
+- **Files:** 
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier4/architecture.ts:161-186` (T4-03)
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier4/architecture.ts:200-225` (T4-04)
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier4/architecture.ts:238-263` (T4-05)
+- **Problem:** Checks T4-03 (Pillar links to all spokes), T4-04 (Spokes link back to pillar), and T4-05 (15-25 spokes per cluster) always return `passed: true` with `skipped: true` because topic cluster mapping is not in SiteContext.
+- **Impact:** These 3 checks never actually verify the conditions they claim to check. Users get false positives.
+- **Fix:** Either:
+  1. Add topic cluster data to SiteContext and implement the actual checks, or
+  2. Mark these checks as "not implemented" in the registry and exclude from scoring until implemented
 
 ---
 
 #### MEDIUM Issues
 
-**MED-SEC-01: CORS Wildcard on Pixel Collection Endpoints (A05:2021)**
-- **File:** `/open-seo-main/src/routes/api/pixel/collect.ts` (lines 175, 198, 210)
-- **Issue:** Pixel collection endpoints use `Access-Control-Allow-Origin: *`. Documented as intentional but increases attack surface.
-- **Remediation:** Document as accepted risk; consider allowlisting known domains
+**MED-01: Check Count Discrepancy Between Documentation and Implementation**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/index.ts:66-77`
+- **Problem:** Documentation mentions "107 checks" but actual implementation has 109 checks. The code comment acknowledges this discrepancy but the CLAUDE.md and platform documentation still references 107.
+- **Details:**
+  ```typescript
+  * Total: 109 checks
+  *
+  * Note: Original documentation mentioned 107 checks. The actual count is 109.
+  ```
+- **Impact:** User-facing documentation inconsistency.
+- **Fix:** Update CLAUDE.md and any user documentation to reflect the actual 109 check count.
 
-**MED-SEC-02: Verbose Error Messages in Some Endpoints (A09:2021)**
-- **File:** `/AI-Writer/backend/api/seo_dashboard.py` (lines 1343, 1365)
-- **Issue:** Error handlers expose internal error details: `f"Failed to run strategic insights: {str(e)}"`
-- **Remediation:** Return generic error messages; log details server-side
+**MED-02: CrUX Cache Not Cleared Between Audit Runs**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier3/cwv.ts:38-45`
+- **Problem:** The `clearCruxCache()` function is exported but there's no mechanism to ensure it's called at the start of each audit run. The cache is module-level and could persist stale data across audits.
+- **Details:**
+  ```typescript
+  const cruxOriginCache = new Map<string, CruxResponse | null>();
+  export function clearCruxCache(): void {
+    cruxOriginCache.clear();
+  }
+  ```
+- **Impact:** In long-running Node.js processes, CrUX data could become stale. Since CrUX data is 28-day rolling, this is a minor issue but could affect accuracy.
+- **Fix:** Add TTL to cache entries or call `clearCruxCache()` from the audit job worker before starting checks.
 
-**MED-SEC-03: Production Environment Detection Inconsistency (A05:2021)**
-- **File:** `/AI-Writer/backend/main.py` (lines 165-198, 278-320)
-- **Issue:** Production config validation uses `ENV` variable, but CORS uses `NODE_ENV`.
-- **Remediation:** Use single canonical environment variable or check both
+**MED-03: T4-06 (Duplicate Content) Always Returns Skipped**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier4/differentiation.ts:85-101`
+- **Problem:** Check T4-06 calculates a content fingerprint but always returns `passed: true` with `skipped: true` because cross-page fingerprint comparison is not implemented.
+- **Impact:** The duplicate content hard gate (caps score at 50 for >60% duplicate) can never trigger because T4-06 never returns a `duplicatePercent` value.
+- **Details:**
+  ```typescript
+  return {
+    checkId: "T4-06",
+    passed: true,
+    severity: "info",
+    message: "Content fingerprint computed; cross-page comparison requires full crawl data",
+    details: {
+      skipped: true,
+      // Note: duplicatePercent is NOT returned
+    },
+  };
+  ```
+- **Fix:** Implement fingerprint storage in SiteContext during crawl phase, then compare fingerprints in this check.
 
-**MED-SEC-04: Ownership Cache TTL Creates Stale Authorization Window (A01:2021)**
-- **File:** `/apps/web/src/lib/auth/client-ownership.ts` (lines 47-67)
-- **Issue:** Client ownership results cached for 2 minutes; revoked users retain access during window.
-- **Remediation:** Ensure webhook handlers call `invalidateOwnershipCache()` immediately
-
-**MED-SEC-05: Console.error in Auth Modules May Leak Sensitive Data (A09:2021)**
-- **File:** `/apps/web/src/lib/auth/client-ownership.ts` (lines 219, 239)
-- **Issue:** Uses `console.error` in auth code without sanitization.
-- **Remediation:** Replace with structured logger that sanitizes output
+**MED-04: No Timeout on CrUX API Fetch**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier3/cwv.ts:56-83`
+- **Problem:** The `fetch()` call to CrUX API has no timeout configuration. While the runner has check-level timeout (30s default), the fetch itself could hang indefinitely.
+- **Details:**
+  ```typescript
+  const response = await fetch(
+    `https://chromeuxreport.googleapis.com/v1/records:queryRecord?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ origin }),
+      // NO signal: AbortSignal.timeout(10000)
+    }
+  );
+  ```
+- **Fix:** Add `signal: AbortSignal.timeout(10000)` to the fetch options.
 
 ---
 
 #### LOW Issues
 
-**LOW-SEC-01: Inconsistent Authorization Patterns Across Apps (A01:2021)**
-- Three different authorization patterns: `requireActionAuth()` (apps/web), `require_client_access` (AI-Writer), `requireClientAccess()` (open-seo-main)
-- **Remediation:** Create shared authorization documentation; add linting rules
+**LOW-01: Magic Numbers in Content Quality Checks**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/tier2/content-quality.ts`
+- **Problem:** Several threshold values are hardcoded without explanation constants:
+  - Line 135: `wordCount < 50` (skip threshold)
+  - Line 148: `gradeLevel <= 9` (reading level target)
+  - Line 434: `percentInRange >= 70` (section word count pass threshold)
+- **Fix:** Extract to named constants like `const MIN_WORDS_FOR_ANALYSIS = 50;`
 
-**LOW-SEC-02: API Key Prefix Hardcoded (A05:2021)**
-- **File:** `/open-seo-main/src/server/middleware/auth.ts` (lines 122-135)
-- **Remediation:** Extract `oseo_` prefix to constant or configuration
+**LOW-02: Inconsistent Error Severity for Invalid URLs**
+- **Files:** 
+  - `tier1/url-structure.ts:36` - Returns `severity: "high"` for invalid URL
+  - `tier1/technical-basics.ts:145` - Returns `severity: "critical"` for invalid URL
+- **Problem:** Both return different severity levels for the same condition (invalid URL parsing).
+- **Fix:** Standardize on "high" severity for parsing errors (critical should be reserved for actual SEO issues).
 
-**LOW-SEC-03: Cookie SameSite=Lax May Be Insufficient (A01:2021)**
-- **File:** `/apps/web/src/lib/cookies.ts` (lines 11-14)
-- **Remediation:** Document as accepted risk; ensure sensitive tokens use `strict`
-
-**LOW-SEC-04: Missing Subresource Integrity (SRI) on CDN Scripts (A06:2021)**
-- **Remediation:** Add `integrity` and `crossorigin` attributes to external scripts
-
----
-
-### Security Strengths Observed
-
-1. **XSS Prevention:** Comprehensive DOMPurify sanitization via `SafeAIOutput` component
-2. **CSRF Protection:** Origin/Referer validation in `/apps/web/src/lib/api/security.ts`
-3. **Timing-Safe Comparisons:** Uses `crypto.timingSafeEqual` across all apps
-4. **Rate Limiting:** Multi-tier rate limiting with Redis backend and fail-closed behavior
-5. **Security Headers:** Comprehensive headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
-6. **IDOR Prevention:** Robust `validateClientOwnership()` with caching and fail-closed behavior
-7. **Input Validation:** Zod schemas used throughout for request validation
-8. **SSRF Protection:** Comprehensive URL validator with Unicode normalization
-9. **Encryption at Rest:** Fernet encryption for CMS credentials in AI-Writer
-10. **Webhook Security:** HMAC signature validation with timing-safe comparison
-
-### Summary
-
-| Severity | Count | Key Categories |
-|----------|-------|----------------|
-| CRITICAL | 2 | Unauthenticated payment proxy, potential command injection |
-| HIGH | 5 | Token leakage, rate limit bypass, missing auth, JWT skew |
-| MEDIUM | 5 | CORS config, verbose errors, env detection, cache TTL, logging |
-| LOW | 4 | Pattern inconsistency, cookie settings, SRI |
-
-### Priority Remediation Order
-
-1. **[CRITICAL]** Add authentication to invoice payment proxy immediately
-2. **[CRITICAL]** Sanitize FFmpeg parameters in video edit service
-3. **[HIGH]** Deprecate query token authentication with hard deadline
-4. **[HIGH]** Fix X-Forwarded-For spoofing to fail closed
-5. **[HIGH]** Audit all API routes for missing authorization
-6. **[MEDIUM]** Align production environment detection
-7. **[MEDIUM]** Replace console.error with structured logging in auth code
-
-### Files Reviewed
-
-- `/apps/web/src/app/api/**/*.ts` (30+ API routes)
-- `/apps/web/src/actions/**/*.ts` (15+ server actions)
-- `/apps/web/src/lib/auth/**/*.ts` (authentication modules)
-- `/apps/web/src/lib/rate-limit/**/*.ts` (rate limiting)
-- `/apps/web/src/lib/middleware/**/*.ts` (middleware)
-- `/apps/web/src/components/ai/SafeAIOutput.tsx` (XSS prevention)
-- `/AI-Writer/backend/middleware/*.py` (auth, security headers)
-- `/AI-Writer/backend/services/video_studio/edit_service.py` (subprocess usage)
-- `/AI-Writer/backend/main.py` (CORS, security config)
-- `/open-seo-main/src/server/middleware/*.ts` (auth, security headers)
-- `/open-seo-main/src/routes/api/pixel/*.ts` (tracking endpoints)
+**LOW-03: Missing JSDoc for Public Scoring Functions**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/scoring.ts`
+- **Problem:** While the file has a comprehensive header comment, individual exported functions lack JSDoc with `@param`, `@returns`, and `@throws` documentation.
+- **Fix:** Add full JSDoc to `calculateOnPageScore`, `passesQualityGate`, and `evaluateQualityGate`.
 
 ---
 
-## Agent 19: Performance Analysis Review
+#### Tier Coverage Matrix
 
-### Scope
-- N+1 query patterns
-- Caching strategies
-- Memory usage patterns
-- Bottleneck identification
+| Tier | Expected Checks | Implemented | Functional | Skipped-by-Design | Status |
+|------|-----------------|-------------|------------|-------------------|--------|
+| 1    | 68              | 68          | 68         | 0                 | PASS   |
+| 2    | 21              | 21          | 21         | 0                 | PASS   |
+| 3    | 13              | 13          | 3 (CWV)    | 10 (API missing)  | WARN   |
+| 4    | 7               | 7           | 2          | 5 (data missing)  | WARN   |
 
-### Findings
+**Notes:**
+- Tier 1 & 2: All checks fully functional and run on every audit
+- Tier 3: CWV checks (T3-01, T3-02, T3-03) work when GOOGLE_CWV_API_KEY is set; others skip gracefully
+- Tier 4: T4-01 (click depth), T4-02 (orphan pages) work with SiteContext; T4-03/04/05 skip without topic clusters; T4-06/07 skip without fingerprint data
+
+---
+
+#### Scoring Logic Verification
+
+| Gate | Check ID | Condition | Cap | Implementation | Status |
+|------|----------|-----------|-----|----------------|--------|
+| noindex | T1-67 | fail | 0 | Line 106-114 | CORRECT |
+| duplicate-content | T4-06 | fail + >60% | 50 | Line 120-127 | UNTESTABLE (T4-06 always skips) |
+| ymyl-no-author | T1-68 | fail | 60 | Line 130-136 | CORRECT |
+| cwv-poor | T3-01/02/03 | critical fail | 75 | Line 141-145 | CORRECT |
+
+**Scoring Formula Verification:**
+- Base score: 60 points - CORRECT
+- Tier 1: +0.3 per pass, max 20 - CORRECT (`68 * 0.3 = 20.4`, capped at 20)
+- Tier 2: +0.5 per pass, max 10 - CORRECT (`21 * 0.5 = 10.5`, capped at 10)
+- Tier 3: +0.8 per pass, max 6 - CORRECT (`13 * 0.8 = 10.4`, capped at 6)
+- Tier 4: +0.4 per pass, max 4 - CORRECT (`7 * 0.4 = 2.8`, capped at 4)
+- Total max: 60 + 20 + 10 + 6 + 4 = 100 - CORRECT
+
+---
+
+#### Strengths Identified
+
+1. **Excellent Test Coverage for Scoring** (`scoring.test.ts`)
+   - Tests for all four gates (noindex, duplicate, YMYL, CWV)
+   - Edge cases for skipped checks not triggering gates
+   - Score normalization verified
+
+2. **Robust Check Runner with Timeouts** (`runner.ts`)
+   - Per-check timeout (30s default)
+   - Total audit timeout (5 minutes)
+   - HTML size limit (5MB DoS protection)
+   - URL validation before processing
+   - Result deduplication
+
+3. **Clean Registry Pattern** (`registry.ts`)
+   - Checks self-register on import
+   - Multiple lookup methods (by tier, category, ID)
+   - Clear separation of concerns
+
+4. **Immutable DOM Operations**
+   - Several checks clone the Cheerio root before modifications (`content-quality.ts:45-49`, `differentiation.ts:66-71`)
+   - Prevents side effects between checks sharing the same `$` instance
+
+5. **Graceful API Degradation**
+   - All Tier 3 checks return `skipped: true` when API keys missing
+   - Skipped checks excluded from scoring (not counted as failures)
+   - Clear messaging about why checks were skipped
+
+6. **Hard Gates Properly Implemented**
+   - noindex gate returns early with score 0 (highest priority)
+   - Gates apply in correct precedence order
+   - Skipped checks correctly excluded from gate evaluation
+
+7. **Quality Gate System**
+   - Clear 80-point threshold for auto-publish
+   - `autoPublishEligible` requires both score >= 80 AND no active gates
+   - Detailed `QualityGateResult` for debugging
+
+8. **Consistent Check Structure**
+   - All checks return uniform `CheckResult` shape
+   - `autoEditable` flag indicates auto-fix eligibility
+   - `editRecipe` provides actionable fix instructions
+
+---
+
+### Agent 2: Database Schema Consistency Review
+
+**Status:** Complete
+**Schemas Analyzed:** 
+- AI-Writer (SQLAlchemy): 47 model files
+- open-seo-main (Drizzle): 50+ schema files
+**Migrations Reviewed:** 57 SQL migrations (open-seo-main/drizzle)
+**Issues Found:** 0 CRITICAL, 2 HIGH, 5 MEDIUM
+
+---
 
 #### CRITICAL Issues
 
-**[CRIT-PERF-01] N+1 Query Pattern in Dashboard Client Metrics**
-- **File**: `/AI-Writer/backend/api/dashboard.py:149-470`
-- **Issue**: `get_metrics_paginated()` fetches ALL clients, then calls `_compute_client_metrics()` for each client with 3-4 database queries per client. For 100 clients, this results in 300-400 database queries.
-- **Impact**: Dashboard loads take 5-10+ seconds with moderate client counts; database connection exhaustion under load
-- **Fix**: Batch compute metrics with window functions and CTEs; use single query with aggregates per client
+None found. Previous CRITICAL issues have been addressed:
 
-```python
-# Current (N+1):
-clients = session.query(Client).all()  # 1 query
-for client in clients:
-    metrics = _compute_client_metrics(client.id)  # 3-4 queries each
+1. **CRITICAL-DB-001 (RESOLVED):** Client ID type mismatch between AI-Writer (UUID) and open-seo-main (formerly TEXT) was fixed in migration `0034_client_id_to_uuid.sql`.
 
-# Recommended (batch):
-metrics = session.query(
-    Client.id,
-    func.count(Article.id).label('article_count'),
-    func.sum(case((Article.status == 'published', 1), else_=0)).label('published')
-).outerjoin(Article).group_by(Client.id).all()
-```
+2. **CRITICAL-DB-002 (RESOLVED):** Table name collision for `gsc_snapshots` was fixed by renaming to `seo_gsc_snapshots` in open-seo-main (see `analytics-schema.ts` line 28 comment).
 
-**[CRIT-PERF-02] Unbounded Workspace Predictions Iteration**
-- **File**: `/apps/web/src/actions/analytics/get-predictions.ts:354-427`
-- **Issue**: `getWorkspacePredictions()` iterates through up to 50 clients, calling `getClientPredictions()` individually for each. Each call involves multiple database queries.
-- **Impact**: Workspace-level analytics are extremely slow; times out for agencies with many clients
-- **Fix**: Implement batch prediction fetch with single query across all client IDs
+3. **CRITICAL-DB-005 (RESOLVED):** Table name collision for `ga4_snapshots` was fixed by renaming to `seo_ga4_snapshots` in open-seo-main (see `analytics-schema.ts` line 94 comment).
 
-**[CRIT-PERF-03] Memory Leak in SQLAlchemy Engine Cache**
-- **File**: `/AI-Writer/backend/services/database.py:55-58, 280-328`
-- **Issue**: `_user_engines` dict caches database engines per user without LRU eviction. Engines accumulate indefinitely; only explicit `cleanup_user_engine()` disposes them.
-- **Impact**: Memory grows unbounded with user count; eventual OOM on long-running processes
-- **Fix**: Implement LRU cache with max size (e.g., 100 engines) and automatic eviction
-
-```python
-# Current:
-_user_engines: Dict[str, Engine] = {}
-
-# Recommended:
-from functools import lru_cache
-@lru_cache(maxsize=100)
-def get_user_engine(user_id: str) -> Engine:
-    ...
-```
+---
 
 #### HIGH Issues
 
-**[HIGH-PERF-01] Fallback N+1 in Goal Predictions**
-- **File**: `/apps/web/src/actions/analytics/get-predictions.ts:79-118`
-- **Issue**: Batch fetch attempts to get all predictions, but on partial failure falls back to individual fetches per goal. This defeats the batching optimization.
-- **Impact**: Under intermittent failures, performance degrades to N+1 pattern
-- **Fix**: Use `Promise.allSettled()` with proper partial result handling; cache successful results
+**HIGH-DB-001: Inconsistent ON DELETE Behavior for voice_profiles.client_id**
 
-**[HIGH-PERF-02] Full Table Scan for Published Articles Word Count**
-- **File**: `/AI-Writer/backend/api/analytics.py:85-91, 114-127`
-- **Issue**: Analytics endpoint fetches ALL published articles, then calculates word count with regex per article in Python.
-- **Impact**: O(n) memory and CPU; slows linearly with article count
-- **Fix**: Store word count at publish time; use SQL aggregation
+- **Location:** `open-seo-main/src/db/voice-schema.ts:144`
+- **Problem:** `voiceProfiles.clientId` uses `{ onDelete: "set null" }` (preserves voice profiles when client deleted), which is correct for expensive learned data. However, migration `0034_client_id_to_uuid.sql` (line 86) re-adds the constraint with `ON DELETE CASCADE`.
+- **Impact:** Schema definition and migration are inconsistent. The actual database behavior depends on which constraint was applied last.
+- **Fix:** Verify current database state with:
+  ```sql
+  SELECT confdeltype FROM pg_constraint pc
+  JOIN pg_class c ON pc.conrelid = c.oid
+  WHERE c.relname = 'voice_profiles' AND pc.conname LIKE '%client_id%';
+  ```
+  If CASCADE, create migration to alter to SET NULL:
+  ```sql
+  ALTER TABLE voice_profiles DROP CONSTRAINT voice_profiles_client_id_clients_id_fk;
+  ALTER TABLE voice_profiles ADD CONSTRAINT voice_profiles_client_id_clients_id_fk
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL;
+  ```
 
-```sql
--- Add column: ALTER TABLE articles ADD COLUMN word_count INTEGER;
--- Compute at publish time, then:
-SELECT SUM(word_count) FROM articles WHERE status = 'published' AND client_id = ?
-```
+**HIGH-DB-002: Missing Timezone on AI-Writer Timestamp Columns**
 
-**[HIGH-PERF-03] Missing Singleflight in Portfolio Aggregates**
-- **File**: `/apps/web/src/actions/dashboard/get-portfolio-aggregates.ts:80-85`
-- **Issue**: Imports `getCachedWithSingleflight` but uses regular caching. Multiple concurrent requests for same portfolio trigger duplicate expensive computations.
-- **Impact**: Cache stampede under load; redundant database queries
-- **Fix**: Replace `getCached()` with `getCachedWithSingleflight()`
+- **Location:** `AI-Writer/backend/models/client.py:76-77`
+- **Problem:** `created_at` and `updated_at` use `DateTime` without `timezone=True`:
+  ```python
+  created_at = Column(DateTime, nullable=False, default=_utcnow)
+  updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+  ```
+- **Impact:** While `_utcnow()` generates timezone-aware Python datetimes, PostgreSQL stores them as `timestamp without time zone`, which can cause issues when comparing with open-seo-main's `timestamptz` columns.
+- **Fix:** Update to `DateTime(timezone=True)`:
+  ```python
+  created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+  updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+  ```
+  Create Alembic migration to alter column types:
+  ```python
+  op.alter_column('clients', 'created_at', type_=sa.DateTime(timezone=True))
+  op.alter_column('clients', 'updated_at', type_=sa.DateTime(timezone=True))
+  ```
 
-**[HIGH-PERF-04] Audit Results Without Pagination**
-- **File**: `/open-seo-main/src/server/features/audit/repositories/AuditRepository.ts:248-264`
-- **Issue**: `getAuditResultsForProject()` returns all pages without pagination. Large sites (500+ pages) return 500KB-2MB JSON payloads.
-- **Impact**: Memory pressure on server; slow client rendering; potential timeout
-- **Fix**: Add cursor-based pagination with default limit of 50 pages
+---
 
 #### MEDIUM Issues
 
-**[MED-PERF-01] Missing Composite Indexes**
-- **Files**: 
-  - `/AI-Writer/backend/models/articles.py` - No index on `(client_id, status, created_at)`
-  - `/open-seo-main/src/db/schema.ts` - No index on `(projectId, status)` for audits
-- **Issue**: Common query patterns lack supporting indexes
-- **Impact**: Full table scans on filtered queries
-- **Fix**: Add composite indexes for common WHERE clause combinations
+**MED-DB-001: Duplicate Base Declarations in AI-Writer Models**
 
-**[MED-PERF-02] Dashboard Parallel API Calls Without Deduplication**
-- **File**: `/apps/web/src/app/(shell)/dashboard/page.tsx:64-101`
-- **Issue**: Dashboard makes 7 parallel API calls on every navigation. No request deduplication or SWR-style stale-while-revalidate.
-- **Impact**: Server load spikes on dashboard navigation; redundant fetches
-- **Fix**: Implement request deduplication; use `unstable_cache` with tags for invalidation
+- **Location:** `AI-Writer/backend/models/persona_models.py:12`
+- **Problem:** Creates its own `Base = declarative_base()` instead of using `SharedBase`. This means `writing_personas`, `platform_personas`, `persona_analysis_results`, and `persona_validation_results` tables are NOT managed by the shared PostgreSQL connection.
+- **Impact:** These tables may be created in a different database or not created at all if metadata.create_all is called on SharedBase only.
+- **Fix:** Change to:
+  ```python
+  from services.shared_db import SharedBase
+  # Remove: Base = declarative_base()
+  class WritingPersona(SharedBase):
+  ```
 
-**[MED-PERF-03] Polling Without Exponential Backoff**
-- **File**: `/apps/web/src/app/(shell)/clients/[clientId]/page.tsx:156-170`
-- **Issue**: Status polling runs every 5 seconds indefinitely without exponential backoff.
-- **Impact**: Unnecessary server load; battery drain on mobile devices
-- **Fix**: Implement exponential backoff (5s -> 10s -> 20s -> 30s max); stop polling when stable
+**MED-DB-002: persona_analysis_results.user_id Type Mismatch**
 
-**[MED-PERF-04] Client Iteration in Team Metrics**
-- **File**: `/apps/web/src/actions/team/get-team-metrics.ts`
-- **Issue**: Iterates through clients to compute team-level metrics instead of using aggregate queries.
-- **Impact**: Slow team dashboard for agencies with many clients
-- **Fix**: Use SQL aggregation with GROUP BY
+- **Location:** `AI-Writer/backend/models/persona_models.py:159`
+- **Problem:** `user_id = Column(Integer, nullable=False)` but line 21 in same file uses `String(255)` for user_id (to support Clerk IDs). Inconsistent types within same module.
+- **Impact:** If this table is used with Clerk user IDs (strings), inserts will fail with type error.
+- **Fix:** Change to `user_id = Column(String(255), nullable=False)` for consistency.
 
-**[MED-PERF-05] Large Bundle from Recharts**
-- **File**: `/apps/web/package.json`
-- **Issue**: Recharts adds ~200KB to bundle. Only used on analytics pages but loaded in main bundle.
-- **Impact**: Slower initial page load for all users
-- **Fix**: Dynamic import with `next/dynamic` for chart components
+**MED-DB-003: Missing Index on contentBriefs.articleId**
+
+- **Location:** `open-seo-main/src/db/brief-schema.ts:53`
+- **Problem:** `articleId` is a cross-system FK reference to AI-Writer's articles table but has no index.
+- **Impact:** Queries joining briefs with articles will require sequential scans on contentBriefs.
+- **Fix:** Add index:
+  ```typescript
+  index("ix_briefs_article").on(table.articleId),
+  ```
+  Or via migration:
+  ```sql
+  CREATE INDEX IF NOT EXISTS ix_briefs_article ON content_briefs (article_id);
+  ```
+
+**MED-DB-004: siteChanges.clientId Uses SET NULL Without NOT NULL**
+
+- **Location:** `open-seo-main/src/db/change-schema.ts:31-32`
+- **Problem:** `clientId` is nullable with `{ onDelete: "set null" }` but has no partial index for non-null client_id lookups. Additionally, queries filtering by clientId with NULL will need special handling.
+- **Impact:** Orphaned changes (clientId = NULL) may accumulate if clients are deleted.
+- **Fix:** Add partial index:
+  ```sql
+  CREATE INDEX IF NOT EXISTS ix_site_changes_client_nonnull ON site_changes (client_id) WHERE client_id IS NOT NULL;
+  ```
+
+**MED-DB-005: Inconsistent Soft Delete Column Names**
+
+- **Location:** Multiple files
+- **Problem:** AI-Writer uses `is_archived` and `is_deleted` inconsistently:
+  - `Client.is_archived` (client.py:75)
+  - `ScheduledArticle.is_deleted` (publishing.py:144)
+  
+  open-seo-main uses:
+  - `clients.isDeleted` (client-schema.ts:99)
+  - `audits.isArchived` (app.schema.ts:181)
+  - `organization.isArchived` (user-schema.ts:39)
+- **Impact:** Cross-system queries must handle both column names. Frontend filtering logic must account for both patterns.
+- **Fix:** Document the pattern (already done in migration 0067) and ensure queries use correct column for each table. Long-term: standardize to `isDeleted` across all tables.
+
+---
+
+#### Schema Alignment Matrix
+
+| Entity | AI-Writer Type | open-seo-main Type | Status |
+|--------|---------------|-------------------|--------|
+| client_id (PK) | UUID (GUID class) | uuid | MATCH |
+| client_id (FK) | UUID (GUID class) | uuid | MATCH |
+| user_id | String(255) | text | MATCH |
+| workspace_id | String(255) | text | MATCH |
+| created_at | DateTime | timestamptz | MISMATCH (TZ) |
+| updated_at | DateTime | timestamptz | MISMATCH (TZ) |
+| gsc_snapshots | Table: gsc_snapshots | Table: seo_gsc_snapshots | RESOLVED |
+| ga4_snapshots | Table: ga4_snapshots | Table: seo_ga4_snapshots | RESOLVED |
+
+---
+
+#### Cross-System Entity Sync
+
+Per migration 0067 documentation, the sync relationship is:
+
+1. **AI-Writer is authoritative** for `clients` table core fields (id, name, workspace_id)
+2. **open-seo-main** may add SEO-specific fields to its `clients` table
+3. **client_id** is the shared UUID primary key for cross-system queries
+4. Changes should sync via webhook from AI-Writer to open-seo-main
+
+**Recommendation:** Implement webhook handler in open-seo-main for client CRUD events from AI-Writer.
+
+---
+
+#### Foreign Key Constraint Summary
+
+| Table | Column | References | ON DELETE | Indexed | Status |
+|-------|--------|-----------|-----------|---------|--------|
+| clients | workspace_id | organization.id | CASCADE | Yes | OK |
+| voice_profiles | client_id | clients.id | SET NULL* | Yes | CHECK |
+| seo_gsc_snapshots | client_id | clients.id | CASCADE | Yes | OK |
+| seo_ga4_snapshots | client_id | clients.id | CASCADE | Yes | OK |
+| site_changes | client_id | clients.id | SET NULL | Yes | OK |
+| audits | client_id | clients.id | SET NULL | Yes | OK |
+| link_suggestions | applied_change_id | site_changes.id | SET NULL | No | ADD INDEX |
+| content_briefs | mapping_id | keyword_page_mapping.id | CASCADE | Yes | OK |
+| onboarding_checklists | client_id | clients.id | CASCADE | Yes | OK |
+| tasks | client_id | clients.id | SET NULL | Yes (0067) | OK |
+
+*Note: voice_profiles FK behavior may differ between schema definition (SET NULL) and migration 0034 (CASCADE). Verify actual DB state.
+
+---
+
+#### Strengths Identified
+
+1. **UUID Standardization Complete:** Migration 0034 successfully converted all client_id columns from TEXT to native UUID type, aligning with AI-Writer's GUID class.
+
+2. **Soft Delete Pattern Documented:** Migration 0067 adds comprehensive comments explaining the soft delete pattern and provides consistent `is_deleted` + `deleted_at` columns to critical tables.
+
+3. **Check Constraints for Enums:** Both services use CHECK constraints to enforce valid enum values at the database level (e.g., `chk_client_status_valid`, `chk_audit_status_valid`).
+
+4. **Table Collision Resolution:** Both `gsc_snapshots` and `ga4_snapshots` table name collisions were addressed with clear prefix naming (`seo_*`) and deprecated aliases for migration compatibility.
+
+5. **FK Index Coverage:** Most foreign key columns have explicit indexes, improving JOIN and DELETE performance.
+
+6. **JSONB for Flexible Data:** Complex nested data (SERP analysis, keyword gaps, voice configuration) appropriately uses JSONB with TypeScript type annotations.
+
+7. **Optimistic Locking:** `ScheduledArticle.version` field (publishing.py:136) implements optimistic locking to prevent race conditions.
+
+8. **Partial Index Documentation:** Schema comments reference partial indexes defined in migrations (e.g., link_suggestions query optimization indexes).
+
+---
+
+#### Recommendations
+
+1. **Create Alembic Migration** for AI-Writer to add `timezone=True` to all DateTime columns.
+
+2. **Verify voice_profiles FK behavior** in production database and create migration if needed.
+
+3. **Add missing indexes** for cross-system FK references (`content_briefs.article_id`).
+
+4. **Fix persona_models.py** to use SharedBase and consistent user_id types.
+
+5. **Consider implementing** client sync webhook handler in open-seo-main.
+
+---
+
+### Agent 7: open-seo-main TanStack Start Architecture Review
+
+**Status:** Complete
+**Routes Analyzed:** 207
+**Server Functions Found:** 16 (in serverFunctions/)
+**API Handlers Found:** ~160 (file-based routing)
+**Issues Found:** 3 CRITICAL, 5 HIGH, 8 MEDIUM
+
+---
+
+#### CRITICAL Issues
+
+**CRITICAL-ARCH-001: Public proposal endpoints lack rate limiting**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/proposals/[id]/accept.ts:23`
+- **Problem:** The proposal accept endpoint has no authentication (`SECURITY: No authentication required`) but also lacks rate limiting. Attackers can spam proposal state transitions.
+- **Fix:** Add IP-based rate limiting (e.g., 5 requests per minute per IP) to protect against DoS and state manipulation attacks.
+
+**CRITICAL-ARCH-002: Cron automation processes ALL workspaces without pagination**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/cron/automations.ts:29-31`
+- **Problem:** `getAllWorkspaceIds()` fetches all organizations in a single query with no pagination. At scale (1000+ workspaces), this will cause memory exhaustion and timeout issues.
+- **Fix:** Implement cursor-based pagination or process workspaces in batches of 100.
+
+**CRITICAL-ARCH-003: Proposal accept lacks CSRF protection**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/proposals/[id]/accept.ts`
+- **Problem:** The accept endpoint modifies state via POST without any CSRF token verification. A malicious link could auto-accept proposals when clicked.
+- **Fix:** Add a one-time CSRF token to the accept payload or require a signature derived from the proposal token.
+
+---
+
+#### HIGH Issues
+
+**HIGH-ARCH-001: _project route layout has no error boundary**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/_project/route.tsx:3-9`
+- **Problem:** The `_project` layout component just renders `<Outlet />` without any error boundary. Child route errors will bubble up and potentially crash the entire shell.
+- **Fix:** Add `errorComponent: ProjectErrorBoundary` to the route definition.
+
+**HIGH-ARCH-002: beforeLoad in project route swallows error details**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/_project/p/$projectId/route.tsx:8-19`
+- **Problem:** The `beforeLoad` hook catches errors but redirects to `/` for both UNAUTHENTICATED and all other errors, losing context about what failed.
+- **Fix:** Differentiate error types: redirect to sign-in for auth errors, show error page for NOT_FOUND/FORBIDDEN, throw for unexpected errors.
+
+**HIGH-ARCH-003: Content briefs page uses clientId as projectId**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/_app/clients/$clientId/briefs/index.tsx:77-79`
+- **Problem:** `getBriefsFn({ data: { projectId: clientId } })` - The page passes `clientId` as `projectId`, which is semantically incorrect. This likely causes zero results or incorrect data.
+- **Fix:** Pass the correct project ID from the route context or resolve it from the client.
+
+**HIGH-ARCH-004: Platform detection endpoint lacks authentication**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/connect/detect.ts:130-131`
+- **Problem:** The `/api/connect/detect` endpoint has no authentication - anyone can call it. While it has SSRF protections, it can be abused for reconnaissance.
+- **Fix:** Add `requireApiAuth(request)` before processing to require at least basic authentication.
+
+**HIGH-ARCH-005: GraphRAG query uses organizationId from resolveClerkContext but doesn't validate workspace ownership**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/graphrag/query.ts:38-39`
+- **Problem:** The endpoint uses `resolveClerkContext` which returns `organizationId = userId` for single-user cases. This may allow cross-tenant data access if the graph stores data by workspace.
+- **Fix:** Validate that the user has explicit membership in the workspace before querying.
+
+---
+
+#### MEDIUM Issues
+
+**MEDIUM-ARCH-001: Inconsistent route param naming (square brackets vs $)**
+- **Files:** 
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/proposals/[id]/accept.ts` (square brackets)
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/clients/$clientId/goals/$goalId.ts` (dollar sign)
+- **Problem:** TanStack Start supports both conventions but mixing them in the same codebase creates confusion and potential routing bugs.
+- **Fix:** Standardize on `$paramName` syntax throughout.
+
+**MEDIUM-ARCH-002: Server functions don't consistently validate array inputs**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/serverFunctions/voice.ts:56-64`
+- **Problem:** Array fields like `personalityTraits`, `signaturePhrases` use `z.array(z.string())` without length limits. Large arrays could cause memory issues.
+- **Fix:** Add `.max(100)` to array schemas.
+
+**MEDIUM-ARCH-003: Public proposal page uses useLoaderData with type assertion**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/p/$token.tsx:51`
+- **Problem:** `useLoaderData({ from: "/p/$token" }) as LoaderData` bypasses TypeScript's type inference for loaders.
+- **Fix:** Use the route's typed hook: `Route.useLoaderData()`.
+
+**MEDIUM-ARCH-004: Voice preview generates AI content without cost tracking**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/serverFunctions/voice.ts:459-509`
+- **Problem:** `generateAISamples` calls Claude API but doesn't record API costs in the `api_costs` table.
+- **Fix:** Track token usage via the existing API costs infrastructure.
+
+**MEDIUM-ARCH-005: Healthz endpoint doesn't respect max response time SLA**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/healthz.ts:11-78`
+- **Problem:** Database and Redis health checks run sequentially with no timeout. If either service hangs, the health endpoint will timeout.
+- **Fix:** Add Promise.race with a 5-second timeout wrapper.
+
+**MEDIUM-ARCH-006: API route handlers use manual JSON parsing without try-catch**
+- **Files:** Multiple routes including `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/seo/voice.$clientId.ts:113`
+- **Problem:** `await request.json()` can throw if body is malformed, causing unhandled rejections.
+- **Fix:** Wrap in try-catch with 400 response for parse failures.
+
+**MEDIUM-ARCH-007: _app route renders null during auth loading, causing flash**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/_app/route.tsx:27-29`
+- **Problem:** Returns `null` while `isPending || !session?.user?.id`, causing layout flash when navigating to the app.
+- **Fix:** Return a skeleton or loading indicator instead of null.
+
+**MEDIUM-ARCH-008: Link suggestions content normalization handles only common Unicode, misses emoji**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/routes/api/seo/links/suggestions.ts:111-130`
+- **Problem:** `normalizeForMatching` strips diacritics and normalizes quotes but leaves emoji intact, which could cause unexpected matching failures.
+- **Fix:** Optionally strip emoji or document the expected behavior.
+
+---
+
+#### Route Tree Analysis
+
+| Route Pattern | Loader | Auth | Error Boundary | Rate Limit | Status |
+|---------------|--------|------|----------------|------------|--------|
+| `/_app/*` | Via serverFn | Client-side | Via root | N/A | OK |
+| `/_project/p/$projectId/*` | beforeLoad | Server-side | Missing | N/A | WARN |
+| `/p/$token` | File loader | None (token) | Per-route | Missing | WARN |
+| `/api/seo/*` | N/A | requireApiAuth | Try-catch | Partial | OK |
+| `/api/webhooks/stripe` | N/A | Signature | Try-catch | N/A | OK |
+| `/api/proposals/[id]/accept` | N/A | None | Try-catch | Missing | CRITICAL |
+| `/api/cron/automations` | N/A | CRON_SECRET | Try-catch | N/A | WARN |
+| `/api/connect/detect` | N/A | None | Try-catch | N/A | WARN |
+| `/api/graphrag/*` | N/A | Clerk JWT | Try-catch | N/A | OK |
+| `/healthz` | N/A | None | N/A | N/A | OK |
+
+---
+
+#### Strengths Identified
+
+1. **Consistent middleware pattern** - The `requireApiAuth` and `requireAuthenticatedContext` middleware provide a unified authentication layer across both API routes and server functions.
+
+2. **Comprehensive error handling middleware** - `errorHandlingMiddleware` converts errors to client-safe messages and logs details server-side with PostHog integration.
+
+3. **Well-structured authorization** - The `authz.ts` module provides proper ownership chain validation (user -> member -> organization -> client) with Redis caching.
+
+4. **Robust rate limiting infrastructure** - The `rate-limit.ts` module implements atomic Lua-based sliding window rate limiting with fail-closed behavior in production.
+
+5. **SSRF protection** - Platform detection endpoint includes comprehensive internal IP blocking patterns.
+
+6. **Timing-safe secret comparison** - Cron authentication uses `timingSafeEqual` to prevent timing attacks.
+
+7. **Input validation with Zod** - Most endpoints validate inputs with Zod schemas before processing.
+
+8. **Proper separation of concerns** - Server functions in `/serverFunctions` handle business logic while route handlers focus on HTTP concerns.
+
+9. **Typed route parameters** - TanStack Router's type-safe routing is properly utilized for compile-time param validation.
+
+10. **Webhook idempotency** - Stripe webhook handler uses `processWebhookIdempotently` to safely handle duplicate deliveries.
+
+---
+
+### Agent 3: Authentication & Authorization Review
+
+**Status:** Complete
+**Auth Checkpoints Found:** 47
+**Unprotected Routes Found:** 0 (by design - public routes have explicit justification)
+**Issues Found:** 0 CRITICAL, 2 HIGH, 4 MEDIUM
+
+#### Auth Architecture Overview
+
+The platform implements a layered authentication and authorization architecture:
+
+```
+[User] --> [apps/web] --> [Clerk Middleware] --> [Session Cookie]
+                       --> [API Routes] --> [requireAuth()] --> [Handler]
+                                        --> [requireClientAccess(clientId)]
+                                        --> [Cross-service call w/ Bearer token]
+                       --> [Server Actions] --> [requireActionAuth()]
+                                             --> [validateClientOwnership()]
+
+[External Client] --> [open-seo-main] --> [API Key Auth (oseo_*)]
+                                      --> [JWT Auth (Clerk)]
+                                      --> [HMAC Internal Auth]
+
+[Internal Service] --> [AI-Writer] --> [Clerk JWT Validation]
+                                   --> [Internal HMAC Auth]
+                                   --> [require_client_access dependency]
+```
+
+#### CRITICAL Issues
+*(None found)*
+
+The authentication implementation is well-designed with multiple security layers:
+- No API routes missing authentication checks
+- JWT validation uses RS256 with issuer verification
+- Session tokens are never exposed in URLs or logs
+- Cross-service calls use proper Bearer token forwarding or HMAC signatures
+- No hardcoded credentials found in source code
+
+#### HIGH Issues
+
+**HIGH-01: OAuth Callback State Validation Timing**
+- **File:** `/apps/web/src/app/api/oauth/google/callback/route.ts:150`
+- **Issue:** The FIX MED-08 comment indicates that state marking was moved to after token exchange, but the original vulnerability note suggests this was a previous issue. Currently correctly implemented.
+- **Status:** Resolved in codebase - no action needed.
+
+**HIGH-02: Query Token Authentication Deprecation**
+- **File:** `/AI-Writer/backend/middleware/auth_middleware.py:370-434`
+- **Issue:** `get_current_user_with_query_token` allows JWT tokens in query parameters for media endpoints. While restricted to specific paths (`/api/media/`, `/api/audio/`, `/api/assets/`) and marked as deprecated, query tokens in URLs can leak via:
+  - Browser history
+  - Server access logs
+  - HTTP Referer headers
+  - Proxy logs
+- **Fix:** Migrate to signed URLs (already implemented at `/apps/web/src/lib/auth/signed-urls.ts`) and remove query token support entirely.
+- **Code:**
+```python
+# Current (insecure):
+query_token = request.query_params.get("token")
+
+# Recommended: Use signed URLs with expiration
+# Already implemented in apps/web - apply to AI-Writer media endpoints
+```
+
+#### MEDIUM Issues
+
+**MED-01: Authorization Cache TTL Inconsistency**
+- **Files:**
+  - `/apps/web/src/lib/auth/client-ownership.ts:71` - 30 seconds TTL
+  - `/open-seo-main/src/lib/auth/client-ownership.ts:39` - 2 minutes TTL
+  - `/open-seo-main/src/server/middleware/authz.ts:24` - 5 minutes TTL
+- **Issue:** Inconsistent cache TTLs across services create varying windows for stale authorization.
+- **Fix:** Standardize on 30 seconds (shortest current TTL) and implement webhook-based cache invalidation.
+
+**MED-02: JWT Auth Without User Record Lookup**
+- **File:** `/open-seo-main/src/server/middleware/auth.ts:440-467`
+- **Issue:** JWT authentication returns `clerkUserId` directly without database user lookup. While documented as intentional for performance, routes requiring user-specific data must explicitly call `ensureUser` middleware.
+- **Status:** Documented with design rationale at line 440. Acceptable if consistently enforced.
+
+**MED-03: Internal Auth Disabled in Development**
+- **File:** `/AI-Writer/backend/middleware/internal_auth.py:105-108`
+- **Issue:** Internal authentication is skipped when `INTERNAL_API_KEY` is not configured in non-production environments.
+- **Code:**
+```python
+# Skip auth if no API key configured (development mode)
+if not self.api_key:
+    logger.debug("Skipping internal auth (no API key configured)")
+    return await call_next(request)
+```
+- **Risk:** Development environments with external access could expose internal endpoints.
+- **Fix:** Require `INTERNAL_API_KEY` in all environments or implement dev-only localhost check.
+
+**MED-04: Clock Skew Leeway on JWT Validation**
+- **File:** `/AI-Writer/backend/middleware/auth_middleware.py:142`
+- **Issue:** JWT validation allows 60 seconds leeway for clock skew. While reduced from 300 seconds, this still allows expired tokens to be used briefly.
+- **Status:** Acceptable trade-off between security and usability. Documented.
+
+#### Auth Flow Diagram
+
+```
+[Browser] 
+    |
+    +--> [apps/web Middleware] (middleware.ts)
+    |       |-- Rate limit auth routes
+    |       |-- next-intl locale handling
+    |       |-- Clerk session validation
+    |       |-- Session freshness check (24h for sensitive routes)
+    |       |-- Redirect to /sign-in if unauthorized
+    |
+    +--> [API Route] (e.g., /api/clients)
+    |       |-- requireAuth() -> Clerk auth() -> userId, sessionId
+    |       |-- requireClientAccess(clientId) -> backend /verify-access
+    |       |-- validateCsrf(request) for mutations
+    |       |-- Rate limiting per endpoint
+    |
+    +--> [Server Action]
+    |       |-- requireActionAuth() -> userId, orgId
+    |       |-- validateClientOwnership() -> backend verify
+    |       |-- Fail closed on backend unavailable
+    |
+    +--> [Cross-Service: open-seo-main]
+    |       |-- Bearer token (Clerk JWT) forwarded
+    |       |-- verifyClerkJWT() -> RS256 validation
+    |       |-- ensureUser middleware -> DB user record
+    |       |-- requireClientAccess() -> workspace membership
+    |
+    +--> [Cross-Service: AI-Writer]
+    |       |-- Bearer token (Clerk JWT) forwarded
+    |       |-- ClerkAuthMiddleware.verify_token()
+    |       |-- require_client_access dependency
+    |       |-- ClientUserAccess table check
+    |
+    +--> [Internal API: apps/web -> AI-Writer]
+    |       |-- HMAC-SHA256 signature (X-Internal-Signature)
+    |       |-- Timestamp (X-Internal-Timestamp) - 5min drift
+    |       |-- Correlation ID propagation
+    |
+    +--> [Webhook: Clerk/Stripe/GitHub]
+            |-- Svix signature verification (Clerk)
+            |-- HMAC-SHA256 verification (generic)
+            |-- Replay protection via timestamp
+```
+
+#### Authorization Chain
+
+```
+User (Clerk userId)
+    |
+    +--> Member (organization membership)
+    |       |-- member.userId == auth.userId
+    |       |-- member.organizationId == workspace
+    |
+    +--> Client (workspace ownership)
+    |       |-- clients.workspaceId == member.organizationId
+    |       |-- Cached in Redis (30s-5min TTL)
+    |
+    +--> ClientUserAccess (AI-Writer)
+            |-- clerk_user_id, client_id, role, is_active
+            |-- grant_client_access() / revoke_client_access()
+```
+
+#### Rate Limiting Coverage
+
+| Endpoint Type | Limit | Notes |
+|---------------|-------|-------|
+| Auth routes (sign-in, sign-up) | 10-20/min | Per IP |
+| Password reset | 3/5min | Strict to prevent abuse |
+| API (GET) | 100/min | Standard reads |
+| API (POST mutations) | 20/min | Heavy operations |
+| LLM operations | 50/hr | Article generation, etc. |
+| OAuth callbacks | 10/min | Prevent state brute-forcing |
+| Proposal accept (public) | 5/min | Strict for public endpoint |
+
+#### Strengths Identified
+
+1. **Comprehensive Auth Wrappers**
+   - `withAuth`, `withClientAuth`, `withAuthParams`, `withClientAuthParams` provide consistent patterns
+   - Server actions have parallel wrappers: `createAuthenticatedAction`, `createClientAuthenticatedAction`
+
+2. **Fail-Closed Design**
+   - All authorization errors result in access denial
+   - Backend unavailable = access denied (not allowed)
+   - Redis cache failure = fallback to DB (not bypass)
+
+3. **Timing-Safe Comparisons**
+   - All secret comparisons use `timingSafeEqual`
+   - HIGH-06 fix ensures constant time even with length mismatch
+
+4. **Security Audit Logging**
+   - Auth failures logged to `security_audit_log` table
+   - Rate limit exceeded events tracked
+   - Permission denied events logged with context
+
+5. **CSRF Protection**
+   - `validateCsrf(request)` on all state-changing endpoints
+   - Double-submit cookie pattern
+
+6. **Signed URL Implementation**
+   - Media access uses HMAC-signed URLs with expiration
+   - Replaces insecure query token authentication
+
+7. **Webhook Security**
+   - Provider-specific verification (Stripe, Clerk/Svix, GitHub)
+   - Replay protection via timestamp validation
+
+---
+
+### Agent 13: Security Audit Review (OWASP Top 10)
+
+**Status:** Complete
+**Security-Sensitive Files Analyzed:** 47
+**Issues Found:** 0 CRITICAL, 0 HIGH, 2 MEDIUM, 3 LOW
+
+#### Executive Summary
+
+The TeveroSEO platform demonstrates **strong security posture** with comprehensive defense-in-depth measures. Previous security fixes (HIGH-05, HIGH-06, HIGH-07, MED-03) have been properly implemented. The codebase shows evidence of security-conscious development with:
+
+- Robust SSRF protection with DNS rebinding mitigation
+- Timing-safe comparisons throughout authentication code
+- Proper secret management (encryption at rest, write-only credentials)
+- Comprehensive rate limiting with fail-closed behavior
+- CSP and security headers properly configured
+
+#### MEDIUM Issues
+
+**MED-01: DNS Rebinding Limitation Documented but Not Fully Mitigated**
+- **File:** `/AI-Writer/backend/services/url_validator.py:117-119`
+- **Problem:** The URL validator correctly documents that DNS rebinding attacks (e.g., using localtest.me, nip.io, vcap.me domains that resolve to internal IPs) cannot be prevented at the application layer without DNS resolution.
+- **Mitigation Status:** Documentation is clear, recommends network-level firewall rules. However, for higher security environments, consider:
+  ```python
+  # Optional: DNS resolution check at validation time
+  import socket
+  def validate_url_with_dns(url: str) -> bool:
+      if not validate_url(url):
+          return False
+      parsed = urlparse(url)
+      try:
+          ip = socket.gethostbyname(parsed.hostname)
+          return not _is_unsafe_ip(ip)
+      except socket.gaierror:
+          return True  # Allow non-resolving hostnames
+  ```
+- **Risk:** LOW (requires attacker to control DNS, network firewall recommended)
+- **Current State:** Acceptable with documented limitations
+
+**MED-02: Wildcard CORS on Pixel Endpoints**
+- **File:** `/open-seo-main/src/routes/api/pixel/collect.ts:11-21`
+- **Problem:** Pixel tracking endpoints use `Access-Control-Allow-Origin: *`
+- **Mitigation Status:** Well-documented (HIGH-31) with clear justification:
+  - Pixel must load from any customer domain
+  - No `Access-Control-Allow-Credentials` (no cookies/auth)
+  - Only accepts anonymous tracking data
+  - Rate limited by site ID
+- **Risk:** LOW (by design, properly documented)
+- **Current State:** Acceptable for analytics use case
 
 #### LOW Issues
 
-**[LOW-PERF-01] Missing React.memo on Table Rows**
-- **File**: `/apps/web/src/components/dashboard/ClientPortfolioTable.tsx:501-527`
-- **Issue**: `ClientTableRow` rendered in map without `React.memo`. Re-renders on any parent state change.
-- **Impact**: Janky scrolling with 50+ rows; unnecessary re-renders
-- **Fix**: Wrap in `React.memo` with proper comparison function
+**LOW-01: Unsafe-Inline Required for Script-src in CSP**
+- **File:** `/open-seo-main/src/server/middleware/security-headers.ts:28-30`
+- **Problem:** CSP includes `'unsafe-inline'` for scripts in production
+- **Reason:** Required for TanStack Start SSR hydration scripts
+- **Impact:** Reduces XSS protection from CSP
+- **Mitigation:** Could implement nonce-based CSP in future
+- **Risk:** LOW (other XSS protections in place: DOMPurify, output encoding)
 
-**[LOW-PERF-02] Unnecessary Object Spread in Loops**
-- **Files**: Multiple action files
-- **Issue**: Pattern `items.map(item => ({ ...item, computed: fn(item) }))` creates unnecessary intermediate objects
-- **Impact**: Minor GC pressure; microsecond-level slowdown
-- **Fix**: Use direct property assignment where mutation is safe
+**LOW-02: WebSocket Origin Check Uses Environment Variable**
+- **File:** `/open-seo-main/src/server/websocket/socket-server.ts:128-136`
+- **Problem:** Allowed origins from `ALLOWED_ORIGINS` env var, defaulting to localhost in development
+- **Impact:** If misconfigured in production, could allow unauthorized WebSocket connections
+- **Current State:** Acceptable - JWT auth provides primary protection, origin is defense-in-depth
 
-**[LOW-PERF-03] No Connection Pooling Config in AI-Writer**
-- **File**: `/AI-Writer/backend/services/database.py:45-52`
-- **Issue**: SQLAlchemy engine created with default pool settings. No explicit `pool_size`, `max_overflow`, `pool_recycle`.
-- **Impact**: Suboptimal connection reuse; potential connection exhaustion
-- **Fix**: Configure pool settings based on expected load
+**LOW-03: Theme Script Uses dangerouslySetInnerHTML**
+- **File:** `/open-seo-main/src/routes/__root.tsx:132`
+- **Problem:** Theme initialization script injected via `dangerouslySetInnerHTML`
+- **Mitigation:** The script is a static string constant (`themePreferenceInitScript`), not user input
+- **Risk:** NONE - false positive, this is safe usage
 
+#### OWASP Coverage Matrix
+
+| ID | Category | Status | Notes |
+|----|----------|--------|-------|
+| A01 | Broken Access Control | PASS | Comprehensive auth wrappers, client access validation, RBAC in place |
+| A02 | Cryptographic Failures | PASS | AES-256 encryption for secrets, bcrypt for passwords, HTTPS enforced |
+| A03 | Injection (SQL/XSS/Cmd) | PASS | Parameterized queries (Drizzle/SQLAlchemy), DOMPurify for HTML, no shell execution |
+| A04 | Insecure Design | PASS | Rate limiting, CSRF protection, anti-automation measures |
+| A05 | Security Misconfiguration | PASS | Security headers, CSP, HSTS, proper .env handling |
+| A06 | Vulnerable Components | NEEDS CHECK | Could not run npm audit (no lockfile), recommend adding to CI |
+| A07 | Authentication Failures | PASS | Clerk handles auth, proper session management, JWT validation |
+| A08 | Integrity Failures | PASS | Webhook signature verification, HMAC for internal APIs |
+| A09 | Logging Failures | PASS | Security audit logging, structured logging for auth events |
+| A10 | SSRF | PASS | Comprehensive URL validation, IP blocking, DNS rebinding documented |
+
+#### Strengths Identified
+
+1. **Comprehensive SSRF Protection**
+   - `/open-seo-main/src/server/lib/webhook-url-policy.ts` blocks:
+     - Cloud metadata endpoints (169.254.169.254, etc.)
+     - Private IP ranges (10.x, 172.16-31.x, 192.168.x)
+     - Link-local, loopback, reserved addresses
+     - IPv4-mapped IPv6 bypass attempts
+   - Fail-closed on DNS resolution errors (MED-03 fix)
+
+2. **URL Validation in AI-Writer**
+   - `/AI-Writer/backend/services/url_validator.py` provides:
+     - Hex/octal IP notation detection
+     - Unicode normalization attack prevention
+     - Double-encoding attack detection
+     - Abbreviated IP notation handling (127.1 -> 127.0.0.1)
+
+3. **Timing-Safe Secret Comparisons**
+   - `/open-seo-main/src/server/middleware/internal-auth.ts:146-165`
+   - `/open-seo-main/src/server/middleware/webhook-auth.ts:140-161`
+   - HIGH-06 and HIGH-07 fixes ensure constant-time even with length mismatch
+
+4. **Write-Only Credential Handling**
+   - `/AI-Writer/backend/api/clients.py:99-119`
+   - `wp_app_password` and `shopify_api_key` encrypted at rest, never returned in responses
+   - Explicit documentation in SettingsResponse schema
+
+5. **Fail-Closed Rate Limiting**
+   - `/open-seo-main/src/server/middleware/rate-limit.ts:308-327`
+   - HIGH-05 fix: Redis failure = deny request in production
+   - Prevents brute force during infrastructure issues
+
+6. **Webhook URL Allowlist**
+   - `/open-seo-main/src/server/features/command-center/services/WorkflowExecutor.ts:29-39`
+   - Workflow webhooks limited to known platforms (Slack, Zapier, Discord, etc.)
+   - HTTPS required in production
+
+7. **Proper Secret Management**
+   - All secrets via environment variables
+   - `.env.example` provides clear documentation without actual secrets
+   - Platform secrets encrypted in database with AES-256
+
+#### Recommendations
+
+1. **Add npm audit to CI Pipeline**
+   - Enable `pnpm audit` or `npm audit` in CI to catch vulnerable dependencies
+   - Currently blocked due to missing lockfile
+
+2. **Consider Nonce-Based CSP**
+   - Future enhancement to eliminate `'unsafe-inline'` requirement
+   - Would require TanStack Start configuration changes
+
+3. **Network Firewall for DNS Rebinding**
+   - Document network-level firewall requirement for production
+   - Block outbound to private IP ranges from application servers
+
+---
+
+### Agent 12: Error Handling & Resilience Review
+
+**Status:** Complete
+**Error Boundaries Found:** 59 (55 route-level error.tsx files + 4 component error boundaries)
+**Try/Catch Blocks Analyzed:** 359 (229 in apps/web, 24 in open-seo-main, 106 in API routes)
+**Issues Found:** 0 CRITICAL, 1 HIGH, 3 MEDIUM
+
+#### CRITICAL Issues
+
+*None found.* All services properly handle errors without crashing and do not expose stack traces to users.
+
+#### HIGH Issues
+
+**[HIGH-12-1] Silent exception handlers in AI-Writer agent framework**
+- **File:** `/AI-Writer/backend/services/agent_framework.py:195-196, 264-265`
+- **Problem:** Several `except Exception: pass` blocks silently swallow errors without logging. When profile loading or context loading fails, no diagnostic information is captured.
+- **Code:**
 ```python
-engine = create_engine(
-    url,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,
-    pool_pre_ping=True
-)
+# Line 195-196
+except Exception:
+    profile_data = {}
+
+# Line 264-265  
+except Exception:
+    pass
 ```
-
-**[LOW-PERF-04] Sync File I/O in Async Context**
-- **File**: `/AI-Writer/backend/services/article_generation_service.py`
-- **Issue**: Some file operations use synchronous I/O within async functions.
-- **Impact**: Blocks event loop during file operations
-- **Fix**: Use `aiofiles` for async file I/O
-
-### Summary
-
-| Severity | Count | Categories |
-|----------|-------|------------|
-| CRITICAL | 3 | N+1 queries, memory leak |
-| HIGH | 4 | Batch optimization, caching, pagination |
-| MEDIUM | 5 | Indexes, polling, bundle size |
-| LOW | 4 | React optimization, connection pooling |
-
-### Priority Remediation Plan
-
-**P0 (Immediate - Production Impact):**
-1. Fix N+1 in `_compute_client_metrics()` - CRIT-PERF-01
-2. Add LRU eviction to engine cache - CRIT-PERF-03
-3. Batch workspace predictions - CRIT-PERF-02
-
-**P1 (High - Performance Degradation):**
-1. Add pagination to audit results - HIGH-PERF-04
-2. Pre-compute word counts - HIGH-PERF-02
-3. Enable singleflight for portfolio aggregates - HIGH-PERF-03
-
-**P2 (Medium - Optimization):**
-1. Add composite indexes - MED-PERF-01
-2. Implement exponential backoff - MED-PERF-03
-3. Dynamic import Recharts - MED-PERF-05
-
-**P3 (Low - Polish):**
-1. Add React.memo to table rows - LOW-PERF-01
-2. Configure connection pooling - LOW-PERF-03
-
----
-
-## Agent 20: Data Flow Integrity Review
-
-### Scope
-- Cross-service data consistency
-- Race condition detection
-- Eventual consistency handling
-- Data synchronization patterns
-
-### Findings
-
-#### DFI-001: Cross-Database Client Entity Drift (HIGH)
-**Data Flow Path:** apps/web -> AI-Writer(alwrity DB) AND open-seo-main(open_seo DB)
-
-**Issue:** The `clients` table exists in BOTH databases with different schemas and no synchronization mechanism:
-- **open-seo-main** (`src/db/client-schema.ts`): Has `workspaceId` (required), `domain`, `contactEmail`, `gscRefreshToken`, `baselineMetrics`, `status` with enum constraint
-- **AI-Writer** (`models/client.py`): Has `workspace_id` (nullable for backwards compatibility), `website_url`, `is_archived` flag
-
-**Impact:** Client created in one service may not exist in the other. Updates to client metadata in one DB do not propagate to the other, causing inconsistent state across the platform.
-
-**Failure Scenario:** User creates client via AI-Writer, then tries to run SEO audit via open-seo-main. The client doesn't exist in open_seo DB, causing 404 errors.
-
-**Recommended Solution:**
-1. Establish single source of truth (AI-Writer's `clients` table as primary)
-2. Add webhook/event system to sync client CRUD operations across DBs
-3. Or implement shared client service with cross-DB transaction support
-
----
-
-#### DFI-002: Idempotency Key Time-Window Race Condition (MEDIUM)
-**Data Flow Path:** apps/web Server Actions -> Backend Services
-
-**Issue:** In `apps/web/src/lib/utils/idempotency.ts`, idempotency keys use 30-second time windows. Requests at window boundaries get DIFFERENT idempotency keys despite being near-simultaneous.
-
-**Impact:** A user double-clicking at the boundary will create duplicate records.
-
-**Recommended Solution:**
-1. Use server-side idempotency with database-backed keys (already exists in `open-seo-main/src/lib/db/transaction.ts`)
-2. Remove time-window component from client-side key generation
-3. Pass client-generated UUID as idempotency key, stored in session/localStorage
-
----
-
-#### DFI-003: Missing Idempotency Key Handling in Backend (HIGH)
-**Data Flow Path:** apps/web -> open-seo-main API endpoints
-
-**Issue:** Multiple server actions generate idempotency keys and pass them to backends with comments like "Backend should use this to deduplicate", but the actual API endpoints may not be using the `withIdempotency()` helper.
-
-**Impact:** The idempotency keys are generated but potentially ignored, providing false security against duplicate operations.
-
-**Recommended Solution:**
-1. Audit all endpoints receiving idempotency keys to ensure they use `withIdempotency()`
-2. Add integration tests verifying duplicate requests return cached results
-
----
-
-#### DFI-004: TOCTOU in Webhook Ownership Validation (MEDIUM)
-**Data Flow Path:** apps/web -> validateClientOwnership -> update/delete webhook
-
-**Issue:** In `webhooks.ts`, the ownership validation is split from the mutation. The comment mentions "TOCTOU FIX: Pass scope info to backend" but relies on backend implementation.
-
-**Impact:** Webhook ownership could change between validation and mutation, allowing unauthorized modification.
-
-**Recommended Solution:**
-1. Verify backend implements atomic WHERE clause checking `expectedScope` and `expectedScopeId`
-2. Add optimistic locking with version/etag column
-
----
-
-#### DFI-005: Auto-Publish Link Graph Update Non-Atomic (MEDIUM)
-**Data Flow Path:** AI-Writer (auto_publish_executor.py) -> open-seo-main (link graph API)
-
-**Issue:** After publishing an article, `_update_link_graph()` calls open-seo-main. Error is logged but non-blocking, with no retry mechanism.
-
-**Impact:** Article publishes but link graph is not updated. Internal linking recommendations become stale.
-
-**Recommended Solution:**
-1. Queue link graph updates in a retry-able job queue (BullMQ)
-2. Add reconciliation job to backfill missing link graph entries
-
----
-
-#### DFI-006: Cache Invalidation Not Propagated Across Services (HIGH)
-**Data Flow Path:** Any service -> Redis Cache (shared)
-
-**Issue:** Cache invalidation is service-local. No cross-service cache invalidation mechanism exists.
-
-**Impact:** Data updated in one service remains stale in another service's cache. User sees inconsistent data.
-
-**Recommended Solution:**
-1. Implement Redis pub/sub for cache invalidation events
-2. All services subscribe to `cache:invalidate:{entityType}:{entityId}` channels
-
----
-
-#### DFI-007: Optimistic Mutation Partial Rollback Gap (MEDIUM)
-**Data Flow Path:** React Client -> useOptimisticMutation -> Server Action -> Backend
-
-**Issue:** If the server action partially succeeds, the rollback restores stale data that doesn't match the partial server state.
-
-**Impact:** UI shows rolled-back state, but server has partial changes.
-
-**Recommended Solution:**
-1. Wrap related mutations in database transactions (server-side)
-2. Return partial success status from server actions
-
----
-
-#### DFI-008: Missing Transaction Boundaries in Publishing Pipeline (CRITICAL)
-**Data Flow Path:** AI-Writer (ScheduledArticle) -> CMS Publisher -> PublishingLog
-
-**Issue:** In `auto_publish_executor.py`, the publish cycle uses separate sessions without transaction boundaries. If the process crashes between steps, article remains in `publishing` state forever.
-
-**Impact:** Articles stuck in 'publishing' state - never retried, never marked failed.
-
-**Recommended Solution:**
-1. Add timeout monitoring for articles in 'publishing' state
-2. Implement heartbeat/lease mechanism for publish claims
-3. Add recovery job that resets stale 'publishing' articles after timeout
-
----
-
-#### DFI-009: BullMQ Audit Job Deduplication Needs Verification (MEDIUM)
-**Data Flow Path:** apps/web -> startAudit -> auditQueue -> audit-processor
-
-**Issue:** Comment mentions jobId deduplication but actual job enqueue implementation needs verification.
-
-**Impact:** Same audit could be queued multiple times, wasting Lighthouse API quota.
-
-**Recommended Solution:**
-1. Verify `auditQueue.add()` uses `{ jobId: auditId }` option
-2. Add test coverage for duplicate enqueue rejection
-
----
-
-#### DFI-010: Cross-Service X-User-Id Header Trust (HIGH)
-**Data Flow Path:** apps/web -> buildServiceHeaders() -> AI-Writer/open-seo-main
-
-**Issue:** X-User-Id is derived from Clerk but sent as a header. Backend services must re-verify the JWT/token rather than trusting the header.
-
-**Impact:** If backend doesn't re-verify the token, a compromised request could spoof X-User-Id header.
-
-**Recommended Solution:**
-1. Backend services should validate the Bearer token via Clerk/JWT verification
-2. Extract userId from verified token, not from X-User-Id header
-
----
-
-#### DFI-011: Stale Cache After Cross-Service Update (MEDIUM)
-**Data Flow Path:** User Action -> Service A Update -> apps/web Cache
-
-**Issue:** Singleflight prevents cache stampede but doesn't address stale reads. Default TTL is 5 minutes.
-
-**Impact:** After AI-Writer updates client analytics, apps/web continues serving cached data until TTL expires.
-
-**Recommended Solution:**
-1. Add cache-busting query param for force-refresh
-2. Implement write-through caching where updates also update cache
-
----
-
-#### DFI-012: No Saga/Compensation Pattern for Multi-Service Operations (HIGH)
-**Data Flow Path:** apps/web -> AI-Writer + open-seo-main (parallel)
-
-**Issue:** Operations spanning both backends have no compensation/rollback mechanism. If one service fails after another succeeds, no automatic cleanup occurs.
-
-**Impact:** Orphaned records in one database, inconsistent state requiring manual cleanup.
-
-**Recommended Solution:**
-1. Implement saga pattern with compensation actions
-2. Track multi-service operations in a saga log table
-3. Run saga recovery worker to complete or rollback pending operations
-
----
-
-### Summary Table
-
-| Issue ID | Severity | Category | Description |
-|----------|----------|----------|-------------|
-| DFI-001 | HIGH | Data Drift | Cross-database client entity schema mismatch |
-| DFI-002 | MEDIUM | Race Condition | Idempotency key time-window boundary issue |
-| DFI-003 | HIGH | Idempotency | Backend may not honor idempotency keys |
-| DFI-004 | MEDIUM | TOCTOU | Webhook ownership check not atomic |
-| DFI-005 | MEDIUM | Partial Failure | Link graph update non-atomic with publish |
-| DFI-006 | HIGH | Cache Consistency | No cross-service cache invalidation |
-| DFI-007 | MEDIUM | Rollback | Optimistic mutation partial state gap |
-| DFI-008 | CRITICAL | Transaction | Publishing pipeline missing transaction boundaries |
-| DFI-009 | MEDIUM | Deduplication | Audit job deduplication needs verification |
-| DFI-010 | HIGH | Auth | X-User-Id header trust without re-validation |
-| DFI-011 | MEDIUM | Stale Cache | Post-update stale reads for 5 minutes |
-| DFI-012 | HIGH | Saga | No compensation for multi-service failures |
-| DFI-013 | MEDIUM | Cache Consistency | revalidatePath() doesn't clear Redis cache |
-| DFI-014 | MEDIUM | Resilience | Voice profile fetch lacks retry mechanism |
-| DFI-015 | LOW | Dev/Prod Parity | SQLite dev mode lacks row-level locking |
-
----
-
-#### DFI-013: Next.js revalidatePath Does Not Propagate to Backend Caches (MEDIUM)
-**Data Flow Path:** Server Action -> revalidatePath() -> Next.js Cache (only)
-
-**Issue:** Server actions use `revalidatePath()` for Next.js cache invalidation, but this only affects Next.js Data Cache. The Redis caches used by `cacheSet()`/`cacheGet()` in `apps/web/src/lib/cache/redis-cache.ts` are separate and not invalidated.
-
-**Impact:** After a mutation, Next.js pages may show fresh data, but direct API calls or other server actions reading from Redis cache will show stale data until TTL expires.
-
-**Recommended Solution:**
-1. Pair `revalidatePath()` with `cacheInvalidateByTag()` for relevant tags
-2. Create unified `invalidateAfterMutation(path, tags)` helper function
-3. Document which mutations need Redis cache invalidation
-
----
-
-#### DFI-014: Voice Profile Cross-Service Fetch Without Retry (MEDIUM)
-**Data Flow Path:** AI-Writer (article_generation_service.py) -> open-seo-main (voice API)
-
-**Issue:** Voice profile fetch from open-seo-main uses single attempt with no retry. Network hiccups during generation will result in articles without brand voice.
-
-**Evidence:** In `AI-Writer/backend/services/article_generation_service.py`, voice profile fetch errors are caught and `None` returned without retry.
-
-**Impact:** Transient network issues cause permanent degradation of article quality.
-
-**Recommended Solution:**
-1. Add retry with exponential backoff for voice profile fetch
-2. Consider circuit breaker to avoid cascading failures
-3. Add alerting when voice profile fetches fail repeatedly
-
----
-
-#### DFI-015: SQLite Development Mode Lacks Row-Level Locking (LOW)
-**Data Flow Path:** AI-Writer development environment -> SQLite DB
-
-**Issue:** AI-Writer's `auto_publish_executor.py` detects database dialect and falls back to blocking locks on SQLite. While documented and safe for single-process development, concurrent requests in dev mode may block or behave differently than production.
-
-**Evidence:** Lines 181-200 in `AI-Writer/backend/services/auto_publish_executor.py` show dialect-specific handling.
-
-**Impact:** Development behavior may not accurately reflect production race condition handling.
-
-**Recommended Solution:**
-1. Document development vs production locking behavior differences
-2. Consider using PostgreSQL in Docker for development parity
-3. Add integration tests that verify locking behavior
-
----
-
-### Critical Action Items
-
-1. **Immediate (CRITICAL):** Fix DFI-008 - Add timeout monitoring for publishing state
-2. **High Priority:** Implement DFI-006 - Cross-service cache invalidation via Redis pub/sub
-3. **High Priority:** Verify DFI-003 - Audit all endpoints receiving idempotency keys
-4. **High Priority:** Address DFI-001 - Establish client entity synchronization strategy
-5. **High Priority:** Verify DFI-010 - Backend JWT validation for X-User-Id claims
-6. **Medium Priority:** Implement DFI-013 - Unified cache invalidation helper
-
-### Positive Patterns Observed
-
-1. **Robust Transaction Utilities:** `open-seo-main/src/lib/db/transaction.ts` provides `withTransaction()`, `withIdempotency()`, `atomicBatch()`, and `withRetry()` helpers
-2. **Circuit Breakers:** `apps/web/src/lib/utils/service-circuit-breakers.ts` prevents cascading failures between services
-3. **HMAC Request Signing:** `apps/web/src/lib/internal-api/client.ts` signs inter-service requests with timestamps to prevent replay attacks
-4. **Atomic Claiming:** Both AI-Writer and open-seo-main use `SELECT FOR UPDATE SKIP LOCKED` for concurrent job claiming
-5. **Fail-Closed Authorization:** `apps/web/src/lib/auth/client-ownership.ts` denies access when backend is unavailable
-6. **Singleflight Cache Stampede Prevention:** `getCachedWithSingleflight()` prevents thundering herd on cache misses
-7. **Dialect-Aware Locking:** AI-Writer detects PostgreSQL vs SQLite and adapts locking strategy accordingly
-
----
-
-## Agent 5: Server Actions MEDIUM Fixes (2026-05-03)
-
-### Fixed Issues
-
-#### MEDIUM-01: IDOR pattern in getWebhook (webhooks.ts)
-**Problem:** `getWebhook` fetched webhook data before validating ownership, potentially leaking data to unauthorized users.
-**Fix:** Added `userId` parameter to backend query for atomic ownership validation. Backend should JOIN with client ownership table and return 404 if not owned. Kept secondary `validateClientOwnership` call as defense-in-depth.
-
-#### MEDIUM-02: IDOR pattern in getChange (changes.ts)
-**Problem:** `getChange` fetched change data before validating ownership, potentially leaking data to unauthorized users.
-**Fix:** Added `userId` parameter to backend query for atomic ownership validation. Backend should JOIN with client ownership table and return 404 if not owned. Kept secondary `validateClientOwnership` call as defense-in-depth.
-
-#### MEDIUM-03: TOCTOU race condition in updateWebhook (webhooks.ts)
-**Problem:** Time-of-check-to-time-of-use race condition where webhook state could change between fetch and update.
-**Fix:** Implemented optimistic locking with `expectedVersion` parameter. Backend validates version in WHERE clause (`UPDATE ... WHERE id = ? AND version = ?`). On version mismatch, backend returns 409 Conflict with user-friendly error message. Also added userId to fetch query for IDOR protection.
-
-### Additional Fix: getWebhookDeliveries (webhooks.ts)
-**Problem:** Same IDOR pattern as getWebhook - fetched data before ownership validation.
-**Fix:** Applied same pattern - added `userId` parameter to backend query for atomic ownership validation.
-
-### Backend Requirements
-These fixes require backend changes to be fully effective:
-1. Backend must accept `userId` query parameter and validate ownership atomically in SQL JOINs
-2. Backend must implement version column for optimistic locking and return 409 on version mismatch
-3. Backend should return 404 (not 403) when resource is not found OR not owned (prevents enumeration)
-
-### Files Modified
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/actions/webhooks.ts`
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/actions/changes.ts`
-
----
-
-## Consolidated Findings
-
-### Critical Issues
-*To be populated after all reviews*
-
-### High Issues
-*To be populated after all reviews*
-
-### Integration Issues
-*To be populated after all reviews*
-
-### User Journey Issues
-*To be populated after all reviews*
-
----
-
-## Recommendations
-
-*To be populated after all reviews*
-
----
-
-## Fix Report: Middleware and Routing (Agent 6)
-
-**Date:** 2026-05-03
-**Domain:** Middleware and Routing Fixes
-**Status:** COMPLETED
-
-### Issues Fixed
-
-#### MEDIUM-01: API Routes Excluded from Middleware Auth (Documentation)
-
-**Problem:** API routes are excluded from middleware authentication via the `matcher` config, but this intentional design choice was not documented, making it unclear why API routes don't go through middleware auth.
-
-**Solution:** Added comprehensive JSDoc documentation to `middleware.ts` explaining the API route authentication strategy:
-- API routes use `requireAuth()`, `requireClientAccess()`, `withAuth()`, and `withClientAuth()` from `@/lib/auth/api-auth.ts`
-- This separation provides JSON error responses (not redirects), fine-grained rate limiting, custom CSRF protection, and explicit auth context in handler signatures
-- Referenced the auth utilities file for implementation details
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/apps/web/middleware.ts` (lines 11-37)
-
----
-
-#### MEDIUM-02: Sensitive Route Patterns Edge Case Matching Issues
-
-**Problem:** The sensitive route matchers used loose patterns that could match unintended routes:
-- `"/(.*)/delete(.*)"` could match `/deleted-items` or `/clients/123/deleted`
-- `"/(.*)/admin(.*)"` could match `/administrator-guide`
-- Missing explicit patterns for exact path matches
-
-**Solution:**
-1. **Tightened patterns** to use segment-based matching:
-   - `/settings` and `/settings/(.*)` - exact segment matches
-   - `/admin` and `/admin/(.*)` - exact segment matches
-   - `(.*)/delete` and `(.*)/delete/(.*)` - requires `/delete` as path segment, not substring
-
-2. **Added comprehensive documentation** explaining pattern design:
-   - Edge cases handled (settings, admin, delete operations, locale prefixes)
-   - Edge cases NOT matched by design (deleted-items, administrator-guide, user-settings)
-
-3. **Created test suite** with 42 test cases covering:
-   - All sensitive route types (settings, admin, delete)
-   - Locale prefix variants (`/lt/...`)
-   - False positive edge cases (substring matches that should NOT match)
-   - Query string handling
-
-**Files Modified:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/middleware.ts` (lines 69-105)
-
-**Files Created:**
-- `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/middleware/route-matchers.test.ts` (42 tests, all passing)
-
-### Test Coverage
-
-```
-Tests:  42 passed (42)
-- isSensitiveRoute matcher: 27 tests
-  - settings routes: 5 tests
-  - admin routes: 5 tests
-  - delete routes: 5 tests
-  - edge cases (false positives avoided): 9 tests
-  - query string handling: 3 tests
-- public route matcher: 8 tests
-- auth route matcher: 7 tests
-```
-
-### Verification
-
-All tests pass and existing route protection remains intact. The changes are backward-compatible - previously matched routes still match, and the new patterns prevent false positives on substring matches.
-
----
-
-## Agent 15: Content Generation Pipeline Fixes (2026-05-03)
-
-### Issues Fixed
-
-| Issue ID | Severity | Title | Status |
-|----------|----------|-------|--------|
-| HIGH-01 | HIGH | Race condition risk in async/sync scheduler boundary | FIXED |
-| MEDIUM-01 | MEDIUM | Silent voice profile fetch failures | FIXED |
-| MEDIUM-02 | MEDIUM | Nested async context complexity | FIXED |
-
-### Fix Details
-
-#### HIGH-01: Race Condition in Scheduler State Transitions (FIXED)
-
-**File:** `AI-Writer/backend/services/auto_publish_executor.py`
-
-**Problem:** The `run_publish_cycle()` function could be called by APScheduler while a previous cycle was still running, leading to potential race conditions in article status transitions.
-
-**Solution:**
-- Added `threading.Lock` (`_scheduler_lock`) to guard scheduler state transitions
-- Added `_cycle_in_progress` flag to track active publish cycles
-- Wrapped cycle execution in try/finally to ensure lock is always released
-- Extracted implementation to `_run_publish_cycle_impl()` for clean separation
-
-**Changes:**
+- **Fix:** Add logging to capture these failures for debugging:
 ```python
-_scheduler_lock = threading.Lock()
-_cycle_in_progress = False
-
-def run_publish_cycle() -> None:
-    global _cycle_in_progress
-    with _scheduler_lock:
-        if _cycle_in_progress:
-            logger.warning("Publishing cycle skipped - previous cycle still in progress")
-            return
-        _cycle_in_progress = True
-    try:
-        _run_publish_cycle_impl()
-    finally:
-        with _scheduler_lock:
-            _cycle_in_progress = False
+except Exception as e:
+    logger.warning(f"Failed to load profile: {e}")
+    profile_data = {}
 ```
 
-#### MEDIUM-01: Silent Voice Profile Fetch Failures (FIXED)
-
-**File:** `AI-Writer/backend/services/article_generation_service.py`
-
-**Problem:** When voice profile fetch from open-seo API failed, the error was silently caught and `None` was returned. Users had no visibility that articles were generated without brand voice constraints.
-
-**Solution:**
-- Added explicit error handling with detailed logging when `VoiceProfileFetchError` occurs
-- Store warning message in `article.error_detail` field so UI can display degradation notice
-- Log includes impact description: "Article will be generated with default SEO voice instead of brand voice"
-
-**Changes:**
-```python
-try:
-    voice_profile = await fetch_voice_profile(str(article.client_id))
-    # ...
-except VoiceProfileFetchError as vpe:
-    voice_profile_error = str(vpe)
-    logger.warning(
-        "[ArticleGen] Voice profile fetch failed - proceeding without brand voice constraints",
-        extra={
-            "client_id": str(article.client_id),
-            "impact": "Article will be generated with default SEO voice instead of brand voice",
-        },
-    )
-
-# Later, store warning in article metadata:
-if voice_profile_error:
-    article.error_detail = f"[WARNING] Voice profile unavailable: {voice_profile_error}"
-```
-
-#### MEDIUM-02: Nested Async Context Complexity (FIXED)
-
-**File:** `AI-Writer/backend/services/auto_publish_executor.py`
-
-**Problem:** The `_run_link_graph_update()` function had complex nested logic to detect whether it was in an async context, creating error-prone code paths with `asyncio.get_running_loop()`, `asyncio.new_event_loop()`, and `asyncio.create_task()`.
-
-**Solution:**
-- Simplified to always use `asyncio.run()` at top level
-- Removed the now-unused `_run_async_in_thread()` helper function
-- Since `_run_link_graph_update()` is called from sync code (`_save_result` -> `run_publish_cycle`), we're guaranteed to not be in an async context
-
-**Changes:**
-```python
-def _run_link_graph_update(article_id: str, client_id: str, url: str, html: str) -> None:
-    """MEDIUM-02 Fix: Simplified async context handling."""
-    try:
-        asyncio.run(_safe_update_link_graph(article_id, client_id, url, html))
-    except Exception as e:
-        logger.warning("Link graph update unexpected error (non-blocking)", ...)
-```
-
-### Verification
-
-- Both files compile without syntax errors
-- Changes maintain idempotency of publish operations
-- Existing content generation flow preserved
-- Non-blocking behavior maintained for GSC submission and link graph updates
-
-### Additional Notes
-
-The linter also added `get_internal_auth_headers` import for cross-service authentication, addressing the related integration issue where AI-Writer -> open-seo-main calls were failing with 401.
-
----
-
-## Agent 14: FastAPI Backend Fixes (2026-05-03)
-
-### Fixed Issues
-
-#### HIGH-SEC-01: GSC OAuth callback uses SessionLocal which is None in multi-tenant mode
-**File:** `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/routers/gsc_auth.py:185-209`
-
-**Problem:** The GSC OAuth callback was importing `SessionLocal` from `services.database`, which is `None` in multi-tenant mode. This caused the platform insights task creation to fail silently after successful OAuth.
-
-**Fix:** Replaced `SessionLocal()` with `get_session_for_user(user_id)` which properly creates a session for the specific user's database in multi-tenant mode. Added null check for the session to handle edge cases gracefully.
-
-#### HIGH-SEC-02: Production config uses ENV while CORS uses NODE_ENV
-**File:** `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/main.py:296`
-
-**Problem:** The `validate_production_config()` function uses `ENV` environment variable to detect production mode, while CORS configuration was using `NODE_ENV`. This inconsistency could lead to security misconfigurations where production security checks pass but CORS allows development origins.
-
-**Fix:** Standardized on `ENV` variable (which `validate_production_config` uses) while maintaining backwards compatibility by falling back to `NODE_ENV` if `ENV` is not set. Added comment explaining the standardization.
-
-#### MEDIUM-ASYNC-01: Blocking requests calls in async contexts
-**Files:** Multiple files in `services/wavespeed/`, `services/integrations/`, `services/llm_providers/`
-
-**Problem:** Many async FastAPI endpoints call synchronous `requests` library methods, blocking the event loop and reducing concurrency.
-
-**Fix:** Added utility functions to `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/utils/async_tasks.py`:
-- `run_blocking(func, *args, **kwargs)` - Wraps blocking calls with `asyncio.to_thread()` for non-blocking execution
-- `make_async(func)` - Decorator to convert blocking functions to async versions
-
-These utilities enable gradual migration of blocking calls without requiring immediate refactoring of all affected files. The existing `ResilientHttpClient` in `utils/http_client.py` provides async HTTP client as the preferred long-term solution.
-
-#### MEDIUM-ASYNC-02: time.sleep() blocking calls
-**Files:**
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/key_validators.py:60`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/intelligence/semantic_cache.py:212`
-
-**Problem:** `time.sleep()` blocks the event loop when called from async functions.
-
-**Fix:**
-1. **key_validators.py:** The `with_retry` decorator uses `time.sleep()` intentionally for sync contexts (startup/onboarding). Added documentation clarifying this is sync-only and added a new `with_async_retry` decorator that uses `await asyncio.sleep()` for async contexts.
-
-2. **semantic_cache.py:** Converted `_periodic_cleanup()` from sync to async method using `await asyncio.sleep()`. Also added proper shutdown handling with `_shutdown` flag and `asyncio.CancelledError` handling.
-
-#### MEDIUM-ERR-01: Some endpoints leak internal error details
-**Files:** Multiple endpoints across the codebase
-
-**Problem:** Many endpoints use `HTTPException(detail=str(e))` or `HTTPException(detail=f"... {e}")` which exposes internal error messages including file paths, stack traces, SQL queries, and connection strings.
-
-**Fix:** Added error sanitization utilities to `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/utils/error_normalization.py`:
-- `sanitize_error_for_client(error, operation)` - Sanitizes error messages by detecting and removing sensitive patterns (file paths, connection strings, SQL, stack traces)
-- `safe_http_exception(status_code, error, operation)` - Creates HTTPException with sanitized detail and error ID for correlation
-
-These utilities provide:
-- Pattern-based detection of sensitive information
-- Server-side logging of full error details with correlation ID
-- Generic client-facing messages when sensitive info is detected
-- Pass-through of short, simple error messages that are safe
-
-### Files Modified
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/routers/gsc_auth.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/main.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/key_validators.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/intelligence/semantic_cache.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/utils/async_tasks.py`
-- `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/utils/error_normalization.py`
-
-### Remaining Work
-
-**Blocking HTTP Calls Migration:** The 20+ files using synchronous `requests` library should be migrated to use either:
-1. The `run_blocking()` wrapper for quick fixes
-2. The `ResilientHttpClient` from `utils/http_client.py` for proper async HTTP
-
-Priority files for migration:
-- `services/wavespeed/polling.py` - Core polling logic
-- `services/integrations/bing_oauth.py` - OAuth flows
-- `services/integrations/wordpress_oauth.py` - OAuth flows
-
-**Error Sanitization Adoption:** Endpoints identified as leaking errors should be updated to use `safe_http_exception()`:
-- `services/video_studio/video_processors.py` (7 occurrences)
-- `api/seo_dashboard.py` (3 occurrences)
-- `api/facebook_writer/routers/facebook_router.py` (10 occurrences)
-- `routers/image_studio.py` (13 occurrences)
-
-
----
-
-## Fix Report: Drizzle Database Operations (Agent 12)
-
-**Date:** 2026-05-03
-**Domain:** Drizzle Database Operations Fixes
-**Status:** COMPLETED
-
-### Issues Fixed
-
-#### HIGH-DB-001: N+1 Query Pattern in updateSectionOrder
-
-**Problem:** The `updateSectionOrder` function was executing N individual UPDATE queries in a loop, one for each section position update.
-
-**Solution:** Replaced the loop with a single batch UPDATE using SQL CASE WHEN expression:
-- Built a dynamic CASE expression mapping section IDs to their new positions
-- Used `inArray()` to filter only the sections being reordered
-- Reduced from N+1 queries to 2 queries (one batch UPDATE for sections, one UPDATE for template)
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/features/proposals/repositories/template.repository.ts` (lines 220-260)
-
----
-
-#### HIGH-DB-002: N+1 Pattern in duplicateTemplate
-
-**Problem:** The `duplicateTemplate` function was inserting sections one at a time in a loop, causing N INSERT queries.
-
-**Solution:**
-- Pre-built all section data with new IDs before any database operations
-- Used batch INSERT for all sections at once
-- Wrapped the entire operation in a transaction for atomicity
-- Eliminated the need for a separate sectionOrder UPDATE by computing it upfront
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/features/proposals/repositories/template.repository.ts` (lines 272-356)
-
----
-
-#### HIGH-DB-003: Missing Transaction in createTemplate
-
-**Problem:** The `createTemplate` function performed multiple related operations (insert template, insert sections, update sectionOrder) without transaction wrapping, risking partial failures.
-
-**Solution:** Wrapped all operations in `db.transaction()`:
-- Template INSERT
-- Batch sections INSERT
-- SectionOrder UPDATE
-- All operations use `tx` instead of `db` for transaction context
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/features/proposals/repositories/template.repository.ts` (lines 158-192)
-
----
-
-#### MEDIUM-DB-004: Inefficient Count Using .length Instead of SQL COUNT
-
-**Problem:** The `countServicesForWorkspace` function fetched all rows and used JavaScript `.length`, transferring unnecessary data.
-
-**Solution:**
-- Imported `count` from `drizzle-orm`
-- Used `db.select({ count: count() })` to perform counting in PostgreSQL
-- Returns scalar result directly without fetching row data
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/features/services/repositories/service.repository.ts` (lines 178-196)
-
----
-
-#### MEDIUM-DB-005: Sequential Queries in findTemplateById Could Be Parallel
-
-**Problem:** The `findTemplateById` function executed two independent queries sequentially (template fetch, then sections fetch).
-
-**Solution:**
-- Used `Promise.all()` to execute both queries in parallel
-- Template and sections queries are independent and can run concurrently
-- Reduces latency by ~50% for this operation
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/features/proposals/repositories/template.repository.ts` (lines 70-96)
-
----
-
-#### MEDIUM-DB-006: Redundant Query After INSERT
-
-**Problem:** The `createAlertRule` function performed an INSERT followed by a separate SELECT to return the created rule.
-
-**Solution:**
-- Used Drizzle's `.returning()` clause on the INSERT statement
-- Retrieves the created row in the same query
-- Eliminates the redundant SELECT query
-
-**File Modified:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/services/alerts.ts` (lines 252-292)
-
-### Summary
-
-| Issue ID | Severity | Type | Status |
-|----------|----------|------|--------|
-| HIGH-DB-001 | HIGH | N+1 Query | FIXED |
-| HIGH-DB-002 | HIGH | N+1 Query | FIXED |
-| HIGH-DB-003 | HIGH | Missing Transaction | FIXED |
-| MEDIUM-DB-004 | MEDIUM | Inefficient Count | FIXED |
-| MEDIUM-DB-005 | MEDIUM | Sequential Queries | FIXED |
-| MEDIUM-DB-006 | MEDIUM | Redundant Query | FIXED |
-
-### Performance Impact
-
-- **updateSectionOrder**: Reduced from N+1 queries to 2 queries
-- **duplicateTemplate**: Reduced from N+2 queries to 3 queries (within transaction)
-- **createTemplate**: Now atomic with transaction protection
-- **countServicesForWorkspace**: Reduced data transfer (count vs full rows)
-- **findTemplateById**: ~50% latency reduction via parallel queries
-- **createAlertRule**: Reduced from 2 queries to 1 query
-
----
-
-## Agent 3: Authentication - FIXES APPLIED
-
-| Issue | Status | Files Modified |
-|-------|--------|----------------|
-| CRIT-AUTH-01 | FIXED | apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts |
-| CRIT-AUTH-02 | FIXED | apps/web/src/app/api/proposals/beacon/route.ts, apps/web/src/lib/auth/beacon-tokens.ts |
-
-### Security Improvements
-
-#### CRIT-AUTH-01: Invoice Payment Proxy Authentication (FIXED)
-
-**File:** `apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts`
-
-**Problem:** The invoice payment proxy route lacked authentication. Both GET and POST methods were completely open, allowing anyone to fetch invoice details and potentially create payment sessions without authentication.
-
-**Fix Applied:** The route already had authentication added (found during review):
-- Both GET and POST now require valid Clerk session via `requireAuth()`
-- Invoice ownership verified via `verifyInvoiceOwnership()` before proxying
-- CSRF protection added for POST via `validateCsrf()`
-- Rate limiting applied via `withRateLimit()` with stricter limits for POST
-- All authentication failures logged for monitoring
-- Fail-closed behavior: if ownership verification fails, access is denied
-
-**Security Features:**
+#### MEDIUM Issues
+
+**[MED-12-1] Console.error statements in production code**
+- **Files:** 
+  - `/apps/web/src/app/(shell)/settings/page.tsx:193`
+  - `/apps/web/src/app/(shell)/pipeline/page.tsx:38, 66`
+  - `/apps/web/src/app/(shell)/clients/[clientId]/seo/page.tsx:49`
+  - `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/error.tsx:20`
+- **Problem:** Using `console.error` instead of the centralized logger. These bypass Sentry capture and structured logging.
+- **Fix:** Replace with `logger.error()` from `@/lib/logger`.
+
+**[MED-12-2] Inconsistent error.tsx implementations**
+- **Problem:** Some error.tsx files use `PageErrorBoundary` component (good), while others duplicate error UI logic. This creates maintenance burden and inconsistent UX.
+- **Examples:**
+  - Good: `/apps/web/src/app/(shell)/pipeline/error.tsx` - uses `PageErrorBoundary`
+  - Duplicate: `/apps/web/src/app/(shell)/dashboard/error.tsx` - reimplements error UI
+  - Duplicate: `/apps/web/src/app/(shell)/clients/[clientId]/error.tsx` - custom implementation
+- **Fix:** Migrate all error.tsx files to use `PageErrorBoundary` for consistency.
+
+**[MED-12-3] Recovery data localStorage silently fails**
+- **File:** `/apps/web/src/components/editor/ArticleEditorErrorBoundary.tsx:236-238`
+- **Problem:** `clearArticleRecoveryData` has an empty catch block that silently swallows failures.
+- **Code:**
 ```typescript
-// Require authentication
-const authContext = await requireAuth();
-
-// Verify invoice ownership through backend API
-const ownership = await verifyInvoiceOwnership(id, authContext.userId, authContext.orgId);
-if (!ownership.hasAccess) {
-  logger.warn("[invoice-proxy] Access denied", { invoiceId, userId, reason });
-  return NextResponse.json({ error: "Access denied" }, { status: 403 });
+} catch (e) {
+    // Silently fail
+}
+```
+- **Fix:** Add logging for debugging:
+```typescript
+} catch (e) {
+    logger.warn('Failed to clear article recovery data:', { articleId, clientId });
 }
 ```
 
-#### CRIT-AUTH-02: Beacon Token Cryptographic Validation (FIXED)
+#### Error Coverage Analysis
 
-**File:** `apps/web/src/app/api/proposals/beacon/route.ts`
-**New File:** `apps/web/src/lib/auth/beacon-tokens.ts`
+| Service | Route Error Boundaries | API Error Handling | Recovery Options | Status |
+|---------|----------------------|-------------------|------------------|--------|
+| apps/web | 55 error.tsx files (comprehensive coverage) | Yes - try/catch with FastApiError, AuthError, Zod validation | Yes - retry buttons, back navigation, recovery for editor | GOOD |
+| open-seo-main | DefaultCatchBoundary at root + NotFound component | Yes - errorHandlingMiddleware wraps all server functions | Yes - Try Again + Go Back buttons | GOOD |
+| AI-Writer | Global exception handler in main.py | Yes - HTTPException with status codes, Sentry integration | Limited - generic error messages | GOOD |
 
-**Problem:** The proposal beacon tracking endpoint accepted any token without cryptographic validation. While the tokens were high-entropy nanoids, there was no protection against token forgery or expiration.
+#### Strengths Identified
 
-**Solution:**
-1. Created new `beacon-tokens.ts` module with HMAC-SHA256 signed token support
-2. Updated beacon route to validate tokens before tracking
-3. Supports both signed tokens (new) and legacy raw tokens (backward compatibility)
+1. **Comprehensive Error Type System** (`apps/web/src/lib/errors/`):
+   - Structured error codes (1xxx auth, 2xxx authz, 3xxx validation, etc.)
+   - Custom error classes (`ApplicationError`, `NotFoundError`, `ValidationError`, etc.)
+   - User-friendly message mapping with actionable guidance
+   - Pattern matching for technical errors to friendly messages
 
-**Token Format:** `base64url(proposalToken + "." + expiresAt + "." + hmac)`
+2. **Security-Conscious Error Handling**:
+   - Stack traces only exposed in development (`process.env.NODE_ENV`)
+   - Sensitive data sanitization in logs (`SENSITIVE_KEYS` array)
+   - Error digest IDs for correlation without exposing internals
+   - AI-Writer global exception handler explicitly prevents information leakage
 
-**Security Features:**
-- HMAC-SHA256 signature prevents token forgery
-- Built-in expiration (30 days default) prevents indefinite token validity
-- Timing-safe comparison prevents timing attacks
-- Fail-closed: invalid/expired tokens are rejected
-- All validation failures logged for monitoring
-- Falls back to `INTERNAL_API_KEY` if `BEACON_SECRET` not set
+3. **Sentry Integration**:
+   - Error boundaries capture exceptions with context (component stack, page route)
+   - Server functions tagged with error codes and request paths
+   - PostHog integration in open-seo-main for client-side error tracking
 
-**New beacon-tokens.ts API:**
-```typescript
-// Generate signed beacon token (use when creating proposal emails)
-const beaconToken = generateBeaconToken(proposalToken, ttlMs?);
+4. **Graceful Degradation Patterns**:
+   - `SectionErrorFallback` component for non-critical sections
+   - `ArticleEditorErrorBoundary` with auto-save recovery
+   - `withErrorBoundary` HOC for wrapping risky components
 
-// Verify token (returns proposalToken and expiresAt)
-const { proposalToken, expiresAt } = await verifyBeaconToken(token);
+5. **Consistent API Error Format**:
+   - All three services return `{ error: string }` or `{ error: string, code: string }`
+   - AI-Writer includes `error_id` for support correlation
+   - Apps/web validates with Zod before processing
 
-// Check format without full verification
-const isSigned = isSignedBeaconToken(token);
-
-// Safe verification (returns null instead of throwing)
-const data = await safeVerifyBeaconToken(token);
-```
-
-**Backward Compatibility:**
-- Legacy raw tokens (32-char nanoid) still accepted
-- Validation checks token format before deciding verification path
-- Gradual migration: new proposals use signed tokens, old links continue working
-
-### Supporting Changes
-
-| File | Change |
-|------|--------|
-| `apps/web/src/lib/auth/index.ts` | Added exports for beacon token functions |
-| `apps/web/.env.example` | Added `BEACON_SECRET` documentation |
-
-### Environment Variables
-
-```bash
-# Optional, falls back to INTERNAL_API_KEY
-BEACON_SECRET=<32+ character secret for beacon token signing>
-```
-
-### Verification
-
-- Type checking passes for all modified files
-- Existing auth patterns followed consistently
-- Fail-closed behavior maintained across all auth checks
-- Logging added for security audit trail
+6. **Good Error Code Architecture** (open-seo-main):
+   - Centralized error codes in `shared/error-codes.ts`
+   - `shouldCaptureAppErrorCode` filters expected errors from Sentry noise
+   - `toClientError` transforms internal errors to safe client messages
 
 ---
 
-## Agent 7: Client Components and State Fixes
+### Agent 14: Performance Analysis
 
-**Completed:** 2026-05-03
+**Status:** Complete
+**Query Patterns Analyzed:** 47 database query files across all services
+**Caching Points Found:** 12 cache implementations with TTL/tag strategies
+**Issues Found:** 5 (0 CRITICAL, 3 HIGH, 2 MEDIUM)
 
-### Summary
+#### CRITICAL Issues
 
-Fixed all CRITICAL, HIGH, and MEDIUM React state management issues identified in the code review.
+*None found - connection pooling properly configured, no memory leak patterns detected*
 
-### CRITICAL Fixes
+#### HIGH Issues
 
-#### CRIT-01: AIGenerationModal stale closure
-**File:** `apps/web/src/components/proposals/AIGenerationModal.tsx`
-
-**Problem:** useState initializer captured `availableContext` props at mount time and never updated when props changed.
-
-**Fix:** Replaced useState initializer with useEffect that syncs state whenever availableContext properties change:
+**[HIGH-14-1] N+1 pattern in FollowUpService.autoResolveForEntity**
+- **File:** `/open-seo-main/src/server/features/command-center/services/FollowUpService.ts:269-276`
+- **Problem:** Loop iterates over pending follow-ups and performs individual database updates per entity.
+- **Code:**
 ```typescript
-useEffect(() => {
-  const defaults: ContextType[] = [];
-  if (availableContext.hasAudit) defaults.push("audit");
-  // ... etc
-  setSelectedContext(defaults);
-}, [availableContext.hasAudit, availableContext.hasKeywords, ...]);
-```
-
-### HIGH Fixes
-
-#### HIGH-01: LazySparkline missing cleanup
-**File:** `apps/web/src/components/dashboard/LazySparkline.tsx`
-
-**Problem:** AbortController was created inside useCallback but cleanup function was unreachable (returned inside async callback).
-
-**Fix:** Moved AbortController to useRef and restructured fetch logic inside useEffect with proper cleanup:
-```typescript
-const abortControllerRef = useRef<AbortController | null>(null);
-
-useEffect(() => {
-  const controller = new AbortController();
-  abortControllerRef.current = controller;
-  // ... fetch logic
-  return () => {
-    controller.abort();
-    abortControllerRef.current = null;
-  };
-}, [dependencies]);
-```
-
-#### HIGH-02: AlertDrawer polling errors
-**File:** `apps/web/src/components/alerts/AlertDrawer.tsx`
-
-**Problem:** setInterval async callback had no error handling, could cause unhandled promise rejections.
-
-**Fix:** Added try/catch wrapper around polling logic to silently handle errors (next poll will retry).
-
-#### HIGH-03: ProposalInlineEditor double cleanup
-**File:** `apps/web/src/components/proposals/ProposalInlineEditor.tsx`
-
-**Problem:** Manual `editor.destroy()` call in useEffect cleanup conflicted with useEditor hook's automatic cleanup.
-
-**Fix:** Removed manual cleanup - useEditor hook handles this automatically.
-
-### MEDIUM Fixes
-
-#### MEDIUM-01: ThemeContext hydration flash
-**File:** `apps/web/src/contexts/ThemeContext.tsx`
-
-**Status:** Already fixed. The component includes:
-- ThemeScript component with `suppressHydrationWarning`
-- Initial state synced with what ThemeScript already applied
-- Proper localStorage sync after mount
-
-#### MEDIUM-02: PipelineKanban snapshot reference risk
-**File:** `apps/web/src/components/pipeline/PipelineKanban.tsx`
-
-**Status:** Already fixed. Uses `structuredClone()` for all snapshot operations.
-
-#### MEDIUM-03: Suppressed eslint dependency warnings
-**Files:** Multiple files with `eslint-disable-next-line react-hooks/exhaustive-deps`
-
-**Fixed in:**
-- `apps/web/src/app/(shell)/clients/page.tsx` - Added fetchClients to deps
-- `apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx` - Added loadData to deps
-- `apps/web/src/components/shell/ClientSwitcherButton.tsx` - Added all deps
-- `apps/web/src/app/(shell)/clients/[clientId]/articles/page.tsx` - Added fetchArticles to deps
-- `apps/web/src/components/editor/ImageGenerationPanel.tsx` - Used refs for stable values
-- `apps/web/src/components/ClientSwitcher/ClientSwitcher.tsx` - Added all deps
-- `apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx` - Added all deps
-
-#### MEDIUM-04: Navigator access without memoization
-**File:** `apps/web/src/components/proposals/UndoRedoButtons.tsx`
-
-**Fix:** Wrapped platform detection in useMemo to avoid recomputing on every render:
-```typescript
-const isMac = useMemo(() => {
-  if (typeof navigator === "undefined") return false;
-  return navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-}, []);
-```
-
-#### MEDIUM-05: Excessive useEffects in NewArticlePage
-**File:** `apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx`
-
-**Fix:** Consolidated 3 related effects (article init, client sync, keyword fetch) into single effect with clear comments.
-
-#### MEDIUM-06: Stale temporalState reference
-**File:** `apps/web/src/components/proposals/UndoRedoButtons.tsx`
-
-**Problem:** temporalState captured at render time could be stale in callbacks.
-
-**Fix:** Get fresh temporal state inside callbacks instead of capturing at render:
-```typescript
-const handleUndo = useCallback(() => {
-  if (canUndo) {
-    useProposalStore.temporal.getState().undo(); // Fresh state
-    onUndo?.();
-  }
-}, [canUndo, onUndo]);
-```
-
-### Files Modified
-
-| File | Changes |
-|------|---------|
-| `apps/web/src/components/proposals/AIGenerationModal.tsx` | useEffect for prop sync |
-| `apps/web/src/components/dashboard/LazySparkline.tsx` | AbortController cleanup |
-| `apps/web/src/components/alerts/AlertDrawer.tsx` | Polling error handling |
-| `apps/web/src/components/proposals/ProposalInlineEditor.tsx` | Removed double cleanup |
-| `apps/web/src/components/proposals/UndoRedoButtons.tsx` | Memoization + fresh state |
-| `apps/web/src/app/(shell)/clients/page.tsx` | Fixed deps |
-| `apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx` | Fixed deps |
-| `apps/web/src/components/shell/ClientSwitcherButton.tsx` | Fixed deps |
-| `apps/web/src/app/(shell)/clients/[clientId]/articles/page.tsx` | Fixed deps |
-| `apps/web/src/components/editor/ImageGenerationPanel.tsx` | Used refs pattern |
-| `apps/web/src/components/ClientSwitcher/ClientSwitcher.tsx` | Fixed deps |
-| `apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx` | Consolidated effects |
-
-### Verification
-
-- Lint check passes for all modified files (only pre-existing warnings remain)
-- All fixes follow React 18+ best practices
-- No hydration mismatches introduced
-
----
-
-## Agent 2: Database Schema - FIXES APPLIED
-
-**Date:** 2026-05-03
-**Agent:** 2 (Database Schema Consistency)
-
-### Summary
-
-All CRITICAL, HIGH, and MEDIUM database schema issues have been addressed through migrations and schema updates.
-
-| Issue | Severity | Status | Files Modified |
-|-------|----------|--------|----------------|
-| CRITICAL-01: Duplicate clients tables | CRITICAL | FIXED | `docs/CLIENT_SYNC.md`, `0067_schema_consistency_fixes.sql` |
-| HIGH-01: UUID type mismatch | HIGH | VERIFIED | Already fixed in `0034_client_id_to_uuid.sql` |
-| HIGH-02: Missing FK on client_settings | HIGH | FIXED | `0019_schema_consistency_fixes.py` (AI-Writer) |
-| HIGH-03: voice_profiles CASCADE vs SET NULL | HIGH | VERIFIED | Already fixed in `0038_soft_delete_tracking.sql` |
-| HIGH-04: user_id integer incompatible | HIGH | N/A | No integer user_id columns found - already TEXT |
-| MEDIUM-01: Timestamp mechanism differences | MEDIUM | DOCUMENTED | `0067_schema_consistency_fixes.sql` |
-| MEDIUM-02: Soft delete pattern mismatch | MEDIUM | FIXED | Schema files + `soft-delete.ts` utility |
-| MEDIUM-03: Missing FK indexes | MEDIUM | FIXED | Both migrations add indexes |
-| MEDIUM-04: Deprecated column aliases | MEDIUM | DOCUMENTED | Already marked `@deprecated` in `analytics-schema.ts` |
-
-### Migration Files Created
-
-#### open-seo-main (Drizzle)
-
-1. **`drizzle/0067_schema_consistency_fixes.sql`**
-   - Documents client sync relationship (AI-Writer authoritative)
-   - Verifies UUID type consistency across client_id columns
-   - Verifies voice_profiles FK uses SET NULL
-   - Documents timestamp mechanism differences
-   - Adds soft delete columns to: content_briefs, proposals, reports
-   - Adds missing FK indexes for: prospect_keywords, proposal_services, invoices, invoice_items, tasks, follow_ups, magic_links
-
-2. **`drizzle/rollback/0067_rollback.sql`**
-   - Removes added indexes
-   - Removes soft delete columns (with data loss warning)
-
-#### AI-Writer (Alembic)
-
-3. **`alembic/versions/0019_schema_consistency_fixes.py`**
-   - Adds FK constraint to client_settings.client_id if missing
-   - Adds FK indexes on all client-related tables
-   - Verifies soft delete columns on articles table
-   - Documents timestamp behavior in column comments
-
-### Schema Files Updated
-
-| File | Changes |
-|------|---------|
-| `src/db/brief-schema.ts` | Added `isDeleted`, `deletedAt` columns and index |
-| `src/db/proposal-schema.ts` | Added `isDeleted`, `deletedAt` columns and index |
-| `src/db/report-schema.ts` | Added `isDeleted`, `deletedAt` columns and index |
-
-### New Utilities Created
-
-1. **`src/server/lib/soft-delete.ts`**
-   - `withSoftDelete(table, condition)` - Wraps queries to exclude deleted records
-   - `softDeleteValues()` - Returns values for soft delete UPDATE
-   - `restoreValues()` - Returns values to restore deleted records
-   - `filterActive(records)` - In-memory filter for active records
-   - `filterDeleted(records)` - In-memory filter for deleted records
-
-### Documentation Created
-
-1. **`docs/CLIENT_SYNC.md`**
-   - Documents the dual clients table architecture
-   - Explains AI-Writer is authoritative source
-   - Provides webhook-based sync implementation plan
-   - Includes manual sync SQL for troubleshooting
-
-### Verification Commands
-
-```bash
-# Verify UUID consistency
-psql -d open_seo -c "
-SELECT table_name, column_name, udt_name
-FROM information_schema.columns
-WHERE column_name = 'client_id'
-  AND table_schema = 'public'
-  AND udt_name != 'uuid';"
-
-# Verify FK indexes exist
-psql -d open_seo -c "
-SELECT indexname FROM pg_indexes
-WHERE indexname LIKE 'ix_%client_id%';"
-
-# Verify soft delete columns
-psql -d open_seo -c "
-SELECT table_name, column_name
-FROM information_schema.columns
-WHERE column_name IN ('is_deleted', 'deleted_at')
-ORDER BY table_name;"
-```
-
-### Notes
-
-- **DO NOT run migrations** - Files created only, not executed
-- All migrations include rollback steps
-- Existing data is preserved in all cases
-- Soft delete pattern standardized across codebase
-
----
-
-## Agent 13: TanStack Start API Security Fixes
-
-**Date:** 2026-05-03
-**Domain:** TanStack Start API Routes (open-seo-main)
-
-### Summary
-
-Fixed 2 CRITICAL, 2 HIGH, and 4 MEDIUM issues in TanStack Start API routes related to authentication bypass, missing authorization, and API consistency.
-
-### Issues Fixed
-
-#### CRIT-AUTH-01: Platform connections API uses spoofable x-user-id header
-**File:** `open-seo-main/src/routes/api/platform-connections/$id.ts`
-
-**Problem:** Using `x-user-id` and `x-workspace-id` headers which can be spoofed by any client, allowing unauthorized access to OAuth connections containing encrypted tokens.
-
-**Fix:** Replaced header-based auth with `requireApiAuth()` middleware that validates JWT tokens or API keys:
-```typescript
-// Before: Spoofable header
-const userId = request.headers.get("x-user-id");
-
-// After: Secure JWT/API key validation
-const auth = await requireApiAuth(request);
-const workspaceId = auth.organizationId;
-```
-
-#### CRIT-AUTH-02: Platform connections sync uses spoofable x-workspace-id
-**File:** `open-seo-main/src/routes/api/platform-connections/$id.sync.ts`
-
-**Problem:** Same spoofable header vulnerability as CRIT-AUTH-01, allowing attackers to trigger syncs on other users' platform connections.
-
-**Fix:** Replaced with `requireApiAuth()` middleware for proper session validation.
-
-#### HIGH-AUTH-03: /api/translate has no authentication
-**File:** `open-seo-main/src/routes/api/translate.ts`
-
-**Problem:** Translation endpoint using Gemini API was completely unauthenticated, allowing abuse of API credits.
-
-**Fix:** Added `requireApiAuth()` to protect Gemini API credits:
-```typescript
-POST: async ({ request }: { request: Request }) => {
-  // HIGH-AUTH-03 FIX: Require authentication
-  const auth = await requireApiAuth(request);
-  // ... rest of handler
+for (const followUp of pendingFollowUps) {
+  await this.db
+    .update(followUps)
+    .set({ status: 'resolved', resolvedAt: new Date() })
+    .where(eq(followUps.id, followUp.id))
 }
 ```
-
-#### HIGH-AUTH-04: /api/pixel/$siteId/status lacks authorization
-**File:** `open-seo-main/src/routes/api/pixel/$siteId.status.ts`
-
-**Problem:** Pixel status endpoint checked if siteId exists but didn't validate workspace ownership, allowing enumeration of other users' pixel installations.
-
-**Fix:** Added workspace ownership validation:
+- **Impact:** When resolving N follow-ups, executes N UPDATE queries. For 50 follow-ups, this adds ~500ms latency.
+- **Fix:** Use batch update with `inArray`:
 ```typescript
-const installations = await db
-  .select({ id: pixelInstallations.id })
-  .from(pixelInstallations)
-  .where(
-    and(
-      eq(pixelInstallations.siteId, siteId),
-      eq(pixelInstallations.workspaceId, workspaceId)
-    )
-  )
-  .limit(1);
+const followUpIds = pendingFollowUps.map(f => f.id);
+await this.db
+  .update(followUps)
+  .set({ status: 'resolved', resolvedAt: new Date() })
+  .where(inArray(followUps.id, followUpIds));
 ```
 
-#### MEDIUM-01: Inconsistent response envelope formats
-**Files:** All 5 modified files
-
-**Fix:** Standardized all routes to use `{success, data, error}` envelope:
+**[HIGH-14-2] N+1 pattern in FollowUpService.processUnsnooze**
+- **File:** `/open-seo-main/src/server/features/command-center/services/FollowUpService.ts:333-338`
+- **Problem:** Loop processes snoozed follow-ups with individual UPDATE per record.
+- **Impact:** Scheduled job that runs periodically; inefficient batch processing adds unnecessary database load during off-peak processing.
+- **Fix:** Batch update all eligible snoozed follow-ups:
 ```typescript
-// Success response
-return Response.json({ success: true, data: { connection } });
-
-// Error response
-return Response.json({ success: false, error: "Not found" }, { status: 404 });
+const snoozedIds = snoozedFollowUps.map(f => f.id);
+await this.db
+  .update(followUps)
+  .set({ status: 'active', snoozedUntil: null })
+  .where(inArray(followUps.id, snoozedIds));
 ```
 
-#### MEDIUM-02: Missing Zod validation on alerts PATCH body
-**File:** `open-seo-main/src/routes/api/clients/$clientId.alerts.ts`
-
-**Problem:** PATCH body was cast directly without validation, risking injection or malformed data.
-
-**Fix:** Added Zod schema for request body:
+**[HIGH-14-3] N+1 pattern in MultiSignerOrchestrator.activateAllSigners**
+- **File:** `/open-seo-main/src/server/features/agreements/services/MultiSignerOrchestrator.ts:190-199`
+- **Problem:** Loop activates signers one at a time with individual UPDATE queries.
+- **Code:**
 ```typescript
-const UpdateAlertSchema = z.object({
-  alertId: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
-  action: z.enum(["acknowledge", "resolve", "dismiss"]),
+for (const signer of signers) {
+  await this.db
+    .update(agreementSigners)
+    .set({ status: 'active', activatedAt: new Date() })
+    .where(eq(agreementSigners.id, signer.id))
+}
+```
+- **Impact:** Agreements with 5+ signers will execute 5+ UPDATE queries per activation.
+- **Fix:** Use batch update:
+```typescript
+const signerIds = signers.map(s => s.id);
+await this.db
+  .update(agreementSigners)
+  .set({ status: 'active', activatedAt: new Date() })
+  .where(inArray(agreementSigners.id, signerIds));
+```
+
+#### MEDIUM Issues
+
+**[MED-14-1] Missing index on frequently filtered column**
+- **File:** `/open-seo-main/src/db/schema.ts` (follow_ups table)
+- **Problem:** `status` column used in many WHERE clauses but lacks index. Queries filter by `status = 'pending'`, `status = 'snoozed'` frequently.
+- **Impact:** Full table scans on follow_ups table as it grows beyond 10k rows.
+- **Fix:** Add index:
+```typescript
+export const followUpsStatusIdx = index('follow_ups_status_idx').on(followUps.status);
+```
+
+**[MED-14-2] Unbounded in-memory cache fallback**
+- **File:** `/apps/web/src/lib/dedup.ts:25-30`
+- **Problem:** In-memory LRU cache has 1000 entry max but no size validation for cached values.
+- **Code:**
+```typescript
+const cache = new LRUCache<string, CacheEntry>({
+  max: 1000,
+  maxSize: 100 * 1024 * 1024, // 100MB
+  sizeCalculation: (entry) => JSON.stringify(entry.value).length,
 });
 ```
+- **Impact:** Large cached values could consume significant memory if many unique large requests hit the fallback simultaneously.
+- **Note:** Current implementation has `maxSize` limit which mitigates worst case; issue is LOW priority.
 
-#### MEDIUM-03: Missing path parameter validation
-**Files:** All 5 modified files
+#### Performance Hotspots
 
-**Fix:** Added Zod validation for all path parameters (connection IDs, client IDs, site IDs):
-```typescript
-const ConnectionIdSchema = z.string().min(1).max(128).regex(
-  /^[a-zA-Z0-9_-]+$/,
-  "Invalid connection ID format"
-);
-```
+| Location | Pattern | Latency Impact | Recommendation |
+|----------|---------|----------------|----------------|
+| FollowUpService:269-276 | N+1 UPDATE loop | ~10ms × N records | Batch with inArray |
+| FollowUpService:333-338 | N+1 UPDATE loop | ~10ms × N records | Batch with inArray |
+| MultiSignerOrchestrator:190-199 | N+1 UPDATE loop | ~10ms × N signers | Batch with inArray |
+| ProspectService:importProspects | Batch INSERT (500) | Properly optimized | None needed |
+| ContentPlanningDB:get_all_plans | selectinload eager loading | Properly optimized | None needed |
 
-#### MEDIUM-04: Some error handlers don't differentiate AppError
-**Files:** All 5 modified files
+#### Strengths Identified
 
-**Fix:** All catch blocks now handle AppError separately with proper HTTP status mapping:
-```typescript
-if (error instanceof AppError) {
-  const status =
-    error.code === "UNAUTHENTICATED" ? 401
-    : error.code === "FORBIDDEN" ? 403
-    : error.code === "NOT_FOUND" ? 404
-    : 400;
-  return Response.json({ success: false, error: error.message }, { status });
-}
-```
+1. **Connection Pool Configuration** (`/open-seo-main/src/db/index.ts`):
+   - Pool size: 20 connections with proper idle timeout (20s)
+   - Connection timeout: 10s prevents hanging requests
+   - Health check endpoint for monitoring
+   - Graceful shutdown hooks for clean connection release
 
-### Files Modified
+2. **Redis Caching Infrastructure** (`/apps/web/src/lib/`):
+   - Multi-tier caching: Redis primary with in-memory LRU fallback
+   - TTL-based expiration with tag-based invalidation
+   - Request deduplication with singleflight pattern prevents cache stampede
+   - Rate limiting with sliding window algorithm (audit, API cost, LLM limiters)
 
-| File | Changes |
-|------|---------|
-| `open-seo-main/src/routes/api/platform-connections/$id.ts` | CRIT-AUTH-01, MEDIUM-01/03/04 |
-| `open-seo-main/src/routes/api/platform-connections/$id.sync.ts` | CRIT-AUTH-02, MEDIUM-01/03/04 |
-| `open-seo-main/src/routes/api/translate.ts` | HIGH-AUTH-03, MEDIUM-01/04 |
-| `open-seo-main/src/routes/api/pixel/$siteId.status.ts` | HIGH-AUTH-04, MEDIUM-01/03/04 |
-| `open-seo-main/src/routes/api/clients/$clientId.alerts.ts` | MEDIUM-01/02/03/04 |
+3. **BullMQ Connection Pooling** (`/open-seo-main/src/server/lib/redis.ts`):
+   - Label-based connection management per worker type
+   - Retry strategy with exponential backoff (max 5 retries)
+   - Proper connection lifecycle (close on worker stop)
+   - Connection health monitoring
 
-### Verification
+4. **Batch Operations** (`/open-seo-main/src/server/features/prospects/`):
+   - Import uses batch INSERT (500 per batch) with ON CONFLICT
+   - Pagination enforced with max 100 limit on list queries
+   - Transaction with row-level locking for concurrent updates
 
-- All fixes use existing `requireApiAuth()` middleware pattern
-- API compatibility maintained (only envelope format changed)
-- Pre-existing TypeScript errors unrelated to these changes remain
-- Security audit trail logging preserved via middleware
+5. **Eager Loading Patterns** (`/AI-Writer/backend/services/content_planning_db.py`):
+   - Uses `selectinload()` for relationship loading
+   - Avoids lazy loading N+1 in list operations
+   - Proper pagination on all list methods
 
+6. **Circuit Breaker Pattern** (`/apps/web/src/lib/server-fetch.ts`):
+   - Per-service circuit breakers (AI-Writer, Open-SEO)
+   - Automatic retry with exponential backoff
+   - Error normalization across backends
+   - Prevents cascade failures during service degradation
 
----
-
-## Agent 9: Error Handling Fixes
-
-**Completed:** 2026-05-03
-
-### Issues Fixed
-
-#### HIGH-01: Dashboard error boundary exposes error.message in production
-**File:** `apps/web/src/app/(shell)/dashboard/error.tsx`
-
-**Problem:** The error boundary displayed `error.message` directly to users in production, potentially exposing sensitive technical details.
-
-**Fix:** 
-- Added Sentry integration for production error tracking
-- Only display error.message in development mode
-- Use a generic user-friendly message in production
-- Added development-only stack trace display
-
-#### MEDIUM-01: Page routes missing error boundaries
-**New Files Created:**
-- `apps/web/src/app/(shell)/clients/[clientId]/onboarding/error.tsx`
-- `apps/web/src/app/(shell)/prospects/[prospectId]/contracts/error.tsx`
-- `apps/web/src/app/(shell)/settings/payments/error.tsx`
-- `apps/web/src/app/(shell)/clients/[clientId]/agreements/error.tsx`
-- `apps/web/src/app/(shell)/prospects/[prospectId]/proposals/error.tsx`
-- `apps/web/src/app/(shell)/settings/services/error.tsx`
-- `apps/web/src/app/(shell)/pipeline/error.tsx`
-
-All use the new shared `PageErrorBoundary` component with consistent styling and Sentry integration.
-
-#### MEDIUM-02: Created shared PageErrorBoundary component
-**New File:** `apps/web/src/components/page-error-boundary.tsx`
-
-**Features:**
-- Sentry integration for production error tracking
-- Environment-aware error message display (detailed in dev, user-friendly in prod)
-- Uses `getUserFriendlyError()` from lib/errors for consistent messaging
-- Configurable page title, route tag, back button
-- Optional home button
-- Displays error digest for support reference
-
-#### MEDIUM-03: Added visual indicator for graceful degradation
-**New File:** `apps/web/src/components/fallback-indicator.tsx`
-
-**Components:**
-- `FallbackIndicator` - Banner component for cached/partial/offline data
-- `InlineFallbackIndicator` - Subtle inline indicator for unavailable fields
-
-**Usage:** When showing fallback data due to fetch failures, wrap content with:
-```tsx
-{isUsingCache && <FallbackIndicator type="cached" onRetry={refetch} />}
-```
-
-#### MEDIUM-04: Added not-found.tsx to dynamic routes
-**New Files:**
-- `apps/web/src/app/(shell)/clients/[clientId]/agreements/[agreementId]/not-found.tsx`
-- `apps/web/src/app/(shell)/prospects/[prospectId]/contracts/[contractId]/not-found.tsx`
-- `apps/web/src/app/invoices/[id]/not-found.tsx`
-- `apps/web/src/app/proposals/[token]/not-found.tsx`
-
-All provide user-friendly 404 pages with navigation back to parent routes.
-
-#### Additional: Updated existing error boundaries for consistency
-**Files Updated:**
-- `apps/web/src/app/(shell)/clients/[clientId]/articles/error.tsx` - Added Sentry, dev-only logging
-- `apps/web/src/app/(shell)/clients/[clientId]/analytics/error.tsx` - Added Sentry, dev-only logging
-- `apps/web/src/app/(shell)/clients/[clientId]/alerts/error.tsx` - Added Sentry, dev-only logging
-- `apps/web/src/app/(shell)/clients/[clientId]/intelligence/error.tsx` - Added Sentry, dev-only logging
-
-### Files Summary
-
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `apps/web/src/app/(shell)/dashboard/error.tsx` | Modified | Fixed error.message exposure, added Sentry |
-| `apps/web/src/components/page-error-boundary.tsx` | Created | Shared error boundary component |
-| `apps/web/src/components/fallback-indicator.tsx` | Created | Graceful degradation indicator |
-| `apps/web/src/app/(shell)/clients/[clientId]/onboarding/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/prospects/[prospectId]/contracts/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/settings/payments/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/clients/[clientId]/agreements/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/prospects/[prospectId]/proposals/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/settings/services/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/pipeline/error.tsx` | Created | Error boundary |
-| `apps/web/src/app/(shell)/clients/[clientId]/agreements/[agreementId]/not-found.tsx` | Created | 404 page |
-| `apps/web/src/app/(shell)/prospects/[prospectId]/contracts/[contractId]/not-found.tsx` | Created | 404 page |
-| `apps/web/src/app/invoices/[id]/not-found.tsx` | Created | 404 page |
-| `apps/web/src/app/proposals/[token]/not-found.tsx` | Created | 404 page |
-| `apps/web/src/app/(shell)/clients/[clientId]/articles/error.tsx` | Modified | Added Sentry |
-| `apps/web/src/app/(shell)/clients/[clientId]/analytics/error.tsx` | Modified | Added Sentry |
-| `apps/web/src/app/(shell)/clients/[clientId]/alerts/error.tsx` | Modified | Added Sentry |
-| `apps/web/src/app/(shell)/clients/[clientId]/intelligence/error.tsx` | Modified | Added Sentry |
-
-### Security Improvements
-
-1. **Production error message sanitization**: All error boundaries now hide technical error details from end users in production
-2. **Sentry integration**: All errors are tracked in Sentry with proper tags and context for debugging
-3. **Error digest display**: Users can reference the error ID when contacting support without seeing technical details
-
+7. **Rate Limiting Infrastructure** (`/apps/web/src/lib/rate-limit.ts`):
+   - Pre-configured limiters for expensive operations (audit: 5/minute, LLM: 100/hour)
+   - Sliding window algorithm with Redis backend
+   - Fail-closed option for critical rate limits
+   - User and client-level rate limiting support
 
 ---
 
-## Agent 4: API Contract Validation - FIXES APPLIED
+### Agent 16: SEO Audit Workflow Review
 
-**Date:** 2026-05-03
-**Agent:** 4 (API Contract Validation)
+**Status:** Complete
+**Workflow Steps Traced:** 7
+**Blocking Issues Found:** 0
+**Issues Found:** 3 HIGH, 5 MEDIUM
 
-### Summary
+#### CRITICAL Issues
+*None found*
 
-All CRITICAL, HIGH, and MEDIUM API contract validation issues have been addressed through schema updates, idempotency handling, pagination, and standardized error responses.
+#### HIGH Issues
 
-| Issue | Severity | Status | Files Modified |
-|-------|----------|--------|----------------|
-| CRIT-API-01: Unvalidated credentials field | CRITICAL | FIXED | `api-schemas.ts`, `connections/index.ts` |
-| CRIT-API-02: Type assertions bypass validation | CRITICAL | FIXED | `server-fetch.ts` (warning added) |
-| HIGH-API-01: Inconsistent error response formats | HIGH | FIXED | `api-schemas.ts`, multiple endpoints |
-| HIGH-API-02: Missing idempotency on payment endpoints | HIGH | FIXED | `$id.pay.ts` |
-| HIGH-API-03: No body size limits | HIGH | DOCUMENTED | See nginx config |
-| HIGH-API-04: Missing pagination on audit results | HIGH | FIXED | `pages.$pageId.findings.ts` |
-| HIGH-API-05: Status code inconsistency (400 vs 422) | HIGH | FIXED | All endpoints use `errorResponse()` |
-| MEDIUM-01: Pagination cursor tampering risk | MEDIUM | FIXED | `api-schemas.ts` (cursor signing) |
-| MEDIUM-02: Type mismatches API response/client | MEDIUM | DOCUMENTED | Schema validation recommended |
-| MEDIUM-03: Missing rate limiting on expensive endpoints | MEDIUM | VERIFIED | Already exists in `rate-limit.ts` |
-| MEDIUM-04: Date serialization inconsistency | MEDIUM | FIXED | `api-schemas.ts` (ISO 8601 helpers) |
-| MEDIUM-05: Missing OpenAPI documentation | MEDIUM | DEFERRED | JSDoc annotations in schemas |
-| MEDIUM-06: Undocumented API aliases | MEDIUM | N/A | No aliases found |
+**HIGH-01: Missing Cancel/Abort Functionality for Running Audits**
+- **Step:** 4 (Crawl begins / BullMQ job)
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx`
+- **Problem:** No UI element or action to cancel a running audit. The `deleteAudit` action is available but only used in history view, not for running audits. Users cannot stop an expensive crawl once started.
+- **User Impact:** Users stuck waiting for audits they want to cancel, wasted compute/API credits on unwanted audits
+- **Fix:** Add cancel button to ProgressCard component that calls `deleteAudit` with confirmation dialog. The backend already supports cancellation via `AuditService.remove()` which attempts to remove the BullMQ job.
 
-### Files Created
+**HIGH-02: No Historical Audit Comparison Feature**
+- **Step:** 7 (User can view details, export, or re-run)
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx`
+- **Problem:** While audit history is displayed, there is no way to compare results between audits. Users cannot track SEO progress over time or see what improved/regressed between audits.
+- **User Impact:** Limited ability to demonstrate SEO improvement to clients, cannot identify regressions
+- **Fix:** Add comparison view that shows side-by-side metrics between two selected audits from history
 
-#### 1. `open-seo-main/src/shared/api-schemas.ts`
+**HIGH-03: No Export Functionality for Audit Results**
+- **Step:** 7 (User can view details, export, or re-run)
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx`
+- **Problem:** No export button or functionality to download audit results as PDF, CSV, or any other format. Users cannot share results with clients who don't have platform access.
+- **User Impact:** Manual copy-paste required for reports, professional appearance compromised
+- **Fix:** Add export button in ResultsView that generates PDF/CSV using backend endpoint or client-side generation
 
-New shared API contract schemas file providing:
+#### MEDIUM Issues
 
-- **ErrorResponseSchema**: Standardized error response format with `error`, `code`, `status`, `correlationId`, `details`
-- **errorResponse()**: Helper to create consistent error responses with proper HTTP status codes
-- **getStatusCodeForError()**: Maps error codes to HTTP status (422 for validation, 400 for bad request, etc.)
-- **PaginationRequestSchema**: Cursor-based pagination with signed cursors
-- **PaginationResponseSchema**: Pagination metadata (`total`, `nextCursor`, `hasMore`, etc.)
-- **ISODateTimeSchema/ISODateSchema**: Date validation ensuring ISO 8601 format
-- **Platform credential schemas**: `GoogleCredentialsSchema`, `ShopifyCredentialsSchema`, `WordPressCredentialsSchema`, `WixCredentialsSchema`, `WebflowCredentialsSchema`, `SquarespaceCredentialsSchema`, `PixelCredentialsSchema`, `CustomCredentialsSchema`
-- **PlatformCredentialsSchema**: Discriminated union for platform-specific validation
-- **IdempotencyKeySchema**: Validates idempotency key format (16-128 alphanumeric chars)
-- **createSignedCursor()/verifySignedCursor()**: HMAC-signed pagination cursors to prevent tampering
+**MEDIUM-01: Polling Interval Could Be More Efficient**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx:374-378`
+- **Problem:** Status polling uses fixed 3-second interval. Could use exponential backoff or WebSocket/SSE for real-time updates.
+- **Fix:** Consider implementing WebSocket connection for live progress updates, or use exponential backoff starting at 1s up to 5s
 
-### Files Modified
+**MEDIUM-02: Score Explanations Not Visible in ResultsView**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx:630-743`
+- **Problem:** ResultsView shows summary cards (pages scanned, issues found, lighthouse scores) but lacks detailed explanations of what scores mean and how to interpret them.
+- **Fix:** Add tooltips or expandable sections explaining score ranges (90+ good, 50-89 needs improvement, <50 poor) and what affects each metric
 
-#### 1. `open-seo-main/src/routes/api/connections/index.ts`
+**MEDIUM-03: Crawl Progress Shows Only Last 300 URLs**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/progress-kv.ts:17`
+- **Problem:** MAX_ENTRIES=300 means for large audits (10,000+ pages), users only see the most recent 300 crawled URLs in the progress view.
+- **Fix:** Add pagination or "load more" functionality, or at minimum show "300 of X pages crawled"
 
-**CRIT-API-01 FIX**: Platform-specific credential validation
+**MEDIUM-04: Failed Audits DLQ Worker Has TODO Notifications**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/failed-audits-worker.ts:52-60`
+- **Problem:** User notifications for failed audits are marked as TODO. Users may not know their audit failed unless they check the UI.
+- **Fix:** Implement email or in-app notification when an audit fails
 
-- Added `PlatformCredentialSchemas` map with Zod schemas per platform
-- Added `validateCredentialsForPlatform()` function
-- POST handler now validates credentials against platform-specific schema
-- Returns 422 with detailed validation errors if credentials are invalid
-- Uses standardized `errorResponse()` for all error cases
+**MEDIUM-05: Setup Page API Endpoint May Not Exist**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/page.tsx:204-209`
+- **Problem:** Calls `/api/seo/detect-sitemap` which may not be implemented. The error is caught but could fail silently.
+- **Fix:** Verify endpoint exists or handle missing endpoint more gracefully with clear user messaging
 
-#### 2. `apps/web/src/lib/server-fetch.ts`
+#### Audit Workflow Analysis
+| Step | Route/Component | Job Status | Error Handling | UX Quality | Status |
+|------|-----------------|------------|----------------|------------|--------|
+| 1. User selects client workspace | apps/web shell layout | N/A | Client store validation | Good | Pass |
+| 2. Navigate to SEO section | `/clients/[clientId]/seo/page.tsx` | N/A | Error boundary + fetch error UI | Good | Pass |
+| 3. Enter URL and initiate audit | LaunchView in audit/page.tsx | Creates BullMQ job | Zod validation + mutation error | Good | Pass |
+| 4. Crawl begins | auditQueue + audit-worker.ts | Running state tracked | Worker error handlers + DLQ | Good | Pass |
+| 5. Tier 1-4 checks execute | siteAuditWorkflowPhases.ts | Progress via currentPhase | Non-blocking with logging | Good | Pass |
+| 6. Results displayed | ResultsView in audit/page.tsx | Completed status | Zod schema validation | Adequate | Pass |
+| 7. View/export/re-run | LaunchView history | N/A | Delete confirmation missing | Needs work | Pass |
 
-**CRIT-API-02 FIX**: Warning for unvalidated type assertions
+#### Strengths Identified
 
-- Added development warning when `schema` parameter is not provided
-- Log message identifies the pattern as CRIT-API-02 and recommends passing a Zod schema
-- Backward compatible - still returns `parsed as T` but warns in dev
+1. **Robust Job Queue Architecture**: BullMQ implementation with proper retry logic, DLQ for failed jobs, and step-level resume capability. The audit can resume from the last completed step on retry.
 
-#### 3. `open-seo-main/src/routes/api/invoices/$id.pay.ts`
+2. **Good Error Handling at Multiple Layers**: 
+   - Frontend: Error boundaries, Zod validation, mutation error states
+   - Backend: AppError class with proper error codes, transaction rollback on enqueue failure
+   - Worker: Failed job handler marks audit as failed in DB before enqueueing to DLQ
 
-**HIGH-API-02 FIX**: Idempotency key validation for payment sessions
+3. **Real-time Progress Visibility**: ProgressCard component shows live crawl progress with URL list, phase badges, and progress bars. Redis-backed progress KV with 30-minute TTL prevents data loss.
 
-- Added `IdempotencyKeySchema` validation
-- Added `checkIdempotencyKey()` - checks Redis for existing responses
-- Added `storeIdempotencyResult()` - caches responses with 24hr TTL
-- POST handler extracts `Idempotency-Key` or `X-Idempotency-Key` header
-- Returns cached response if idempotency key was already used
-- Uses standardized error codes in responses
+4. **Tiered Check System**: Well-organized 4-tier check system (instant HTML checks, light calculations, API-based, crawl-based) with non-blocking execution and proper logging of check failures.
 
-#### 4. `open-seo-main/src/routes/api/audit/pages.$pageId.findings.ts`
+5. **Capacity Management**: User audit capacity limits prevent abuse, with clear error messages when limits are reached. Backpressure handling rejects new audits when queue is overwhelmed.
 
-**HIGH-API-04 FIX**: Added pagination support
+6. **Secure by Default**: 
+   - Client ownership validation before any data access
+   - Rate limiting on audit start (5/hour in frontend, 3/hour in backend)
+   - Zod validation for all API payloads
+   - SSRF protection via safeUrlSchema in job processor
 
-- Added `limit` and `offset` query parameters
-- Default page size: 50, max: 200
-- Added total count query for pagination metadata
-- Response includes `pagination` object: `{ total, limit, offset, hasMore }`
-- Uses standardized `errorResponse()` for all error cases
-
-### Error Response Standardization (HIGH-API-01, HIGH-API-05)
-
-All modified endpoints now use the standardized error response format:
-
-```json
-{
-  "error": "User-friendly message",
-  "code": "VALIDATION_ERROR",
-  "status": 422,
-  "details": [
-    { "path": ["credentials", "access_token"], "message": "Required" }
-  ]
-}
-```
-
-HTTP status code mapping:
-- `VALIDATION_ERROR` -> 422 (was inconsistently 400)
-- `NOT_FOUND` -> 404
-- `UNAUTHENTICATED` -> 401
-- `FORBIDDEN` -> 403
-- `INTERNAL_ERROR` -> 500
-
-### Rate Limiting Verification (MEDIUM-03)
-
-Verified existing rate limiting implementation in `open-seo-main/src/server/middleware/rate-limit.ts`:
-
-- `RATE_LIMITS.AUDIT_RUN_CHECKS`: 10 req/min per client
-- `RATE_LIMITS.CONTENT_VALIDATE`: 10 req/min per client
-- `RATE_LIMITS.CONTENT_GENERATE`: 20 req/min per client
-- `RATE_LIMITS.BRIEF_GENERATE`: 10 req/min per client
-- `RATE_LIMITS.KEYWORD_ENRICH`: 30 req/min per client
-- `RATE_LIMITS.SERP_ANALYZE`: 20 req/min per client
-
-All expensive endpoints already have rate limiting configured.
-
-### Cursor Signing (MEDIUM-01)
-
-Added HMAC-signed pagination cursors:
-
-```typescript
-// Create signed cursor
-const cursor = createSignedCursor({ offset: 100, sortKey: 'created_at' });
-// -> "eyJvZmZzZXQiOjEwMH0.abc123def456"
-
-// Verify and decode
-const data = verifySignedCursor(cursor);
-// -> { offset: 100, sortKey: 'created_at' } or null if tampered
-```
-
-Uses:
-- HMAC-SHA256 with `CURSOR_SECRET` or `SESSION_SECRET` env var
-- Base64url encoding for URL-safe cursors
-- Timing-safe signature comparison to prevent timing attacks
-- 16-char truncated signature for shorter URLs
-
-### Notes
-
-- All changes maintain backward compatibility
-- Existing clients without idempotency keys still work (key is optional)
-- Pagination defaults are reasonable for typical use cases
-- Error responses include `code` field for programmatic handling
-
+7. **Clean Project Setup Flow**: Three-step wizard (domain, sitemap, audit) with proper loading states, validation, and accessibility (ARIA labels on step indicator).
 
 ---
 
-## Agent 1: Cross-App Integration - FIXES APPLIED
+### Agent 17: Content Generation Pipeline
 
-**Date:** 2026-05-03
-**Domain:** Cross-App Integration Fixes (apps/web, open-seo-main, AI-Writer)
+**Domain:** Voice profile setup, content generation flow, quality gate enforcement, publishing pipeline
 
-| Issue | Severity | Status | Files Modified |
-|-------|----------|--------|----------------|
-| HIGH-01 | HIGH | FIXED | AI-Writer/backend/services/internal_api_auth.py (new), AI-Writer/backend/services/internal_link_inserter.py, AI-Writer/backend/services/auto_publish_executor.py, AI-Writer/backend/services/intelligence/autonomous_pipeline.py |
-| HIGH-02 | HIGH | DOCUMENTED | apps/web/src/lib/utils/service-circuit-breakers.ts, AI-Writer/backend/services/intelligence/autonomous_pipeline.py |
-| HIGH-03 | HIGH | FIXED | apps/web/src/lib/server-fetch.ts |
-| HIGH-04 | HIGH | DOCUMENTED | open-seo-main/src/server/websocket/types.ts |
-| MEDIUM-01 | MEDIUM | FIXED | apps/web/src/lib/fetch-with-timeout.ts |
-| MEDIUM-02 | MEDIUM | FIXED | AI-Writer/backend/tests/test_auto_publish_executor.py, AI-Writer/backend/tests/test_article_generation_service.py, AI-Writer/backend/tests/test_publish_flow_integration.py |
-| MEDIUM-03 | MEDIUM | FIXED | AI-Writer/backend/services/internal_api_auth.py (included in HIGH-01) |
-| MEDIUM-04 | MEDIUM | DOCUMENTED | AI-Writer/backend/services/internal_api_auth.py |
-| MEDIUM-05 | MEDIUM | FIXED | AI-Writer/backend/middleware/internal_auth.py |
+**Scope Reviewed:**
+- AI-Writer/backend/services/voice_constraint_service.py
+- AI-Writer/backend/services/article_generation_service.py
+- AI-Writer/backend/services/auto_publish_executor.py
+- AI-Writer/backend/services/cms_publisher/wordpress_publisher.py
+- AI-Writer/backend/models/publishing.py
+- open-seo-main/src/db/voice-schema.ts
+- open-seo-main/src/routes/api/seo/voice.$clientId.constraints.ts
+- open-seo-main/src/server/features/voice/
 
-### Changes Made
+**Status:** Complete
 
-#### HIGH-01: AI-Writer calls open-seo-main without authentication
-- Created new `internal_api_auth.py` utility module with `get_internal_auth_headers()` function
-- Updated `internal_link_inserter.py` to use auth headers when calling `/api/seo/links/suggestions`
-- Updated `auto_publish_executor.py` to use auth headers when calling `/api/seo/links/graph/update`
-- Updated `autonomous_pipeline.py` to use centralized auth headers instead of inline headers
+#### Pipeline Analysis
 
-#### HIGH-02: Duplicate circuit breakers without shared state
-- Added comprehensive documentation to both circuit breaker implementations explaining:
-  - In-memory state is intentional (low latency, service independence)
-  - Each service manages its own failure patterns and thresholds
-  - Guidance for Redis-backed state sharing if needed for multi-instance deployments
+| Step | Component | Data Persistence | Error Handling | Rollback Support |
+|------|-----------|------------------|----------------|------------------|
+| 1. Select Client | AI-Writer UI | Session | N/A | N/A |
+| 2. Configure Voice | VoiceProfileService | PostgreSQL (40+ fields) | Validation errors | Manual revert |
+| 3. Initiate Generation | ScheduledArticle | PostgreSQL (status=draft) | FK constraints | Auto via status |
+| 4. AI Generate | ArticleGenerationService | Generated content buffer | Multi-provider retry | Status rollback |
+| 5. Quality Gate | check_quality_gate() | Score persisted | FAIL-CLOSED pattern | Block publish |
+| 6. Review/Edit | Editorial UI | Version history | Optimistic locking | Version restore |
+| 7. Publish | AutoPublishExecutor | CMS + local DB | 3-retry with backoff | Transaction rollback |
 
-#### HIGH-03: Error response format mismatch
-- Added `deriveErrorCodeFromStatus()` function to extract meaningful error codes from HTTP status
-- Enhanced `normalizeBackendError()` to derive codes when open-seo-main omits them
-- Maps status codes to standard codes: UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, etc.
+#### CRITICAL Issues
 
-#### HIGH-04: WebSocket authentication gap
-- Documented that workspace-level access control is by design
-- Added security note explaining the current model: workspace membership implies client access
-- Provided guidance for implementing client-level rooms if finer-grained control is needed
+None found.
 
-#### MEDIUM-01: Timeout inconsistency between services
-- Added standardized timeout constants: DEFAULT_TIMEOUT_MS (30s), LONG_RUNNING_TIMEOUT_MS (120s), QUICK_CHECK_TIMEOUT_MS (5s)
-- Documented usage guidelines for cross-service consistency
+#### HIGH Issues
 
-#### MEDIUM-02: Hardcoded URLs in test files
-- Updated 3 test files to use `TEST_OPEN_SEO_API_URL` environment variable with localhost fallback
-- Enables CI/CD environments to override test URLs
+None found.
 
-#### MEDIUM-03: Missing X-Correlation-Id forwarding
-- `get_internal_auth_headers()` always generates and includes X-Correlation-Id
-- Enables distributed tracing across AI-Writer -> open-seo-main calls
+#### MEDIUM Issues
 
-#### MEDIUM-04: Inconsistent client_id naming
-- Documented naming convention in `internal_api_auth.py`:
-  - Python: snake_case (client_id)
-  - TypeScript: camelCase (clientId)
-  - JSON payloads: camelCase for TypeScript backends
-  - Database columns: snake_case
+**[MED-17-1] Missing explicit version history for content edits**
+- **File:** `/AI-Writer/backend/models/publishing.py`
+- **Problem:** ScheduledArticle has `version` field for optimistic locking but no audit trail table for content history.
+- **Impact:** Users cannot view previous versions of article content after edits.
+- **Workaround:** The `version` field increments on save, enabling detection of concurrent edits. Full history requires separate implementation.
+- **Recommendation:** Add `article_content_history` table with foreign key to `scheduled_articles` for compliance auditing.
 
-#### MEDIUM-05: Incomplete internal auth middleware
-- Added `require_internal_auth` FastAPI dependency for route-level auth requirement
-- Provides clean decorator-style enforcement with proper 401 error response
-
-### Verification
-
-All fixes are minimal and targeted. No refactoring beyond the specific issues. Code style maintained. Inline comments added only where fixes are non-obvious.
-
----
-
-## Agent 11: SEO Audit Engine Fixes
-
-**Date:** 2026-05-03
-**Domain:** SEO Audit Engine (open-seo-main)
-
-### Issues Fixed
-
-#### HIGH-01: Score can exceed 100 (no normalization)
-**File:** `open-seo-main/src/server/lib/audit/checks/scoring.ts`
-
-**Problem:** Base score (60) + max tier points (20+10+10+4 = 44) = 104, exceeding 100.
-
-**Fix:** 
-- Normalized tier 3 max from 10 to 6 points
-- Added explicit `Math.min(100, rawScore)` cap
-- Total max now: 60 + 20 + 10 + 6 + 4 = 100
-
-#### HIGH-02: Stubbed Tier 3/4 checks affecting scores
-**File:** `open-seo-main/src/server/lib/audit/checks/scoring.ts`
-
-**Problem:** Skipped checks (API unavailable, no crawl data) still counted in scoring.
-
-**Fix:** Added `isSkippedCheck()` helper that identifies checks with `severity="info"` and `details.skipped=true`. These are filtered out before scoring calculations.
-
-#### HIGH-03: Quality gate (score >= 80) not implemented
-**File:** `open-seo-main/src/server/lib/audit/checks/scoring.ts`
-
-**Fix:** Implemented quality gate system:
-- `QUALITY_GATE_THRESHOLD = 80` constant
-- `passesQualityGate(score)` function
-- `evaluateQualityGate(scoreResult)` returns detailed `QualityGateResult`
-
-#### HIGH-04: Check count mismatch (107 documented vs actual)
-**File:** `open-seo-main/src/server/lib/audit/checks/index.ts`
-
-**Fix:** Audited all check files and corrected to 109 total:
-- Tier 1: 68, Tier 2: 21, Tier 3: 13, Tier 4: 7
-
-#### MEDIUM-01: Gate order precedence bug
-**Fix:** Documented and enforced gate evaluation order: noindex(0) > duplicate(50) > YMYL(60) > CWV(75)
-
-#### MEDIUM-02: CWV skip handling inconsistent
-**Fix:** CWV gate now only triggers for non-skipped checks.
-
-#### MEDIUM-03: DOM mutation in extractText()
-**File:** `open-seo-main/src/server/lib/audit/checks/tier2/content-quality.ts`
-
-**Fix:** Clone DOM before mutation to prevent side effects.
-
-#### MEDIUM-04: Error severity handling inconsistent
-**File:** `open-seo-main/src/server/lib/audit/checks/runner.ts`
-
-**Fix:** Timeout errors get `severity: "info"`, other errors get `severity: "medium"`.
-
-#### MEDIUM-05: Missing URL validation
-**Fix:** Added `validateUrl()` that validates format and restricts to http/https.
-
-#### MEDIUM-06: Timeout handling gaps
-**Fix:** Added configurable timeouts: 30s per check, 5min total. Uses Promise.race.
-
-#### MEDIUM-07: Result deduplication missing
-**Fix:** Added `deduplicateResults()` by checkId + element combo.
-
-### Files Modified
-
-| File | Changes |
-|------|---------|
-| `open-seo-main/src/server/lib/audit/checks/scoring.ts` | Score normalization, quality gate, skip handling |
-| `open-seo-main/src/server/lib/audit/checks/runner.ts` | URL validation, timeouts, deduplication |
-| `open-seo-main/src/server/lib/audit/checks/tier2/content-quality.ts` | DOM cloning |
-| `open-seo-main/src/server/lib/audit/checks/index.ts` | Corrected check counts, new exports |
-| `open-seo-main/src/server/lib/audit/checks/scoring.test.ts` | New tests for quality gate |
-
-### Verification
-
-- All 16 scoring tests pass
-- Backward compatible: no changes to check IDs or weights
-
-
----
-
-## Agent 17: AI-Writer React UI Fixes - FIXES APPLIED
-
-**Date:** 2026-05-03
-**Domain:** AI-Writer Frontend Fixes (AI-Writer/frontend)
-
-| Issue ID | Severity | Status | Description |
-|----------|----------|--------|-------------|
-| CRIT-01 | CRITICAL | FIXED | No double-submit prevention on article generation |
-| CRIT-02 | CRITICAL | FIXED | Silent failure in updatePublishingSettings |
-| HIGH-01 | HIGH | FIXED | Missing per-page error boundaries |
-| HIGH-02 | HIGH | FIXED | Race condition in fetchClients |
-| HIGH-03 | HIGH | FIXED | Calendar not refreshed after approve/reject |
-| HIGH-04 | HIGH | N/A | Loading/error state for intelligence - already handled |
-| HIGH-05 | HIGH | FIXED | iframe SEO Audit page has no loading or error handling |
-| MEDIUM-01 | MEDIUM | FIXED | eslint-disable for useEffect dependencies |
-| MEDIUM-02 | MEDIUM | FIXED | Inconsistent error state clearing in analyticsStore |
-| MEDIUM-03 | MEDIUM | FIXED | Persist store rehydration not validated |
-| MEDIUM-04 | MEDIUM | FIXED | Missing aria-labels on collapsed sidebar buttons |
-| MEDIUM-05 | MEDIUM | FIXED | URL validation too permissive in AddClientModal |
-| MEDIUM-06 | MEDIUM | FIXED | Polling interval too frequent (5s for 30-90s operations) |
-| MEDIUM-07 | MEDIUM | FIXED | console.error left in production code |
-
-### Files Modified
-
-1. **ArticleEditorPage.tsx** - Added isGenerating check to prevent double-submit (CRIT-01)
-2. **contentCalendarStore.ts** - Added error handling to updatePublishingSettings (CRIT-02)
-3. **clientStore.ts** - Added AbortController for request deduplication (HIGH-02), validated rehydration (MEDIUM-03)
-4. **ContentCalendarPage.tsx** - Added calendar refresh after status changes (HIGH-03)
-5. **SeoAuditPage.tsx** - Added loading spinner and error fallback for iframe (HIGH-05)
-6. **analyticsStore.ts** - Clear error state on new request start (MEDIUM-02)
-7. **AddClientModal.tsx** - Stricter URL validation using URL API (MEDIUM-05)
-8. **AppShell.tsx** - Added aria-labels for collapsed nav items (MEDIUM-04), fixed eslint-disable
-9. **SubscriptionContext.tsx** - Fixed useEffect dependency with useRef (MEDIUM-01)
-10. **ClientSwitcher.tsx** - Fixed useEffect dependency with useRef (MEDIUM-01)
-11. **ClientListPage.tsx** - Fixed useEffect dependency with useRef (MEDIUM-01)
-12. **ScrambleText.tsx** - Added dependencies to useEffect (MEDIUM-01)
-13. **ImageGenerationPanel.tsx** - Fixed useEffect dependency with useRef (MEDIUM-01)
-14. **ArticleLibraryPage.tsx** - Fixed useEffect dependency with useRef (MEDIUM-01)
-15. **ClientDashboardPage.tsx** - Implemented adaptive polling 2s->10s (MEDIUM-06)
-
-### New Files Created
-
-1. **utils/logger.ts** - Centralized logging service to replace console.error (MEDIUM-07)
-2. **components/shared/PageErrorBoundary.tsx** - Per-page error boundary component (HIGH-01)
-3. **components/shared/index.ts** - Updated exports to include new error boundaries
-
-### Implementation Details
-
-#### CRIT-01: Double-Submit Prevention
-Added check for `isGenerating` state at the start of `handleGenerate` callback to prevent multiple submissions while article generation is in progress.
-
-#### CRIT-02: Silent Failure Fix
-Added try/catch with error state update in `updatePublishingSettings`. Errors are now stored in state and re-thrown for caller handling.
-
-#### HIGH-02: Race Condition Fix
-Implemented AbortController pattern in `fetchClients`. Previous in-flight requests are aborted when a new fetch begins, preventing stale data from overwriting fresh data.
-
-#### HIGH-03: Calendar Refresh
-Extended `makeAction` helper with `refreshCalendar` parameter. Approve/reject/submit/generate actions now trigger `fetchArticles` to update calendar view.
-
-#### HIGH-05: iframe Loading/Error States
-Added useState hooks for loading/error states with onLoad/onError handlers. Shows spinner during load and error fallback with retry button on failure.
-
-#### MEDIUM-01: eslint-disable Fixes
-Replaced eslint-disable comments with proper solutions using useRef pattern. Functions and values that shouldn't trigger re-renders are stored in refs that are updated on each render but don't cause effect re-runs.
-
-#### MEDIUM-06: Adaptive Polling
-Replaced fixed 5s interval with adaptive polling: starts at 2s, increases by 2s each poll up to 10s max. More responsive initially, less network overhead over time.
-
-### Verification
-
-- All fixes follow existing component patterns
-- Zustand store patterns maintained
-- No breaking changes to component APIs
-- Error boundaries properly report errors via errorReporting utility
-
----
-
-## Agent 10: BullMQ Job System Fixes (2026-05-03)
-
-### MEDIUM-01: Standardized Retry Backoff Strategies
-
-**Issue:** Inconsistent retry backoff strategies across queues. Different queues used varying base delays (1s, 5s, 10s, 30s, 60s) and backoff types (fixed vs exponential).
-
-**Solution:** Created a standardized retry configuration in `queue-utils.ts` and applied it across all queues except webhook (which intentionally keeps longer delays for external services).
-
-### Standardized Configuration
-
-- **Backoff Type:** Exponential
-- **Base Delay:** 1 second
-- **Max Delay:** 60 seconds (implicit via exponential growth cap)
-- **Default Attempts:** 3
-
-### Rationale
-
-1. Fast initial retry (1s) catches transient failures (network blips, brief DB locks)
-2. Exponential growth prevents thundering herd on sustained outages
-3. 60s implicit cap prevents excessive delays while allowing recovery time
-
-### Files Modified
-
-1. **queue-utils.ts** - Added standardized retry configuration:
-   - `STANDARD_BACKOFF` constant
-   - `STANDARD_BACKOFF_MAX_DELAY` constant (60s)
-   - `STANDARD_ATTEMPTS` constant (3)
-   - `getStandardJobOptions()` helper function
-
-2. **Queue files updated to use standardized config:**
-   - `auditQueue.ts`
-   - `alertQueue.ts`
-   - `alertDetectionQueue.ts`
-   - `pipelineQueue.ts`
-   - `scheduleQueue.ts`
-   - `reportQueue.ts`
-   - `goalQueue.ts`
-   - `tokenRefreshQueue.ts`
-   - `onboardingQueue.ts`
-   - `followUpQueue.ts`
-   - `fastApiQueue.ts`
-   - `graphIngestionQueue.ts`
-   - `portfolioAggregatesQueue.ts`
-   - `pipelineMetricsQueue.ts`
-   - `dashboardMetricsQueue.ts`
-   - `installmentReminderQueue.ts`
-
-3. **webhookQueue.ts** - Added documentation comment explaining why it keeps longer delays (60s base) for external service rate limits and recovery times.
-
-### Before vs After
-
-| Queue | Before | After |
-|-------|--------|-------|
-| auditQueue | 10s exponential | 1s exponential |
-| alertQueue | 10s exponential | 1s exponential |
-| alertDetectionQueue | 5s fixed | 1s exponential |
-| scheduleQueue | 5s exponential | 1s exponential |
-| goalQueue | 5s exponential | 1s exponential |
-| portfolioAggregatesQueue | 30s exponential | 1s exponential |
-| dashboardMetricsQueue | 30s exponential | 1s exponential |
-| fastApiQueue | 1s fixed | 1s exponential |
-| pipelineMetricsQueue | 5s fixed | 1s exponential |
-| **webhookQueue** | **60s exponential** | **60s exponential (unchanged)** |
-
-### Verification
-
-- TypeScript compilation passes for all modified queue files
-- No breaking changes to queue behavior (only retry timing changed)
-- Webhook queue explicitly documented and preserved for external service requirements
-
----
-
-## Agent 16: Voice/Brand System Fixes
-
-**Completed:** 2026-05-03
-**Domain:** Voice/Brand System
-**Issues Fixed:** 2 HIGH, 3 MEDIUM
-
-### Summary
-
-Fixed all HIGH and MEDIUM issues in the voice/brand system to ensure consistent voice constraint handling across Python (AI-Writer) and TypeScript (open-seo-main) codebases.
-
-### Issues Resolved
-
-#### HIGH-V-01: Duplicate voice constraint building logic in Python vs TypeScript
-
-**Problem:** Voice constraint building was duplicated in both Python (`article_generation_service.py`) and TypeScript (`VoiceConstraintBuilder.ts`), leading to drift and inconsistency.
-
-**Solution:** Created `VoiceConstraintService` in Python that calls the TypeScript API endpoint instead of duplicating logic. TypeScript is now the single source of truth.
-
-**Files Changed:**
-- NEW: `/AI-Writer/backend/services/voice_constraint_service.py` - Service to fetch constraints from TypeScript API
-- NEW: `/open-seo-main/src/routes/api/seo/voice.$clientId.constraints.ts` - New API endpoint for constraint building
-- MODIFIED: `/AI-Writer/backend/services/article_generation_service.py` - Uses new VoiceConstraintService
-
-#### HIGH-V-02: Voice profile fetch failures silently return empty constraints
-
-**Problem:** When voice profile fetch failed, the system silently fell back to empty constraints without warning users about degraded functionality.
-
-**Solution:** Added `VoiceConstraintResult` dataclass with explicit status states (`SUCCESS`, `NO_PROFILE`, `API_ERROR`, `INVALID_RESPONSE`) that allows callers to distinguish between expected states and errors, enabling UI warnings.
-
-**Key Changes:**
+**[MED-17-2] Voice constraint API error handling could mask root cause**
+- **File:** `/AI-Writer/backend/services/voice_constraint_service.py:89-95`
+- **Code:**
 ```python
-class VoiceConstraintStatus(Enum):
-    SUCCESS = "success"
-    NO_PROFILE = "no_profile"  # Expected - client has no profile
-    API_ERROR = "api_error"     # Error - should warn user
-    INVALID_RESPONSE = "invalid_response"  # Error - should warn user
+except httpx.HTTPStatusError as e:
+    logger.error(f"Voice API HTTP error: {e.response.status_code}")
+    return VoiceConstraintResult(status=VoiceConstraintStatus.API_ERROR, ...)
+except Exception as e:
+    logger.error(f"Voice API unexpected error: {e}")
+    return VoiceConstraintResult(status=VoiceConstraintStatus.API_ERROR, ...)
 ```
-
-#### MEDIUM-01: Python builder missing 28+ voice fields from schema
-
-**Problem:** Python voice constraint builder only handled ~12 fields while TypeScript handled 40+ fields.
-
-**Solution:** The new `VoiceConstraintService` delegates to TypeScript API for full field support. Additionally, the fallback constraint builder in Python now handles all known fields including:
-- `emotionalRange`
-- `listPreference`
-- `ctaTemplate`
-- `jargonLevel`
-- `acronymPolicy`
-- `industryTerms`
-- `requiredPhrases`
-- `keywordDensityTolerance`
-- `keywordPlacementRules`
-- `seoVsVoicePriority`
-- `protectedSections`
-- `customInstructions`
-
-#### MEDIUM-02: Voice template blending never used by AI-Writer
-
-**Problem:** Template blending was defined in TypeScript but AI-Writer never passed blend parameters to the API.
-
-**Solution:** Updated `article_generation_service.py` to extract `voice_blend_weight` and `voice_template_id` from client settings and pass them to the new constraint service:
+- **Impact:** Generic API_ERROR status may not distinguish between 404 (no profile), 401 (auth failure), and 500 (server error).
+- **Recommendation:** Differentiate error codes in result status for better debugging:
 ```python
-template_blend = getattr(client_settings, "voice_blend_weight", None)
-template_id = getattr(client_settings, "voice_template_id", None)
-
-voice_result = await fetch_voice_constraints_for_client(
-    client_id=str(article.client_id),
-    template_blend=template_blend,
-    template_id=str(template_id) if template_id else None,
-)
+if e.response.status_code == 404:
+    return VoiceConstraintResult(status=VoiceConstraintStatus.NO_PROFILE, ...)
+elif e.response.status_code in (401, 403):
+    return VoiceConstraintResult(status=VoiceConstraintStatus.AUTH_ERROR, ...)
 ```
 
-#### MEDIUM-03: 8-level brand voice precedence logic not programmatically validated
+#### LOW Issues
 
-**Problem:** The 8-level voice precedence was only documented in comments, not enforced or validated programmatically.
+**[LOW-17-1] Idempotency cache could benefit from persistent storage**
+- **File:** `/AI-Writer/backend/services/cms_publisher/wordpress_publisher.py:45-60`
+- **Problem:** In-memory idempotency cache (15-minute TTL) is lost on process restart.
+- **Impact:** If publisher restarts mid-cycle, duplicate publishes are possible within 15-minute window.
+- **Note:** Risk is low due to database-level status tracking that prevents re-publishing of `published` articles.
 
-**Solution:** Created `VoicePrecedenceValidator` class with explicit precedence levels and validation:
+#### Architecture Analysis
+
+**Voice Profile Flow (40+ fields):**
+```
+VoiceProfileService (TypeScript) → PostgreSQL → Voice API endpoint
+                                                        ↓
+Python VoiceConstraintService ← HTTP GET/POST ← API auth middleware
+                ↓
+VoiceConstraintBuilder (Python) ← constraints JSON
+                ↓
+8-level precedence merge → ArticleGenerationService
+```
+
+**Voice Precedence Hierarchy (lowest to highest):**
+1. Extracted brand voice (from existing content analysis)
+2. Template defaults
+3. Blend weight (0.0-1.0 interpolation)
+4. Profile constraints (40+ fields)
+5. ICP psychology parameters
+6. SEO keyword requirements
+7. Fallback brand voice
+8. Custom instructions (highest priority)
+
+**Quality Gate Implementation:**
 ```python
-class VoicePrecedenceLevel(IntEnum):
-    EXTRACTED_BRAND_VOICE = 1      # From ClientWebsiteIntelligence
-    VOICE_TEMPLATE = 2             # Industry/custom template
-    BLEND_WEIGHT = 3               # Template vs client blend ratio
-    VOICE_PROFILE_CONSTRAINTS = 4  # From open-seo API (40+ fields)
-    ICP_PSYCHOLOGY = 5             # Target audience psychology
-    SEO_KEYWORDS = 6               # Keyword integration requirements
-    FALLBACK_BRAND_VOICE = 7       # Legacy plain text
-    CUSTOM_INSTRUCTIONS = 8        # HIGHEST - explicit user overrides
+def check_quality_gate(content: str, client_id: str) -> QualityResult:
+    # FAIL-CLOSED pattern - never auto-approve on error
+    try:
+        score = await quality_api.evaluate(content, client_id)
+        return QualityResult(
+            approved=score >= QUALITY_GATE_THRESHOLD,  # 80
+            score=score,
+            reason="Auto-approved" if score >= 80 else "Quality score below threshold"
+        )
+    except Exception as e:
+        logger.error(f"Quality gate API error: {e}")
+        raise QualityGateError("Quality check unavailable - manual review required")
 ```
 
-The validator detects issues like:
-- Conflicting tones at different levels
-- Custom instructions overriding without warning
-- Blend weight set without template
-- Missing voice profile when other sources exist
+**Publishing Pipeline Safety:**
+1. **Optimistic Locking (DFI-001):** Version field prevents concurrent claim
+2. **Transaction Rollback (DFI-008):** Post-commit GSC/link graph updates
+3. **Retry Backoff (DFI-009/013):** 5min, 30min, 120min delays
+4. **Idempotency (DFI-010):** 15-minute cache prevents duplicates
+5. **Thread-safe Lock:** Scheduler mutex prevents parallel publish cycles
 
-**Files Created:**
-- NEW: `/AI-Writer/backend/services/voice_precedence.py` - Precedence validation
+#### Strengths Identified
 
-### Test Coverage
+1. **Fail-Closed Quality Gate:**
+   - Raises `QualityGateError` if API unavailable - never auto-approves on error
+   - Strict type validation: `approved` must be bool, `score` must be numeric
+   - Threshold configurable via `QUALITY_GATE_THRESHOLD` environment variable
+   - Test coverage validates both success and failure paths
 
-Created comprehensive test suites:
-- `/AI-Writer/backend/tests/test_voice_constraint_service.py` (19 tests)
-- `/AI-Writer/backend/tests/test_voice_precedence.py` (20 tests)
+2. **TypeScript as Single Source of Truth:**
+   - Voice constraints defined once in TypeScript schema (40+ fields)
+   - Python delegates to TypeScript API - no schema duplication
+   - Database constraints enforce valid ranges (blend weight 0-1, formality 1-10)
+   - VoiceProfileConfig interface provides type safety
 
-All 39 tests pass.
+3. **Comprehensive DFI Fixes Applied:**
+   - DFI-001: Optimistic locking with version field
+   - DFI-008: Transaction rollback with post-commit updates
+   - DFI-009/DFI-013: Exponential retry backoff (5min, 30min, 120min)
+   - DFI-010: Idempotency cache with TTL
+   - SELECT FOR UPDATE with skip_locked for PostgreSQL concurrency
 
-### Backward Compatibility
+4. **Input Sanitization in Prompt Building:**
+   ```python
+   def _build_article_prompt(self, article: ScheduledArticle, constraints: dict) -> str:
+       # Sanitize all user inputs before injection
+       topic = self._sanitize_input(article.topic)
+       keywords = [self._sanitize_input(k) for k in article.keywords]
+   ```
 
-- Existing voice profiles continue to work unchanged
-- When TypeScript API is unavailable, fallback constraint building kicks in
-- No changes to database schema required
-- All existing client settings remain valid
+5. **Multi-Provider LLM Routing:**
+   - Supports Grok, OpenAI, Anthropic providers
+   - Provider-specific error handling
+   - Fallback chain for resilience
+   - Cost tracking per provider
+
+6. **Credential Security:**
+   - WordPress credentials fetched fresh per publish (no caching)
+   - Authorization header redacted in logs: `[Authorization: REDACTED]`
+   - 3-session pattern isolates claim/load/save operations
+
+7. **Article Lifecycle State Machine:**
+   ```
+   draft → generating → generated → pending_review → approved → publishing → published
+                  ↓           ↓              ↓                        ↓
+               failed      failed         rejected                 failed
+   ```
+   - Clear status transitions prevent invalid states
+   - Failed articles retain error context for debugging
+   - Soft delete (`is_deleted`) preserves audit trail
+
+#### Review Summary
+
+| Severity | Count | Status |
+|----------|-------|--------|
+| CRITICAL | 0     | pass   |
+| HIGH     | 0     | pass   |
+| MEDIUM   | 2     | info   |
+| LOW      | 1     | note   |
+
+**Verdict:** APPROVE - Content generation pipeline is well-architected with fail-safe patterns, proper transaction handling, and comprehensive DFI fixes already applied. The quality gate correctly enforces FAIL-CLOSED behavior and voice constraints properly delegate to TypeScript as single source of truth.
 
 ---
 
-## Performance Optimization Fixes (Agent 19)
-
-**Completed:** 2026-05-03
-**Focus:** CRITICAL, HIGH, and MEDIUM performance issues
-
-### Summary
-
-All performance issues identified by Agent 19 have been addressed:
-
-| Severity | Fixed | Description |
-|----------|-------|-------------|
-| CRITICAL | 3/3 | N+1 queries, unbounded iteration, memory leak |
-| HIGH | 4/4 | Batch queries, singleflight, pagination |
-| MEDIUM | 5/5 | Composite indexes, deduplication, backoff, dynamic imports |
-
-### CRITICAL Fixes
-
-#### CRIT-PERF-01: N+1 Query in Dashboard _compute_client_metrics
-
-**File:** `/AI-Writer/backend/api/dashboard.py`
-
-**Problem:** Each client triggered 4+ individual queries (current period traffic, previous period traffic, latest date, keyword rankings).
-
-**Solution:** Added `_batch_compute_client_metrics()` function that:
-- Uses a single query with CASE expressions for both current and previous period traffic
-- Batches keyword ranking aggregates using conditional aggregation
-- Processes all clients in 2-3 queries total instead of N*4 queries
-
-**Impact:** 50 clients reduced from ~200 queries to 3 queries.
-
-#### CRIT-PERF-02: Unbounded Workspace Predictions Iteration
-
-**File:** `/apps/web/src/actions/analytics/get-predictions.ts`
-
-**Problem:** Workspace predictions iterated over 50 clients with individual API calls.
-
-**Solution:** 
-- Added batch prediction endpoint support (`/api/predictions/batch`)
-- Falls back to controlled concurrency (5 parallel) if batch endpoint unavailable
-- Uses singleflight caching to prevent duplicate requests
-
-**Impact:** Single API call for all client predictions when backend supports batch endpoint.
-
-#### CRIT-PERF-03: Memory Leak in SQLAlchemy Engine Cache
-
-**File:** `/AI-Writer/backend/services/database.py`
-
-**Problem:** Engine cache grew unbounded as more users connected.
-
-**Solution:**
-- Added LRU eviction with max 100 engine cache entries
-- `_engine_access_order` list tracks usage order
-- `_lru_evict_engines_if_needed()` disposes oldest engines when limit exceeded
-- Updated `cleanup_user_engine()` and `close_database()` to maintain LRU list
-
-**Impact:** Memory usage capped at ~100 SQLite engines regardless of user count.
-
-### HIGH Fixes
-
-#### HIGH-01: Fallback N+1 in Goal Predictions
-
-**File:** `/apps/web/src/actions/analytics/get-predictions.ts`
-
-**Problem:** Legacy fallback path still made individual API calls.
-
-**Solution:** Already addressed in CRIT-PERF-02 - batch endpoint tries first, fallback uses controlled concurrency.
-
-#### HIGH-02: Full Table Scan for Word Counts
-
-**Solution:** Addressed via composite indexes in MEDIUM-01.
-
-#### HIGH-03: Missing Singleflight for Portfolio Aggregates
-
-**File:** `/apps/web/src/actions/dashboard/get-portfolio-aggregates.ts`
-
-**Problem:** Concurrent requests could all hit backend simultaneously.
-
-**Solution:** Wrapped fetch logic with `getCachedWithSingleflight()` to coalesce concurrent requests.
-
-**Impact:** Multiple concurrent dashboard loads share single backend fetch.
-
-#### HIGH-04: Audit Results Endpoint Without Pagination
-
-**File:** `/apps/web/src/actions/seo/audit.ts`
-
-**Problem:** Large audit findings returned all at once, potentially 10K+ items.
-
-**Solution:**
-- Added `getAuditResultsPaginated()` function with cursor-based pagination
-- Default limit of 50 items per page
-- Supports severity and category filtering
-- Falls back to client-side pagination if backend doesn't support
-
-**Impact:** Audit results load incrementally, reducing response size by 95%+.
-
-### MEDIUM Fixes
-
-#### MEDIUM-01: Missing Composite Indexes
-
-**File:** `/open-seo-main/src/db/migrations/0061_perf_composite_indexes.sql`
-
-**Solution:** Added composite indexes for common query patterns:
-- `idx_alerts_client_status` - Client alerts by status
-- `idx_alerts_client_type` - Client alerts by type
-- `idx_alerts_client_severity` - Client alerts by severity
-- `idx_goals_client_attainment` - Client goals with attainment filter
-- `idx_audit_findings_audit_severity` - Audit findings by severity
-- `idx_clients_workspace_archived` - Workspace clients with archive filter
-- `idx_gsc_snapshots_client_date` - GSC data time-range queries
-
-**Impact:** 10-100x faster queries for dashboard filtering and sorting.
-
-#### MEDIUM-02: Dashboard Parallel Calls Without Deduplication
-
-**File:** `/apps/web/src/app/(shell)/dashboard/actions.ts`
-
-**Problem:** Concurrent component renders could trigger duplicate API calls.
-
-**Solution:** Wrapped all dashboard fetch functions with `getCachedWithSingleflight()`:
-- `getDashboardMetrics()`
-- `getPortfolioSummary()`
-- `getAttentionItems()`
-- `getWins()`
-- `getTeamWorkload()`
-- `getUpcomingScheduled()`
-
-**Impact:** Dashboard loads trigger maximum 1 API call per endpoint per 60s window.
-
-#### MEDIUM-03: Polling Without Exponential Backoff
-
-**Files:** 
-- `/apps/web/src/lib/polling/adaptive-poll.ts` (new)
-- `/apps/web/src/hooks/use-verification-poll.ts`
-
-**Problem:** Fixed-interval polling wastes API calls when status unchanged.
-
-**Solution:**
-- Created `adaptive-poll.ts` utility with exponential backoff and jitter
-- Updated `useVerificationPoll` hook to use adaptive delays (2s initial, 1.5x multiplier, 15s max)
-- Added tab visibility awareness to pause polling when hidden
-
-**Impact:** Reduces polling API calls by 40-60% during long verification waits.
-
-#### MEDIUM-04: Client Iteration in Team Metrics
-
-**File:** `/apps/web/src/actions/team/get-team-metrics.ts`
-
-**Status:** Already optimized - fetches all team data in single API call and processes in-memory.
-
-#### MEDIUM-05: Recharts Bundle Size (54KB)
-
-**Files:**
-- `/apps/web/src/components/analytics/GA4Chart.tsx`
-- `/apps/web/src/components/dashboard/SparklineChart.tsx`
-
-**Problem:** Recharts loaded eagerly in initial bundle.
-
-**Solution:** Implemented dynamic imports using `next/dynamic`:
-- Each Recharts component (LineChart, Line, XAxis, etc.) loaded separately
-- SSR disabled for chart components
-- Loading skeleton shown while charts load
-
-**Impact:** Initial bundle reduced by ~54KB, charts load on-demand.
-
-### Files Modified
-
-1. `/AI-Writer/backend/api/dashboard.py` - Batch metrics computation
-2. `/AI-Writer/backend/services/database.py` - LRU engine cache
-3. `/apps/web/src/actions/analytics/get-predictions.ts` - Batch predictions
-4. `/apps/web/src/actions/dashboard/get-portfolio-aggregates.ts` - Singleflight
-5. `/apps/web/src/actions/seo/audit.ts` - Pagination
-6. `/apps/web/src/app/(shell)/dashboard/actions.ts` - Deduplication
-7. `/apps/web/src/lib/polling/adaptive-poll.ts` - New adaptive polling utility
-8. `/apps/web/src/hooks/use-verification-poll.ts` - Exponential backoff
-9. `/apps/web/src/components/analytics/GA4Chart.tsx` - Dynamic imports
-10. `/apps/web/src/components/dashboard/SparklineChart.tsx` - Dynamic imports
-11. `/open-seo-main/src/db/migrations/0061_perf_composite_indexes.sql` - New migration
-
-### Verification
-
-- All TypeScript files compile without errors
-- Existing tests remain passing
-- No breaking changes to API contracts
-- Performance improvements are backward-compatible with legacy backends
+### Agent 18: Code Duplication & DRY Violations Review
+
+**Status:** Complete
+**Files Analyzed:** 2,383+ TypeScript/TSX files across apps/web, open-seo-main, AI-Writer, and packages
+**Duplications Found:** 14 patterns across 32+ locations
+**Issues Found:** HIGH: 4, MEDIUM: 7, LOW: 3
 
 ---
 
-## Agent 8: UI/UX User Journey Fixes (2026-05-03)
+#### HIGH Issues
 
-### Summary
+**HIGH-DRY-01: `cn()` utility function duplicated across 3 services**
+- Files involved:
+  - `/packages/ui/src/lib/utils.ts` (canonical implementation)
+  - `/open-seo-main/src/client/lib/utils.ts` (duplicate)
+  - `/AI-Writer/frontend/src/lib/utils.ts` (duplicate)
+- Description: The `cn()` function (clsx + tailwind-merge) is identically implemented in 3 locations. `apps/web` correctly re-exports from `@tevero/ui`, but open-seo-main and AI-Writer still have local copies.
+- Lines Duplicated: ~6 lines x 2 locations = 12 lines
+- Recommendation: Update open-seo-main and AI-Writer to import from `@tevero/ui` package. Both should already have the dependency; just update imports.
 
-Completed fixes for all CRITICAL, HIGH, and MEDIUM UI/UX user journey issues identified in the review.
+**HIGH-DRY-02: `fetchWithTimeout()` and `TimeoutError` duplicated between apps/web and open-seo-main**
+- Files involved:
+  - `/apps/web/src/lib/fetch-with-timeout.ts` (more complete, with additional timeout constants)
+  - `/open-seo-main/src/lib/fetch-with-timeout.ts` (basic implementation)
+- Description: Both services have their own `fetchWithTimeout()` implementation with identical core logic. The apps/web version has additional exported constants (LONG_RUNNING_TIMEOUT_MS, QUICK_CHECK_TIMEOUT_MS).
+- Lines Duplicated: ~65 lines
+- Recommendation: Extract to `@tevero/utils` package with full constant exports. Both services can then import the shared implementation.
 
-### Issues Fixed
+**HIGH-DRY-03: Currency formatting duplicated between apps/web and open-seo-main**
+- Files involved:
+  - `/apps/web/src/lib/currency.ts` (86 lines, with `formatCurrency`, `formatAmount`, `getCurrencySymbol`, `parseCurrency`)
+  - `/open-seo-main/src/lib/format-currency.ts` (228 lines, with `formatCents`, `formatCurrency`, `calculatePlan`, `getPlanName`)
+- Description: Both services implement currency formatting with different APIs and locale handling. The open-seo-main version has payment plan calculation logic mixed in.
+- Lines Duplicated: ~50 lines of core formatting logic
+- Recommendation: Extract shared currency formatting functions to `@tevero/utils`. Keep payment plan logic in open-seo-main but use shared formatters.
 
-#### CRITICAL Issues (2)
-
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| CRIT-01 | SEO Setup Page Missing - blocks entire audit journey | Created `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/page.tsx` with full onboarding flow: domain verification, sitemap import, initial audit setup. Includes loading.tsx and error.tsx with proper error handling. |
-| CRIT-02 | Missing Loading States - only 6 of 191 routes have loading.tsx | Added loading.tsx to: `/proposals/[token]`, `/invoices/[id]`, `/invoices/[id]/pay`, `/seo/setup` |
-
-#### HIGH Issues (4)
-
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| HIGH-01 | AddClientModal cannot be closed during creation | Added cancel button visible during creation state, abort controller for request cancellation, 60-second timeout protection, and cancellation confirmation dialog |
-| HIGH-02 | ConnectionWizard no back button | Added back navigation between wizard steps with `handleBack()` function and Back button in footer |
-| HIGH-03 | Voice Settings no retry button | Converted inline fetch to `loadData` callback and added retry button with RefreshCw icon in error state |
-| HIGH-04 | Analytics date range stale closure bug | Wrapped handlers in `useCallback` with proper dependencies, pass date range value directly to avoid stale closure |
-
-#### MEDIUM Issues (7)
-
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| MEDIUM-01 | Full-screen loading overlay blocks all interaction | Replaced blocking overlay with inline non-blocking "Updating data..." indicator |
-| MEDIUM-02 | OnboardingChecklist silently fails | Added `errorItemId`/`errorMessage` state, visual error indication, and retry button per failed item |
-| MEDIUM-03 | Article editor lacks beforeunload warning | Added `beforeunload` event listener that warns when `hasUnsavedChanges()` returns true or while generating |
-| MEDIUM-04 | Toast notifications not accessible | Added `role="alert"` and `aria-live="polite"` to toast containers in article editor and voice settings |
-| MEDIUM-05 | StepIndicator not accessible | Added `<nav>` wrapper with `aria-label`, `<ol role="list">`, step indicators with `aria-current="step"` and `aria-label` per step |
-| MEDIUM-06 | Limited ARIA labels on interactive elements | Added `aria-label`/`aria-valuetext` to sliders, `aria-expanded`/`aria-controls` to collapsibles, `aria-hidden` to decorative icons |
-| MEDIUM-07 | Missing focus management after modal close | Added `triggerRef` to store active element on open, restored focus with `setTimeout(() => triggerRef.current?.focus(), 0)` on close |
-
-### Files Modified
-
-1. `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/page.tsx` (NEW)
-2. `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/loading.tsx` (NEW)
-3. `/apps/web/src/app/(shell)/clients/[clientId]/seo/setup/error.tsx` (NEW)
-4. `/apps/web/src/app/proposals/[token]/loading.tsx` (NEW)
-5. `/apps/web/src/app/invoices/[id]/loading.tsx` (NEW)
-6. `/apps/web/src/app/invoices/[id]/pay/loading.tsx` (NEW)
-7. `/apps/web/src/components/onboarding/AddClientModal.tsx`
-8. `/apps/web/src/components/connections/ConnectionWizard.tsx`
-9. `/apps/web/src/app/(shell)/clients/[clientId]/settings/voice/page.tsx`
-10. `/apps/web/src/app/(shell)/clients/[clientId]/settings/voice/components/VoiceModeWizard.tsx`
-11. `/apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx`
-12. `/apps/web/src/app/(shell)/clients/[clientId]/onboarding/onboarding-checklist.tsx`
-13. `/apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx`
-
-### Verification
-
-- All fixes use existing shadcn/ui components
-- Consistent styling maintained across all changes
-- ARIA attributes follow WAI-ARIA 1.2 specification
-- Focus management follows WCAG 2.1 guidelines
+**HIGH-DRY-04: `formatNumber()` duplicated 3 times within open-seo-main**
+- Files involved:
+  - `/open-seo-main/src/client/features/domain/utils.ts`
+  - `/open-seo-main/src/client/features/backlinks/backlinksPageUtils.ts`
+  - `/open-seo-main/src/client/features/keywords/utils.ts`
+- Description: Nearly identical `formatNumber()` implementations in 3 feature modules within the same service. Minor variations in decimal handling.
+- Lines Duplicated: ~15 lines x 3 = 45 lines
+- Recommendation: Consolidate to single `/open-seo-main/src/client/lib/format.ts` and import across features.
 
 ---
 
-## Section 3: Data Flow Integrity (DFI) Fixes
+#### MEDIUM Issues
 
-**Reviewed by:** Agent 3 (Data Flow Integrity)
-**Date:** 2026-05-03
-**Status:** COMPLETE
+**MEDIUM-DRY-01: Pagination types defined separately in multiple locations**
+- Files involved:
+  - `/open-seo-main/src/shared/api-schemas.ts` (PaginationRequestSchema, PaginationResponseSchema)
+  - `/apps/web/src/lib/utils/api-validation.ts` (PaginatedResponse<T>)
+  - `/apps/web/src/actions/analytics/get-opportunities.ts` (PaginatedResponse<T>)
+  - `/open-seo-main/src/routes/api/payments/installments.ts` (PaginatedResponse interface)
+  - Multiple service-specific `PaginatedX` interfaces
+- Description: Pagination response types are defined inconsistently across services with slightly different shapes.
+- Recommendation: Define canonical pagination types in `@tevero/types` package. Export both generic `PaginatedResponse<T>` and Zod schemas.
 
-### Summary
+**MEDIUM-DRY-02: Error response schemas and normalization duplicated**
+- Files involved:
+  - `/open-seo-main/src/shared/api-schemas.ts` (ErrorResponseSchema, createErrorResponse, normalizeBackendError)
+  - `/apps/web/src/lib/server-fetch.ts` (NormalizedError, normalizeBackendError)
+  - `/open-seo-main/src/server/lib/errors.ts` (AppError class)
+- Description: Error normalization logic exists in both services. apps/web has its own `normalizeBackendError()` that handles responses from open-seo-main.
+- Lines Duplicated: ~80 lines of error handling logic
+- Recommendation: Share error types via `@tevero/types`. Keep service-specific error handling but use shared types.
 
-Fixed 13 data flow integrity issues across the TeveroSEO platform spanning transaction boundaries, cache invalidation, idempotency, retry mechanisms, race conditions, and orphan record handling.
+**MEDIUM-DRY-03: SEVERITY_COLORS and status color maps defined in multiple components**
+- Files involved:
+  - `/open-seo-main/src/routes/_project/p/$projectId/audit/$pageId/-components/FindingsPanel.tsx` (SEVERITY_COLORS)
+  - `/apps/web/src/components/seo/FindingsTable.tsx` (SEVERITY_COLORS)
+  - `/apps/web/src/app/(shell)/clients/[clientId]/changes/components/ChangeList.tsx` (STATUS_COLORS)
+  - `/packages/ui/src/components/severity-dots.tsx` (TIER_COLORS)
+- Description: Color mappings for severities and statuses are defined inline in component files.
+- Recommendation: Consolidate to `@tevero/ui/lib/tokens.ts` which already exports color tokens. Add semantic color maps.
 
-### Issues Fixed
+**MEDIUM-DRY-04: `formatPercent()` implemented 3 times**
+- Files involved:
+  - `/open-seo-main/src/server/services/report/section-renderer.ts`
+  - `/open-seo-main/src/server/services/report/report-renderer.ts`
+  - `/apps/web/src/components/pixel/analytics-dashboard.tsx`
+- Description: Local `formatPercent()` implementations with slightly different signatures (locale handling vs fixed formatting).
+- Lines Duplicated: ~15 lines x 3
+- Recommendation: Add `formatPercent()` to `@tevero/ui/lib/format-time.ts` or new `format.ts` module.
 
-#### CRITICAL Issues (1)
+**MEDIUM-DRY-05: Date formatting utilities inconsistently distributed**
+- Files involved:
+  - `/packages/ui/src/lib/format-time.ts` (canonical: formatRelativeTime, formatShortDate, formatDateTime, formatTime)
+  - `/open-seo-main/src/client/features/backlinks/backlinksPageUtils.ts` (formatRelativeTimestamp - different implementation)
+- Description: packages/ui has canonical date formatters, but open-seo-main has a local `formatRelativeTimestamp()` that behaves differently.
+- Recommendation: Update open-seo-main to import from `@tevero/ui` formatters.
 
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| DFI-008 | Auto-publish lacks transaction rollback | Wrapped all database operations in `_save_result()` in try/except with explicit `db.rollback()` on failure. Post-commit operations (GSC submission, link graph update) now run ONLY after successful commit to prevent side effects on rollback. |
+**MEDIUM-DRY-06: API response schemas duplicated between services**
+- Files involved:
+  - `/open-seo-main/src/shared/api-schemas.ts` (~527 lines)
+  - `/apps/web/src/lib/validations/api-schemas.ts` (~267 lines)
+- Description: Both services define their own Zod schemas for API validation. Some schemas overlap (e.g., date validation, domain validation, schedule schemas).
+- Recommendation: Extract shared schemas to `@tevero/types` with Zod. Service-specific schemas remain local.
 
-#### HIGH Issues (5)
-
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| DFI-007 | revalidatePath only clears Next.js cache, not Redis | Created unified cache invalidation module at `/apps/web/src/lib/cache/unified-invalidation.ts` that clears both Next.js (`revalidatePath`) and Redis caches. Provides `invalidateClientData()` and `invalidateWorkspaceData()` functions with category-based invalidation patterns. |
-| DFI-009 | Voice profile fetch fails silently | Added retry with exponential backoff (3 attempts, 1-10s delays) to `fetch_voice_profile()` in article generation service. Created `_fetch_voice_profile_once()` helper with proper exception handling. |
-| DFI-010 | CMS publish lacks idempotency | Added `idempotency_key` field to `PublishResult` dataclass and `publish()` method signature. Implemented in-memory idempotency cache in `WordPressPublisher` with 15-minute TTL, thread-safe lock, and automatic cleanup of expired keys. |
-| DFI-012 | Stale data served without indication | Added `markCacheAsStale()`, `isCacheStale()`, and `getStaleInfo()` functions to unified-invalidation module. Failed background refreshes now mark cached data with `_stale`, `_staleAt`, and `_staleReason` metadata for UI warning display. |
-| DFI-013 | Article generation service retry | Implemented retry configuration constants and exponential backoff loop in article generation service's voice profile fetch, with configurable delays and max retries. |
-
-#### MEDIUM Issues (7)
-
-| ID | Issue | Fix Applied |
-|----|-------|-------------|
-| DFI-001 | No optimistic locking for article status | Added `version` field to `ScheduledArticle` model for optimistic locking. All status update operations now increment version on each update to prevent concurrent update race conditions. |
-| DFI-002 | Multi-table operations not wrapped in transactions | All multi-table operations in publishing pipeline now use explicit transaction blocks with proper rollback on failure (implemented as part of DFI-008 fix). |
-| DFI-003 | Cache invalidation missing related entities | Category-based cache invalidation in unified-invalidation module handles related entity patterns (e.g., dashboard invalidation also clears sparkline and goals caches). |
-| DFI-004 | Event ordering not guaranteed | Sequence numbers tracked via version field increments ensure proper ordering of state changes for audit trail. |
-| DFI-005 | No cleanup job for orphan detection | Created `/AI-Writer/backend/services/orphan_cleanup_service.py` with scheduled job running every 6 hours. Detects and recovers articles stuck in 'publishing' (>30 min) or 'generating' (>60 min) states, cleans up orphan publishing logs. |
-| DFI-006 | Client changes not synced across services | Webhook infrastructure for cross-service data synchronization documented; unified cache invalidation provides foundation for consistent state across Next.js and AI-Writer services. |
-| DFI-011 | Multi-step workflows lack compensation | Saga pattern implemented via post-commit operation separation in auto-publish executor. Operations outside core transaction (GSC, link graph) can fail independently without corrupting article state. |
-
-### Files Modified
-
-1. `/AI-Writer/backend/models/publishing.py` - Added version field for optimistic locking (DFI-001)
-2. `/AI-Writer/backend/services/auto_publish_executor.py` - Transaction boundaries, rollback, version increments (DFI-001, DFI-008)
-3. `/AI-Writer/backend/services/article_generation_service.py` - Retry with exponential backoff (DFI-009, DFI-013)
-4. `/AI-Writer/backend/services/cms_publisher/abstract_publisher.py` - Idempotency key support (DFI-010)
-5. `/AI-Writer/backend/services/cms_publisher/wordpress_publisher.py` - Idempotency cache implementation (DFI-010)
-6. `/AI-Writer/backend/services/orphan_cleanup_service.py` (NEW) - Orphan detection and cleanup (DFI-005)
-7. `/apps/web/src/lib/cache/unified-invalidation.ts` (NEW) - Unified cache invalidation (DFI-007, DFI-012)
-8. `/apps/web/src/lib/cache/index.ts` - Export unified invalidation utilities
-
-### Verification
-
-- All database operations use explicit transaction boundaries
-- Idempotency prevents duplicate CMS posts from retries or double-submissions
-- Orphan cleanup job recovers stuck articles automatically
-- Cache invalidation covers both Next.js and Redis layers
-- Version field enables optimistic locking for concurrent update detection
+**MEDIUM-DRY-07: Client type definitions not using shared package**
+- Files involved:
+  - `/packages/types/src/client.ts` (canonical Client interface)
+  - Multiple component files defining local Client interfaces with extended fields
+- Description: The shared `Client` type in packages/types is minimal. Components extend it locally rather than having a single extended type.
+- Recommendation: Define comprehensive `ClientWithMetrics` and related extended types in `@tevero/types`.
 
 ---
 
-## Security Fixes Applied (2026-05-03)
+#### LOW Issues
 
-**Agent:** Security Fix Mission
-**Domain:** Cross-Platform Security Vulnerabilities
+**LOW-DRY-01: Minor test utilities duplicated**
+- Files: Various test files with local `setup()` and `cleanup()` helpers
+- Impact: Low - tests are isolated
+- Recommendation: Consider shared test utilities package if test patterns grow
 
-### Summary
+**LOW-DRY-02: Local API endpoint constants**
+- Files: Various components defining `/api/...` paths inline
+- Impact: Low - compile-time values
+- Recommendation: Extract API route constants to shared config if needed
 
-Applied security fixes for 13 vulnerabilities across the TeveroSEO platform (2 CRITICAL, 5 HIGH, 6 MEDIUM). All fixes follow fail-closed security principles with comprehensive logging.
+**LOW-DRY-03: Similar loading/error state patterns**
+- Files: Multiple components implementing similar data-fetching patterns
+- Impact: Low - handled by DataStateWrapper component
+- Recommendation: Already addressed by `@tevero/ui` DataStateWrapper component
 
-### CRITICAL Fixes (2)
+---
 
-#### CRIT-01: Invoice Payment Proxy Unauthenticated Access
-**File:** `apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts`
+#### Consolidation Opportunities
 
-**Problem:** The invoice payment proxy route allowed unauthenticated access, enabling anyone to fetch invoice details and create payment sessions without authentication.
+| Pattern | Locations | Lines Duplicated | Recommended Action |
+|---------|-----------|------------------|-------------------|
+| `cn()` utility | 3 services | 12 | Import from `@tevero/ui` |
+| `fetchWithTimeout()` | 2 services | 65 | Create `@tevero/utils` package |
+| Currency formatting | 2 services | 50 | Create `@tevero/utils/currency` |
+| `formatNumber()` | 3 features in open-seo | 45 | Consolidate to `/client/lib/format.ts` |
+| Pagination types | 5+ locations | 100+ | Add to `@tevero/types` |
+| Error response types | 2 services | 80 | Share via `@tevero/types` |
+| Severity/status colors | 4 components | 40 | Add to `@tevero/ui/lib/tokens` |
+| `formatPercent()` | 3 locations | 15 | Add to `@tevero/ui/lib/format-time` |
+| Date formatters | 2 services | 20 | Import from `@tevero/ui` |
+| API schemas | 2 services | 200+ | Extract common to `@tevero/types` |
 
-**Fix Applied:**
-- Added `requireAuth()` for both GET and POST methods
-- Added `verifyInvoiceOwnership()` to verify invoice belongs to authenticated user/org
-- Added `validateCsrf()` for POST requests
-- Added `withRateLimit()` with stricter limits for POST (5 req/min) vs GET (30 req/min)
-- Fail-closed behavior: access denied if ownership verification fails
-- All failures logged for monitoring
+---
 
-#### CRIT-02: FFmpeg Command Injection in Video Studio
-**File:** `AI-Writer/backend/services/video_studio/edit_service.py`
+#### Existing Shared Code (packages/)
 
-**Problem:** User-supplied text, colors, and positions were passed directly to FFmpeg drawtext filter without sanitization, allowing command injection via shell metacharacters.
+**Properly shared in `@tevero/ui`:**
+- `cn()` - Tailwind class merge utility
+- Design tokens (colors, spacing, shadows, typography)
+- 60+ UI components (Button, Card, Dialog, Table, etc.)
+- Date formatting utilities (formatRelativeTime, formatShortDate, formatDateTime, formatTime)
+- Status configuration (status-config.ts)
+- Keyboard patterns and accessibility utilities
 
-**Fix Applied:**
-- Created `_sanitize_ffmpeg_text()` function escaping: backslashes, single/double quotes, colons, semicolons, brackets, newlines
-- Created `_validate_color()` with strict regex: `^[a-zA-Z]+(@[0-9.]+)?$` (color name with optional alpha)
-- Created `_validate_numeric_range()` for bounds checking on numeric inputs
-- Created `ALLOWED_POSITIONS` allowlist: `["top", "bottom", "center", "top-left", "top-right", "bottom-left", "bottom-right"]`
-- Created `_sanitize_error_message()` for production error message sanitization
-- All endpoints use HTTPException re-raise pattern to prevent stack trace leakage
+**Properly shared in `@tevero/types`:**
+- `Client` interface
+- `Project` interface
+- `AuditStatus` type
+- OAuth-related types (OAuthProvider, OAuthConnection, etc.)
+- Report types (ReportTemplate, ReportSection, etc.)
 
-### HIGH Fixes (5)
+**Missing from shared packages (recommended additions):**
+1. `@tevero/utils` package:
+   - `fetchWithTimeout()` with timeout constants
+   - Currency formatting utilities
+   - Number formatting utilities
+   - Percent formatting utilities
 
-#### HIGH-01: Query Token Authentication (Signed URLs)
-**Files:** `apps/web/src/lib/auth/signed-urls.ts` (NEW), `apps/web/src/lib/auth/index.ts`
+2. Extensions to `@tevero/types`:
+   - Pagination schemas (both Zod and TypeScript)
+   - Error response schemas
+   - Extended Client types (ClientWithMetrics, etc.)
+   - API response wrapper types
 
-**Problem:** Media endpoints used simple query tokens without cryptographic validation or expiration, allowing token reuse and potential forgery.
+3. Extensions to `@tevero/ui/lib/tokens`:
+   - Semantic color maps (SEVERITY_COLORS, STATUS_COLORS, TIER_COLORS)
 
-**Fix Applied:**
-- Created `signed-urls.ts` module with HMAC-SHA256 signed URLs
-- `generateSignedUrlToken()`: Creates URL-safe token with embedded expiration
-- `generateSignedUrl()`: Creates complete URL with `sig` and `exp` query parameters
-- `verifySignedUrlToken()`: Validates signature and expiration with timing-safe comparison
-- Default TTL: 1 hour
-- Falls back to `INTERNAL_API_KEY` if `SIGNED_URL_SECRET` not set
-- All validation failures logged with truncated resource paths
+---
 
-#### HIGH-02: Beacon Token HMAC Validation
-**Status:** VERIFIED - Already properly implemented in `apps/web/src/lib/auth/beacon-tokens.ts`
+#### Action Priority
 
-The beacon token module already uses HMAC-SHA256 with timing-safe comparison and expiration validation.
+**Immediate (High Impact, Low Risk):**
+1. Update open-seo-main and AI-Writer to import `cn()` from `@tevero/ui`
+2. Consolidate open-seo-main's 3 `formatNumber()` implementations
+3. Update open-seo-main to use `@tevero/ui` date formatters
 
-#### HIGH-03: X-Forwarded-For Header Spoofing
-**Files:** `apps/web/src/app/api/proposals/beacon/route.ts`, `apps/web/src/app/p/[token]/page.tsx`
+**Short-term (High Impact, Medium Effort):**
+1. Create `@tevero/utils` package with:
+   - `fetchWithTimeout()` and timeout constants
+   - Currency formatting utilities
+   - Number formatting utilities
+2. Add semantic color maps to `@tevero/ui/lib/tokens`
 
-**Problem:** IP address was extracted from `X-Forwarded-For` header without validating the request came from a trusted proxy.
+**Medium-term (Medium Impact, Higher Effort):**
+1. Extract shared pagination types to `@tevero/types`
+2. Extract shared error response types to `@tevero/types`
+3. Consolidate API validation schemas where appropriate
 
-**Fix Applied:**
-- Added `validateTrustedProxy()` function checking `X-Proxy-Secret` against `PROXY_SECRET` env var
-- When proxy secret matches: extracts IP from `X-Forwarded-For`, `CF-Connecting-IP`, or `x-vercel-forwarded-for`
-- When proxy secret missing/invalid: falls back to `127.0.0.1` for tracking (fail-closed)
-- Security logging on untrusted proxy detection
-- Supports Cloudflare, Vercel, and custom proxy setups
+---
 
-#### HIGH-04: Missing API Authorization
-**Status:** VERIFIED - All reviewed API routes have direct `auth()` calls
+---
 
-Routes use Clerk's `auth()` function directly rather than middleware, which is intentional for JSON error responses.
+### Agent 15: Client Onboarding Journey Review
 
-#### HIGH-05: JWT Clock Skew Tolerance
-**Status:** DEFERRED - Managed by Clerk
+**Status:** Complete
+**Journey Steps Traced:** 5 primary steps
+**Blocking Issues Found:** 1
+**Issues Found:** 2 CRITICAL, 3 HIGH, 4 MEDIUM
 
-Clerk manages JWT validation including clock skew tolerance. Configuration changes require Clerk dashboard updates.
+#### Journey Overview
 
-### MEDIUM Fixes (6)
+The client onboarding journey follows this path:
+1. **Signup** - User signs up via Clerk (`/sign-up`)
+2. **Shell Access** - Authenticated user accesses the app shell
+3. **Client List** - User lands on `/clients` (or `/dashboard`)
+4. **Create Client** - User creates a new client via `AddClientModal`
+5. **Client Dashboard** - User lands on `/clients/{clientId}` with setup checklist
+6. **Configure** - User configures brand voice, CMS connections
+7. **First Value** - User initiates SEO audit or content generation
 
-#### MEDIUM-01: CORS Wildcard Configuration
-**Status:** VERIFIED - Intentional with security rationale
+#### CRITICAL Issues
 
-The CORS configuration uses wildcards intentionally for:
-- Public embedding support (proposals, beacons, pixel tracking)
-- All sensitive operations protected by authentication checks, not CORS
-- Documented in code comments
+**CRIT-15-01: Client creation API schema mismatch between frontend and backend**
+- **File:** `/apps/web/src/components/onboarding/AddClientModal.tsx:169`
+- **Backend:** `/AI-Writer/backend/api/clients.py:47-49`
+- **Problem:** The frontend sends `{ name, website_url }` but the backend schema expects `{ name, website }` (without the `_url` suffix). Additionally, the frontend validates URL format but the backend schema marks `website` as optional without URL validation.
+- **Code (Frontend):**
+  ```tsx
+  const newClient = await apiPost<{
+    id: string;
+    name: string;
+    website_url: string | null;
+  }>("/api/clients", { name: name.trim(), website_url: url.trim() });
+  ```
+- **Code (Backend):**
+  ```python
+  class ClientCreate(BaseModel):
+      name: str = Field(..., min_length=1, max_length=255)
+      website_url: Optional[str] = Field(None, max_length=500)
+  ```
+- **Actual State:** After deeper inspection, the schemas DO match (`website_url`). However, there is NO URL format validation on the backend. The frontend validates http/https prefix but the backend could accept malformed URLs.
+- **Impact:** Backend accepts invalid URLs like `javascript:alert(1)` or `data:text/html,...` which could cause issues when used later.
+- **Fix:** Add URL validation to backend:
+  ```python
+  from pydantic import HttpUrl
+  website_url: Optional[HttpUrl] = Field(None, max_length=500)
+  ```
 
-#### MEDIUM-02: Verbose Error Messages in Production
-**File:** `AI-Writer/backend/services/video_studio/edit_service.py`
+**CRIT-15-02: Cross-service client_id propagation not verified**
+- **Files:** 
+  - `/apps/web/src/app/api/clients/route.ts` - proxies to AI-Writer
+  - `/AI-Writer/backend/api/clients.py` - creates client in `alwrity` database
+  - No open-seo-main sync mechanism found
+- **Problem:** When a client is created in AI-Writer, there is no automatic synchronization to open-seo-main's database. The `getClient()` function in `/apps/web/src/lib/api/clients.ts` calls open-seo-main's API (`getOpenSeo`), but clients are created in AI-Writer.
+- **Impact:** New clients created via AddClientModal will NOT have corresponding records in open-seo-main, causing the onboarding checklist page (`/clients/{clientId}/onboarding`) to return 404.
+- **Evidence:** 
+  ```tsx
+  // page.tsx line 18-20
+  const [checklist, client] = await Promise.all([
+    getClientChecklist(clientId),  // calls open-seo-main
+    getClient(clientId),            // calls open-seo-main
+  ]);
+  ```
+- **Fix:** Either:
+  1. Add webhook/sync mechanism to propagate client creation to open-seo-main
+  2. Or modify the API routes to proxy client creation to both services
+  3. Or consolidate client storage to one service
 
-**Problem:** Exception handlers returned raw error messages including file paths and stack traces.
+#### HIGH Issues
 
-**Fix Applied:**
-- Created `_sanitize_error_message()` function detecting sensitive patterns:
-  - File paths (`/home/`, `/var/`, `/usr/`, `C:\`)
-  - Python tracebacks (`Traceback (most recent call last)`)
-  - SQLAlchemy errors (`sqlalchemy.`)
-- Production mode returns generic messages; development mode returns full details
-- Uses `IS_PRODUCTION` flag from environment
+**HIGH-15-01: Missing loading state for clients page initial fetch**
+- **File:** `/apps/web/src/app/(shell)/clients/page.tsx`
+- **Problem:** The clients page is a client component that uses `useEffect` to fetch clients. There is NO `loading.tsx` file for this route, so users see content flash or layout shift during initial load.
+- **Impact:** Poor UX - users see empty state briefly before data loads, causing confusion about whether they have clients.
+- **Fix:** Either:
+  1. Add `/apps/web/src/app/(shell)/clients/loading.tsx` with skeleton UI
+  2. Or convert to Server Component for instant data availability
 
-#### MEDIUM-03: Environment Detection Inconsistency
-**File:** `AI-Writer/backend/main.py`
+**HIGH-15-02: No redirect after signup - user lands on empty state**
+- **File:** `/apps/web/middleware.ts`
+- **Problem:** After successful Clerk signup, users are not redirected to an onboarding flow or guided setup. They land on the default route which shows clients list (empty for new users). The `GettingStartedCard` component helps but appears only if `secretsLoading` is false.
+- **Impact:** New users see "No clients yet" empty state without clear guidance on what to do first. The Getting Started card may flash in after loading.
+- **Fix:** Add post-signup redirect or first-time user detection:
+  ```tsx
+  // In middleware.ts after authentication check
+  if (isFirstTimeUser(sessionClaims)) {
+    return NextResponse.redirect(new URL('/onboarding', req.url));
+  }
+  ```
 
-**Problem:** CORS and production config used different environment variables (`NODE_ENV` vs `ENV`).
+**HIGH-15-03: Client setup checklist not persisted across services**
+- **File:** `/apps/web/src/app/(shell)/clients/[clientId]/components/ClientSetupChecklist.tsx`
+- **Problem:** The `ClientSetupChecklist` component shows a hardcoded 4-step checklist (Client added, Intelligence gathering, Configure CMS, Publish first article) but this state is not persisted to any database. The `intelligenceStatus` is fetched from `/api/client-intelligence/{clientId}` but CMS configuration and article publication status are not checked.
+- **Impact:** Users cannot track real progress - the checklist shows incorrect completion status.
+- **Fix:** 
+  1. Fetch actual CMS configuration status from client settings
+  2. Fetch actual article publication count
+  3. Persist checklist completion to database
 
-**Fix Applied:**
-- Standardized on `ENV` variable (what `validate_production_config` uses)
-- Added fallback: `os.getenv("ENV") or os.getenv("NODE_ENV", "development")`
-- Added comment explaining the standardization
+#### MEDIUM Issues
 
-#### MEDIUM-04: Ownership Cache TTL
-**File:** `apps/web/src/lib/auth/client-ownership.ts`
+**MED-15-01: API secrets check in GettingStartedCard swallows errors**
+- **File:** `/apps/web/src/components/onboarding/GettingStartedCard.tsx:64-66`
+- **Code:**
+  ```tsx
+  .catch(() => {
+    if (!cancelled) setApisReady(false);
+  })
+  ```
+- **Problem:** API secrets status check silently swallows all errors, setting `apisReady=false` without distinguishing between "not configured" and "API error".
+- **Impact:** If the secrets API is down, users are incorrectly shown "Configure API integrations" as incomplete even if they're actually configured.
+- **Fix:** Add error state and distinguish between "unconfigured" and "error":
+  ```tsx
+  const [secretsError, setSecretsError] = useState<string | null>(null);
+  // In catch:
+  .catch((err) => {
+    if (!cancelled) {
+      setSecretsError("Could not check API configuration status");
+      setApisReady(false);
+    }
+  })
+  ```
 
-**Problem:** 2-minute cache TTL allowed stale ownership data after permission revocation.
+**MED-15-02: Client creation modal allows duplicate submissions**
+- **File:** `/apps/web/src/components/onboarding/AddClientModal.tsx:145-224`
+- **Problem:** While the modal shows a "creating" state, the Submit button is only disabled when `!name.trim() || !url.trim()`. If the API request is slow, rapid clicks before the step changes to "creating" could trigger duplicate submissions.
+- **Impact:** Potential duplicate client creation (mitigated by the `step` state transition, but not fully protected).
+- **Fix:** Add explicit submission guard:
+  ```tsx
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // In handleSubmit:
+  if (isSubmitting) return;
+  setIsSubmitting(true);
+  // And disable button:
+  disabled={!name.trim() || !url.trim() || isSubmitting}
+  ```
 
-**Fix Applied:**
-- Reduced `OWNERSHIP_CACHE_TTL` from 120 seconds to 30 seconds
-- Balance between security (faster revocation) and performance (avoid excessive DB queries)
+**MED-15-03: Onboarding complete page can show stale data**
+- **File:** `/apps/web/src/app/(shell)/clients/[clientId]/onboarding/complete/page.tsx`
+- **Problem:** The page is a Server Component that fetches checklist data, but if the user navigates back from completion, the cached data might show incomplete state while the redirect logic expects complete state.
+- **Impact:** Edge case: User might see a brief flash of the completion page before being redirected back to onboarding if cache is stale.
+- **Fix:** Use `revalidatePath` or add `export const revalidate = 0` for this route.
 
-#### MEDIUM-05: Console.error Information Leakage
-**File:** `apps/web/src/lib/auth/client-ownership.ts`
+**MED-15-04: Session persistence relies on Zustand persist but cookie storage may fail**
+- **File:** `/apps/web/src/stores/clientStore.ts:93-98`
+- **Code:**
+  ```tsx
+  storage: createJSONStorage(() => cookieStorage),
+  ```
+- **Problem:** The `activeClientId` is persisted to cookies via Zustand persist middleware. If cookies are blocked or storage fails, the active client is lost on refresh but no error is shown.
+- **Impact:** Users with strict cookie settings may lose their active client selection on each page load.
+- **Fix:** Add fallback to localStorage and error handling:
+  ```tsx
+  storage: createJSONStorage(() => {
+    try {
+      return cookieStorage;
+    } catch {
+      return localStorage;
+    }
+  }),
+  ```
 
-**Problem:** Used `console.error()` which could expose error details in browser console.
+#### Journey Flow Analysis
 
-**Fix Applied:**
-- Replaced `console.error()` with `logger.error()` for structured server-side logging
-- Errors now go to structured logging system, not browser console
+| Step | Route | Error Handling | Loading State | Next Action Clear | Status |
+|------|-------|----------------|---------------|-------------------|--------|
+| 1. Signup | `/sign-up` | Clerk handles | Clerk handles | Redirect to app | PASS |
+| 2. Auth Check | `middleware.ts` | Redirects to sign-in | N/A | N/A | PASS |
+| 3. Clients List | `/clients` | ErrorBoundary + retry | Skeleton cards | "Add Client" button | WARN - no loading.tsx |
+| 4. Create Client | `AddClientModal` | Error message shown | Spinner + message | Auto-redirect | PASS |
+| 5. Client Dashboard | `/clients/{id}` | ErrorBoundary | Skeleton stats | Setup checklist | WARN - checklist not persisted |
+| 6. Configure Settings | `/clients/{id}/settings` | Error per tab | Skeleton loading | Save buttons | PASS |
+| 7. Onboarding Checklist | `/clients/{id}/onboarding` | notFound() | Server Component | Action buttons | FAIL - cross-service sync |
 
-#### MEDIUM-06: Production Flag Detection
-**Status:** ADDRESSED in MEDIUM-03
+#### Strengths Identified
 
-The environment detection fix also standardizes production flag detection across AI-Writer.
+1. **Excellent error boundaries**: The shell layout wraps children in ErrorBoundary, and individual pages have dedicated error.tsx files with retry functionality.
 
-### Files Modified
+2. **Good empty states**: The clients page shows a helpful empty state with Building2 icon and clear "Add Client" CTA.
 
-| File | Changes |
-|------|---------|
-| `apps/web/src/app/api/proxy/invoices/[id]/pay/route.ts` | Auth, ownership, CSRF, rate limiting |
-| `AI-Writer/backend/services/video_studio/edit_service.py` | Input sanitization, error sanitization |
-| `apps/web/src/lib/auth/signed-urls.ts` | NEW - Signed URL generation/validation |
-| `apps/web/src/lib/auth/index.ts` | Export signed URL utilities |
-| `apps/web/src/app/api/proposals/beacon/route.ts` | Trusted proxy validation |
-| `apps/web/src/app/p/[token]/page.tsx` | Trusted proxy validation |
-| `apps/web/src/lib/auth/client-ownership.ts` | Reduced TTL, structured logging |
-| `AI-Writer/backend/main.py` | Environment variable standardization |
+3. **Comprehensive GettingStartedCard**: Guides new users through initial setup with 3-step onboarding checklist.
 
-### Remaining Work
+4. **Client creation UX**: Modal includes timeout protection (60s), cancellation support, and clear progress indication.
 
-1. **HIGH-01 Migration:** Migrate existing media endpoints to use new `signed-urls.ts` module
-2. **HIGH-04 Audit:** Complete review of all API routes for authorization gaps
-3. **HIGH-05 Config:** Review Clerk dashboard for JWT clock skew settings
+5. **Intelligence gathering integration**: After client creation, the system automatically triggers website scraping if BrightData + DataForSEO are configured.
 
-### Security Verification Checklist
+6. **Secure credential handling**: CMS credentials (wp_app_password, shopify_api_key) are write-only and never returned in API responses.
 
-- [x] All CRITICAL vulnerabilities patched
-- [x] Fail-closed behavior on all auth checks
-- [x] Security events logged for monitoring
-- [x] Input sanitization uses allowlists where possible
-- [x] Cryptographic functions use timing-safe comparison
-- [x] Production error messages sanitized
-- [x] Cache TTLs reduced to minimize stale data window
+7. **Rate limiting on client creation**: POST endpoint uses `RATE_LIMITS.HEAVY` (20 req/min) to prevent abuse.
+
+8. **Resource limits**: MAX_CLIENTS_PER_USER = 100 prevents runaway client creation.
+
+---
+
+### Agent 4: API Contract Validation Review
+
+**Status:** Complete
+**Endpoints Analyzed:** 68 (apps/web: 24, open-seo-main: 29, AI-Writer: 15)
+**Schemas Found:** 
+- apps/web: 18 Zod schemas (centralized in `lib/validations/api-schemas.ts`)
+- open-seo-main: 42 Zod schemas (centralized in `shared/api-schemas.ts`)
+- AI-Writer: 48 Pydantic models (distributed across route files)
+**Issues Found:** 0 CRITICAL, 2 HIGH, 5 MEDIUM, 4 LOW
+
+---
+
+#### CRITICAL Issues
+
+None found. All three services implement comprehensive input validation at API boundaries.
+
+---
+
+#### HIGH Issues
+
+**HIGH-API-01: Inconsistent Error Response Format Between Services**
+
+- **Files:**
+  - `/apps/web/src/app/api/clients/route.ts:45-52` - Returns `{ error: string, issues?: ZodIssue[] }`
+  - `/open-seo-main/src/shared/api-schemas.ts:45-52` - Uses `ErrorResponseSchema` with `code`, `message`, `details`
+  - `/AI-Writer/backend/api/clients.py:183-190` - Mixed patterns: some use HTTPException, others return dict
+- **Problem:** Error response shapes differ across services:
+  ```typescript
+  // apps/web pattern
+  { error: "Validation failed", issues: [...] }
+  
+  // open-seo-main pattern (ErrorResponseSchema)
+  { code: "VALIDATION_ERROR", message: "...", details: {...} }
+  
+  // AI-Writer pattern (varies)
+  { "error": "..." } OR { "detail": "..." } OR HTTPException
+  ```
+- **Impact:** Frontend must handle multiple error formats; cross-service error propagation loses context.
+- **Fix:** Standardize on `ErrorResponseSchema` pattern across all services:
+  ```typescript
+  interface StandardError {
+    code: string;       // Machine-readable error code
+    message: string;    // Human-readable message
+    details?: unknown;  // Optional validation details
+    requestId?: string; // Correlation ID
+  }
+  ```
+
+**HIGH-API-02: Missing Response Schema Validation in apps/web Proxy Routes**
+
+- **Files:**
+  - `/apps/web/src/app/api/clients/route.ts:78-95`
+  - `/apps/web/src/app/api/articles/route.ts:62-80`
+- **Problem:** When proxying responses from AI-Writer backend, apps/web forwards the response without validating the shape. If AI-Writer returns unexpected data, it propagates to the frontend unchecked.
+- **Code:**
+  ```typescript
+  // Current: No validation
+  const response = await fetch(`${AI_WRITER_URL}/api/clients/${clientId}`);
+  const data = await response.json();
+  return NextResponse.json(data); // Unvalidated!
+  
+  // Recommended: Validate before forwarding
+  const parsed = ClientResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    logger.error('Backend response validation failed', { errors: parsed.error });
+    return NextResponse.json({ error: 'Invalid backend response' }, { status: 502 });
+  }
+  return NextResponse.json(parsed.data);
+  ```
+- **Impact:** Type safety breaks at service boundaries; frontend may receive malformed data.
+- **Fix:** Add response schema validation in all proxy routes using Zod.
+
+---
+
+#### MEDIUM Issues
+
+**MED-API-01: HTTP Status Code Inconsistency for Validation Errors**
+
+- **Files:**
+  - `/apps/web/src/app/api/clients/route.ts:48` - Returns `400` for validation errors
+  - `/AI-Writer/backend/api/clients.py:52` - Returns `422` (FastAPI default)
+  - `/open-seo-main/src/routes/api/translate.ts:38` - Returns `400`
+- **Problem:** Zod validation failures return `400 Bad Request` in TypeScript services but `422 Unprocessable Entity` in FastAPI (Python).
+- **Impact:** Frontend error handling must check multiple status codes.
+- **Fix:** Standardize on `400` for client input errors or document the difference. FastAPI can be configured:
+  ```python
+  @app.exception_handler(RequestValidationError)
+  async def validation_exception_handler(request, exc):
+      return JSONResponse(status_code=400, content={"code": "VALIDATION_ERROR", ...})
+  ```
+
+**MED-API-02: Optional Field Handling Differs Between Services**
+
+- **Files:**
+  - `/open-seo-main/src/shared/api-schemas.ts:78-95` - Uses `z.string().optional().default("")`
+  - `/AI-Writer/backend/api/clients.py:25-40` - Uses `Optional[str] = None`
+- **Problem:** Zod schemas often provide defaults for optional fields, while Pydantic leaves them as `None`. This causes:
+  - open-seo-main returns empty strings for missing fields
+  - AI-Writer returns null/undefined for missing fields
+- **Impact:** Frontend must handle both `""` and `null` for the same semantic "not provided".
+- **Fix:** Document explicit convention: use `null` for "not provided", empty string only for explicit empty value.
+
+**MED-API-03: Pagination Validation Gap in List Endpoints**
+
+- **Files:**
+  - `/apps/web/src/app/api/clients/route.ts:15-22` - No pagination schema
+  - `/open-seo-main/src/shared/api-schemas.ts:112-130` - Has `PaginationRequestSchema`
+  - `/AI-Writer/backend/api/clients.py:45-55` - Uses `limit: int = Query(50, ge=1, le=100)`
+- **Problem:** apps/web list endpoints accept raw query params without validation:
+  ```typescript
+  // Current: No validation
+  const limit = parseInt(searchParams.get('limit') || '50');
+  
+  // Missing: max limit check, negative value handling
+  ```
+- **Impact:** Large `limit` values could cause memory issues; negative values cause unexpected behavior.
+- **Fix:** Apply `PaginationRequestSchema` from open-seo-main or create shared validation:
+  ```typescript
+  const PaginationSchema = z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+    cursor: z.string().optional()
+  });
+  ```
+
+**MED-API-04: Date Format Inconsistency**
+
+- **Files:**
+  - `/open-seo-main/src/shared/api-schemas.ts:156` - ISO 8601 strings (`z.string().datetime()`)
+  - `/AI-Writer/backend/api/articles.py:89` - Python datetime objects (serialized as ISO 8601)
+  - `/apps/web/src/app/api/crawl/route.ts:67` - Raw timestamp strings
+- **Problem:** Date handling varies:
+  - open-seo-main enforces ISO 8601 with Zod
+  - AI-Writer uses Pydantic datetime (auto-serializes)
+  - apps/web passes through without validation
+- **Impact:** Date parsing errors in frontend; timezone handling inconsistencies.
+- **Fix:** All services should validate/transform dates to ISO 8601 with timezone (`2024-01-15T10:30:00Z`).
+
+**MED-API-05: Missing Enum Validation for Status Fields**
+
+- **Files:**
+  - `/apps/web/src/app/api/crawl/route.ts:42-55` - Accepts arbitrary `status` values
+  - `/open-seo-main/src/shared/api-schemas.ts:180-195` - Has proper enum schemas
+- **Problem:** Some endpoints accept status parameters without validating against allowed enum values:
+  ```typescript
+  // Current: No enum validation
+  const status = requestBody.status; // Any string accepted
+  
+  // Should be:
+  const StatusEnum = z.enum(['pending', 'running', 'completed', 'failed']);
+  ```
+- **Impact:** Invalid status values reach the database layer.
+- **Fix:** Define and use status enums consistently across all endpoints.
+
+---
+
+#### LOW Issues
+
+**LOW-API-01: Swagger/OpenAPI Incomplete for AI-Writer**
+
+- **File:** `/AI-Writer/backend/main.py:45-60`
+- **Problem:** FastAPI auto-generates OpenAPI, but several endpoints lack response model declarations.
+- **Impact:** API documentation incomplete; client code generation misses types.
+- **Fix:** Add `response_model=Schema` to all route decorators.
+
+**LOW-API-02: Inconsistent Array Length Limits**
+
+- **Files:**
+  - `/open-seo-main/src/shared/api-schemas.ts:210` - `z.array().max(100)`
+  - `/AI-Writer/backend/api/articles.py:120` - No array length limit
+- **Problem:** Array fields have inconsistent or missing max length validation.
+- **Fix:** Standardize on reasonable limits (e.g., 100 items) and apply consistently.
+
+**LOW-API-03: Missing Request ID Propagation**
+
+- **Files:**
+  - `/apps/web/src/app/api/clients/route.ts` - No correlation ID
+  - `/open-seo-main/src/server/middleware/request-context.ts` - Has `requestId`
+  - `/AI-Writer/backend/middleware/correlation.py` - Has `X-Correlation-ID`
+- **Problem:** apps/web doesn't generate or forward request IDs to backend services.
+- **Fix:** Generate UUID at apps/web edge and forward via `X-Request-ID` header.
+
+**LOW-API-04: TypeScript Type Exports Not Aligned with Zod Schemas**
+
+- **File:** `/open-seo-main/src/shared/api-schemas.ts`
+- **Problem:** Some Zod schemas lack corresponding TypeScript type exports.
+- **Fix:** Export inferred types for all schemas:
+  ```typescript
+  export const ClientSchema = z.object({...});
+  export type Client = z.infer<typeof ClientSchema>;
+  ```
+
+---
+
+#### Contract Consistency Matrix
+
+| Entity | apps/web | open-seo-main | AI-Writer | Consistent? |
+|--------|----------|---------------|-----------|-------------|
+| Client ID | UUID string | UUID | UUID (GUID class) | YES |
+| Error Response | `{error}` | `ErrorResponseSchema` | Mixed | NO |
+| Pagination | None | Cursor + offset | Query params | NO |
+| Date Format | Unvalidated | ISO 8601 | ISO 8601 | PARTIAL |
+| Status Codes (validation) | 400 | 400 | 422 | NO |
+| Request ID | Missing | Present | Present | NO |
+| CSRF Token | `X-CSRF-Token` | N/A (server fns) | N/A | YES |
+| Auth Header | `Bearer` | `Bearer` | `Bearer` | YES |
+| Rate Limit Headers | `X-RateLimit-*` | `X-RateLimit-*` | `X-RateLimit-*` | YES |
+
+---
+
+#### Strengths Identified
+
+1. **Centralized Schema Libraries**
+   - `/open-seo-main/src/shared/api-schemas.ts` provides 42 well-documented Zod schemas
+   - `/apps/web/src/lib/validations/api-schemas.ts` has 18 schemas with SSRF blocklist
+   - Schema reuse prevents drift between validation and types
+
+2. **SSRF Protection at Validation Layer**
+   - URL schemas include blocklist validation for private IPs
+   - Both TypeScript services validate URLs before making requests
+
+3. **CSRF Protection Implemented**
+   - apps/web uses `validateCsrf()` on all mutation endpoints
+   - Double-submit cookie pattern correctly implemented
+
+4. **Rate Limiting Headers Standardized**
+   - All services return `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+
+5. **Signed Pagination Cursors**
+   - `/open-seo-main/src/shared/api-schemas.ts:245-270` implements HMAC-signed cursors
+   - Prevents cursor manipulation attacks
+
+6. **Platform Credential Validation**
+   - `/open-seo-main/src/shared/api-schemas.ts:180-220` uses discriminated unions
+   - Validates WordPress, Shopify, custom CMS credentials with platform-specific rules
+
+7. **Pydantic Discipline in AI-Writer**
+   - All route handlers use Pydantic models for request/response
+   - Automatic validation and serialization
+
+---
+
+#### Recommendations
+
+1. **Immediate (HIGH Priority)**
+   - Create shared `ErrorResponseSchema` package and adopt across all services
+   - Add response validation to apps/web proxy routes
+
+2. **Short-Term (MEDIUM Priority)**
+   - Standardize HTTP status codes (recommend 400 for all validation errors)
+   - Add pagination validation to apps/web list endpoints
+   - Document date format convention (ISO 8601 with timezone)
+
+3. **Long-Term**
+   - Implement request ID propagation from apps/web edge
+   - Generate TypeScript clients from OpenAPI specs
+   - Consider shared schema package (monorepo approach)
+
+---
+### Agent 1: Cross-Service Integration Review
+
+**Status:** Complete
+**Files Analyzed:** 47 across apps/web, open-seo-main, and AI-Writer
+**API Integration Points Found:** 23 cross-service call patterns
+**Issues Found:** 0 CRITICAL, 3 HIGH, 6 MEDIUM, 4 LOW
+
+---
+
+#### CRITICAL Issues
+
+*(None found)*
+
+Cross-service integration is well-architected with proper authentication, error handling, and fallback mechanisms across all three services.
+
+---
+
+#### HIGH Issues
+
+**HIGH-01: Missing Correlation ID Propagation in Client-Side API Calls**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/api-client.ts:45-67`
+- **Problem:** The client-side API client does not propagate `X-Correlation-Id` headers to the backend. Server-side calls via `server-fetch.ts` correctly include correlation IDs, but client-side calls lose request tracing context.
+- **Impact:** Difficult to trace user-initiated requests through the system when debugging production issues.
+- **Fix:** Add correlation ID header generation and propagation:
+  ```typescript
+  const correlationId = crypto.randomUUID();
+  headers['X-Correlation-Id'] = correlationId;
+  ```
+
+**HIGH-02: Schema Validation Not Enforced on All Cross-Service Calls**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:112-118`
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/app/api/clients/[clientId]/route.ts:47`
+- **Problem:** Cross-service responses are typed with TypeScript interfaces but not validated at runtime with Zod. A malformed response from AI-Writer or open-seo-main could cause runtime errors deep in component trees.
+- **Impact:** Production errors when backend schemas drift from frontend expectations.
+- **Fix:** Add optional Zod schema validation parameter to `serverFetch`:
+  ```typescript
+  async function serverFetch<T>(url: string, options?: RequestInit, schema?: z.ZodType<T>): Promise<T> {
+    const data = await response.json();
+    return schema ? schema.parse(data) : data;
+  }
+  ```
+
+**HIGH-03: Inconsistent Error Code Extraction Across Services**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:78-85` (expects `error` field)
+  - `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/clients.py:89-91` (returns `detail` field)
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/errors.ts:34` (returns `error` field)
+- **Problem:** Error response format differs between services. AI-Writer (FastAPI) uses `{"detail": "..."}` while open-seo-main uses `{"error": "..."}`. The server-fetch normalizes some cases but not all.
+- **Impact:** Inconsistent error messages shown to users; some errors display raw API responses.
+- **Fix:** Standardize error extraction in `normalizeError()`:
+  ```typescript
+  function normalizeError(response: unknown): string {
+    if (typeof response === 'object' && response !== null) {
+      return (response as any).error || (response as any).detail || (response as any).message || 'Unknown error';
+    }
+    return String(response);
+  }
+  ```
+
+---
+
+#### MEDIUM Issues
+
+**MED-01: Circuit Breaker State is Per-Instance**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/utils/service-circuit-breakers.ts:15-28`
+- **Problem:** Circuit breaker state is stored in module-level memory. In multi-pod deployments, each instance maintains independent state, reducing effectiveness.
+- **Note:** Comment at line 23 acknowledges this limitation.
+- **Fix:** For production, consider Redis-backed circuit breaker state using the existing Redis connection.
+
+**MED-02: No Retry Configuration for Transient Failures**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:89-102`
+- **Problem:** The fetch wrapper has retry logic but uses fixed delays (1s, 2s, 4s). Transient network issues during high load could benefit from jitter.
+- **Fix:** Add jitter to retry delays:
+  ```typescript
+  const jitter = Math.random() * 500;
+  await sleep(delay + jitter);
+  ```
+
+**MED-03: Missing Health Check Before First Cross-Service Call**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/app/(shell)/dashboard/page.tsx:23-45`
+- **Problem:** Dashboard page makes parallel calls to both AI-Writer and open-seo-main without pre-checking service health. If a service is down, users see partial data with confusing error states.
+- **Fix:** Add a lightweight health ping before dashboard load or implement graceful degradation UI.
+
+**MED-04: Hardcoded Service URLs in Multiple Locations**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:22` (environment variable)
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/api-client.ts:12` (hardcoded fallback)
+- **Problem:** Some files have hardcoded fallback URLs (`http://localhost:8000`) that could leak to production if environment variables are misconfigured.
+- **Fix:** Fail fast if service URLs are not configured:
+  ```typescript
+  if (!process.env.AI_WRITER_URL) throw new Error('AI_WRITER_URL not configured');
+  ```
+
+**MED-05: Timeout Configuration Inconsistency**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:34` - 30s timeout
+  - `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/articles.py:666` - 300s for generation
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/lib/audit/checks/runner.ts:45` - 5 minutes total
+- **Problem:** Long-running operations (article generation, full audit) may timeout on the apps/web side while still running on the backend.
+- **Fix:** Use operation-specific timeout overrides in server-fetch:
+  ```typescript
+  await serverFetch('/api/articles/generate', { timeout: 300000 });
+  ```
+
+**MED-06: No Dead Letter Queue for Failed Cross-Service Calls**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:95-100`
+- **Problem:** When cross-service calls fail after retries, there is no mechanism to persist the failed request for later replay. Critical operations (e.g., client sync) could be lost.
+- **Fix:** For critical operations, implement a dead letter pattern using BullMQ.
+
+---
+
+#### LOW Issues
+
+**LOW-01: Verbose Logging in Production**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:67`
+- **Problem:** Debug logging for every cross-service call could impact performance and fill logs.
+- **Fix:** Gate verbose logging behind `DEBUG` environment variable.
+
+**LOW-02: Missing TypeScript Strict Mode in Some API Files**
+- **File:** `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/api/seo_dashboard.py` (Python, but related)
+- **Problem:** Some cross-service data transfer objects lack strict typing, relying on `any` or loose interfaces.
+- **Fix:** Add stricter TypeScript interfaces for all cross-service DTOs.
+
+**LOW-03: Inconsistent HTTP Status Code Handling**
+- **Files:** Various API routes
+- **Problem:** Some routes return 400 for validation errors while others return 422. Similarly, 404 vs 410 for deleted resources.
+- **Fix:** Document and standardize status code conventions across services.
+
+**LOW-04: No Service Discovery Mechanism**
+- **File:** `/home/dominic/Documents/TeveroSEO/apps/web/src/lib/server-fetch.ts:18-25`
+- **Problem:** Service URLs are static environment variables. No support for dynamic service discovery.
+- **Status:** Acceptable for current scale; document as future consideration.
+
+---
+
+#### Cross-Service Integration Matrix
+
+| Caller | Callee | Auth Method | Error Handling | Retry | Timeout | Status |
+|--------|--------|-------------|----------------|-------|---------|--------|
+| apps/web | AI-Writer | Bearer JWT | Circuit breaker + retry | 3x | 30s | OK |
+| apps/web | open-seo-main | Bearer JWT | Circuit breaker + retry | 3x | 30s | OK |
+| apps/web | AI-Writer (internal) | HMAC-SHA256 | Try-catch + log | None | 30s | OK |
+| open-seo-main | AI-Writer | Internal HMAC | Try-catch | None | 10s | OK |
+| AI-Writer | open-seo-main | N/A (DB direct) | N/A | N/A | N/A | N/A |
+
+---
+
+#### Data Flow Analysis
+
+```
+[User Browser]
+     |
+     v
+[apps/web Next.js]
+     |
+     +---> [Server Actions] ---> [AI-Writer FastAPI]
+     |         |                      |
+     |         |                      +---> PostgreSQL (alwrity)
+     |         |                      +---> Redis (cache)
+     |         |
+     |         +---> [open-seo-main Node.js]
+     |                    |
+     |                    +---> PostgreSQL (open_seo)
+     |                    +---> Redis (BullMQ)
+     |
+     +---> [API Routes]
+              |
+              +---> [Clerk Auth API]
+              +---> [AI-Writer] (client API)
+              +---> [open-seo-main] (SEO audit API)
+```
+
+---
+
+#### Strengths Identified
+
+1. **Unified Server-Side Fetch Layer**
+   - `/apps/web/src/lib/server-fetch.ts` provides consistent cross-service communication
+   - Automatic retry with exponential backoff
+   - Request/response logging with correlation IDs
+   - Error normalization for consistent handling
+
+2. **Circuit Breaker Pattern**
+   - `/apps/web/src/lib/utils/service-circuit-breakers.ts` protects against cascade failures
+   - Configurable thresholds per service
+   - Automatic recovery with half-open state testing
+
+3. **Consistent Authentication Flow**
+   - Bearer JWT tokens propagated across all services
+   - `buildServiceHeaders()` adds auth headers consistently
+   - Internal HMAC for service-to-service calls
+
+4. **Error Boundary Integration**
+   - Cross-service errors trigger React error boundaries
+   - Graceful degradation with fallback UI components
+
+5. **Type-Safe API Contracts**
+   - TypeScript interfaces for all cross-service DTOs
+   - Zod validation on critical paths
+
+6. **CSRF Protection**
+   - Origin validation on all state-changing cross-service calls
+   - `validateCsrf()` middleware in apps/web
+
+7. **Rate Limiting Per Operation Type**
+   - Standard operations: 100/min
+   - Heavy operations: 20/min
+   - LLM operations: 50/hr
+   - Analytics operations: 10/min
+
+8. **Environment Validation**
+   - Zod schema validates required environment variables at startup
+   - Fails fast if critical service URLs missing
+
+---
+
+### Agent 20: Configuration & Environment Review
+
+**Status:** Complete
+**Config Files Analyzed:** 18
+**Env Vars Found:** 62 unique variables across 3 services
+**Issues Found:** 0 CRITICAL, 2 HIGH, 3 MEDIUM
+
+#### CRITICAL Issues
+
+None found. The codebase demonstrates excellent secrets management:
+
+1. No hardcoded secrets detected in source files
+2. All .env files with real secrets are properly gitignored
+3. Production startup validation prevents running with missing secrets
+4. Security bypass flags (DISABLE_AUTH, DEBUG_MODE) are blocked in production
+
+#### HIGH Issues
+
+**H-CFG-01: Missing ANTHROPIC_API_KEY in AI-Writer env validation**
+- **File:** `/AI-Writer/backend/config/env_validator.py`
+- **Impact:** AI-Writer references open-seo-main for AI features, but should validate ANTHROPIC_API_KEY if used directly
+- **Current State:** Not in REQUIRED_VARS list, though apps/web and open-seo-main both require it
+- **Fix:** Add to REQUIRED_VARS if AI-Writer ever calls Anthropic directly, or document dependency on open-seo-main
+
+**H-CFG-02: INTERNAL_API_KEY optional in apps/web production validation**
+- **File:** `/apps/web/src/lib/env.ts:44`
+- **Current Code:**
+  ```typescript
+  INTERNAL_API_KEY: z.string().min(32, '...').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.length >= 32),
+      'INTERNAL_API_KEY is required in production...'
+    ),
+  ```
+- **Impact:** The `.optional()` with refine pattern is correct but could fail silently if the refine logic has bugs
+- **Recommendation:** Remove `.optional()` and use `.default('')` to make the validation flow clearer
+
+#### MEDIUM Issues
+
+**M-CFG-01: Inconsistent env var naming across services**
+- apps/web uses `OPEN_SEO_URL` and `AI_WRITER_URL`
+- docker-compose.vps.yml uses `OPEN_SEO_URL` and `AIWRITER_INTERNAL_URL` (plus `AI_WRITER_API_URL` alias)
+- AI-Writer uses `OPEN_SEO_API_URL`
+- **Fix:** Standardize on `OPEN_SEO_URL` and `AI_WRITER_URL` everywhere
+
+**M-CFG-02: WS_PORT inconsistency in .env.vps.example vs docker-compose.vps.yml**
+- `.env.vps.example` line 109: `WS_PORT=3002`
+- `docker-compose.vps.yml` line 78: `WS_PORT: "3003"`
+- **Impact:** Documentation/example mismatch could cause confusion
+- **Fix:** Update `.env.vps.example` to use 3003
+
+**M-CFG-03: ASSET_SIGNING_KEY not validated in open-seo-main**
+- AI-Writer requires ASSET_SIGNING_KEY for asset URL signing
+- open-seo-main does not require it (correctly, as it does not sign assets)
+- **Note:** This is informational, not a bug - just documenting the asymmetry
+
+#### Environment Variable Matrix
+
+| Variable | apps/web | open-seo-main | AI-Writer | Required | Status |
+|----------|----------|---------------|-----------|----------|--------|
+| DATABASE_URL | Yes | Yes | Yes | REQUIRED | All services validate at startup |
+| REDIS_URL | Yes | Yes | Yes | REQUIRED | All services validate at startup |
+| CLERK_SECRET_KEY | Yes | - | Yes | REQUIRED | Validated (open-seo uses CLERK_PUBLISHABLE_KEY) |
+| CLERK_PUBLISHABLE_KEY | NEXT_PUBLIC_ | Yes | REACT_APP_ | REQUIRED | Build-time for frontends, runtime for open-seo |
+| CLERK_WEBHOOK_SECRET | Yes | - | - | REQUIRED | apps/web webhook handling |
+| INTERNAL_API_KEY | Yes | Yes | Yes | REQUIRED | All services validate with min 32 chars |
+| FERNET_KEY | - | - | Yes | REQUIRED | AI-Writer CMS credential encryption |
+| ASSET_SIGNING_KEY | - | - | Yes | REQUIRED | AI-Writer asset URL signing |
+| GEMINI_API_KEY | - | - | Yes | REQUIRED | AI-Writer content generation |
+| ANTHROPIC_API_KEY | Yes | Yes | - | REQUIRED | Voice analysis, keyword intelligence |
+| GOOGLE_CLIENT_ID | Yes | Yes | Yes | REQUIRED | OAuth for GSC/Analytics |
+| GOOGLE_CLIENT_SECRET | Yes | Yes | Yes | REQUIRED | OAuth for GSC/Analytics |
+| STRIPE_SECRET_KEY | Yes | Yes | - | REQUIRED | Payment processing |
+| STRIPE_WEBHOOK_SECRET | Yes | Yes | - | REQUIRED | Webhook verification |
+| RESEND_API_KEY | Yes | Yes | - | REQUIRED | Email notifications |
+| DATAFORSEO_API_KEY | - | Yes | - | REQUIRED | SEO audits |
+| IP_SALT | - | Yes | - | REQUIRED | GDPR-compliant IP hashing |
+| SITE_ENCRYPTION_KEY | - | Yes | - | REQUIRED | Site credential encryption |
+| CRON_SECRET | - | Yes | - | REQUIRED | Cron job authentication |
+| WS_PORT | NEXT_PUBLIC_ | Yes | - | REQUIRED | WebSocket server port |
+| OPEN_SEO_URL | Yes | - | Yes | REQUIRED | Cross-service calls |
+| AI_WRITER_URL | Yes | Yes | - | REQUIRED | Cross-service calls |
+
+#### Infrastructure Config Status
+
+| Component | Config Found | Issues | Status |
+|-----------|--------------|--------|--------|
+| nginx | `/docker/nginx/nginx.conf` | None | Well-configured with rate limiting, security headers, DoS protection |
+| Docker | `docker-compose.vps.yml` | None | Proper healthchecks, dependency ordering, volume mounts |
+| Redis | `/docker/redis/redis.conf` | None | 512MB memory, noeviction policy (required for BullMQ) |
+| PostgreSQL | `/docker/postgres/init.sql`, `init.sh` | None | Separate users/DBs, password injection at runtime |
+
+#### Detailed Infrastructure Analysis
+
+**nginx Configuration (`/docker/nginx/nginx.conf`):**
+- Rate limiting zones: general (10r/s), api (30r/s), auth (5r/min), expensive (2r/s)
+- Security headers: HSTS, X-Frame-Options, X-Content-Type-Options, CSP, XSS protection
+- Connection limiting: 20 connections per IP
+- Slowloris protection: 10s timeouts on client body/header
+- WebSocket support with 24-hour timeouts for persistent connections
+- SSL/TLS via Let's Encrypt with secure cipher configuration
+
+**Docker Compose (`docker-compose.vps.yml`):**
+- 7 services with proper health checks and dependency ordering
+- Shared PostgreSQL with separate databases (open_seo, alwrity)
+- Shared Redis with noeviction policy for BullMQ
+- Internal network only for data layer (no exposed ports)
+- Named volumes for persistence (postgres_data, redis_data, ai_writer_workspace)
+- Migration profile for CI-driven schema updates
+
+**PostgreSQL Initialization:**
+- Two-file approach: `init.sql` creates roles/databases, `init.sh` sets passwords
+- Passwords injected via environment variables, never in SQL files
+- Fails fast if passwords not provided: `${VAR:?error message}` pattern
+- pgcrypto extension enabled for UUID generation
+
+**Redis Configuration:**
+- `maxmemory 512mb` with `noeviction` policy (critical for BullMQ job safety)
+- RDB persistence with 60-second/1000-write snapshots
+- No AOF (acceptable for this workload)
+- Protected mode disabled (internal network only)
+
+#### Strengths Identified
+
+1. **Fail-Fast Startup Validation:**
+   - AI-Writer: `env_validator.py` validates all secrets at startup, fails with clear errors
+   - apps/web: `env.ts` uses Zod schema validation with production-specific rules
+   - open-seo-main: `runtime-env.ts` validates REQUIRED_ENV_HOSTED list at module load
+
+2. **Production Safety Guards:**
+   - AI-Writer `main.py` blocks dangerous flags (DISABLE_AUTH, DEBUG_MODE, SKIP_AUTH)
+   - Quality gate enforcement: `QUALITY_GATE_ENABLED=false` rejected in production
+   - Localhost URLs rejected in production for backend service URLs
+
+3. **Secrets Never in Code:**
+   - All .env files properly gitignored
+   - .env.example files contain only placeholder values
+   - Docker images receive secrets via runtime environment, not build args (except public keys)
+
+4. **Well-Documented Configuration:**
+   - All .env.example files have detailed comments explaining each variable
+   - Required/optional clearly marked with usage instructions
+   - Generation commands provided (openssl, python Fernet, node crypto)
+
+5. **Defense in Depth:**
+   - nginx rate limiting + application-level rate limiting
+   - Multiple layers of auth validation (Clerk JWT + INTERNAL_API_KEY)
+   - Encrypted credential storage (FERNET_KEY, SITE_ENCRYPTION_KEY)
+
+6. **Infrastructure Security:**
+   - PostgreSQL users have minimal privileges (OWNER of their DB only)
+   - Redis in internal network with no external port exposure
+   - Puppeteer isolated in dedicated container with shared memory limits
+
+---
+
+### Agent 11: BullMQ & Queue System Review
+
+**Status:** Complete
+**Queues Analyzed:** 22 BullMQ queues + APScheduler in AI-Writer
+**Workers Found:** 27 worker implementations
+**Issues Found:** 10 (0 CRITICAL, 3 HIGH, 5 MEDIUM, 2 LOW)
+
+#### CRITICAL Issues
+
+None found. The queue infrastructure is well-architected with proper connection pooling, retry strategies, and graceful shutdown patterns.
+
+#### HIGH Issues
+
+**HIGH-11-01: DLQ jobs stored in same queue with prefix instead of separate queue**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/ranking-worker.ts:87-105`
+- **Problem:** Failed jobs are moved to DLQ by adding them back to the same `rankingQueue` with a `dlq:` prefix, rather than using the dedicated `dlqQueue` from `dlq.ts`.
+- **Code:**
+  ```typescript
+  await rankingQueue.add("dlq:keyword-ranking", dlqData, {
+    removeOnComplete: { age: 604800 },
+    removeOnFail: { age: 604800 },
+    attempts: 1,
+  });
+  ```
+- **Impact:** DLQ jobs mix with active jobs in the same queue, making monitoring and cleanup more complex. The dedicated DLQ infrastructure in `dlq.ts` is bypassed.
+- **Fix:** Use the centralized `moveToDLQ()` function from `dlq.ts`:
+  ```typescript
+  import { moveToDLQ } from "../queues/dlq";
+  await moveToDLQ("ranking", job, error);
+  ```
+
+**HIGH-11-02: AI-Writer scheduler uses in-memory job store in development**
+- **File:** `/home/dominic/Documents/TeveroSEO/AI-Writer/backend/services/scheduler/core/scheduler.py:101-140`
+- **Problem:** When `settings.TESTING` is true (which includes development mode), APScheduler uses `MemoryJobStore` instead of Redis. Jobs are lost on restart.
+- **Code:**
+  ```python
+  if settings.TESTING:
+      jobstores = {"default": MemoryJobStore()}
+  else:
+      jobstores = {"default": RedisJobStore(...)}
+  ```
+- **Impact:** Scheduled jobs (content publishing, analytics sync, sitemap updates) are lost on server restart in development, leading to inconsistent behavior between dev and prod.
+- **Fix:** Use Redis job store in all environments, with a separate database number for development:
+  ```python
+  jobstores = {
+      "default": RedisJobStore(
+          db=settings.REDIS_DB + (100 if settings.TESTING else 0),
+          host=settings.REDIS_HOST,
+          port=settings.REDIS_PORT,
+      )
+  }
+  ```
+
+**HIGH-11-03: Worker concurrency not explicitly configured on several workers**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/audit-worker.ts`
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/crawl-worker.ts`
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/linking-worker.ts`
+- **Problem:** Several workers do not specify the `concurrency` option, defaulting to 1. This may cause processing bottlenecks for high-volume queues.
+- **Impact:** Single-threaded processing can't keep up with job volume, causing queue depth to grow during peak usage.
+- **Fix:** Explicitly set concurrency based on job characteristics:
+  ```typescript
+  const worker = new Worker("audits", processor, {
+    connection,
+    concurrency: 5, // Tune based on resource usage
+  });
+  ```
+
+#### MEDIUM Issues
+
+**MED-11-01: Missing stalled job configuration on some workers**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/brief-worker.ts`
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/voice-worker.ts`
+- **Problem:** Workers lack `lockDuration`, `stalledInterval`, and `maxStalledCount` configuration.
+- **Impact:** Default stalled detection may be too aggressive (30s) or too lenient for long-running AI operations.
+- **Fix:** Configure stalled settings based on expected job duration:
+  ```typescript
+  {
+    lockDuration: 120000, // 2 minutes for AI operations
+    stalledInterval: 60000,
+    maxStalledCount: 2,
+  }
+  ```
+
+**MED-11-02: Progress reporting not used in long-running workers**
+- **Files:**
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/crawl-worker.ts`
+  - `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/workers/audit-worker.ts`
+- **Problem:** Long-running crawl and audit jobs don't call `job.updateProgress()` to report progress.
+- **Impact:** No visibility into job progress; users see only "processing" state without knowing completion percentage.
+- **Fix:** Add progress updates at key milestones:
+  ```typescript
+  await job.updateProgress({ stage: "crawling", pagesProcessed: 50, total: 200 });
+  ```
+
+**MED-11-03: QueueEvents not used for centralized monitoring**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/queues/`
+- **Problem:** No `QueueEvents` instances are created for centralized job event monitoring across queues.
+- **Impact:** Metrics collection requires polling each queue individually rather than subscribing to events.
+- **Fix:** Create QueueEvents for monitoring:
+  ```typescript
+  const queueEvents = new QueueEvents("audits", { connection });
+  queueEvents.on("completed", ({ jobId }) => metrics.increment("jobs.completed"));
+  queueEvents.on("failed", ({ jobId, failedReason }) => metrics.increment("jobs.failed"));
+  ```
+
+**MED-11-04: Job data validation inconsistent**
+- **Files:** Multiple queue files in `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/queues/`
+- **Problem:** Some queues validate job data with Zod before processing, others don't.
+- **Impact:** Invalid job data can cause cryptic runtime errors instead of clear validation errors.
+- **Fix:** Add Zod validation at job processing entry point:
+  ```typescript
+  const validatedData = JobDataSchema.parse(job.data);
+  ```
+
+**MED-11-05: No job deduplication mechanism**
+- **File:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/queues/`
+- **Problem:** Duplicate jobs (same URL, same audit type) can be added if user clicks "Start Audit" multiple times.
+- **Impact:** Wasted resources processing duplicate work; potential for conflicting results.
+- **Fix:** Use job IDs or deduplication middleware:
+  ```typescript
+  await queue.add("audit", data, {
+    jobId: `audit-${data.siteId}-${data.auditType}`,
+    // Existing job with same ID will be skipped
+  });
+  ```
+
+#### LOW Issues
+
+**LOW-11-01: Inconsistent retry backoff strategies**
+- **Files:** Various queue configurations
+- **Problem:** Some queues use exponential backoff, others use fixed delays.
+- **Impact:** Suboptimal retry behavior for different failure modes.
+- **Fix:** Standardize on exponential backoff with STANDARD_BACKOFF from queue-utils.ts.
+
+**LOW-11-02: Missing job priority usage**
+- **Files:** `/home/dominic/Documents/TeveroSEO/open-seo-main/src/server/queues/`
+- **Problem:** Job priorities are not used; all jobs are processed FIFO.
+- **Impact:** Urgent jobs (user-initiated) wait behind batch jobs.
+- **Fix:** Add priority option for user-initiated jobs:
+  ```typescript
+  await queue.add("audit", data, { priority: job.isUserInitiated ? 1 : 5 });
+  ```
+
+#### Queue Configuration Matrix
+
+| Queue | Location | Concurrency | Retries | Backoff | DLQ | Progress |
+|-------|----------|-------------|---------|---------|-----|----------|
+| audits | open-seo-main | default(1) | 3 | exponential | via dlq.ts | No |
+| crawl | open-seo-main | default(1) | 3 | exponential | via dlq.ts | No |
+| rankings | open-seo-main | 3 | 3 | exponential | mixed* | No |
+| briefs | open-seo-main | default(1) | 3 | exponential | via dlq.ts | No |
+| voice-analysis | open-seo-main | default(1) | 2 | fixed | via dlq.ts | No |
+| linking | open-seo-main | default(1) | 3 | exponential | via dlq.ts | No |
+| technical-seo | open-seo-main | 5 | 3 | exponential | via dlq.ts | No |
+| content-analysis | open-seo-main | 3 | 3 | exponential | via dlq.ts | No |
+| sitemap-parse | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| screenshot | open-seo-main | 2 | 2 | fixed | No | No |
+| pdf-export | open-seo-main | 2 | 2 | fixed | No | No |
+| email | open-seo-main | 5 | 5 | exponential | via dlq.ts | No |
+| webhook | open-seo-main | 10 | 3 | exponential | via dlq.ts | No |
+| ai-analysis | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| serp-fetch | open-seo-main | 3 | 3 | exponential | via dlq.ts | No |
+| backlink-check | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| gsc-sync | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| analytics-sync | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| batch-audit | open-seo-main | 1 | 3 | exponential | via dlq.ts | Yes |
+| cannibalization | open-seo-main | 2 | 3 | exponential | via dlq.ts | No |
+| internal-links | open-seo-main | 3 | 3 | exponential | via dlq.ts | No |
+| dlq (dead letter) | open-seo-main | 1 | 1 | none | N/A | No |
+
+*rankings queue uses inline DLQ pattern (HIGH-11-01)
+
+#### AI-Writer Scheduler Jobs
+
+| Job | Schedule | Executor | Persistence |
+|-----|----------|----------|-------------|
+| content_publish | every 5 min | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| analytics_sync | hourly | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| sitemap_update | daily 2AM | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| stale_content_check | daily 6AM | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| voice_profile_refresh | weekly | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| gsc_data_pull | every 6 hours | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+| cleanup_temp_files | daily 3AM | ThreadPoolExecutor | Redis (prod) / Memory (dev)* |
+
+*See HIGH-11-02 for memory job store issue
+
+#### Strengths Identified
+
+1. **Centralized Redis Connection** (`/open-seo-main/src/server/lib/redis.ts`):
+   - `getSharedBullMQConnection()` with proper `maxRetriesPerRequest: null`
+   - Label-based connection tracking for debugging
+   - Graceful shutdown via `closeRedis()` with connection cleanup
+
+2. **Standardized Retry Configuration** (`/open-seo-main/src/server/lib/queue-utils.ts`):
+   - `STANDARD_BACKOFF` provides consistent exponential backoff
+   - `addJobWithBackpressure()` prevents queue overflow
+   - Job timeout wrapper with `withJobTimeout()`
+   - SSRF-safe URL validation for external fetches
+
+3. **Dedicated DLQ Infrastructure** (`/open-seo-main/src/server/queues/dlq.ts`):
+   - 7-day retention with 10,000 job maximum
+   - Paginated cleanup prevents memory spikes
+   - Structured error capture with stack traces
+   - `moveToDLQ()` helper for consistent usage
+
+4. **Graceful Shutdown Pattern** (`/open-seo-main/src/server/workers/`):
+   - Workers respond to SIGTERM/SIGINT
+   - `worker.close()` waits for active jobs
+   - Timeout racing prevents hung shutdown
+   - Connection cleanup on worker stop
+
+5. **Step-Level Resume** (`/open-seo-main/src/server/workers/audit-worker.ts`):
+   - Jobs track completed steps in Redis
+   - Resume from last checkpoint on retry
+   - Prevents duplicate processing of expensive steps
+
+6. **FlowProducer Usage** (`/open-seo-main/src/server/features/audit/`):
+   - Parent-child job relationships for multi-step audits
+   - `getChildrenValues()` aggregates results
+   - Automatic parent completion after children finish
+
+7. **Backpressure Handling** (`/open-seo-main/src/server/lib/queue-utils.ts`):
+   - Queue depth monitoring with threshold (10,000)
+   - Rejects new jobs when queue is full
+   - Returns error to caller for retry or user feedback
+
+8. **AI-Writer Background Jobs** (`/AI-Writer/backend/services/background_jobs.py`):
+   - Thread-safe job execution with locks
+   - Stalled job detection (30s threshold)
+   - Persistent storage with Redis fallback
+   - Structured job status tracking
+
+9. **Connection Health Monitoring**:
+   - Redis connection events logged
+   - Automatic reconnection on disconnect
+   - Health check endpoints for load balancer
+
+10. **Job Removal Policies**:
+    - `removeOnComplete` configured with count/age limits
+    - `removeOnFail` with longer retention for debugging
+    - Prevents Redis memory exhaustion
+
+11. **Rate Limiting Integration**:
+    - Worker-level rate limiting with `limiter` option
+    - Group rate limiting by user/client ID
+    - Prevents overwhelming external APIs
+
+12. **Serializable Job Data**:
+    - All job payloads are plain objects (no classes/functions)
+    - References (IDs) instead of large data blobs
+    - Job data fits within Redis value size limits
+
+---
+
+### Agent 19: Dead Code & Unused Dependencies Analysis
+
+**Status:** Complete
+**Files Analyzed:** 3,189
+**Dead Code Found:** 272 instances (116 orphan files + 156 files with unused exports)
+**Issues Found:** 39 MEDIUM, 28 LOW
+
+---
+
+#### MEDIUM Issues
+
+##### M1. Unused NPM Dependencies (apps/web)
+The following dependencies are listed in `package.json` but not used in the codebase:
+
+| Package | Reason |
+|---------|--------|
+| `@copilotkit/react-textarea` | Not imported anywhere |
+| `@copilotkit/react-ui` | Not imported anywhere |
+| `@copilotkit/shared` | Not imported anywhere |
+| `@stripe/react-stripe-js` | Not imported anywhere |
+| `@stripe/stripe-js` | Not imported anywhere |
+| `@tanstack/react-query` | Not imported anywhere |
+| `@wix/blog` | Not imported anywhere |
+| `@wix/sdk` | Not imported anywhere |
+| `framer-motion` | Not imported anywhere |
+| `html2canvas` | Not imported anywhere |
+| `react-joyride` | Not imported anywhere |
+| `ajv` | Not imported anywhere |
+
+**File:** `/apps/web/package.json`
+**Safe to remove:** Yes (after verification with build)
+
+##### M2. Unused NPM Dependencies (open-seo-main)
+| Package | Reason |
+|---------|--------|
+| `@every-app/sdk` | Not imported |
+| `@hello-pangea/dnd` | Not imported |
+| `@noble/ciphers` | Not imported |
+| `daisyui` | Not imported |
+| `dataforseo-client` | Not imported |
+| `tailwindcss-animate` | Not imported |
+
+**File:** `/open-seo-main/package.json`
+**Safe to remove:** Yes (after verification with build)
+
+##### M3. Orphan Files in open-seo-main (116 files)
+Files not imported by any other module in the codebase:
+
+| Category | Files | Risk |
+|----------|-------|------|
+| Payment Components | 7 | Low (may be planned features) |
+| Server Workers | 16 | Medium (may be queue workers) |
+| Scraping Components | 4 | Low |
+| Platform OAuth | 2 | Medium |
+| Database Migrations | 3 | Safe (used by Drizzle) |
+| Seed Files | 3 | Safe (CLI usage) |
+| Server Middleware | 1 | Medium |
+| Proposal Components | 5 | Low |
+| Index Files (barrel exports) | 20+ | Low (may be used externally) |
+
+**Top 10 Orphan Files:**
+1. `src/migrate-entry.ts` - Migration entry point
+2. `src/lib/auth-options.ts` - Auth options (may be external)
+3. `src/lib/format-currency.ts` - Utility not imported
+4. `src/db/graphrag-schema.ts` - GraphRAG schema
+5. `src/serverFunctions/goals.ts` - Server function
+6. `src/components/payment/InstallmentCard.tsx` - UI component
+7. `src/components/payment/InstallmentTable.tsx` - UI component
+8. `src/components/payment/InstallmentTrackingDashboard.tsx` - UI component
+9. `src/components/payment/PaymentPlanSelector.tsx` - UI component
+10. `src/components/payment/PaymentScheduleView.tsx` - UI component
+
+**Safe to remove:** CAREFUL - verify queue workers are not started via entry points
+
+##### M4. Orphan Files in AI-Writer Frontend (80 files)
+Files not imported by any other module:
+
+| Category | Files |
+|----------|-------|
+| API modules | 26 |
+| Landing components | 7 |
+| Hooks | 9 |
+| Utility functions | 15 |
+| Type definitions | 5 |
+| CopilotKit integration | 3 |
+| PersonaContext | 2 |
+| Other | 13 |
+
+**Key Orphan Files:**
+- `src/api/agentsTeam.ts`
+- `src/api/analytics.ts`
+- `src/api/bingOAuth.ts`
+- `src/api/brandAssets.ts`
+- `src/components/Landing/EnterpriseCTA.tsx`
+- `src/components/Landing/FeatureShowcase.tsx`
+- `src/hooks/useAbortController.ts`
+- `src/hooks/useCancellableFetch.ts`
+- `src/utils/keywordExpansion.ts`
+
+**Safe to remove:** CAREFUL - verify these aren't dynamically imported
+
+##### M5. Unused Exports in open-seo-main (685 exports in 206 files)
+Top files with most unused exports:
+
+| File | Unused Exports |
+|------|---------------|
+| `src/shared/api-schemas.ts` | 17 |
+| `src/serverFunctions/proposals.ts` | 9 |
+| `src/server/services/report/section-renderer.ts` | 8 |
+| `src/serverFunctions/voice.ts` | 5 |
+| `src/server/websocket/connection-manager.ts` | 5 |
+| `src/services/webhook-dispatcher.ts` | 4 |
+| `src/services/event-registry.ts` | 4 |
+| `src/server/workers/utils/error-handler.ts` | 4 |
+| `src/serverFunctions/prospects.ts` | 3 |
+
+**Safe to remove:** Verify not used via dynamic imports or external consumers
+
+##### M6. Unused Exports in AI-Writer Frontend (52 exports)
+Files with unused named exports:
+
+| File | Unused Exports |
+|------|---------------|
+| `src/components/ui/dialog.tsx` | `DialogPortal`, `DialogOverlay` |
+| `src/contexts/SubscriptionContext.tsx` | `useSubscription` |
+| `src/api/client.ts` | `ConnectionError`, `NetworkError`, `sanitizeUrlForLogging`, etc. |
+| `src/utils/toastNotifications.ts` | `showToastNotification`, `showSubscriptionToast` |
+| `src/components/brand/TeveroLogo.tsx` | `TeveroLogo` |
+| `src/utils/fetchMediaBlobUrl.ts` | `clearMediaCache`, `fetchMediaBlobUrl` |
+| `src/services/billingService.ts` | 11 exports |
+| `src/components/ui/button.tsx` | `buttonVariants` |
+| `src/components/ui/select.tsx` | 5 exports |
+| `src/components/ui/popover.tsx` | `PopoverAnchor` |
+| `src/components/ui/command.tsx` | `CommandSeparator`, `CommandShortcut` |
+| `src/api/ApiClientSingleton.ts` | `attachClientIdInterceptor` |
+| `src/utils/navigationState.ts` | 4 exports |
+| `src/utils/apiEvents.ts` | `onApiEvent` |
+| `src/types/billing.ts` | 5 schema exports |
+
+**Safe to remove:** Yes for non-UI components; UI components may be used externally
+
+##### M7. Unused Types in open-seo-main (537 types in 218 files)
+Large number of type definitions that are never imported elsewhere.
+
+**Safe to remove:** LOW priority - types don't impact bundle size
+
+##### M8. Unused Types in AI-Writer Frontend (31 types)
+Type definitions not imported:
+- `SubscriptionLimits`, `SubscriptionStatus` in SubscriptionContext
+- `Client`, `ClientStore` in clientStore
+- `PageHeaderProps`, `StatusChipProps`, `InputProps` in UI components
+- `BrandVoice`, `IcpPsychology`, `IntelligenceData` in intelligenceStore
+
+**Safe to remove:** LOW priority - types don't impact bundle size
+
+##### M9. Duplicate Exports in AI-Writer Frontend (6 files)
+Files with both named export and default export of same component:
+
+| File | Duplicates |
+|------|-----------|
+| `src/pages/LoginPage.tsx` | `LoginPage` + `default` |
+| `src/pages/ArticleEditorPage.tsx` | `ArticleEditorPage` + `default` |
+| `src/pages/ArticleLibraryPage.tsx` | `ArticleLibraryPage` + `default` |
+| `src/services/billingService.ts` | `billingService` + `default` |
+| `src/components/editor/ImageGenerationPanel.tsx` | `ImageGenerationPanel` + `default` |
+| `src/utils/errorReporting.ts` | `reportError` + `default` |
+
+**Safe to remove:** Remove one of the duplicate exports
+
+##### M10. Duplicate Exports in open-seo-main (8 files)
+Similar pattern of duplicate named + default exports.
+
+**Safe to remove:** Remove one of the duplicate exports
+
+##### M11. Commented-Out Code in open-seo-main
+Found commented-out code blocks that should be removed or properly handled:
+
+| File | Line | Description |
+|------|------|-------------|
+| `src/routes/api/pixel/[siteId]/changes.ts` | 139 | Commented session check |
+| `src/routes/api/pixel/[siteId]/changes.pending.ts` | 40 | Commented session check |
+| `src/routes/api/pixel/[siteId]/changes.history.ts` | 59 | Commented session check |
+| `src/routes/api/pixel/changes/[changeId].ts` | 117, 210 | Commented session checks |
+| `src/routes/api/proposals/[id]/duplicate.ts` | 19 | Commented import |
+| `src/server/features/pixel/pixel-script.service.ts` | 255 | Commented function call |
+
+**Safe to remove:** CAREFUL - verify these aren't temporarily disabled for debugging
+
+##### M12. Commented-Out Code in AI-Writer Backend
+Found commented-out Python code:
+
+| File | Line | Description |
+|------|------|-------------|
+| `main.py` | 616 | Commented router import |
+| `api/clients.py` | 753 | Commented return statement |
+| `api/wix_routes.py` | 365, 402, 434 | Commented return blocks |
+| `auth/dependencies.py` | 281 | Commented import |
+| `services/llm_providers/main_image_generation.py` | 79 | Commented provider |
+
+**Safe to remove:** CAREFUL - verify not temporarily disabled
+
+##### M13. Potentially Unused Python Dependencies
+Packages in `requirements.txt` that may not be imported:
+
+| Package | Status |
+|---------|--------|
+| `black` | Dev tool (safe) |
+| `flask`, `flask-cors` | Not used (FastAPI in use) |
+| `gunicorn` | Production runner (safe) |
+| `gtts` | Not imported |
+
+**Safe to remove:** Flask/Flask-CORS if not needed for legacy
+
+---
+
+#### LOW Issues
+
+##### L1. Unused devDependencies (apps/web)
+| Package | Reason |
+|---------|--------|
+| `@tailwindcss/postcss` | May be used by build |
+| `@vitejs/plugin-react` | Not Vite-based project |
+| `tailwindcss` | Check if CSS build uses it |
+
+##### L2. Unused devDependencies (open-seo-main)
+| Package | Reason |
+|---------|--------|
+| `@testing-library/react` | Tests may be disabled |
+| `@testing-library/react-hooks` | Tests may be disabled |
+| `@types/luxon` | Type only |
+| `portless` | Unused tool |
+
+##### L3. TODO/FIXME Comments
+| Service | Count | Action |
+|---------|-------|--------|
+| apps/web | 18 | Review and address |
+| open-seo-main | 57 | Review and address |
+| AI-Writer backend | 54 | Review and address |
+
+##### L4. Potentially Unused Python Functions (AI-Writer)
+Found 1,212 functions that may not be called. Top categories:
+- Onboarding manager endpoints (30+ functions)
+- Feature runtime utilities (10 functions)
+- Production optimizer functions (5 functions)
+
+**Note:** Many may be FastAPI route handlers or called via decorators.
+
+---
+
+#### Dead Code Summary
+
+| Service | Unused Exports | Orphan Files | Unused Deps | Unused Types | Status |
+|---------|---------------|--------------|-------------|--------------|--------|
+| apps/web | 52 | 0* | 12 | 31 | Review |
+| open-seo-main | 685 | 116 | 6 | 537 | High Debt |
+| AI-Writer Frontend | 52 | 80 | 15 | 31 | Review |
+| AI-Writer Backend | N/A | N/A | 3+ | N/A | Review |
+
+*apps/web uses Next.js App Router which discovers files automatically
+
+---
+
+#### Cleanup Recommendations
+
+**Priority 1 (Safe, High Impact):**
+1. Remove unused NPM dependencies from all `package.json` files
+2. Remove duplicate exports (choose named OR default, not both)
+3. Remove clearly commented-out code blocks
+
+**Priority 2 (Needs Verification):**
+1. Verify orphan files in open-seo-main are truly unused
+2. Check if queue workers are started via separate entry points
+3. Verify AI-Writer frontend orphan files aren't dynamically imported
+
+**Priority 3 (Low Priority):**
+1. Remove unused type exports (no bundle impact)
+2. Address TODO/FIXME comments
+3. Clean up unused Python utilities
+
+**Estimated Bundle Size Reduction:**
+- NPM dependency cleanup: ~50-100KB (estimated)
+- Orphan file removal: ~200-500KB (if truly unused)
+- Total potential: 250-600KB reduction
+
+**Process for Safe Removal:**
+1. Run `npm run build` / `pnpm build` before changes
+2. Remove items one category at a time
+3. Run build and tests after each batch
+4. Commit with descriptive message
+
+---
