@@ -215,3 +215,6 @@ export * from "./platform-data-cache-schema";
 
 // OAuth state schema (MED-VAL-02 FIX: CSRF protection with user binding)
 export * from "./oauth-state-schema";
+
+// Dead letter queue schema (Phase 69-04)
+export * from "./dead-letter-queue-schema";
