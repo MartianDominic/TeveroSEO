@@ -94,6 +94,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **68-04:** 5-minute staleTime + 10-minute gcTime for client query cache; BroadcastChannel for cross-tab sync (not localStorage events); Store retains legacy methods for gradual migration; Direct setState in broadcast handler to avoid circular broadcasts
+- **68-03:** Zod schemas inline in webhooks.ts for co-location; Version column integer default 1 incremented on update; Event schema uses snake_case (event_type, client_id); api_version literal "2026-05-01"; Error envelope includes code, message, optional details
 - **68-02:** VALIDATION_ERROR code for 400 responses (consistent with error-codes.ts); AbortManager singleton for cross-component abort coordination; 30s cache TTL matches existing ownership cache; In-memory cache supplements Redis for dual-layer invalidation; 58 tests across 4 modules
 - **68-01:** JWT validation required before trusting user identity headers; Reuse existing verifyClerkJWT (jose-based) via clerk-verify.ts wrapper; resolveClientContext() as primary API with ResolvedContext interface; service:internal userId for internal service token bypass; 21 tests for auth flow validation
 - **67-03:** Fire-and-forget pattern for shadow writes (non-blocking); SHADOW_WRITE_ENABLED defaults to false (opt-in); DB_READ_PERCENTAGE_TEVERO uses Math.random for distribution; Tevero connection pool size 5 (smaller than primary); 3-week phased cutover timeline
