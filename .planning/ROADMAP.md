@@ -2085,8 +2085,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   5. Retrieval latency <500ms p95
 **Estimated effort**: 40 hours
 **Plans**: 4 plans
-  - [ ] 65-01-PLAN.md — FalkorDB Schema + Per-Tenant Graphs (Wave 1)
-  - [ ] 65-02-PLAN.md — LightRAG Integration (Wave 1)
+  - [x] 65-01-PLAN.md — FalkorDB Schema + Per-Tenant Graphs (Wave 1)
+  - [x] 65-02-PLAN.md — LightRAG Integration (Wave 1)
   - [ ] 65-03-PLAN.md — Retrieval Pipeline (Wave 2)
   - [ ] 65-04-PLAN.md — Integration & Testing (Wave 2)
 

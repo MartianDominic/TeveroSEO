@@ -63,13 +63,14 @@ import { Route as ApiProspectsConfirmRouteImport } from './routes/api/prospects/
 import { Route as ApiProposalsTrackRouteImport } from './routes/api/proposals/track'
 import { Route as ApiProposalsStageRouteImport } from './routes/api/proposals/stage'
 import { Route as ApiProposalsAnalyticsRouteImport } from './routes/api/proposals/analytics'
-import { Route as ApiPaymentsStatsRouteImport } from './routes/api/payments/stats'
-import { Route as ApiPaymentsInstallmentsRouteImport } from './routes/api/payments/installments'
 import { Route as ApiPatternsPatternIdRouteImport } from './routes/api/patterns/$patternId'
 import { Route as ApiOnboardingMagicLinkRouteImport } from './routes/api/onboarding/magic-link'
 import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onboarding/complete-item'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
+import { Route as ApiGraphragStatusRouteImport } from './routes/api/graphrag/status'
+import { Route as ApiGraphragQueryRouteImport } from './routes/api/graphrag/query'
+import { Route as ApiGraphragIngestRouteImport } from './routes/api/graphrag/ingest'
 import { Route as ApiCronAutomationsRouteImport } from './routes/api/cron/automations'
 import { Route as ApiConnectionsIdRouteImport } from './routes/api/connections/$id'
 import { Route as ApiClerkWebhookRouteImport } from './routes/api/clerk/webhook'
@@ -98,7 +99,6 @@ import { Route as ApiProspectsProspectIdScrapeConfigRouteImport } from './routes
 import { Route as ApiProspectsProspectIdReportRouteImport } from './routes/api/prospects/$prospectId.report'
 import { Route as ApiProposalsPublicTokenRouteImport } from './routes/api/proposals/public/$token'
 import { Route as ApiProposalsChar91idChar93VersionsRouteImport } from './routes/api/proposals/[id]/versions'
-import { Route as ApiProposalsChar91idChar93ServicesRouteImport } from './routes/api/proposals/[id]/services'
 import { Route as ApiProposalsChar91idChar93SendRouteImport } from './routes/api/proposals/[id]/send'
 import { Route as ApiProposalsChar91idChar93ResolveRouteImport } from './routes/api/proposals/[id]/resolve'
 import { Route as ApiProposalsChar91idChar93RejectRouteImport } from './routes/api/proposals/[id]/reject'
@@ -107,7 +107,6 @@ import { Route as ApiProposalsChar91idChar93GenerateRouteImport } from './routes
 import { Route as ApiProposalsChar91idChar93DuplicateRouteImport } from './routes/api/proposals/[id]/duplicate'
 import { Route as ApiProposalsChar91idChar93AcceptRouteImport } from './routes/api/proposals/[id]/accept'
 import { Route as ApiProposalsProposalIdDeclineRouteImport } from './routes/api/proposals/$proposalId.decline'
-import { Route as ApiInvoicesIdScheduleRouteImport } from './routes/api/invoices/$id.schedule'
 import { Route as ApiInvoicesIdPayRouteImport } from './routes/api/invoices/$id.pay'
 import { Route as ApiInvoicesIdPaymentLinkRouteImport } from './routes/api/invoices/$id.-payment-link'
 import { Route as ApiInternalAnalyticsBackfillRouteImport } from './routes/api/internal/analytics/backfill'
@@ -151,7 +150,6 @@ import { Route as ApiSeoBriefsGenerateBriefIdRouteImport } from './routes/api/se
 import { Route as ApiSeoBriefsAnalyzeSerpMappingIdRouteImport } from './routes/api/seo/briefs.analyze-serp.$mappingId'
 import { Route as ApiProspectsIdKeywordsPrioritizeRouteImport } from './routes/api/prospects/$id/keywords/prioritize'
 import { Route as ApiProspectsIdKeywordsImportRouteImport } from './routes/api/prospects/$id/keywords/import'
-import { Route as ApiProposalsChar91idChar93ServicesResolvedRouteImport } from './routes/api/proposals/[id]/services/resolved'
 import { Route as ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport } from './routes/api/proposals/[id]/sections/[sid]'
 import { Route as ApiClientsClientIdGscDailyRouteImport } from './routes/api/clients/$clientId/gsc.daily'
 import { Route as ApiClientsClientIdGoalsGoalIdRouteImport } from './routes/api/clients/$clientId/goals/$goalId'
@@ -436,16 +434,6 @@ const ApiProposalsAnalyticsRoute = ApiProposalsAnalyticsRouteImport.update({
   path: '/api/proposals/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPaymentsStatsRoute = ApiPaymentsStatsRouteImport.update({
-  id: '/api/payments/stats',
-  path: '/api/payments/stats',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaymentsInstallmentsRoute = ApiPaymentsInstallmentsRouteImport.update({
-  id: '/api/payments/installments',
-  path: '/api/payments/installments',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPatternsPatternIdRoute = ApiPatternsPatternIdRouteImport.update({
   id: '/api/patterns/$patternId',
   path: '/api/patterns/$patternId',
@@ -473,6 +461,21 @@ const ApiKeywordsCompetitorSpyRoute =
     path: '/api/keywords/competitor-spy',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiGraphragStatusRoute = ApiGraphragStatusRouteImport.update({
+  id: '/api/graphrag/status',
+  path: '/api/graphrag/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGraphragQueryRoute = ApiGraphragQueryRouteImport.update({
+  id: '/api/graphrag/query',
+  path: '/api/graphrag/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGraphragIngestRoute = ApiGraphragIngestRouteImport.update({
+  id: '/api/graphrag/ingest',
+  path: '/api/graphrag/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronAutomationsRoute = ApiCronAutomationsRouteImport.update({
   id: '/api/cron/automations',
   path: '/api/cron/automations',
@@ -623,12 +626,6 @@ const ApiProposalsChar91idChar93VersionsRoute =
     path: '/api/proposals/id/versions',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiProposalsChar91idChar93ServicesRoute =
-  ApiProposalsChar91idChar93ServicesRouteImport.update({
-    id: '/api/proposals/id/services',
-    path: '/api/proposals/id/services',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiProposalsChar91idChar93SendRoute =
   ApiProposalsChar91idChar93SendRouteImport.update({
     id: '/api/proposals/id/send',
@@ -677,11 +674,6 @@ const ApiProposalsProposalIdDeclineRoute =
     path: '/api/proposals/$proposalId/decline',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiInvoicesIdScheduleRoute = ApiInvoicesIdScheduleRouteImport.update({
-  id: '/api/invoices/$id/schedule',
-  path: '/api/invoices/$id/schedule',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiInvoicesIdPayRoute = ApiInvoicesIdPayRouteImport.update({
   id: '/api/invoices/$id/pay',
   path: '/api/invoices/$id/pay',
@@ -930,12 +922,6 @@ const ApiProspectsIdKeywordsImportRoute =
     path: '/api/prospects/$id/keywords/import',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiProposalsChar91idChar93ServicesResolvedRoute =
-  ApiProposalsChar91idChar93ServicesResolvedRouteImport.update({
-    id: '/resolved',
-    path: '/resolved',
-    getParentRoute: () => ApiProposalsChar91idChar93ServicesRoute,
-  } as any)
 const ApiProposalsChar91idChar93SectionsChar91sidChar93Route =
   ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport.update({
     id: '/api/proposals/id/sections/sid',
@@ -1054,13 +1040,14 @@ export interface FileRoutesByFullPath {
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
+  '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
+  '/api/graphrag/query': typeof ApiGraphragQueryRoute
+  '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1123,7 +1110,6 @@ export interface FileRoutesByFullPath {
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1132,7 +1118,6 @@ export interface FileRoutesByFullPath {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1159,7 +1144,6 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1211,13 +1195,14 @@ export interface FileRoutesByTo {
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
+  '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
+  '/api/graphrag/query': typeof ApiGraphragQueryRoute
+  '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1278,7 +1263,6 @@ export interface FileRoutesByTo {
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1287,7 +1271,6 @@ export interface FileRoutesByTo {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1314,7 +1297,6 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1371,13 +1353,14 @@ export interface FileRoutesById {
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
+  '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
+  '/api/graphrag/query': typeof ApiGraphragQueryRoute
+  '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1440,7 +1423,6 @@ export interface FileRoutesById {
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1449,7 +1431,6 @@ export interface FileRoutesById {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1476,7 +1457,6 @@ export interface FileRoutesById {
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1531,13 +1511,14 @@ export interface FileRouteTypes {
     | '/api/clerk/webhook'
     | '/api/connections/$id'
     | '/api/cron/automations'
+    | '/api/graphrag/ingest'
+    | '/api/graphrag/query'
+    | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -1600,7 +1581,6 @@ export interface FileRouteTypes {
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -1609,7 +1589,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -1636,7 +1615,6 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1688,13 +1666,14 @@ export interface FileRouteTypes {
     | '/api/clerk/webhook'
     | '/api/connections/$id'
     | '/api/cron/automations'
+    | '/api/graphrag/ingest'
+    | '/api/graphrag/query'
+    | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -1755,7 +1734,6 @@ export interface FileRouteTypes {
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -1764,7 +1742,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -1791,7 +1768,6 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -1847,13 +1823,14 @@ export interface FileRouteTypes {
     | '/api/clerk/webhook'
     | '/api/connections/$id'
     | '/api/cron/automations'
+    | '/api/graphrag/ingest'
+    | '/api/graphrag/query'
+    | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -1916,7 +1893,6 @@ export interface FileRouteTypes {
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -1925,7 +1901,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -1952,7 +1927,6 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -2002,13 +1976,14 @@ export interface RootRouteChildren {
   ApiClerkWebhookRoute: typeof ApiClerkWebhookRoute
   ApiConnectionsIdRoute: typeof ApiConnectionsIdRouteWithChildren
   ApiCronAutomationsRoute: typeof ApiCronAutomationsRoute
+  ApiGraphragIngestRoute: typeof ApiGraphragIngestRoute
+  ApiGraphragQueryRoute: typeof ApiGraphragQueryRoute
+  ApiGraphragStatusRoute: typeof ApiGraphragStatusRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
   ApiOnboardingCompleteItemRoute: typeof ApiOnboardingCompleteItemRoute
   ApiOnboardingMagicLinkRoute: typeof ApiOnboardingMagicLinkRoute
   ApiPatternsPatternIdRoute: typeof ApiPatternsPatternIdRoute
-  ApiPaymentsInstallmentsRoute: typeof ApiPaymentsInstallmentsRoute
-  ApiPaymentsStatsRoute: typeof ApiPaymentsStatsRoute
   ApiProposalsAnalyticsRoute: typeof ApiProposalsAnalyticsRoute
   ApiProposalsStageRoute: typeof ApiProposalsStageRoute
   ApiProposalsTrackRoute: typeof ApiProposalsTrackRoute
@@ -2054,7 +2029,6 @@ export interface RootRouteChildren {
   ApiInternalAnalyticsBackfillRoute: typeof ApiInternalAnalyticsBackfillRoute
   ApiInvoicesIdPaymentLinkRoute: typeof ApiInvoicesIdPaymentLinkRoute
   ApiInvoicesIdPayRoute: typeof ApiInvoicesIdPayRoute
-  ApiInvoicesIdScheduleRoute: typeof ApiInvoicesIdScheduleRoute
   ApiProposalsProposalIdDeclineRoute: typeof ApiProposalsProposalIdDeclineRoute
   ApiProposalsChar91idChar93AcceptRoute: typeof ApiProposalsChar91idChar93AcceptRoute
   ApiProposalsChar91idChar93DuplicateRoute: typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -2063,7 +2037,6 @@ export interface RootRouteChildren {
   ApiProposalsChar91idChar93RejectRoute: typeof ApiProposalsChar91idChar93RejectRoute
   ApiProposalsChar91idChar93ResolveRoute: typeof ApiProposalsChar91idChar93ResolveRoute
   ApiProposalsChar91idChar93SendRoute: typeof ApiProposalsChar91idChar93SendRoute
-  ApiProposalsChar91idChar93ServicesRoute: typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   ApiProposalsChar91idChar93VersionsRoute: typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   ApiProposalsPublicTokenRoute: typeof ApiProposalsPublicTokenRoute
   ApiProspectsProspectIdReportRoute: typeof ApiProspectsProspectIdReportRoute
@@ -2476,20 +2449,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/payments/stats': {
-      id: '/api/payments/stats'
-      path: '/api/payments/stats'
-      fullPath: '/api/payments/stats'
-      preLoaderRoute: typeof ApiPaymentsStatsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/payments/installments': {
-      id: '/api/payments/installments'
-      path: '/api/payments/installments'
-      fullPath: '/api/payments/installments'
-      preLoaderRoute: typeof ApiPaymentsInstallmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/patterns/$patternId': {
       id: '/api/patterns/$patternId'
       path: '/api/patterns/$patternId'
@@ -2523,6 +2482,27 @@ declare module '@tanstack/react-router' {
       path: '/api/keywords/competitor-spy'
       fullPath: '/api/keywords/competitor-spy'
       preLoaderRoute: typeof ApiKeywordsCompetitorSpyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/graphrag/status': {
+      id: '/api/graphrag/status'
+      path: '/api/graphrag/status'
+      fullPath: '/api/graphrag/status'
+      preLoaderRoute: typeof ApiGraphragStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/graphrag/query': {
+      id: '/api/graphrag/query'
+      path: '/api/graphrag/query'
+      fullPath: '/api/graphrag/query'
+      preLoaderRoute: typeof ApiGraphragQueryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/graphrag/ingest': {
+      id: '/api/graphrag/ingest'
+      path: '/api/graphrag/ingest'
+      fullPath: '/api/graphrag/ingest'
+      preLoaderRoute: typeof ApiGraphragIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cron/automations': {
@@ -2721,13 +2701,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsChar91idChar93VersionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/proposals/id/services': {
-      id: '/api/proposals/id/services'
-      path: '/api/proposals/id/services'
-      fullPath: '/api/proposals/id/services'
-      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/proposals/id/send': {
       id: '/api/proposals/id/send'
       path: '/api/proposals/id/send'
@@ -2782,13 +2755,6 @@ declare module '@tanstack/react-router' {
       path: '/api/proposals/$proposalId/decline'
       fullPath: '/api/proposals/$proposalId/decline'
       preLoaderRoute: typeof ApiProposalsProposalIdDeclineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/invoices/$id/schedule': {
-      id: '/api/invoices/$id/schedule'
-      path: '/api/invoices/$id/schedule'
-      fullPath: '/api/invoices/$id/schedule'
-      preLoaderRoute: typeof ApiInvoicesIdScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/invoices/$id/pay': {
@@ -3091,13 +3057,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/prospects/$id/keywords/import'
       preLoaderRoute: typeof ApiProspectsIdKeywordsImportRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/api/proposals/id/services/resolved': {
-      id: '/api/proposals/id/services/resolved'
-      path: '/resolved'
-      fullPath: '/api/proposals/id/services/resolved'
-      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRouteImport
-      parentRoute: typeof ApiProposalsChar91idChar93ServicesRoute
     }
     '/api/proposals/id/sections/sid': {
       id: '/api/proposals/id/sections/sid'
@@ -3470,21 +3429,6 @@ const ApiClientsClientIdAlertRulesRouteWithChildren =
     ApiClientsClientIdAlertRulesRouteChildren,
   )
 
-interface ApiProposalsChar91idChar93ServicesRouteChildren {
-  ApiProposalsChar91idChar93ServicesResolvedRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRoute
-}
-
-const ApiProposalsChar91idChar93ServicesRouteChildren: ApiProposalsChar91idChar93ServicesRouteChildren =
-  {
-    ApiProposalsChar91idChar93ServicesResolvedRoute:
-      ApiProposalsChar91idChar93ServicesResolvedRoute,
-  }
-
-const ApiProposalsChar91idChar93ServicesRouteWithChildren =
-  ApiProposalsChar91idChar93ServicesRoute._addFileChildren(
-    ApiProposalsChar91idChar93ServicesRouteChildren,
-  )
-
 interface ApiProposalsChar91idChar93VersionsRouteChildren {
   ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute: typeof ApiProposalsChar91idChar93VersionsChar91vidChar93RestoreRoute
 }
@@ -3566,13 +3510,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClerkWebhookRoute: ApiClerkWebhookRoute,
   ApiConnectionsIdRoute: ApiConnectionsIdRouteWithChildren,
   ApiCronAutomationsRoute: ApiCronAutomationsRoute,
+  ApiGraphragIngestRoute: ApiGraphragIngestRoute,
+  ApiGraphragQueryRoute: ApiGraphragQueryRoute,
+  ApiGraphragStatusRoute: ApiGraphragStatusRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
   ApiOnboardingCompleteItemRoute: ApiOnboardingCompleteItemRoute,
   ApiOnboardingMagicLinkRoute: ApiOnboardingMagicLinkRoute,
   ApiPatternsPatternIdRoute: ApiPatternsPatternIdRoute,
-  ApiPaymentsInstallmentsRoute: ApiPaymentsInstallmentsRoute,
-  ApiPaymentsStatsRoute: ApiPaymentsStatsRoute,
   ApiProposalsAnalyticsRoute: ApiProposalsAnalyticsRoute,
   ApiProposalsStageRoute: ApiProposalsStageRoute,
   ApiProposalsTrackRoute: ApiProposalsTrackRoute,
@@ -3619,7 +3564,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalAnalyticsBackfillRoute: ApiInternalAnalyticsBackfillRoute,
   ApiInvoicesIdPaymentLinkRoute: ApiInvoicesIdPaymentLinkRoute,
   ApiInvoicesIdPayRoute: ApiInvoicesIdPayRoute,
-  ApiInvoicesIdScheduleRoute: ApiInvoicesIdScheduleRoute,
   ApiProposalsProposalIdDeclineRoute: ApiProposalsProposalIdDeclineRoute,
   ApiProposalsChar91idChar93AcceptRoute: ApiProposalsChar91idChar93AcceptRoute,
   ApiProposalsChar91idChar93DuplicateRoute:
@@ -3631,8 +3575,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProposalsChar91idChar93ResolveRoute:
     ApiProposalsChar91idChar93ResolveRoute,
   ApiProposalsChar91idChar93SendRoute: ApiProposalsChar91idChar93SendRoute,
-  ApiProposalsChar91idChar93ServicesRoute:
-    ApiProposalsChar91idChar93ServicesRouteWithChildren,
   ApiProposalsChar91idChar93VersionsRoute:
     ApiProposalsChar91idChar93VersionsRouteWithChildren,
   ApiProposalsPublicTokenRoute: ApiProposalsPublicTokenRoute,

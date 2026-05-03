@@ -8,8 +8,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { StripeService } from "@/server/features/invoices/services/StripeService";
 import { InvoiceService } from "@/server/features/invoices/services/InvoiceService";
-import { PaymentScheduleService } from "@/server/features/payments/services/PaymentScheduleService";
-import { PaymentScheduleRepository } from "@/server/features/payments/repositories/PaymentScheduleRepository";
 import { processWebhookIdempotently } from "@/server/lib/webhook-utils";
 import { createLogger } from "@/server/lib/logger";
 import type Stripe from "stripe";
@@ -54,61 +52,6 @@ export const Route = createFileRoute("/api/webhooks/stripe")({
                     invoice.id,
                     paymentIntentId
                   );
-                  break;
-                }
-
-                // Phase 60-05: Handle installment payments via checkout.session.completed
-                case "checkout.session.completed": {
-                  const session = event.data.object as Stripe.Checkout.Session;
-                  const installmentId = session.metadata?.installmentId;
-
-                  if (installmentId) {
-                    // This is an installment payment
-                    const paymentIntent = typeof session.payment_intent === "string"
-                      ? session.payment_intent
-                      : session.payment_intent?.id || "";
-
-                    log.info("Processing installment payment", {
-                      installmentId,
-                      sessionId: session.id,
-                      paymentIntent,
-                    });
-
-                    // Record the payment
-                    await PaymentScheduleService.recordPayment(
-                      installmentId,
-                      "stripe",
-                      paymentIntent
-                    );
-
-                    // Get the installment to find the schedule
-                    const installment = await PaymentScheduleRepository.getInstallmentById(installmentId);
-                    if (installment) {
-                      // Check if there are more installments
-                      const nextInstallment = await PaymentScheduleService.getFirstUnpaidInstallment(
-                        installment.scheduleId
-                      );
-
-                      if (nextInstallment) {
-                        log.info("More installments pending", {
-                          nextInstallmentId: nextInstallment.id,
-                          nextDueAt: nextInstallment.dueAt,
-                        });
-                        // Note: Next installment checkout URL created by client when they view schedule
-                      } else {
-                        // All installments paid - update invoice status
-                        const schedule = await PaymentScheduleRepository.getScheduleById(
-                          installment.scheduleId
-                        );
-                        if (schedule) {
-                          log.info("All installments paid, updating invoice", {
-                            invoiceId: schedule.invoiceId,
-                          });
-                          // Invoice status updated via separate invoice.payment_succeeded event
-                        }
-                      }
-                    }
-                  }
                   break;
                 }
 

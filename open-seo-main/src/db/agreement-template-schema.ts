@@ -84,15 +84,9 @@ export interface SignatureData {
   timestamp: string;
 }
 
-// Default signing order types (D-07, D-08)
-export const DEFAULT_SIGNING_ORDER = ["sequential", "parallel"] as const;
-export type DefaultSigningOrder = (typeof DEFAULT_SIGNING_ORDER)[number];
-
 /**
  * Agreement templates table - pre-approved legal templates.
  * Templates are versioned and require legal approval.
- *
- * Phase 59: Extended with workspace scoping, clause ordering, and multi-signer config.
  */
 export const agreementTemplates = pgTable(
   "agreement_templates",
@@ -103,24 +97,9 @@ export const agreementTemplates = pgTable(
     language: text("language").notNull().default("en"),
     type: text("type").notNull().default("seo-services"),
 
-    // Workspace scoping (D-01) - null = system template
-    workspaceId: text("workspace_id").references(() => organization.id, {
-      onDelete: "cascade",
-    }),
-
     // Template content
     sections: jsonb("sections").$type<AgreementSection[]>().notNull(),
     variables: jsonb("variables").$type<TemplateVariable[]>().notNull(),
-
-    // Clause ordering (D-03)
-    clauseOrder: jsonb("clause_order").$type<string[]>().notNull().default([]),
-
-    // Default flag per workspace (D-04)
-    isDefault: boolean("is_default").default(false),
-
-    // Pre-signing config (D-09)
-    allowPreSigning: boolean("allow_pre_signing").default(true),
-    defaultSigningOrder: text("default_signing_order").default("sequential"),
 
     // Versioning and approval
     version: integer("version").notNull().default(1),
@@ -141,7 +120,6 @@ export const agreementTemplates = pgTable(
     index("ix_agreement_templates_language").on(table.language),
     index("ix_agreement_templates_type").on(table.type),
     index("ix_agreement_templates_active").on(table.isActive),
-    index("ix_agreement_templates_workspace").on(table.workspaceId),
     check(
       "chk_agreement_template_language",
       sql`language IN ('en', 'lt')`
@@ -149,10 +127,6 @@ export const agreementTemplates = pgTable(
     check(
       "chk_agreement_template_type",
       sql`type IN ('seo-services', 'consulting', 'custom')`
-    ),
-    check(
-      "chk_default_signing_order",
-      sql`default_signing_order IN ('sequential', 'parallel')`
     ),
   ]
 );
@@ -225,11 +199,7 @@ export const generatedAgreements = pgTable(
  */
 export const agreementTemplatesRelations = relations(
   agreementTemplates,
-  ({ one, many }) => ({
-    workspace: one(organization, {
-      fields: [agreementTemplates.workspaceId],
-      references: [organization.id],
-    }),
+  ({ many }) => ({
     generatedAgreements: many(generatedAgreements),
   })
 );

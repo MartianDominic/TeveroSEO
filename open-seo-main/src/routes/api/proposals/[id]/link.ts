@@ -64,7 +64,7 @@ function buildPublicUrl(token: string): string {
  * }
  */
 // @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/link")({
+export const Route = createFileRoute("/api/proposals/[id]/link")({
   server: {
     handlers: {
       POST: async ({

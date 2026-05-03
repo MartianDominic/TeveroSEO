@@ -1,17 +1,11 @@
 /**
- * FalkorDB Client with Tenant Isolation (Legacy)
+ * FalkorDB Client with Tenant Isolation
  *
  * Provides graph database access with per-tenant isolation via Redis keyspace.
  * Each tenant's graph is stored under the key "kg:{tenantId}" to ensure
  * complete data isolation between tenants.
  *
- * NOTE: For new code, prefer TenantGraphManager which provides:
- * - 768-dim vector indexes (vs 384 here)
- * - Hybrid vector + graph search
- * - Connection pooling
- *
- * @see .planning/phases/65-graphrag-foundation/65-RESEARCH.md
- * @see ./tenant-graph-manager.ts (recommended for new code)
+ * @see .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-001)
  */
 
 import { FalkorDB } from "falkordb";
@@ -134,10 +128,9 @@ export class FalkorDBClient {
     await graph.query("CREATE INDEX FOR (c:Category) ON (c.slug)");
     await graph.query("CREATE INDEX FOR (b:Brand) ON (b.name)");
 
-    // Create vector index for embeddings (768-dim cosine per Phase 65 spec)
-    // M:16 and efConstruction:200 per RESEARCH.md Pattern 1
+    // Create vector index for embeddings (384-dim cosine per ADR-002)
     await graph.query(
-      "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:768, similarityFunction:'cosine', M:16, efConstruction:200}"
+      "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:384, similarityFunction:'cosine'}"
     );
   }
 

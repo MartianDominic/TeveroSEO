@@ -40,7 +40,7 @@ const updateSectionSchema = z.object({
 });
 
 // @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/sections/sid")({
+export const Route = createFileRoute("/api/proposals/$id/sections/$sid")({
   server: {
     handlers: {
       /**
