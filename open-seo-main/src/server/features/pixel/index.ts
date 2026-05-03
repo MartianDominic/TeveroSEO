@@ -4,10 +4,11 @@
  *
  * Exports:
  * - PixelScriptService: Manages pixel installations and configurations
- * - generatePixelScript: Pure function to generate script snippet
- * - generatePixelLoader: Pure function to generate loader (t.js) content
+ * - PixelCollectorService: Processes analytics events from browser pixels
+ * - PixelVerificationService: Real-time installation verification
  */
 
+// Script generation service (Phase 66-01)
 export {
   PixelScriptService,
   generatePixelScript,
@@ -15,3 +16,24 @@ export {
   type PixelScriptConfig,
   type ApprovedChange,
 } from "./pixel-script.service";
+
+// Collector service (Phase 66-02)
+export {
+  PixelCollectorService,
+  getPixelCollector,
+  processPixelEvent,
+  type PixelEvent,
+  type PixelEventType,
+  type ProcessEventResult,
+  type GeoData,
+} from "./pixel-collector.service";
+
+// Verification service (Phase 66-02)
+export {
+  PixelVerificationService,
+  getPixelVerificationService,
+  verifyInstallation,
+  type VerificationStatus,
+  type VerificationStatusType,
+  type GeoLocation,
+} from "./pixel-verification.service";
