@@ -24,7 +24,6 @@ import {
   uniqueIndex,
   check,
   boolean,
-  pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "../user-schema";
