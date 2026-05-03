@@ -1,15 +1,18 @@
 /**
  * Embedding service with Jina API integration.
  *
- * Phase 42-03: Unified Embedding Service
+ * Phase 65: Upgraded to 768-dim for GraphRAG
+ * (Previously Phase 42-03: Unified Embedding Service)
  *
  * This module provides embedding generation using jina-embeddings-v3 with:
- * - Matryoshka truncation to 384-dim for storage efficiency
+ * - Matryoshka truncation to 768-dim for optimal GraphRAG quality
  * - Redis caching with 30-day TTL
  * - Retry logic with exponential backoff
  * - Batch processing (32 texts per API call)
  *
- * Reference: .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-002)
+ * Reference:
+ * - .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-002)
+ * - .planning/phases/65-graphrag-foundation/65-RESEARCH.md
  */
 
 import { redis } from "@/server/lib/redis";
