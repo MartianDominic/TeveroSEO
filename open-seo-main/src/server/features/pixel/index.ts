@@ -37,3 +37,21 @@ export {
   type VerificationStatusType,
   type GeoLocation,
 } from "./pixel-verification.service";
+
+// Platform detection service (Phase 66-03)
+export {
+  PlatformDetectorService,
+  detectPlatform,
+  SUPPORTED_PLATFORMS as DETECTABLE_PLATFORMS,
+  type SupportedPlatform,
+  type PlatformDetectionResult,
+} from "./platform-detector.service";
+
+// CMS installation guides (Phase 66-03)
+export {
+  CMS_GUIDES,
+  getGuide,
+  SUPPORTED_PLATFORMS,
+  type InstallationGuide,
+  type GuideStep,
+} from "./cms-guides";

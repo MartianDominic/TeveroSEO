@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 66
-Plan: 01 (completed)
+Plan: 03 (completed)
 Milestone: v7.1 Platform Intelligence (Phases 63-66)
 Status: Executing
-Last activity: 2026-05-03 -- Completed 66-01 (pixel schema + script service)
+Last activity: 2026-05-03 -- Completed 66-03 (CMS platform detection + installation guides)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **66-03:** Subdomain patterns detect with 100% confidence (no fetch); HTML signatures 90-95%; Response headers 80%; SSRF blocks all internal IPs; 3s timeout; GTM as enhancement feature
 - **64-02:** L0 treated as negative-only signal for Shopify-like platforms; Accept weak ETags (W/ prefix) per Cloudflare; 30s timeout for conditional GET
 - **64-01:** SET NX EX for atomic lock (not separate SETNX + EXPIRE); Subscribe before check pattern for lost wakeup prevention; Tenant-prefixed keys for isolation
 - **62-04:** Pre-computed aggregations in pipeline_metrics; 5-min refresh via BullMQ repeatable; stale-while-revalidate at 10 min; cents for financial precision; pct*10000 for conversion rate precision; in-memory rate limiting (1 req/workspace/min)
