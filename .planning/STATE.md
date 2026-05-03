@@ -4,13 +4,13 @@ milestone: v8.0
 milestone_name: SaaS Hardening
 status: executing
 last_updated: "2026-05-03T21:36:27Z"
-last_activity: 2026-05-03 -- Completed 67-01 Schema Design (database consolidation)
+last_activity: 2026-05-03 -- Completed 67-02 Migration Scripts (database consolidation)
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 20
-  completed_plans: 1
-  percent: 5
+  completed_plans: 2
+  percent: 10
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 67 (in progress)
-Plan: 01 complete, 02-03 pending
+Plan: 01-02 complete, 03 pending
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: EXECUTING
-Last activity: 2026-05-03 -- Completed 67-01 Schema Design
+Last activity: 2026-05-03 -- Completed 67-02 Migration Scripts
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **67-02:** ORPHAN_ prefix for NULL workspace_id handling; wp_ prefix for alwrity writing_personas ID collision; uuid_generate_v5 for deterministic UUID mapping; Base64 encoding for encrypted credentials migration
 - **66-11:** Playwright for E2E testing (modern, cross-browser, built-in mocking); data-testid attributes for stable test selectors; API route mocking for deterministic tests; Integration tests with mocked Redis/DB for pipeline verification
 - **66-10:** {{variable}} interpolation syntax matching existing patterns; Lithuanian uses natural phrasing not literal translations; CMS guide i18n via translation keys
 - **66-09:** Facade routes to best source (GA OAuth > pixel for traffic); GSC required for rankings (no fallback); CWV always pixel; Prompt dismissal 7-day localStorage TTL; window.location for navigation (avoids Next.js typed routes)
