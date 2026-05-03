@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-03T11:44:42Z"
-last_activity: 2026-05-03 -- Completed 66-10 (Internationalization)
+last_updated: "2026-05-03T11:48:34Z"
+last_activity: 2026-05-03 -- Completed 66-11 (E2E Tests + Documentation)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_plans: 59
+  completed_plans: 59
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 66
-Plan: 10 (completed)
+Plan: 11 (completed)
 Milestone: v7.1 Platform Intelligence (Phases 63-66)
 Status: Executing
-Last activity: 2026-05-03 -- Completed 66-10 (Internationalization)
+Last activity: 2026-05-03 -- Completed 66-11 (E2E Tests + Documentation)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **66-11:** Playwright for E2E testing (modern, cross-browser, built-in mocking); data-testid attributes for stable test selectors; API route mocking for deterministic tests; Integration tests with mocked Redis/DB for pipeline verification
 - **66-10:** {{variable}} interpolation syntax matching existing patterns; Lithuanian uses natural phrasing not literal translations; CMS guide i18n via translation keys
 - **66-09:** Facade routes to best source (GA OAuth > pixel for traffic); GSC required for rankings (no fallback); CWV always pixel; Prompt dismissal 7-day localStorage TTL; window.location for navigation (avoids Next.js typed routes)
 - **66-04:** useState+useCallback for wizard state (simpler than useReducer); 9-step state machine (url/detecting/choice/diy/developer/oauth/verifying/success/error); ConnectApiError for typed error handling; snippet prop for siteId personalization
