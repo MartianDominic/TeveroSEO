@@ -2059,10 +2059,10 @@ Transform the platform into a complete agency CRM with v6 design system complian
   4. Metrics dashboard shows real savings
 **Estimated effort**: 34 hours
 **Plans**: 4 plans
-  - [ ] 64-01-PLAN.md — Crawl Singleflight (Wave 1)
-  - [ ] 64-02-PLAN.md — Delta Crawling Cascade (Wave 1)
-  - [ ] 64-03-PLAN.md — Fast/Heavy Queue Lanes (Wave 2)
-  - [ ] 64-04-PLAN.md — Integration & E2E Testing (Wave 2)
+  - [x] 64-01-PLAN.md — Crawl Singleflight (Wave 1)
+  - [x] 64-02-PLAN.md — Delta Crawling Cascade (Wave 1)
+  - [x] 64-03-PLAN.md — Fast/Heavy Queue Lanes (Wave 2)
+  - [x] 64-04-PLAN.md — Integration & E2E Testing (Wave 2)
 
 ---
 
