@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: SaaS Hardening
 status: executing
-last_updated: "2026-05-03T22:08:08Z"
-last_activity: 2026-05-03 -- Completed 68-02 Client Context Security
+last_updated: "2026-05-04T01:14:00Z"
+last_activity: 2026-05-04 -- Completed 68-04 State Management Migration (TanStack Query + BroadcastChannel)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 5
-  percent: 25
+  completed_plans: 6
+  percent: 30
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 68 (in progress)
-Plan: 02 complete
+Plan: 04 complete
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: EXECUTING
-Last activity: 2026-05-03 -- Completed 68-02 Client Context Security (empty header bypass, abort-on-switch, cache invalidation)
+Last activity: 2026-05-04 -- Completed 68-04 State Management Migration (TanStack Query hooks, BroadcastChannel multi-tab sync)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **68-04:** 5-minute staleTime + 10-minute gcTime for client query cache; BroadcastChannel for cross-tab sync (not localStorage events); Store retains legacy methods for gradual migration; Direct setState in broadcast handler to avoid circular broadcasts
 - **68-02:** VALIDATION_ERROR code for 400 responses (consistent with error-codes.ts); AbortManager singleton for cross-component abort coordination; 30s cache TTL matches existing ownership cache; In-memory cache supplements Redis for dual-layer invalidation; 58 tests across 4 modules
 - **68-01:** JWT validation required before trusting user identity headers; Reuse existing verifyClerkJWT (jose-based) via clerk-verify.ts wrapper; resolveClientContext() as primary API with ResolvedContext interface; service:internal userId for internal service token bypass; 21 tests for auth flow validation
 - **67-03:** Fire-and-forget pattern for shadow writes (non-blocking); SHADOW_WRITE_ENABLED defaults to false (opt-in); DB_READ_PERCENTAGE_TEVERO uses Math.random for distribution; Tevero connection pool size 5 (smaller than primary); 3-week phased cutover timeline
