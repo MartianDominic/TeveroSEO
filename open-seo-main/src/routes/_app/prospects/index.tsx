@@ -4,11 +4,15 @@
  * Phase 30.5: CSV Import, Bulk Actions UI
  *
  * Lists all prospects for the current workspace with bulk actions and pipeline chart.
+ *
+ * MED-OSM-02 FIX: Added Zod validation for search params.
+ * MED-OSM-03 FIX: Added error boundary for prospects route.
  */
 import { useState, useCallback, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Upload } from "lucide-react";
+import { z } from "zod";
 import { listProspects, getStageDistribution, getRemainingQuota } from "@/serverFunctions/prospects";
 import { Button } from "@/client/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/client/components/ui/card";
@@ -19,9 +23,22 @@ import {
   PipelineStageChart,
 } from "@/client/components/prospects";
 import type { ProspectSelect } from "@/db/prospect-schema";
+import { DefaultCatchBoundary } from "@/client/components/DefaultCatchBoundary";
+
+/**
+ * MED-OSM-02: Zod schema for prospects search params.
+ */
+const prospectsSearchSchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  stage: z.enum(["lead", "qualified", "analyzing", "proposal", "negotiation", "won", "lost"]).optional(),
+  sort: z.enum(["domain", "stage", "createdAt", "updatedAt"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+});
 
 export const Route = createFileRoute("/_app/prospects/")({
   component: ProspectsListPage,
+  validateSearch: prospectsSearchSchema,
+  errorComponent: DefaultCatchBoundary,
 });
 
 function ProspectsListPage() {

@@ -226,20 +226,33 @@ async def global_exception_handler(request: Request, exc: Exception):
     """
     Global exception handler for unhandled exceptions.
 
+    FIX HIGH-CONTRACT-01: Use standard error response format.
+    FIX HIGH-CONTRACT-02: Standardize to {"error": {...}} format.
+    FIX MED-CONTRACT-01: Include request_id in all error responses.
+
     SECURITY: Prevents sensitive information leakage by:
     - Logging full error details server-side for debugging
     - Capturing exception in Sentry with request context
     - Returning generic error message to client
     - Never exposing stack traces or internal details in responses
     """
+    from utils.standard_error import (
+        get_request_id,
+        create_error_response,
+        ErrorCode,
+        StandardHTTPException,
+    )
+
+    # Extract request ID for correlation
+    request_id = get_request_id(request)
+
     # Log full error details for debugging (server-side only)
     logger.error(
-        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        f"[{request_id}] Unhandled exception on {request.method} {request.url.path}: {exc}",
         exc_info=True
     )
 
     # Capture exception in Sentry with request context
-    error_id = None
     try:
         from config.sentry_config import capture_exception, set_context
 
@@ -249,30 +262,52 @@ async def global_exception_handler(request: Request, exc: Exception):
             "path": request.url.path,
             "query_string": str(request.query_params),
             "client_host": request.client.host if request.client else "unknown",
+            "request_id": request_id,
         })
 
         # Capture with tags for filtering in Sentry
-        event_id = capture_exception(
+        capture_exception(
             exc,
             tags={
                 "endpoint": request.url.path,
                 "method": request.method,
                 "error_type": type(exc).__name__,
+                "request_id": request_id,
             }
         )
-        if event_id:
-            error_id = event_id[:8]  # Use Sentry event ID prefix
     except Exception:
         pass  # Don't let Sentry errors break the error handler
 
+    # Handle StandardHTTPException (already in correct format)
+    if isinstance(exc, StandardHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail,
+            headers={"X-Request-Id": request_id},
+        )
+
+    # Handle regular HTTPException (convert to standard format)
+    if isinstance(exc, HTTPException):
+        from utils.standard_error import derive_error_code
+        code = derive_error_code(exc.status_code)
+        message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=create_error_response(code, message, request_id),
+            headers={"X-Request-Id": request_id},
+        )
+
+    # FIX HIGH-CONTRACT-01: Return standard error format
     # SECURITY: Return generic error message to client
     # Never expose internal error details, stack traces, or sensitive info
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "An internal error occurred. Please try again.",
-            "error_id": error_id or str(id(exc))[:8]  # Sentry ID or fallback
-        }
+        content=create_error_response(
+            ErrorCode.INTERNAL_ERROR,
+            "An internal error occurred. Please try again.",
+            request_id,
+        ),
+        headers={"X-Request-Id": request_id},
     )
 
 # Add CORS middleware with proper security configuration

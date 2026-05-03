@@ -5,7 +5,7 @@
  * CRUD operations for agreement signers with status transitions.
  * Implements D-05 (status state machine) and D-06 (token management).
  */
-import { eq, and, gt, asc } from "drizzle-orm";
+import { eq, and, gt, asc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { addDays } from "date-fns";
 import { db } from "@/db/index";
@@ -212,5 +212,85 @@ export const SignerRepository = {
       declined: "declinedAt",
     };
     return statusToField[status];
+  },
+
+  /**
+   * Batch generate and set access tokens for multiple signers.
+   * HIGH-PERF-03: Reduces N+1 pattern by generating tokens in bulk.
+   * Returns array of { signerId, token, expiresAt } for each signer.
+   */
+  async batchSetAccessTokens(
+    signerIds: string[]
+  ): Promise<Array<{ signerId: string; token: string; expiresAt: Date }>> {
+    if (signerIds.length === 0) return [];
+
+    const expiresAt = addDays(new Date(), TOKEN_EXPIRY_DAYS);
+    const results: Array<{ signerId: string; token: string; expiresAt: Date }> =
+      [];
+
+    // Generate tokens for all signers
+    const tokenUpdates = signerIds.map((signerId) => ({
+      signerId,
+      token: nanoid(TOKEN_LENGTH),
+      expiresAt,
+    }));
+
+    // Use a transaction to update all signers atomically
+    // Each signer gets a unique token, so we need individual updates
+    // but we batch them in a single transaction for atomicity
+    await db.transaction(async (tx) => {
+      for (const { signerId, token, expiresAt: expiry } of tokenUpdates) {
+        await tx
+          .update(agreementSigners)
+          .set({
+            accessToken: token,
+            tokenExpiresAt: expiry,
+            updatedAt: new Date(),
+          })
+          .where(eq(agreementSigners.id, signerId));
+
+        results.push({ signerId, token, expiresAt: expiry });
+      }
+    });
+
+    log.info("Batch access tokens set", {
+      count: results.length,
+      expiresAt: expiresAt.toISOString(),
+    });
+
+    return results;
+  },
+
+  /**
+   * Batch update signer status for multiple signers.
+   * HIGH-PERF-03: Uses WHERE id IN (...) for efficient bulk updates.
+   */
+  async batchUpdateStatus(
+    signerIds: string[],
+    status: SignerStatus
+  ): Promise<number> {
+    if (signerIds.length === 0) return 0;
+
+    const timestampField = this.getTimestampField(status);
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    if (timestampField) {
+      updateData[timestampField] = new Date();
+    }
+
+    await db
+      .update(agreementSigners)
+      .set(updateData)
+      .where(inArray(agreementSigners.id, signerIds));
+
+    log.info("Batch signer status updated", {
+      count: signerIds.length,
+      status,
+    });
+
+    return signerIds.length;
   },
 };

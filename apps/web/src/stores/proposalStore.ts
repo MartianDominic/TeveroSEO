@@ -12,6 +12,7 @@
 
 import { create } from "zustand";
 import { temporal } from "zundo";
+import { shallow } from "zustand/shallow";
 import type { EditorSection } from "@/components/proposals/types";
 
 // ---------------------------------------------------------------------------
@@ -183,9 +184,30 @@ export const useProposalStore = create<ProposalStore>()(
         sectionOrder: state.sectionOrder,
         contentMap: state.contentMap,
       }),
-      // Equality check to prevent duplicate history entries
-      equality: (pastState, currentState) =>
-        JSON.stringify(pastState) === JSON.stringify(currentState),
+      // Shallow equality check to prevent duplicate history entries (performance optimized)
+      equality: (pastState, currentState) => {
+        // Compare sectionOrder arrays
+        if (!shallow(pastState.sectionOrder, currentState.sectionOrder)) {
+          return false;
+        }
+        // Compare contentMap objects
+        if (!shallow(pastState.contentMap, currentState.contentMap)) {
+          return false;
+        }
+        // Compare sections array length and IDs
+        if (pastState.sections.length !== currentState.sections.length) {
+          return false;
+        }
+        // Quick check on section IDs and content
+        for (let i = 0; i < pastState.sections.length; i++) {
+          const past = pastState.sections[i];
+          const current = currentState.sections[i];
+          if (past?.id !== current?.id || past?.content !== current?.content) {
+            return false;
+          }
+        }
+        return true;
+      },
     }
   )
 );

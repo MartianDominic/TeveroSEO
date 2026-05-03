@@ -159,7 +159,7 @@ export function TaskItem({
           className="h-7 w-7"
           onClick={() => handleAction(onComplete)}
           disabled={loading}
-          title="Mark complete"
+          aria-label={`Mark task "${task.title}" as complete`}
         >
           <Check className="h-4 w-4" />
         </Button>
@@ -171,7 +171,7 @@ export function TaskItem({
           className="h-7 w-7"
           onClick={() => handleAction(task.pinnedAt ? onUnpin : onPin)}
           disabled={loading}
-          title={task.pinnedAt ? "Unpin from My Focus" : "Pin to My Focus"}
+          aria-label={task.pinnedAt ? `Unpin task "${task.title}" from My Focus` : `Pin task "${task.title}" to My Focus`}
         >
           <Pin
             className={cn(
@@ -189,6 +189,7 @@ export function TaskItem({
               variant="ghost"
               className="h-7 w-7"
               disabled={loading}
+              aria-label={`More actions for task "${task.title}"`}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>

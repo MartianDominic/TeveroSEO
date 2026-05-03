@@ -5,7 +5,7 @@
 ## Role
 
 SEO audit platform within the TeveroSEO unified platform. Handles:
-- 107 SEO checks (Tier 1-4)
+- 109 SEO checks (Tier 1-4)
 - Internal linking with cannibalization detection
 - Content briefs with SERP analysis
 - Brand voice profiles and compliance scoring

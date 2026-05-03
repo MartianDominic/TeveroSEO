@@ -5,6 +5,16 @@
  * TanStack Start server functions for proposal CRUD operations.
  * All endpoints require authentication and verify workspace ownership.
  */
+/**
+ * Proposal management server functions.
+ * Phase 30: Interactive Proposals - Schema & Builder
+ *
+ * TanStack Start server functions for proposal CRUD operations.
+ * All endpoints require authentication and verify workspace ownership.
+ *
+ * HIGH-OSM-02 FIX: All errors now use AppError with appropriate codes
+ * instead of plain Error to ensure proper error sanitization.
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
@@ -14,6 +24,7 @@ import {
 } from "@/server/features/proposals/tracking";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import { PROPOSAL_STATUS } from "@/db/proposal-schema";
+import { AppError } from "@/server/lib/errors";
 
 /**
  * Schema for proposal content.
@@ -138,12 +149,12 @@ export const getProposal = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findById(data.id);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Verify workspace ownership
     if (proposal.workspaceId !== context.organizationId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     return proposal;
@@ -180,7 +191,7 @@ export const updateProposal = createServerFn({ method: "POST" })
     // Verify ownership first
     const existing = await ProposalService.findById(id);
     if (!existing || existing.workspaceId !== context.organizationId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     return ProposalService.update(id, {
@@ -208,7 +219,7 @@ export const sendProposal = createServerFn({ method: "POST" })
     // Verify ownership first
     const existing = await ProposalService.findById(data.id);
     if (!existing || existing.workspaceId !== context.organizationId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     return ProposalService.markSent(
@@ -231,7 +242,7 @@ export const deleteProposal = createServerFn({ method: "POST" })
     // Verify ownership first
     const existing = await ProposalService.findById(data.id);
     if (!existing || existing.workspaceId !== context.organizationId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     await ProposalService.delete(data.id);
@@ -251,12 +262,12 @@ export const getProposalByToken = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Check expiration
     if (proposal.expiresAt && new Date() > proposal.expiresAt) {
-      throw new Error("Proposal has expired");
+      throw new AppError("GONE", "Proposal has expired");
     }
 
     return proposal;
@@ -284,7 +295,7 @@ export const recordProposalView = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     return ProposalService.recordView(proposal.id, {
@@ -309,12 +320,12 @@ export const acceptProposal = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Check expiration
     if (proposal.expiresAt && new Date() > proposal.expiresAt) {
-      throw new Error("Proposal has expired");
+      throw new AppError("GONE", "Proposal has expired");
     }
 
     return ProposalService.markAccepted(proposal.id);
@@ -351,12 +362,12 @@ export const initiateProposalSigning = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Check expiration
     if (proposal.expiresAt && new Date() > proposal.expiresAt) {
-      throw new Error("Proposal has expired");
+      throw new AppError("GONE", "Proposal has expired");
     }
 
     return initiateSigning({
@@ -392,7 +403,7 @@ export const checkProposalSigningStatus = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     return checkSigningStatus(proposal.id, data.sessionId);
@@ -426,7 +437,7 @@ export const trackProposalView = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal || proposal.id !== data.proposalId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Use client fingerprint or generate a random one for tracking
@@ -517,7 +528,7 @@ export const getProposalEngagementSignals = createServerFn({ method: "POST" })
     // Verify ownership
     const proposal = await ProposalService.findById(data.proposalId);
     if (!proposal || proposal.workspaceId !== context.organizationId) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     const signals = await calculateEngagementSignals(data.proposalId);
@@ -557,12 +568,12 @@ export const createProposalPayment = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Verify proposal is signed
     if (proposal.status !== "signed") {
-      throw new Error("Proposal must be signed before payment");
+      throw new AppError("CONFLICT", "Proposal must be signed before payment");
     }
 
     // Get contact email from prospect if available
@@ -600,7 +611,7 @@ export const getProposalPaymentStatus = createServerFn({ method: "POST" })
     const proposal = await ProposalService.findByToken(data.token);
 
     if (!proposal) {
-      throw new Error("Proposal not found");
+      throw new AppError("NOT_FOUND", "Proposal not found");
     }
 
     // Check if paid

@@ -138,7 +138,7 @@ export interface ScoreBreakdown {
   tier1: number;
   /** Tier 2 contribution (max 10 points) */
   tier2: number;
-  /** Tier 3 contribution (max 10 points) */
+  /** Tier 3 contribution (max 6 points, normalized) */
   tier3: number;
   /** Tier 4 contribution (max 4 points) */
   tier4?: number;

@@ -44,14 +44,61 @@ MAX_CLIENTS_PER_USER = 100  # Maximum clients a single user can create
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
+def validate_website_url_scheme(url: Optional[str]) -> Optional[str]:
+    """
+    Validate that website_url uses only http/https schemes.
+    CRIT-SYNC-02: Prevents javascript:/data: URL injection attacks.
+
+    Returns the URL if valid, raises ValueError if invalid scheme.
+    """
+    if url is None or url.strip() == "":
+        return None
+
+    url = url.strip()
+
+    # Parse and validate scheme
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower()
+
+        # Only allow http and https schemes
+        if scheme not in ("http", "https"):
+            raise ValueError(
+                f"Invalid URL scheme '{scheme}'. Only http:// and https:// URLs are allowed."
+            )
+
+        # Ensure there's a valid netloc (domain)
+        if not parsed.netloc:
+            raise ValueError("Invalid URL: missing domain.")
+
+        return url
+    except Exception as e:
+        if isinstance(e, ValueError):
+            raise
+        raise ValueError(f"Invalid URL format: {url}")
+
+
 class ClientCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     website_url: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("website_url")
+    @classmethod
+    def validate_url_scheme(cls, v: Optional[str]) -> Optional[str]:
+        """CRIT-SYNC-02: Validate URL scheme to prevent injection attacks."""
+        return validate_website_url_scheme(v)
 
 
 class ClientUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     website_url: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("website_url")
+    @classmethod
+    def validate_url_scheme(cls, v: Optional[str]) -> Optional[str]:
+        """CRIT-SYNC-02: Validate URL scheme to prevent injection attacks."""
+        return validate_website_url_scheme(v)
 
 
 class ClientResponse(BaseModel):

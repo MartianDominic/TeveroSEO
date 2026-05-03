@@ -1,3 +1,8 @@
+/**
+ * Pipeline Dashboard Route
+ * MED-OSM-01 FIX: Standardized async loader pattern with error handling.
+ * MED-OSM-03 FIX: Added dedicated error boundary for pipeline route.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
@@ -12,13 +17,64 @@ import { Badge } from "@/client/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/client/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { PlayIcon, PauseIcon, RefreshCwIcon, AlertTriangleIcon, CheckCircleIcon, ClockIcon } from "lucide-react";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/pipeline/dashboard")({
   component: PipelineDashboard,
   loader: async () => {
-    return getPipelineStatus({});
+    try {
+      return await getPipelineStatus({});
+    } catch (error) {
+      // MED-OSM-01: Standardized error handling in loader
+      // Re-throw to trigger errorComponent with proper context
+      throw error;
+    }
   },
+  errorComponent: PipelineError,
+  pendingComponent: PipelineLoading,
 });
+
+/**
+ * MED-OSM-03: Dedicated error boundary for pipeline route.
+ */
+function PipelineError({ error }: ErrorComponentProps) {
+  const message = error instanceof Error ? error.message : "Failed to load pipeline status";
+
+  return (
+    <div className="container mx-auto py-8">
+      <Alert variant="destructive">
+        <AlertTriangleIcon className="h-4 w-4" />
+        <AlertTitle>Pipeline Error</AlertTitle>
+        <AlertDescription>
+          <p>{message}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCwIcon className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
+
+/**
+ * Loading state for pipeline dashboard.
+ */
+function PipelineLoading() {
+  return (
+    <div className="container mx-auto py-8 flex items-center justify-center">
+      <div className="text-center">
+        <RefreshCwIcon className="w-8 h-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+        <p className="text-muted-foreground">Loading pipeline status...</p>
+      </div>
+    </div>
+  );
+}
 
 interface PipelineStatus {
   status: "idle" | "running" | "paused" | "verifying" | "error";

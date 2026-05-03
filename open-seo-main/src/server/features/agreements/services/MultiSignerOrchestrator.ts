@@ -181,17 +181,27 @@ export const MultiSignerOrchestrator = {
    * Returns array of magic links for each signer.
    *
    * Per D-08: Parallel signing with all signers having signingOrder = 0.
+   *
+   * HIGH-PERF-03: Uses batch operations instead of N+1 loop.
+   * Before: O(2N) queries - N setAccessToken + N updateStatus calls
+   * After: O(2) queries - 1 batch token generation + 1 batch status update
    */
   async activateAllSigners(agreementId: string): Promise<string[]> {
     const signers = await SignerRepository.findByAgreement(agreementId);
     const pendingSigners = signers.filter((s) => s.status === "pending");
-    const links: string[] = [];
 
-    for (const signer of pendingSigners) {
-      const { token } = await SignerRepository.setAccessToken(signer.id);
-      await SignerRepository.updateStatus(signer.id, "invited");
-      links.push(`${getAppUrl()}/c/${token}`);
+    if (pendingSigners.length === 0) {
+      return [];
     }
+
+    const signerIds = pendingSigners.map((s) => s.id);
+
+    // Batch generate tokens and update status
+    const tokenResults = await SignerRepository.batchSetAccessTokens(signerIds);
+    await SignerRepository.batchUpdateStatus(signerIds, "invited");
+
+    // Generate magic links from token results
+    const links = tokenResults.map(({ token }) => `${getAppUrl()}/c/${token}`);
 
     log.info("All signers activated (parallel)", {
       agreementId,

@@ -57,11 +57,12 @@ async function handlePost(req: NextRequest) {
     }
 
     // Validate request body with Zod
+    // MED-API-01: Use 422 for validation errors (semantic distinction from 400 bad request)
     const parsed = createClientSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", issues: parsed.error.issues },
-        { status: 400 }
+        { status: 422 }
       );
     }
 

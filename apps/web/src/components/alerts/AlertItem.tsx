@@ -70,7 +70,7 @@ export function AlertItem({ alert, onAcknowledge, onDismiss, compact }: AlertIte
               size="icon"
               className="h-8 w-8"
               onClick={() => onAcknowledge(alert.id)}
-              title="Acknowledge"
+              aria-label={`Acknowledge alert: ${alert.title}`}
             >
               <Check className="h-4 w-4" />
             </Button>
@@ -81,7 +81,7 @@ export function AlertItem({ alert, onAcknowledge, onDismiss, compact }: AlertIte
               size="icon"
               className="h-8 w-8"
               onClick={() => onDismiss(alert.id)}
-              title="Dismiss"
+              aria-label={`Dismiss alert: ${alert.title}`}
             >
               <X className="h-4 w-4" />
             </Button>

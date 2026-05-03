@@ -1,7 +1,38 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { logger } from "@/lib/logger";
+
+// Safe localStorage wrapper with quota error handling
+const safeLocalStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      if (typeof window === "undefined") return null;
+      return localStorage.getItem(name);
+    } catch (error) {
+      logger.error("[articleEditorStore] localStorage getItem failed", { name, error });
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(name, value);
+    } catch (error) {
+      // Handle quota exceeded or other localStorage errors gracefully
+      logger.error("[articleEditorStore] localStorage setItem failed (quota exceeded?)", { name, error });
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.removeItem(name);
+    } catch (error) {
+      logger.error("[articleEditorStore] localStorage removeItem failed", { name, error });
+    }
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,6 +147,8 @@ export const useArticleEditorStore = create<ArticleEditorActions>()(
     }),
     {
       name: "article_editor_store",
+      // Use safe localStorage wrapper with quota error handling
+      storage: createJSONStorage(() => safeLocalStorage),
       // Persist only the article state, not transient UI state
       partialize: (state) => ({ article: state.article }),
     }

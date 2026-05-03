@@ -1,6 +1,5 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
-import { randomUUID } from "crypto";
 import { getOpenSeoUrl, getAiWriterUrl } from "./env";
 import { logger } from '@/lib/logger';
 import {
@@ -15,6 +14,7 @@ import {
   CircuitOpenError,
   getServiceErrorMessage,
 } from "./utils/service-circuit-breakers";
+import { extractRequestContext, type RequestContext } from "./api/request-context";
 
 /** Retry configuration for transient errors */
 const RETRY_CONFIG = {
@@ -256,21 +256,41 @@ export class FastApiError extends Error {
 // Re-export circuit breaker error for consumers
 export { CircuitOpenError, getServiceErrorMessage };
 
+// Re-export request context utilities for consumers (HIGH-API-02, MED-API-02)
+export {
+  extractRequestContext,
+  extractRequestContextFromRequest,
+  buildTracingHeaders,
+  addTracingHeadersToResponse,
+  type RequestContext,
+} from "./api/request-context";
+
 /**
  * Build authentication and tracing headers for cross-service requests.
  *
  * FIX CRIT-11: Always derive X-User-Id from verified Clerk auth context.
  * FIX HIGH-15: Always include X-Correlation-Id for cross-service tracing.
+ * FIX HIGH-API-02: Propagate correlation ID from incoming request.
+ * FIX MED-API-02: Propagate x-request-id from edge.
  *
- * @returns Headers object with Authorization, X-User-Id, and X-Correlation-Id
+ * @param requestContext - Optional request context with tracing IDs from incoming request
+ * @returns Headers object with Authorization, X-User-Id, X-Correlation-Id, and X-Request-Id
  */
-async function buildServiceHeaders(): Promise<Record<string, string>> {
+async function buildServiceHeaders(
+  requestContext?: RequestContext
+): Promise<Record<string, string>> {
   const { getToken, userId } = await auth();
   const token = await getToken();
 
+  // HIGH-API-02 & MED-API-02: Extract or generate tracing IDs
+  // If no context provided, extract from current request headers
+  const context = requestContext ?? await extractRequestContext();
+
   const headers: Record<string, string> = {
-    // HIGH-15: Always include correlation ID for distributed tracing
-    "X-Correlation-Id": randomUUID(),
+    // HIGH-API-02: Propagate correlation ID for distributed tracing
+    "X-Correlation-Id": context.correlationId,
+    // MED-API-02: Propagate request ID from edge
+    "X-Request-Id": context.requestId,
   };
 
   if (token) {
@@ -290,6 +310,8 @@ export interface ServerFetchInit<T = unknown> extends RequestInit {
   timeout?: number;
   /** Optional Zod schema for response validation. If provided, validates the parsed JSON. */
   schema?: ZodLikeSchema<T>;
+  /** Optional request context for tracing ID propagation (HIGH-API-02, MED-API-02) */
+  requestContext?: RequestContext;
 }
 
 /**
@@ -304,10 +326,10 @@ async function requestCore<T>(
   init?: ServerFetchInit<T>,
 ): Promise<T> {
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const { timeout = SERVER_TIMEOUT_MS, schema, ...restInit } = init ?? {};
+  const { timeout = SERVER_TIMEOUT_MS, schema, requestContext, ...restInit } = init ?? {};
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(await buildServiceHeaders()),
+    ...(await buildServiceHeaders(requestContext)),
     ...((restInit?.headers as Record<string, string>) ?? {}),
   };
 

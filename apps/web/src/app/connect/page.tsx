@@ -18,6 +18,41 @@ import { Card, CardContent, Button } from "@tevero/ui";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
 // ============================================================================
+// Verifying Step Component (extracted to comply with Rules of Hooks)
+// ============================================================================
+
+interface VerifyingStepProps {
+  url: string;
+  startVerification: () => void;
+}
+
+const VerifyingStep: React.FC<VerifyingStepProps> = ({ url, startVerification }) => {
+  // useEffect is now at the top level of this component (valid)
+  React.useEffect(() => {
+    startVerification();
+  }, [startVerification]);
+
+  return (
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+      <h2 className="text-xl font-semibold mb-2">
+        Waiting for your website to say hello...
+      </h2>
+      <p className="text-[var(--text-3)] mb-6">
+        When you&apos;ve added the helper, visit your website in a new tab.
+        We&apos;ll detect it automatically.
+      </p>
+      <Button
+        variant="secondary"
+        onClick={() => window.open(`https://${url}`, "_blank")}
+      >
+        Open my website in new tab
+      </Button>
+    </div>
+  );
+};
+
+// ============================================================================
 // Platform names for display
 // ============================================================================
 
@@ -124,28 +159,8 @@ export default function ConnectPage() {
         );
 
       case "verifying":
-        // Start verification polling
-        React.useEffect(() => {
-          startVerification();
-        }, []);
-
         return (
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
-              Waiting for your website to say hello...
-            </h2>
-            <p className="text-[var(--text-3)] mb-6">
-              When you've added the helper, visit your website in a new tab.
-              We'll detect it automatically.
-            </p>
-            <Button
-              variant="secondary"
-              onClick={() => window.open(`https://${state.url}`, "_blank")}
-            >
-              Open my website in new tab
-            </Button>
-          </div>
+          <VerifyingStep url={state.url} startVerification={startVerification} />
         );
 
       case "success":
@@ -157,7 +172,7 @@ export default function ConnectPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-semibold text-[var(--text-1)] mb-2">
-              You're connected!
+              You&apos;re connected!
             </h2>
             <p className="text-[var(--text-3)] mb-6">
               Your first SEO insights will be ready in 24 hours.

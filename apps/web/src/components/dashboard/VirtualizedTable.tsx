@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useCallback, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 
@@ -37,12 +37,16 @@ interface VirtualizedTableProps<TData> {
   emptyContent?: ReactNode;
   /** Currently focused row index for keyboard navigation */
   focusedIndex?: number;
+  /** Callback when focused index changes via keyboard */
+  onFocusedIndexChange?: (index: number) => void;
   /** Props to spread on the table container for keyboard navigation */
   tableProps?: {
     tabIndex?: number;
     onKeyDown?: (e: React.KeyboardEvent) => void;
     "aria-activedescendant"?: string;
   };
+  /** Accessible label for the table */
+  ariaLabel?: string;
 }
 
 export function VirtualizedTable<TData>({
@@ -56,9 +60,56 @@ export function VirtualizedTable<TData>({
   selectedRowKey,
   emptyContent,
   focusedIndex = -1,
+  onFocusedIndexChange,
   tableProps,
+  ariaLabel,
 }: VirtualizedTableProps<TData>) {
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // Handle keyboard navigation for accessibility
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Call any passed-in handler first
+      tableProps?.onKeyDown?.(e);
+
+      if (!onFocusedIndexChange || data.length === 0) return;
+
+      let newIndex = focusedIndex;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          newIndex = focusedIndex < data.length - 1 ? focusedIndex + 1 : focusedIndex;
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          newIndex = focusedIndex > 0 ? focusedIndex - 1 : 0;
+          break;
+        case "Home":
+          e.preventDefault();
+          newIndex = 0;
+          break;
+        case "End":
+          e.preventDefault();
+          newIndex = data.length - 1;
+          break;
+        case "Enter":
+        case " ":
+          e.preventDefault();
+          if (focusedIndex >= 0 && focusedIndex < data.length && onRowClick) {
+            onRowClick(data[focusedIndex]!, focusedIndex);
+          }
+          return;
+        default:
+          return;
+      }
+
+      if (newIndex !== focusedIndex) {
+        onFocusedIndexChange(newIndex);
+      }
+    },
+    [data, focusedIndex, onFocusedIndexChange, onRowClick, tableProps]
+  );
 
   const virtualizer = useVirtualizer({
     count: data.length,
@@ -109,11 +160,16 @@ export function VirtualizedTable<TData>({
   return (
     <div
       ref={parentRef}
-      className="overflow-auto relative rounded-lg border border-border focus:outline-none"
+      role="grid"
+      aria-label={ariaLabel}
+      aria-rowcount={data.length}
+      aria-activedescendant={focusedIndex >= 0 ? `table-row-${focusedIndex}` : undefined}
+      tabIndex={tableProps?.tabIndex ?? 0}
+      onKeyDown={handleKeyDown}
+      className="overflow-auto relative rounded-lg border border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       style={{ maxHeight }}
-      {...tableProps}
     >
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse" role="presentation">
         <thead className="sticky top-0 z-10 bg-background border-b">
           <tr>
             {columns.map((col) => (
@@ -143,6 +199,8 @@ export function VirtualizedTable<TData>({
               <tr
                 key={rowKey}
                 id={`table-row-${virtualRow.index}`}
+                role="row"
+                aria-rowindex={virtualRow.index + 1}
                 data-index={virtualRow.index}
                 data-focused={isFocused}
                 onClick={onRowClick ? () => onRowClick(row, virtualRow.index) : undefined}
@@ -157,7 +215,7 @@ export function VirtualizedTable<TData>({
                 aria-selected={isSelected}
               >
                 {columns.map((col) => (
-                  <td key={col.id} className={cn("px-4 py-2", col.className)}>
+                  <td key={col.id} role="gridcell" className={cn("px-4 py-2", col.className)}>
                     {col.cell(row, virtualRow.index)}
                   </td>
                 ))}

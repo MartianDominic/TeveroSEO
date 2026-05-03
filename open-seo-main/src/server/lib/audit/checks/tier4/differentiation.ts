@@ -73,10 +73,10 @@ registerCheck({
     if (text.length < 500) {
       return {
         checkId: "T4-06",
-        passed: true,
+        passed: false, // Cannot evaluate - content too short
         severity: "info",
-        message: "Content too short for similarity analysis",
-        details: { skipped: true, contentLength: text.length },
+        message: "Skipped: Content too short for similarity analysis (min 500 chars)",
+        details: { skipped: true, contentLength: text.length, minRequired: 500 },
         autoEditable: false,
       };
     }
@@ -84,18 +84,30 @@ registerCheck({
     // Calculate fingerprint for this page
     const fingerprint = contentFingerprint(text);
 
-    // Without other page fingerprints in context, we can only prepare the hash
+    // TODO(P40): Implement cross-page fingerprint comparison
+    // This requires storing fingerprints during crawl and including them in SiteContext.
+    // The duplicate content gate (>60% duplicate -> cap score at 50) cannot trigger
+    // until fingerprint comparison is implemented.
+    // 
+    // Implementation steps:
+    // 1. Store fingerprints in audit_pages table during crawl
+    // 2. Include pageFingerprints: Map<string, string> in SiteContext
+    // 3. Compare current page fingerprint against similar pages (same keyword cluster)
+    // 4. Calculate similarity using Jaccard index or similar metric
+    // 5. Return duplicatePercent in details when >30% similarity detected
+
+    // Without other page fingerprints in context, we cannot evaluate this check
     return {
       checkId: "T4-06",
-      passed: true,
+      passed: false, // Cannot evaluate - fingerprint comparison not implemented
       severity: "info",
-      message: "Content fingerprint computed; cross-page comparison requires full crawl data",
+      message: "Skipped: Cross-page fingerprint comparison not yet implemented",
       details: {
         skipped: true,
         reason: "Page fingerprints not in SiteContext",
         fingerprint,
         contentLength: text.length,
-        note: "Enable crawl fingerprinting to detect duplicate content",
+        note: "Duplicate content detection will be available in a future release",
       },
       autoEditable: false,
     };

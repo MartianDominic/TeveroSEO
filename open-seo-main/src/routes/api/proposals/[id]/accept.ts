@@ -6,21 +6,99 @@
  * Accepts a proposal, transitioning status from viewed to accepted.
  * Logs activity with actor_type='client' per D-10.
  *
- * SECURITY: No authentication required - called by proposal recipient.
- * State machine enforces valid transitions (only from "viewed" status).
+ * SECURITY:
+ * - No authentication required - called by proposal recipient via unique link.
+ * - Rate limited to prevent DoS attacks on proposal state.
+ * - Origin validation (CSRF) to prevent malicious auto-accept links.
+ * - State machine enforces valid transitions (only from "viewed" status).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
 import { ActivityRepository } from "@/server/features/contracts/repositories/ActivityRepository";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
+
+/**
+ * Rate limit config for proposal accept: 10 requests per minute per IP.
+ * Prevents DoS attacks while allowing legitimate use.
+ */
+const PROPOSAL_ACCEPT_RATE_LIMIT = {
+  limit: 10,
+  window: 60, // 1 minute in seconds
+};
+
+/**
+ * Validate request origin for CSRF protection.
+ * Checks Origin and Referer headers against allowed origins.
+ *
+ * @param request - The incoming request
+ * @returns true if the request origin is valid
+ */
+function validateRequestOrigin(request: Request): boolean {
+  const allowedOrigins: string[] = [];
+
+  // Production URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    allowedOrigins.push(process.env.NEXT_PUBLIC_APP_URL);
+  }
+
+  // App URL (open-seo-main specific)
+  if (process.env.APP_URL) {
+    allowedOrigins.push(process.env.APP_URL);
+  }
+
+  // Development URLs
+  if (process.env.NODE_ENV === "development") {
+    allowedOrigins.push("http://localhost:3000");
+    allowedOrigins.push("http://localhost:3001");
+    allowedOrigins.push("http://127.0.0.1:3000");
+    allowedOrigins.push("http://127.0.0.1:3001");
+  }
+
+  // Check Origin header (most reliable for CORS requests)
+  const origin = request.headers.get("origin");
+  if (origin) {
+    return allowedOrigins.some((allowed) => origin === allowed);
+  }
+
+  // Fallback to Referer header (may be stripped by some browsers)
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      return allowedOrigins.some((allowed) => refererUrl.origin === allowed);
+    } catch {
+      // Invalid referer URL
+      return false;
+    }
+  }
+
+  // No origin or referer - reject state-changing requests without origin info
+  return false;
+}
+
+/**
+ * Extract client IP for rate limiting.
+ */
+function getClientIP(request: Request): string {
+  const forwarded = request.headers.get("X-Forwarded-For");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = request.headers.get("X-Real-IP");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
 
 const log = createLogger({ module: "api/proposals/accept" });
 
 export const Route = createFileRoute("/api/proposals/id/accept")({
   server: {
     handlers: {
-      POST: async ({ params }: { params: { id: string } }) => {
+      POST: async ({ params, request }: { params: { id: string }; request: Request }) => {
         try {
           const proposalId = params.id;
 
@@ -29,6 +107,34 @@ export const Route = createFileRoute("/api/proposals/id/accept")({
               { success: false, error: "Proposal ID is required" },
               { status: 400 }
             );
+          }
+
+          // CRIT-OSM-03: CSRF protection - validate request origin
+          if (!validateRequestOrigin(request)) {
+            log.warn("Invalid request origin for proposal accept", {
+              proposalId,
+              origin: request.headers.get("origin"),
+              referer: request.headers.get("referer"),
+            });
+            return Response.json(
+              { success: false, error: "Invalid request origin" },
+              { status: 403 }
+            );
+          }
+
+          // CRIT-OSM-01: Rate limiting to prevent DoS on proposal state
+          const clientIP = getClientIP(request);
+          const rateLimitResult = await rateLimit({
+            key: `proposal-accept:${clientIP}`,
+            ...PROPOSAL_ACCEPT_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            log.warn("Rate limit exceeded for proposal accept", {
+              proposalId,
+              clientIP,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
           }
 
           // Get current proposal to capture previous status

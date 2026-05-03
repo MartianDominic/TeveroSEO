@@ -84,6 +84,6 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 
 - Per-client workspaces use `client_id` from AI-Writer's `clients` table as shared entity
 - Each app keeps its own database schema (no forced consolidation)
-- SEO checks run against Tier 1-4 (107 checks total)
+- SEO checks run against Tier 1-4 (109 checks total)
 - Quality gate requires score >= 80 for auto-publish
 - Brand voice uses 40+ field profiles with VoiceConstraintBuilder

@@ -14,8 +14,10 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Alert,
+  AlertDescription,
 } from "@tevero/ui";
-import { Download, FileSpreadsheet, FileText, ChevronDown } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, ChevronDown, AlertCircle } from "lucide-react";
 import type { ExportColumn, ClientMetrics } from "@/lib/dashboard/types";
 import { EXPORT_COLUMN_LABELS } from "@/lib/dashboard/types";
 import { generateCSV, type CSVColumn } from "@/lib/export/csv";
@@ -58,6 +60,7 @@ export function ExportButton({ data }: ExportButtonProps) {
   const [selectedColumns, setSelectedColumns] = useState<ExportColumn[]>(DEFAULT_COLUMNS);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("csv");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const toggleColumn = (column: ExportColumn) => {
     setSelectedColumns((prev) =>
@@ -70,6 +73,7 @@ export function ExportButton({ data }: ExportButtonProps) {
   const openExportDialog = (format: ExportFormat) => {
     setSelectedFormat(format);
     setDropdownOpen(false);
+    setExportError(null);
     setIsOpen(true);
   };
 
@@ -95,6 +99,7 @@ export function ExportButton({ data }: ExportButtonProps) {
     if (selectedColumns.length === 0) return;
 
     setIsExporting(true);
+    setExportError(null);
     try {
       // Use provided data or fetch from API
       let exportData: ClientMetrics[];
@@ -129,11 +134,9 @@ export function ExportButton({ data }: ExportButtonProps) {
 
       setIsOpen(false);
     } catch (error) {
-      // Error logged for debugging; user sees disabled state cleared
-      if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
-        logger.error("Export failed", error instanceof Error ? error : { error: String(error) });
-      }
+      const errorMessage = error instanceof Error ? error.message : "Export failed";
+      setExportError(errorMessage);
+      logger.error("Export failed", error instanceof Error ? error : { error: String(error) });
     } finally {
       setIsExporting(false);
     }
@@ -183,6 +186,12 @@ export function ExportButton({ data }: ExportButtonProps) {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
+            {exportError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{exportError}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label>Select columns to export:</Label>
               <div className="grid grid-cols-2 gap-2">

@@ -16,11 +16,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   RANKING_QUEUE_NAME,
-  rankingQueue,
   initRankingScheduler,
-  type RankingDLQJobData,
   type RankingJobData,
 } from "@/server/queues/rankingQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "ranking-worker" });
 
@@ -33,17 +32,15 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./ranking-processor.js", import.meta.url),
 );
 
-let worker: Worker<RankingJobData | RankingDLQJobData> | null = null;
+let worker: Worker<RankingJobData> | null = null;
 
-export async function startRankingWorker(): Promise<
-  Worker<RankingJobData | RankingDLQJobData>
-> {
+export async function startRankingWorker(): Promise<Worker<RankingJobData>> {
   if (worker) return worker;
 
   // Initialize the daily scheduler
   await initRankingScheduler();
 
-  worker = new Worker<RankingJobData | RankingDLQJobData>(
+  worker = new Worker<RankingJobData>(
     RANKING_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -65,7 +62,7 @@ export async function startRankingWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<RankingJobData | RankingDLQJobData> | undefined,
+      job: Job<RankingJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -83,25 +80,22 @@ export async function startRankingWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // HIGH-QUEUE-01 FIX: Use centralized DLQ infrastructure instead of custom dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: RankingDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as RankingJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: RANKING_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await rankingQueue.add("dlq:keyword-ranking", dlqData, {
-            // TTL: auto-remove DLQ jobs after 7 days to prevent accumulation
-            removeOnComplete: { age: 604800 },
-            removeOnFail: { age: 604800 },
-            attempts: 1,
+          await dlqQueue.add("ranking-worker-failed", dlqData, {
+            // DLQ retention is handled by dlq.ts default job options
           });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

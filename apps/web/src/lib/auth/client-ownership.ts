@@ -44,7 +44,7 @@ export {
 /**
  * Cache TTL for ownership checks (30 seconds).
  *
- * SECURITY TRADE-OFF DOCUMENTATION:
+ * SECURITY TRADE-OFF DOCUMENTATION (MED-AUTH-01):
  * - Caching reduces backend load and improves response times
  * - However, cached authorization allows access for up to TTL duration
  *   after a user's access has been revoked
@@ -59,6 +59,12 @@ export {
  * 3. Negative results (access denied) are also cached to prevent
  *    repeated queries for unauthorized users
  * 4. Fail-closed behavior: if cache/backend is unavailable, access is denied
+ *
+ * TTL RATIONALE (MED-AUTH-01 fix):
+ * - Ownership cache: 30 seconds (security-critical, short window)
+ * - Session cache: 120 seconds (less critical, reduces auth service load)
+ * - The 4x difference is intentional: sessions change less frequently than
+ *   ownership, and session expiry has server-side enforcement via JWT exp
  *
  * To further reduce risk:
  * - Ensure webhook handlers call invalidateOwnershipCache immediately

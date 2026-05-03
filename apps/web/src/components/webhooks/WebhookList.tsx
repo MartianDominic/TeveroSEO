@@ -133,7 +133,7 @@ export function WebhookList({
                       size="icon"
                       className="h-8 w-8"
                       onClick={() => onEditClick(webhook)}
-                      title="Edit"
+                      aria-label={`Edit webhook ${webhook.name}`}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -143,7 +143,7 @@ export function WebhookList({
                       className="h-8 w-8 text-destructive"
                       onClick={() => handleDelete(webhook.id)}
                       disabled={isPending}
-                      title="Delete"
+                      aria-label={`Delete webhook ${webhook.name}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

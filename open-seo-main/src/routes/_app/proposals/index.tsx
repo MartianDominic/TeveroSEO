@@ -3,10 +3,14 @@
  * Phase 30: Interactive Proposals - Builder UI
  *
  * Lists all proposals for the current workspace with status and actions.
+ *
+ * MED-OSM-02 FIX: Added Zod validation for search params.
+ * MED-OSM-03 FIX: Added error boundary for proposals route.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, Eye, Edit, Send, ExternalLink } from "lucide-react";
+import { z } from "zod";
 import { listProposals } from "@/serverFunctions/proposals";
 import { Button } from "@/client/components/ui/button";
 import {
@@ -24,15 +28,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
+import { DefaultCatchBoundary } from "@/client/components/DefaultCatchBoundary";
+
+/**
+ * MED-OSM-02: Zod schema for proposals search params.
+ */
+const proposalsSearchSchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1),
+  status: z.enum(["draft", "sent", "viewed", "accepted", "signed", "paid", "onboarded", "expired", "declined"]).optional(),
+});
 
 export const Route = createFileRoute("/_app/proposals/")({
   component: ProposalsListPage,
+  validateSearch: proposalsSearchSchema,
+  errorComponent: DefaultCatchBoundary,
 });
 
 function ProposalsListPage() {
+  // MED-OSM-02: Use validated search params
+  const search = Route.useSearch();
+  const { page, status } = search;
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["proposals", "list"],
-    queryFn: () => listProposals({ data: { page: 1, pageSize: 50 } }),
+    queryKey: ["proposals", "list", page, status],
+    queryFn: () => listProposals({ data: { page, pageSize: 50, status } }),
   });
 
   if (isLoading) {

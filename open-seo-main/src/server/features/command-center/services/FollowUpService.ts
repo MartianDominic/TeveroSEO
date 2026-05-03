@@ -257,23 +257,19 @@ export async function reschedule(
 /**
  * Auto-resolve follow-ups for an entity when its status changes.
  * Called when an entity reaches a terminal state (e.g., proposal accepted, invoice paid).
+ *
+ * HIGH-PERF-01: Uses batch UPDATE with WHERE clause instead of N+1 loop.
+ * Before: O(N) queries - SELECT + N UPDATEs
+ * After: O(1) queries - single UPDATE with WHERE IN clause
  */
 export async function autoResolveForEntity(
   entityType: EntityType,
   entityId: string
 ): Promise<number> {
-  const followUps = await FollowUpRepository.findByEntity(entityType, entityId);
-
-  let resolvedCount = 0;
-
-  for (const followUp of followUps) {
-    if (followUp.status === "pending" || followUp.status === "snoozed") {
-      await FollowUpRepository.update(followUp.id, {
-        status: "auto_resolved",
-      });
-      resolvedCount++;
-    }
-  }
+  const resolvedCount = await FollowUpRepository.batchAutoResolveByEntity(
+    entityType,
+    entityId
+  );
 
   if (resolvedCount > 0) {
     log.info("Follow-ups auto-resolved", {
@@ -326,22 +322,24 @@ export async function getByEntity(
 /**
  * Unsnooze follow-ups that have passed their snooze date.
  * Called by the BullMQ worker.
+ *
+ * HIGH-PERF-02: Uses batch UPDATE with WHERE id IN (...) instead of N+1 loop.
+ * Before: O(N) queries - SELECT + N UPDATEs
+ * After: O(2) queries - SELECT + single batch UPDATE
  */
 export async function processUnsnooze(): Promise<number> {
   const toUnsnooze = await FollowUpRepository.findDueForUnsnooze(100);
 
-  for (const followUp of toUnsnooze) {
-    await FollowUpRepository.update(followUp.id, {
-      status: "pending",
-      snoozedUntil: null,
-    });
+  if (toUnsnooze.length === 0) {
+    return 0;
   }
 
-  if (toUnsnooze.length > 0) {
-    log.info("Follow-ups unsnoozed", { count: toUnsnooze.length });
-  }
+  const ids = toUnsnooze.map((f) => f.id);
+  const unsnoozedCount = await FollowUpRepository.batchUnsnooze(ids);
 
-  return toUnsnooze.length;
+  log.info("Follow-ups unsnoozed", { count: unsnoozedCount });
+
+  return unsnoozedCount;
 }
 
 export const FollowUpService = {

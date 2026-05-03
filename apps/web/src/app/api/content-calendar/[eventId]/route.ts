@@ -143,11 +143,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // MED-API-01: Use 422 for validation errors (semantic distinction from 400 bad request)
   const bodyParseResult = updateEventSchema.safeParse(body);
   if (!bodyParseResult.success) {
     return NextResponse.json(
       { error: "Validation failed", details: bodyParseResult.error.flatten().fieldErrors },
-      { status: 400 }
+      { status: 422 }
     );
   }
 

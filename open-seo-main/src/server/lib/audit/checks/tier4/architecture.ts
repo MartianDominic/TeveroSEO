@@ -170,16 +170,18 @@ registerCheck({
       };
     }
 
+    // TODO(P40): Implement topic cluster detection when topic_clusters table is populated
+    // Currently returns skipped status since no topic cluster data is available
     // This check requires topic cluster mapping which isn't in basic SiteContext
     return {
       checkId: "T4-03",
-      passed: true,
+      passed: false, // Not passed - we cannot evaluate without topic cluster data
       severity: "info",
-      message: "Pillar-spoke analysis requires topic cluster mapping",
+      message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
-        note: "Define topic clusters to enable hub-spoke validation",
+        note: "Define topic clusters via the Topic Clusters feature to enable hub-spoke validation",
       },
       autoEditable: false,
     };
@@ -210,15 +212,16 @@ registerCheck({
       };
     }
 
+    // TODO(P40): Implement spoke-to-pillar validation when topic_clusters table is populated
     return {
       checkId: "T4-04",
-      passed: true,
+      passed: false, // Not passed - we cannot evaluate without topic cluster data
       severity: "info",
-      message: "Spoke-to-pillar analysis requires topic cluster mapping",
+      message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
-        note: "Define topic clusters to enable spoke validation",
+        note: "Define topic clusters via the Topic Clusters feature to enable spoke validation",
       },
       autoEditable: false,
     };
@@ -248,15 +251,17 @@ registerCheck({
       };
     }
 
+    // TODO(P40): Implement cluster size validation when topic_clusters table is populated
     return {
       checkId: "T4-05",
-      passed: true,
+      passed: false, // Not passed - we cannot evaluate without topic cluster data
       severity: "info",
-      message: "Cluster size analysis requires topic cluster mapping",
+      message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
         targetRange: "15-25 spokes per cluster",
+        note: "Define topic clusters via the Topic Clusters feature to enable cluster size analysis",
       },
       autoEditable: false,
     };

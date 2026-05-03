@@ -31,11 +31,37 @@ function getCruxApiKey(): string | undefined {
 }
 
 /**
- * Origin-level cache for CrUX data.
- * CrUX data is per-origin (not per-page), so we cache to avoid redundant API calls.
- * Cache is cleared at the start of each audit run via clearCruxCache().
+ * Cache entry with TTL support.
  */
-const cruxOriginCache = new Map<string, CruxResponse | null>();
+interface CruxCacheEntry {
+  data: CruxResponse | null;
+  timestamp: number;
+}
+
+/**
+ * Origin-level cache for CrUX data with TTL and size limit.
+ * CrUX data is per-origin (not per-page), so we cache to avoid redundant API calls.
+ * Cache entries expire after CRUX_CACHE_TTL_MS (default: 1 hour).
+ * Cache is also cleared at the start of each audit run via clearCruxCache().
+ *
+ * MED-PERF-02: Added max size limit to prevent unbounded memory growth.
+ * LRU eviction uses Map insertion order for O(1) performance.
+ */
+const cruxOriginCache = new Map<string, CruxCacheEntry>();
+
+/**
+ * Cache TTL in milliseconds. CrUX data is aggregated over 28 days,
+ * so 1 hour TTL is reasonable for within-audit deduplication while
+ * ensuring fresh data across audit runs.
+ */
+const CRUX_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Maximum number of origins to cache.
+ * MED-PERF-02: Prevents unbounded memory growth.
+ * 1000 origins is generous for typical audit workloads.
+ */
+const CRUX_CACHE_MAX_SIZE = 1000;
 
 /**
  * Clear the CrUX cache. Call at the start of each audit run.
@@ -45,15 +71,43 @@ export function clearCruxCache(): void {
 }
 
 /**
- * Fetch CrUX data for a URL with origin-level caching.
+ * Check if a cache entry is still valid (not expired).
+ */
+function isCacheValid(entry: CruxCacheEntry): boolean {
+  return Date.now() - entry.timestamp < CRUX_CACHE_TTL_MS;
+}
+
+/**
+ * Evict oldest entries if cache exceeds max size.
+ * MED-PERF-02: LRU eviction using Map insertion order.
+ */
+function evictIfNeeded(): void {
+  while (cruxOriginCache.size >= CRUX_CACHE_MAX_SIZE) {
+    const oldestKey = cruxOriginCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      cruxOriginCache.delete(oldestKey);
+    } else {
+      break;
+    }
+  }
+}
+
+/**
+ * Fetch CrUX data for a URL with origin-level caching and TTL.
  * CrUX API returns origin-level metrics, so all pages from the same origin share data.
  */
 async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse | null> {
   const origin = new URL(url).origin;
 
-  // Check cache first (deduplication per origin)
-  if (cruxOriginCache.has(origin)) {
-    return cruxOriginCache.get(origin) ?? null;
+  // Check cache first with TTL validation
+  const cached = cruxOriginCache.get(origin);
+  if (cached && isCacheValid(cached)) {
+    return cached.data;
+  }
+
+  // Remove expired entry if exists
+  if (cached) {
+    cruxOriginCache.delete(origin);
   }
 
   try {
@@ -63,21 +117,25 @@ async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origin }),
+        signal: AbortSignal.timeout(10000), // 10 second timeout (MED-SEO-04)
       }
     );
 
     if (!response.ok) {
-      // Cache the null result to avoid retrying failed origins
-      cruxOriginCache.set(origin, null);
+      // Cache the null result with TTL to avoid retrying failed origins too frequently
+      evictIfNeeded();
+      cruxOriginCache.set(origin, { data: null, timestamp: Date.now() });
       return null;
     }
 
     const data = (await response.json()) as CruxResponse;
-    cruxOriginCache.set(origin, data);
+    evictIfNeeded();
+    cruxOriginCache.set(origin, { data, timestamp: Date.now() });
     return data;
   } catch {
-    // Cache failures to prevent repeated failed requests
-    cruxOriginCache.set(origin, null);
+    // Cache failures with TTL to prevent repeated failed requests
+    evictIfNeeded();
+    cruxOriginCache.set(origin, { data: null, timestamp: Date.now() });
     return null;
   }
 }

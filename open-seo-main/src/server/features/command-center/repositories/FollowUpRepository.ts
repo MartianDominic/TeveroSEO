@@ -245,6 +245,73 @@ export async function countByStatus(
   return counts;
 }
 
+/**
+ * Batch update follow-ups by IDs.
+ * HIGH-PERF-01/02: Eliminates N+1 UPDATE loops by using WHERE id IN (...).
+ */
+export async function batchUpdateByIds(
+  ids: string[],
+  data: Partial<FollowUpInsert>
+): Promise<number> {
+  if (ids.length === 0) return 0;
+
+  const result = await db
+    .update(followUps)
+    .set({
+      ...data,
+      updatedAt: new Date(),
+    })
+    .where(inArray(followUps.id, ids));
+
+  return ids.length;
+}
+
+/**
+ * Batch auto-resolve follow-ups for an entity.
+ * Uses single UPDATE query with WHERE clause instead of N+1 loop.
+ */
+export async function batchAutoResolveByEntity(
+  entityType: EntityType,
+  entityId: string
+): Promise<number> {
+  const result = await db
+    .update(followUps)
+    .set({
+      status: "auto_resolved",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(followUps.entityType, entityType),
+        eq(followUps.entityId, entityId),
+        inArray(followUps.status, ["pending", "snoozed"])
+      )
+    )
+    .returning({ id: followUps.id });
+
+  return result.length;
+}
+
+/**
+ * Batch unsnooze follow-ups.
+ * Returns count of updated rows.
+ */
+export async function batchUnsnooze(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+
+  const result = await db
+    .update(followUps)
+    .set({
+      status: "pending",
+      snoozedUntil: null,
+      updatedAt: new Date(),
+    })
+    .where(inArray(followUps.id, ids))
+    .returning({ id: followUps.id });
+
+  return result.length;
+}
+
 export const FollowUpRepository = {
   findById,
   findByWorkspace,
@@ -257,4 +324,7 @@ export const FollowUpRepository = {
   update,
   delete: deleteFollowUp,
   countByStatus,
+  batchUpdateByIds,
+  batchAutoResolveByEntity,
+  batchUnsnooze,
 };

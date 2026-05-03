@@ -27,17 +27,24 @@ import { createLogger } from "@/server/lib/logger";
 const log = createLogger({ module: "client-ownership" });
 
 /**
- * Cache TTL for ownership checks (2 minutes).
+ * Cache TTL for ownership checks (30 seconds).
  *
- * SECURITY TRADE-OFF DOCUMENTATION (AUTH-H07 fix):
- * - Synchronized with apps/web cache TTL (2 minutes) for consistency
- * - Shorter TTL reduces stale access window after permission revocation
+ * SECURITY TRADE-OFF DOCUMENTATION (MED-AUTH-01 fix):
+ * - Synchronized with apps/web cache TTL (30 seconds) for consistency
+ * - Short TTL minimizes stale access window after permission revocation
  * - Webhook-based cache invalidation should be called when membership changes
  * - Negative results are also cached to prevent DB hammering
  *
- * Reduced from 5 minutes to 2 minutes for security improvement.
+ * TTL RATIONALE:
+ * - Ownership cache: 30 seconds (security-critical, short window)
+ * - Session cache: 120 seconds (less critical, reduces auth service load)
+ * - The 4x difference is intentional: sessions change less frequently than
+ *   ownership, and session expiry has server-side enforcement via JWT exp
+ *
+ * SECURITY FIX (2026-05-03): Reduced from 2 minutes to 30 seconds to match
+ * apps/web and minimize revoked permission exposure window.
  */
-const OWNERSHIP_CACHE_TTL = 2 * 60; // seconds
+const OWNERSHIP_CACHE_TTL = 30; // seconds
 
 /**
  * Error codes for authorization failures.

@@ -46,7 +46,7 @@ export default async function SeoLandingPage({ params }: PageProps) {
   } catch (error) {
     // Log error with context for debugging
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[seo/page] Failed to fetch default project:", {
+    logger.error("[seo/page] Failed to fetch default project:", {
       clientId,
       error: errorMessage,
     });

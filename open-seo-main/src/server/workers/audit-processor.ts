@@ -65,11 +65,35 @@ function mapNameToStep(name: string): AuditJobData["step"] | null {
 }
 
 /**
+ * MED-QUEUE-01 FIX: Map step to progress percentage for job.updateProgress().
+ * Provides visibility into audit job progress at key milestones.
+ */
+function stepToProgress(step: AuditJobData["step"]): number {
+  switch (step) {
+    case AUDIT_STEP.DISCOVER:
+      return 10;
+    case AUDIT_STEP.CRAWL:
+      return 40;
+    case AUDIT_STEP.LIGHTHOUSE_SELECT:
+      return 60;
+    case AUDIT_STEP.LIGHTHOUSE_RUN:
+      return 80;
+    case AUDIT_STEP.FINALIZE:
+      return 95;
+    default:
+      return 0;
+  }
+}
+
+/**
  * Build a WorkflowStep adapter whose .do() persists step-enum progress
  * (via job.updateData) before invoking fn. BullMQ itself handles retry —
  * on retry the processor starts fresh, but runAuditPhases is idempotent
  * per step (DB upserts, Redis set/del) so re-running a completed step
  * is safe. The enum in job.data.step exposes progress to observers.
+ *
+ * MED-QUEUE-01 FIX: Also calls job.updateProgress() at key milestones
+ * to provide visibility into audit job progress.
  */
 function buildStep(job: Job<AuditJobData>): WorkflowStep {
   return {
@@ -77,6 +101,9 @@ function buildStep(job: Job<AuditJobData>): WorkflowStep {
       const nextStep = mapNameToStep(name);
       if (nextStep && nextStep !== job.data.step) {
         await job.updateData({ ...job.data, step: nextStep });
+        // MED-QUEUE-01 FIX: Report progress at key milestones
+        const progress = stepToProgress(nextStep);
+        await job.updateProgress({ stage: nextStep, percent: progress });
       }
       return fn();
     },
@@ -104,4 +131,7 @@ export default async function processAuditJob(
     startUrl,
     config,
   });
+
+  // MED-QUEUE-01 FIX: Final progress update on completion
+  await job.updateProgress({ stage: "completed", percent: 100 });
 }

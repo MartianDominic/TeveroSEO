@@ -1,78 +1,12 @@
 /**
- * Currency formatting utilities.
+ * Currency and payment plan utilities.
  * Phase 60-02: Payment Plan Selector UI + Checkout Flow
  *
- * Provides consistent currency formatting across payment components.
- * Supports EUR (Lithuanian/European format) and USD (US format).
+ * Re-exports formatting from @tevero/utils and adds payment-specific utilities.
  */
 
-/**
- * Formats amount in cents to display string without currency symbol.
- *
- * @param cents - Amount in cents
- * @param currency - Currency code (EUR, USD, etc.)
- * @returns Formatted amount string (e.g., "4,200.00" for USD, "4.200,00" for EUR)
- *
- * @example
- * formatCents(420000, "EUR") // "4.200,00"
- * formatCents(420000, "USD") // "4,200.00"
- */
-export function formatCents(cents: number, currency: string): string {
-  const amount = cents / 100;
-
-  if (currency === "EUR") {
-    // Lithuanian/European format: 4.200,00
-    return amount.toLocaleString("lt-LT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
-
-  if (currency === "USD") {
-    // US format: 4,200.00
-    return amount.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
-
-  // Fallback for other currencies
-  return amount.toFixed(2);
-}
-
-/**
- * Formats amount in cents to display string with currency code.
- *
- * @param cents - Amount in cents
- * @param currency - Currency code (EUR, USD, etc.)
- * @returns Formatted currency string (e.g., "EUR 4,200.00" or "$4,200.00")
- *
- * @example
- * formatCurrency(420000, "EUR") // "EUR 4.200,00"
- * formatCurrency(420000, "USD") // "$4,200.00"
- */
-export function formatCurrency(cents: number, currency: string): string {
-  const amount = cents / 100;
-
-  if (currency === "EUR") {
-    // European format: EUR 4.200,00
-    return `EUR ${amount.toLocaleString("lt-LT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  }
-
-  if (currency === "USD") {
-    // US format with symbol: $4,200.00
-    return amount.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-  }
-
-  // Fallback for other currencies
-  return `${currency} ${amount.toFixed(2)}`;
-}
+// Re-export currency formatting from shared package
+export { formatCents, formatCurrency } from "@tevero/utils";
 
 /**
  * Payment plan types supported by the system.

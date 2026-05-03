@@ -35,7 +35,7 @@ async function fetchPipelineConfig(workspaceId: string) {
     });
 
     if (!response.ok) {
-      console.error(
+      logger.error(
         `[PipelinePage] Failed to fetch config: ${response.status}`,
       );
       return { stages: DEFAULT_PIPELINE_STAGES };
@@ -63,7 +63,7 @@ async function fetchProspectsGroupedByStage(workspaceId: string) {
     });
 
     if (!response.ok) {
-      console.error(
+      logger.error(
         `[PipelinePage] Failed to fetch prospects: ${response.status}`,
       );
       return defaultGroupedProspects;

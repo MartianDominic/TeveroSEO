@@ -46,7 +46,7 @@ export function startAuditWorker(): Worker<AuditJobData> {
       connection: getSharedBullMQConnection("worker:audit"), // Shared connection (prevents leaks)
       lockDuration: LOCK_DURATION_MS, // BQ-05
       maxStalledCount: MAX_STALLED_COUNT, // BQ-06
-      concurrency: 2,
+      concurrency: 5, // HIGH-QUEUE-02 FIX: Increased from 2 to 5 for better throughput
     },
   );
 

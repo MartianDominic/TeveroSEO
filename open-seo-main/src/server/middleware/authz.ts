@@ -8,14 +8,18 @@
  *   User -> member -> organization -> client (via workspaceId)
  *
  * Includes Redis caching for performance since user-client mappings rarely change.
+ *
+ * CRIT-SYNC-01: Integrated lazy client sync from AI-Writer. When a client is not
+ * found locally, we attempt to sync from AI-Writer before returning "not found".
  */
 
 import { db } from "@/db";
 import { clients } from "@/db/client-schema";
-import { member } from "@/db/user-schema";
+import { member, organization } from "@/db/user-schema";
 import { eq, and } from "drizzle-orm";
 import { redis } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { ClientSyncService } from "@/server/services/client-sync";
 
 const log = createLogger({ module: "authz" });
 
@@ -108,17 +112,58 @@ export async function checkClientAccessWithReason(
 /**
  * Perform the actual database authorization check.
  * Internal function, not cached.
+ *
+ * CRIT-SYNC-01: If client is not found locally, attempts lazy sync from AI-Writer.
  */
 async function performAccessCheck(
   userId: string,
   clientId: string
 ): Promise<AuthzResult> {
   // Step 1: Get the client's workspace
-  const client = await db
+  let client = await db
     .select({ workspaceId: clients.workspaceId })
     .from(clients)
     .where(eq(clients.id, clientId))
     .limit(1);
+
+  // CRIT-SYNC-01: If client not found locally, attempt lazy sync from AI-Writer
+  if (client.length === 0) {
+    log.debug("Client not found locally, attempting lazy sync from AI-Writer", {
+      userId,
+      clientId,
+    });
+
+    // Get user's workspace(s) to determine where to sync the client
+    const userWorkspaces = await db
+      .select({ organizationId: member.organizationId })
+      .from(member)
+      .where(eq(member.userId, userId))
+      .limit(1);
+
+    if (userWorkspaces.length > 0) {
+      const workspaceId = userWorkspaces[0].organizationId;
+
+      // Attempt to sync client from AI-Writer
+      const syncedClient = await ClientSyncService.ensureClient(
+        clientId,
+        workspaceId
+      );
+
+      if (syncedClient) {
+        log.info("Client synced from AI-Writer during auth check", {
+          userId,
+          clientId,
+          workspaceId,
+        });
+        // Re-query to get the synced client
+        client = await db
+          .select({ workspaceId: clients.workspaceId })
+          .from(clients)
+          .where(eq(clients.id, clientId))
+          .limit(1);
+      }
+    }
+  }
 
   if (client.length === 0) {
     return { allowed: false, reason: "client_not_found" };

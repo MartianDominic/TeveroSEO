@@ -5,6 +5,7 @@ import type {
   SortOrder,
 } from "@/client/features/domain/types";
 import { buildCsv, downloadCsv as downloadCsvFile } from "@/client/lib/csv";
+import { formatNumber } from "@tevero/utils";
 
 export function toSortMode(value: string | null): DomainSortMode | undefined {
   if (
@@ -82,10 +83,8 @@ export function normalizeDomainTarget(input: string): string | null {
   }
 }
 
-export function formatNumber(value: number | null | undefined) {
-  if (value == null) return "-";
-  return new Intl.NumberFormat().format(value);
-}
+// Re-export formatNumber from @tevero/utils for backwards compatibility
+export { formatNumber };
 
 export function formatFloat(value: number | null | undefined) {
   if (value == null) return "-";

@@ -157,6 +157,7 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
 
     // API-H07 fix: Validate input before passing to backend
+    // MED-API-01: Use 422 for validation errors (semantic distinction from 400 bad request)
     const rawBody = await req.json();
     const validation = articlePatchSchema.safeParse(rawBody);
     if (!validation.success) {
@@ -168,7 +169,7 @@ export async function PATCH(req: Request, { params }: { params: Params }) {
             message: i.message,
           })),
         },
-        { status: 400 }
+        { status: 422 }
       );
     }
 
@@ -238,6 +239,7 @@ export async function POST(req: Request, { params }: { params: Params }) {
     const qs = searchParams.toString() ? `?${searchParams.toString()}` : "";
 
     // API-H07 fix: Validate input before passing to backend
+    // MED-API-01: Use 422 for validation errors (semantic distinction from 400 bad request)
     const rawBody = await req.json().catch(() => ({}));
     const validation = articlePostSchema.safeParse(rawBody);
     if (!validation.success) {
@@ -249,7 +251,7 @@ export async function POST(req: Request, { params }: { params: Params }) {
             message: i.message,
           })),
         },
-        { status: 400 }
+        { status: 422 }
       );
     }
 

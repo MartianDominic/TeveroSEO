@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { z } from "zod";
-import { getOpenSeo, postOpenSeo, FastApiError } from "@/lib/server-fetch";
+import { getOpenSeo, postOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
 import { validateCsrf } from "@/lib/api/security";
 import { generalApiLimiter, connectionTestLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import {
+  createErrorJsonResponse,
+  badRequestResponse,
+  rateLimitResponse,
+  internalErrorResponse,
+  validationErrorResponse,
+} from "@/lib/error-utils";
 
 // Zod schema for creating a site connection
 const createConnectionSchema = z.object({
@@ -46,13 +53,17 @@ interface SiteConnection {
  *
  * List site connections for a client.
  * Rate limit: 100 requests per minute per user (2026-04-28)
+ *
+ * FIX HIGH-CONTRACT-01: Use standard error response format.
+ * FIX MED-CONTRACT-01: Include request_id in error responses.
  */
 export async function GET(request: Request) {
+  const reqContext = extractRequestContextFromRequest(request as import("next/server").NextRequest);
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
 
   if (!clientId) {
-    return NextResponse.json({ error: "clientId required" }, { status: 400 });
+    return badRequestResponse("clientId required", reqContext.requestId);
   }
 
   try {
@@ -62,26 +73,32 @@ export async function GET(request: Request) {
     // Rate limit: 100 requests per minute
     const rateLimitResult = await generalApiLimiter.limit(authContext.userId);
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(rateLimitResult) }
+      const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+      return rateLimitResponse(
+        "Rate limit exceeded. Please try again later.",
+        reqContext.requestId,
+        retryAfter
       );
     }
 
     const data = await getOpenSeo<SiteConnection[]>(
-      `/api/connections?clientId=${encodeURIComponent(clientId)}`
+      `/api/connections?clientId=${encodeURIComponent(clientId)}`,
+      { requestContext: reqContext }
     );
     return NextResponse.json(data, { headers: rateLimitHeaders(rateLimitResult) });
   } catch (err) {
     if (err instanceof AuthError) {
-      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+      return createErrorJsonResponse(
+        err.statusCode === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
+        err.message,
+        reqContext.requestId
+      );
     }
     if (err instanceof FastApiError) {
-      return NextResponse.json(err.body ?? { error: err.message }, {
-        status: err.status,
-      });
+      // FastApiError already has normalized error format
+      return NextResponse.json(err.toJSON(), { status: err.status });
     }
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return internalErrorResponse("Internal error", reqContext.requestId);
   }
 }
 
@@ -90,8 +107,13 @@ export async function GET(request: Request) {
  *
  * Create a new site connection.
  * Rate limit: 10 connections per minute per user (SSRF protection) (2026-04-28)
+ *
+ * FIX HIGH-CONTRACT-01: Use standard error response format.
+ * FIX MED-CONTRACT-01: Include request_id in error responses.
  */
 export async function POST(request: Request) {
+  const reqContext = extractRequestContextFromRequest(request as import("next/server").NextRequest);
+
   // CSRF protection for state-changing request
   const csrfError = validateCsrf(request);
   if (csrfError) return csrfError;
@@ -101,15 +123,16 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequestResponse("Invalid JSON body", reqContext.requestId);
   }
 
   // Validate request body with Zod
   const parsed = createConnectionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", issues: parsed.error.issues },
-      { status: 400 }
+    return validationErrorResponse(
+      "Validation failed",
+      reqContext.requestId,
+      { issues: parsed.error.issues }
     );
   }
 
@@ -120,23 +143,30 @@ export async function POST(request: Request) {
     // Rate limit: 10 connection creations per minute (SSRF protection)
     const rateLimitResult = await connectionTestLimiter.limit(authContext.userId);
     if (!rateLimitResult.success) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(rateLimitResult) }
+      const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+      return rateLimitResponse(
+        "Rate limit exceeded. Please try again later.",
+        reqContext.requestId,
+        retryAfter
       );
     }
 
-    const data = await postOpenSeo<SiteConnection>("/api/connections", parsed.data);
+    const data = await postOpenSeo<SiteConnection>("/api/connections", parsed.data, {
+      requestContext: reqContext,
+    });
     return NextResponse.json(data, { status: 201, headers: rateLimitHeaders(rateLimitResult) });
   } catch (err) {
     if (err instanceof AuthError) {
-      return NextResponse.json({ error: err.message }, { status: err.statusCode });
+      return createErrorJsonResponse(
+        err.statusCode === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
+        err.message,
+        reqContext.requestId
+      );
     }
     if (err instanceof FastApiError) {
-      return NextResponse.json(err.body ?? { error: err.message }, {
-        status: err.status,
-      });
+      // FastApiError already has normalized error format
+      return NextResponse.json(err.toJSON(), { status: err.status });
     }
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return internalErrorResponse("Internal error", reqContext.requestId);
   }
 }

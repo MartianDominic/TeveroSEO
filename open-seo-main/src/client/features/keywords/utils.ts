@@ -1,4 +1,6 @@
 export { LOCATIONS, getLanguageCode } from "./locations";
+// Re-export formatNumber from @tevero/utils for backwards compatibility
+export { formatNumber } from "@tevero/utils";
 
 export function scoreTierClass(value: number | null): string {
   if (value == null) return "score-tier-na";
@@ -16,9 +18,4 @@ export function parseTerms(value: string): string[] {
     .split(/[,+]/)
     .map((term) => term.trim())
     .filter(Boolean);
-}
-
-export function formatNumber(value: number | null | undefined): string {
-  if (value == null) return "-";
-  return new Intl.NumberFormat().format(value);
 }

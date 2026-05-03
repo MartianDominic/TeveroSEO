@@ -1,88 +1,19 @@
 /**
- * Fetch wrapper with configurable timeout to prevent hanging requests.
+ * Re-export fetch utilities from @tevero/utils.
  *
- * Uses AbortController to cancel requests that exceed the timeout.
- * Converts AbortError to a descriptive timeout error message.
- *
- * MEDIUM-01 FIX: Standardized Timeout Constants
+ * This file is kept for backwards compatibility.
+ * New code should import directly from "@tevero/utils".
  *
  * Timeout guidelines for cross-service consistency:
  * - DEFAULT_TIMEOUT_MS (30s): Normal operations (CRUD, queries)
  * - LONG_RUNNING_TIMEOUT_MS (120s): Audits, content generation, bulk operations
  * - QUICK_CHECK_TIMEOUT_MS (5s): Health checks, feature flags
- *
- * These constants should be used consistently across:
- * - apps/web (this file)
- * - AI-Writer (services/http_client.py)
- * - open-seo-main (server/lib/http-client.ts)
  */
-
-/** Default timeout for normal operations (30 seconds) */
-export const DEFAULT_TIMEOUT_MS = 30_000;
-
-/** Timeout for long-running operations like audits and generation (120 seconds) */
-export const LONG_RUNNING_TIMEOUT_MS = 120_000;
-
-/** Timeout for quick health checks and feature flags (5 seconds) */
-export const QUICK_CHECK_TIMEOUT_MS = 5_000;
-
-export class TimeoutError extends Error {
-  constructor(public timeoutMs: number, url?: string) {
-    super(
-      url
-        ? `Request to ${url} timed out after ${timeoutMs}ms`
-        : `Request timed out after ${timeoutMs}ms`
-    );
-    this.name = 'TimeoutError';
-  }
-}
-
-export interface FetchWithTimeoutOptions extends RequestInit {
-  /** Timeout in milliseconds. Defaults to 30 seconds. */
-  timeout?: number;
-}
-
-/**
- * Fetch with automatic timeout using AbortController.
- *
- * @param url - The URL to fetch
- * @param options - Fetch options plus optional timeout (default 30s)
- * @returns Promise resolving to Response
- * @throws TimeoutError if request exceeds timeout
- *
- * @example
- * ```typescript
- * // Default 30s timeout
- * const res = await fetchWithTimeout('/api/data');
- *
- * // Custom 60s timeout for slow operations
- * const res = await fetchWithTimeout('/api/voice/analyze', { timeout: 60_000 });
- *
- * // 5s timeout for quick health checks
- * const res = await fetchWithTimeout('/health', { timeout: 5_000 });
- * ```
- */
-export async function fetchWithTimeout(
-  url: string,
-  options: FetchWithTimeoutOptions = {}
-): Promise<Response> {
-  const { timeout = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      signal: controller.signal,
-    });
-    return response;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new TimeoutError(timeout, url);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+export {
+  fetchWithTimeout,
+  TimeoutError,
+  DEFAULT_TIMEOUT_MS,
+  LONG_RUNNING_TIMEOUT_MS,
+  QUICK_CHECK_TIMEOUT_MS,
+} from "@tevero/utils";
+export type { FetchWithTimeoutOptions } from "@tevero/utils";

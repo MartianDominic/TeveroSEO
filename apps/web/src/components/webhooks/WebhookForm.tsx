@@ -14,7 +14,10 @@ import {
   Input,
   Label,
   Badge,
+  Alert,
+  AlertDescription,
 } from "@tevero/ui";
+import { AlertCircle } from "lucide-react";
 import type { Webhook, WebhookEvent } from "@/actions/webhooks";
 import { createWebhook, updateWebhook } from "@/actions/webhooks";
 
@@ -43,6 +46,7 @@ export function WebhookForm({
     (webhook?.events as string[]) ?? [],
   );
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!webhook;
 
@@ -76,6 +80,7 @@ export function WebhookForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     startTransition(async () => {
       if (isEditing) {
@@ -86,6 +91,7 @@ export function WebhookForm({
         });
         if (!result.success) {
           logger.error("[WebhookForm] Update failed", { error: result.error });
+          setError(result.error ?? "Failed to update webhook. Please try again.");
           return;
         }
       } else {
@@ -97,6 +103,7 @@ export function WebhookForm({
         });
         if (!result.success) {
           logger.error("[WebhookForm] Create failed", { error: result.error });
+          setError(result.error ?? "Failed to create webhook. Please try again.");
           return;
         }
         setNewSecret(result.data.secret);
@@ -110,6 +117,7 @@ export function WebhookForm({
 
   const handleClose = () => {
     setNewSecret(null);
+    setError(null);
     setName("");
     setUrl("");
     setSelectedEvents([]);
@@ -156,6 +164,13 @@ export function WebhookForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Name</Label>

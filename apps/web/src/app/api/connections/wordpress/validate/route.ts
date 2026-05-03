@@ -28,11 +28,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // MED-API-01: Use 422 for validation errors (semantic distinction from 400 bad request)
   const result = validateSchema.safeParse(body);
   if (!result.success) {
     return NextResponse.json(
       { error: "Invalid input", details: result.error.flatten() },
-      { status: 400 }
+      { status: 422 }
     );
   }
 
