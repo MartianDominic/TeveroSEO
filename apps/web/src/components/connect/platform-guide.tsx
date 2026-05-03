@@ -124,6 +124,7 @@ export function PlatformGuide({
                 variant="secondary"
                 className="absolute top-2 right-2"
                 onClick={handleCopy}
+                data-testid="copy-btn"
               >
                 {copied ? (
                   <>
@@ -176,7 +177,7 @@ export function PlatformGuide({
           Back
         </Button>
 
-        <Button onClick={onNext}>
+        <Button onClick={onNext} data-testid="next-step-btn">
           {isLastStep ? (
             "Verify Installation"
           ) : (

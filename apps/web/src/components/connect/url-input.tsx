@@ -73,6 +73,7 @@ export function UrlInput({
             className="flex-1 rounded-l-none h-10"
             disabled={isLoading}
             aria-label="Website URL"
+            data-testid="url-input"
           />
         </div>
 
@@ -86,6 +87,7 @@ export function UrlInput({
           type="submit"
           disabled={!isValid || isLoading}
           className="w-full"
+          data-testid="continue-btn"
         >
           {isLoading ? (
             <>

@@ -49,6 +49,7 @@ export function ConnectionChoice({
             "hover:shadow-card-hover hover:border-[var(--accent)]"
           )}
           onClick={() => onSelect("diy")}
+          data-testid="diy-option"
         >
           <CardContent className="p-5">
             <div className="flex items-start gap-4">
@@ -79,6 +80,7 @@ export function ConnectionChoice({
             "hover:shadow-card-hover hover:border-[var(--accent)]"
           )}
           onClick={() => onSelect("developer")}
+          data-testid="developer-option"
         >
           <CardContent className="p-5">
             <div className="flex items-start gap-4">
@@ -110,6 +112,7 @@ export function ConnectionChoice({
               "hover:shadow-card-hover hover:border-[var(--accent)]"
             )}
             onClick={() => onSelect("oauth")}
+            data-testid="oauth-option"
           >
             <CardContent className="p-5">
               <div className="flex items-start gap-4">

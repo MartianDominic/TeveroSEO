@@ -153,19 +153,23 @@ function SummaryCards({ summary, loading }: SummaryCardsProps) {
       <MetricCard
         label="Pageviews"
         value={formatNumber(summary.totalPageviews)}
+        data-testid="pageviews-card"
       />
       <MetricCard
         label="Sessions"
         value={formatNumber(summary.totalSessions)}
+        data-testid="sessions-card"
       />
       <MetricCard
         label="Unique Visitors"
         value={formatNumber(summary.totalUniqueVisitors)}
+        data-testid="visitors-card"
       />
       <MetricCard
         label="Bounce Rate"
         value={formatPercent(summary.bounceRate)}
         unit="%"
+        data-testid="bounce-rate-card"
       />
     </div>
   );
@@ -273,7 +277,7 @@ export function AnalyticsDashboard({ siteId, className }: AnalyticsDashboardProp
             value={datePreset}
             onValueChange={(value) => setDatePreset(value as DateRangePreset)}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[160px]" data-testid="date-range-picker">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
