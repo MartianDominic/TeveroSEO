@@ -65,3 +65,39 @@ export {
   type HandoffEmail,
   type EmailServiceInterface,
 } from "./developer-handoff.service";
+
+// DOM change service (Phase 66-07)
+export {
+  DomChangeService,
+  createDomChangeService,
+  queueChange,
+  approveChange,
+  rejectChange,
+  rollbackChange,
+  type QueueChangeRequest,
+  type ApprovedChangesResponse,
+  type ApprovedChange,
+  type PaginationOptions,
+} from "./dom-change.service";
+
+// Platform Integration Facade (Phase 66-09)
+export {
+  PlatformIntegrationFacade,
+  type ConnectionStatus,
+  type OAuthConnectionInfo,
+  type PlatformCapabilities,
+  type Integration,
+  type Analytics,
+  type Content,
+  type Result,
+  type PixelStatus,
+  type PixelAnalytics,
+  type DateRange,
+  type DomChange,
+  type SeoField,
+  type FacadeDependencies,
+  type PixelServiceInterface,
+  type OAuthServiceInterface,
+  type WriteAdapterRegistryInterface,
+  type CmsPublisherRegistryInterface,
+} from "./platform-facade";
