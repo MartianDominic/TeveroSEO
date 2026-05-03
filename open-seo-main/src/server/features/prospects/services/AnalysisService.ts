@@ -1,11 +1,12 @@
 /**
  * Analysis service for triggering and managing prospect analyses.
  * Phase 26: Prospect Data Model
+ * Phase 69-03: N+1 query optimization
  *
  * Enforces rate limiting (max 10 analyses/day per workspace).
  * Creates analysis records and submits BullMQ jobs.
  */
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, inArray } from "drizzle-orm";
 import { db } from "@/db/index";
 import {
   prospects,
@@ -21,8 +22,11 @@ import {
 import {
   submitProspectAnalysis,
   getWorkspaceAnalysisCountToday,
+  prospectAnalysisQueue,
   type ProspectAnalysisType,
+  type ProspectAnalysisJobData,
 } from "@/server/queues/prospectAnalysisQueue";
+import { generateJobId } from "@/server/lib/queue-utils";
 export type { ProspectAnalysisType } from "@/server/queues/prospectAnalysisQueue";
 import { AppError } from "@/server/lib/errors";
 import { nanoid } from "nanoid";
@@ -269,6 +273,14 @@ export const AnalysisService = {
    * Bulk queue analysis for multiple prospects.
    * Respects daily quota - queues up to remaining limit.
    *
+   * Phase 69-03: Optimized to eliminate N+1 queries.
+   * - Single batch fetch for all prospects
+   * - Batch insert for analysis records
+   * - addBulk for BullMQ job insertion
+   * - Batch status update for prospects
+   *
+   * Performance: 100 items < 500ms
+   *
    * @returns Count of queued and skipped prospects
    */
   async bulkQueueAnalysis(input: {
@@ -299,18 +311,29 @@ export const AnalysisService = {
       };
     }
 
-    // Verify prospects exist and belong to workspace
+    if (input.prospectIds.length === 0) {
+      return {
+        queuedCount: 0,
+        skippedCount: 0,
+        queuedIds: [],
+        skippedIds: [],
+        remainingQuota,
+      };
+    }
+
+    // BATCH FETCH: Single query to fetch all requested prospects
     const validProspects = await db
       .select({ id: prospects.id, domain: prospects.domain, status: prospects.status })
       .from(prospects)
       .where(
         and(
           eq(prospects.workspaceId, input.workspaceId),
+          inArray(prospects.id, input.prospectIds),
         ),
       );
 
-    const validProspectIds = new Set(validProspects.map((p) => p.id));
-    const requestedIds = input.prospectIds.filter((id) => validProspectIds.has(id));
+    const validProspectMap = new Map(validProspects.map((p) => [p.id, p]));
+    const validProspectIds = new Set(validProspectMap.keys());
 
     // Filter out prospects already analyzing
     const analyzingIds = new Set(
@@ -318,37 +341,82 @@ export const AnalysisService = {
         .filter((p) => p.status === "analyzing")
         .map((p) => p.id),
     );
-    const eligibleIds = requestedIds.filter((id) => !analyzingIds.has(id));
+
+    // Determine eligible prospects (valid, not analyzing)
+    const eligibleIds = input.prospectIds.filter(
+      (id) => validProspectIds.has(id) && !analyzingIds.has(id),
+    );
 
     // Queue up to remaining quota
-    const toQueue = eligibleIds.slice(0, remainingQuota);
-    const skipped = eligibleIds.slice(remainingQuota);
+    const toQueueIds = eligibleIds.slice(0, remainingQuota);
+    const quotaSkippedIds = eligibleIds.slice(remainingQuota);
 
-    // Also add invalid/analyzing IDs to skipped
+    // Categorize skipped IDs
     const invalidIds = input.prospectIds.filter((id) => !validProspectIds.has(id));
-    const analyzingRequestedIds = requestedIds.filter((id) => analyzingIds.has(id));
+    const analyzingRequestedIds = input.prospectIds.filter((id) => analyzingIds.has(id));
 
-    const queuedIds: string[] = [];
-
-    for (const prospectId of toQueue) {
-      try {
-        const { analysisId } = await this.triggerAnalysis({
-          prospectId,
-          workspaceId: input.workspaceId,
-          analysisType: input.analysisType,
-          targetRegion: input.targetRegion,
-          targetLanguage: input.targetLanguage,
-          triggeredBy: input.triggeredBy,
-        });
-        queuedIds.push(prospectId);
-        log.info("Bulk queued analysis", { prospectId, analysisId });
-      } catch (error) {
-        log.warn("Failed to queue analysis in bulk", { prospectId, error });
-        skipped.push(prospectId);
-      }
+    if (toQueueIds.length === 0) {
+      const allSkipped = [...quotaSkippedIds, ...invalidIds, ...analyzingRequestedIds];
+      return {
+        queuedCount: 0,
+        skippedCount: allSkipped.length,
+        queuedIds: [],
+        skippedIds: allSkipped,
+        remainingQuota,
+      };
     }
 
-    const allSkipped = [...skipped, ...invalidIds, ...analyzingRequestedIds];
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // Prepare analysis records for batch insert
+    const analysisRecords = toQueueIds.map((prospectId) => ({
+      id: nanoid(),
+      prospectId,
+      analysisType: input.analysisType,
+      status: "pending" as const,
+      targetRegion: input.targetRegion,
+      targetLanguage: input.targetLanguage ?? "en",
+      createdAt: now,
+    }));
+
+    // BATCH INSERT: Single query to insert all analysis records
+    await db.insert(prospectAnalyses).values(analysisRecords);
+
+    // Build job data for BullMQ bulk insert
+    const jobs = analysisRecords.map((record) => {
+      const prospect = validProspectMap.get(record.prospectId)!;
+      return {
+        name: "analyze-prospect",
+        data: {
+          prospectId: record.prospectId,
+          workspaceId: input.workspaceId,
+          analysisType: input.analysisType,
+          analysisId: record.id,
+          targetRegion: input.targetRegion,
+          targetLanguage: input.targetLanguage ?? "en",
+          triggeredAt: nowIso,
+          triggeredBy: input.triggeredBy,
+        } satisfies ProspectAnalysisJobData,
+        opts: {
+          jobId: generateJobId("prospect", record.prospectId, true),
+          removeOnComplete: { count: 100 },
+          removeOnFail: { count: 200 },
+        },
+      };
+    });
+
+    // BATCH JOB INSERT: addBulk for all jobs
+    await prospectAnalysisQueue.addBulk(jobs);
+
+    // BATCH UPDATE: Single query to update all prospect statuses
+    await db
+      .update(prospects)
+      .set({ status: "analyzing", updatedAt: now })
+      .where(inArray(prospects.id, toQueueIds));
+
+    const queuedIds = toQueueIds;
+    const allSkipped = [...quotaSkippedIds, ...invalidIds, ...analyzingRequestedIds];
     const newRemainingQuota = Math.max(0, remainingQuota - queuedIds.length);
 
     log.info("Bulk analysis queuing complete", {
@@ -356,6 +424,7 @@ export const AnalysisService = {
       queued: queuedIds.length,
       skipped: allSkipped.length,
       remainingQuota: newRemainingQuota,
+      batchInsertCount: analysisRecords.length,
     });
 
     return {
