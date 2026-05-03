@@ -2126,3 +2126,150 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 66-11-PLAN.md — E2E tests + documentation (Wave 4)
 
 ---
+
+## v8.0 SaaS Hardening
+
+> Addresses 255 issues from 20-agent comprehensive code review. Database consolidation, integration fixes, security hardening, and SaaS production readiness.
+
+### Phase 67: Database Consolidation
+**Goal**: Consolidate `open_seo` and `alwrity` databases into unified `tevero` database with namespace prefixes and ORM coexistence.
+**Depends on**: Phase 66 (v7.0 complete)
+**Context doc**: `.planning/phases/67-database-consolidation/67-CONTEXT.md`
+**Working directory**: `open-seo-main/`, `AI-Writer/`
+**Key Features**:
+  - **Unified Schema**: Single `tevero` database with namespace prefixes (shared_, seo_, content_, biz_, analytics_)
+  - **ORM Coexistence**: Drizzle owns shared/seo/biz/analytics tables, SQLAlchemy owns content tables
+  - **Zero-Downtime Migration**: Shadow write pattern for safe cutover
+  - **Table Collision Fix**: Resolves gsc_snapshots and ga4_snapshots conflicts
+**Success Criteria** (what must be TRUE):
+  1. Single tevero database with all tables
+  2. Both ORMs connect and operate correctly
+  3. workspace_id NOT NULL on shared_clients
+  4. TIMESTAMPTZ used consistently
+  5. Zero data loss during migration
+**Estimated effort**: 182 hours (3 weeks)
+**Plans**: 3 plans
+  - [ ] 67-01-PLAN.md — Schema Design (Wave 1)
+  - [ ] 67-02-PLAN.md — Migration Scripts (Wave 1)
+  - [ ] 67-03-PLAN.md — Cutover (Wave 2)
+
+---
+
+### Phase 68: Integration Hardening
+**Goal**: Fix cross-service authentication, client context security, API contract alignment, and state management issues.
+**Depends on**: Phase 67 (database consolidated)
+**Context doc**: `.planning/phases/68-integration-hardening/68-CONTEXT.md`
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Key Features**:
+  - **JWT Verification**: Standardize Clerk JWT verification across services
+  - **Client Context Security**: Fix empty X-Client-ID bypass vulnerability
+  - **API Contract Alignment**: Zod schemas for all cross-service contracts
+  - **State Management**: Fix race conditions in client switching
+**Success Criteria** (what must be TRUE):
+  1. All API routes validate JWT from Authorization header
+  2. Empty X-Client-ID returns 400 error
+  3. API contracts have Zod validation
+  4. No race conditions during client switching
+**Estimated effort**: 64 hours (2 weeks)
+**Plans**: 4 plans
+  - [ ] 68-01-PLAN.md — Auth Flow Fixes (Wave 1)
+  - [ ] 68-02-PLAN.md — Client Context Security (Wave 1)
+  - [ ] 68-03-PLAN.md — API Contract Alignment (Wave 2)
+  - [ ] 68-04-PLAN.md — State Management Migration (Wave 2)
+
+---
+
+### Phase 69: Data Integrity & Performance
+**Goal**: Implement transaction safety, constraint enforcement, query optimization, and background job reliability.
+**Depends on**: Phase 68 (integration hardened)
+**Context doc**: `.planning/phases/69-data-integrity-performance/69-CONTEXT.md`
+**Working directory**: `open-seo-main/`
+**Key Features**:
+  - **Transaction Wrappers**: withTransaction() for all multi-table operations
+  - **Cascade Rules**: Proper ON DELETE CASCADE/SET NULL
+  - **Query Optimization**: Fix N+1 queries, add missing indexes
+  - **Job Reliability**: Deduplication, DLQ, circuit breakers for BullMQ
+**Success Criteria** (what must be TRUE):
+  1. All multi-table operations use transactions
+  2. APIKey deletions cascade correctly
+  3. No N+1 queries in hot paths
+  4. Failed jobs retry with exponential backoff
+**Estimated effort**: 80 hours (2.5 weeks)
+**Plans**: 4 plans
+  - [ ] 69-01-PLAN.md — Transaction Wrappers (Wave 1)
+  - [ ] 69-02-PLAN.md — Cascade & Constraints (Wave 1)
+  - [ ] 69-03-PLAN.md — Query Optimization (Wave 2)
+  - [ ] 69-04-PLAN.md — Background Job Reliability (Wave 2)
+
+---
+
+### Phase 70: Frontend Quality
+**Goal**: Fix React component issues, Next.js patterns, user journey problems, and error handling.
+**Depends on**: None (can run parallel with Phase 69)
+**Context doc**: `.planning/phases/70-frontend-quality/70-CONTEXT.md`
+**Working directory**: `apps/web/`
+**Key Features**:
+  - **Memory Leak Fixes**: Clean up setTimeout/intervals on unmount
+  - **Infinite Re-render Fixes**: Fix GlobalSettings and similar components
+  - **Error Boundaries**: Add error.tsx to 18 routes
+  - **Loading States**: Add loading.tsx to 59 routes
+  - **Accessibility**: ARIA attributes on all forms
+**Success Criteria** (what must be TRUE):
+  1. No memory leaks in React components
+  2. No infinite re-renders
+  3. All routes have error.tsx boundaries
+  4. Forms have proper ARIA attributes
+**Estimated effort**: 64 hours (2 weeks)
+**Plans**: 3 plans
+  - [ ] 70-01-PLAN.md — React Component Fixes (Wave 1)
+  - [ ] 70-02-PLAN.md — Next.js Patterns (Wave 1)
+  - [ ] 70-03-PLAN.md — User Journey Fixes (Wave 2)
+
+---
+
+### Phase 71: Security & Configuration
+**Goal**: Consolidate configuration, harden security, and improve migration safety.
+**Depends on**: Phase 67 (database consolidated)
+**Context doc**: `.planning/phases/71-security-configuration/71-CONTEXT.md`
+**Working directory**: All services
+**Key Features**:
+  - **Env Var Standardization**: Consistent naming convention
+  - **Startup Validation**: Zod validation for all required env vars
+  - **Security Headers**: CORS, CSP, rate limiting
+  - **Migration Safety**: Rollback scripts for all migrations
+**Success Criteria** (what must be TRUE):
+  1. All env vars follow SERVICE_URL/SERVICE_API_KEY convention
+  2. Missing required env vars fail at startup
+  3. INTERNAL_API_KEY minimum 32 characters
+  4. All migrations have rollback scripts
+**Estimated effort**: 64 hours (2 weeks)
+**Plans**: 3 plans
+  - [ ] 71-01-PLAN.md — Configuration Consolidation (Wave 1)
+  - [ ] 71-02-PLAN.md — Security Hardening (Wave 1)
+  - [ ] 71-03-PLAN.md — Migration Safety (Wave 2)
+
+---
+
+### Phase 72: SaaS Readiness
+**Goal**: Verify multi-tenancy, validate SEO checks, and set up production monitoring.
+**Depends on**: Phases 67-71 (all hardening complete)
+**Context doc**: `.planning/phases/72-saas-readiness/72-CONTEXT.md`
+**Working directory**: All services
+**Key Features**:
+  - **Tenant Isolation**: E2E tests verifying workspace_id filtering
+  - **SEO Checks Validation**: Consistent scoring across all 109 checks
+  - **Monitoring**: Health checks, metrics, alerting
+  - **Documentation**: API docs, deployment runbook
+**Success Criteria** (what must be TRUE):
+  1. All queries filter by workspace_id
+  2. Cross-tenant access returns 403
+  3. SEO check scores are consistent
+  4. Health endpoints return service status
+  5. Deployment runbook is complete
+**Estimated effort**: 48 hours (1.5 weeks)
+**Plans**: 3 plans
+  - [ ] 72-01-PLAN.md — Multi-Tenancy Verification (Wave 1)
+  - [ ] 72-02-PLAN.md — SEO Checks Validation (Wave 1)
+  - [ ] 72-03-PLAN.md — Monitoring & Observability (Wave 2)
+
+---
