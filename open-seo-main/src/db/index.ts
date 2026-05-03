@@ -127,3 +127,17 @@ export async function closeDatabasePool(): Promise<void> {
 }
 
 export const db = drizzle(pool, { schema });
+
+/**
+ * Type alias for the database client.
+ * Use this when injecting db into services.
+ */
+export type DbClient = typeof db;
+
+/**
+ * Type for Drizzle transaction context.
+ * Use this when passing transaction to repository methods.
+ */
+export type DrizzleTransaction = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];

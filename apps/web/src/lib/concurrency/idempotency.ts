@@ -17,6 +17,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { safeJsonParseWithSchema } from "@/lib/utils/type-guards";
 
+import { logger } from '@/lib/logger';
 /** Key prefix for idempotency entries */
 const IDEMPOTENCY_PREFIX = "tevero:idempotency:";
 

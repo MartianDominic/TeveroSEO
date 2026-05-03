@@ -22,14 +22,16 @@ import { VariableResolutionService } from "@/server/features/proposals/services/
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { AppError } from "@/server/lib/errors";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-proposals-resolve" });
 
 const ResolveRequestSchema = z.object({
   locale: z.enum(["en", "lt"]).optional(),
   customValues: z.record(z.string(), z.string()).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/resolve")({
+export const Route = createFileRoute("/api/proposals/[id]/resolve")({
   server: {
     handlers: {
       /**
@@ -91,9 +93,9 @@ export const Route = createFileRoute("/api/proposals/id/resolve")({
 
           return Response.json({ data: resolved });
         } catch (error) {
-          console.error("[api/proposals/[id]/resolve] POST failed:", error);
+          log.error("POST failed", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { error: "Failed to resolve variables" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to resolve variables" } },
             { status: 500 }
           );
         }

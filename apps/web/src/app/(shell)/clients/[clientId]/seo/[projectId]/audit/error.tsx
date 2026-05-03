@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, ArrowLeft } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function AuditError({
   error,
   reset,
@@ -15,7 +16,7 @@ export default function AuditError({
   const router = useRouter();
 
   useEffect(() => {
-    console.error("[audit-error]", {
+    logger.error("[audit-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

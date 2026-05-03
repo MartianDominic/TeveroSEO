@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Dialog,
@@ -42,7 +43,7 @@ export function GenerateReportButton({ clientId }: GenerateReportButtonProps) {
       try {
         const result = await generateReport(clientId, { locale });
         if (!result.success) {
-          console.error("Failed to generate report:", result.error);
+          logger.error("Failed to generate report", { error: result.error });
           return;
         }
         setOpen(false);
@@ -51,7 +52,7 @@ export function GenerateReportButton({ clientId }: GenerateReportButtonProps) {
       } catch (error) {
         // Error handling - could show toast in future
         // eslint-disable-next-line no-console
-        console.error("Failed to generate report:", error);
+        logger.error("Failed to generate report", error instanceof Error ? error : { error: String(error) });
       }
     });
   };

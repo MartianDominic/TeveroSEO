@@ -63,9 +63,10 @@ export default function ClientsPage() {
 
   const [addModalOpen, setAddModalOpen] = useState(false);
 
+  // MEDIUM-03 FIX: fetchClients is stable from zustand store, safe to include
   useEffect(() => {
     fetchClients();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchClients]);
 
   const handleCardClick = (id: string) => {
     setActiveClient(id);

@@ -1,6 +1,8 @@
 /**
  * PUT/DELETE /api/proposals/:id/sections/:sid - Update/delete section.
  * Phase 57-05: Custom Sections API
+ *
+ * SECURITY: Requires authentication and workspace ownership verification.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -9,6 +11,11 @@ import { db } from "@/db";
 import { templateSections } from "@/db/proposal-template-schema";
 import { proposals } from "@/db/proposal-schema";
 import { eq, and } from "drizzle-orm";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { AppError } from "@/server/lib/errors";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-proposals-sections-sid" });
 
 /**
  * Custom section types for proposals.
@@ -39,12 +46,12 @@ const updateSectionSchema = z.object({
   sectionType: z.enum(CUSTOM_SECTION_TYPES as unknown as readonly [string, ...string[]]).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/sections/sid")({
+export const Route = createFileRoute("/api/proposals/$id/sections/$sid")({
   server: {
     handlers: {
       /**
        * PUT - Update a section.
+       * Requires authentication and workspace ownership.
        */
       PUT: async ({
         request,
@@ -54,11 +61,13 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
         params: { id: string; sid: string };
       }) => {
         try {
+          // Authenticate request
+          const authContext = await requireApiAuth(request);
           const { id: proposalId, sid: sectionId } = params;
 
-          // Verify proposal exists
+          // Verify proposal exists and get workspace
           const [proposal] = await db
-            .select({ id: proposals.id })
+            .select({ id: proposals.id, workspaceId: proposals.workspaceId })
             .from(proposals)
             .where(eq(proposals.id, proposalId))
             .limit(1);
@@ -67,6 +76,14 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
             return Response.json(
               { success: false, error: "Proposal not found" },
               { status: 404 }
+            );
+          }
+
+          // Verify workspace ownership
+          if (proposal.workspaceId !== authContext.organizationId) {
+            return Response.json(
+              { success: false, error: "Forbidden" },
+              { status: 403 }
             );
           }
 
@@ -143,9 +160,18 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
             },
           });
         } catch (error) {
-          console.error("Error updating section:", error);
+          if (error instanceof AppError) {
+            const status =
+              error.code === "UNAUTHENTICATED"
+                ? 401
+                : error.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return Response.json({ success: false, error: error.message }, { status });
+          }
+          log.error("Error updating section", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Internal server error" },
+            { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
             { status: 500 }
           );
         }
@@ -153,18 +179,23 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
 
       /**
        * DELETE - Delete a section.
+       * Requires authentication and workspace ownership.
        */
       DELETE: async ({
+        request,
         params,
       }: {
+        request: Request;
         params: { id: string; sid: string };
       }) => {
         try {
+          // Authenticate request
+          const authContext = await requireApiAuth(request);
           const { id: proposalId, sid: sectionId } = params;
 
-          // Verify proposal exists
+          // Verify proposal exists and get workspace
           const [proposal] = await db
-            .select({ id: proposals.id })
+            .select({ id: proposals.id, workspaceId: proposals.workspaceId })
             .from(proposals)
             .where(eq(proposals.id, proposalId))
             .limit(1);
@@ -173,6 +204,14 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
             return Response.json(
               { success: false, error: "Proposal not found" },
               { status: 404 }
+            );
+          }
+
+          // Verify workspace ownership
+          if (proposal.workspaceId !== authContext.organizationId) {
+            return Response.json(
+              { success: false, error: "Forbidden" },
+              { status: 403 }
             );
           }
 
@@ -212,9 +251,18 @@ export const Route = createFileRoute("/api/proposals/id/sections/sid")({
             data: { id: sectionId, deleted: true },
           });
         } catch (error) {
-          console.error("Error deleting section:", error);
+          if (error instanceof AppError) {
+            const status =
+              error.code === "UNAUTHENTICATED"
+                ? 401
+                : error.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return Response.json({ success: false, error: error.message }, { status });
+          }
+          log.error("Error deleting section", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Internal server error" },
+            { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
             { status: 500 }
           );
         }

@@ -109,7 +109,13 @@ export abstract class OAuthProviderBase implements OAuthProvider {
       throw new Error(`Token request failed: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+      token_type?: string;
+      scope?: string;
+    };
 
     return {
       accessToken: data.access_token,

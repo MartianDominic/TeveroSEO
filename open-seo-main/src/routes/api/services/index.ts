@@ -51,7 +51,6 @@ const listServicesQuerySchema = z.object({
   includeInactive: z.coerce.boolean().default(false),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/services/")({
   server: {
     handlers: {

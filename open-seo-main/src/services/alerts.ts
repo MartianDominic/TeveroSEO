@@ -248,6 +248,7 @@ export async function updateAlertEmailStatus(
 /**
  * Create a new alert rule.
  * Returns the created rule.
+ * Uses RETURNING clause to avoid redundant SELECT (fixes MEDIUM-DB-006).
  */
 export async function createAlertRule(data: {
   clientId: string;
@@ -273,13 +274,8 @@ export async function createAlertRule(data: {
   };
 
   try {
-    await db.insert(alertRules).values(ruleData);
-
-    // Return the created rule
-    const [created] = await db
-      .select()
-      .from(alertRules)
-      .where(eq(alertRules.id, id));
+    // Use RETURNING to get the created rule in one query
+    const [created] = await db.insert(alertRules).values(ruleData).returning();
 
     return created;
   } catch (error) {

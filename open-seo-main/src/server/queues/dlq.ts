@@ -9,6 +9,10 @@
  */
 import { Queue } from 'bullmq';
 import { getSharedBullMQConnection } from '../lib/redis';
+import { createLogger } from '../lib/logger';
+
+// MED-33 fix: Use structured logger instead of console.log
+const log = createLogger({ module: 'dlq' });
 
 export const DLQ_QUEUE_NAME = 'dead-letter-queue';
 
@@ -80,12 +84,12 @@ export async function cleanupDLQ(): Promise<number> {
     removedCount += await cleanupWaitingJobs(queue, cutoffTime, BATCH_SIZE);
 
     if (removedCount > 0) {
-      console.log(`[DLQ] Cleaned up ${removedCount} old jobs (>${DLQ_RETENTION_DAYS} days)`);
+      log.info('Cleaned up old DLQ jobs', { removedCount, retentionDays: DLQ_RETENTION_DAYS });
     }
 
     return removedCount;
   } catch (error) {
-    console.error('[DLQ] Cleanup failed:', error);
+    log.error('DLQ cleanup failed', error instanceof Error ? error : new Error(String(error)));
     return removedCount;
   }
 }
@@ -117,7 +121,7 @@ async function cleanupJobsByStatus(
           removedCount++;
         } catch (err) {
           // Job may have been removed by another process
-          console.warn(`[DLQ] Failed to remove ${status} job ${job.id}:`, err);
+          log.warn(`Failed to remove ${status} DLQ job`, { jobId: job.id, error: err instanceof Error ? err.message : String(err) });
         }
       }
     }
@@ -164,7 +168,7 @@ async function cleanupWaitingJobs(
             await job.remove();
             removedCount++;
           } catch (err) {
-            console.warn(`[DLQ] Failed to remove waiting job ${job.id}:`, err);
+            log.warn('Failed to remove waiting DLQ job', { jobId: job.id, error: err instanceof Error ? err.message : String(err) });
           }
         }
       }
@@ -201,14 +205,14 @@ export function startDLQCleanupScheduler(): void {
 
   // Initial delayed start, then run every 24 hours
   setTimeout(() => {
-    cleanupDLQ().catch((err) => console.error('[DLQ] Scheduled cleanup error:', err));
+    cleanupDLQ().catch((err) => log.error('Scheduled DLQ cleanup error', err instanceof Error ? err : new Error(String(err))));
 
     cleanupIntervalId = setInterval(() => {
-      cleanupDLQ().catch((err) => console.error('[DLQ] Scheduled cleanup error:', err));
+      cleanupDLQ().catch((err) => log.error('Scheduled DLQ cleanup error', err instanceof Error ? err : new Error(String(err))));
     }, CLEANUP_INTERVAL_MS);
   }, initialDelay);
 
-  console.log(`[DLQ] Cleanup scheduler started, next run at ${nextRun.toISOString()}`);
+  log.info('DLQ cleanup scheduler started', { nextRun: nextRun.toISOString() });
 }
 
 /**
@@ -218,7 +222,7 @@ export function stopDLQCleanupScheduler(): void {
   if (cleanupIntervalId) {
     clearInterval(cleanupIntervalId);
     cleanupIntervalId = null;
-    console.log('[DLQ] Cleanup scheduler stopped');
+    log.info('DLQ cleanup scheduler stopped');
   }
 }
 

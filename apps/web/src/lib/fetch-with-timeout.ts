@@ -3,9 +3,28 @@
  *
  * Uses AbortController to cancel requests that exceed the timeout.
  * Converts AbortError to a descriptive timeout error message.
+ *
+ * MEDIUM-01 FIX: Standardized Timeout Constants
+ *
+ * Timeout guidelines for cross-service consistency:
+ * - DEFAULT_TIMEOUT_MS (30s): Normal operations (CRUD, queries)
+ * - LONG_RUNNING_TIMEOUT_MS (120s): Audits, content generation, bulk operations
+ * - QUICK_CHECK_TIMEOUT_MS (5s): Health checks, feature flags
+ *
+ * These constants should be used consistently across:
+ * - apps/web (this file)
+ * - AI-Writer (services/http_client.py)
+ * - open-seo-main (server/lib/http-client.ts)
  */
 
-export const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds
+/** Default timeout for normal operations (30 seconds) */
+export const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** Timeout for long-running operations like audits and generation (120 seconds) */
+export const LONG_RUNNING_TIMEOUT_MS = 120_000;
+
+/** Timeout for quick health checks and feature flags (5 seconds) */
+export const QUICK_CHECK_TIMEOUT_MS = 5_000;
 
 export class TimeoutError extends Error {
   constructor(public timeoutMs: number, url?: string) {

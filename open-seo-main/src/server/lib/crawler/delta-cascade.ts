@@ -19,6 +19,7 @@ import { filterByLastmod } from "./sitemap-parser";
 import type { DeltaSyncService } from "./delta-sync";
 import { conditionalGet, hasConditionalHeaders, type CachedHeaders } from "./conditional-get";
 import { recordDeltaSkip, recordFullProcess } from "@/server/lib/metrics/crawl-metrics";
+import { enqueueGraphIngestion } from "@/server/queues/graphIngestionQueue";
 
 /**
  * Result of delta cascade decision.
@@ -141,6 +142,7 @@ export async function deltaCascade(
 /**
  * L2: Template-aware hash comparison using DeltaSyncService.
  *
+ * H64-01 Fix: Implements actual SEO content hash comparison.
  * Compares SEO content hash (excludes volatile price/stock data).
  * Only triggers full reprocess when SEO-relevant content changes.
  */
@@ -166,20 +168,139 @@ async function checkL2(
     };
   }
 
-  // We have an existing snapshot - in a full implementation we would:
-  // 1. Extract product data from HTML
-  // 2. Compute new hashes
-  // 3. Compare with existing.seoContentHash
-  // For now, we return process since we can't extract product data here
-  // The actual hash comparison happens in the crawl pipeline
+  // H64-01: Extract SEO content from HTML and compute hash
+  const seoContent = extractSeoContentFromHtml(html);
+  const newSeoHash = computeSeoContentHash(seoContent);
+
+  // Compare with stored hash
+  if (existing.seoContentHash === newSeoHash) {
+    recordDeltaSkip("L2");
+    return {
+      action: "skip",
+      reason: "L2 SEO content hash unchanged",
+      layer: "L2",
+    };
+  }
+
+  // SEO content changed - needs full reprocessing
   recordFullProcess();
   return {
     action: "process",
-    reason: "Content fetched - full processing required",
+    reason: "L2 SEO content hash changed - reprocessing required",
     layer: "L3",
     newHeaders,
     html,
   };
+}
+
+/**
+ * SEO content extracted from HTML for hash comparison.
+ */
+interface SeoContent {
+  title: string;
+  metaDescription: string;
+  h1: string;
+  canonical: string;
+  structuredData: string;
+}
+
+/**
+ * Extract SEO-relevant content from HTML for L2 hash comparison.
+ *
+ * Focuses on elements that affect SEO ranking:
+ * - Title tag
+ * - Meta description
+ * - H1 heading
+ * - Canonical URL
+ * - Structured data (JSON-LD)
+ */
+function extractSeoContentFromHtml(html: string): SeoContent {
+  // Use regex for lightweight extraction (no DOM parser needed)
+  // This is intentionally simple - complex extraction happens in full processing
+
+  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  const title = titleMatch?.[1]?.trim() ?? "";
+
+  const metaDescMatch = html.match(
+    /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i
+  ) || html.match(
+    /<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["'][^>]*>/i
+  );
+  const metaDescription = metaDescMatch?.[1]?.trim() ?? "";
+
+  const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/i);
+  const h1 = h1Match?.[1]?.trim() ?? "";
+
+  const canonicalMatch = html.match(
+    /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["'][^>]*>/i
+  ) || html.match(
+    /<link[^>]*href=["']([^"']*)["'][^>]*rel=["']canonical["'][^>]*>/i
+  );
+  const canonical = canonicalMatch?.[1]?.trim() ?? "";
+
+  // Extract JSON-LD structured data
+  const jsonLdMatches = html.matchAll(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  );
+  const structuredDataParts: string[] = [];
+  for (const match of jsonLdMatches) {
+    if (match[1]) {
+      structuredDataParts.push(match[1].trim());
+    }
+  }
+  const structuredData = structuredDataParts.join("|");
+
+  return {
+    title,
+    metaDescription,
+    h1,
+    canonical,
+    structuredData,
+  };
+}
+
+/**
+ * Compute hash of SEO content for comparison.
+ *
+ * Uses the same hashing approach as DeltaSyncService for consistency.
+ */
+function computeSeoContentHash(content: SeoContent): string {
+  const { createHash } = require("crypto") as typeof import("crypto");
+  const parts = [
+    content.title,
+    content.metaDescription,
+    content.h1,
+    content.canonical,
+    content.structuredData,
+  ];
+  return createHash("sha256")
+    .update(parts.filter(Boolean).join("|"))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/**
+ * Trigger GraphRAG ingestion for a processed page.
+ *
+ * Per HIGH-INT-03: Connects crawling results to GraphRAG ingestion.
+ * Called after successful L3 processing to extract entities and update graph.
+ *
+ * @param tenantId - Tenant ID for data isolation
+ * @param url - Source URL of the crawled page
+ * @param html - HTML content of the page
+ * @returns Job ID of the enqueued ingestion job
+ */
+export async function triggerGraphIngestion(
+  tenantId: string,
+  url: string,
+  html: string
+): Promise<string> {
+  return enqueueGraphIngestion({
+    tenantId,
+    url,
+    html,
+    crawledAt: Date.now(),
+  });
 }
 
 /**

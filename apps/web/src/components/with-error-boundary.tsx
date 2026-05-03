@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { ErrorBoundary } from './error-boundary';
 
+import { logger } from '@/lib/logger';
 interface WithErrorBoundaryProps {
   children: ReactNode;
   name: string;
@@ -29,7 +30,7 @@ export function WithErrorBoundary({
     <ErrorBoundary
       fallback={fallback}
       onError={(error, errorInfo) => {
-        console.error(`[${name}] Error:`, error);
+        logger.error(`[${name}] Error`, error instanceof Error ? error : { error: String(error) });
         console.error(`[${name}] Component Stack:`, errorInfo.componentStack);
       }}
     >

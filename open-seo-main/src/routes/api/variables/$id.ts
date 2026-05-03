@@ -15,6 +15,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-variables-id" });
 
 /**
  * Zod schema for updating a variable.
@@ -42,7 +45,6 @@ const UpdateVariableSchema = z.object({
   displayOrder: z.number().int().min(0).max(1000).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/$id")({
   server: {
     handlers: {
@@ -83,9 +85,9 @@ export const Route = createFileRoute("/api/variables/$id")({
 
           return Response.json({ data: variable });
         } catch (error) {
-          console.error("[api/variables/$id] GET failed:", error);
+          log.error("GET failed", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { error: "Failed to fetch variable" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to fetch variable" } },
             { status: 500 }
           );
         }
@@ -132,26 +134,26 @@ export const Route = createFileRoute("/api/variables/$id")({
 
           return Response.json({ data: updated });
         } catch (error) {
-          console.error("[api/variables/$id] PUT failed:", error);
+          log.error("PUT failed", error instanceof Error ? error : new Error(String(error)));
 
           // Handle specific errors
           if (error instanceof Error) {
             if (error.message.includes("NOT_FOUND")) {
               return Response.json(
-                { error: "Variable not found" },
+                { error: { code: "NOT_FOUND", message: "Variable not found" } },
                 { status: 404 }
               );
             }
             if (error.message.includes("FORBIDDEN")) {
               return Response.json(
-                { error: "System variables cannot be modified" },
+                { error: { code: "FORBIDDEN", message: "System variables cannot be modified" } },
                 { status: 403 }
               );
             }
           }
 
           return Response.json(
-            { error: "Failed to update variable" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to update variable" } },
             { status: 500 }
           );
         }
@@ -177,26 +179,26 @@ export const Route = createFileRoute("/api/variables/$id")({
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[api/variables/$id] DELETE failed:", error);
+          log.error("DELETE failed", error instanceof Error ? error : new Error(String(error)));
 
           // Handle specific errors
           if (error instanceof Error) {
             if (error.message.includes("NOT_FOUND")) {
               return Response.json(
-                { error: "Variable not found" },
+                { error: { code: "NOT_FOUND", message: "Variable not found" } },
                 { status: 404 }
               );
             }
             if (error.message.includes("FORBIDDEN")) {
               return Response.json(
-                { error: "System variables cannot be deleted" },
+                { error: { code: "FORBIDDEN", message: "System variables cannot be deleted" } },
                 { status: 403 }
               );
             }
           }
 
           return Response.json(
-            { error: "Failed to delete variable" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to delete variable" } },
             { status: 500 }
           );
         }

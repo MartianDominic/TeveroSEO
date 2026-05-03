@@ -5,6 +5,7 @@
 
 import Redis from "ioredis";
 
+import { logger } from '@/lib/logger';
 // Global singletons for hot reload safety
 const globalForPubSub = globalThis as unknown as {
   subscriber: Redis | undefined;
@@ -24,7 +25,7 @@ function createPubSubClient(role: "subscriber" | "publisher"): Redis {
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
       if (times > 10) {
-        console.error(`[redis-pubsub] ${role}: Max retries reached`);
+        logger.error(`[redis-pubsub] ${role}: Max retries reached`);
         return null;
       }
       return Math.min(times * 50, 2000);
@@ -33,11 +34,11 @@ function createPubSubClient(role: "subscriber" | "publisher"): Redis {
   });
 
   redis.on("error", (err) => {
-    console.error(`[redis-pubsub] ${role} error:`, err.message);
+    logger.error(`[redis-pubsub] ${role} error`, { error: err.message });
   });
 
   redis.on("connect", () => {
-    console.log(`[redis-pubsub] ${role}: Connected`);
+    logger.info(`[redis-pubsub] ${role}: Connected`);
   });
 
   return redis;
@@ -75,7 +76,7 @@ function ensureMessageListener(): void {
       try {
         await handler(message, channel);
       } catch (error) {
-        console.error(`[redis-pubsub] Handler error on ${channel}:`, error);
+        logger.error(`[redis-pubsub] Handler error on ${channel}`, error instanceof Error ? error : { error: String(error) });
         // Continue with other handlers even if one fails
       }
     }
@@ -95,7 +96,7 @@ function ensureMessageListener(): void {
  * @example
  * ```typescript
  * const unsubscribe = await subscribe('cache-invalidation', (message, channel) => {
- *   console.log(`Received on ${channel}: ${message}`);
+ *   logger.debug(`Received on ${channel}: ${message}`);
  *   invalidateLocalCache(message);
  * });
  *
@@ -125,9 +126,9 @@ export async function subscribe(
     try {
       await subscriber.subscribe(channel);
       subscribedChannels.add(channel);
-      console.log(`[redis-pubsub] Subscribed to ${channel}`);
+      logger.info(`[redis-pubsub] Subscribed to ${channel}`);
     } catch (error) {
-      console.error(`[redis-pubsub] Subscribe error for ${channel}:`, error);
+      logger.error(`[redis-pubsub] Subscribe error for ${channel}`, error instanceof Error ? error : { error: String(error) });
       // Safe access on error path as well
       const handlersOnError = handlers.get(channel);
       if (handlersOnError) {
@@ -160,9 +161,9 @@ export async function unsubscribe(channel: string, handler: MessageHandler): Pro
 
     try {
       await subscriber.unsubscribe(channel);
-      console.log(`[redis-pubsub] Unsubscribed from ${channel}`);
+      logger.info(`[redis-pubsub] Unsubscribed from ${channel}`);
     } catch (error) {
-      console.error(`[redis-pubsub] Unsubscribe error for ${channel}:`, error);
+      logger.error(`[redis-pubsub] Unsubscribe error for ${channel}`, error instanceof Error ? error : { error: String(error) });
     }
   }
 }
@@ -179,7 +180,7 @@ export async function publish(channel: string, message: string): Promise<number>
     const subscriberCount = await publisher.publish(channel, message);
     return subscriberCount;
   } catch (error) {
-    console.error(`[redis-pubsub] Publish error for ${channel}:`, error);
+    logger.error(`[redis-pubsub] Publish error for ${channel}`, error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -229,9 +230,9 @@ export async function closePubSub(): Promise<void> {
       await publisher.quit();
     }
 
-    console.log("[redis-pubsub] Connections closed");
+    logger.info("[redis-pubsub] Connections closed");
   } catch (error) {
-    console.error("[redis-pubsub] Error during shutdown:", error);
+    logger.error("[redis-pubsub] Error during shutdown", error instanceof Error ? error : { error: String(error) });
   }
 }
 

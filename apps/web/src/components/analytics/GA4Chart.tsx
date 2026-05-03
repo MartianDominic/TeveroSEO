@@ -1,15 +1,42 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+/**
+ * PERF FIX (MEDIUM-05): Dynamic import for Recharts to reduce initial bundle size.
+ * Recharts is ~54KB and only needed when charts are rendered.
+ */
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { GA4DataPoint } from "@/lib/analytics/types";
+
+// Dynamically import Recharts components to reduce initial bundle
+const LineChart = dynamic(
+  () => import("recharts").then((mod) => mod.LineChart),
+  { ssr: false }
+);
+const Line = dynamic(
+  () => import("recharts").then((mod) => mod.Line),
+  { ssr: false }
+);
+const XAxis = dynamic(
+  () => import("recharts").then((mod) => mod.XAxis),
+  { ssr: false }
+);
+const YAxis = dynamic(
+  () => import("recharts").then((mod) => mod.YAxis),
+  { ssr: false }
+);
+const CartesianGrid = dynamic(
+  () => import("recharts").then((mod) => mod.CartesianGrid),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import("recharts").then((mod) => mod.Tooltip),
+  { ssr: false }
+);
+const ResponsiveContainer = dynamic(
+  () => import("recharts").then((mod) => mod.ResponsiveContainer),
+  { ssr: false, loading: () => <Skeleton className="w-full h-[280px]" /> }
+);
 
 interface GA4ChartProps {
   data: GA4DataPoint[];

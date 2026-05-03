@@ -5,6 +5,7 @@ import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import { revalidatePath } from "next/cache";
 import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 
+import { logger } from '@/lib/logger';
 // Validation schemas
 const contractIdSchema = z.string().min(1, "Invalid contract ID");
 const prospectIdSchema = z.string().min(1, "Invalid prospect ID");
@@ -100,7 +101,7 @@ export async function getContracts(
       data: response.data,
     };
   } catch (error) {
-    console.error("Failed to fetch contracts:", error);
+    logger.error("Failed to fetch contracts", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch contracts",
@@ -142,7 +143,7 @@ export async function getInvoiceByContract(
       data: invoice,
     };
   } catch (error) {
-    console.error("Failed to fetch invoice:", error);
+    logger.error("Failed to fetch invoice", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch invoice",
@@ -178,7 +179,7 @@ export async function getContractDetail(
       data: response.data,
     };
   } catch (error) {
-    console.error("Failed to fetch contract detail:", error);
+    logger.error("Failed to fetch contract detail", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch contract detail",
@@ -226,7 +227,7 @@ export async function sendContract(
       data: { signingUrl: response.data.signingUrl },
     };
   } catch (error) {
-    console.error("Failed to send contract:", error);
+    logger.error("Failed to send contract", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to send contract",

@@ -6,6 +6,7 @@ import {
   timestamp,
   index,
   check,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { keywordPageMapping } from "./mapping-schema";
@@ -56,10 +57,15 @@ export const contentBriefs = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // Soft delete columns (migration 0067)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("ix_briefs_mapping").on(table.mappingId),
     index("ix_briefs_status").on(table.status),
+    index("ix_content_briefs_deleted").on(table.isDeleted),
     // M-18: Target word count must be reasonable (100-50000)
     check("chk_target_word_count_range", sql`target_word_count >= 100 AND target_word_count <= 50000`),
     // M-19: Voice mode must be valid enum value

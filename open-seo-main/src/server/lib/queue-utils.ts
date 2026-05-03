@@ -6,13 +6,84 @@
  * - Job data validation helpers
  * - Job timeout wrapper for processors
  * - Deduplication helpers
+ * - Standardized retry configuration
  */
 
-import type { Queue, Job } from "bullmq";
+import type { Queue, Job, BackoffOptions, JobsOptions, KeepJobs } from "bullmq";
 import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "queue-utils" });
+
+// ============================================================================
+// Standardized Retry Configuration
+// ============================================================================
+
+/**
+ * Standardized backoff configuration for all queues (except webhook).
+ *
+ * Strategy: Exponential backoff with 1s base delay, max 60s.
+ * - Attempt 1: immediate
+ * - Attempt 2: 1s delay
+ * - Attempt 3: 2s delay
+ * - Attempt 4: 4s delay (capped at 60s for higher attempts)
+ *
+ * Rationale:
+ * - Fast initial retry catches transient failures (network blips, brief DB locks)
+ * - Exponential growth prevents thundering herd on sustained outages
+ * - 60s cap prevents excessive delays while allowing recovery time
+ *
+ * Exception: Webhook queue uses longer delays (60s base) for external services
+ * that may have rate limits or longer recovery times.
+ *
+ * @see https://docs.bullmq.io/guide/retrying-failing-jobs
+ */
+export const STANDARD_BACKOFF: BackoffOptions = {
+  type: "exponential",
+  delay: 1000, // 1s base delay
+} as const;
+
+/**
+ * Maximum delay for exponential backoff (60 seconds).
+ * BullMQ will cap delay at this value for higher retry attempts.
+ *
+ * Note: BullMQ's exponential backoff formula: delay * 2^(attemptsMade - 1)
+ * With 1s base: 1s, 2s, 4s, 8s, 16s, 32s, 60s (capped), 60s (capped), ...
+ */
+export const STANDARD_BACKOFF_MAX_DELAY = 60_000; // 60 seconds
+
+/**
+ * Standard number of retry attempts for most queues.
+ */
+export const STANDARD_ATTEMPTS = 3;
+
+/**
+ * Get standardized job options for most queues.
+ * Provides consistent retry behavior across the system.
+ *
+ * @param overrides - Optional overrides for specific use cases
+ * @returns JobsOptions with standardized retry configuration
+ *
+ * @example
+ * ```typescript
+ * const DEFAULT_JOB_OPTIONS = getStandardJobOptions({
+ *   removeOnComplete: { count: 100 },
+ *   removeOnFail: { count: 500 },
+ * });
+ * ```
+ */
+export function getStandardJobOptions(overrides?: {
+  attempts?: number;
+  removeOnComplete?: KeepJobs;
+  removeOnFail?: KeepJobs;
+}): JobsOptions {
+  return {
+    attempts: overrides?.attempts ?? STANDARD_ATTEMPTS,
+    backoff: STANDARD_BACKOFF,
+    removeOnComplete: overrides?.removeOnComplete ?? { count: 100 },
+    removeOnFail: overrides?.removeOnFail ?? { count: 500 },
+  };
+}
 
 // ============================================================================
 // Backpressure Configuration

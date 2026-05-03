@@ -14,6 +14,7 @@
 import { revalidatePath } from "next/cache";
 import type { AggregatedTask } from "@/components/tasks/types";
 
+import { logger } from '@/lib/logger';
 // Base URL for open-seo-main API
 const API_BASE = process.env.OPEN_SEO_API_URL ?? "http://localhost:3001";
 
@@ -36,7 +37,7 @@ export async function getTasks(
     );
 
     if (!response.ok) {
-      console.error("[getTasks] API error:", response.status);
+      logger.error("[getTasks] API error", { status: response.status });
       return [];
     }
 
@@ -52,7 +53,7 @@ export async function getTasks(
         : null,
     }));
   } catch (error) {
-    console.error("[getTasks] Error fetching tasks:", error);
+    logger.error("[getTasks] Error fetching tasks", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
@@ -75,7 +76,7 @@ export async function completeTask(taskId: string): Promise<void> {
 
     revalidatePath("/dashboard/tasks");
   } catch (error) {
-    console.error("[completeTask] Error:", error);
+    logger.error("[completeTask] Error", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -98,7 +99,7 @@ export async function pinTask(taskId: string): Promise<void> {
 
     revalidatePath("/dashboard/tasks");
   } catch (error) {
-    console.error("[pinTask] Error:", error);
+    logger.error("[pinTask] Error", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -121,7 +122,7 @@ export async function unpinTask(taskId: string): Promise<void> {
 
     revalidatePath("/dashboard/tasks");
   } catch (error) {
-    console.error("[unpinTask] Error:", error);
+    logger.error("[unpinTask] Error", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -145,7 +146,7 @@ export async function snoozeTask(taskId: string, until: Date): Promise<void> {
 
     revalidatePath("/dashboard/tasks");
   } catch (error) {
-    console.error("[snoozeTask] Error:", error);
+    logger.error("[snoozeTask] Error", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -172,7 +173,7 @@ export async function updateTaskPriority(
 
     revalidatePath("/dashboard/tasks");
   } catch (error) {
-    console.error("[updateTaskPriority] Error:", error);
+    logger.error("[updateTaskPriority] Error", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }

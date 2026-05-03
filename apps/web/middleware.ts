@@ -1,16 +1,179 @@
-import createMiddleware from 'next-intl/middleware';
+import createIntlMiddleware from 'next-intl/middleware';
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 import { routing } from './src/i18n/routing';
+import {
+  checkAuthRateLimit,
+  getAuthOperationType,
+  createRateLimitHeaders,
+} from "@/lib/rate-limit/auth-limiter";
 
 /**
- * next-intl middleware for locale routing.
+ * Merged middleware combining next-intl locale routing with Clerk authentication.
  *
- * Behavior:
- * - Detects locale from Accept-Language header
- * - No prefix for English (default locale)
- * - /lt/ prefix for Lithuanian
- * - Redirects to appropriate locale based on detection
+ * Order of operations:
+ * 1. Rate limit authentication routes
+ * 2. Run next-intl for locale detection and routing
+ * 3. Check Clerk auth for protected routes
+ * 4. Check session freshness for sensitive routes
+ *
+ * ## API Route Authentication Strategy
+ *
+ * API routes (/api/*, /trpc/*) are excluded from this middleware via the `matcher`
+ * config. They use route-level authentication instead:
+ *
+ * - `requireAuth()` - Validates Clerk session, returns AuthContext with userId
+ * - `requireClientAccess(clientId)` - Additionally verifies client ownership
+ * - `withAuth(handler)` - Wrapper that handles auth errors automatically
+ * - `withClientAuth(extractor, handler)` - Wrapper with client access verification
+ *
+ * This separation ensures:
+ * 1. API routes can return JSON error responses (not redirects)
+ * 2. Fine-grained rate limiting per endpoint type
+ * 3. Custom CSRF protection for state-changing operations
+ * 4. Explicit auth context in handler type signatures
+ *
+ * @see apps/web/src/lib/auth/api-auth.ts for API route authentication utilities
  */
-export default createMiddleware(routing);
+
+const intlMiddleware = createIntlMiddleware(routing);
+
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/connect/(.*)",
+  "/api/health",
+  // Include locale-prefixed versions
+  "/lt/sign-in(.*)",
+  "/lt/sign-up(.*)",
+  "/lt/connect/(.*)",
+]);
+
+// Auth routes that need rate limiting
+const isAuthRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/forgot-password(.*)",
+  "/reset-password(.*)",
+  "/verify(.*)",
+  "/verification(.*)",
+  // Include locale-prefixed versions
+  "/lt/sign-in(.*)",
+  "/lt/sign-up(.*)",
+  "/lt/forgot-password(.*)",
+  "/lt/reset-password(.*)",
+  "/lt/verify(.*)",
+  "/lt/verification(.*)",
+]);
+
+/**
+ * Sensitive routes require fresh sessions (re-auth after 24 hours).
+ *
+ * Pattern Design Notes:
+ * - Use explicit path segments to avoid false positives (e.g., "/deleted-items" matching "/delete")
+ * - Admin routes use word boundary matching via explicit segment patterns
+ * - Delete operations require "/delete" as a distinct path segment, not substring
+ *
+ * Edge Cases Handled:
+ * - "/settings" and "/settings/..." - user account settings
+ * - "/admin" and "/admin/..." - admin panel access
+ * - "/clients/123/delete" - delete confirmation pages (segment-based)
+ * - "/lt/..." - Lithuanian locale prefix variants
+ *
+ * NOT matched (by design):
+ * - "/deleted-items" - contains "delete" as substring, not segment
+ * - "/administrator-guide" - contains "admin" as substring, not segment
+ */
+const isSensitiveRoute = createRouteMatcher([
+  // Settings pages - account management
+  "/settings",
+  "/settings/(.*)",
+  // Admin panel - requires fresh session
+  "/admin",
+  "/admin/(.*)",
+  // Delete operations - must be a path segment, not substring
+  // Pattern: any path ending in /delete or /delete/...
+  "(.*)/delete",
+  "(.*)/delete/(.*)",
+  // Include locale-prefixed versions (Lithuanian)
+  "/lt/settings",
+  "/lt/settings/(.*)",
+  "/lt/admin",
+  "/lt/admin/(.*)",
+  "/lt/(.*)/delete",
+  "/lt/(.*)/delete/(.*)",
+]);
+
+// Maximum session age for sensitive operations (24 hours)
+const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
+
+export default clerkMiddleware(async (auth, req) => {
+  // Rate limit authentication routes BEFORE any other processing
+  if (isAuthRoute(req)) {
+    const authType = getAuthOperationType(req.nextUrl.pathname);
+    const rateLimitResult = await checkAuthRateLimit(req, authType);
+
+    if (!rateLimitResult.success) {
+      const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
+      const headers = createRateLimitHeaders(rateLimitResult);
+
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too many authentication attempts",
+          message: `Rate limit exceeded. Please try again in ${Math.ceil(retryAfter / 60)} minute(s).`,
+          retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": headers.get("X-RateLimit-Limit") || "",
+            "X-RateLimit-Remaining": headers.get("X-RateLimit-Remaining") || "",
+            "X-RateLimit-Reset": headers.get("X-RateLimit-Reset") || "",
+            "Retry-After": headers.get("Retry-After") || "",
+          },
+        }
+      );
+    }
+  }
+
+  // Run next-intl middleware for locale handling
+  // This handles locale detection and URL rewriting
+  const intlResponse = intlMiddleware(req);
+
+  // For public routes, just return the intl response
+  if (isPublicRoute(req)) {
+    return intlResponse;
+  }
+
+  const authObj = await auth();
+  const { userId, sessionClaims } = authObj;
+
+  // Require authentication for protected routes
+  if (!userId) {
+    return authObj.redirectToSignIn();
+  }
+
+  // Check session freshness for sensitive operations
+  if (sessionClaims && isSensitiveRoute(req)) {
+    // sessionClaims.iat is the "issued at" timestamp in seconds (JWT standard)
+    const sessionIssuedAt = sessionClaims.iat
+      ? (sessionClaims.iat as number) * 1000
+      : 0;
+    const sessionAge = Date.now() - sessionIssuedAt;
+
+    if (sessionAge > MAX_SESSION_AGE_MS) {
+      // Session too old for sensitive operations - require re-authentication
+      const signInUrl = new URL("/sign-in", req.url);
+      signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname);
+      signInUrl.searchParams.set("reason", "session_expired");
+      return Response.redirect(signInUrl);
+    }
+  }
+
+  // Return the intl response for authenticated users
+  return intlResponse;
+});
 
 export const config = {
   // Match all pathnames except for:
@@ -19,5 +182,5 @@ export const config = {
   // - Next.js internals (/_next/*)
   // - Vercel internals (/_vercel/*)
   // - Static files (files with a dot, e.g., favicon.ico)
-  matcher: '/((?!api|trpc|_next|_vercel|.*\\..*).*)',
+  matcher: ['/((?!api|trpc|_next|_vercel|.*\\..*).*)', '/'],
 };

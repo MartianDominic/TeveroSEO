@@ -9,6 +9,7 @@ import { getOpenSeo, postOpenSeo, putOpenSeo, deleteOpenSeo } from "@/lib/server
 import { requireActionAuth, type ActionResult } from "@/lib/auth/action-auth";
 import type { ReportSection } from "@tevero/types";
 
+import { logger } from '@/lib/logger';
 /**
  * Report template response from API.
  */
@@ -36,7 +37,7 @@ export async function getReportTemplates(): Promise<
     );
     return { success: true, data: data.templates };
   } catch (error) {
-    console.error("[getReportTemplates] Error:", error);
+    logger.error("[getReportTemplates] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to load templates",
@@ -62,7 +63,7 @@ export async function createReportTemplate(template: {
     );
     return { success: true, data };
   } catch (error) {
-    console.error("[createReportTemplate] Error:", error);
+    logger.error("[createReportTemplate] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error:
@@ -92,7 +93,7 @@ export async function updateReportTemplate(
     );
     return { success: true, data };
   } catch (error) {
-    console.error("[updateReportTemplate] Error:", error);
+    logger.error("[updateReportTemplate] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error:
@@ -112,7 +113,7 @@ export async function deleteReportTemplate(
     await deleteOpenSeo(`/api/report-templates/${templateId}`);
     return { success: true, data: undefined };
   } catch (error) {
-    console.error("[deleteReportTemplate] Error:", error);
+    logger.error("[deleteReportTemplate] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error:

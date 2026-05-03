@@ -136,7 +136,11 @@ export class GoogleAnalyticsService {
       throw new Error(`GA API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      rows?: Array<{
+        metricValues?: Array<{ value: string }>;
+      }>;
+    };
     const row = data.rows?.[0];
 
     if (!row) {
@@ -203,10 +207,15 @@ export class GoogleAnalyticsService {
       throw new Error(`GA API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
-    return (data.rows ?? []).map((row: Record<string, unknown>) => {
-      const dimensionValues = row.dimensionValues as Array<{ value: string }>;
-      const metricValues = row.metricValues as Array<{ value: string }>;
+    const data = await response.json() as {
+      rows?: Array<{
+        dimensionValues?: Array<{ value: string }>;
+        metricValues?: Array<{ value: string }>;
+      }>;
+    };
+    return (data.rows ?? []).map((row) => {
+      const dimensionValues = row.dimensionValues ?? [];
+      const metricValues = row.metricValues ?? [];
       return {
         path: dimensionValues[0]?.value || "",
         pageviews: parseFloat(metricValues[0]?.value || "0"),
@@ -259,10 +268,15 @@ export class GoogleAnalyticsService {
       throw new Error(`GA API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
-    return (data.rows ?? []).map((row: Record<string, unknown>) => {
-      const dimensionValues = row.dimensionValues as Array<{ value: string }>;
-      const metricValues = row.metricValues as Array<{ value: string }>;
+    const data = await response.json() as {
+      rows?: Array<{
+        dimensionValues?: Array<{ value: string }>;
+        metricValues?: Array<{ value: string }>;
+      }>;
+    };
+    return (data.rows ?? []).map((row) => {
+      const dimensionValues = row.dimensionValues ?? [];
+      const metricValues = row.metricValues ?? [];
       return {
         source: dimensionValues[0]?.value || "(direct)",
         medium: dimensionValues[1]?.value || "(none)",

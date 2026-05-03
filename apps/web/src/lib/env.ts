@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 
+import { logger } from '@/lib/logger';
 /**
  * Server-side environment variables schema.
  * These are validated at server startup.
@@ -110,15 +111,15 @@ function validateEnv(): Env {
     console.error('===============================================');
 
     for (const [key, messages] of Object.entries(errors)) {
-      console.error(`  ${key}:`);
+      logger.error(`  ${key}:`);
       for (const msg of messages || []) {
-        console.error(`    - ${msg}`);
+        logger.error(`    - ${msg}`);
       }
     }
 
     console.error('===============================================');
-    console.error('  Please check your .env file or environment');
-    console.error('  See apps/web/.env.example for required vars');
+    logger.error('  Please check your .env file or environment');
+    logger.error('  See apps/web/.env.example for required vars');
     console.error('===============================================');
 
     throw new Error('Invalid environment configuration. See console for details.');
@@ -127,10 +128,10 @@ function validateEnv(): Env {
   // SECURITY: Warn about localhost URLs in production
   if (process.env.NODE_ENV === 'production') {
     if (result.data.AI_WRITER_URL?.includes('localhost')) {
-      console.warn('WARNING: AI_WRITER_URL contains localhost in production!');
+      logger.warn('WARNING: AI_WRITER_URL contains localhost in production!');
     }
     if (result.data.OPEN_SEO_URL?.includes('localhost')) {
-      console.warn('WARNING: OPEN_SEO_URL contains localhost in production!');
+      logger.warn('WARNING: OPEN_SEO_URL contains localhost in production!');
     }
   }
 

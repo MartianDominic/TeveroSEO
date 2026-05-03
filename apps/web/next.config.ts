@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import path from "path";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs";
 
 /**
  * Security Headers Configuration
@@ -112,4 +113,42 @@ const nextConfig: NextConfig = {
 // The plugin expects the i18n request config at ./src/i18n/request.ts
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-export default withNextIntl(nextConfig);
+/**
+ * Sentry Configuration
+ * @see https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+ */
+const sentryConfig = {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+
+  // Organization and project for Sentry
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Only upload source maps in production with auth token
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+
+  // Upload source maps for better stack traces
+  widenClientFileUpload: true,
+
+  // Route browser requests to Sentry through a Next.js rewrite
+  // to circumvent ad-blockers (optional)
+  tunnelRoute: "/monitoring",
+
+  // Hides source maps from generated client bundles
+  hideSourceMaps: true,
+
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+
+  // Enables automatic instrumentation of Vercel Cron Monitors
+  automaticVercelMonitors: false,
+};
+
+// Apply plugins: first next-intl, then Sentry
+const configWithIntl = withNextIntl(nextConfig);
+
+// Only wrap with Sentry if DSN is configured
+export default process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? withSentryConfig(configWithIntl, sentryConfig)
+  : configWithIntl;

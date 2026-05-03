@@ -174,6 +174,35 @@ export class RevolutProvider implements PaymentProvider {
       );
     }
 
+    // CRIT-54-01: Validate timestamp age to prevent replay attacks
+    // Reject webhooks older than 5 minutes or from the future (clock skew tolerance: 30s)
+    const MAX_TIMESTAMP_AGE_MS = 5 * 60 * 1000; // 5 minutes
+    const CLOCK_SKEW_TOLERANCE_MS = 30 * 1000; // 30 seconds for clock drift
+    const timestampMs = parseInt(timestamp, 10) * 1000;
+    const now = Date.now();
+
+    if (isNaN(timestampMs)) {
+      throw new WebhookVerificationError("Invalid timestamp format", "revolut");
+    }
+
+    if (timestampMs < now - MAX_TIMESTAMP_AGE_MS) {
+      log.warn("Revolut webhook timestamp too old (replay attack?)", {
+        timestampMs,
+        now,
+        ageMs: now - timestampMs,
+      });
+      throw new WebhookVerificationError("Webhook timestamp too old", "revolut");
+    }
+
+    if (timestampMs > now + CLOCK_SKEW_TOLERANCE_MS) {
+      log.warn("Revolut webhook timestamp in future", {
+        timestampMs,
+        now,
+        futureMs: timestampMs - now,
+      });
+      throw new WebhookVerificationError("Webhook timestamp in future", "revolut");
+    }
+
     // Extract signature value (remove v1= prefix if present)
     const signatureValue = signature.startsWith("v1=")
       ? signature.slice(3)

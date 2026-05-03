@@ -9,6 +9,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { pixelInstallations } from "@/db/pixel-schema";
 import { redis } from "@/server/lib/redis";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "pixel-verification" });
 
 // ============================================================================
 // Types
@@ -86,7 +89,7 @@ export class PixelVerificationService {
         location,
       };
     } catch (error) {
-      console.error("[PixelVerification] Error getting status:", error);
+      log.error("Error getting status", error instanceof Error ? error : new Error(String(error)), { siteId });
       return {
         status: "error",
         pingCount: 0,
@@ -239,7 +242,7 @@ export class PixelVerificationService {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { city?: string; country?: string; countryCode?: string };
         return {
           city: data.city,
           country: data.country,

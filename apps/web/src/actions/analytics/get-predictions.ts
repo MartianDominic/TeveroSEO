@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -141,7 +142,7 @@ export async function getGoalProjections(
 
     return projections;
   } catch (error) {
-    console.error("[get-predictions] Error fetching goal projections:", error);
+    logger.error("[get-predictions] Error fetching goal projections", error instanceof Error ? error : { error: String(error) });
     // Return empty array for graceful degradation, but log for debugging
     // Callers should check array length and can use getGoalProjectionsWithStatus for error details
     return [];
@@ -293,7 +294,7 @@ async function executeClientPredictions(clientId: string): Promise<PredictiveAle
 
     return alerts;
   } catch (error) {
-    console.error("[get-predictions] Error fetching client predictions:", error);
+    logger.error("[get-predictions] Error fetching client predictions", error instanceof Error ? error : { error: String(error) });
     // Return empty array for graceful degradation
     // Error is logged for debugging; callers handle empty results
     return [];
@@ -325,7 +326,7 @@ export async function getClientPredictionsWithStatus(
       return { success: true, data };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.error("[get-predictions] Error in getClientPredictionsWithStatus:", error);
+      logger.error("[get-predictions] Error in getClientPredictionsWithStatus", error instanceof Error ? error : { error: String(error) });
       return { success: false, error: message, data: [] };
     }
   });
@@ -344,11 +345,22 @@ const PREDICTION_CONCURRENCY_LIMIT = 5;
 const MAX_CLIENTS_FOR_PREDICTIONS = 50;
 
 /**
+ * PERF FIX (CRIT-PERF-02): Batch prediction response type.
+ */
+interface BatchPredictionResponse {
+  predictions: Array<{
+    clientId: string;
+    alerts: PredictiveAlert[];
+  }>;
+}
+
+/**
  * Get predictive alerts across all clients in a workspace.
  * Aggregates predictions from all clients for dashboard display.
  *
- * Uses controlled concurrency to avoid overwhelming the API while
- * still providing good throughput.
+ * PERF FIX (CRIT-PERF-02): Uses batch prediction endpoint when available to
+ * fetch all client predictions in a single API call instead of N+1 calls.
+ * Falls back to controlled concurrency for legacy backend support.
  */
 export async function getWorkspacePredictions(
   workspaceId: string
@@ -377,32 +389,58 @@ export async function getWorkspacePredictions(
           return [];
         }
 
-        const allPredictions: PredictiveAlert[] = [];
         const clientsToProcess = metrics.slice(0, MAX_CLIENTS_FOR_PREDICTIONS);
+        const clientIds = clientsToProcess.map((c) => c.clientId);
+        const clientNameMap = new Map(clientsToProcess.map((c) => [c.clientId, c.clientName]));
 
-        // Process clients with controlled concurrency using Promise.all + chunking
-        // This is more efficient than sequential processing while avoiding API overload
-        for (let i = 0; i < clientsToProcess.length; i += PREDICTION_CONCURRENCY_LIMIT) {
-          const batch = clientsToProcess.slice(i, i + PREDICTION_CONCURRENCY_LIMIT);
+        let allPredictions: PredictiveAlert[] = [];
 
-          // Use deduplication-aware fetching - identical client predictions
-          // within the same request window will share results
-          const batchResults = await Promise.all(
-            batch.map(async (client) => {
-              try {
-                // getClientPredictions already uses deduplicateRequest internally,
-                // so concurrent calls for the same client will share results
-                const predictions = await getClientPredictions(client.clientId);
-                return predictions.map((p) => ({
-                  ...p,
-                  clientName: client.clientName,
-                }));
-              } catch {
-                return [];
-              }
-            })
+        // PERF FIX (CRIT-PERF-02): Try batch endpoint first (single query for all clients)
+        try {
+          const batchResponse = await getFastApi<BatchPredictionResponse>(
+            `/api/predictions/batch?clientIds=${clientIds.join(",")}`
           );
-          allPredictions.push(...batchResults.flat());
+
+          if (batchResponse.predictions) {
+            // Process batch response
+            for (const clientPrediction of batchResponse.predictions) {
+              const clientName = clientNameMap.get(clientPrediction.clientId) ?? "Unknown";
+              for (const alert of clientPrediction.alerts) {
+                allPredictions.push({
+                  ...alert,
+                  clientName,
+                });
+              }
+            }
+          }
+        } catch {
+          // Batch endpoint not available, fall back to individual fetching
+          // This maintains backward compatibility with older backend versions
+
+          // Process clients with controlled concurrency using Promise.all + chunking
+          // This is more efficient than sequential processing while avoiding API overload
+          for (let i = 0; i < clientsToProcess.length; i += PREDICTION_CONCURRENCY_LIMIT) {
+            const batch = clientsToProcess.slice(i, i + PREDICTION_CONCURRENCY_LIMIT);
+
+            // Use deduplication-aware fetching - identical client predictions
+            // within the same request window will share results
+            const batchResults = await Promise.all(
+              batch.map(async (client) => {
+                try {
+                  // getClientPredictions already uses deduplicateRequest internally,
+                  // so concurrent calls for the same client will share results
+                  const predictions = await getClientPredictions(client.clientId);
+                  return predictions.map((p) => ({
+                    ...p,
+                    clientName: client.clientName,
+                  }));
+                } catch {
+                  return [];
+                }
+              })
+            );
+            allPredictions.push(...batchResults.flat());
+          }
         }
 
         // Sort by severity and probability
@@ -420,7 +458,7 @@ export async function getWorkspacePredictions(
       [cacheTags.workspace(validatedWorkspaceId)]
     );
   } catch (error) {
-    console.error("[get-predictions] Error fetching workspace predictions:", error);
+    logger.error("[get-predictions] Error fetching workspace predictions", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
@@ -442,7 +480,7 @@ export async function getPredictionCounts(
     const warning = predictions.filter((p) => p.severity === "warning").length;
     return { critical, warning, total: predictions.length };
   } catch (error) {
-    console.error("[get-predictions] Error fetching prediction counts:", error);
+    logger.error("[get-predictions] Error fetching prediction counts", error instanceof Error ? error : { error: String(error) });
     // Return zeros for graceful degradation - badges will show 0 instead of breaking
     return { critical: 0, warning: 0, total: 0 };
   }
@@ -463,7 +501,7 @@ export async function getPredictionCountsWithStatus(
     return { success: true, data: { critical, warning, total: predictions.length } };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[get-predictions] Error in getPredictionCountsWithStatus:", error);
+    logger.error("[get-predictions] Error in getPredictionCountsWithStatus", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: message, data: { critical: 0, warning: 0, total: 0 } };
   }
 }

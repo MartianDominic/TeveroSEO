@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { env } from '@/lib/env';
 
+import { logger } from '@/lib/logger';
 /** Auth check timeout (15 seconds - shorter than data fetches for security) */
 const AUTH_TIMEOUT_MS = 15_000;
 
@@ -162,7 +163,7 @@ export async function validateWorkspaceMembership(
     const parsed = workspaceMembershipResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[ActionAuth] Invalid workspace membership response shape:', parsed.error);
+      logger.error('[ActionAuth] Invalid workspace membership response shape', { error: parsed.error });
       throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
     }
 
@@ -175,7 +176,7 @@ export async function validateWorkspaceMembership(
     }
 
     // Network error or backend unavailable - fail closed for security
-    console.error(`[ActionAuth] Failed to verify workspace membership: workspaceId=${workspaceId}, userId=${authContext.userId}`, error);
+    logger.error(`[ActionAuth] Failed to verify workspace membership: workspaceId=${workspaceId}, userId=${authContext.userId}`, error instanceof Error ? error : { error: String(error) });
     throw new ActionAuthError('Unable to verify workspace membership. Please try again.', 'FORBIDDEN');
   }
 }
@@ -244,7 +245,7 @@ export async function validateClientOwnership(
     const parsed = clientOwnershipResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[ActionAuth] Invalid client ownership response shape:', parsed.error);
+      logger.error('[ActionAuth] Invalid client ownership response shape', { error: parsed.error });
       throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
     }
 
@@ -258,7 +259,7 @@ export async function validateClientOwnership(
 
     // Network error or backend unavailable
     // Fail closed for security, but log the error
-    console.error(`[ActionAuth] Failed to verify client access: clientId=${clientId}, userId=${authContext.userId}`, error);
+    logger.error(`[ActionAuth] Failed to verify client access: clientId=${clientId}, userId=${authContext.userId}`, error instanceof Error ? error : { error: String(error) });
     throw new ActionAuthError('Unable to verify access. Please try again.', 'FORBIDDEN');
   }
 }
@@ -328,7 +329,7 @@ export async function validateProspectOwnership(
     const parsed = prospectOwnershipResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[ActionAuth] Invalid prospect ownership response shape:', parsed.error);
+      logger.error('[ActionAuth] Invalid prospect ownership response shape', { error: parsed.error });
       throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
     }
 
@@ -341,7 +342,7 @@ export async function validateProspectOwnership(
     }
 
     // Network error or backend unavailable - fail closed for security
-    console.error(`[ActionAuth] Failed to verify prospect access: prospectId=${prospectId}, userId=${authContext.userId}`, error);
+    logger.error(`[ActionAuth] Failed to verify prospect access: prospectId=${prospectId}, userId=${authContext.userId}`, error instanceof Error ? error : { error: String(error) });
     throw new ActionAuthError('Unable to verify prospect access. Please try again.', 'FORBIDDEN');
   }
 }
@@ -399,7 +400,7 @@ export async function validateProposalOwnership(
     const parsed = proposalOwnershipResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[ActionAuth] Invalid proposal ownership response shape:', parsed.error);
+      logger.error('[ActionAuth] Invalid proposal ownership response shape', { error: parsed.error });
       throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
     }
 
@@ -412,7 +413,7 @@ export async function validateProposalOwnership(
     }
 
     // Network error or backend unavailable - fail closed for security
-    console.error(`[ActionAuth] Failed to verify proposal access: proposalId=${proposalId}, userId=${authContext.userId}`, error);
+    logger.error(`[ActionAuth] Failed to verify proposal access: proposalId=${proposalId}, userId=${authContext.userId}`, error instanceof Error ? error : { error: String(error) });
     throw new ActionAuthError('Unable to verify proposal access. Please try again.', 'FORBIDDEN');
   }
 }
@@ -523,7 +524,7 @@ export function withActionErrorHandler<TInput, TOutput>(
       }
 
       // Log unexpected errors
-      console.error('[Action] Unexpected error:', error);
+      logger.error('[Action] Unexpected error', error instanceof Error ? error : { error: String(error) });
 
       return {
         success: false,

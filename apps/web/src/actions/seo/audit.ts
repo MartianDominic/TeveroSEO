@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -82,7 +83,7 @@ export async function startAudit(params: StartAuditParams): Promise<ActionResult
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[startAudit] Failed to start audit:", error);
+    logger.error("[startAudit] Failed to start audit", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: error instanceof Error ? error.message : "Failed to start audit" };
   }
 }
@@ -118,7 +119,7 @@ export async function getAuditStatus(params: AuditIdParams): Promise<ActionResul
     const data = await getOpenSeo<AuditStatusResponse>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getAuditStatus] Failed:", error);
+    logger.error("[getAuditStatus] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch audit status" };
   }
 }
@@ -142,6 +143,34 @@ interface AuditResultsResponse {
   completedAt: string | null;
 }
 
+/** PERF FIX (HIGH-04): Paginated audit results response type */
+interface PaginatedAuditResultsResponse extends Omit<AuditResultsResponse, 'findings'> {
+  findings: Array<{
+    checkId: string;
+    tier: number;
+    category: string;
+    passed: boolean;
+    severity: string;
+    message: string;
+  }>;
+  pagination: {
+    cursor: string | null;
+    hasMore: boolean;
+    totalFindings: number;
+    limit: number;
+  };
+}
+
+/** Pagination params for audit results */
+const paginatedAuditResultsSchema = auditIdParamsSchema.extend({
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+  severity: z.enum(["critical", "warning", "info"]).optional(),
+  category: z.string().optional(),
+});
+
+type PaginatedAuditResultsParams = z.infer<typeof paginatedAuditResultsSchema>;
+
 /**
  * Get the results of a completed audit.
  */
@@ -160,7 +189,98 @@ export async function getAuditResults(params: AuditIdParams): Promise<ActionResu
     const data = await getOpenSeo<AuditResultsResponse>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getAuditResults] Failed:", error);
+    logger.error("[getAuditResults] Failed", error instanceof Error ? error : { error: String(error) });
+    return { success: false, error: "Failed to fetch audit results" };
+  }
+}
+
+/**
+ * PERF FIX (HIGH-04): Get paginated audit results with cursor-based pagination.
+ * Default limit is 50 items per page to prevent large response payloads.
+ *
+ * @param params - Audit ID params plus optional pagination/filter params
+ * @returns Paginated findings with cursor for next page
+ */
+export async function getAuditResultsPaginated(
+  params: PaginatedAuditResultsParams
+): Promise<ActionResult<PaginatedAuditResultsResponse>> {
+  const parseResult = paginatedAuditResultsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
+
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    // Build query with pagination params
+    const queryParams: Record<string, string> = {
+      audit_id: validated.auditId,
+      action: "results_paginated",
+      limit: String(validated.limit),
+    };
+
+    if (validated.cursor) {
+      queryParams.cursor = validated.cursor;
+    }
+    if (validated.severity) {
+      queryParams.severity = validated.severity;
+    }
+    if (validated.category) {
+      queryParams.category = validated.category;
+    }
+
+    const query = buildQuery(validated, queryParams);
+
+    // Try paginated endpoint first
+    try {
+      const data = await getOpenSeo<PaginatedAuditResultsResponse>(`/api/seo/audits?${query}`);
+      return { success: true, data };
+    } catch {
+      // Fallback: If paginated endpoint not available, fetch all and paginate in-memory
+      const fullQuery = buildQuery(validated, { audit_id: validated.auditId, action: "results" });
+      const fullData = await getOpenSeo<AuditResultsResponse>(`/api/seo/audits?${fullQuery}`);
+
+      // Apply client-side pagination
+      let findings = fullData.findings;
+
+      // Apply filters
+      if (validated.severity) {
+        findings = findings.filter((f) => f.severity === validated.severity);
+      }
+      if (validated.category) {
+        findings = findings.filter((f) => f.category === validated.category);
+      }
+
+      // Apply cursor-based pagination (using index as cursor for simplicity)
+      const startIndex = validated.cursor ? parseInt(validated.cursor, 10) : 0;
+      const paginatedFindings = findings.slice(startIndex, startIndex + validated.limit);
+      const hasMore = startIndex + validated.limit < findings.length;
+      const nextCursor = hasMore ? String(startIndex + validated.limit) : null;
+
+      return {
+        success: true,
+        data: {
+          auditId: fullData.auditId,
+          projectId: fullData.projectId,
+          status: fullData.status,
+          score: fullData.score,
+          pageCount: fullData.pageCount,
+          issueCount: fullData.issueCount,
+          findings: paginatedFindings,
+          completedAt: fullData.completedAt,
+          pagination: {
+            cursor: nextCursor,
+            hasMore,
+            totalFindings: findings.length,
+            limit: validated.limit,
+          },
+        },
+      };
+    }
+  } catch (error) {
+    logger.error("[getAuditResultsPaginated] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch audit results" };
   }
 }
@@ -196,7 +316,7 @@ export async function getAuditHistory(params: AuditParams): Promise<ActionResult
     const data = await getOpenSeo<AuditHistoryItem[]>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getAuditHistory] Failed:", error);
+    logger.error("[getAuditHistory] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch audit history" };
   }
 }
@@ -227,7 +347,7 @@ export async function getCrawlProgress(params: AuditIdParams): Promise<ActionRes
     const data = await getOpenSeo<CrawlProgressItem[]>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getCrawlProgress] Failed:", error);
+    logger.error("[getCrawlProgress] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch crawl progress" };
   }
 }
@@ -253,7 +373,7 @@ export async function deleteAudit(params: AuditIdParams): Promise<ActionResult<{
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[deleteAudit] Failed:", error);
+    logger.error("[deleteAudit] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to delete audit" };
   }
 }

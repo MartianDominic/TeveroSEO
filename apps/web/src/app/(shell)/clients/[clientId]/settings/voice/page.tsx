@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import {
+  Button,
   PageHeader,
   Tabs,
   TabsContent,
@@ -10,7 +11,7 @@ import {
   TabsTrigger,
   Skeleton,
 } from "@tevero/ui";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 import { useClientStore } from "@/stores/clientStore";
 import {
@@ -58,7 +59,7 @@ export default function VoiceSettingsPage() {
   );
 
   // Load profile and templates
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (!clientId) return;
 
     setLoading(true);
@@ -79,6 +80,10 @@ export default function VoiceSettingsPage() {
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [clientId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Save handler
   const handleSave = useCallback(
@@ -142,6 +147,13 @@ export default function VoiceSettingsPage() {
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
           <AlertCircle className="h-10 w-10 text-destructive" />
           <p className="text-base font-semibold">Failed to load voice profile</p>
+          <p className="text-sm text-muted-foreground max-w-md">
+            We encountered an error loading your voice settings. This may be a temporary issue.
+          </p>
+          <Button onClick={loadData} variant="default" className="mt-2">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -222,9 +234,13 @@ export default function VoiceSettingsPage() {
         </div>
       </div>
 
-      {/* Toast */}
+      {/* Toast - MEDIUM-04 FIX: Added role="alert" for accessibility */}
       {toast.open && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border"
+        >
           <span className="text-foreground">{toast.message}</span>
         </div>
       )}

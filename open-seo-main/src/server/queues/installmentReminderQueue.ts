@@ -12,6 +12,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "installmentReminderQueue" });
 
@@ -40,17 +41,12 @@ export interface InstallmentReminderDLQJobData {
 
 /**
  * Default job options for reminder checks.
- * 3 attempts with exponential backoff.
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 5_000, // 5s, 10s, 20s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 50 },
   removeOnFail: { count: 100 },
-};
+});
 
 /**
  * Installment reminder queue.

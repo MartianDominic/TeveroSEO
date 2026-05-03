@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { getOpenSeo, putOpenSeo } from "@/lib/server-fetch";
 import { requireActionAuth } from "@/lib/auth/action-auth";
 
+import { logger } from '@/lib/logger';
 // =============================================================================
 // Types
 // =============================================================================
@@ -139,7 +140,7 @@ export async function getTemplate(templateId: string): Promise<TemplateData | nu
       isActive: template.isActive,
     };
   } catch (error) {
-    console.error("[getTemplate] Failed to fetch template:", error);
+    logger.error("[getTemplate] Failed to fetch template", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -182,7 +183,7 @@ export async function saveTemplate(
     revalidatePath(`/templates/${validatedId}/edit`);
     return { success: true };
   } catch (error) {
-    console.error("[saveTemplate] Failed to save template:", error);
+    logger.error("[saveTemplate] Failed to save template", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to save template",
@@ -229,7 +230,7 @@ export async function addClause(
 
     return { success: true, clause: newClause };
   } catch (error) {
-    console.error("[addClause] Failed to add clause:", error);
+    logger.error("[addClause] Failed to add clause", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to add clause",
@@ -267,7 +268,7 @@ export async function deleteClause(
 
     return result;
   } catch (error) {
-    console.error("[deleteClause] Failed to delete clause:", error);
+    logger.error("[deleteClause] Failed to delete clause", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete clause",
@@ -302,7 +303,7 @@ export async function reorderClauses(
 
     return result;
   } catch (error) {
-    console.error("[reorderClauses] Failed to reorder clauses:", error);
+    logger.error("[reorderClauses] Failed to reorder clauses", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to reorder clauses",

@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PublicProposalView } from "./PublicProposalView";
 
+import { logger } from '@/lib/logger';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -103,7 +104,7 @@ async function getProposal(token: string): Promise<ProposalData | null> {
 
     return result.data;
   } catch (error) {
-    console.error("Failed to fetch proposal:", error);
+    logger.error("Failed to fetch proposal", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -210,10 +211,30 @@ export default async function PublicProposalPage({ params }: PageProps) {
   // Track view (server-side)
   const headersList = await headers();
   const userAgent = headersList.get("user-agent") ?? "";
-  const ipAddress =
-    headersList.get("x-forwarded-for")?.split(",")[0] ??
-    headersList.get("x-real-ip") ??
-    "127.0.0.1";
+
+  // SECURITY: Validate X-Forwarded-For against trusted proxy
+  // Only trust forwarded headers if request came through our verified proxy
+  const proxySecret = headersList.get("x-proxy-secret");
+  const expectedSecret = process.env.PROXY_SECRET;
+  const forwardedFor = headersList.get("x-forwarded-for");
+
+  let ipAddress: string;
+  if (expectedSecret && proxySecret === expectedSecret && forwardedFor) {
+    // Trust the forwarded IP from verified proxy
+    ipAddress = forwardedFor.split(",")[0].trim();
+  } else if (process.env.TRUST_CLOUDFLARE === "true") {
+    // Cloudflare provides CF-Connecting-IP
+    ipAddress = headersList.get("cf-connecting-ip") ?? "127.0.0.1";
+  } else if (process.env.VERCEL) {
+    // Vercel provides x-vercel-forwarded-for
+    ipAddress =
+      headersList.get("x-vercel-forwarded-for")?.split(",")[0].trim() ??
+      "127.0.0.1";
+  } else {
+    // Fall back to x-real-ip only if no forwarded header (less spoofable)
+    const realIp = headersList.get("x-real-ip");
+    ipAddress = realIp && !forwardedFor ? realIp.trim() : "127.0.0.1";
+  }
 
   // Fire and forget view tracking
   trackView(proposal.id, token, userAgent, ipAddress);

@@ -44,7 +44,6 @@ interface LanguageSettingsResponse {
   country: string | null;
 }
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/settings/language")({
   server: {
     handlers: {

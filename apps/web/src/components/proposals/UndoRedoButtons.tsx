@@ -11,7 +11,7 @@
  * - History count tooltips
  */
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -121,9 +121,6 @@ export function UndoRedoButtons({
 }: UndoRedoButtonsProps) {
   const t = useTranslations("proposals.undoRedo");
 
-  // Access temporal state from zustand store
-  const temporalState = useProposalStore.temporal.getState();
-
   // Local state for reactive updates (temporal state doesn't trigger re-renders)
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -151,28 +148,30 @@ export function UndoRedoButtons({
     };
   }, []);
 
-  // Undo/redo handlers
+  // MEDIUM-06 FIX: Get fresh temporal state inside callbacks to avoid stale closure
+  // Instead of capturing temporalState at render time, we get fresh state when called
   const handleUndo = useCallback(() => {
     if (canUndo) {
-      temporalState.undo();
+      useProposalStore.temporal.getState().undo();
       onUndo?.();
     }
-  }, [canUndo, temporalState, onUndo]);
+  }, [canUndo, onUndo]);
 
   const handleRedo = useCallback(() => {
     if (canRedo) {
-      temporalState.redo();
+      useProposalStore.temporal.getState().redo();
       onRedo?.();
     }
-  }, [canRedo, temporalState, onRedo]);
+  }, [canRedo, onRedo]);
 
   // Keyboard shortcuts
   useUndoRedoKeyboard(handleUndo, handleRedo, canUndo, canRedo);
 
-  // Detect platform for shortcut display
-  const isMac =
-    typeof navigator !== "undefined" &&
-    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  // MEDIUM-04 FIX: Memoize platform detection to avoid re-computing on every render
+  const isMac = useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+    return navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  }, []);
 
   const undoShortcut = isMac ? "Cmd+Z" : "Ctrl+Z";
   const redoShortcut = isMac ? "Cmd+Shift+Z" : "Ctrl+Shift+Z";

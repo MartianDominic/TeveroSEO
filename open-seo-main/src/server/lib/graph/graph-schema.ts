@@ -25,6 +25,45 @@ export const GRAPH_ENTITY_TYPES = [
 export type GraphEntityType = (typeof GRAPH_ENTITY_TYPES)[number];
 
 /**
+ * Allowed relation types for GraphRAG (M-65-02 fix).
+ * Only these relation types can be used in Cypher queries to prevent injection.
+ */
+export const ALLOWED_RELATION_TYPES = [
+  "RELATES_TO",
+  "LINKS_TO",
+  "MENTIONS",
+  "PARENT_OF",
+  "CHILD_OF",
+  "IN_CATEGORY",
+  "HAS_KEYWORD",
+  "HAS_ATTRIBUTE",
+  "BELONGS_TO",
+  "SIMILAR_TO",
+  "DEPENDS_ON",
+  "REFERENCES",
+] as const;
+
+export type AllowedRelationType = (typeof ALLOWED_RELATION_TYPES)[number];
+
+/**
+ * Validate relation type against whitelist (M-65-02 fix).
+ * Prevents Cypher injection via relation type interpolation.
+ *
+ * @param type - Relation type to validate
+ * @returns The validated relation type (uppercase)
+ * @throws Error if relation type is not in whitelist
+ */
+export function validateRelationType(type: string): AllowedRelationType {
+  const normalized = type.toUpperCase();
+  if (!ALLOWED_RELATION_TYPES.includes(normalized as AllowedRelationType)) {
+    throw new Error(
+      `Invalid relation type: "${type}". Allowed types: ${ALLOWED_RELATION_TYPES.join(", ")}`
+    );
+  }
+  return normalized as AllowedRelationType;
+}
+
+/**
  * Graph entity node representation.
  */
 export interface GraphEntity {
@@ -134,12 +173,14 @@ export function createRelationCypher(relation: GraphRelation): CypherQuery {
   const hasWeight = relation.weight !== undefined;
   const hasMetadata = relation.metadata !== undefined;
 
-  // Use dynamic relation type via APOC or string concatenation
-  // FalkorDB supports parameterized relation types
+  // M-65-02 fix: Validate relation type before interpolation
+  const validatedType = validateRelationType(relation.type);
+
+  // Use validated relation type - safe after whitelist check
   let cypher = `
     MATCH (from:Entity {id: $fromId})
     MATCH (to:Entity {id: $toId})
-    MERGE (from)-[r:${relation.type}]->(to)
+    MERGE (from)-[r:${validatedType}]->(to)
   `;
 
   if (hasWeight || hasMetadata) {

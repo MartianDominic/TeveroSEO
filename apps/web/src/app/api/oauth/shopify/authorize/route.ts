@@ -10,6 +10,7 @@ import { auth } from "@clerk/nextjs/server";
 import { nanoid } from "nanoid";
 import { postOpenSeo } from "@/lib/server-fetch";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error("[OAuth] Failed to initiate Shopify authorization:", error);
+    logger.error("[OAuth] Failed to initiate Shopify authorization", error instanceof Error ? error : { error: String(error) });
     return NextResponse.json(
       { error: "Failed to initiate OAuth flow" },
       { status: 500 }

@@ -8,6 +8,7 @@
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -176,14 +177,18 @@ export async function getChanges(
       return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
-    console.error('[getChanges]', error);
+    logger.error('[getChanges] ', error instanceof Error ? error : { error: String(error) });
     return { success: false, error: 'Failed to fetch changes. Please try again.' };
   }
 }
 
 /**
  * Get a single change by ID.
- * Validates client ownership after fetching the change.
+ * Validates client ownership atomically via backend query.
+ *
+ * IDOR FIX: Backend must enforce ownership atomically in the query by accepting
+ * userId and only returning changes that belong to clients the user owns.
+ * This prevents data leakage by ensuring unauthorized users receive a 404.
  */
 export async function getChange(
   changeId: string
@@ -192,15 +197,20 @@ export async function getChange(
     const validatedChangeId = changeIdSchema.parse(changeId);
     const auth = await requireActionAuth();
 
+    // IDOR FIX: Pass userId to backend for atomic ownership validation in the query.
+    // Backend should JOIN with client ownership and return 404 if not owned.
+    const query = new URLSearchParams();
+    query.set('userId', auth.userId);
+
     const response = await getOpenSeo<{ success: boolean; data: Change }>(
-      `/api/changes/${validatedChangeId}`
+      `/api/changes/${validatedChangeId}?${query.toString()}`
     );
 
     if (!response.success || !response.data) {
       return { success: false, error: 'Change not found' };
     }
 
-    // Validate ownership of the client associated with this change
+    // Secondary validation: defense-in-depth, backend should enforce atomically.
     await validateClientOwnership(response.data.clientId, auth);
 
     return { success: true, data: response.data };
@@ -209,7 +219,7 @@ export async function getChange(
       return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
-    console.error('[getChange]', error);
+    logger.error('[getChange] ', error instanceof Error ? error : { error: String(error) });
     return { success: false, error: 'Failed to fetch change. Please try again.' };
   }
 }
@@ -244,7 +254,7 @@ export async function previewRevert(
       return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
-    console.error('[previewRevert]', error);
+    logger.error('[previewRevert] ', error instanceof Error ? error : { error: String(error) });
     return { success: false, error: 'Failed to preview revert. Please try again.' };
   }
 }
@@ -300,7 +310,7 @@ export async function executeRevert(
       return { success: false, error: error.issues[0]?.message ?? 'Invalid input' };
     }
     // SECURITY: Log full error server-side, return sanitized message to client
-    console.error('[executeRevert]', error);
+    logger.error('[executeRevert] ', error instanceof Error ? error : { error: String(error) });
     return { success: false, error: 'Failed to execute revert. Please try again.' };
   }
 }

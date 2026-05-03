@@ -72,7 +72,10 @@ export class ShopifyService {
       throw new Error(`Shopify API error: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as {
+      errors?: Array<{ message: string }>;
+      data?: any;
+    };
     if (result.errors && result.errors.length > 0) {
       throw new Error(`Shopify GraphQL error: ${result.errors[0].message}`);
     }

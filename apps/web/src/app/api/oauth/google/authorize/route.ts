@@ -12,6 +12,7 @@ import { auth } from "@clerk/nextjs/server";
 import { nanoid } from "nanoid";
 import { postOpenSeo } from "@/lib/server-fetch";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
     // Build Google authorization URL
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      console.error("[OAuth] GOOGLE_CLIENT_ID not configured");
+      logger.error("[OAuth] GOOGLE_CLIENT_ID not configured");
       return NextResponse.json(
         { error: "Google OAuth not configured" },
         { status: 500 }
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
     // Redirect to Google
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error("[OAuth] Failed to initiate authorization:", error);
+    logger.error("[OAuth] Failed to initiate authorization", error instanceof Error ? error : { error: String(error) });
     return NextResponse.json(
       { error: "Failed to initiate OAuth flow" },
       { status: 500 }

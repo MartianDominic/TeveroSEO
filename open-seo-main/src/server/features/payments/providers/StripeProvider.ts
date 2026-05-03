@@ -1,6 +1,7 @@
 /**
  * Stripe Payment Provider
  * Phase 54-01: Multi-Provider Payments
+ * Phase 60: Installment payment support
  *
  * Implements PaymentProvider interface for Stripe.
  * Handles invoice creation, webhook verification, and status checks.
@@ -22,6 +23,18 @@ import type { InvoiceSelect } from "@/db/invoice-schema";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "StripeProvider" });
+
+/**
+ * Installment metadata for split payment tracking.
+ * P60-H04: Used by webhook to route installment payments.
+ */
+export interface InstallmentMetadata {
+  installmentId: string;
+  invoiceId: string;
+  workspaceId: string;
+  scheduleId: string;
+  installmentNumber: string;
+}
 
 /**
  * Stripe API version.
@@ -75,11 +88,13 @@ export class StripeProvider implements PaymentProvider {
 
   /**
    * Create a Stripe invoice and return payment URL.
+   * P60-H04: Supports installment metadata for split payment tracking.
    */
-  async createPaymentSession(invoice: InvoiceSelect): Promise<PaymentSession> {
+  async createPaymentSession(invoice: InvoiceSelect & { installmentMetadata?: InstallmentMetadata }): Promise<PaymentSession> {
     log.info("Creating Stripe payment session", {
       invoiceId: invoice.id,
       totalCents: invoice.totalCents,
+      isInstallment: !!invoice.installmentMetadata,
     });
 
     try {
@@ -91,15 +106,26 @@ export class StripeProvider implements PaymentProvider {
         invoice.id
       );
 
+      // Build metadata - include installment info if present (P60-H04)
+      const metadata: Record<string, string> = {
+        invoice_id: invoice.id,
+        workspace_id: invoice.workspaceId,
+        contract_id: invoice.contractId ?? "",
+      };
+
+      // Add installment metadata for webhook routing
+      if (invoice.installmentMetadata) {
+        metadata.installmentId = invoice.installmentMetadata.installmentId;
+        metadata.invoiceId = invoice.installmentMetadata.invoiceId;
+        metadata.scheduleId = invoice.installmentMetadata.scheduleId;
+        metadata.installmentNumber = invoice.installmentMetadata.installmentNumber;
+      }
+
       // Create draft invoice
       const stripeInvoice = await this.stripe.invoices.create({
         customer: customerId,
         currency: (invoice.currency ?? "EUR").toLowerCase(),
-        metadata: {
-          invoice_id: invoice.id,
-          workspace_id: invoice.workspaceId,
-          contract_id: invoice.contractId ?? "",
-        },
+        metadata,
         auto_advance: false,
         collection_method: "send_invoice",
         days_until_due: 14,

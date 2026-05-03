@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, ArrowLeft } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function LinksError({
   error,
   reset,
@@ -15,7 +16,7 @@ export default function LinksError({
   const router = useRouter();
 
   useEffect(() => {
-    console.error("[links-error]", {
+    logger.error("[links-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

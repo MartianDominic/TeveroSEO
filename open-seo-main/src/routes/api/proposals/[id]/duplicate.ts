@@ -56,8 +56,7 @@ function generateToken(): string {
  *   }
  * }
  */
-// @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/duplicate")({
+export const Route = createFileRoute("/api/proposals/[id]/duplicate")({
   server: {
     handlers: {
       POST: async ({

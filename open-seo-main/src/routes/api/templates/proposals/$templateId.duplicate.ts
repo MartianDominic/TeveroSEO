@@ -24,7 +24,6 @@ const duplicateTemplateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/templates/proposals/$templateId/duplicate")({
   server: {
     handlers: {

@@ -56,11 +56,14 @@ export function getWebhookQueue(): Queue<WebhookDeliveryJobData> {
     webhookQueue = new Queue<WebhookDeliveryJobData>("webhook-delivery", {
       connection: getSharedBullMQConnection("queue:webhook"),
       // Job timeout controlled via Worker lockDuration (set to 60s in webhook-worker.ts)
+      // NOTE: Webhook queue intentionally uses longer retry delays than standard config.
+      // External services may have rate limits or require longer recovery times.
+      // See queue-utils.ts for the standard retry configuration used by other queues.
       defaultJobOptions: {
         attempts: 3,
         backoff: {
           type: "exponential",
-          delay: 60000, // 1m base, then ~5m, ~30m
+          delay: 60000, // 1m base, then ~2m, ~4m (longer delays for external services)
         },
         removeOnComplete: { age: 86400, count: 1000 },
         removeOnFail: { age: 7 * 24 * 3600, count: 500 }, // Keep 7 days or 500 jobs max

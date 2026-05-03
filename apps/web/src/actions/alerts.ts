@@ -18,6 +18,7 @@ import {
   type Alert,
   type AlertRule,
 } from "@/lib/validations/api-response-schemas";
+import { logger } from "@/lib/logger";
 
 // Re-export types for consumers
 export type { Alert, AlertRule };
@@ -39,12 +40,12 @@ export async function getAlertCount(clientId: string): Promise<ActionResult<numb
     const result = await getOpenSeo(`/api/clients/${validatedClientId}/alerts?count_only=true`);
     const parsed = AlertCountResponseSchema.safeParse(result);
     if (!parsed.success) {
-      console.error("[getAlertCount] Invalid response format:", parsed.error.message);
+      logger.error("[getAlertCount] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data.count };
   } catch (error) {
-    console.error("[getAlertCount] Error:", error);
+    logger.error("[getAlertCount] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get alert count",
@@ -68,12 +69,12 @@ export async function getClientAlerts(
     const rawData = await getOpenSeo(`/api/clients/${validatedClientId}/alerts${query}`);
     const parsed = AlertArraySchema.safeParse(rawData);
     if (!parsed.success) {
-      console.error("[getClientAlerts] Invalid response format:", parsed.error.message);
+      logger.error("[getClientAlerts] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data };
   } catch (error) {
-    console.error("[getClientAlerts] Error:", error);
+    logger.error("[getClientAlerts] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get alerts",
@@ -101,12 +102,12 @@ export async function updateAlertStatus(
     });
     const parsed = SuccessResponseSchema.safeParse(rawData);
     if (!parsed.success) {
-      console.error("[updateAlertStatus] Invalid response format:", parsed.error.message);
+      logger.error("[updateAlertStatus] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data };
   } catch (error) {
-    console.error("[updateAlertStatus] Error:", error);
+    logger.error("[updateAlertStatus] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update alert status",
@@ -125,12 +126,12 @@ export async function getAlertRules(clientId: string): Promise<ActionResult<Aler
     const rawData = await getOpenSeo(`/api/clients/${validatedClientId}/alert-rules`);
     const parsed = AlertRuleArraySchema.safeParse(rawData);
     if (!parsed.success) {
-      console.error("[getAlertRules] Invalid response format:", parsed.error.message);
+      logger.error("[getAlertRules] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data };
   } catch (error) {
-    console.error("[getAlertRules] Error:", error);
+    logger.error("[getAlertRules] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get alert rules",
@@ -177,12 +178,12 @@ export async function updateAlertConfig(
     const rawData = await patchOpenSeo(`/api/clients/${validatedClientId}/alert-rules/${validatedRuleId}`, validatedUpdates);
     const parsed = SuccessResponseSchema.safeParse(rawData);
     if (!parsed.success) {
-      console.error("[updateAlertConfig] Invalid response format:", parsed.error.message);
+      logger.error("[updateAlertConfig] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data };
   } catch (error) {
-    console.error("[updateAlertConfig] Error:", error);
+    logger.error("[updateAlertConfig] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update alert configuration",
@@ -236,12 +237,12 @@ export async function createAlertRule(
     });
     const parsed = AlertRuleSchema.safeParse(rawData);
     if (!parsed.success) {
-      console.error("[createAlertRule] Invalid response format:", parsed.error.message);
+      logger.error("[createAlertRule] Invalid response format", { error: parsed.error.message });
       return { success: false, error: "Invalid response format from server" };
     }
     return { success: true, data: parsed.data };
   } catch (error) {
-    console.error("[createAlertRule] Error:", error);
+    logger.error("[createAlertRule] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create alert rule",
@@ -275,7 +276,7 @@ export async function deleteAlertRule(
 
     return { success: true, data: { success: true } };
   } catch (error) {
-    console.error("[deleteAlertRule] Error:", error);
+    logger.error("[deleteAlertRule] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete alert rule",

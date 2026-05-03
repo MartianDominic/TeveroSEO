@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { logger } from '@/lib/logger';
 import {
   RotateCcw,
   Eye,
@@ -192,7 +193,7 @@ export default function ClientSettingsPage() {
     fetchVoiceTemplates()
       .then(setVoiceTemplates)
       .catch((err) => {
-        console.error("Failed to fetch voice templates:", err);
+        logger.error("Failed to fetch voice templates", err instanceof Error ? err : { error: String(err) });
       });
   }, [clientId, loadSettings, fetchPublishingSettings]);
 

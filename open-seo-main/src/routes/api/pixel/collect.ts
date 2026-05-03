@@ -7,6 +7,17 @@
  *
  * SECURITY: No authentication required (pixel events from any visitor).
  * Validates siteId exists and checks allowedOrigins.
+ *
+ * CORS POLICY DOCUMENTATION (HIGH-31):
+ * This endpoint intentionally uses Access-Control-Allow-Origin: "*" because:
+ * 1. Analytics pixels must be embeddable on ANY customer website
+ * 2. We do NOT use Access-Control-Allow-Credentials (no cookies/auth sent)
+ * 3. Event data is low-value (tampering only affects own metrics)
+ * 4. Site ownership is validated via siteId + allowedOrigins DB check
+ * 5. Rate limiting prevents abuse (100 req/s per siteId)
+ *
+ * This follows CORS best practices: wildcard is safe when credentials are NOT allowed.
+ * See: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#simple_requests
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";

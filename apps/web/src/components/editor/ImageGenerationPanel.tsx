@@ -98,12 +98,16 @@ export function ImageGenerationPanel({
   }, [title, keyword, promptCustomized]);
 
   // Reset customization flag when a new article loads (articleId changes)
+  // MEDIUM-03 FIX: This is intentionally scoped to articleId only - using a ref
+  // to capture current title/keyword values without triggering on their changes
+  const titleRef = React.useRef(title);
+  const keywordRef = React.useRef(keyword);
+  titleRef.current = title;
+  keywordRef.current = keyword;
+
   useEffect(() => {
     setPromptCustomized(false);
-    setPrompt(buildDefaultPrompt(title, keyword));
-    // We intentionally exclude title/keyword from deps here — this only fires
-    // on article identity change, not on every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPrompt(buildDefaultPrompt(titleRef.current, keywordRef.current));
   }, [articleId]);
 
   // ---------------------------------------------------------------------------

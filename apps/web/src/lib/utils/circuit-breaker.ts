@@ -10,6 +10,11 @@
  * - OPEN: Service is failing, requests are rejected immediately
  * - HALF_OPEN: After recovery timeout, allows one test request
  *
+ * Integrates with Sentry for monitoring:
+ * - Adds breadcrumbs for state transitions
+ * - Captures circuit open events as warnings
+ * - Tracks failure patterns
+ *
  * @example
  * ```typescript
  * const breaker = new CircuitBreaker('slack-webhook', {
@@ -26,6 +31,8 @@
  * }
  * ```
  */
+
+import * as Sentry from '@sentry/nextjs';
 
 export type CircuitState = 'closed' | 'open' | 'half-open';
 
@@ -128,6 +135,18 @@ export class CircuitBreaker {
     this.failures++;
     this.lastFailure = Date.now();
 
+    // Add Sentry breadcrumb for failure tracking
+    Sentry.addBreadcrumb({
+      category: 'circuit-breaker',
+      message: `Circuit '${this.name}' failure ${this.failures}/${this.options.failureThreshold}`,
+      level: 'warning',
+      data: {
+        circuitName: this.name,
+        failures: this.failures,
+        threshold: this.options.failureThreshold,
+      },
+    });
+
     if (this.failures >= this.options.failureThreshold) {
       this.setState('open');
     }
@@ -137,8 +156,39 @@ export class CircuitBreaker {
    * Update circuit state with optional callback.
    */
   private setState(newState: CircuitState): void {
-    if (this.state !== newState) {
+    const previousState = this.state;
+    if (previousState !== newState) {
       this.state = newState;
+
+      // Add Sentry breadcrumb for state transition
+      Sentry.addBreadcrumb({
+        category: 'circuit-breaker',
+        message: `Circuit '${this.name}' state: ${previousState} -> ${newState}`,
+        level: newState === 'open' ? 'warning' : 'info',
+        data: {
+          circuitName: this.name,
+          previousState,
+          newState,
+          failures: this.failures,
+        },
+      });
+
+      // When circuit opens, capture as a warning event in Sentry
+      if (newState === 'open') {
+        Sentry.captureMessage(`Circuit breaker '${this.name}' opened`, {
+          level: 'warning',
+          tags: {
+            circuitBreaker: this.name,
+            circuitState: 'open',
+          },
+          extra: {
+            failures: this.failures,
+            threshold: this.options.failureThreshold,
+            resetTimeout: this.options.resetTimeout,
+          },
+        });
+      }
+
       this.options.onStateChange?.(newState, this.name);
     }
   }

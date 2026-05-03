@@ -1,6 +1,16 @@
 /**
  * BullMQ worker for goal progress computation.
  * Phase 22: Goal-Based Metrics System
+ *
+ * MED-35 DESIGN DECISION: This worker uses an inline processor function instead
+ * of a sandboxed processor (file path) for the following reasons:
+ * 1. Goal computation is primarily DB-bound (not CPU-intensive like Lighthouse)
+ * 2. DB connections are shared and managed at the application level
+ * 3. Sandboxing would require additional IPC overhead for DB access
+ * 4. The inline function provides simpler debugging and error handling
+ *
+ * If goal computation becomes CPU-intensive in the future, consider migrating
+ * to a sandboxed processor like audit-worker.ts or analytics-worker.ts.
  */
 import { Worker, type Job } from "bullmq";
 import { db } from "@/db";
@@ -14,8 +24,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { computationMethods } from "./goal-computations";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { GOAL_QUEUE_NAME, initGoalProcessingScheduler, type GoalProcessorJobData } from "@/server/queues/goalQueue";
-import { getDLQQueue } from "@/server/queues/dlq";
+import { GOAL_QUEUE_NAME, goalQueue, initGoalProcessingScheduler, type GoalProcessorJobData, type GoalDLQJobData } from "@/server/queues/goalQueue";
 
 const log = createLogger({ module: "goal-processor" });
 
@@ -233,26 +242,43 @@ export async function startGoalWorker(): Promise<void> {
   goalWorker.on("failed", async (job, err) => {
     const error = err instanceof Error ? err : new Error(String(err));
 
-    if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
-      // Move to DLQ after all retries exhausted
+    if (!job) {
+      log.error("Job failed with no job context", error);
+      return;
+    }
+
+    const maxAttempts = job.opts.attempts ?? 1;
+    const jobLogger = createLogger({
+      module: "goal-processor",
+      jobId: job.id,
+    });
+
+    // HIGH-52 fix: Use inline DLQ pattern (same as other workers)
+    if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
       try {
-        const dlq = getDLQQueue();
-        await dlq.add('goal-processor-failed', {
-          originalQueue: 'goal-processor',
-          jobId: job.id,
-          jobData: job.data,
+        const dlqData: GoalDLQJobData = {
+          originalJobId: job.id,
+          originalJobName: job.name,
+          data: job.data as GoalProcessorJobData,
           error: error.message,
           stack: error.stack,
           failedAt: new Date().toISOString(),
+          attemptsMade: job.attemptsMade,
+        };
+        await goalQueue.add("dlq:goal-processor", dlqData, {
+          removeOnComplete: { age: 604800 }, // 7 days
+          removeOnFail: { age: 604800 },
+          attempts: 1,
         });
-        log.error('Goal job moved to DLQ', error, { jobId: job.id });
+        jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
       } catch (dlqErr) {
-        log.error('Failed to move job to DLQ', dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)), { jobId: job.id });
+        jobLogger.error("Failed to move job to DLQ", dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
       }
     } else {
-      log.warn('Goal job failed, will retry', {
-        jobId: job?.id,
-        attempt: job?.attemptsMade,
+      log.warn("Goal job failed, will retry", {
+        jobId: job.id,
+        attempt: job.attemptsMade,
+        maxAttempts,
         error: error.message,
       });
     }

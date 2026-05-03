@@ -14,6 +14,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "alertDetectionQueue" });
 
@@ -29,17 +30,14 @@ export interface AlertDetectionJobData {
 
 /**
  * Default job options.
- * 2 attempts with fixed backoff (alert detection is idempotent).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
+ * Alert detection is idempotent so retries are safe.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   attempts: 2,
-  backoff: {
-    type: "fixed",
-    delay: 5000, // 5 seconds
-  },
   removeOnComplete: { count: 50 },
   removeOnFail: { count: 100 },
-};
+});
 
 /**
  * Alert detection queue.

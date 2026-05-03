@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@tevero/ui";
 
+import { logger } from '@/lib/logger';
 // SECURITY: Never expose raw error messages to users in production
 const USER_FRIENDLY_MESSAGE = "Something went wrong. Please try again.";
 
@@ -14,13 +16,24 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error details for debugging/monitoring
-    // In production, send to error tracking service (Sentry, etc.)
-    console.error("[app-error]", {
-      digest: error.digest,
-      message: error.message,
-      timestamp: new Date().toISOString(),
+    // Send error to Sentry with digest for correlation
+    Sentry.captureException(error, {
+      extra: {
+        digest: error.digest,
+      },
+      tags: {
+        errorType: "app-error",
+      },
     });
+
+    // Also log locally for development debugging
+    if (process.env.NODE_ENV === "development") {
+      logger.error("[app-error]", {
+        digest: error.digest,
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }, [error]);
 
   return (

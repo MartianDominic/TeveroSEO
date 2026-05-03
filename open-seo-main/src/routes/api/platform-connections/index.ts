@@ -17,6 +17,7 @@ import { db } from "@/db";
 import { platformConnections } from "@/db/platform-connection-schema";
 import { nanoid } from "nanoid";
 import { createLogger } from "@/server/lib/logger";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 const log = createLogger({ module: "api/platform-connections" });
 
@@ -48,10 +49,8 @@ export const Route = createFileRoute("/api/platform-connections/")({
       // GET /api/platform-connections?workspaceId=X&prospectId=Y
       GET: async ({ request }: { request: Request }) => {
         try {
-          const userId = request.headers.get("x-user-id");
-          if (!userId) {
-            return Response.json({ error: "Unauthorized" }, { status: 401 });
-          }
+          // HIGH-API-01: Use proper authentication instead of spoofable header
+          await requireApiAuth(request);
 
           const url = new URL(request.url);
           const workspaceId = url.searchParams.get("workspaceId");
@@ -83,10 +82,8 @@ export const Route = createFileRoute("/api/platform-connections/")({
       // POST /api/platform-connections - create new connection
       POST: async ({ request }: { request: Request }) => {
         try {
-          const userId = request.headers.get("x-user-id");
-          if (!userId) {
-            return Response.json({ error: "Unauthorized" }, { status: 401 });
-          }
+          // HIGH-API-01: Use proper authentication instead of spoofable header
+          await requireApiAuth(request);
 
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = CreatePlatformConnectionSchema.safeParse(body);

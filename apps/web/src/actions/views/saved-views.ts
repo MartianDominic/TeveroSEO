@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi, postFastApi, patchFastApi, deleteFastApi } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { logger } from '@/lib/logger';
 import type {
   SavedView,
   ViewConfig,
@@ -83,10 +84,10 @@ function parseJsonColumn<T>(
     if (result.success) {
       return result.data;
     }
-    console.warn('[SavedViews] Invalid JSON structure:', result.error);
+    logger.warn('[SavedViews] Invalid JSON structure', { detail: result.error });
     return fallback;
   } catch (err) {
-    console.warn('[SavedViews] JSON parse error:', err);
+    logger.warn('[SavedViews] JSON parse error', { value: err });
     return fallback;
   }
 }
@@ -149,7 +150,7 @@ export async function getSavedView(viewId: string): Promise<SavedView | null> {
 
     return transformView(response);
   } catch (error) {
-    console.error("[getSavedView] Failed to fetch saved view:", error);
+    logger.error("[getSavedView] Failed to fetch saved view", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -173,7 +174,7 @@ export async function getSavedViewsWithConfig(workspaceId: string): Promise<Save
     );
     return response.map(transformView);
   } catch (error) {
-    console.error("[getSavedViewsWithConfig] Failed to fetch saved views:", error);
+    logger.error("[getSavedViewsWithConfig] Failed to fetch saved views", error instanceof Error ? error : { error: String(error) });
     // Return empty array on error for graceful degradation
     return [];
   }

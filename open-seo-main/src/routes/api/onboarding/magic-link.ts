@@ -13,13 +13,15 @@ import { z } from "zod";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { MagicLinkService } from "@/server/features/onboarding/services/MagicLinkService";
 import { ChecklistRepository } from "@/server/features/contracts/repositories/ChecklistRepository";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "onboarding-magic-link" });
 
 const requestSchema = z.object({
   checklistId: z.string().min(1, "checklistId is required"),
   itemId: z.string().min(1, "itemId is required"),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/onboarding/magic-link")({
   server: {
     handlers: {
@@ -86,9 +88,9 @@ export const Route = createFileRoute("/api/onboarding/magic-link")({
             expiresAt: result.expiresAt.toISOString(),
           });
         } catch (error) {
-          console.error("Error generating magic link:", error);
+          log.error("Error generating magic link", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Internal server error" },
+            { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
             { status: 500 }
           );
         }

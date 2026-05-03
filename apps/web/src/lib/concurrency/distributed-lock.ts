@@ -15,6 +15,7 @@
 import { redis } from "@/lib/redis/client";
 import crypto from "crypto";
 
+import { logger } from '@/lib/logger';
 /** Lock key prefix to namespace all locks */
 const LOCK_PREFIX = "tevero:lock:";
 
@@ -167,7 +168,7 @@ async function executeScript(
  * ```typescript
  * const lock = await acquireLock("job:process:123");
  * if (!lock) {
- *   console.log("Could not acquire lock, another process is handling this job");
+ *   logger.debug("Could not acquire lock, another process is handling this job");
  *   return;
  * }
  *
@@ -219,7 +220,7 @@ export async function acquireLock(
       await sleep(ACQUIRE_RETRY_INTERVAL);
     } catch (error) {
       // Redis error - log and retry
-      console.error("[distributed-lock] Acquire error:", error);
+      logger.error("[distributed-lock] Acquire error", error instanceof Error ? error : { error: String(error) });
       await sleep(ACQUIRE_RETRY_INTERVAL);
     }
   }
@@ -254,7 +255,7 @@ async function releaseLock(key: string, token: string): Promise<boolean> {
     const result = await executeScript(RELEASE_SCRIPT, [key], [token]);
     return result === 1;
   } catch (error) {
-    console.error("[distributed-lock] Release error:", error);
+    logger.error("[distributed-lock] Release error", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }
@@ -278,7 +279,7 @@ async function extendLock(
     );
     return result === 1;
   } catch (error) {
-    console.error("[distributed-lock] Extend error:", error);
+    logger.error("[distributed-lock] Extend error", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }
@@ -293,7 +294,7 @@ async function isLockHeld(key: string, token: string): Promise<boolean> {
     const current = await redis.get(key);
     return current === token;
   } catch (error) {
-    console.error("[distributed-lock] isHeld error:", error);
+    logger.error("[distributed-lock] isHeld error", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }
@@ -385,7 +386,7 @@ export async function withLock<T>(
  * );
  *
  * if (result === null) {
- *   console.log("Sync already in progress, skipping");
+ *   logger.debug("Sync already in progress, skipping");
  * }
  * ```
  */
@@ -432,7 +433,7 @@ export async function isLocked(resource: string): Promise<boolean> {
     const value = await redis.get(key);
     return value !== null;
   } catch (error) {
-    console.error("[distributed-lock] isLocked error:", error);
+    logger.error("[distributed-lock] isLocked error", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }
@@ -448,6 +449,6 @@ export async function forceReleaseLock(resource: string): Promise<void> {
   try {
     await redis.del(key);
   } catch (error) {
-    console.error("[distributed-lock] Force release error:", error);
+    logger.error("[distributed-lock] Force release error", error instanceof Error ? error : { error: String(error) });
   }
 }

@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
+import { logger } from '@/lib/logger';
 import {
   DndContext,
   closestCenter,
@@ -243,7 +244,7 @@ export function PipelineKanban({
           await onMoveProspect(activeId, newStage);
         } catch (error) {
           // Rollback on error
-          console.error("Failed to move prospect:", error);
+          logger.error("Failed to move prospect", error instanceof Error ? error : { error: String(error) });
           setItems(snapshot.current);
         }
       }
@@ -287,7 +288,7 @@ export function PipelineKanban({
       try {
         await onMoveProspect(prospectId, targetStage);
       } catch (error) {
-        console.error("Failed to move prospect:", error);
+        logger.error("Failed to move prospect", error instanceof Error ? error : { error: String(error) });
         setItems(rollbackSnapshot);
       }
     },

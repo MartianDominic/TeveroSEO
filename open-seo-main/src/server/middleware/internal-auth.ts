@@ -141,13 +141,19 @@ function verifyLegacyApiKey(apiKey: string): InternalAuthResult {
 /**
  * Timing-safe comparison for hex-encoded strings.
  * Prevents timing attacks by ensuring comparison time is constant.
+ *
+ * HIGH-06 FIX: Ensures constant-time comparison even when lengths differ.
  */
 function secureCompareHex(actual: string, expected: string): boolean {
   try {
     const actualBuffer = Buffer.from(actual, "hex");
     const expectedBuffer = Buffer.from(expected, "hex");
 
+    // HIGH-06 FIX: Always perform a timing-safe comparison to avoid
+    // leaking length information through timing differences
     if (actualBuffer.length !== expectedBuffer.length) {
+      // Perform a dummy comparison to maintain constant time
+      timingSafeEqual(expectedBuffer, expectedBuffer);
       return false;
     }
 
@@ -161,13 +167,19 @@ function secureCompareHex(actual: string, expected: string): boolean {
 /**
  * Timing-safe comparison for plain strings.
  * Prevents timing attacks by ensuring comparison time is constant.
+ *
+ * HIGH-06 FIX: Ensures constant-time comparison even when lengths differ.
  */
 function secureCompareString(actual: string, expected: string): boolean {
   try {
     const actualBuffer = Buffer.from(actual, "utf8");
     const expectedBuffer = Buffer.from(expected, "utf8");
 
+    // HIGH-06 FIX: Always perform a timing-safe comparison to avoid
+    // leaking length information through timing differences
     if (actualBuffer.length !== expectedBuffer.length) {
+      // Perform a dummy comparison to maintain constant time
+      timingSafeEqual(expectedBuffer, expectedBuffer);
       return false;
     }
 

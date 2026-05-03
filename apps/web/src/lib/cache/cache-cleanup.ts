@@ -6,6 +6,7 @@
 
 import { apiResponseCache, userProfileCache } from "./bounded-cache";
 
+import { logger } from '@/lib/logger';
 let cleanupInterval: NodeJS.Timeout | null = null;
 
 /**
@@ -20,7 +21,7 @@ export function startCacheCleanup(intervalMs: number = 60000): void {
     const userPruned = userProfileCache.prune();
 
     if (apiPruned > 0 || userPruned > 0) {
-      console.log(`[Cache] Pruned ${apiPruned + userPruned} expired entries`);
+      logger.info(`[Cache] Pruned ${apiPruned + userPruned} expired entries`);
     }
   }, intervalMs);
 

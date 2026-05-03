@@ -42,38 +42,47 @@ export interface VersionListItem {
 export const VersionService = {
   /**
    * Create a new version snapshot
+   * HIGH-53 fix: Uses transaction with row-level locking to prevent race conditions
+   * when concurrent requests try to create versions for the same proposal.
    */
   async createVersion(input: CreateVersionInput): Promise<ProposalVersionSelect> {
-    // Get next version number for this proposal
-    const lastVersion = await db
-      .select({ versionNumber: proposalVersions.versionNumber })
-      .from(proposalVersions)
-      .where(eq(proposalVersions.proposalId, input.proposalId))
-      .orderBy(desc(proposalVersions.versionNumber))
-      .limit(1);
+    // Use transaction with FOR UPDATE to prevent race condition on version numbers
+    const created = await db.transaction(async (tx) => {
+      // Lock and get the latest version number atomically
+      // Using raw SQL for FOR UPDATE as Drizzle doesn't support it directly
+      const lastVersionResult = await tx
+        .select({ versionNumber: proposalVersions.versionNumber })
+        .from(proposalVersions)
+        .where(eq(proposalVersions.proposalId, input.proposalId))
+        .orderBy(desc(proposalVersions.versionNumber))
+        .limit(1)
+        .for('update');
 
-    const nextVersionNumber = (lastVersion[0]?.versionNumber ?? 0) + 1;
+      const nextVersionNumber = (lastVersionResult[0]?.versionNumber ?? 0) + 1;
 
-    const id = crypto.randomUUID();
+      const id = crypto.randomUUID();
 
-    const version: ProposalVersionInsert = {
-      id,
-      proposalId: input.proposalId,
-      versionNumber: nextVersionNumber,
-      content: input.content,
-      sectionOrder: input.sectionOrder,
-      changeType: input.changeType,
-      changeDescription: input.changeDescription,
-      changeDescriptionEn: input.changeDescriptionEn,
-      changeDescriptionLt: input.changeDescriptionLt,
-      changedSections: input.changedSections,
-      createdBy: input.createdBy,
-    };
+      const version: ProposalVersionInsert = {
+        id,
+        proposalId: input.proposalId,
+        versionNumber: nextVersionNumber,
+        content: input.content,
+        sectionOrder: input.sectionOrder,
+        changeType: input.changeType,
+        changeDescription: input.changeDescription,
+        changeDescriptionEn: input.changeDescriptionEn,
+        changeDescriptionLt: input.changeDescriptionLt,
+        changedSections: input.changedSections,
+        createdBy: input.createdBy,
+      };
 
-    const [created] = await db
-      .insert(proposalVersions)
-      .values(version)
-      .returning();
+      const [inserted] = await tx
+        .insert(proposalVersions)
+        .values(version)
+        .returning();
+
+      return inserted;
+    });
 
     return created;
   },

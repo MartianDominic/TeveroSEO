@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { requireActionAuth, validateProspectOwnership, validateProposalOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
 
+import { logger } from '@/lib/logger';
 /** Default timeout for API requests (30 seconds) */
 const API_TIMEOUT_MS = 30000;
 
@@ -110,7 +111,7 @@ export async function generateProposal(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[generateProposal] API error:", response.status, errorMessage);
+      logger.error("[generateProposal] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: "Failed to generate proposal. Please try again.",
@@ -120,7 +121,7 @@ export async function generateProposal(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[generateProposal] Error:", error);
+    logger.error("[generateProposal] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -183,7 +184,7 @@ export async function regenerateSection(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[regenerateSection] API error:", response.status, errorMessage);
+      logger.error("[regenerateSection] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: "Failed to regenerate section. Please try again.",
@@ -193,7 +194,7 @@ export async function regenerateSection(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[regenerateSection] Error:", error);
+    logger.error("[regenerateSection] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -260,7 +261,7 @@ export async function updateSection(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[updateSection] API error:", response.status, errorMessage);
+      logger.error("[updateSection] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: "Failed to update section. Please try again.",
@@ -269,7 +270,7 @@ export async function updateSection(
 
     return { success: true, data: undefined };
   } catch (error) {
-    console.error("[updateSection] Error:", error);
+    logger.error("[updateSection] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -379,7 +380,7 @@ export async function getAIRecommendations(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[getAIRecommendations] Error:", error);
+    logger.error("[getAIRecommendations] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -431,7 +432,7 @@ export async function getProposalForPreview(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[getProposalForPreview] API error:", response.status, errorMessage);
+      logger.error("[getProposalForPreview] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: "Failed to load proposal. Please try again.",
@@ -441,7 +442,7 @@ export async function getProposalForPreview(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[getProposalForPreview] Error:", error);
+    logger.error("[getProposalForPreview] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -516,14 +517,14 @@ export async function getServicesForWorkspace(): Promise<
       } catch {
         // Response wasn't JSON
       }
-      console.error("[getServicesForWorkspace] API error:", response.status, errorMessage);
+      logger.error("[getServicesForWorkspace] API error", { status: response.status, detail: errorMessage });
       return { success: false, error: "Failed to fetch services" };
     }
 
     const result = await response.json();
     return { success: true, data: { services: result.services || [] } };
   } catch (error) {
-    console.error("[getServicesForWorkspace] Error:", error);
+    logger.error("[getServicesForWorkspace] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return { success: false, error: "Request timed out" };
     }
@@ -564,14 +565,14 @@ export async function getProposalServices(
     );
 
     if (!response.ok) {
-      console.error("[getProposalServices] API error:", response.status);
+      logger.error("[getProposalServices] API error", { status: response.status });
       return { success: false, error: "Failed to fetch proposal services" };
     }
 
     const result = await response.json();
     return { success: true, data: { services: result.services || [] } };
   } catch (error) {
-    console.error("[getProposalServices] Error:", error);
+    logger.error("[getProposalServices] Error", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: sanitizeErrorForClient(error) };
   }
 }
@@ -640,7 +641,7 @@ export async function updateProposalServices(
       } catch {
         // Response wasn't JSON
       }
-      console.error("[updateProposalServices] API error:", response.status, errorMessage);
+      logger.error("[updateProposalServices] API error", { status: response.status, detail: errorMessage });
       return { success: false, error: "Failed to update services" };
     }
 
@@ -648,7 +649,7 @@ export async function updateProposalServices(
 
     return { success: true, data: { services: result.services || [] } };
   } catch (error) {
-    console.error("[updateProposalServices] Error:", error);
+    logger.error("[updateProposalServices] Error", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: sanitizeErrorForClient(error) };
   }
 }

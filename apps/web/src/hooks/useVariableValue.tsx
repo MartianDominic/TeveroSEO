@@ -13,6 +13,7 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 
+import { logger } from '@/lib/logger';
 /**
  * Resolved variable value.
  */
@@ -245,7 +246,7 @@ export function VariableProvider({
       setError(errorMessage);
 
       if (process.env.NODE_ENV === "development") {
-        console.error("[VariableProvider] Error fetching variables:", err);
+        logger.error("[VariableProvider] Error fetching variables", err instanceof Error ? err : { error: String(err) });
       }
     } finally {
       setIsLoading(false);

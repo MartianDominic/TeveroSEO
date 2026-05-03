@@ -1,5 +1,22 @@
 "use client";
 
+/**
+ * Intelligence Store - Client intelligence data (SEO metrics, brand voice, etc.)
+ *
+ * TODO [HIGH-42]: Migrate to TanStack Query for server state
+ * This store currently manages server state which should use React Query for:
+ * - Automatic caching and background refetching
+ * - Stale-while-revalidate patterns
+ * - Request deduplication
+ * - Built-in loading/error states
+ *
+ * Migration path:
+ * 1. Create useClientIntelligence query hook
+ * 2. Replace store usage with query hook in components
+ * 3. Remove this store
+ *
+ * See: https://tanstack.com/query/latest
+ */
 import { create } from "zustand";
 import { apiGet } from "@/lib/api-client";
 

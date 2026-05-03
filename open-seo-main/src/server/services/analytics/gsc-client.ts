@@ -9,6 +9,7 @@
  * - For incremental: end_date = today - 3 days, start_date = end_date - 2 days
  * - For backfill: end_date = today - 3 days, start_date = end_date - 87 days (90 total)
  */
+// @ts-ignore - googleapis is an optional dependency
 import { google } from "googleapis";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
@@ -111,7 +112,7 @@ export async function fetchGSCDateMetrics(
       GSC_RETRY_OPTIONS
     );
 
-    return (response.data.rows || []).map((row) => ({
+    return (response.data.rows || []).map((row: any) => ({
       date: row.keys?.[0] || "",
       clicks: row.clicks ?? 0,
       impressions: row.impressions ?? 0,
@@ -171,7 +172,7 @@ export async function fetchGSCTopQueries(
       GSC_RETRY_OPTIONS
     );
 
-    const allRows = (response.data.rows || []).map((row) => ({
+    const allRows = (response.data.rows || []).map((row: any) => ({
       date: row.keys?.[0] || "",
       query: row.keys?.[1] || "",
       clicks: row.clicks ?? 0,
@@ -280,7 +281,7 @@ export async function fetchGSCQueryPageMetrics(
       GSC_RETRY_OPTIONS
     );
 
-    return (response.data.rows || []).map((row) => ({
+    return (response.data.rows || []).map((row: any) => ({
       query: row.keys?.[0] || "",
       pageUrl: row.keys?.[1] || "",
       clicks: row.clicks ?? 0,

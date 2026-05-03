@@ -55,3 +55,24 @@ export {
   batchCheckOwnership,
   type OwnershipCheckResult,
 } from './client-ownership';
+
+// Beacon Token Validation
+export {
+  generateBeaconToken,
+  verifyBeaconToken,
+  safeVerifyBeaconToken,
+  isSignedBeaconToken,
+  BeaconTokenError,
+  type BeaconTokenData,
+} from './beacon-tokens';
+
+// Signed URL Generation and Validation (HIGH-01 fix: replaces query token auth)
+export {
+  generateSignedUrlToken,
+  generateSignedUrl,
+  verifySignedUrlToken,
+  verifySignedUrlParams,
+  safeVerifySignedUrlToken,
+  SignedUrlError,
+  type SignedUrlData,
+} from './signed-urls';

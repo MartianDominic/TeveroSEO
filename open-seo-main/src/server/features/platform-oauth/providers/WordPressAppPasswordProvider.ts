@@ -88,7 +88,12 @@ export class WordPressAppPasswordProvider {
         };
       }
 
-      const user = await response.json();
+      const user = await response.json() as {
+        id: number;
+        name: string;
+        slug: string;
+        roles?: string[];
+      };
       return {
         valid: true,
         user: {
@@ -115,7 +120,12 @@ export class WordPressAppPasswordProvider {
       const response = await fetch(`${this.siteUrl}/wp-json`);
       if (!response.ok) return null;
 
-      const data = await response.json();
+      const data = await response.json() as {
+        name: string;
+        description: string;
+        url: string;
+        home: string;
+      };
       return {
         name: data.name,
         description: data.description,

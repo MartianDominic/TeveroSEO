@@ -4,6 +4,7 @@ import { downloadLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { validateClientOwnership } from "@/lib/auth/client-ownership";
 import { getOpenSeoUrl } from "@/lib/env";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,7 @@ export async function GET(
       await validateClientOwnership(userId, metadata.clientId);
     } catch {
       // Log for security audit but return generic 403
-      console.warn(`[reports/download] Access denied: userId=${userId} reportId=${id} clientId=${metadata.clientId}`);
+      logger.warn(`[reports/download] Access denied: userId=${userId} reportId=${id} clientId=${metadata.clientId}`);
       return NextResponse.json(
         { error: "Access denied to this report" },
         { status: 403 }
@@ -136,7 +137,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("Report download error:", err);
+    logger.error("Report download error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

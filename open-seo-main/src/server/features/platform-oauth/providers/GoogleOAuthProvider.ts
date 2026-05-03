@@ -91,12 +91,11 @@ export class GoogleOAuthProvider implements OAuthProvider {
    *
    * @param state - CSRF protection state parameter
    * @param options - Optional configuration
-   * @param options.services - Array of Google services to request access for (default: all)
    * @returns Complete authorization URL
    */
   getAuthorizationUrl(
     state: string,
-    options?: { services?: GoogleService[] }
+    options?: { services?: GoogleService[] } & import("../types").AuthorizationUrlOptions
   ): string {
     // Default to all services if not specified
     const services: GoogleService[] =
@@ -113,6 +112,7 @@ export class GoogleOAuthProvider implements OAuthProvider {
       access_type: "offline",
       // D-08: Force consent to ensure refresh token is returned
       prompt: "consent",
+      ...options?.extraParams,
     });
 
     return `${GOOGLE_CONFIG.authorizationUrl}?${params.toString()}`;
@@ -143,7 +143,13 @@ export class GoogleOAuthProvider implements OAuthProvider {
       throw new Error(`Token exchange failed: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in: number;
+      token_type: string;
+      scope?: string;
+    };
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -177,7 +183,13 @@ export class GoogleOAuthProvider implements OAuthProvider {
       throw new Error(`Token refresh failed: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in: number;
+      token_type: string;
+      scope?: string;
+    };
     return {
       accessToken: data.access_token,
       // Google may not return a new refresh token; preserve original if missing

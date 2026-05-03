@@ -4,6 +4,22 @@
  * Centralized circuit breakers for cross-service calls to AI-Writer and open-seo-main.
  * Prevents cascading failures when backend services become unavailable.
  *
+ * HIGH-02 DOCUMENTATION: Circuit Breaker Behavior Differences
+ *
+ * This apps/web circuit breaker uses in-memory state (per Next.js server instance).
+ * The AI-Writer circuit breaker in autonomous_pipeline.py also uses in-memory state.
+ * These are INDEPENDENT - if apps/web opens its circuit, AI-Writer won't know and vice versa.
+ *
+ * Design Decision: Each service manages its own circuit breaker state because:
+ * 1. Services have different failure patterns and thresholds
+ * 2. Network issues may affect one service but not another
+ * 3. Avoiding Redis dependency for simple circuit breaking keeps latency low
+ *
+ * For multi-instance deployments (e.g., multiple Next.js pods), consider:
+ * - Redis-backed state sharing via @upstash/ratelimit or similar
+ * - Health check endpoint that aggregates circuit states
+ * - Observability dashboards showing all circuit states across instances
+ *
  * Usage:
  * - Import the appropriate breaker for your service call
  * - Wrap fetch operations with breaker.execute()
@@ -28,6 +44,7 @@ import {
   type CircuitBreakerOptions,
   type CircuitState,
 } from "./circuit-breaker";
+import { logger } from '@/lib/logger';
 
 // Re-export for consumers
 export { CircuitOpenError, getAllCircuitBreakerStates };

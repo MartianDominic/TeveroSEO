@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Badge } from "@tevero/ui";
 import { Download, FileText, X, Loader2 } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export interface BulkActionBarProps {
   /** Number of items currently selected */
   selectedCount: number;
@@ -62,7 +63,7 @@ export function BulkActionBar({
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } catch (error) {
-        console.error("Export failed:", error);
+        logger.error("Export failed", error instanceof Error ? error : { error: String(error) });
       } finally {
         setIsExporting(false);
       }
@@ -85,7 +86,7 @@ export function BulkActionBar({
         if (!response.ok) throw new Error("Report generation failed");
         // Reports are queued for background processing
       } catch (error) {
-        console.error("Report generation failed:", error);
+        logger.error("Report generation failed", error instanceof Error ? error : { error: String(error) });
       } finally {
         setIsGenerating(false);
       }

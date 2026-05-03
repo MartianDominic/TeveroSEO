@@ -14,6 +14,7 @@ import { validateCsrf } from "@/lib/api/security";
 import { getClientIpFromRequest } from "@/lib/middleware/rate-limit";
 import { getOpenSeoUrl } from "@/lib/env";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,7 @@ export async function POST(
         status: err.status,
       });
     }
-    console.error("Logo upload proxy error:", err);
+    logger.error("Logo upload proxy error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

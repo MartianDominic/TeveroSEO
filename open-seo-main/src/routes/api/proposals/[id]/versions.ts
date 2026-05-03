@@ -39,8 +39,7 @@ const CreateVersionSchema = z.object({
   significantOnly: z.boolean().optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/versions")({
+export const Route = createFileRoute("/api/proposals/[id]/versions")({
   server: {
     handlers: {
       /**

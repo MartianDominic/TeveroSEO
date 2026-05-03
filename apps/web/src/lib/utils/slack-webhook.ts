@@ -15,7 +15,7 @@
  * });
  *
  * if (!result.success) {
- *   console.error('Slack notification failed:', result.error);
+ *   logger.error('Slack notification failed', { error: result.error });
  * }
  * ```
  */
@@ -23,6 +23,7 @@
 import { getCircuitBreaker, CircuitOpenError } from './circuit-breaker';
 import { withRetry } from './backoff';
 
+import { logger } from '@/lib/logger';
 /** Slack webhook timeout in milliseconds */
 const SLACK_TIMEOUT_MS = 10_000;
 
@@ -92,7 +93,7 @@ const slackCircuitBreaker = getCircuitBreaker('slack-webhook', {
   resetTimeout: 60_000, // 1 minute
   onStateChange: (state, name) => {
     if (state === 'open') {
-      console.error(`[${name}] Circuit breaker opened - Slack unavailable`);
+      logger.error(`[${name}] Circuit breaker opened - Slack unavailable`);
     } else if (state === 'closed') {
       console.info(`[${name}] Circuit breaker closed - Slack recovered`);
     }
@@ -191,7 +192,7 @@ export async function sendSlackNotification(
   } catch (e) {
     // Handle circuit breaker open
     if (e instanceof CircuitOpenError) {
-      console.warn(`[slack-webhook] Circuit open: ${e.message}`);
+      logger.warn(`[slack-webhook] Circuit open: ${e.message}`);
       return {
         success: false,
         error: 'Slack service temporarily unavailable',
@@ -201,7 +202,7 @@ export async function sendSlackNotification(
 
     // Handle other errors
     const error = e instanceof Error ? e.message : 'Unknown error';
-    console.error(`[slack-webhook] Failed: ${error}`);
+    logger.error(`[slack-webhook] Failed: ${error}`);
     return { success: false, error };
   }
 }

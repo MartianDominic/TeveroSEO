@@ -14,8 +14,10 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
+import { createLogger } from "@/server/lib/logger";
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
+const log = createLogger({ module: "dismiss-alert" });
+
 export const Route = createFileRoute(
   "/api/command-center/alerts/$alertId/dismiss"
 )({
@@ -52,13 +54,13 @@ export const Route = createFileRoute(
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[dismiss-alert] Error:", error);
+          log.error("Failed to dismiss alert", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
             {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to dismiss alert",
+              error: {
+                code: "INTERNAL_ERROR",
+                message: error instanceof Error ? error.message : "Failed to dismiss alert",
+              },
             },
             { status: 500 }
           );

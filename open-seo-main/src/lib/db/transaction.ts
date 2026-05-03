@@ -12,6 +12,9 @@
 
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "transaction" });
 
 /**
  * Transaction type - inferred from db.transaction callback parameter.
@@ -43,7 +46,7 @@ export async function withTransaction<T>(
       return await operation(tx);
     } catch (error) {
       // Log for observability, transaction automatically rolls back
-      console.error("[Transaction] Rolling back due to error:", error);
+      log.error("Rolling back due to error", error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   });
@@ -250,9 +253,7 @@ export async function withRetry<T>(
         baseDelayMs * Math.pow(2, attempt) + Math.random() * 100
       );
 
-      console.warn(
-        `[Retry] Attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${Math.round(delay)}ms`
-      );
+      log.warn(`Retry attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${Math.round(delay)}ms`);
 
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

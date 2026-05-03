@@ -11,6 +11,7 @@ import { redis } from "@/lib/redis/client";
 import crypto from "crypto";
 import type { ZodLikeSchema } from "./utils/type-guards";
 
+import { logger } from '@/lib/logger';
 /** Default dedup window in seconds */
 const DEDUP_TTL = 60;
 
@@ -26,6 +27,9 @@ const MAX_ENTRY_SIZE_BYTES = 100 * 1024;
 /** Total memory budget for cache in bytes (100MB) */
 const TOTAL_MEMORY_BUDGET_BYTES = 100 * 1024 * 1024;
 
+/** Cleanup interval in milliseconds (5 minutes) */
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
 /**
  * Simple in-memory LRU cache for deduplication fallback when Redis is unavailable.
  * Stores cached results with TTL-based expiration.
@@ -34,6 +38,7 @@ const TOTAL_MEMORY_BUDGET_BYTES = 100 * 1024 * 1024;
  * - Per-entry size limit (100KB)
  * - Total memory budget (100MB)
  * - Automatic eviction when limits exceeded
+ * - Periodic cleanup timer to prevent unbounded memory growth
  */
 class InMemoryDedupCache {
   private cache = new Map<string, { value: string; expiresAt: number; sizeBytes: number }>();
@@ -41,6 +46,7 @@ class InMemoryDedupCache {
   private readonly maxEntrySize: number;
   private readonly memoryBudget: number;
   private currentMemoryUsage = 0;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
     maxSize = IN_MEMORY_CACHE_MAX_SIZE,
@@ -50,6 +56,63 @@ class InMemoryDedupCache {
     this.maxSize = maxSize;
     this.maxEntrySize = maxEntrySize;
     this.memoryBudget = memoryBudget;
+    this.startPeriodicCleanup();
+  }
+
+  /**
+   * Start periodic cleanup timer to remove expired entries.
+   * Prevents unbounded memory growth from stale entries.
+   */
+  private startPeriodicCleanup(): void {
+    if (this.cleanupInterval) return;
+
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, CLEANUP_INTERVAL_MS);
+
+    // Don't prevent Node.js from exiting
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref();
+    }
+  }
+
+  /**
+   * Remove all expired entries from the cache.
+   */
+  private cleanup(): void {
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.expiresAt < now) {
+        keysToDelete.push(key);
+        this.currentMemoryUsage -= entry.sizeBytes;
+      }
+    }
+
+    for (const key of keysToDelete) {
+      this.cache.delete(key);
+    }
+
+    if (keysToDelete.length > 0) {
+      console.log(
+        `[dedup] Periodic cleanup removed ${keysToDelete.length} expired entries, ` +
+        `${this.cache.size} remaining, ${Math.round(this.currentMemoryUsage / 1024)}KB used`
+      );
+    }
+  }
+
+  /**
+   * Stop the periodic cleanup timer and release resources.
+   * Call this when shutting down the application.
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.cache.clear();
+    this.currentMemoryUsage = 0;
   }
 
   /**
@@ -82,9 +145,7 @@ class InMemoryDedupCache {
 
     // Reject entries that exceed per-entry size limit
     if (sizeBytes > this.maxEntrySize) {
-      console.warn(
-        `[dedup] Rejecting oversized cache entry: ${sizeBytes} bytes exceeds ${this.maxEntrySize} byte limit`
-      );
+      logger.warn(`[dedup] Rejecting oversized cache entry: ${sizeBytes} bytes exceeds ${this.maxEntrySize} byte limit`);
       return false;
     }
 
@@ -284,7 +345,7 @@ export async function deduplicateRequest<T>(
         error.message.includes("ETIMEDOUT") ||
         error.message.includes("Redis"))
     ) {
-      console.warn("[dedup] Redis unavailable, using in-memory fallback");
+      logger.warn("[dedup] Redis unavailable, using in-memory fallback");
       return deduplicateRequestInMemory(key, operation, { ttlSeconds, schema });
     }
     throw error;

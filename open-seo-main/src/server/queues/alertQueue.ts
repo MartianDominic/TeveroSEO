@@ -5,6 +5,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "alertQueue" });
 
@@ -27,16 +28,12 @@ export interface AlertDLQJobData extends AlertJobData {
 /**
  * Default job options for alert processing.
  * Job timeout is controlled via Worker lockDuration (set to 60s in alert-worker.ts).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const defaultJobOptions: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
-  },
+const defaultJobOptions: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 50 },
-};
+});
 
 let alertQueue: Queue<AlertJobData> | null = null;
 

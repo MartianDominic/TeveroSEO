@@ -22,6 +22,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "add-note" });
 
 const AddNoteSchema = z.object({
   entityType: z.enum([
@@ -35,7 +38,6 @@ const AddNoteSchema = z.object({
   note: z.string().min(1, "Note is required").max(5000, "Note too long"),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/command-center/actions/add-note")({
   server: {
     handlers: {
@@ -69,11 +71,13 @@ export const Route = createFileRoute("/api/command-center/actions/add-note")({
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[add-note] Error:", error);
+          log.error("Failed to add note", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
             {
-              error:
-                error instanceof Error ? error.message : "Failed to add note",
+              error: {
+                code: "INTERNAL_ERROR",
+                message: error instanceof Error ? error.message : "Failed to add note",
+              },
             },
             { status: 500 }
           );

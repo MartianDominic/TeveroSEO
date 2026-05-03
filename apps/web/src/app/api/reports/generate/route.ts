@@ -5,6 +5,7 @@ import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
         status: err.status,
       });
     }
-    console.error("Report generation error:", err);
+    logger.error("Report generation error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

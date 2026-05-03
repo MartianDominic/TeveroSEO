@@ -92,7 +92,6 @@ function formatSettingsResponse(
   };
 }
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/settings/payments")({
   server: {
     handlers: {

@@ -14,6 +14,9 @@ import { nanoid } from "nanoid";
 import { redis } from "@/server/lib/redis";
 import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "quick-check-service" });
 
 // Constants
 const MAX_KEYWORDS = 20;
@@ -151,7 +154,7 @@ export class QuickCheckService {
         // Cost: $0.005 per keyword
         result.costCents = needsEnrichment.length * COST_PER_KEYWORD_CENTS;
       } catch (error) {
-        console.error("Quick check API error:", error);
+        log.error("Quick check API error", error instanceof Error ? error : new Error(String(error)));
         throw new Error("Failed to fetch keyword metrics");
       }
     }

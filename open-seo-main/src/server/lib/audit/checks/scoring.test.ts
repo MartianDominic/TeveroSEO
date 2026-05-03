@@ -3,7 +3,12 @@
  * Phase 32: 107 SEO Checks Implementation
  */
 import { describe, it, expect } from "vitest";
-import { calculateOnPageScore } from "./scoring";
+import {
+  calculateOnPageScore,
+  passesQualityGate,
+  evaluateQualityGate,
+  QUALITY_GATE_THRESHOLD,
+} from "./scoring";
 import type { CheckResult } from "./types";
 
 /** Helper to create a passing check result */
@@ -72,7 +77,7 @@ describe("calculateOnPageScore", () => {
     expect(maxResult.score).toBe(70);
   });
 
-  it("adds +0.8 per Tier 3 pass, max 10 points", () => {
+  it("adds +0.8 per Tier 3 pass, max 6 points (normalized)", () => {
     // 5 Tier 3 passes = 5 * 0.8 = 4 points
     const tier3Checks = Array.from({ length: 5 }, (_, i) =>
       passCheck(`T3-${String(i + 1).padStart(2, "0")}`)
@@ -81,13 +86,13 @@ describe("calculateOnPageScore", () => {
     expect(result.breakdown.tier3).toBe(4);
     expect(result.score).toBe(64);
 
-    // 13 Tier 3 passes = 13 * 0.8 = 10.4, capped at 10
+    // 13 Tier 3 passes = 13 * 0.8 = 10.4, capped at 6 (normalized for max 100 total)
     const maxTier3 = Array.from({ length: 13 }, (_, i) =>
       passCheck(`T3-${String(i + 1).padStart(2, "0")}`)
     );
     const maxResult = calculateOnPageScore(maxTier3);
-    expect(maxResult.breakdown.tier3).toBe(10);
-    expect(maxResult.score).toBe(70);
+    expect(maxResult.breakdown.tier3).toBe(6);
+    expect(maxResult.score).toBe(66);
   });
 
   it("caps at 75 when CWV is Poor (T3-01/02/03 critical fail)", () => {
@@ -144,5 +149,119 @@ describe("calculateOnPageScore", () => {
     const result = calculateOnPageScore(checks);
     expect(result.score).toBe(50);
     expect(result.gates).toContain("duplicate-content");
+  });
+
+  it("excludes skipped checks from scoring", () => {
+    const checks: CheckResult[] = [
+      passCheck("T1-01"),
+      passCheck("T1-02"),
+      // Skipped check should not count toward score
+      {
+        checkId: "T3-01",
+        passed: false,
+        severity: "info",
+        message: "Skipped: No CrUX data",
+        details: { skipped: true, reason: "No CrUX data" },
+        autoEditable: false,
+      },
+    ];
+    const result = calculateOnPageScore(checks);
+    // Base 60 + 2 T1 passes * 0.3 = 60.6, rounded to 61
+    expect(result.breakdown.tier1).toBe(0.6);
+    expect(result.breakdown.tier3).toBe(0);
+    expect(result.gates).toHaveLength(0);
+  });
+
+  it("skipped CWV checks do not trigger cwv-poor gate", () => {
+    const checks: CheckResult[] = [
+      ...Array.from({ length: 67 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`)),
+      // Skipped CWV checks (API key missing)
+      {
+        checkId: "T3-01",
+        passed: false,
+        severity: "info",
+        message: "Skipped: GOOGLE_CWV_API_KEY not configured",
+        details: { skipped: true, reason: "API key missing" },
+        autoEditable: false,
+      },
+      {
+        checkId: "T3-02",
+        passed: false,
+        severity: "info",
+        message: "Skipped: GOOGLE_CWV_API_KEY not configured",
+        details: { skipped: true, reason: "API key missing" },
+        autoEditable: false,
+      },
+    ];
+    const result = calculateOnPageScore(checks);
+    // Should not trigger cwv-poor gate since checks were skipped
+    expect(result.gates).not.toContain("cwv-poor");
+    // Score should be base + max T1 = 60 + 20 = 80
+    expect(result.score).toBe(80);
+  });
+
+  it("normalizes score to never exceed 100", () => {
+    // Create maximum passing checks for all tiers
+    const checks: CheckResult[] = [
+      ...Array.from({ length: 68 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`)),
+      ...Array.from({ length: 21 }, (_, i) => passCheck(`T2-${String(i + 1).padStart(2, "0")}`)),
+      ...Array.from({ length: 13 }, (_, i) => passCheck(`T3-${String(i + 1).padStart(2, "0")}`)),
+      ...Array.from({ length: 7 }, (_, i) => passCheck(`T4-${String(i + 1).padStart(2, "0")}`)),
+    ];
+    const result = calculateOnPageScore(checks);
+    // Score should be capped at 100
+    expect(result.score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("passesQualityGate", () => {
+  it("returns true when score >= 80", () => {
+    expect(passesQualityGate(80)).toBe(true);
+    expect(passesQualityGate(100)).toBe(true);
+    expect(passesQualityGate(85)).toBe(true);
+  });
+
+  it("returns false when score < 80", () => {
+    expect(passesQualityGate(79)).toBe(false);
+    expect(passesQualityGate(0)).toBe(false);
+    expect(passesQualityGate(60)).toBe(false);
+  });
+});
+
+describe("evaluateQualityGate", () => {
+  it("returns detailed quality gate result for passing score", () => {
+    const scoreResult = calculateOnPageScore(
+      Array.from({ length: 68 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`))
+    );
+    const gateResult = evaluateQualityGate(scoreResult);
+
+    expect(gateResult.passed).toBe(true);
+    expect(gateResult.threshold).toBe(QUALITY_GATE_THRESHOLD);
+    expect(gateResult.pointsNeeded).toBe(0);
+    expect(gateResult.autoPublishEligible).toBe(true);
+  });
+
+  it("returns detailed quality gate result for failing score", () => {
+    const scoreResult = calculateOnPageScore([]);
+    const gateResult = evaluateQualityGate(scoreResult);
+
+    expect(gateResult.passed).toBe(false);
+    expect(gateResult.score).toBe(60);
+    expect(gateResult.pointsNeeded).toBe(20);
+    expect(gateResult.autoPublishEligible).toBe(false);
+  });
+
+  it("marks auto-publish ineligible when gates are active", () => {
+    const checks: CheckResult[] = [
+      ...Array.from({ length: 68 }, (_, i) => passCheck(`T1-${String(i + 1).padStart(2, "0")}`)),
+      failCheck("T3-01", "critical"), // LCP Poor
+    ];
+    const scoreResult = calculateOnPageScore(checks);
+    const gateResult = evaluateQualityGate(scoreResult);
+
+    // Score is 75 due to CWV gate, which is below 80
+    expect(gateResult.passed).toBe(false);
+    expect(gateResult.gates).toContain("cwv-poor");
+    expect(gateResult.autoPublishEligible).toBe(false);
   });
 });

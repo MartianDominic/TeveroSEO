@@ -5,6 +5,7 @@
 
 import Redis from "ioredis";
 
+import { logger } from '@/lib/logger';
 // Global singleton for hot reload safety
 const globalForRedis = globalThis as unknown as {
   redis: Redis | undefined;
@@ -25,7 +26,7 @@ function createRedisClient(): Redis {
     retryStrategy: (times) => {
       if (times > 50) {
         // HIGH-REDIS-01 fix: Continue reconnecting instead of giving up
-        console.error("[redis] Max retries reached, will retry in 30s");
+        logger.error("[redis] Max retries reached, will retry in 30s");
         return 30000; // Continue trying every 30s instead of giving up
       }
       // Exponential backoff: 50ms, 100ms, 150ms... up to 3000ms
@@ -41,15 +42,15 @@ function createRedisClient(): Redis {
   });
 
   redis.on("error", (err) => {
-    console.error("[redis] Connection error:", err.message);
+    logger.error("[redis] Connection error", { error: err.message });
   });
 
   redis.on("connect", () => {
-    console.log("[redis] Connected");
+    logger.info("[redis] Connected");
   });
 
   redis.on("ready", () => {
-    console.log("[redis] Ready");
+    logger.info("[redis] Ready");
   });
 
   return redis;
@@ -70,9 +71,9 @@ export async function closeRedis(): Promise<void> {
   if (redis.status === "ready" || redis.status === "connect") {
     try {
       await redis.quit();
-      console.log("[redis] Gracefully disconnected");
+      logger.info("[redis] Gracefully disconnected");
     } catch (err) {
-      console.error("[redis] Error during disconnect:", err);
+      logger.error("[redis] Error during disconnect", err instanceof Error ? err : { error: String(err) });
     }
   }
 }
@@ -92,7 +93,7 @@ export async function ensureRedisConnected(): Promise<boolean> {
     await redis.ping();
     return true;
   } catch (error) {
-    console.error("[redis] Failed to connect:", error);
+    logger.error("[redis] Failed to connect", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }
@@ -144,27 +145,19 @@ export async function validateRedisAtStartup(): Promise<void> {
 
     // Verify connection with ping
     await redis.ping();
-    console.log("[redis] Startup validation: connection validated successfully");
+    logger.info("[redis] Startup validation: connection validated successfully");
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);
 
     if (isProduction) {
-      console.error(
-        "[redis] CRITICAL: Startup validation failed:",
-        errorMessage
-      );
+      logger.error("[redis] CRITICAL: Startup validation failed", { error: errorMessage });
       throw new Error(
         `Redis is required in production but connection failed: ${errorMessage}`
       );
     }
 
-    console.warn(
-      "[redis] Startup validation warning: Redis connection failed.",
-      "Some features may be unavailable.",
-      "Error:",
-      errorMessage
-    );
+    logger.warn("[redis] Startup validation warning: Redis connection failed. Some features may be unavailable.", { error: errorMessage });
   }
 }
 
@@ -175,7 +168,7 @@ if (typeof process !== "undefined" && process.on) {
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`[redis] Received ${signal}, shutting down...`);
+    logger.info(`[redis] Received ${signal}, shutting down...`);
     await closeRedis();
     process.exit(0);
   };

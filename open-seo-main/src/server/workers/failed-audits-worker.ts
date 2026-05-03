@@ -20,6 +20,8 @@ import {
 const workerLog = createLogger({ module: "failed-audits-worker" });
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
+const LOCK_DURATION_MS = 60_000; // 60 seconds - explicit for DLQ processing (HIGH-51 fix)
+const MAX_STALLED_COUNT = 2;
 
 let worker: Worker<FailedAuditJobData> | null = null;
 
@@ -62,8 +64,9 @@ export function startFailedAuditsWorker(): Worker<FailedAuditJobData> {
     },
     {
       connection: getSharedBullMQConnection("worker:failed-audits"),
+      lockDuration: LOCK_DURATION_MS, // HIGH-51 fix: explicit lockDuration
+      maxStalledCount: MAX_STALLED_COUNT,
       concurrency: 5, // DLQ processing is lightweight, can handle more concurrent jobs
-      maxStalledCount: 2,
     },
   );
 

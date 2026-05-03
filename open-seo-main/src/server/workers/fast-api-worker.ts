@@ -28,6 +28,10 @@ import {
 } from "@/server/lib/crawler/singleflight";
 import { deltaCascade, type DeltaResult } from "@/server/lib/crawler/delta-cascade";
 import { DeltaSyncService } from "@/server/lib/crawler/delta-sync";
+import { recordQueueCompletion } from "@/server/lib/metrics/crawl-metrics";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "fast-api-worker" });
 
 /**
  * Result of fast API job processing.
@@ -285,36 +289,40 @@ let isShuttingDown = false;
  */
 export async function shutdownFastApiWorker(timeoutMs: number = 30_000): Promise<void> {
   if (isShuttingDown) {
-    console.log("[fast-api-worker] Already shutting down");
+    log.info("Already shutting down");
     return;
   }
 
   isShuttingDown = true;
-  console.log("[fast-api-worker] Initiating graceful shutdown...");
+  log.info("Initiating graceful shutdown...");
 
   try {
     // Close worker, waiting for active jobs to complete
     await fastApiWorker.close();
-    console.log("[fast-api-worker] Worker closed successfully");
+    log.info("Worker closed successfully");
   } catch (error) {
-    console.error("[fast-api-worker] Error during shutdown:", error);
+    log.error("Error during shutdown", error instanceof Error ? error : new Error(String(error)));
   }
 }
 
 // Register shutdown handlers
 process.on("SIGTERM", () => {
-  console.log("[fast-api-worker] Received SIGTERM");
-  shutdownFastApiWorker().catch(console.error);
+  log.info("Received SIGTERM");
+  shutdownFastApiWorker().catch((err) => log.error("Shutdown error", err instanceof Error ? err : new Error(String(err))));
 });
 
 process.on("SIGINT", () => {
-  console.log("[fast-api-worker] Received SIGINT");
-  shutdownFastApiWorker().catch(console.error);
+  log.info("Received SIGINT");
+  shutdownFastApiWorker().catch((err) => log.error("Shutdown error", err instanceof Error ? err : new Error(String(err))));
 });
 
 // Worker event handlers for observability
 fastApiWorker.on("completed", (job, result) => {
-  console.log(`[fast-api-worker] Job ${job.id} completed:`, {
+  // M64-02 Fix: Record queue completion metric
+  recordQueueCompletion("fastApi");
+
+  log.info("Job completed", {
+    jobId: job.id,
     type: job.data.type,
     status: result.status,
     durationMs: result.durationMs,
@@ -324,12 +332,12 @@ fastApiWorker.on("completed", (job, result) => {
 });
 
 fastApiWorker.on("failed", (job, error) => {
-  console.error(`[fast-api-worker] Job ${job?.id} failed:`, {
+  log.error("Job failed", error, {
+    jobId: job?.id,
     type: job?.data.type,
-    error: error.message,
   });
 });
 
 fastApiWorker.on("error", (error) => {
-  console.error("[fast-api-worker] Worker error:", error);
+  log.error("Worker error", error);
 });

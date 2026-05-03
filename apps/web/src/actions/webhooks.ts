@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -52,6 +53,7 @@ const createWebhookSchema = z.object({
 
 const updateWebhookSchema = z.object({
   webhookId: webhookIdSchema,
+  expectedVersion: z.number().int().min(0).optional(), // Optimistic locking version
   params: z.object({
     name: z.string().min(1).max(100, "Name too long").optional(),
     url: webhookUrlSchema.optional(),
@@ -111,7 +113,7 @@ export async function getClientWebhooks(clientId: string): Promise<ActionResult<
     );
     return { success: true, data };
   } catch (error) {
-    console.error("[getClientWebhooks] Failed:", error);
+    logger.error("[getClientWebhooks] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch webhooks" };
   }
 }
@@ -119,6 +121,10 @@ export async function getClientWebhooks(clientId: string): Promise<ActionResult<
 /**
  * Get webhook by ID with optional deliveries.
  * Validates client ownership if webhook is client-scoped.
+ *
+ * IDOR FIX: Backend must enforce ownership atomically in the query by accepting
+ * userId and only returning webhooks that belong to clients the user owns.
+ * The frontend passes auth context to enable backend-side ownership validation.
  */
 export async function getWebhook(
   webhookId: string,
@@ -132,19 +138,26 @@ export async function getWebhook(
 
   try {
     const auth = await requireActionAuth();
-    const query = includeDeliveries ? "?deliveries=true" : "";
+
+    // IDOR FIX: Pass userId to backend for atomic ownership validation in the query.
+    // Backend should JOIN with client ownership and return 404 if not owned.
+    const query = new URLSearchParams();
+    if (includeDeliveries) query.set("deliveries", "true");
+    query.set("userId", auth.userId);
+
     const webhook = await getOpenSeo<Webhook & { deliveries?: WebhookDelivery[] }>(
-      `/api/webhooks/${validated}${query}`
+      `/api/webhooks/${validated}?${query.toString()}`
     );
 
-    // Validate ownership for client-scoped webhooks
+    // Secondary validation: ensure client-scoped webhooks are owned by user.
+    // This is defense-in-depth; backend should enforce atomically.
     if (webhook.scope === "client" && webhook.scopeId) {
       await validateClientOwnership(webhook.scopeId, auth);
     }
 
     return { success: true, data: webhook };
   } catch (error) {
-    console.error("[getWebhook] Failed:", error);
+    logger.error("[getWebhook] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch webhook" };
   }
 }
@@ -161,7 +174,7 @@ export async function getEventRegistry(): Promise<ActionResult<{
     const data = await getOpenSeo<{ events: WebhookEvent[]; categories: string[] }>("/api/webhooks?events=true");
     return { success: true, data };
   } catch (error) {
-    console.error("[getEventRegistry] Failed:", error);
+    logger.error("[getEventRegistry] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch event registry" };
   }
 }
@@ -207,7 +220,7 @@ export async function createWebhook(params: {
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[createWebhook] Failed:", error);
+    logger.error("[createWebhook] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to create webhook" };
   }
 }
@@ -216,9 +229,12 @@ export async function createWebhook(params: {
  * Update a webhook.
  * Validates client ownership if webhook is client-scoped.
  *
- * TOCTOU FIX: Passes expectedScope and expectedScopeId to backend for atomic
- * ownership validation within the update query. This prevents race conditions
- * where ownership could change between the frontend check and backend mutation.
+ * TOCTOU FIX: Uses optimistic locking with expectedVersion parameter.
+ * Backend validates version in WHERE clause: UPDATE ... WHERE id = ? AND version = ?
+ * If version mismatch, backend returns 409 Conflict, preventing lost updates.
+ *
+ * Also passes expectedScope and expectedScopeId to backend for atomic
+ * ownership validation within the update query.
  */
 export async function updateWebhook(
   webhookId: string,
@@ -230,8 +246,9 @@ export async function updateWebhook(
     enabled?: boolean;
     regenerateSecret?: boolean;
   },
-): Promise<ActionResult<{ success: boolean; secret?: string }>> {
-  const parseResult = updateWebhookSchema.safeParse({ webhookId, params });
+  expectedVersion?: number,
+): Promise<ActionResult<{ success: boolean; secret?: string; newVersion?: number }>> {
+  const parseResult = updateWebhookSchema.safeParse({ webhookId, expectedVersion, params });
   if (!parseResult.success) {
     return { success: false, error: "Invalid webhook parameters" };
   }
@@ -243,22 +260,36 @@ export async function updateWebhook(
     // Rate limit: 20 updates per minute
     await rateLimitAction("webhook:update", auth.userId, WEBHOOK_RATE_LIMITS.update);
 
+    // IDOR FIX: Pass userId to backend for atomic ownership validation in the query.
+    const query = new URLSearchParams();
+    query.set("userId", auth.userId);
+
     // Fetch webhook first to validate ownership and get scope info
-    const webhook = await getOpenSeo<Webhook>(`/api/webhooks/${validated.webhookId}`);
+    const webhook = await getOpenSeo<Webhook & { version?: number }>(`/api/webhooks/${validated.webhookId}?${query.toString()}`);
     if (webhook.scope === "client" && webhook.scopeId) {
       await validateClientOwnership(webhook.scopeId, auth);
     }
 
-    // TOCTOU FIX: Pass scope info to backend for atomic ownership validation
-    const data = await patchOpenSeo<{ success: boolean; secret?: string }>(`/api/webhooks/${validated.webhookId}`, {
+    // Use version from webhook if not explicitly provided
+    const versionToUse = validated.expectedVersion ?? webhook.version;
+
+    // TOCTOU FIX: Pass version and scope info to backend for atomic validation
+    const data = await patchOpenSeo<{ success: boolean; secret?: string; newVersion?: number }>(`/api/webhooks/${validated.webhookId}`, {
       ...validated.params,
+      // Backend will validate version atomically in WHERE clause (optimistic locking)
+      expectedVersion: versionToUse,
       // Backend will validate these atomically in the WHERE clause
       expectedScope: webhook.scope,
       expectedScopeId: webhook.scopeId,
+      userId: auth.userId, // For atomic ownership check
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[updateWebhook] Failed:", error);
+    // Check for version conflict (409 Conflict from backend)
+    if (error instanceof Error && error.message.includes("409")) {
+      return { success: false, error: "Webhook was modified by another request. Please refresh and try again." };
+    }
+    logger.error("[updateWebhook] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to update webhook" };
   }
 }
@@ -303,7 +334,7 @@ export async function deleteWebhookAction(
     const data = await deleteOpenSeo<{ success: boolean }>(`/api/webhooks/${validated}?${queryParams.toString()}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[deleteWebhookAction] Failed:", error);
+    logger.error("[deleteWebhookAction] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to delete webhook" };
   }
 }
@@ -311,6 +342,9 @@ export async function deleteWebhookAction(
 /**
  * Get webhook deliveries.
  * Validates client ownership if webhook is client-scoped.
+ *
+ * IDOR FIX: Backend must enforce ownership atomically in the query by accepting
+ * userId and only returning webhooks that belong to clients the user owns.
  */
 export async function getWebhookDeliveries(
   webhookId: string,
@@ -323,18 +357,26 @@ export async function getWebhookDeliveries(
 
   try {
     const auth = await requireActionAuth();
+
+    // IDOR FIX: Pass userId to backend for atomic ownership validation in the query.
+    // Backend should JOIN with client ownership and return 404 if not owned.
+    const query = new URLSearchParams();
+    query.set("deliveries", "true");
+    query.set("userId", auth.userId);
+
     const result = await getOpenSeo<Webhook & { deliveries: WebhookDelivery[] }>(
-      `/api/webhooks/${validated}?deliveries=true`,
+      `/api/webhooks/${validated}?${query.toString()}`,
     );
 
-    // Validate ownership for client-scoped webhooks
+    // Secondary validation: ensure client-scoped webhooks are owned by user.
+    // This is defense-in-depth; backend should enforce atomically.
     if (result.scope === "client" && result.scopeId) {
       await validateClientOwnership(result.scopeId, auth);
     }
 
     return { success: true, data: result.deliveries ?? [] };
   } catch (error) {
-    console.error("[getWebhookDeliveries] Failed:", error);
+    logger.error("[getWebhookDeliveries] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch webhook deliveries" };
   }
 }

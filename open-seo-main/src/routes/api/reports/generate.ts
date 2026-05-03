@@ -61,7 +61,6 @@ const generateReportSchema = z.object({
   sections: z.array(sectionSchema).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/reports/generate")({
   server: {
     handlers: {

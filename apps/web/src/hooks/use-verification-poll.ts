@@ -55,6 +55,14 @@ const MAX_ATTEMPTS = 5;
 const POLL_TIMEOUT_MS = 30000;
 const API_BASE = "/api/connect/verify";
 
+/**
+ * PERF FIX (MEDIUM-03): Adaptive polling configuration with exponential backoff.
+ * Reduces unnecessary API calls when verification is taking time.
+ */
+const INITIAL_DELAY_MS = 2000;  // Start with 2s delay
+const MAX_DELAY_MS = 15000;     // Max 15s between polls
+const BACKOFF_MULTIPLIER = 1.5; // Increase delay by 50% each time
+
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -187,7 +195,19 @@ export function useVerificationPoll(
   );
 
   /**
-   * Main polling loop.
+   * PERF FIX (MEDIUM-03): Calculate next delay with exponential backoff.
+   * Reduces API calls when verification takes longer than expected.
+   */
+  const calculateBackoffDelay = useCallback((attemptNumber: number): number => {
+    // Exponential backoff with jitter to prevent thundering herd
+    const baseDelay = INITIAL_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, attemptNumber);
+    const jitter = baseDelay * 0.2 * (Math.random() - 0.5) * 2; // 20% jitter
+    return Math.min(Math.round(baseDelay + jitter), MAX_DELAY_MS);
+  }, []);
+
+  /**
+   * Main polling loop with exponential backoff.
+   * PERF FIX (MEDIUM-03): Uses adaptive delays instead of fixed intervals.
    */
   const poll = useCallback(async () => {
     if (!siteId) return;
@@ -206,9 +226,15 @@ export function useVerificationPoll(
         const shouldStop = processResponse(data, attempts);
         if (shouldStop) break;
 
-        // If timed out, increment attempts for next iteration
+        // If timed out, apply exponential backoff before next attempt
         if (data.timedOut) {
           attempts++;
+
+          // PERF FIX (MEDIUM-03): Wait with exponential backoff before next poll
+          if (isPollingRef.current && attempts < MAX_ATTEMPTS) {
+            const delay = calculateBackoffDelay(attempts);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
         }
       } catch (error) {
         // Abort errors are expected on cleanup
@@ -216,7 +242,14 @@ export function useVerificationPoll(
           break;
         }
 
-        // Network or other error
+        // Network or other error - apply backoff before retry
+        attempts++;
+        if (isPollingRef.current && attempts < MAX_ATTEMPTS) {
+          const delay = calculateBackoffDelay(attempts);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue; // Retry after backoff
+        }
+
         setState({
           status: "error",
           isPolling: false,
@@ -232,7 +265,7 @@ export function useVerificationPoll(
       isPollingRef.current = false;
       setState((prev) => ({ ...prev, isPolling: false }));
     }
-  }, [siteId, fetchStatus, processResponse]);
+  }, [siteId, fetchStatus, processResponse, calculateBackoffDelay]);
 
   /**
    * Start polling for verification.

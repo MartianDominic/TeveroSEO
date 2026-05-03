@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * Client Store - Client list and active client selection
+ *
+ * TODO [HIGH-42]: Migrate to TanStack Query for server state
+ * This store currently manages server state which should use React Query for:
+ * - Automatic caching and background refetching
+ * - Stale-while-revalidate patterns
+ * - Request deduplication
+ * - Built-in loading/error states
+ *
+ * Migration path:
+ * 1. Create useClients query hook for fetching client list
+ * 2. Keep activeClientId in persisted Zustand store (this is UI state)
+ * 3. Derive activeClient from query data + activeClientId
+ * 4. Replace fetchClients calls with query hook
+ * 5. Simplify this store to only manage activeClientId
+ *
+ * Note: The persist middleware for activeClientId is valid UI state
+ * and should remain in Zustand even after migration.
+ *
+ * See: https://tanstack.com/query/latest
+ */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Client } from "@tevero/types";

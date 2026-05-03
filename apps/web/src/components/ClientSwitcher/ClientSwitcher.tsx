@@ -52,12 +52,12 @@ export const ClientSwitcher: React.FC<ClientSwitcherProps> = ({
 
   const [open, setOpen] = useState(false);
 
+  // MEDIUM-03 FIX: Include all dependencies - fetchClients is stable from zustand
   useEffect(() => {
     if (isSignedIn && clients.length === 0) {
       fetchClients();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn]);
+  }, [isSignedIn, clients.length, fetchClients]);
 
   if (!isSignedIn) return null;
 

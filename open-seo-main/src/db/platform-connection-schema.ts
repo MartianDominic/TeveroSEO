@@ -11,6 +11,7 @@ import {
   timestamp,
   jsonb,
   index,
+  check,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { prospects } from "./prospect-schema";
@@ -128,9 +129,11 @@ export const platformConnections = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("idx_platform_connections_workspace_prospect").on(
@@ -139,6 +142,13 @@ export const platformConnections = pgTable(
     ),
     index("idx_platform_connections_status").on(table.status),
     index("idx_platform_connections_expiry").on(table.tokenExpiresAt),
+    // H-03: Platform type filter for dashboard
+    index("idx_platform_connections_platform").on(table.platform),
+    // H-05: Validate status enum at database level
+    check(
+      "chk_connection_status_valid",
+      sql`status IN ('pending', 'connecting', 'active', 'expired', 'revoked', 'error')`
+    ),
   ]
 );
 

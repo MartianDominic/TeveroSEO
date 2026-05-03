@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateWorkspaceMembership,
@@ -53,7 +54,7 @@ async function validateReassignmentPermission(
     const parsed = workspaceMembershipWithRoleSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[TeamMetrics] Invalid membership response shape:', parsed.error);
+      logger.error('[TeamMetrics] Invalid membership response shape', { error: parsed.error });
       throw new ActionAuthError('Invalid response from authorization service', 'FORBIDDEN');
     }
 
@@ -79,10 +80,7 @@ async function validateReassignmentPermission(
       throw new ActionAuthError('Permission verification timed out. Please try again.', 'FORBIDDEN');
     }
 
-    console.error(
-      `[ActionAuth] Failed to verify reassignment permission: workspaceId=${workspaceId}, userId=${authContext.userId}`,
-      error
-    );
+    logger.error(`[ActionAuth] Failed to verify reassignment permission: workspaceId=${workspaceId}, userId=${authContext.userId}`, error instanceof Error ? error : { error: String(error) });
     throw new ActionAuthError('Unable to verify permissions. Please try again.', 'FORBIDDEN');
   }
 }
@@ -270,7 +268,7 @@ export async function getTeamMetrics(
 
     return result;
   } catch (error) {
-    console.error("[getTeamMetrics] Failed to fetch team metrics:", error);
+    logger.error("[getTeamMetrics] Failed to fetch team metrics", error instanceof Error ? error : { error: String(error) });
     // Return empty result on error for graceful degradation
     return {
       totalCapacity: 0,

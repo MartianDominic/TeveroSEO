@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { logger } from '@/lib/logger';
 import {
   Card,
   CardContent,
@@ -38,7 +39,7 @@ export function SectionEditor({
         onUpdate(result.data);
       } else {
         // Show error via callback - parent handles toast
-        console.error("[SectionEditor] Regenerate failed:", result.error);
+        logger.error("[SectionEditor] Regenerate failed", { error: result.error });
         alert(result.error || "Failed to regenerate section");
       }
     });
@@ -52,7 +53,7 @@ export function SectionEditor({
         setIsEditing(false);
       } else {
         // Show error to user - don't exit edit mode on failure
-        console.error("[SectionEditor] Save failed:", result.error);
+        logger.error("[SectionEditor] Save failed", { error: result.error });
         alert(result.error || "Failed to save section");
       }
     });

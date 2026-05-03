@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff, CheckCircle, XCircle, Packa
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { logger } from '@/lib/logger';
 type AnyRoute = Parameters<typeof redirect>[0];
 
 import {
@@ -157,7 +158,7 @@ const ApiIntegrationsTab: React.FC = () => {
     apiGet<SecretStatus[]>("/api/platform-secrets/status")
       .then((data) => setSecrets(data))
       .catch((error) => {
-        console.error("[ApiIntegrationsTab] Failed to load secrets:", error);
+        logger.error("[ApiIntegrationsTab] Failed to load secrets", error instanceof Error ? error : { error: String(error) });
         setSecrets([]);
       })
       .finally(() => setLoading(false));
@@ -214,7 +215,7 @@ const ApiIntegrationsTab: React.FC = () => {
         loadSecrets();
         setTimeout(() => handleVerify(keyName), 500);
       } catch (error) {
-        console.error("[ApiIntegrationsTab] Failed to save secret:", error);
+        logger.error("[ApiIntegrationsTab] Failed to save secret", error instanceof Error ? error : { error: String(error) });
         setSaveError("Failed to save. Please try again.");
       } finally {
         setSaving(false);
@@ -235,7 +236,7 @@ const ApiIntegrationsTab: React.FC = () => {
         });
         loadSecrets();
       } catch (err) {
-        console.error("Failed to delete secret:", err);
+        logger.error("Failed to delete secret", err instanceof Error ? err : { error: String(err) });
       }
     },
     [loadSecrets]
@@ -524,7 +525,7 @@ const VoiceTemplatesTab: React.FC = () => {
     apiGet<VoiceTemplate[]>("/api/voice-templates")
       .then((data) => setTemplates(data))
       .catch((error) => {
-        console.error("[VoiceTemplatesTab] Failed to load templates:", error);
+        logger.error("[VoiceTemplatesTab] Failed to load templates", error instanceof Error ? error : { error: String(error) });
         setTemplates([]);
       })
       .finally(() => setTemplatesLoading(false));
@@ -552,7 +553,7 @@ const VoiceTemplatesTab: React.FC = () => {
       loadTemplates();
       showToast("Voice template created.");
     } catch (error) {
-      console.error("[VoiceTemplatesTab] Failed to create template:", error);
+      logger.error("[VoiceTemplatesTab] Failed to create template", error instanceof Error ? error : { error: String(error) });
       setFormError("Failed to create template. Please try again.");
     } finally {
       setFormSaving(false);
@@ -587,7 +588,7 @@ const VoiceTemplatesTab: React.FC = () => {
       loadTemplates();
       showToast("Voice template updated.");
     } catch (error) {
-      console.error("[VoiceTemplatesTab] Failed to update template:", error);
+      logger.error("[VoiceTemplatesTab] Failed to update template", error instanceof Error ? error : { error: String(error) });
       setEditError("Failed to update template. Please try again.");
     } finally {
       setEditSaving(false);
@@ -602,7 +603,7 @@ const VoiceTemplatesTab: React.FC = () => {
         loadTemplates();
         showToast("Voice template deleted.");
       } catch (error) {
-        console.error("[VoiceTemplatesTab] Failed to delete template:", error);
+        logger.error("[VoiceTemplatesTab] Failed to delete template", error instanceof Error ? error : { error: String(error) });
         showToast("Failed to delete template.", "error");
       } finally {
         setDeletingId(null);
@@ -856,7 +857,7 @@ const ModelDefaultsTab: React.FC = () => {
     apiGet<GlobalSettings>("/api/settings/global")
       .then((data) => setSettings(data))
       .catch((err) => {
-        console.error("Failed to load global settings:", err);
+        logger.error("Failed to load global settings", err instanceof Error ? err : { error: String(err) });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -873,7 +874,7 @@ const ModelDefaultsTab: React.FC = () => {
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 3000);
     } catch (error) {
-      console.error("[ModelDefaultsTab] Failed to save model defaults:", error);
+      logger.error("[ModelDefaultsTab] Failed to save model defaults", error instanceof Error ? error : { error: String(error) });
       setSaveError("Failed to save model defaults. Please try again.");
     } finally {
       setSaving(false);

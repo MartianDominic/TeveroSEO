@@ -22,9 +22,11 @@ import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { VariableExtension } from "./extensions/VariableExtension";
 import type { VariableItem } from "./VariablePalette";
 
+import { logger } from '@/lib/logger';
 /**
  * Props for ProposalInlineEditor.
  */
@@ -158,7 +160,11 @@ export function ProposalInlineEditor({
     content,
     editable,
     onUpdate: ({ editor }) => {
-      onUpdate(editor.getHTML());
+      // SECURITY: Sanitize HTML before saving to prevent XSS
+      // TipTap does NOT auto-sanitize - malicious scripts via paste/img onerror can persist
+      const rawHtml = editor.getHTML();
+      const sanitizedHtml = sanitizeHtml(rawHtml);
+      onUpdate(sanitizedHtml);
     },
     onFocus: () => {
       onFocus?.();
@@ -214,7 +220,7 @@ export function ProposalInlineEditor({
           } catch (err) {
             // Log error for debugging - this is development-time logging only
             if (process.env.NODE_ENV === "development") {
-              console.error("[ProposalInlineEditor] Failed to parse variable data:", err);
+              logger.error("[ProposalInlineEditor] Failed to parse variable data", err instanceof Error ? err : { error: String(err) });
             }
           }
         }
@@ -244,12 +250,9 @@ export function ProposalInlineEditor({
     }
   }, [editor, editable]);
 
-  // Cleanup editor on unmount
-  useEffect(() => {
-    return () => {
-      editor?.destroy();
-    };
-  }, [editor]);
+  // HIGH-03 FIX: Removed manual editor.destroy() call
+  // The useEditor hook from @tiptap/react handles cleanup automatically on unmount.
+  // Calling destroy() manually causes double cleanup which can lead to errors.
 
   // Memoized character count
   const characterCount = useMemo(() => {
@@ -302,7 +305,10 @@ export function useProposalEditor(props: ProposalInlineEditorProps) {
     content: props.content,
     editable: props.editable ?? true,
     onUpdate: ({ editor }) => {
-      props.onUpdate(editor.getHTML());
+      // SECURITY: Sanitize HTML before saving to prevent XSS
+      const rawHtml = editor.getHTML();
+      const sanitizedHtml = sanitizeHtml(rawHtml);
+      props.onUpdate(sanitizedHtml);
     },
   });
 }

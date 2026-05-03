@@ -15,6 +15,7 @@ import {
   isNonEmptyString,
   isNonEmptyArray,
 } from './type-guards';
+import { logger } from '@/lib/logger';
 
 /**
  * API validation error with detailed context.

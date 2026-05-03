@@ -2,6 +2,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { sortBy } from "remeda";
+import { createLogger } from "./logger";
+
+const log = createLogger({ module: "r2-cache" });
 
 export const CACHE_TTL = {
   /** Related keyword research results */
@@ -139,7 +142,7 @@ export async function cleanupExpiredCacheFiles(): Promise<number> {
     }
   } catch (err) {
     // Log but don't throw - cleanup is best-effort
-    console.error("[r2-cache] Failed to cleanup expired files:", err);
+    log.error("Failed to cleanup expired files", err instanceof Error ? err : new Error(String(err)));
   }
 
   return cleaned;

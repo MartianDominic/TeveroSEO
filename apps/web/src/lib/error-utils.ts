@@ -6,6 +6,8 @@
  * database details, etc.)
  */
 
+import { logger } from '@/lib/logger';
+
 /**
  * Sanitize an error for safe client exposure.
  * In development, returns the actual error message for debugging.
@@ -26,16 +28,10 @@ export function sanitizeErrorForClient(error: unknown): string {
  * In production, this should integrate with error tracking (Sentry, etc.)
  */
 export function logError(context: string, error: unknown): void {
-  const errorDetails = {
-    context,
+  logger.error(`[${context}]`, {
     message: error instanceof Error ? error.message : 'Unknown error',
     stack: error instanceof Error ? error.stack : undefined,
-    timestamp: new Date().toISOString(),
-  };
-
-  // In production, send to error tracking service (Sentry, etc.)
-  // For now, use structured console.error
-  console.error(`[${context}]`, errorDetails);
+  });
 }
 
 /**

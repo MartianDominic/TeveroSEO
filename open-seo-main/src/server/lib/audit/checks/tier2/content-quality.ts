@@ -37,11 +37,16 @@ function countSyllables(word: string): number {
 
 /**
  * Extract plain text from HTML, excluding scripts and styles.
+ * Uses a cloned DOM to avoid mutating the shared Cheerio instance.
  */
 function extractText($: CheckContext["$"]): string {
-  // Remove scripts and styles
-  $("script, style, noscript").remove();
-  return $("body").text().replace(/\s+/g, " ").trim();
+  // Clone the DOM to avoid mutating the shared Cheerio instance
+  // This prevents side effects when multiple checks use the same $ object
+  const $clone = $.root().clone();
+  const $cloned = $.load($clone.html() ?? "");
+  // Remove scripts and styles from the clone
+  $cloned("script, style, noscript").remove();
+  return $cloned("body").text().replace(/\s+/g, " ").trim();
 }
 
 /**

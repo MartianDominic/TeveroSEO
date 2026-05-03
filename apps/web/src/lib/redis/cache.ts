@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { redis } from "./client";
 
+import { logger } from '@/lib/logger';
 // Namespace prefix for all cache keys - prevents collisions with other Redis users
 const CACHE_PREFIX = "tevero:cache:";
 
@@ -59,13 +60,13 @@ export async function cacheGet<T>(
     if (!result.success) {
       // Invalid cache data - delete and return null
       await redis.del(cacheKey);
-      console.warn(`[redis-cache] Invalid cache data for ${cacheKey}:`, result.error.message);
+      logger.warn(`[redis-cache] Invalid cache data for ${cacheKey}`, { detail: result.error.message });
       return null;
     }
 
     return result.data;
   } catch (error) {
-    console.error(`[redis-cache] Get error for ${cacheKey}:`, error);
+    logger.error(`[redis-cache] Get error for ${cacheKey}`, error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -91,7 +92,7 @@ export async function cacheGetUnsafe<T>(namespace: string, key: string): Promise
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch (error) {
-    console.error(`[redis-cache] Get error for ${cacheKey}:`, error);
+    logger.error(`[redis-cache] Get error for ${cacheKey}`, error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -126,7 +127,7 @@ export async function cacheSet<T>(
       await redis.expire(tagKey, ttl + 60);
     }
   } catch (error) {
-    console.error(`[redis-cache] Set error for ${cacheKey}:`, error);
+    logger.error(`[redis-cache] Set error for ${cacheKey}`, error instanceof Error ? error : { error: String(error) });
   }
 }
 
@@ -139,7 +140,7 @@ export async function cacheDelete(namespace: string, key: string): Promise<void>
   try {
     await redis.del(cacheKey);
   } catch (error) {
-    console.error(`[redis-cache] Delete error for ${cacheKey}:`, error);
+    logger.error(`[redis-cache] Delete error for ${cacheKey}`, error instanceof Error ? error : { error: String(error) });
   }
 }
 
@@ -158,7 +159,7 @@ export async function cacheInvalidateByTag(tag: string): Promise<number> {
     }
     return keys.length;
   } catch (error) {
-    console.error(`[redis-cache] Invalidate by tag error for ${tag}:`, error);
+    logger.error(`[redis-cache] Invalidate by tag error for ${tag}`, error instanceof Error ? error : { error: String(error) });
     return 0;
   }
 }
@@ -179,7 +180,7 @@ export async function cacheInvalidatePattern(pattern: string): Promise<number> {
     }
     return keys.length;
   } catch (error) {
-    console.error(`[redis-cache] Invalidate pattern error for ${pattern}:`, error);
+    logger.error(`[redis-cache] Invalidate pattern error for ${pattern}`, error instanceof Error ? error : { error: String(error) });
     return 0;
   }
 }

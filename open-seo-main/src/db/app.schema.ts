@@ -272,6 +272,8 @@ export const auditLighthouseResults = pgTable(
   },
   (table) => [
     index("audit_lighthouse_results_audit_id_idx").on(table.auditId),
-    // Index on pageId for FK lookups (added in migration 0032)
+    // HIGH-35: Index on pageId for FK lookups and page-based queries
+    // Fixes schema/migration drift - this index was documented but not created
+    index("idx_audit_lighthouse_results_page_id").on(table.pageId),
   ],
 );

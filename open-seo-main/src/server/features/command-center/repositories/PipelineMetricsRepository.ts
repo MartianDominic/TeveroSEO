@@ -45,30 +45,29 @@ export class PipelineMetricsRepository implements PipelineMetricsRepositoryInter
 
   /**
    * Upsert metrics for a workspace.
-   * Uses INSERT ON CONFLICT UPDATE to ensure single row per workspace.
+   * Uses true INSERT ON CONFLICT UPDATE to avoid race conditions (M-62-03).
    */
   async upsert(workspaceId: string, data: Partial<PipelineMetricsInsert>): Promise<void> {
-    const existing = await this.getByWorkspace(workspaceId);
+    const id = nanoid();
+    const now = new Date();
 
-    if (existing) {
-      // Update existing row
-      await this.dbClient
-        .update(pipelineMetrics)
-        .set({
-          ...data,
-          workspaceId,
-        })
-        .where(eq(pipelineMetrics.workspaceId, workspaceId));
-      log.debug("Updated pipeline metrics", { workspaceId });
-    } else {
-      // Insert new row
-      await this.dbClient.insert(pipelineMetrics).values({
-        id: nanoid(),
+    await this.dbClient
+      .insert(pipelineMetrics)
+      .values({
+        id,
         workspaceId,
         ...data,
+        computedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: pipelineMetrics.workspaceId,
+        set: {
+          ...data,
+          computedAt: now,
+        },
       });
-      log.debug("Created pipeline metrics", { workspaceId });
-    }
+
+    log.debug("Upserted pipeline metrics", { workspaceId });
   }
 
   /**

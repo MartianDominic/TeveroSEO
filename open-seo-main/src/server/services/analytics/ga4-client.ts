@@ -8,6 +8,7 @@
  * - GA4 expects property ID in format `properties/123456789`
  * - Store numeric ID in DB, format at call time
  */
+// @ts-ignore - googleapis is an optional dependency
 import { google } from "googleapis";
 
 export interface GA4DateMetrics {
@@ -140,7 +141,7 @@ export async function fetchGA4Metrics(
         },
       });
 
-      return (response.data.rows || []).map((row) => ({
+      return (response.data.rows || []).map((row: any) => ({
         date: row.dimensionValues![0].value!,
         sessions: parseInt(row.metricValues![0].value || "0", 10),
         users: parseInt(row.metricValues![1].value || "0", 10),

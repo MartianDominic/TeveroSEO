@@ -27,7 +27,6 @@ const confirmRequestSchema = z.object({
   }),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/prospects/confirm")({
   server: {
     handlers: {

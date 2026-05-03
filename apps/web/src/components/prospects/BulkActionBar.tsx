@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Badge } from "@tevero/ui";
 import { Search, Tag, Archive, Download, X, Loader2 } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 interface BulkActionBarProps {
   selectedIds: string[];
   onClearSelection: () => void;
@@ -35,7 +36,7 @@ export function BulkActionBar({
       onClearSelection();
       router.refresh();
     } catch (error) {
-      console.error("Bulk analyze failed:", error);
+      logger.error("Bulk analyze failed", error instanceof Error ? error : { error: String(error) });
     } finally {
       setAnalyzing(false);
     }
@@ -49,7 +50,7 @@ export function BulkActionBar({
       onClearSelection();
       router.refresh();
     } catch (error) {
-      console.error("Bulk archive failed:", error);
+      logger.error("Bulk archive failed", error instanceof Error ? error : { error: String(error) });
     } finally {
       setArchiving(false);
     }

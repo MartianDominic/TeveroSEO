@@ -16,6 +16,13 @@
  */
 
 import { FalkorDB, type Graph } from "falkordb";
+import { LRUCache } from "lru-cache";
+
+/** Maximum number of graph handles to cache (M-65-03) */
+const MAX_CACHED_GRAPHS = 1000;
+
+/** TTL for cached graph handles in milliseconds (1 hour) */
+const GRAPH_CACHE_TTL_MS = 60 * 60 * 1000;
 
 /**
  * Options for TenantGraphManager
@@ -99,10 +106,18 @@ function sanitizeTenantId(tenantId: string): string {
 export class TenantGraphManager {
   private options: TenantGraphManagerOptions;
   private db: Awaited<ReturnType<typeof FalkorDB.connect>> | null = null;
-  private graphs: Map<string, Graph> = new Map();
+  // M-65-03 fix: Use LRU cache instead of unbounded Map
+  private graphs: LRUCache<string, Graph>;
   private connected = false;
 
   constructor(options?: TenantGraphManagerOptions) {
+    // M-65-03 fix: Initialize LRU cache with max entries and TTL
+    this.graphs = new LRUCache<string, Graph>({
+      max: MAX_CACHED_GRAPHS,
+      ttl: GRAPH_CACHE_TTL_MS,
+      updateAgeOnGet: true,
+    });
+
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
     let parsedHost = "127.0.0.1";
     let parsedPort = 6379;

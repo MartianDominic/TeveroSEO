@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Card,
@@ -39,11 +40,11 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
         if (result.success) {
           setRules(result.data);
         } else {
-          console.error("Failed to fetch protection rules:", result.error);
+          logger.error("Failed to fetch protection rules", { error: result.error });
         }
       })
       .catch((err) => {
-        console.error("Failed to fetch protection rules:", err);
+        logger.error("Failed to fetch protection rules", err instanceof Error ? err : { error: String(err) });
       })
       .finally(() => setLoading(false));
   }, [clientId]);
@@ -61,7 +62,7 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
       setNewTarget("");
       setNewReason("");
     } catch (err) {
-      console.error("Failed to add protection rule:", err);
+      logger.error("Failed to add protection rule", err instanceof Error ? err : { error: String(err) });
     } finally {
       setAdding(false);
     }
@@ -73,7 +74,7 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
       await removeProtectionRule(clientId, ruleId);
       setRules(rules.filter((r) => r.id !== ruleId));
     } catch (err) {
-      console.error("Failed to delete protection rule:", err);
+      logger.error("Failed to delete protection rule", err instanceof Error ? err : { error: String(err) });
     } finally {
       setDeletingId(null);
     }

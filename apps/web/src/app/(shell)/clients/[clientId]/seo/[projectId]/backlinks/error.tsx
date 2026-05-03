@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function BacklinksError({
   error,
   reset,
@@ -18,7 +19,7 @@ export default function BacklinksError({
   const projectId = params?.projectId as string | undefined;
 
   useEffect(() => {
-    console.error('[BacklinksError]', {
+    logger.error('[BacklinksError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

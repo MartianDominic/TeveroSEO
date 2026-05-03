@@ -1,10 +1,12 @@
 'use client';
 
 import { Component, ReactNode } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { AlertTriangle, RefreshCw, Save, FileText } from 'lucide-react';
 import { Button } from '@tevero/ui';
 import { logError } from '@/lib/errors';
 
+import { logger } from '@/lib/logger';
 interface ArticleRecoveryData {
   title: string;
   keyword: string;
@@ -63,7 +65,20 @@ export class ArticleEditorErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to tracking service
+    // Capture error in Sentry with article context
+    Sentry.captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+        articleId: this.props.articleId || 'new',
+        clientId: this.props.clientId || 'unknown',
+      },
+      tags: {
+        errorBoundary: 'ArticleEditor',
+        articleId: this.props.articleId || 'new',
+      },
+    });
+
+    // Also log locally for debugging
     logError('ArticleEditorErrorBoundary', error, {
       componentStack: errorInfo.componentStack || 'unknown',
       articleId: this.props.articleId || 'new',
@@ -97,7 +112,7 @@ export class ArticleEditorErrorBoundary extends Component<Props, State> {
       }
     } catch (e) {
       // Recovery failed silently - localStorage might be corrupted or unavailable
-      console.warn('Failed to recover article data:', e);
+      logger.warn('Failed to recover article data:', { detail: e });
     }
   }
 
@@ -201,7 +216,7 @@ export function saveArticleRecoveryData(
     localStorage.setItem(key, JSON.stringify(recoveryData));
   } catch (e) {
     // Silently fail - localStorage might be full or unavailable
-    console.warn('Failed to save article recovery data:', e);
+    logger.warn('Failed to save article recovery data:', { detail: e });
   }
 }
 

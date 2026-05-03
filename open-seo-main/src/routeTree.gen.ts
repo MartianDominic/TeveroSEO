@@ -27,7 +27,6 @@ import { Route as ApiServicesIndexRouteImport } from './routes/api/services/inde
 import { Route as ApiSchedulesIndexRouteImport } from './routes/api/schedules/index'
 import { Route as ApiReportsIndexRouteImport } from './routes/api/reports/index'
 import { Route as ApiReportTemplatesIndexRouteImport } from './routes/api/report-templates/index'
-import { Route as ApiPlatformConnectionsIndexRouteImport } from './routes/api/platform-connections/index'
 import { Route as ApiGoalTemplatesIndexRouteImport } from './routes/api/goal-templates/index'
 import { Route as ApiConnectionsIndexRouteImport } from './routes/api/connections/index'
 import { Route as ApiChangesIndexRouteImport } from './routes/api/changes/index'
@@ -64,14 +63,9 @@ import { Route as ApiProspectsConfirmRouteImport } from './routes/api/prospects/
 import { Route as ApiProposalsTrackRouteImport } from './routes/api/proposals/track'
 import { Route as ApiProposalsStageRouteImport } from './routes/api/proposals/stage'
 import { Route as ApiProposalsAnalyticsRouteImport } from './routes/api/proposals/analytics'
-import { Route as ApiPlatformConnectionsIdRouteImport } from './routes/api/platform-connections/$id'
-import { Route as ApiPixelCollectRouteImport } from './routes/api/pixel/collect'
-import { Route as ApiPaymentsStatsRouteImport } from './routes/api/payments/stats'
-import { Route as ApiPaymentsInstallmentsRouteImport } from './routes/api/payments/installments'
 import { Route as ApiPatternsPatternIdRouteImport } from './routes/api/patterns/$patternId'
 import { Route as ApiOnboardingMagicLinkRouteImport } from './routes/api/onboarding/magic-link'
 import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onboarding/complete-item'
-import { Route as ApiMetricsCrawlRouteImport } from './routes/api/metrics/crawl'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
 import { Route as ApiGraphragStatusRouteImport } from './routes/api/graphrag/status'
@@ -79,10 +73,6 @@ import { Route as ApiGraphragQueryRouteImport } from './routes/api/graphrag/quer
 import { Route as ApiGraphragIngestRouteImport } from './routes/api/graphrag/ingest'
 import { Route as ApiCronAutomationsRouteImport } from './routes/api/cron/automations'
 import { Route as ApiConnectionsIdRouteImport } from './routes/api/connections/$id'
-import { Route as ApiConnectVerifyRouteImport } from './routes/api/connect/verify'
-import { Route as ApiConnectHandoffRouteImport } from './routes/api/connect/handoff'
-import { Route as ApiConnectDetectRouteImport } from './routes/api/connect/detect'
-import { Route as ApiCommandCenterMetricsRouteImport } from './routes/api/command-center/metrics'
 import { Route as ApiClerkWebhookRouteImport } from './routes/api/clerk/webhook'
 import { Route as ApiChangesChangeIdRouteImport } from './routes/api/changes/$changeId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
@@ -109,7 +99,6 @@ import { Route as ApiProspectsProspectIdScrapeConfigRouteImport } from './routes
 import { Route as ApiProspectsProspectIdReportRouteImport } from './routes/api/prospects/$prospectId.report'
 import { Route as ApiProposalsPublicTokenRouteImport } from './routes/api/proposals/public/$token'
 import { Route as ApiProposalsChar91idChar93VersionsRouteImport } from './routes/api/proposals/[id]/versions'
-import { Route as ApiProposalsChar91idChar93ServicesRouteImport } from './routes/api/proposals/[id]/services'
 import { Route as ApiProposalsChar91idChar93SendRouteImport } from './routes/api/proposals/[id]/send'
 import { Route as ApiProposalsChar91idChar93ResolveRouteImport } from './routes/api/proposals/[id]/resolve'
 import { Route as ApiProposalsChar91idChar93RejectRouteImport } from './routes/api/proposals/[id]/reject'
@@ -118,27 +107,12 @@ import { Route as ApiProposalsChar91idChar93GenerateRouteImport } from './routes
 import { Route as ApiProposalsChar91idChar93DuplicateRouteImport } from './routes/api/proposals/[id]/duplicate'
 import { Route as ApiProposalsChar91idChar93AcceptRouteImport } from './routes/api/proposals/[id]/accept'
 import { Route as ApiProposalsProposalIdDeclineRouteImport } from './routes/api/proposals/$proposalId.decline'
-import { Route as ApiPlatformConnectionsIdSyncRouteImport } from './routes/api/platform-connections/$id.sync'
-import { Route as ApiPixelTJsRouteImport } from './routes/api/pixel/t.js'
-import { Route as ApiPixelChar91siteIdChar93ScriptRouteImport } from './routes/api/pixel/[siteId]/script'
-import { Route as ApiPixelChar91siteIdChar93ChangesRouteImport } from './routes/api/pixel/[siteId]/changes'
-import { Route as ApiPixelChar91siteIdChar93AnalyticsRouteImport } from './routes/api/pixel/[siteId]/analytics'
-import { Route as ApiPixelConfigChar91siteIdChar93RouteImport } from './routes/api/pixel/config/[siteId]'
-import { Route as ApiPixelChangesChar91changeIdChar93RouteImport } from './routes/api/pixel/changes/[changeId]'
-import { Route as ApiPixelSiteIdStatusRouteImport } from './routes/api/pixel/$siteId.status'
-import { Route as ApiInvoicesIdScheduleRouteImport } from './routes/api/invoices/$id.schedule'
 import { Route as ApiInvoicesIdPayRouteImport } from './routes/api/invoices/$id.pay'
 import { Route as ApiInvoicesIdPaymentLinkRouteImport } from './routes/api/invoices/$id.-payment-link'
 import { Route as ApiInternalAnalyticsBackfillRouteImport } from './routes/api/internal/analytics/backfill'
 import { Route as ApiContractsIdStatusRouteImport } from './routes/api/contracts/$id.status'
 import { Route as ApiContractsContractIdSendRouteImport } from './routes/api/contracts/$contractId.-send'
 import { Route as ApiConnectionsIdVerifyRouteImport } from './routes/api/connections/$id.verify'
-import { Route as ApiConnectHandoffChar91tokenChar93RouteImport } from './routes/api/connect/handoff/[token]'
-import { Route as ApiConnectGuideChar91platformChar93RouteImport } from './routes/api/connect/guide/[platform]'
-import { Route as ApiCommandCenterActionsSnoozeRouteImport } from './routes/api/command-center/actions/snooze'
-import { Route as ApiCommandCenterActionsSendReminderRouteImport } from './routes/api/command-center/actions/send-reminder'
-import { Route as ApiCommandCenterActionsMarkLostRouteImport } from './routes/api/command-center/actions/mark-lost'
-import { Route as ApiCommandCenterActionsAddNoteRouteImport } from './routes/api/command-center/actions/add-note'
 import { Route as ApiClientsClientIdReportsRouteImport } from './routes/api/clients/$clientId.reports'
 import { Route as ApiClientsClientIdDropEventsRouteImport } from './routes/api/clients/$clientId.drop-events'
 import { Route as ApiClientsClientIdAlertsRouteImport } from './routes/api/clients/$clientId.alerts'
@@ -176,13 +150,7 @@ import { Route as ApiSeoBriefsGenerateBriefIdRouteImport } from './routes/api/se
 import { Route as ApiSeoBriefsAnalyzeSerpMappingIdRouteImport } from './routes/api/seo/briefs.analyze-serp.$mappingId'
 import { Route as ApiProspectsIdKeywordsPrioritizeRouteImport } from './routes/api/prospects/$id/keywords/prioritize'
 import { Route as ApiProspectsIdKeywordsImportRouteImport } from './routes/api/prospects/$id/keywords/import'
-import { Route as ApiProposalsChar91idChar93ServicesResolvedRouteImport } from './routes/api/proposals/[id]/services/resolved'
 import { Route as ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport } from './routes/api/proposals/[id]/sections/[sid]'
-import { Route as ApiPixelChar91siteIdChar93ChangesPendingRouteImport } from './routes/api/pixel/[siteId]/changes.pending'
-import { Route as ApiPixelChar91siteIdChar93ChangesHistoryRouteImport } from './routes/api/pixel/[siteId]/changes.history'
-import { Route as ApiPixelChar91siteIdChar93AnalyticsPagesRouteImport } from './routes/api/pixel/[siteId]/analytics.pages'
-import { Route as ApiPixelChar91siteIdChar93AnalyticsCwvRouteImport } from './routes/api/pixel/[siteId]/analytics.cwv'
-import { Route as ApiCommandCenterAlertsAlertIdDismissRouteImport } from './routes/api/command-center/alerts/$alertId.dismiss'
 import { Route as ApiClientsClientIdGscDailyRouteImport } from './routes/api/clients/$clientId/gsc.daily'
 import { Route as ApiClientsClientIdGoalsGoalIdRouteImport } from './routes/api/clients/$clientId/goals/$goalId'
 import { Route as ApiClientsClientIdAlertRulesRuleIdRouteImport } from './routes/api/clients/$clientId.alert-rules.$ruleId'
@@ -286,12 +254,6 @@ const ApiReportTemplatesIndexRoute = ApiReportTemplatesIndexRouteImport.update({
   path: '/api/report-templates/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPlatformConnectionsIndexRoute =
-  ApiPlatformConnectionsIndexRouteImport.update({
-    id: '/api/platform-connections/',
-    path: '/api/platform-connections/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiGoalTemplatesIndexRoute = ApiGoalTemplatesIndexRouteImport.update({
   id: '/api/goal-templates/',
   path: '/api/goal-templates/',
@@ -472,27 +434,6 @@ const ApiProposalsAnalyticsRoute = ApiProposalsAnalyticsRouteImport.update({
   path: '/api/proposals/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPlatformConnectionsIdRoute =
-  ApiPlatformConnectionsIdRouteImport.update({
-    id: '/api/platform-connections/$id',
-    path: '/api/platform-connections/$id',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelCollectRoute = ApiPixelCollectRouteImport.update({
-  id: '/api/pixel/collect',
-  path: '/api/pixel/collect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaymentsStatsRoute = ApiPaymentsStatsRouteImport.update({
-  id: '/api/payments/stats',
-  path: '/api/payments/stats',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPaymentsInstallmentsRoute = ApiPaymentsInstallmentsRouteImport.update({
-  id: '/api/payments/installments',
-  path: '/api/payments/installments',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPatternsPatternIdRoute = ApiPatternsPatternIdRouteImport.update({
   id: '/api/patterns/$patternId',
   path: '/api/patterns/$patternId',
@@ -509,11 +450,6 @@ const ApiOnboardingCompleteItemRoute =
     path: '/api/onboarding/complete-item',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiMetricsCrawlRoute = ApiMetricsCrawlRouteImport.update({
-  id: '/api/metrics/crawl',
-  path: '/api/metrics/crawl',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiKeywordsQuickCheckRoute = ApiKeywordsQuickCheckRouteImport.update({
   id: '/api/keywords/quick-check',
   path: '/api/keywords/quick-check',
@@ -548,26 +484,6 @@ const ApiCronAutomationsRoute = ApiCronAutomationsRouteImport.update({
 const ApiConnectionsIdRoute = ApiConnectionsIdRouteImport.update({
   id: '/api/connections/$id',
   path: '/api/connections/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiConnectVerifyRoute = ApiConnectVerifyRouteImport.update({
-  id: '/api/connect/verify',
-  path: '/api/connect/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiConnectHandoffRoute = ApiConnectHandoffRouteImport.update({
-  id: '/api/connect/handoff',
-  path: '/api/connect/handoff',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiConnectDetectRoute = ApiConnectDetectRouteImport.update({
-  id: '/api/connect/detect',
-  path: '/api/connect/detect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCommandCenterMetricsRoute = ApiCommandCenterMetricsRouteImport.update({
-  id: '/api/command-center/metrics',
-  path: '/api/command-center/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiClerkWebhookRoute = ApiClerkWebhookRouteImport.update({
@@ -710,12 +626,6 @@ const ApiProposalsChar91idChar93VersionsRoute =
     path: '/api/proposals/id/versions',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiProposalsChar91idChar93ServicesRoute =
-  ApiProposalsChar91idChar93ServicesRouteImport.update({
-    id: '/api/proposals/id/services',
-    path: '/api/proposals/id/services',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiProposalsChar91idChar93SendRoute =
   ApiProposalsChar91idChar93SendRouteImport.update({
     id: '/api/proposals/id/send',
@@ -764,57 +674,6 @@ const ApiProposalsProposalIdDeclineRoute =
     path: '/api/proposals/$proposalId/decline',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPlatformConnectionsIdSyncRoute =
-  ApiPlatformConnectionsIdSyncRouteImport.update({
-    id: '/sync',
-    path: '/sync',
-    getParentRoute: () => ApiPlatformConnectionsIdRoute,
-  } as any)
-const ApiPixelTJsRoute = ApiPixelTJsRouteImport.update({
-  id: '/api/pixel/t/js',
-  path: '/api/pixel/t/js',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPixelChar91siteIdChar93ScriptRoute =
-  ApiPixelChar91siteIdChar93ScriptRouteImport.update({
-    id: '/api/pixel/siteId/script',
-    path: '/api/pixel/siteId/script',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelChar91siteIdChar93ChangesRoute =
-  ApiPixelChar91siteIdChar93ChangesRouteImport.update({
-    id: '/api/pixel/siteId/changes',
-    path: '/api/pixel/siteId/changes',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelChar91siteIdChar93AnalyticsRoute =
-  ApiPixelChar91siteIdChar93AnalyticsRouteImport.update({
-    id: '/api/pixel/siteId/analytics',
-    path: '/api/pixel/siteId/analytics',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelConfigChar91siteIdChar93Route =
-  ApiPixelConfigChar91siteIdChar93RouteImport.update({
-    id: '/api/pixel/config/siteId',
-    path: '/api/pixel/config/siteId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelChangesChar91changeIdChar93Route =
-  ApiPixelChangesChar91changeIdChar93RouteImport.update({
-    id: '/api/pixel/changes/changeId',
-    path: '/api/pixel/changes/changeId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelSiteIdStatusRoute = ApiPixelSiteIdStatusRouteImport.update({
-  id: '/api/pixel/$siteId/status',
-  path: '/api/pixel/$siteId/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInvoicesIdScheduleRoute = ApiInvoicesIdScheduleRouteImport.update({
-  id: '/api/invoices/$id/schedule',
-  path: '/api/invoices/$id/schedule',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiInvoicesIdPayRoute = ApiInvoicesIdPayRouteImport.update({
   id: '/api/invoices/$id/pay',
   path: '/api/invoices/$id/pay',
@@ -848,42 +707,6 @@ const ApiConnectionsIdVerifyRoute = ApiConnectionsIdVerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => ApiConnectionsIdRoute,
 } as any)
-const ApiConnectHandoffChar91tokenChar93Route =
-  ApiConnectHandoffChar91tokenChar93RouteImport.update({
-    id: '/token',
-    path: '/token',
-    getParentRoute: () => ApiConnectHandoffRoute,
-  } as any)
-const ApiConnectGuideChar91platformChar93Route =
-  ApiConnectGuideChar91platformChar93RouteImport.update({
-    id: '/api/connect/guide/platform',
-    path: '/api/connect/guide/platform',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCommandCenterActionsSnoozeRoute =
-  ApiCommandCenterActionsSnoozeRouteImport.update({
-    id: '/api/command-center/actions/snooze',
-    path: '/api/command-center/actions/snooze',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCommandCenterActionsSendReminderRoute =
-  ApiCommandCenterActionsSendReminderRouteImport.update({
-    id: '/api/command-center/actions/send-reminder',
-    path: '/api/command-center/actions/send-reminder',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCommandCenterActionsMarkLostRoute =
-  ApiCommandCenterActionsMarkLostRouteImport.update({
-    id: '/api/command-center/actions/mark-lost',
-    path: '/api/command-center/actions/mark-lost',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCommandCenterActionsAddNoteRoute =
-  ApiCommandCenterActionsAddNoteRouteImport.update({
-    id: '/api/command-center/actions/add-note',
-    path: '/api/command-center/actions/add-note',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiClientsClientIdReportsRoute =
   ApiClientsClientIdReportsRouteImport.update({
     id: '/api/clients/$clientId/reports',
@@ -1099,46 +922,10 @@ const ApiProspectsIdKeywordsImportRoute =
     path: '/api/prospects/$id/keywords/import',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiProposalsChar91idChar93ServicesResolvedRoute =
-  ApiProposalsChar91idChar93ServicesResolvedRouteImport.update({
-    id: '/resolved',
-    path: '/resolved',
-    getParentRoute: () => ApiProposalsChar91idChar93ServicesRoute,
-  } as any)
 const ApiProposalsChar91idChar93SectionsChar91sidChar93Route =
   ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport.update({
     id: '/api/proposals/id/sections/sid',
     path: '/api/proposals/id/sections/sid',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPixelChar91siteIdChar93ChangesPendingRoute =
-  ApiPixelChar91siteIdChar93ChangesPendingRouteImport.update({
-    id: '/pending',
-    path: '/pending',
-    getParentRoute: () => ApiPixelChar91siteIdChar93ChangesRoute,
-  } as any)
-const ApiPixelChar91siteIdChar93ChangesHistoryRoute =
-  ApiPixelChar91siteIdChar93ChangesHistoryRouteImport.update({
-    id: '/history',
-    path: '/history',
-    getParentRoute: () => ApiPixelChar91siteIdChar93ChangesRoute,
-  } as any)
-const ApiPixelChar91siteIdChar93AnalyticsPagesRoute =
-  ApiPixelChar91siteIdChar93AnalyticsPagesRouteImport.update({
-    id: '/pages',
-    path: '/pages',
-    getParentRoute: () => ApiPixelChar91siteIdChar93AnalyticsRoute,
-  } as any)
-const ApiPixelChar91siteIdChar93AnalyticsCwvRoute =
-  ApiPixelChar91siteIdChar93AnalyticsCwvRouteImport.update({
-    id: '/cwv',
-    path: '/cwv',
-    getParentRoute: () => ApiPixelChar91siteIdChar93AnalyticsRoute,
-  } as any)
-const ApiCommandCenterAlertsAlertIdDismissRoute =
-  ApiCommandCenterAlertsAlertIdDismissRouteImport.update({
-    id: '/api/command-center/alerts/$alertId/dismiss',
-    path: '/api/command-center/alerts/$alertId/dismiss',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiClientsClientIdGscDailyRoute =
@@ -1251,10 +1038,6 @@ export interface FileRoutesByFullPath {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
-  '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
-  '/api/connect/detect': typeof ApiConnectDetectRoute
-  '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
-  '/api/connect/verify': typeof ApiConnectVerifyRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
@@ -1262,14 +1045,9 @@ export interface FileRoutesByFullPath {
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
-  '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
-  '/api/pixel/collect': typeof ApiPixelCollectRoute
-  '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1306,7 +1084,6 @@ export interface FileRoutesByFullPath {
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
-  '/api/platform-connections/': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
   '/api/schedules/': typeof ApiSchedulesIndexRoute
@@ -1327,27 +1104,12 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
-  '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
-  '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
-  '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
-  '/api/command-center/actions/snooze': typeof ApiCommandCenterActionsSnoozeRoute
-  '/api/connect/guide/platform': typeof ApiConnectGuideChar91platformChar93Route
-  '/api/connect/handoff/token': typeof ApiConnectHandoffChar91tokenChar93Route
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
   '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
   '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
-  '/api/pixel/$siteId/status': typeof ApiPixelSiteIdStatusRoute
-  '/api/pixel/changes/changeId': typeof ApiPixelChangesChar91changeIdChar93Route
-  '/api/pixel/config/siteId': typeof ApiPixelConfigChar91siteIdChar93Route
-  '/api/pixel/siteId/analytics': typeof ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren
-  '/api/pixel/siteId/changes': typeof ApiPixelChar91siteIdChar93ChangesRouteWithChildren
-  '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
-  '/api/pixel/t/js': typeof ApiPixelTJsRoute
-  '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1356,7 +1118,6 @@ export interface FileRoutesByFullPath {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1382,13 +1143,7 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
-  '/api/command-center/alerts/$alertId/dismiss': typeof ApiCommandCenterAlertsAlertIdDismissRoute
-  '/api/pixel/siteId/analytics/cwv': typeof ApiPixelChar91siteIdChar93AnalyticsCwvRoute
-  '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
-  '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
-  '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1438,10 +1193,6 @@ export interface FileRoutesByTo {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
-  '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
-  '/api/connect/detect': typeof ApiConnectDetectRoute
-  '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
-  '/api/connect/verify': typeof ApiConnectVerifyRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
@@ -1449,14 +1200,9 @@ export interface FileRoutesByTo {
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
-  '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
-  '/api/pixel/collect': typeof ApiPixelCollectRoute
-  '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1493,7 +1239,6 @@ export interface FileRoutesByTo {
   '/api/changes': typeof ApiChangesIndexRoute
   '/api/connections': typeof ApiConnectionsIndexRoute
   '/api/goal-templates': typeof ApiGoalTemplatesIndexRoute
-  '/api/platform-connections': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates': typeof ApiReportTemplatesIndexRoute
   '/api/reports': typeof ApiReportsIndexRoute
   '/api/schedules': typeof ApiSchedulesIndexRoute
@@ -1512,27 +1257,12 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
-  '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
-  '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
-  '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
-  '/api/command-center/actions/snooze': typeof ApiCommandCenterActionsSnoozeRoute
-  '/api/connect/guide/platform': typeof ApiConnectGuideChar91platformChar93Route
-  '/api/connect/handoff/token': typeof ApiConnectHandoffChar91tokenChar93Route
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
   '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
   '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
-  '/api/pixel/$siteId/status': typeof ApiPixelSiteIdStatusRoute
-  '/api/pixel/changes/changeId': typeof ApiPixelChangesChar91changeIdChar93Route
-  '/api/pixel/config/siteId': typeof ApiPixelConfigChar91siteIdChar93Route
-  '/api/pixel/siteId/analytics': typeof ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren
-  '/api/pixel/siteId/changes': typeof ApiPixelChar91siteIdChar93ChangesRouteWithChildren
-  '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
-  '/api/pixel/t/js': typeof ApiPixelTJsRoute
-  '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1541,7 +1271,6 @@ export interface FileRoutesByTo {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1567,13 +1296,7 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
-  '/api/command-center/alerts/$alertId/dismiss': typeof ApiCommandCenterAlertsAlertIdDismissRoute
-  '/api/pixel/siteId/analytics/cwv': typeof ApiPixelChar91siteIdChar93AnalyticsCwvRoute
-  '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
-  '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
-  '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1628,10 +1351,6 @@ export interface FileRoutesById {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
-  '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
-  '/api/connect/detect': typeof ApiConnectDetectRoute
-  '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
-  '/api/connect/verify': typeof ApiConnectVerifyRoute
   '/api/connections/$id': typeof ApiConnectionsIdRouteWithChildren
   '/api/cron/automations': typeof ApiCronAutomationsRoute
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
@@ -1639,14 +1358,9 @@ export interface FileRoutesById {
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
-  '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
   '/api/onboarding/magic-link': typeof ApiOnboardingMagicLinkRoute
   '/api/patterns/$patternId': typeof ApiPatternsPatternIdRoute
-  '/api/payments/installments': typeof ApiPaymentsInstallmentsRoute
-  '/api/payments/stats': typeof ApiPaymentsStatsRoute
-  '/api/pixel/collect': typeof ApiPixelCollectRoute
-  '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1683,7 +1397,6 @@ export interface FileRoutesById {
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
-  '/api/platform-connections/': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
   '/api/schedules/': typeof ApiSchedulesIndexRoute
@@ -1704,27 +1417,12 @@ export interface FileRoutesById {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
-  '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
-  '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
-  '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
-  '/api/command-center/actions/snooze': typeof ApiCommandCenterActionsSnoozeRoute
-  '/api/connect/guide/platform': typeof ApiConnectGuideChar91platformChar93Route
-  '/api/connect/handoff/token': typeof ApiConnectHandoffChar91tokenChar93Route
   '/api/connections/$id/verify': typeof ApiConnectionsIdVerifyRoute
   '/api/contracts/$contractId/-send': typeof ApiContractsContractIdSendRoute
   '/api/contracts/$id/status': typeof ApiContractsIdStatusRoute
   '/api/internal/analytics/backfill': typeof ApiInternalAnalyticsBackfillRoute
   '/api/invoices/$id/-payment-link': typeof ApiInvoicesIdPaymentLinkRoute
   '/api/invoices/$id/pay': typeof ApiInvoicesIdPayRoute
-  '/api/invoices/$id/schedule': typeof ApiInvoicesIdScheduleRoute
-  '/api/pixel/$siteId/status': typeof ApiPixelSiteIdStatusRoute
-  '/api/pixel/changes/changeId': typeof ApiPixelChangesChar91changeIdChar93Route
-  '/api/pixel/config/siteId': typeof ApiPixelConfigChar91siteIdChar93Route
-  '/api/pixel/siteId/analytics': typeof ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren
-  '/api/pixel/siteId/changes': typeof ApiPixelChar91siteIdChar93ChangesRouteWithChildren
-  '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
-  '/api/pixel/t/js': typeof ApiPixelTJsRoute
-  '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1733,7 +1431,6 @@ export interface FileRoutesById {
   '/api/proposals/id/reject': typeof ApiProposalsChar91idChar93RejectRoute
   '/api/proposals/id/resolve': typeof ApiProposalsChar91idChar93ResolveRoute
   '/api/proposals/id/send': typeof ApiProposalsChar91idChar93SendRoute
-  '/api/proposals/id/services': typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   '/api/proposals/id/versions': typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   '/api/proposals/public/$token': typeof ApiProposalsPublicTokenRoute
   '/api/prospects/$prospectId/report': typeof ApiProspectsProspectIdReportRoute
@@ -1759,13 +1456,7 @@ export interface FileRoutesById {
   '/api/clients/$clientId/alert-rules/$ruleId': typeof ApiClientsClientIdAlertRulesRuleIdRoute
   '/api/clients/$clientId/goals/$goalId': typeof ApiClientsClientIdGoalsGoalIdRoute
   '/api/clients/$clientId/gsc/daily': typeof ApiClientsClientIdGscDailyRoute
-  '/api/command-center/alerts/$alertId/dismiss': typeof ApiCommandCenterAlertsAlertIdDismissRoute
-  '/api/pixel/siteId/analytics/cwv': typeof ApiPixelChar91siteIdChar93AnalyticsCwvRoute
-  '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
-  '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
-  '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
-  '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
   '/api/prospects/$id/keywords/prioritize': typeof ApiProspectsIdKeywordsPrioritizeRoute
   '/api/seo/briefs/analyze-serp/$mappingId': typeof ApiSeoBriefsAnalyzeSerpMappingIdRoute
@@ -1818,10 +1509,6 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
-    | '/api/command-center/metrics'
-    | '/api/connect/detect'
-    | '/api/connect/handoff'
-    | '/api/connect/verify'
     | '/api/connections/$id'
     | '/api/cron/automations'
     | '/api/graphrag/ingest'
@@ -1829,14 +1516,9 @@ export interface FileRouteTypes {
     | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
-    | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
-    | '/api/pixel/collect'
-    | '/api/platform-connections/$id'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -1873,7 +1555,6 @@ export interface FileRouteTypes {
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
-    | '/api/platform-connections/'
     | '/api/report-templates/'
     | '/api/reports/'
     | '/api/schedules/'
@@ -1894,27 +1575,12 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
-    | '/api/command-center/actions/add-note'
-    | '/api/command-center/actions/mark-lost'
-    | '/api/command-center/actions/send-reminder'
-    | '/api/command-center/actions/snooze'
-    | '/api/connect/guide/platform'
-    | '/api/connect/handoff/token'
     | '/api/connections/$id/verify'
     | '/api/contracts/$contractId/-send'
     | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
-    | '/api/pixel/$siteId/status'
-    | '/api/pixel/changes/changeId'
-    | '/api/pixel/config/siteId'
-    | '/api/pixel/siteId/analytics'
-    | '/api/pixel/siteId/changes'
-    | '/api/pixel/siteId/script'
-    | '/api/pixel/t/js'
-    | '/api/platform-connections/$id/sync'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -1923,7 +1589,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -1949,13 +1614,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
-    | '/api/command-center/alerts/$alertId/dismiss'
-    | '/api/pixel/siteId/analytics/cwv'
-    | '/api/pixel/siteId/analytics/pages'
-    | '/api/pixel/siteId/changes/history'
-    | '/api/pixel/siteId/changes/pending'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -2005,10 +1664,6 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
-    | '/api/command-center/metrics'
-    | '/api/connect/detect'
-    | '/api/connect/handoff'
-    | '/api/connect/verify'
     | '/api/connections/$id'
     | '/api/cron/automations'
     | '/api/graphrag/ingest'
@@ -2016,14 +1671,9 @@ export interface FileRouteTypes {
     | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
-    | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
-    | '/api/pixel/collect'
-    | '/api/platform-connections/$id'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -2060,7 +1710,6 @@ export interface FileRouteTypes {
     | '/api/changes'
     | '/api/connections'
     | '/api/goal-templates'
-    | '/api/platform-connections'
     | '/api/report-templates'
     | '/api/reports'
     | '/api/schedules'
@@ -2079,27 +1728,12 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
-    | '/api/command-center/actions/add-note'
-    | '/api/command-center/actions/mark-lost'
-    | '/api/command-center/actions/send-reminder'
-    | '/api/command-center/actions/snooze'
-    | '/api/connect/guide/platform'
-    | '/api/connect/handoff/token'
     | '/api/connections/$id/verify'
     | '/api/contracts/$contractId/-send'
     | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
-    | '/api/pixel/$siteId/status'
-    | '/api/pixel/changes/changeId'
-    | '/api/pixel/config/siteId'
-    | '/api/pixel/siteId/analytics'
-    | '/api/pixel/siteId/changes'
-    | '/api/pixel/siteId/script'
-    | '/api/pixel/t/js'
-    | '/api/platform-connections/$id/sync'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -2108,7 +1742,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -2134,13 +1767,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
-    | '/api/command-center/alerts/$alertId/dismiss'
-    | '/api/pixel/siteId/analytics/cwv'
-    | '/api/pixel/siteId/analytics/pages'
-    | '/api/pixel/siteId/changes/history'
-    | '/api/pixel/siteId/changes/pending'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -2194,10 +1821,6 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
-    | '/api/command-center/metrics'
-    | '/api/connect/detect'
-    | '/api/connect/handoff'
-    | '/api/connect/verify'
     | '/api/connections/$id'
     | '/api/cron/automations'
     | '/api/graphrag/ingest'
@@ -2205,14 +1828,9 @@ export interface FileRouteTypes {
     | '/api/graphrag/status'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
-    | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
     | '/api/onboarding/magic-link'
     | '/api/patterns/$patternId'
-    | '/api/payments/installments'
-    | '/api/payments/stats'
-    | '/api/pixel/collect'
-    | '/api/platform-connections/$id'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -2249,7 +1867,6 @@ export interface FileRouteTypes {
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
-    | '/api/platform-connections/'
     | '/api/report-templates/'
     | '/api/reports/'
     | '/api/schedules/'
@@ -2270,27 +1887,12 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
-    | '/api/command-center/actions/add-note'
-    | '/api/command-center/actions/mark-lost'
-    | '/api/command-center/actions/send-reminder'
-    | '/api/command-center/actions/snooze'
-    | '/api/connect/guide/platform'
-    | '/api/connect/handoff/token'
     | '/api/connections/$id/verify'
     | '/api/contracts/$contractId/-send'
     | '/api/contracts/$id/status'
     | '/api/internal/analytics/backfill'
     | '/api/invoices/$id/-payment-link'
     | '/api/invoices/$id/pay'
-    | '/api/invoices/$id/schedule'
-    | '/api/pixel/$siteId/status'
-    | '/api/pixel/changes/changeId'
-    | '/api/pixel/config/siteId'
-    | '/api/pixel/siteId/analytics'
-    | '/api/pixel/siteId/changes'
-    | '/api/pixel/siteId/script'
-    | '/api/pixel/t/js'
-    | '/api/platform-connections/$id/sync'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -2299,7 +1901,6 @@ export interface FileRouteTypes {
     | '/api/proposals/id/reject'
     | '/api/proposals/id/resolve'
     | '/api/proposals/id/send'
-    | '/api/proposals/id/services'
     | '/api/proposals/id/versions'
     | '/api/proposals/public/$token'
     | '/api/prospects/$prospectId/report'
@@ -2325,13 +1926,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules/$ruleId'
     | '/api/clients/$clientId/goals/$goalId'
     | '/api/clients/$clientId/gsc/daily'
-    | '/api/command-center/alerts/$alertId/dismiss'
-    | '/api/pixel/siteId/analytics/cwv'
-    | '/api/pixel/siteId/analytics/pages'
-    | '/api/pixel/siteId/changes/history'
-    | '/api/pixel/siteId/changes/pending'
     | '/api/proposals/id/sections/sid'
-    | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
     | '/api/prospects/$id/keywords/prioritize'
     | '/api/seo/briefs/analyze-serp/$mappingId'
@@ -2379,10 +1974,6 @@ export interface RootRouteChildren {
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiChangesChangeIdRoute: typeof ApiChangesChangeIdRoute
   ApiClerkWebhookRoute: typeof ApiClerkWebhookRoute
-  ApiCommandCenterMetricsRoute: typeof ApiCommandCenterMetricsRoute
-  ApiConnectDetectRoute: typeof ApiConnectDetectRoute
-  ApiConnectHandoffRoute: typeof ApiConnectHandoffRouteWithChildren
-  ApiConnectVerifyRoute: typeof ApiConnectVerifyRoute
   ApiConnectionsIdRoute: typeof ApiConnectionsIdRouteWithChildren
   ApiCronAutomationsRoute: typeof ApiCronAutomationsRoute
   ApiGraphragIngestRoute: typeof ApiGraphragIngestRoute
@@ -2390,14 +1981,9 @@ export interface RootRouteChildren {
   ApiGraphragStatusRoute: typeof ApiGraphragStatusRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
-  ApiMetricsCrawlRoute: typeof ApiMetricsCrawlRoute
   ApiOnboardingCompleteItemRoute: typeof ApiOnboardingCompleteItemRoute
   ApiOnboardingMagicLinkRoute: typeof ApiOnboardingMagicLinkRoute
   ApiPatternsPatternIdRoute: typeof ApiPatternsPatternIdRoute
-  ApiPaymentsInstallmentsRoute: typeof ApiPaymentsInstallmentsRoute
-  ApiPaymentsStatsRoute: typeof ApiPaymentsStatsRoute
-  ApiPixelCollectRoute: typeof ApiPixelCollectRoute
-  ApiPlatformConnectionsIdRoute: typeof ApiPlatformConnectionsIdRouteWithChildren
   ApiProposalsAnalyticsRoute: typeof ApiProposalsAnalyticsRoute
   ApiProposalsStageRoute: typeof ApiProposalsStageRoute
   ApiProposalsTrackRoute: typeof ApiProposalsTrackRoute
@@ -2428,7 +2014,6 @@ export interface RootRouteChildren {
   ApiChangesIndexRoute: typeof ApiChangesIndexRoute
   ApiConnectionsIndexRoute: typeof ApiConnectionsIndexRoute
   ApiGoalTemplatesIndexRoute: typeof ApiGoalTemplatesIndexRoute
-  ApiPlatformConnectionsIndexRoute: typeof ApiPlatformConnectionsIndexRoute
   ApiReportTemplatesIndexRoute: typeof ApiReportTemplatesIndexRoute
   ApiReportsIndexRoute: typeof ApiReportsIndexRoute
   ApiSchedulesIndexRoute: typeof ApiSchedulesIndexRoute
@@ -2439,24 +2024,11 @@ export interface RootRouteChildren {
   ApiClientsClientIdAlertsRoute: typeof ApiClientsClientIdAlertsRoute
   ApiClientsClientIdDropEventsRoute: typeof ApiClientsClientIdDropEventsRoute
   ApiClientsClientIdReportsRoute: typeof ApiClientsClientIdReportsRoute
-  ApiCommandCenterActionsAddNoteRoute: typeof ApiCommandCenterActionsAddNoteRoute
-  ApiCommandCenterActionsMarkLostRoute: typeof ApiCommandCenterActionsMarkLostRoute
-  ApiCommandCenterActionsSendReminderRoute: typeof ApiCommandCenterActionsSendReminderRoute
-  ApiCommandCenterActionsSnoozeRoute: typeof ApiCommandCenterActionsSnoozeRoute
-  ApiConnectGuideChar91platformChar93Route: typeof ApiConnectGuideChar91platformChar93Route
   ApiContractsContractIdSendRoute: typeof ApiContractsContractIdSendRoute
   ApiContractsIdStatusRoute: typeof ApiContractsIdStatusRoute
   ApiInternalAnalyticsBackfillRoute: typeof ApiInternalAnalyticsBackfillRoute
   ApiInvoicesIdPaymentLinkRoute: typeof ApiInvoicesIdPaymentLinkRoute
   ApiInvoicesIdPayRoute: typeof ApiInvoicesIdPayRoute
-  ApiInvoicesIdScheduleRoute: typeof ApiInvoicesIdScheduleRoute
-  ApiPixelSiteIdStatusRoute: typeof ApiPixelSiteIdStatusRoute
-  ApiPixelChangesChar91changeIdChar93Route: typeof ApiPixelChangesChar91changeIdChar93Route
-  ApiPixelConfigChar91siteIdChar93Route: typeof ApiPixelConfigChar91siteIdChar93Route
-  ApiPixelChar91siteIdChar93AnalyticsRoute: typeof ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren
-  ApiPixelChar91siteIdChar93ChangesRoute: typeof ApiPixelChar91siteIdChar93ChangesRouteWithChildren
-  ApiPixelChar91siteIdChar93ScriptRoute: typeof ApiPixelChar91siteIdChar93ScriptRoute
-  ApiPixelTJsRoute: typeof ApiPixelTJsRoute
   ApiProposalsProposalIdDeclineRoute: typeof ApiProposalsProposalIdDeclineRoute
   ApiProposalsChar91idChar93AcceptRoute: typeof ApiProposalsChar91idChar93AcceptRoute
   ApiProposalsChar91idChar93DuplicateRoute: typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -2465,7 +2037,6 @@ export interface RootRouteChildren {
   ApiProposalsChar91idChar93RejectRoute: typeof ApiProposalsChar91idChar93RejectRoute
   ApiProposalsChar91idChar93ResolveRoute: typeof ApiProposalsChar91idChar93ResolveRoute
   ApiProposalsChar91idChar93SendRoute: typeof ApiProposalsChar91idChar93SendRoute
-  ApiProposalsChar91idChar93ServicesRoute: typeof ApiProposalsChar91idChar93ServicesRouteWithChildren
   ApiProposalsChar91idChar93VersionsRoute: typeof ApiProposalsChar91idChar93VersionsRouteWithChildren
   ApiProposalsPublicTokenRoute: typeof ApiProposalsPublicTokenRoute
   ApiProspectsProspectIdReportRoute: typeof ApiProspectsProspectIdReportRoute
@@ -2482,7 +2053,6 @@ export interface RootRouteChildren {
   ApiAuditPagesPageIdFindingsRoute: typeof ApiAuditPagesPageIdFindingsRoute
   ApiClientsClientIdGoalsGoalIdRoute: typeof ApiClientsClientIdGoalsGoalIdRoute
   ApiClientsClientIdGscDailyRoute: typeof ApiClientsClientIdGscDailyRoute
-  ApiCommandCenterAlertsAlertIdDismissRoute: typeof ApiCommandCenterAlertsAlertIdDismissRoute
   ApiProposalsChar91idChar93SectionsChar91sidChar93Route: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   ApiProspectsIdKeywordsImportRoute: typeof ApiProspectsIdKeywordsImportRoute
   ApiProspectsIdKeywordsPrioritizeRoute: typeof ApiProspectsIdKeywordsPrioritizeRoute
@@ -2625,13 +2195,6 @@ declare module '@tanstack/react-router' {
       path: '/api/report-templates'
       fullPath: '/api/report-templates/'
       preLoaderRoute: typeof ApiReportTemplatesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/platform-connections/': {
-      id: '/api/platform-connections/'
-      path: '/api/platform-connections'
-      fullPath: '/api/platform-connections/'
-      preLoaderRoute: typeof ApiPlatformConnectionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/goal-templates/': {
@@ -2886,34 +2449,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/platform-connections/$id': {
-      id: '/api/platform-connections/$id'
-      path: '/api/platform-connections/$id'
-      fullPath: '/api/platform-connections/$id'
-      preLoaderRoute: typeof ApiPlatformConnectionsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/collect': {
-      id: '/api/pixel/collect'
-      path: '/api/pixel/collect'
-      fullPath: '/api/pixel/collect'
-      preLoaderRoute: typeof ApiPixelCollectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/payments/stats': {
-      id: '/api/payments/stats'
-      path: '/api/payments/stats'
-      fullPath: '/api/payments/stats'
-      preLoaderRoute: typeof ApiPaymentsStatsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/payments/installments': {
-      id: '/api/payments/installments'
-      path: '/api/payments/installments'
-      fullPath: '/api/payments/installments'
-      preLoaderRoute: typeof ApiPaymentsInstallmentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/patterns/$patternId': {
       id: '/api/patterns/$patternId'
       path: '/api/patterns/$patternId'
@@ -2933,13 +2468,6 @@ declare module '@tanstack/react-router' {
       path: '/api/onboarding/complete-item'
       fullPath: '/api/onboarding/complete-item'
       preLoaderRoute: typeof ApiOnboardingCompleteItemRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/metrics/crawl': {
-      id: '/api/metrics/crawl'
-      path: '/api/metrics/crawl'
-      fullPath: '/api/metrics/crawl'
-      preLoaderRoute: typeof ApiMetricsCrawlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/keywords/quick-check': {
@@ -2989,34 +2517,6 @@ declare module '@tanstack/react-router' {
       path: '/api/connections/$id'
       fullPath: '/api/connections/$id'
       preLoaderRoute: typeof ApiConnectionsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/connect/verify': {
-      id: '/api/connect/verify'
-      path: '/api/connect/verify'
-      fullPath: '/api/connect/verify'
-      preLoaderRoute: typeof ApiConnectVerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/connect/handoff': {
-      id: '/api/connect/handoff'
-      path: '/api/connect/handoff'
-      fullPath: '/api/connect/handoff'
-      preLoaderRoute: typeof ApiConnectHandoffRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/connect/detect': {
-      id: '/api/connect/detect'
-      path: '/api/connect/detect'
-      fullPath: '/api/connect/detect'
-      preLoaderRoute: typeof ApiConnectDetectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/command-center/metrics': {
-      id: '/api/command-center/metrics'
-      path: '/api/command-center/metrics'
-      fullPath: '/api/command-center/metrics'
-      preLoaderRoute: typeof ApiCommandCenterMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clerk/webhook': {
@@ -3201,13 +2701,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsChar91idChar93VersionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/proposals/id/services': {
-      id: '/api/proposals/id/services'
-      path: '/api/proposals/id/services'
-      fullPath: '/api/proposals/id/services'
-      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/proposals/id/send': {
       id: '/api/proposals/id/send'
       path: '/api/proposals/id/send'
@@ -3264,69 +2757,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsProposalIdDeclineRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/platform-connections/$id/sync': {
-      id: '/api/platform-connections/$id/sync'
-      path: '/sync'
-      fullPath: '/api/platform-connections/$id/sync'
-      preLoaderRoute: typeof ApiPlatformConnectionsIdSyncRouteImport
-      parentRoute: typeof ApiPlatformConnectionsIdRoute
-    }
-    '/api/pixel/t/js': {
-      id: '/api/pixel/t/js'
-      path: '/api/pixel/t/js'
-      fullPath: '/api/pixel/t/js'
-      preLoaderRoute: typeof ApiPixelTJsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/siteId/script': {
-      id: '/api/pixel/siteId/script'
-      path: '/api/pixel/siteId/script'
-      fullPath: '/api/pixel/siteId/script'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93ScriptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/siteId/changes': {
-      id: '/api/pixel/siteId/changes'
-      path: '/api/pixel/siteId/changes'
-      fullPath: '/api/pixel/siteId/changes'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93ChangesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/siteId/analytics': {
-      id: '/api/pixel/siteId/analytics'
-      path: '/api/pixel/siteId/analytics'
-      fullPath: '/api/pixel/siteId/analytics'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93AnalyticsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/config/siteId': {
-      id: '/api/pixel/config/siteId'
-      path: '/api/pixel/config/siteId'
-      fullPath: '/api/pixel/config/siteId'
-      preLoaderRoute: typeof ApiPixelConfigChar91siteIdChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/changes/changeId': {
-      id: '/api/pixel/changes/changeId'
-      path: '/api/pixel/changes/changeId'
-      fullPath: '/api/pixel/changes/changeId'
-      preLoaderRoute: typeof ApiPixelChangesChar91changeIdChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/$siteId/status': {
-      id: '/api/pixel/$siteId/status'
-      path: '/api/pixel/$siteId/status'
-      fullPath: '/api/pixel/$siteId/status'
-      preLoaderRoute: typeof ApiPixelSiteIdStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/invoices/$id/schedule': {
-      id: '/api/invoices/$id/schedule'
-      path: '/api/invoices/$id/schedule'
-      fullPath: '/api/invoices/$id/schedule'
-      preLoaderRoute: typeof ApiInvoicesIdScheduleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/invoices/$id/pay': {
       id: '/api/invoices/$id/pay'
       path: '/api/invoices/$id/pay'
@@ -3368,48 +2798,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/connections/$id/verify'
       preLoaderRoute: typeof ApiConnectionsIdVerifyRouteImport
       parentRoute: typeof ApiConnectionsIdRoute
-    }
-    '/api/connect/handoff/token': {
-      id: '/api/connect/handoff/token'
-      path: '/token'
-      fullPath: '/api/connect/handoff/token'
-      preLoaderRoute: typeof ApiConnectHandoffChar91tokenChar93RouteImport
-      parentRoute: typeof ApiConnectHandoffRoute
-    }
-    '/api/connect/guide/platform': {
-      id: '/api/connect/guide/platform'
-      path: '/api/connect/guide/platform'
-      fullPath: '/api/connect/guide/platform'
-      preLoaderRoute: typeof ApiConnectGuideChar91platformChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/command-center/actions/snooze': {
-      id: '/api/command-center/actions/snooze'
-      path: '/api/command-center/actions/snooze'
-      fullPath: '/api/command-center/actions/snooze'
-      preLoaderRoute: typeof ApiCommandCenterActionsSnoozeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/command-center/actions/send-reminder': {
-      id: '/api/command-center/actions/send-reminder'
-      path: '/api/command-center/actions/send-reminder'
-      fullPath: '/api/command-center/actions/send-reminder'
-      preLoaderRoute: typeof ApiCommandCenterActionsSendReminderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/command-center/actions/mark-lost': {
-      id: '/api/command-center/actions/mark-lost'
-      path: '/api/command-center/actions/mark-lost'
-      fullPath: '/api/command-center/actions/mark-lost'
-      preLoaderRoute: typeof ApiCommandCenterActionsMarkLostRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/command-center/actions/add-note': {
-      id: '/api/command-center/actions/add-note'
-      path: '/api/command-center/actions/add-note'
-      fullPath: '/api/command-center/actions/add-note'
-      preLoaderRoute: typeof ApiCommandCenterActionsAddNoteRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/clients/$clientId/reports': {
       id: '/api/clients/$clientId/reports'
@@ -3670,53 +3058,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProspectsIdKeywordsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/proposals/id/services/resolved': {
-      id: '/api/proposals/id/services/resolved'
-      path: '/resolved'
-      fullPath: '/api/proposals/id/services/resolved'
-      preLoaderRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRouteImport
-      parentRoute: typeof ApiProposalsChar91idChar93ServicesRoute
-    }
     '/api/proposals/id/sections/sid': {
       id: '/api/proposals/id/sections/sid'
       path: '/api/proposals/id/sections/sid'
       fullPath: '/api/proposals/id/sections/sid'
       preLoaderRoute: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pixel/siteId/changes/pending': {
-      id: '/api/pixel/siteId/changes/pending'
-      path: '/pending'
-      fullPath: '/api/pixel/siteId/changes/pending'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93ChangesPendingRouteImport
-      parentRoute: typeof ApiPixelChar91siteIdChar93ChangesRoute
-    }
-    '/api/pixel/siteId/changes/history': {
-      id: '/api/pixel/siteId/changes/history'
-      path: '/history'
-      fullPath: '/api/pixel/siteId/changes/history'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93ChangesHistoryRouteImport
-      parentRoute: typeof ApiPixelChar91siteIdChar93ChangesRoute
-    }
-    '/api/pixel/siteId/analytics/pages': {
-      id: '/api/pixel/siteId/analytics/pages'
-      path: '/pages'
-      fullPath: '/api/pixel/siteId/analytics/pages'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93AnalyticsPagesRouteImport
-      parentRoute: typeof ApiPixelChar91siteIdChar93AnalyticsRoute
-    }
-    '/api/pixel/siteId/analytics/cwv': {
-      id: '/api/pixel/siteId/analytics/cwv'
-      path: '/cwv'
-      fullPath: '/api/pixel/siteId/analytics/cwv'
-      preLoaderRoute: typeof ApiPixelChar91siteIdChar93AnalyticsCwvRouteImport
-      parentRoute: typeof ApiPixelChar91siteIdChar93AnalyticsRoute
-    }
-    '/api/command-center/alerts/$alertId/dismiss': {
-      id: '/api/command-center/alerts/$alertId/dismiss'
-      path: '/api/command-center/alerts/$alertId/dismiss'
-      fullPath: '/api/command-center/alerts/$alertId/dismiss'
-      preLoaderRoute: typeof ApiCommandCenterAlertsAlertIdDismissRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clients/$clientId/gsc/daily': {
@@ -4006,18 +3352,6 @@ const ApiAdminDlqRouteWithChildren = ApiAdminDlqRoute._addFileChildren(
   ApiAdminDlqRouteChildren,
 )
 
-interface ApiConnectHandoffRouteChildren {
-  ApiConnectHandoffChar91tokenChar93Route: typeof ApiConnectHandoffChar91tokenChar93Route
-}
-
-const ApiConnectHandoffRouteChildren: ApiConnectHandoffRouteChildren = {
-  ApiConnectHandoffChar91tokenChar93Route:
-    ApiConnectHandoffChar91tokenChar93Route,
-}
-
-const ApiConnectHandoffRouteWithChildren =
-  ApiConnectHandoffRoute._addFileChildren(ApiConnectHandoffRouteChildren)
-
 interface ApiConnectionsIdRouteChildren {
   ApiConnectionsIdVerifyRoute: typeof ApiConnectionsIdVerifyRoute
 }
@@ -4028,20 +3362,6 @@ const ApiConnectionsIdRouteChildren: ApiConnectionsIdRouteChildren = {
 
 const ApiConnectionsIdRouteWithChildren =
   ApiConnectionsIdRoute._addFileChildren(ApiConnectionsIdRouteChildren)
-
-interface ApiPlatformConnectionsIdRouteChildren {
-  ApiPlatformConnectionsIdSyncRoute: typeof ApiPlatformConnectionsIdSyncRoute
-}
-
-const ApiPlatformConnectionsIdRouteChildren: ApiPlatformConnectionsIdRouteChildren =
-  {
-    ApiPlatformConnectionsIdSyncRoute: ApiPlatformConnectionsIdSyncRoute,
-  }
-
-const ApiPlatformConnectionsIdRouteWithChildren =
-  ApiPlatformConnectionsIdRoute._addFileChildren(
-    ApiPlatformConnectionsIdRouteChildren,
-  )
 
 interface ApiReportsIdRouteChildren {
   ApiReportsIdDownloadRoute: typeof ApiReportsIdDownloadRoute
@@ -4107,57 +3427,6 @@ const ApiClientsClientIdAlertRulesRouteChildren: ApiClientsClientIdAlertRulesRou
 const ApiClientsClientIdAlertRulesRouteWithChildren =
   ApiClientsClientIdAlertRulesRoute._addFileChildren(
     ApiClientsClientIdAlertRulesRouteChildren,
-  )
-
-interface ApiPixelChar91siteIdChar93AnalyticsRouteChildren {
-  ApiPixelChar91siteIdChar93AnalyticsCwvRoute: typeof ApiPixelChar91siteIdChar93AnalyticsCwvRoute
-  ApiPixelChar91siteIdChar93AnalyticsPagesRoute: typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
-}
-
-const ApiPixelChar91siteIdChar93AnalyticsRouteChildren: ApiPixelChar91siteIdChar93AnalyticsRouteChildren =
-  {
-    ApiPixelChar91siteIdChar93AnalyticsCwvRoute:
-      ApiPixelChar91siteIdChar93AnalyticsCwvRoute,
-    ApiPixelChar91siteIdChar93AnalyticsPagesRoute:
-      ApiPixelChar91siteIdChar93AnalyticsPagesRoute,
-  }
-
-const ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren =
-  ApiPixelChar91siteIdChar93AnalyticsRoute._addFileChildren(
-    ApiPixelChar91siteIdChar93AnalyticsRouteChildren,
-  )
-
-interface ApiPixelChar91siteIdChar93ChangesRouteChildren {
-  ApiPixelChar91siteIdChar93ChangesHistoryRoute: typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
-  ApiPixelChar91siteIdChar93ChangesPendingRoute: typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
-}
-
-const ApiPixelChar91siteIdChar93ChangesRouteChildren: ApiPixelChar91siteIdChar93ChangesRouteChildren =
-  {
-    ApiPixelChar91siteIdChar93ChangesHistoryRoute:
-      ApiPixelChar91siteIdChar93ChangesHistoryRoute,
-    ApiPixelChar91siteIdChar93ChangesPendingRoute:
-      ApiPixelChar91siteIdChar93ChangesPendingRoute,
-  }
-
-const ApiPixelChar91siteIdChar93ChangesRouteWithChildren =
-  ApiPixelChar91siteIdChar93ChangesRoute._addFileChildren(
-    ApiPixelChar91siteIdChar93ChangesRouteChildren,
-  )
-
-interface ApiProposalsChar91idChar93ServicesRouteChildren {
-  ApiProposalsChar91idChar93ServicesResolvedRoute: typeof ApiProposalsChar91idChar93ServicesResolvedRoute
-}
-
-const ApiProposalsChar91idChar93ServicesRouteChildren: ApiProposalsChar91idChar93ServicesRouteChildren =
-  {
-    ApiProposalsChar91idChar93ServicesResolvedRoute:
-      ApiProposalsChar91idChar93ServicesResolvedRoute,
-  }
-
-const ApiProposalsChar91idChar93ServicesRouteWithChildren =
-  ApiProposalsChar91idChar93ServicesRoute._addFileChildren(
-    ApiProposalsChar91idChar93ServicesRouteChildren,
   )
 
 interface ApiProposalsChar91idChar93VersionsRouteChildren {
@@ -4239,10 +3508,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiChangesChangeIdRoute: ApiChangesChangeIdRoute,
   ApiClerkWebhookRoute: ApiClerkWebhookRoute,
-  ApiCommandCenterMetricsRoute: ApiCommandCenterMetricsRoute,
-  ApiConnectDetectRoute: ApiConnectDetectRoute,
-  ApiConnectHandoffRoute: ApiConnectHandoffRouteWithChildren,
-  ApiConnectVerifyRoute: ApiConnectVerifyRoute,
   ApiConnectionsIdRoute: ApiConnectionsIdRouteWithChildren,
   ApiCronAutomationsRoute: ApiCronAutomationsRoute,
   ApiGraphragIngestRoute: ApiGraphragIngestRoute,
@@ -4250,14 +3515,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGraphragStatusRoute: ApiGraphragStatusRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
-  ApiMetricsCrawlRoute: ApiMetricsCrawlRoute,
   ApiOnboardingCompleteItemRoute: ApiOnboardingCompleteItemRoute,
   ApiOnboardingMagicLinkRoute: ApiOnboardingMagicLinkRoute,
   ApiPatternsPatternIdRoute: ApiPatternsPatternIdRoute,
-  ApiPaymentsInstallmentsRoute: ApiPaymentsInstallmentsRoute,
-  ApiPaymentsStatsRoute: ApiPaymentsStatsRoute,
-  ApiPixelCollectRoute: ApiPixelCollectRoute,
-  ApiPlatformConnectionsIdRoute: ApiPlatformConnectionsIdRouteWithChildren,
   ApiProposalsAnalyticsRoute: ApiProposalsAnalyticsRoute,
   ApiProposalsStageRoute: ApiProposalsStageRoute,
   ApiProposalsTrackRoute: ApiProposalsTrackRoute,
@@ -4288,7 +3548,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChangesIndexRoute: ApiChangesIndexRoute,
   ApiConnectionsIndexRoute: ApiConnectionsIndexRoute,
   ApiGoalTemplatesIndexRoute: ApiGoalTemplatesIndexRoute,
-  ApiPlatformConnectionsIndexRoute: ApiPlatformConnectionsIndexRoute,
   ApiReportTemplatesIndexRoute: ApiReportTemplatesIndexRoute,
   ApiReportsIndexRoute: ApiReportsIndexRoute,
   ApiSchedulesIndexRoute: ApiSchedulesIndexRoute,
@@ -4300,29 +3559,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClientsClientIdAlertsRoute: ApiClientsClientIdAlertsRoute,
   ApiClientsClientIdDropEventsRoute: ApiClientsClientIdDropEventsRoute,
   ApiClientsClientIdReportsRoute: ApiClientsClientIdReportsRoute,
-  ApiCommandCenterActionsAddNoteRoute: ApiCommandCenterActionsAddNoteRoute,
-  ApiCommandCenterActionsMarkLostRoute: ApiCommandCenterActionsMarkLostRoute,
-  ApiCommandCenterActionsSendReminderRoute:
-    ApiCommandCenterActionsSendReminderRoute,
-  ApiCommandCenterActionsSnoozeRoute: ApiCommandCenterActionsSnoozeRoute,
-  ApiConnectGuideChar91platformChar93Route:
-    ApiConnectGuideChar91platformChar93Route,
   ApiContractsContractIdSendRoute: ApiContractsContractIdSendRoute,
   ApiContractsIdStatusRoute: ApiContractsIdStatusRoute,
   ApiInternalAnalyticsBackfillRoute: ApiInternalAnalyticsBackfillRoute,
   ApiInvoicesIdPaymentLinkRoute: ApiInvoicesIdPaymentLinkRoute,
   ApiInvoicesIdPayRoute: ApiInvoicesIdPayRoute,
-  ApiInvoicesIdScheduleRoute: ApiInvoicesIdScheduleRoute,
-  ApiPixelSiteIdStatusRoute: ApiPixelSiteIdStatusRoute,
-  ApiPixelChangesChar91changeIdChar93Route:
-    ApiPixelChangesChar91changeIdChar93Route,
-  ApiPixelConfigChar91siteIdChar93Route: ApiPixelConfigChar91siteIdChar93Route,
-  ApiPixelChar91siteIdChar93AnalyticsRoute:
-    ApiPixelChar91siteIdChar93AnalyticsRouteWithChildren,
-  ApiPixelChar91siteIdChar93ChangesRoute:
-    ApiPixelChar91siteIdChar93ChangesRouteWithChildren,
-  ApiPixelChar91siteIdChar93ScriptRoute: ApiPixelChar91siteIdChar93ScriptRoute,
-  ApiPixelTJsRoute: ApiPixelTJsRoute,
   ApiProposalsProposalIdDeclineRoute: ApiProposalsProposalIdDeclineRoute,
   ApiProposalsChar91idChar93AcceptRoute: ApiProposalsChar91idChar93AcceptRoute,
   ApiProposalsChar91idChar93DuplicateRoute:
@@ -4334,8 +3575,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProposalsChar91idChar93ResolveRoute:
     ApiProposalsChar91idChar93ResolveRoute,
   ApiProposalsChar91idChar93SendRoute: ApiProposalsChar91idChar93SendRoute,
-  ApiProposalsChar91idChar93ServicesRoute:
-    ApiProposalsChar91idChar93ServicesRouteWithChildren,
   ApiProposalsChar91idChar93VersionsRoute:
     ApiProposalsChar91idChar93VersionsRouteWithChildren,
   ApiProposalsPublicTokenRoute: ApiProposalsPublicTokenRoute,
@@ -4358,8 +3597,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuditPagesPageIdFindingsRoute: ApiAuditPagesPageIdFindingsRoute,
   ApiClientsClientIdGoalsGoalIdRoute: ApiClientsClientIdGoalsGoalIdRoute,
   ApiClientsClientIdGscDailyRoute: ApiClientsClientIdGscDailyRoute,
-  ApiCommandCenterAlertsAlertIdDismissRoute:
-    ApiCommandCenterAlertsAlertIdDismissRoute,
   ApiProposalsChar91idChar93SectionsChar91sidChar93Route:
     ApiProposalsChar91idChar93SectionsChar91sidChar93Route,
   ApiProspectsIdKeywordsImportRoute: ApiProspectsIdKeywordsImportRoute,

@@ -14,6 +14,9 @@
 import { fetchOrganicKeywords } from "@/server/lib/dataforseo-organic";
 import { redis } from "@/server/lib/redis";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "competitor-spy-service" });
 
 // Constants
 const CACHE_PREFIX = CACHE_NS.COMPETITOR_SPY;
@@ -129,7 +132,7 @@ export class CompetitorSpyService {
 
       return result;
     } catch (error) {
-      console.error("Competitor spy error:", error);
+      log.error("Competitor spy error", error instanceof Error ? error : new Error(String(error)), { domain: normalizedDomain });
       throw new Error(`Failed to fetch keywords for ${normalizedDomain}`);
     }
   }

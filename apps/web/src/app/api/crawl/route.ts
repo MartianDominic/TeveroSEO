@@ -14,6 +14,7 @@ import { validateCsrf } from "@/lib/api/security";
 import { connectionTestLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
     if (err instanceof FastApiError) {
       return NextResponse.json(err.sanitizedBody, { status: err.status });
     }
-    console.error("Crawl error:", err);
+    logger.error("Crawl error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json(
       { error: "Internal error" },
       { status: 500 }

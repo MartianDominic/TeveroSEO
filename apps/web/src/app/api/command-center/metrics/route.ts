@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDashboardMetrics } from "@/server/features/command-center/api/metrics";
 
+import { logger } from '@/lib/logger';
 /**
  * Command Center Metrics API Route
  * Phase 62-05: Command Center Dashboard Core
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[GET /api/command-center/metrics] Error:", error);
+    logger.error("[GET /api/command-center/metrics] Error", error instanceof Error ? error : { error: String(error) });
 
     return NextResponse.json(
       { error: "Internal server error" },

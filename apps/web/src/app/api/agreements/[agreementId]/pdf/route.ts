@@ -20,6 +20,7 @@ import { requireAuth, AuthError } from "@/lib/auth/api-auth";
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { getPdfGenerationService } from "@/server/services/pdf-generation-service";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -119,7 +120,7 @@ export async function GET(
     }
 
     // Log unexpected errors (don't expose details to client)
-    console.error("[PDF Route] Generation error:", err);
+    logger.error("[PDF Route] Generation error", err instanceof Error ? err : { error: String(err) });
 
     return NextResponse.json(
       { error: "Failed to generate PDF" },

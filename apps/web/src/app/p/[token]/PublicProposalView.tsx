@@ -3,17 +3,21 @@
 /**
  * PublicProposalView - Read-only proposal display for public links.
  * Phase 57-08: Clone + Undo/Redo + Magic Link
+ * Phase 65: Added Accept Proposal CTA
  *
  * Features:
  * - Branded experience using proposal brandConfig
  * - Read-only rendering (no editing)
  * - Client-side view duration tracking
  * - Section visibility tracking
+ * - Accept Proposal button with agreement flow
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { TrendingUp, CheckCircle, ArrowRight } from "lucide-react";
+import { TrendingUp, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -110,8 +114,49 @@ function getDifficultyColor(difficulty: "easy" | "medium" | "hard"): string {
 
 export function PublicProposalView({ proposal, token }: PublicProposalViewProps) {
   const { content, brandConfig, currency } = proposal;
+  const router = useRouter();
   const startTimeRef = useRef<number>(Date.now());
   const sectionsViewedRef = useRef<Set<string>>(new Set());
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+
+  // Handle proposal acceptance
+  const handleAcceptProposal = useCallback(async () => {
+    setIsAccepting(true);
+    setAcceptError(null);
+
+    try {
+      const response = await fetch(`/api/proposals/${proposal.id}/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to accept proposal");
+      }
+
+      const result = await response.json();
+
+      // Redirect to agreement signing page if agreementToken is returned
+      // Use window.location for external-style navigation to public routes
+      if (result.agreementToken) {
+        window.location.href = `/c/${result.agreementToken}`;
+      } else if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      } else {
+        // Fallback: show success state
+        router.refresh();
+      }
+    } catch (error) {
+      setAcceptError(error instanceof Error ? error.message : "Failed to accept proposal");
+    } finally {
+      setIsAccepting(false);
+    }
+  }, [proposal.id, token, router]);
 
   // Track duration on unmount
   useEffect(() => {
@@ -359,6 +404,48 @@ export function PublicProposalView({ proposal, token }: PublicProposalViewProps)
                 ))}
               </ul>
             </div>
+
+            {/* Accept Proposal CTA */}
+            {proposal.status !== "accepted" && proposal.status !== "declined" && (
+              <div className="mt-8 pt-8 border-t border-border text-center">
+                <Button
+                  size="lg"
+                  onClick={handleAcceptProposal}
+                  disabled={isAccepting}
+                  className="px-8 py-6 text-lg font-semibold"
+                  style={{
+                    backgroundColor: brandConfig?.primaryColor ?? undefined,
+                  }}
+                >
+                  {isAccepting ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Accept Proposal & Proceed to Agreement
+                      <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+                {acceptError && (
+                  <p className="mt-4 text-error text-sm">{acceptError}</p>
+                )}
+                <p className="mt-4 text-text-3 text-sm">
+                  By accepting, you agree to proceed with the proposed services.
+                </p>
+              </div>
+            )}
+
+            {proposal.status === "accepted" && (
+              <div className="mt-8 pt-8 border-t border-border text-center">
+                <div className="inline-flex items-center gap-2 bg-success/10 text-success rounded-full px-6 py-3">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-semibold">Proposal Accepted</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

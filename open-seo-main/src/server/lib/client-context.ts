@@ -79,22 +79,51 @@ export async function resolveClientId(
 
   const clientId = rows[0].id;
 
-  // AUTH-H01 FIX: Verify user has permission to access this client
-  // The userId should be set by auth middleware after JWT/session validation
+  // CRIT-05 FIX: Changed from fail-open to fail-closed
+  // The userId MUST be set by auth middleware after JWT/session validation
   const userId = headers.get(USER_ID_HEADER);
-  if (userId) {
-    // If we have a userId, verify ownership
-    // This throws ClientOwnershipError if access is denied
-    try {
-      await validateClientOwnership(userId, clientId);
-    } catch (err) {
-      // Convert ownership error to AppError for consistent handling
-      throw new AppError("FORBIDDEN", "No access to this client");
+
+  // For internal service-to-service calls, check for the internal service token
+  const internalServiceToken = headers.get("x-internal-service-token");
+  const expectedToken = process.env.INTERNAL_SERVICE_TOKEN;
+
+  if (internalServiceToken && expectedToken) {
+    // Verify internal service token using timing-safe comparison
+    const { timingSafeEqual } = await import("crypto");
+    const actualBuffer = Buffer.from(internalServiceToken, "utf8");
+    const expectedBuffer = Buffer.from(expectedToken, "utf8");
+
+    // HIGH-06 pattern: Perform dummy comparison on length mismatch to avoid timing leak
+    if (actualBuffer.length !== expectedBuffer.length) {
+      // Perform a dummy comparison to maintain constant time
+      timingSafeEqual(expectedBuffer, expectedBuffer);
+      throw new AppError("FORBIDDEN", "Invalid internal service token");
     }
+
+    if (!timingSafeEqual(actualBuffer, expectedBuffer)) {
+      throw new AppError("FORBIDDEN", "Invalid internal service token");
+    }
+
+    // Valid internal service token - allow access without user ownership check
+    return clientId;
   }
-  // Note: If userId is not present, we're in a context where auth middleware
-  // hasn't set it (e.g., internal service calls). In that case, we rely on
-  // the calling code to have already verified access or be a trusted service.
+
+  // No internal service token - userId is required (fail-closed)
+  if (!userId) {
+    throw new AppError(
+      "FORBIDDEN",
+      "User authentication required for client access. Set x-user-id header after auth validation, or provide x-internal-service-token for service-to-service calls."
+    );
+  }
+
+  // Verify user has permission to access this client
+  // This throws ClientOwnershipError if access is denied
+  try {
+    await validateClientOwnership(userId, clientId);
+  } catch (err) {
+    // Convert ownership error to AppError for consistent handling
+    throw new AppError("FORBIDDEN", "No access to this client");
+  }
 
   return clientId;
 }

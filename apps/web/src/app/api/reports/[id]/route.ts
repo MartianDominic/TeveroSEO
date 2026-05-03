@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function GET(
         status: err.status,
       });
     }
-    console.error("Report fetch error:", err);
+    logger.error("Report fetch error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -13,6 +13,7 @@ import { UpcomingScheduledSection } from "@/components/dashboard/UpcomingSchedul
 import { PowerUserFeatures } from "@/components/dashboard/PowerUserFeatures";
 import { DashboardViewProvider } from "@/components/dashboard/DashboardViewProvider";
 import { WithErrorBoundary } from "@/components/with-error-boundary";
+import { logger } from '@/lib/logger';
 import {
   getDashboardMetrics,
   getPortfolioSummary,
@@ -70,31 +71,31 @@ export default async function DashboardPage() {
     upcomingScheduled,
   ] = await Promise.all([
     getDashboardMetrics().catch((error) => {
-      console.error("[DashboardPage] getDashboardMetrics failed:", error);
+      logger.error("[DashboardPage] getDashboardMetrics failed", error instanceof Error ? error : { error: String(error) });
       return [];
     }),
     getPortfolioSummary().catch((error) => {
-      console.error("[DashboardPage] getPortfolioSummary failed:", error);
+      logger.error("[DashboardPage] getPortfolioSummary failed", error instanceof Error ? error : { error: String(error) });
       return defaultSummary;
     }),
     getAttentionItems().catch((error) => {
-      console.error("[DashboardPage] getAttentionItems failed:", error);
+      logger.error("[DashboardPage] getAttentionItems failed", error instanceof Error ? error : { error: String(error) });
       return [];
     }),
     getWins().catch((error) => {
-      console.error("[DashboardPage] getWins failed:", error);
+      logger.error("[DashboardPage] getWins failed", error instanceof Error ? error : { error: String(error) });
       return [];
     }),
     getCardLayout().catch((error) => {
-      console.error("[DashboardPage] getCardLayout failed:", error);
+      logger.error("[DashboardPage] getCardLayout failed", error instanceof Error ? error : { error: String(error) });
       return defaultCardLayout;
     }),
     getTeamWorkload().catch((error) => {
-      console.error("[DashboardPage] getTeamWorkload failed:", error);
+      logger.error("[DashboardPage] getTeamWorkload failed", error instanceof Error ? error : { error: String(error) });
       return [];
     }),
     getUpcomingScheduled().catch((error) => {
-      console.error("[DashboardPage] getUpcomingScheduled failed:", error);
+      logger.error("[DashboardPage] getUpcomingScheduled failed", error instanceof Error ? error : { error: String(error) });
       return [];
     }),
   ]);

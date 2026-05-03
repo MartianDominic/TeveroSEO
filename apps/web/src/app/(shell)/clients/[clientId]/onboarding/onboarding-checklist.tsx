@@ -6,11 +6,12 @@
  *
  * Client component for displaying and completing onboarding checklist items.
  * Handles completion state and redirects to complete page on 100% completion.
+ * MEDIUM-02 FIX: Added error feedback with retry option.
  */
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Circle, Loader2 } from "lucide-react";
+import { Check, Circle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Card, CardContent, ProgressBar, Button } from "@tevero/ui";
 import type { ChecklistItem } from "@/lib/api/clients";
 import { completeChecklistItem } from "./actions";
@@ -37,6 +38,9 @@ export function OnboardingChecklist({
   const [completedCount, setCompletedCount] = useState(initialCompleted);
   const [completingItemId, setCompletingItemId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // MEDIUM-02 FIX: Track error state for failed completions
+  const [errorItemId, setErrorItemId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const progress = Math.round((completedCount / totalCount) * 100);
 
@@ -62,6 +66,9 @@ export function OnboardingChecklist({
 
   const handleComplete = async (itemId: string) => {
     setCompletingItemId(itemId);
+    // Clear any previous error
+    setErrorItemId(null);
+    setErrorMessage(null);
 
     startTransition(async () => {
       try {
@@ -84,11 +91,27 @@ export function OnboardingChecklist({
           } else {
             router.refresh();
           }
+        } else {
+          // MEDIUM-02 FIX: Show error feedback
+          setErrorItemId(itemId);
+          setErrorMessage(result.error ?? "Failed to complete item");
         }
+      } catch (err) {
+        // MEDIUM-02 FIX: Handle unexpected errors
+        setErrorItemId(itemId);
+        setErrorMessage(
+          err instanceof Error ? err.message : "An unexpected error occurred"
+        );
       } finally {
         setCompletingItemId(null);
       }
     });
+  };
+
+  const handleRetry = (itemId: string) => {
+    setErrorItemId(null);
+    setErrorMessage(null);
+    handleComplete(itemId);
   };
 
   return (
@@ -140,43 +163,74 @@ export function OnboardingChecklist({
                   {categoryItems.map((item) => {
                     const isCompleted = !!item.completedAt;
                     const isCompleting = completingItemId === item.id;
+                    const hasError = errorItemId === item.id;
 
                     return (
                       <li
                         key={item.id}
-                        className="flex items-center justify-between gap-3"
+                        className="flex flex-col gap-2"
                       >
-                        <div className="flex items-center gap-3">
-                          {isCompleted ? (
-                            <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                              <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                            </div>
-                          ) : (
-                            <Circle className="h-5 w-5 text-muted-foreground/30" />
-                          )}
-                          <span
-                            className={
-                              isCompleted
-                                ? "text-sm text-muted-foreground line-through"
-                                : "text-sm text-foreground"
-                            }
-                          >
-                            {item.label}
-                          </span>
-                        </div>
-                        {!isCompleted && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleComplete(item.id)}
-                            disabled={isPending}
-                          >
-                            {isCompleting ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            {isCompleted ? (
+                              <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                              </div>
+                            ) : hasError ? (
+                              <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center">
+                                <AlertCircle className="h-3 w-3 text-destructive" />
+                              </div>
                             ) : (
-                              "Complete"
+                              <Circle className="h-5 w-5 text-muted-foreground/30" />
                             )}
-                          </Button>
+                            <span
+                              className={
+                                isCompleted
+                                  ? "text-sm text-muted-foreground line-through"
+                                  : hasError
+                                    ? "text-sm text-destructive"
+                                    : "text-sm text-foreground"
+                              }
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                          {!isCompleted && !hasError && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleComplete(item.id)}
+                              disabled={isPending}
+                            >
+                              {isCompleting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Complete"
+                              )}
+                            </Button>
+                          )}
+                          {hasError && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRetry(item.id)}
+                              disabled={isPending}
+                              className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Retry
+                            </Button>
+                          )}
+                        </div>
+                        {/* MEDIUM-02 FIX: Show error message */}
+                        {hasError && errorMessage && (
+                          <div
+                            className="ml-8 text-xs text-destructive flex items-center gap-1"
+                            role="alert"
+                          >
+                            <AlertCircle className="h-3 w-3" />
+                            {errorMessage}
+                          </div>
                         )}
                       </li>
                     );

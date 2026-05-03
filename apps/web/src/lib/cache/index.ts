@@ -36,3 +36,13 @@ export {
   getInFlightCount,
   getInFlightKeys,
 } from "./singleflight";
+
+// DFI-007/DFI-012: Unified cache invalidation (Next.js + Redis)
+export {
+  invalidateClientData,
+  invalidateWorkspaceData,
+  markCacheAsStale,
+  isCacheStale,
+  getStaleInfo,
+  type ClientDataCategory,
+} from "./unified-invalidation";

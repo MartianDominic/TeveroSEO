@@ -12,6 +12,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "scheduleQueue" });
 
@@ -38,22 +39,14 @@ export interface ScheduleDLQJobData {
 }
 
 /**
- * Default job options.
- * 3 attempts with exponential backoff.
- */
-/**
  * Default job options for schedule checks.
  * Job timeout is controlled via Worker lockDuration (set to 60s in schedule-worker.ts).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 5_000, // 5s, 10s, 20s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 50 },
   removeOnFail: { count: 100 },
-};
+});
 
 /**
  * Schedule queue.
@@ -69,32 +62,25 @@ export const scheduleQueue = new Queue<ScheduleJobData | ScheduleDLQJobData>(
 
 /**
  * Initialize the schedule queue with a repeatable job.
+ * MED-36 fix: Uses upsertJobScheduler() instead of deprecated repeat option.
  * Runs every 5 minutes to check for due schedules.
  */
 export async function initScheduleQueue(): Promise<void> {
-  // Add repeatable job FIRST (safe if duplicate briefly exists)
-  // This ensures the scheduler is never lost even if we crash during init
-  await scheduleQueue.add(
-    "check-schedules",
-    { triggeredAt: new Date().toISOString() },
+  // Use upsertJobScheduler for idempotent cron setup (BullMQ v5 pattern)
+  await scheduleQueue.upsertJobScheduler(
+    "schedule-check", // Scheduler ID
+    { pattern: "*/5 * * * *" }, // Every 5 minutes
     {
-      repeat: {
-        pattern: "*/5 * * * *", // Every 5 minutes
+      name: "check-schedules",
+      data: { triggeredAt: new Date().toISOString() },
+      opts: {
+        removeOnComplete: { count: 50 },
+        removeOnFail: { count: 100 },
       },
-      jobId: "schedule-check",
     },
   );
 
-  // THEN remove old duplicates (any repeatable jobs with different keys)
-  const repeatableJobs = await scheduleQueue.getRepeatableJobs();
-  for (const job of repeatableJobs) {
-    // Keep the one we just added, remove any stale ones
-    if (job.id !== "schedule-check") {
-      await scheduleQueue.removeRepeatableByKey(job.key);
-    }
-  }
-
-  log.info("Schedule queue initialized with 5-minute repeatable job");
+  log.info("Schedule queue initialized with 5-minute scheduler", { pattern: "*/5 * * * *" });
 }
 
 /**

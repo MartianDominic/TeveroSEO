@@ -189,7 +189,8 @@ describe("RevolutProvider", () => {
     }
 
     it("should verify valid webhook signature", () => {
-      const timestamp = "1714500000";
+      // Use current timestamp to pass timestamp validation (CRIT-54-01)
+      const timestamp = String(Math.floor(Date.now() / 1000));
       const signature = createValidSignature(
         webhookPayload,
         mockCredentials.revolutWebhookSecret!,
@@ -249,9 +250,11 @@ describe("RevolutProvider", () => {
     });
 
     it("should throw if signature is invalid", () => {
+      // Use current timestamp to pass timestamp validation first (CRIT-54-01)
+      const timestamp = String(Math.floor(Date.now() / 1000));
       const headers = new Headers({
         "Revolut-Signature": "v1=invalid_signature_here",
-        "Revolut-Request-Timestamp": "1714500000",
+        "Revolut-Request-Timestamp": timestamp,
       });
 
       const provider = new RevolutProvider(mockCredentials);
@@ -259,6 +262,104 @@ describe("RevolutProvider", () => {
       expect(() =>
         provider.verifyWebhook(Buffer.from(webhookPayload), headers)
       ).toThrow("Invalid webhook signature");
+    });
+
+    // CRIT-54-01: Timestamp validation tests for replay attack prevention
+    describe("timestamp validation (CRIT-54-01)", () => {
+      it("should reject webhook with timestamp too old (replay attack)", () => {
+        // Timestamp from 10 minutes ago (exceeds 5 minute limit)
+        const oldTimestamp = String(Math.floor((Date.now() - 10 * 60 * 1000) / 1000));
+        const signature = createValidSignature(
+          webhookPayload,
+          mockCredentials.revolutWebhookSecret!,
+          oldTimestamp
+        );
+
+        const headers = new Headers({
+          "Revolut-Signature": `v1=${signature}`,
+          "Revolut-Request-Timestamp": oldTimestamp,
+        });
+
+        const provider = new RevolutProvider(mockCredentials);
+
+        expect(() =>
+          provider.verifyWebhook(Buffer.from(webhookPayload), headers)
+        ).toThrow("Webhook timestamp too old");
+      });
+
+      it("should reject webhook with timestamp in future", () => {
+        // Timestamp 2 minutes in the future (exceeds 30s clock skew tolerance)
+        const futureTimestamp = String(Math.floor((Date.now() + 2 * 60 * 1000) / 1000));
+        const signature = createValidSignature(
+          webhookPayload,
+          mockCredentials.revolutWebhookSecret!,
+          futureTimestamp
+        );
+
+        const headers = new Headers({
+          "Revolut-Signature": `v1=${signature}`,
+          "Revolut-Request-Timestamp": futureTimestamp,
+        });
+
+        const provider = new RevolutProvider(mockCredentials);
+
+        expect(() =>
+          provider.verifyWebhook(Buffer.from(webhookPayload), headers)
+        ).toThrow("Webhook timestamp in future");
+      });
+
+      it("should accept webhook within valid timestamp window", () => {
+        // Current timestamp (valid)
+        const currentTimestamp = String(Math.floor(Date.now() / 1000));
+        const signature = createValidSignature(
+          webhookPayload,
+          mockCredentials.revolutWebhookSecret!,
+          currentTimestamp
+        );
+
+        const headers = new Headers({
+          "Revolut-Signature": `v1=${signature}`,
+          "Revolut-Request-Timestamp": currentTimestamp,
+        });
+
+        const provider = new RevolutProvider(mockCredentials);
+        const event = provider.verifyWebhook(Buffer.from(webhookPayload), headers);
+
+        expect(event.type).toBe("ORDER_COMPLETED");
+      });
+
+      it("should accept webhook with minor clock skew (within tolerance)", () => {
+        // Timestamp 20 seconds in future (within 30s tolerance)
+        const slightFutureTimestamp = String(Math.floor((Date.now() + 20 * 1000) / 1000));
+        const signature = createValidSignature(
+          webhookPayload,
+          mockCredentials.revolutWebhookSecret!,
+          slightFutureTimestamp
+        );
+
+        const headers = new Headers({
+          "Revolut-Signature": `v1=${signature}`,
+          "Revolut-Request-Timestamp": slightFutureTimestamp,
+        });
+
+        const provider = new RevolutProvider(mockCredentials);
+        const event = provider.verifyWebhook(Buffer.from(webhookPayload), headers);
+
+        expect(event.type).toBe("ORDER_COMPLETED");
+      });
+
+      it("should reject webhook with invalid timestamp format", () => {
+        const headers = new Headers({
+          "Revolut-Signature": "v1=somesig",
+          "Revolut-Request-Timestamp": "not-a-number",
+        });
+
+        const provider = new RevolutProvider(mockCredentials);
+
+        expect(() =>
+          provider.verifyWebhook(Buffer.from(webhookPayload), headers)
+        ).toThrow("Invalid timestamp format");
+      });
     });
   });
 

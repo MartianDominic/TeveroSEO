@@ -24,6 +24,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "snooze" });
 
 const SnoozeSchema = z.object({
   entityType: z.enum([
@@ -38,7 +41,6 @@ const SnoozeSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/command-center/actions/snooze")({
   server: {
     handlers: {
@@ -75,11 +77,13 @@ export const Route = createFileRoute("/api/command-center/actions/snooze")({
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[snooze] Error:", error);
+          log.error("Failed to snooze", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
             {
-              error:
-                error instanceof Error ? error.message : "Failed to snooze",
+              error: {
+                code: "INTERNAL_ERROR",
+                message: error instanceof Error ? error.message : "Failed to snooze",
+              },
             },
             { status: 500 }
           );

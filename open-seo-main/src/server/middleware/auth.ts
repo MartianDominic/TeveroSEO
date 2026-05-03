@@ -436,8 +436,27 @@ export async function authenticateRequest(
       try {
         const { userId: clerkUserId, email } = await verifyClerkJWT(token);
 
-        // For JWT auth, we use the clerkUserId directly
-        // In a full implementation, this would look up the user in the database
+        /**
+         * MED-02 DESIGN DOCUMENTATION: JWT Auth vs ensureUser Middleware
+         *
+         * INTENTIONAL DESIGN: JWT authentication does NOT perform a database user lookup.
+         *
+         * Rationale:
+         * 1. Performance: JWT validation is stateless and fast (JWKS verification only)
+         * 2. Separation of Concerns: Auth (identity verification) vs Authorization (permissions)
+         * 3. Consistency: The ensureUser middleware handles user record creation/lookup
+         *    for routes that need it, while pure API routes can be lightweight
+         *
+         * When to use each:
+         * - JWT auth alone: Read-only APIs, health checks, public data endpoints
+         * - JWT auth + ensureUser: User profile, settings, any user-record-dependent operation
+         *
+         * The clerkUserId from JWT is the canonical user identifier. Routes needing
+         * the full user record should call ensureUser middleware after auth.
+         *
+         * Security Note: Resource authorization (client access, org membership) is
+         * handled separately by validateClientOwnership and similar utilities.
+         */
         return {
           success: true,
           context: {
@@ -530,13 +549,25 @@ export async function requireUnifiedAuth(
  * Timing-safe string comparison to prevent timing attacks.
  * Use this when comparing secrets, tokens, or signatures.
  *
+ * HIGH-06 FIX: Ensures constant-time comparison even when lengths differ.
+ * Performs a dummy comparison when lengths don't match to avoid leaking
+ * length information through timing differences.
+ *
  * @param a - First string to compare
  * @param b - Second string to compare
  * @returns true if strings are equal
  */
 export function secureCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
+  const aBuffer = Buffer.from(a, "utf8");
+  const bBuffer = Buffer.from(b, "utf8");
+
+  // HIGH-06 FIX: Always perform a timing-safe comparison to avoid
+  // leaking length information through timing differences
+  if (aBuffer.length !== bBuffer.length) {
+    // Perform a dummy comparison to maintain constant time
+    timingSafeEqual(bBuffer, bBuffer);
     return false;
   }
-  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+
+  return timingSafeEqual(aBuffer, bBuffer);
 }

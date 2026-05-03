@@ -72,7 +72,7 @@ export const workflowInstances = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     templateId: text("template_id")
       .notNull()
-      .references(() => workflowTemplates.id),
+      .references(() => workflowTemplates.id, { onDelete: "restrict" }),
 
     // Target entity
     entityType: text("entity_type").notNull(),
@@ -114,9 +114,11 @@ export const workflowInstances = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_workflow_instances_workspace_status").on(

@@ -4,6 +4,7 @@ import { useCallback, useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX } from "lucide-react";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Card,
@@ -644,7 +645,7 @@ function ResultsView({
   // Validate audit results with Zod schema instead of unsafe type assertion
   const parsed = AuditResultsSchema.safeParse(data);
   if (!parsed.success) {
-    console.error("Invalid audit results format:", parsed.error.message);
+    logger.error("Invalid audit results format", { error: parsed.error.message });
     return (
       <Card>
         <CardContent className="p-6 text-center">

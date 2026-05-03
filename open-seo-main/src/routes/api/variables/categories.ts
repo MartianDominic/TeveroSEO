@@ -8,12 +8,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-variables-categories" });
 
 const QuerySchema = z.object({
   locale: z.enum(["en", "lt"]).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/categories")({
   server: {
     handlers: {
@@ -45,9 +47,9 @@ export const Route = createFileRoute("/api/variables/categories")({
 
           return Response.json({ data: categories });
         } catch (error) {
-          console.error("[api/variables/categories] GET failed:", error);
+          log.error("GET failed", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { error: "Failed to fetch categories" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to fetch categories" } },
             { status: 500 }
           );
         }

@@ -89,3 +89,28 @@ export type { DuplicateButtonProps } from "./DuplicateButton";
 // Share Modal (57-08)
 export { ShareModal } from "./ShareModal";
 export type { ShareModalProps } from "./ShareModal";
+
+// AI Generation Modal (57-07) - Decomposed
+export { AIGenerationModal } from "./AIGenerationModal";
+export type {
+  AIGenerationModalProps,
+  GenerationRequest,
+  ContextType,
+  GeneratableSectionType,
+  TonePreset,
+  GenerationLanguage,
+} from "./AIGenerationModal";
+
+// AI Generation sub-components
+export { ContextSelectionGrid, type ContextItem } from "./ContextSelectionGrid";
+export { SectionSelectionList } from "./SectionSelectionList";
+export { ToneLanguageSelectors } from "./ToneLanguageSelectors";
+export {
+  CONTEXT_CONFIGS,
+  SECTION_CONFIGS,
+  TONE_CONFIGS,
+  LANGUAGE_OPTIONS,
+  getLocalizedLabel,
+  getLocalizedDescription,
+  getUILabels,
+} from "./ai-generation-config";

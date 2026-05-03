@@ -223,9 +223,11 @@ export const prospects = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_prospects_workspace").on(table.workspaceId),

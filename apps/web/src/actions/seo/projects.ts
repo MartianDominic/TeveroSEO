@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -54,7 +55,7 @@ export async function getDefaultProject(params: ProjectParams): Promise<ActionRe
     const data = await getOpenSeo<Project>(`/api/seo/projects?${query.toString()}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getDefaultProject] Failed:", error);
+    logger.error("[getDefaultProject] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to get default project" };
   }
 }
@@ -95,7 +96,7 @@ export async function getProject(params: GetProjectParams): Promise<ActionResult
     if (error instanceof Error && error.message.includes("404")) {
       return { success: true, data: null };
     }
-    console.error("[getProject] Failed:", error);
+    logger.error("[getProject] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to get project" };
   }
 }

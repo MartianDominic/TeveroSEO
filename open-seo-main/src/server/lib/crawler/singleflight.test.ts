@@ -8,33 +8,43 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock Redis before importing Singleflight
-const mockPipeline = {
-  set: vi.fn().mockReturnThis(),
-  del: vi.fn().mockReturnThis(),
-  publish: vi.fn().mockReturnThis(),
-  exec: vi.fn().mockResolvedValue([]),
-};
+// Note: vi.mock is hoisted, so we use vi.hoisted to define mocks that are referenced in vi.mock
+const { mockPipeline, mockSubscriber, mockRedis } = vi.hoisted(() => {
+  const mockPipeline = {
+    set: vi.fn().mockReturnThis(),
+    del: vi.fn().mockReturnThis(),
+    publish: vi.fn().mockReturnThis(),
+    exec: vi.fn().mockResolvedValue([]),
+  };
 
-const mockSubscriber = {
-  subscribe: vi.fn().mockResolvedValue(undefined),
-  unsubscribe: vi.fn().mockResolvedValue(undefined),
-  disconnect: vi.fn(),
-  on: vi.fn(),
-  off: vi.fn(),
-  removeAllListeners: vi.fn(),
-};
+  const mockSubscriber = {
+    subscribe: vi.fn().mockResolvedValue(undefined),
+    unsubscribe: vi.fn().mockResolvedValue(undefined),
+    disconnect: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    removeAllListeners: vi.fn(),
+  };
 
-const mockRedis = {
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn(),
-  publish: vi.fn(),
-  pipeline: vi.fn(() => mockPipeline),
-  duplicate: vi.fn(() => mockSubscriber),
-};
+  const mockRedis = {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    publish: vi.fn(),
+    pipeline: vi.fn(() => mockPipeline),
+    duplicate: vi.fn(() => mockSubscriber),
+    hincrby: vi.fn().mockResolvedValue(1),
+    hincrbyfloat: vi.fn().mockResolvedValue(1),
+    hget: vi.fn().mockResolvedValue(null),
+    hgetall: vi.fn().mockResolvedValue({}),
+  };
+
+  return { mockPipeline, mockSubscriber, mockRedis };
+});
 
 vi.mock("@/server/lib/redis", () => ({
   getSharedBullMQConnection: vi.fn(() => mockRedis),
+  redis: mockRedis,
 }));
 
 // Import after mocking

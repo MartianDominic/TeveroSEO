@@ -15,6 +15,7 @@
 
 import { InternalApiError } from "./client";
 
+import { logger } from '@/lib/logger';
 /**
  * Options for fallback behavior.
  */
@@ -106,7 +107,7 @@ export async function withFallback<T>(
     }
 
     if (shouldFallback(error)) {
-      console.warn(`[withFallback] Primary operation failed, using fallback:`, error.message);
+      logger.warn(`[withFallback] Primary operation failed, using fallback`, { detail: error.message });
 
       const fallbackValue = await fallback();
 
@@ -233,7 +234,7 @@ export function createCachedFallback<T>(
 
     // Check if cache is stale (but still return it - better than nothing)
     if (cacheTime && Date.now() - cacheTime > ttlMs) {
-      console.warn("[cache] Returning stale cached value");
+      logger.warn("[cache] Returning stale cached value");
     }
 
     return cachedValue;
@@ -310,10 +311,7 @@ export async function withRetry<T>(
       const jitterAmount = baseDelay * jitter * Math.random();
       const delay = baseDelay + jitterAmount;
 
-      console.warn(
-        `[withRetry] Attempt ${attempt}/${maxAttempts} failed, retrying in ${Math.round(delay)}ms:`,
-        error.message
-      );
+      logger.warn(`[withRetry] Attempt ${attempt}/${maxAttempts} failed, retrying in ${Math.round(delay)}ms`, { detail: error.message });
 
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

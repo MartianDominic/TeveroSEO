@@ -3,9 +3,12 @@
  * Supports single select, multi-select with Ctrl/Cmd, and range select with Shift.
  *
  * Phase 24: Power User Features
+ *
+ * MED-24 FIX: Added useMemo for derived state (itemIds, isAllSelected, isIndeterminate)
+ * to prevent unnecessary recalculations on each render.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export interface RowSelectionOptions<T> {
   /** All items in the table */
@@ -61,10 +64,18 @@ export function useRowSelection<T>({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
 
-  const itemIds = items.map(getItemId);
-  const selectedCount = selectedIds.size;
-  const isAllSelected = selectedCount > 0 && selectedCount === items.length;
-  const isIndeterminate = selectedCount > 0 && selectedCount < items.length;
+  // MED-24 FIX: Memoize itemIds to prevent recalculation on every render
+  const itemIds = useMemo(() => items.map(getItemId), [items, getItemId]);
+
+  // MED-24 FIX: Memoize derived state to prevent unnecessary recalculations
+  const { selectedCount, isAllSelected, isIndeterminate } = useMemo(() => {
+    const count = selectedIds.size;
+    return {
+      selectedCount: count,
+      isAllSelected: count > 0 && count === items.length,
+      isIndeterminate: count > 0 && count < items.length,
+    };
+  }, [selectedIds, items.length]);
 
   const updateSelection = useCallback(
     (newSelection: Set<string>) => {

@@ -132,16 +132,26 @@ function computeHmac(
 
 /**
  * Timing-safe signature comparison.
+ *
+ * HIGH-07 FIX: Prevents timing attacks by ensuring constant-time comparison
+ * even when lengths differ. We still perform a comparison operation when
+ * lengths don't match to avoid leaking length information through timing.
  */
 function secureCompareSignatures(actual: string, expected: string): boolean {
-  if (actual.length !== expected.length) {
-    return false;
-  }
   try {
-    return timingSafeEqual(
-      Buffer.from(actual, "hex"),
-      Buffer.from(expected, "hex"),
-    );
+    const actualBuffer = Buffer.from(actual, "hex");
+    const expectedBuffer = Buffer.from(expected, "hex");
+
+    // HIGH-07 FIX: Always perform a timing-safe comparison to avoid
+    // leaking length information through timing differences
+    if (actualBuffer.length !== expectedBuffer.length) {
+      // Still do a comparison against itself to maintain constant time
+      // This prevents attackers from detecting length mismatches via timing
+      timingSafeEqual(expectedBuffer, expectedBuffer);
+      return false;
+    }
+
+    return timingSafeEqual(actualBuffer, expectedBuffer);
   } catch (error) {
     log.warn("Webhook signature comparison failed", {
       error: error instanceof Error ? error.message : "Unknown",

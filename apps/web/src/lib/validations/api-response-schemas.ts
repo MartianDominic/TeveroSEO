@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 
+import { logger } from '@/lib/logger';
 // ============================================
 // Alert Schemas
 // ============================================
@@ -157,7 +158,7 @@ export function validateApiResponse<T>(
 ): T | null {
   const result = schema.safeParse(data);
   if (!result.success) {
-    console.error(`[validateApiResponse] ${context}:`, result.error.message);
+    logger.error(`[validateApiResponse] ${context}`, { error: result.error.message });
     return null;
   }
   return result.data;
@@ -180,7 +181,7 @@ export function validateApiResponseResult<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     const errorMsg = `Invalid ${context} response: ${result.error.message}`;
-    console.error(`[validateApiResponse] ${errorMsg}`);
+    logger.error(`[validateApiResponse] ${errorMsg}`);
     return { success: false, error: errorMsg };
   }
   return { success: true, data: result.data };

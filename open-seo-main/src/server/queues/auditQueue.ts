@@ -12,6 +12,7 @@ import { Queue, type JobsOptions } from "bullmq";
 import type { AuditConfig } from "@/server/lib/audit/types";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 export const AUDIT_QUEUE_NAME = "audit-queue" as const;
 export const FAILED_AUDITS_QUEUE_NAME = "failed-audits" as const;
@@ -56,16 +57,12 @@ export interface FailedAuditJobData {
 /**
  * Default job options for audit jobs.
  * Job timeout is controlled via Worker lockDuration (set to 120s in audit-worker.ts).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 500 },
-};
+});
 
 export const auditQueue = new Queue<AuditJobData>(AUDIT_QUEUE_NAME, {
   connection: getSharedBullMQConnection("queue:audit"),

@@ -15,6 +15,7 @@ import { auth } from "@clerk/nextjs/server";
 import { reportLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { getOpenSeoUrl } from "@/lib/env";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,7 @@ export async function GET(
     const isSameOrg = orgId && metadata.organizationId && orgId === metadata.organizationId;
 
     if (!isOwner && !isSameOrg) {
-      console.warn(`[prospects/report] Access denied: userId=${userId} prospectId=${id} ownerId=${metadata.userId}`);
+      logger.warn(`[prospects/report] Access denied: userId=${userId} prospectId=${id} ownerId=${metadata.userId}`);
       return NextResponse.json(
         { error: "Access denied to this prospect" },
         { status: 403 }
@@ -155,7 +156,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("Prospect report download error:", err);
+    logger.error("Prospect report download error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

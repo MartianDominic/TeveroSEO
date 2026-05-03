@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { Button } from '@tevero/ui';
 
+import { logger } from '@/lib/logger';
 export default function ConnectionError({
   error,
   reset,
@@ -12,7 +13,7 @@ export default function ConnectionError({
 }) {
   useEffect(() => {
     // Log to error reporting service
-    console.error('[connect] Error:', error.digest || error.message);
+    logger.error('[connect] Error', { error: error.digest || error.message });
   }, [error]);
 
   return (

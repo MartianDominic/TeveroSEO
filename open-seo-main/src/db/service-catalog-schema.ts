@@ -80,9 +80,11 @@ export const serviceTemplates = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_service_templates_workspace").on(table.workspaceId),
@@ -102,6 +104,9 @@ export const serviceTemplates = pgTable(
 /**
  * Proposal services table - services selected for a specific proposal.
  * Links proposals to service templates with optional price overrides.
+ *
+ * HIGH-INT-05: Snapshots service data at proposal creation time so that
+ * subsequent changes to service templates don't affect existing proposals.
  */
 export const proposalServices = pgTable(
   "proposal_services",
@@ -115,7 +120,17 @@ export const proposalServices = pgTable(
       { onDelete: "set null" }
     ),
 
-    // Customized pricing (can override template)
+    // HIGH-INT-05: Snapshot fields - captured from template at proposal creation
+    // These preserve the service details at the time the proposal was created
+    snapshotName: text("snapshot_name"), // Service name at creation
+    snapshotDescription: text("snapshot_description"), // Description at creation
+    snapshotCategory: text("snapshot_category"), // Category at creation
+    snapshotPricingType: text("snapshot_pricing_type"), // Pricing type at creation
+    snapshotBasePriceCents: integer("snapshot_base_price_cents"), // Base price at creation
+    snapshotSetupFeeCents: integer("snapshot_setup_fee_cents"), // Setup fee at creation
+    snapshotInclusions: jsonb("snapshot_inclusions").$type<string[]>(), // Inclusions at creation
+
+    // Customized pricing (can override snapshot)
     customPriceCents: integer("custom_price_cents"),
     customSetupCents: integer("custom_setup_cents"),
     quantity: integer("quantity").notNull().default(1),

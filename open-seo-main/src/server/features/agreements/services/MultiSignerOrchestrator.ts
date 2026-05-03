@@ -5,15 +5,17 @@
  * Orchestrates sequential and parallel signing flows per D-07, D-08.
  * Handles provider pre-signing (D-09, D-10) and client activation.
  */
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db/index";
 import { generatedAgreements } from "@/db/agreement-template-schema";
+import { agreementSigners } from "@/db/schema/agreement-signers-schema";
 import { SignerRepository } from "../repositories/SignerRepository";
 import type {
   SignerSelect,
   SignerSignatureData,
 } from "@/db/schema/agreement-signers-schema";
 import { createLogger } from "@/server/lib/logger";
+import { withTransaction } from "@/lib/db/transaction";
 
 const log = createLogger({ module: "MultiSignerOrchestrator" });
 
@@ -38,16 +40,31 @@ export const MultiSignerOrchestrator = {
    * For parallel mode (D-08):
    * - All signers can sign independently
    * - Finalize when all complete
+   *
+   * Security (C-59-02): Guards against double-signing/replay attacks by
+   * checking if signer has already been processed before making changes.
    */
   async processSignerCallback(
     signerId: string,
     status: "signed" | "declined",
     callbackData?: SigningCallbackData
-  ): Promise<{ allSigned: boolean; nextSignerLink?: string }> {
+  ): Promise<{ allSigned: boolean; nextSignerLink?: string; message?: string }> {
     const signer = await SignerRepository.findById(signerId);
     if (!signer) {
       log.error("Signer not found for callback", undefined, { signerId });
       throw new Error("Signer not found");
+    }
+
+    // C-59-02: Guard against double-signing/replay attacks
+    // If signer has already signed or declined, reject the callback to prevent
+    // audit trail corruption from replayed webhooks
+    if (signer.status === "signed" || signer.status === "declined") {
+      log.warn("Duplicate signer callback rejected (already processed)", {
+        signerId,
+        currentStatus: signer.status,
+        attemptedStatus: status,
+      });
+      return { allSigned: false, message: "Already processed" };
     }
 
     if (status === "signed") {
@@ -108,32 +125,55 @@ export const MultiSignerOrchestrator = {
    *
    * Per D-07: Sequential signing with signingOrder determining sequence.
    * Per D-06: 32-char token with 14-day expiry.
+   *
+   * Security (H-59-05): Uses transaction with FOR UPDATE lock to prevent
+   * race conditions where concurrent calls could activate multiple signers.
    */
   async activateNextSigner(agreementId: string): Promise<string | null> {
-    const nextSigner = await SignerRepository.findNextPending(agreementId);
-    if (!nextSigner) {
-      log.info("No more pending signers", { agreementId });
-      return null;
-    }
+    return withTransaction(async (tx) => {
+      // H-59-05: Use FOR UPDATE to lock the row and prevent concurrent activation
+      // This ensures only one signer is activated even under concurrent webhook calls
+      const result = await tx.execute<{
+        id: string;
+        role: string;
+        status: string;
+        signing_order: number;
+      }>(sql`
+        SELECT id, role, status, signing_order
+        FROM ${agreementSigners}
+        WHERE agreement_id = ${agreementId}
+          AND status = 'pending'
+        ORDER BY signing_order ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      `);
 
-    // Generate access token
-    const { token, expiresAt } = await SignerRepository.setAccessToken(
-      nextSigner.id
-    );
+      const nextSigner = result.rows[0];
 
-    // Update status to invited
-    await SignerRepository.updateStatus(nextSigner.id, "invited");
+      if (!nextSigner) {
+        log.info("No more pending signers", { agreementId });
+        return null;
+      }
 
-    const magicLink = `${getAppUrl()}/c/${token}`;
+      // Generate access token
+      const { token, expiresAt } = await SignerRepository.setAccessToken(
+        nextSigner.id
+      );
 
-    log.info("Next signer activated", {
-      signerId: nextSigner.id,
-      agreementId,
-      role: nextSigner.role,
-      expiresAt: expiresAt.toISOString(),
+      // Update status to invited
+      await SignerRepository.updateStatus(nextSigner.id, "invited");
+
+      const magicLink = `${getAppUrl()}/c/${token}`;
+
+      log.info("Next signer activated", {
+        signerId: nextSigner.id,
+        agreementId,
+        role: nextSigner.role,
+        expiresAt: expiresAt.toISOString(),
+      });
+
+      return magicLink;
     });
-
-    return magicLink;
   },
 
   /**

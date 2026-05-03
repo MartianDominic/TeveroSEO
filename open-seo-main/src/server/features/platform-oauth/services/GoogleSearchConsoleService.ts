@@ -138,13 +138,21 @@ export class GoogleSearchConsoleService {
       throw new Error(`GSC API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
-    return (data.rows ?? []).map((row: Record<string, unknown>) => ({
-      query: (row.keys as string[])[0],
-      clicks: row.clicks as number,
-      impressions: row.impressions as number,
-      ctr: row.ctr as number,
-      position: row.position as number,
+    const data = await response.json() as {
+      rows?: Array<{
+        keys?: string[];
+        clicks?: number;
+        impressions?: number;
+        ctr?: number;
+        position?: number;
+      }>;
+    };
+    return (data.rows ?? []).map((row) => ({
+      query: row.keys?.[0] ?? "",
+      clicks: row.clicks ?? 0,
+      impressions: row.impressions ?? 0,
+      ctr: row.ctr ?? 0,
+      position: row.position ?? 0,
     }));
   }
 
@@ -178,11 +186,17 @@ export class GoogleSearchConsoleService {
       throw new Error(`GSC API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
-    return (data.rows ?? []).map((row: Record<string, unknown>) => ({
-      page: (row.keys as string[])[0],
-      clicks: row.clicks as number,
-      impressions: row.impressions as number,
+    const data = await response.json() as {
+      rows?: Array<{
+        keys?: string[];
+        clicks?: number;
+        impressions?: number;
+      }>;
+    };
+    return (data.rows ?? []).map((row) => ({
+      page: row.keys?.[0] ?? "",
+      clicks: row.clicks ?? 0,
+      impressions: row.impressions ?? 0,
     }));
   }
 
@@ -211,7 +225,16 @@ export class GoogleSearchConsoleService {
       throw new Error(`GSC API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      sitemap?: Array<{
+        contents?: Array<{
+          indexed?: number;
+          submitted?: number;
+        }>;
+        errors?: number;
+        path?: string;
+      }>;
+    };
     const sitemaps = data.sitemap ?? [];
 
     // Aggregate counts from all sitemaps

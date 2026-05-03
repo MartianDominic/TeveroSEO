@@ -4,6 +4,7 @@ import { requireActionAuth, validateClientOwnership, type ActionResult } from "@
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import type { ReportMetadata } from "@tevero/types";
 
+import { logger } from '@/lib/logger';
 /**
  * Generate a new report.
  *
@@ -29,7 +30,7 @@ export async function generateReport(
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[generateReport] Error:", error);
+    logger.error("[generateReport] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to generate report",
@@ -55,7 +56,7 @@ export async function getReportStatus(
     const data = await getOpenSeo<ReportMetadata>(`/api/reports/${reportId}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getReportStatus] Error:", error);
+    logger.error("[getReportStatus] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get report status",
@@ -79,7 +80,7 @@ export async function listClientReports(
     const data = await getOpenSeo<ReportMetadata[]>(`/api/clients/${clientId}/reports`);
     return { success: true, data };
   } catch (error) {
-    console.error("[listClientReports] Error:", error);
+    logger.error("[listClientReports] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to list reports",

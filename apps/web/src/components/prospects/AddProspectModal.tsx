@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +61,13 @@ export function AddProspectModal({
 
   const [progressId, setProgressId] = useState<string | null>(null);
 
+  // P56-H2 FIX: Track if form has unsaved changes for beforeunload warning
+  const isDirty = Boolean(
+    formData.domain?.trim() ||
+    formData.conversationText?.trim() ||
+    formData.contextNotes?.trim()
+  );
+
   // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -68,6 +75,19 @@ export function AddProspectModal({
       reset();
     }
   }, [isOpen, reset]);
+
+  // P56-H2 FIX: Warn user when navigating away with unsaved changes
+  useEffect(() => {
+    if (!isDirty || !isOpen) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty, isOpen]);
 
   const handleAnalyze = async () => {
     // Validate required fields based on mode
@@ -77,12 +97,14 @@ export function AddProspectModal({
         return;
       }
       // Basic domain format validation
+      // P56-H1 FIX: Normalize domain to lowercase to prevent duplicates
       const domainRegex =
         /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
       const cleanDomain = formData.domain
         .replace(/^https?:\/\//, "")
         .replace(/^www\./, "")
-        .split("/")[0];
+        .split("/")[0]
+        .toLowerCase();
       if (!domainRegex.test(cleanDomain)) {
         setError(t("errors.invalidDomain"));
         return;

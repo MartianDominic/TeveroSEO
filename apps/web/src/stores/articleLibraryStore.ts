@@ -1,5 +1,24 @@
 "use client";
 
+/**
+ * Article Library Store - Article listing with filtering and sorting
+ *
+ * TODO [HIGH-42]: Migrate to TanStack Query for server state
+ * This store currently manages server state which should use React Query for:
+ * - Automatic caching and background refetching
+ * - Stale-while-revalidate patterns
+ * - Request deduplication
+ * - Built-in loading/error states
+ * - Infinite scroll / pagination support
+ *
+ * Migration path:
+ * 1. Create useArticles query hook with filter/sort params
+ * 2. Keep local UI state (selectedIds, sortField, sortDir) in component or separate store
+ * 3. Replace store usage with query hooks in components
+ * 4. Remove this store
+ *
+ * See: https://tanstack.com/query/latest
+ */
 import { create } from "zustand";
 import { apiGet } from "@/lib/api-client";
 

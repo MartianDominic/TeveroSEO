@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function ProspectsError({
   error,
   reset,
@@ -12,7 +13,7 @@ export default function ProspectsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[prospects-error]", {
+    logger.error("[prospects-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { io, Socket } from "socket.io-client";
 import type { ActivityEvent, ActivityEventType } from "./socket-events";
 
+import { logger } from '@/lib/logger';
 // NEXT_PUBLIC_WS_URL must be set via build args in docker-compose.vps.yml
 // Fallback to relative path for same-origin WebSocket (works in both dev and prod)
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "";
@@ -169,7 +170,7 @@ export function useActivityFeed({
       };
 
       const handleConnectError = (err: Error) => {
-        console.error("[useActivityFeed] Connection error:", err.message);
+        logger.error("[useActivityFeed] Connection error", { error: err.message });
         if (err.message.includes("auth") || err.message.includes("token")) {
           setIsAuthenticated(false);
         }

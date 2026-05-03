@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function CompetitorSpyError({
   error,
   reset,
@@ -15,7 +16,7 @@ export default function CompetitorSpyError({
   const router = useRouter();
 
   useEffect(() => {
-    console.error('[CompetitorSpyError]', {
+    logger.error('[CompetitorSpyError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

@@ -15,6 +15,7 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getClerkWebhookSecret } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   // SECURITY: Use validated env - this throws if secret is missing
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   try {
     WEBHOOK_SECRET = getClerkWebhookSecret();
   } catch {
-    console.error('[ClerkWebhook] CLERK_WEBHOOK_SECRET not configured - rejecting webhook');
+    logger.error('[ClerkWebhook] CLERK_WEBHOOK_SECRET not configured - rejecting webhook');
     return new NextResponse('Webhook secret not configured', { status: 500 });
   }
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   const svix_signature = headerPayload.get('svix-signature');
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    console.error('[ClerkWebhook] Missing svix headers');
+    logger.error('[ClerkWebhook] Missing svix headers');
     return new NextResponse('Missing svix headers', { status: 400 });
   }
 
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as WebhookEvent;
   } catch (err) {
-    console.error('[ClerkWebhook] Signature verification failed:', err);
+    logger.error('[ClerkWebhook] Signature verification failed', err instanceof Error ? err : { error: String(err) });
     return new NextResponse('Invalid signature', { status: 400 });
   }
 
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       await handleUserDeleted(evt.data);
       break;
     default:
-      console.log(`[ClerkWebhook] Unhandled event type: ${eventType}`);
+      logger.debug(`[ClerkWebhook] Unhandled event type: ${eventType}`);
   }
 
   return new NextResponse('OK', { status: 200 });
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
 async function handleUserCreated(data: WebhookEvent['data']) {
   if (!('id' in data) || !data.id) return;
 
-  console.log('[ClerkWebhook] User created:', data.id);
+  logger.info('[ClerkWebhook] User created', { userId: data.id });
 
   // Extract user data for potential sync
   const userId = data.id;
@@ -95,10 +96,9 @@ async function handleUserCreated(data: WebhookEvent['data']) {
   const lastName = 'last_name' in data ? data.last_name : undefined;
 
   // Log user creation for monitoring (PII redacted for compliance)
-  console.log('[ClerkWebhook] New user created:', {
+  logger.info('[ClerkWebhook] New user created', {
     userId: userId.substring(0, 8) + '***',
     eventType: 'user.created',
-    createdAt: new Date().toISOString(),
   });
 
   // Future: Sync to local users table if needed for cross-service identity
@@ -112,7 +112,7 @@ async function handleUserCreated(data: WebhookEvent['data']) {
 async function handleUserUpdated(data: WebhookEvent['data']) {
   if (!('id' in data)) return;
 
-  console.log('[ClerkWebhook] User updated:', data.id);
+  logger.info('[ClerkWebhook] User updated', { userId: data.id });
 
   // Future: Update local user record
   // await updateLocalUser(data.id, { ...extractUserFields(data) });
@@ -125,7 +125,7 @@ async function handleUserUpdated(data: WebhookEvent['data']) {
 async function handleUserDeleted(data: WebhookEvent['data']) {
   if (!('id' in data)) return;
 
-  console.log('[ClerkWebhook] User deleted:', data.id);
+  logger.info('[ClerkWebhook] User deleted', { userId: data.id });
 
   // Future: Clean up user data
   // - Remove from local users table

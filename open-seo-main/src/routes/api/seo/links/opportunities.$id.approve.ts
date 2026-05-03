@@ -3,13 +3,19 @@
  * Phase 35-05: Link Health Dashboard API
  *
  * POST /api/seo/links/opportunities/:id/approve - Approve an opportunity
+ *
+ * Security:
+ * - Requires authentication via API key or Clerk JWT
+ * - Verifies opportunity belongs to user's workspace via client relationship (HIGH-03 fix)
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { linkOpportunities } from "@/db/link-schema";
+import { clients } from "@/db/client-schema";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { createLogger } from "@/server/lib/logger";
+import { AppError } from "@/server/lib/errors";
 
 const log = createLogger({ module: "api/seo/links/opportunities/approve" });
 
@@ -28,32 +34,35 @@ export const Route = createFileRoute("/api/seo/links/opportunities/$id/approve")
         request: Request;
         params: { id: string };
       }): Promise<Response> => {
-        let userId: string;
         try {
           const auth = await requireApiAuth(request);
-          userId = auth.userId;
-        } catch {
-          return Response.json(
-            { success: false, error: "Unauthorized" } satisfies ApproveResponse,
-            { status: 401 }
-          );
-        }
+          const { id } = params;
 
-        const { id } = params;
-
-        try {
-          // Check if opportunity exists
-          const existing = await db
-            .select({ id: linkOpportunities.id })
+          // HIGH-03 FIX: Fetch opportunity with client to verify workspace ownership
+          const [opportunity] = await db
+            .select({
+              id: linkOpportunities.id,
+              clientId: linkOpportunities.clientId,
+              clientWorkspaceId: clients.workspaceId,
+            })
             .from(linkOpportunities)
+            .innerJoin(clients, eq(linkOpportunities.clientId, clients.id))
             .where(eq(linkOpportunities.id, id))
             .limit(1);
 
-          if (existing.length === 0) {
-            return Response.json(
-              { success: false, error: "Opportunity not found" } satisfies ApproveResponse,
-              { status: 404 }
-            );
+          if (!opportunity) {
+            throw new AppError("NOT_FOUND", "Opportunity not found");
+          }
+
+          // Verify workspace ownership
+          if (opportunity.clientWorkspaceId !== auth.organizationId) {
+            log.warn("Opportunity approval forbidden - workspace mismatch", {
+              opportunityId: id,
+              clientWorkspaceId: opportunity.clientWorkspaceId,
+              userOrgId: auth.organizationId,
+              userId: auth.userId,
+            });
+            throw new AppError("FORBIDDEN", "Access denied to this opportunity");
           }
 
           // Update status to approved
@@ -64,10 +73,22 @@ export const Route = createFileRoute("/api/seo/links/opportunities/$id/approve")
             })
             .where(eq(linkOpportunities.id, id));
 
-          log.info("Opportunity approved", { opportunityId: id, userId });
+          log.info("Opportunity approved", { opportunityId: id, userId: auth.userId });
 
           return Response.json({ success: true } satisfies ApproveResponse);
         } catch (error) {
+          if (error instanceof AppError) {
+            const statusMap: Record<string, number> = {
+              UNAUTHENTICATED: 401,
+              FORBIDDEN: 403,
+              NOT_FOUND: 404,
+            };
+            const status = statusMap[error.code] ?? 500;
+            return Response.json(
+              { success: false, error: error.message } satisfies ApproveResponse,
+              { status }
+            );
+          }
           log.error(
             "Failed to approve opportunity",
             error instanceof Error ? error : new Error(String(error))

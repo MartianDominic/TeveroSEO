@@ -16,6 +16,7 @@ import { GoogleOAuthProvider } from "@/server/features/platform-oauth/providers/
 import { WixOAuthProvider } from "@/server/features/platform-oauth/providers/WixOAuthProvider";
 import { createLogger } from "@/server/lib/logger";
 import type { CheckExpiringTokensJobData } from "@/server/queues/tokenRefreshQueue";
+import { redis } from "@/server/lib/redis";
 
 const logger = createLogger({ module: "token-refresh-processor" });
 
@@ -27,6 +28,9 @@ const REFRESHABLE_PLATFORMS = [
   "google_business_profile",
   "wix",
 ] as const;
+
+// Get app URL from env - extracted here to avoid shadowing by function named 'process'
+const APP_URL = (globalThis as any).process?.env?.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 /**
  * Get OAuth provider instance for token refresh.
@@ -40,7 +44,7 @@ function getProvider(
   _siteUrl: string | null
 ): GoogleOAuthProvider | WixOAuthProvider {
   // Redirect URI is not used for refresh, but providers require it
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = APP_URL;
 
   switch (platform) {
     case "google_search_console":
@@ -113,6 +117,16 @@ export default async function process(
         newTokens.refreshToken,
         newTokens.expiresIn
       );
+
+      // HIGH-INT-02: Publish token invalidation event for services with in-memory caches
+      try {
+        await redis.publish("token:invalidated", connection.id);
+      } catch (pubError) {
+        // Log but don't fail - token refresh succeeded
+        connLogger.warn("Failed to publish token invalidation", {
+          error: pubError instanceof Error ? pubError.message : "Unknown error",
+        });
+      }
 
       connLogger.info("Token refreshed successfully");
       refreshed++;

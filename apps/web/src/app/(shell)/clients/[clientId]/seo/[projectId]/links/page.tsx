@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link2, AlertTriangle, Loader2, Check, X, Zap } from "lucide-react";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Card,
@@ -177,7 +178,7 @@ export default function LinksPage() {
       showToast("Link opportunity approved", "success");
     },
     onError: (error) => {
-      console.error("Failed to approve opportunity:", error);
+      logger.error("Failed to approve opportunity", error instanceof Error ? error : { error: String(error) });
       showToast("Failed to approve opportunity. Please try again.", "error");
     },
   });
@@ -189,7 +190,7 @@ export default function LinksPage() {
       showToast("Link opportunity rejected", "success");
     },
     onError: (error) => {
-      console.error("Failed to reject opportunity:", error);
+      logger.error("Failed to reject opportunity", error instanceof Error ? error : { error: String(error) });
       showToast("Failed to reject opportunity. Please try again.", "error");
     },
   });

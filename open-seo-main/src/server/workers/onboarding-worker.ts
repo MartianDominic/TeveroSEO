@@ -12,10 +12,11 @@ import { Worker, Job } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { triggerOnboarding } from "@/server/features/proposals/onboarding/onboarding";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
-import type {
-  OnboardingJobData,
-  OnboardingJobResult,
+import {
+  getOnboardingQueue,
+  type OnboardingJobData,
+  type OnboardingJobResult,
+  type OnboardingDLQJobData,
 } from "@/server/queues/onboardingQueue";
 
 const log = createLogger({ module: "OnboardingWorker" });
@@ -102,37 +103,48 @@ export function startOnboardingWorker(): Worker<
   });
 
   worker.on("failed", async (job, error) => {
-    log.error("Onboarding job failed", error, {
-      jobId: job?.id,
-      proposalId: job?.data.proposalId,
-      attempts: job?.attemptsMade,
+    if (!job) {
+      log.error("Onboarding job failed with no job context", error ?? new Error("Unknown error"));
+      return;
+    }
+
+    const jobLogger = createLogger({
+      module: "onboarding-worker",
+      jobId: job.id,
     });
 
-    // Move to DLQ after max retries exhausted (BQ-07 pattern)
-    if (job && job.attemptsMade >= MAX_ATTEMPTS && !job.name.startsWith("dlq:")) {
-      const dlqPayload: DLQJobData = {
-        originalQueue: QUEUE_NAME,
-        jobId: job.id,
-        jobData: job.data,
-        error: error?.message || "Unknown error",
-        stack: error?.stack,
-        failedAt: new Date().toISOString(),
-      };
+    jobLogger.error("Onboarding job failed", error ?? new Error("Unknown error"), {
+      proposalId: job.data.proposalId,
+      attempt: job.attemptsMade,
+      maxAttempts: MAX_ATTEMPTS,
+    });
+
+    // HIGH-52 fix: Use inline DLQ pattern (same as other workers)
+    if (job.attemptsMade >= MAX_ATTEMPTS && !job.name.startsWith("dlq:")) {
       try {
-        const dlqQueue = getDLQQueue();
-        await dlqQueue.add(`dlq:onboarding:${job.id}`, dlqPayload, {
-          removeOnComplete: { age: 7 * 24 * 3600 }, // 7 days
-          removeOnFail: false,
+        const dlqData: OnboardingDLQJobData = {
+          originalJobId: job.id,
+          originalJobName: job.name,
+          data: job.data,
+          error: error?.message || "Unknown error",
+          stack: error?.stack,
+          failedAt: new Date().toISOString(),
+          attemptsMade: job.attemptsMade,
+        };
+        const queue = getOnboardingQueue();
+        await queue.add("dlq:onboarding", dlqData as unknown as OnboardingJobData, {
+          removeOnComplete: { age: 604800 }, // 7 days
+          removeOnFail: { age: 604800 },
+          attempts: 1,
         });
-        log.info("Moved failed onboarding job to DLQ", {
-          jobId: job.id,
+        jobLogger.info("Job moved to DLQ", {
           proposalId: job.data.proposalId,
+          attemptsMade: job.attemptsMade,
         });
       } catch (dlqErr) {
-        log.error(
-          "Failed to enqueue DLQ job",
-          dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)),
-          { jobId: job.id }
+        jobLogger.error(
+          "Failed to move job to DLQ",
+          dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr))
         );
       }
     }

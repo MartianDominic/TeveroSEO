@@ -1,8 +1,28 @@
 "use client";
 
+/**
+ * Analytics Store - Client analytics and publishing logs
+ *
+ * TODO [HIGH-42]: Migrate to TanStack Query for server state
+ * This store currently manages server state which should use React Query for:
+ * - Automatic caching and background refetching
+ * - Stale-while-revalidate patterns
+ * - Request deduplication
+ * - Built-in loading/error states
+ * - Optimistic updates
+ *
+ * Migration path:
+ * 1. Create useClientAnalytics query hook
+ * 2. Create usePublishingLogs query hook
+ * 3. Replace store usage with query hooks in components
+ * 4. Remove this store
+ *
+ * See: https://tanstack.com/query/latest
+ */
 import { create } from "zustand";
 import { apiGet } from "@/lib/api-client";
 
+import { logger } from '@/lib/logger';
 export interface ClientAnalytics {
   client_id: string;
   articles_published_this_month: number;
@@ -58,7 +78,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
       const data = await apiGet<PublishingLogEntry[]>(`/api/analytics/${clientId}/publishing-logs`);
       set({ publishingLogs: data, logsLoading: false });
     } catch (err) {
-      console.error("Failed to fetch publishing logs:", err);
+      logger.error("Failed to fetch publishing logs", err instanceof Error ? err : { error: String(err) });
       set({ logsLoading: false });
     }
   },

@@ -22,6 +22,68 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "WorkflowExecutor" });
 
+// Cycle detection constants
+const MAX_STEP_EXECUTIONS = 5; // Maximum times a single step can execute
+const MAX_BACKWARD_JUMPS = 2; // Maximum backward jumps allowed per instance
+
+// Webhook URL allowlist - domains that are allowed for webhook calls
+const ALLOWED_WEBHOOK_DOMAINS = [
+  "api.slack.com",
+  "hooks.slack.com",
+  "hooks.zapier.com",
+  "notify.runscope.com",
+  "discord.com",
+  "discordapp.com",
+  "maker.ifttt.com",
+  "api.telegram.org",
+] as const;
+
+// Custom error for workflow execution issues
+export class WorkflowError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | "CYCLE_DETECTED"
+      | "BACKWARD_GOTO_BLOCKED"
+      | "WEBHOOK_URL_NOT_ALLOWED"
+      | "INVALID_STEP_INDEX"
+  ) {
+    super(message);
+    this.name = "WorkflowError";
+  }
+}
+
+// Execution context for tracking step visits
+interface ExecutionContext {
+  stepExecutionCounts: Map<number, number>;
+  backwardJumpCount: number;
+}
+
+// Instance execution contexts (keyed by instanceId)
+const executionContexts = new Map<string, ExecutionContext>();
+
+/**
+ * Get or create execution context for an instance.
+ */
+function getExecutionContext(instanceId: string): ExecutionContext {
+  let ctx = executionContexts.get(instanceId);
+  if (!ctx) {
+    ctx = {
+      stepExecutionCounts: new Map(),
+      backwardJumpCount: 0,
+    };
+    executionContexts.set(instanceId, ctx);
+  }
+  return ctx;
+}
+
+/**
+ * Clear execution context when workflow completes or is cancelled.
+ */
+function clearExecutionContext(instanceId: string): void {
+  executionContexts.delete(instanceId);
+}
+
 // Step execution result types
 export interface StepResult {
   type: "wait" | "email" | "task" | "condition" | "webhook" | "alert" | "completed" | "skipped" | "rescheduled";
@@ -298,6 +360,7 @@ export class WorkflowExecutor {
 
   /**
    * Execute condition step - evaluate and navigate.
+   * Includes cycle detection to prevent infinite loops (H-62-01).
    */
   private async executeConditionStep(
     config: ConditionConfig,
@@ -318,6 +381,7 @@ export class WorkflowExecutor {
     const action = conditionMet ? config.onTrue : config.onFalse;
 
     if (action === "complete") {
+      clearExecutionContext(instance.id);
       await this.engagementService.completeWorkflow(instance.id, "completed");
       return { type: "condition", conditionResult: conditionMet };
     }
@@ -332,15 +396,60 @@ export class WorkflowExecutor {
     }
 
     if (typeof action === "object" && "goto" in action) {
+      const targetIndex = action.goto;
+      const execCtx = getExecutionContext(instance.id);
+
+      // Track execution count for target step
+      const count = (execCtx.stepExecutionCounts.get(targetIndex) || 0) + 1;
+      execCtx.stepExecutionCounts.set(targetIndex, count);
+
+      // Check for excessive step executions (cycle detection)
+      if (count > MAX_STEP_EXECUTIONS) {
+        log.warn("Cycle detected - step executed too many times", {
+          instanceId: instance.id,
+          targetIndex,
+          count,
+        });
+        throw new WorkflowError(
+          `Step ${targetIndex} executed ${count} times - possible infinite loop`,
+          "CYCLE_DETECTED"
+        );
+      }
+
+      // Check for backward jumps
+      if (targetIndex <= instance.currentStep) {
+        execCtx.backwardJumpCount++;
+
+        if (execCtx.backwardJumpCount > MAX_BACKWARD_JUMPS) {
+          log.warn("Too many backward jumps detected", {
+            instanceId: instance.id,
+            targetIndex,
+            currentStep: instance.currentStep,
+            backwardJumpCount: execCtx.backwardJumpCount,
+          });
+          throw new WorkflowError(
+            `Backward goto to step ${targetIndex} blocked - too many backward jumps (${execCtx.backwardJumpCount})`,
+            "BACKWARD_GOTO_BLOCKED"
+          );
+        }
+
+        log.info("Backward jump allowed", {
+          instanceId: instance.id,
+          from: instance.currentStep,
+          to: targetIndex,
+          backwardJumpCount: execCtx.backwardJumpCount,
+        });
+      }
+
       // Jump to specific step
       await this.workflowRepo.update(instance.id, {
-        currentStep: action.goto,
+        currentStep: targetIndex,
       });
       // Schedule execution of the target step
       await this.queue.add(
         "execute-step",
         { type: "execute_step", instanceId: instance.id },
-        { jobId: `step-${instance.id}-${action.goto}` }
+        { jobId: `step-${instance.id}-${targetIndex}` }
       );
       return { type: "condition", conditionResult: conditionMet };
     }
@@ -352,6 +461,7 @@ export class WorkflowExecutor {
 
   /**
    * Execute webhook step - POST to external URL.
+   * Includes URL allowlist validation to prevent SSRF (H-62-02).
    */
   private async executeWebhookStep(
     config: WebhookConfig,
@@ -360,7 +470,17 @@ export class WorkflowExecutor {
     const context = instance.context as Record<string, unknown>;
 
     // Validate URL against allowlist (threat mitigation T-62-03-01)
-    // For now, we allow all URLs but log them
+    if (!this.isWebhookUrlAllowed(config.url)) {
+      log.warn("Webhook URL not in allowlist", {
+        url: config.url,
+        instanceId: instance.id,
+      });
+      throw new WorkflowError(
+        `Webhook URL ${config.url} not in allowlist - contact admin to add domain`,
+        "WEBHOOK_URL_NOT_ALLOWED"
+      );
+    }
+
     log.info("Executing webhook", { url: config.url, instanceId: instance.id });
 
     try {
@@ -389,6 +509,39 @@ export class WorkflowExecutor {
       log.error("Webhook step failed", error instanceof Error ? error : new Error(String(error)));
       await this.engagementService.advanceStep(instance.id);
       return { type: "webhook", error: String(error) };
+    }
+  }
+
+  /**
+   * Validate webhook URL against allowlist.
+   * Returns true if URL hostname is in the global allowlist.
+   */
+  private isWebhookUrlAllowed(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+
+      // Must be HTTPS in production
+      if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
+        log.warn("Webhook URL must use HTTPS in production", { url });
+        return false;
+      }
+
+      // Check against global allowlist
+      if (ALLOWED_WEBHOOK_DOMAINS.includes(parsed.hostname as typeof ALLOWED_WEBHOOK_DOMAINS[number])) {
+        return true;
+      }
+
+      // Check if hostname ends with an allowed domain (for subdomains)
+      for (const allowedDomain of ALLOWED_WEBHOOK_DOMAINS) {
+        if (parsed.hostname.endsWith(`.${allowedDomain}`)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      log.warn("Invalid webhook URL", { url });
+      return false;
     }
   }
 

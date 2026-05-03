@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Button,
   Dialog,
@@ -13,7 +13,7 @@ import {
 } from "@tevero/ui";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { useClientStore } from "@/stores/clientStore";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,6 +33,9 @@ interface PlatformSecretStatus {
   required: boolean;
 }
 
+// Timeout for creation process (60 seconds)
+const CREATION_TIMEOUT_MS = 60000;
+
 // ---------------------------------------------------------------------------
 // AddClientModal
 // ---------------------------------------------------------------------------
@@ -50,16 +53,70 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
   const [urlError, setUrlError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
 
-  const handleClose = () => {
-    if (step === "creating") return; // Don't allow close during creation
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Store the trigger element for focus management
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement;
+    }
+  }, [open]);
+
+  const handleClose = (force = false) => {
+    if (step === "creating" && !force) {
+      // Show cancel confirmation instead of blocking
+      setIsCancelling(true);
+      return;
+    }
+
+    // Abort any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     setName("");
     setUrl("");
     setUrlError(null);
     setNameError(null);
     setSubmitError(null);
     setStep("form");
+    setIsCancelling(false);
     onClose();
+
+    // Return focus to trigger element
+    setTimeout(() => {
+      triggerRef.current?.focus();
+    }, 0);
+  };
+
+  const handleCancelCreation = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setSubmitError("Client creation was cancelled.");
+    setStep("form");
+    setIsCancelling(false);
   };
 
   const validateForm = (): boolean => {
@@ -90,6 +147,18 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
     if (!validateForm()) return;
 
     setStep("creating");
+
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
+    // Set timeout protection
+    timeoutRef.current = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setSubmitError("Client creation timed out. Please try again.");
+      setStep("form");
+    }, CREATION_TIMEOUT_MS);
 
     try {
       // Create the client
@@ -140,6 +209,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
 
       onCreated(newClient.id);
     } catch (err: unknown) {
+      // Clear timeout on error
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Don't show error if cancelled
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       const msg =
         err instanceof Error ? err.message : "Failed to create client";
       setSubmitError(msg);
@@ -157,6 +234,31 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
             creation.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Cancel confirmation during creation */}
+        {isCancelling && (
+          <div className="mt-4 p-4 rounded-lg border border-amber-500/50 bg-amber-500/10">
+            <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+              Are you sure you want to cancel? The client creation is in progress.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCancelling(false)}
+              >
+                Continue Waiting
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancelCreation}
+              >
+                Cancel Creation
+              </Button>
+            </div>
+          </div>
+        )}
 
         {step === "form" && (
           <div className="mt-5 space-y-4">
@@ -200,7 +302,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="outline" onClick={() => handleClose()}>
                 Cancel
               </Button>
               <Button
@@ -213,7 +315,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
           </div>
         )}
 
-        {step === "creating" && (
+        {step === "creating" && !isCancelling && (
           <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <div>
@@ -224,6 +326,16 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
                 This usually takes 30–60 seconds
               </p>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 text-muted-foreground hover:text-foreground"
+              onClick={() => handleClose()}
+              aria-label="Cancel client creation"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
           </div>
         )}
       </DialogContent>

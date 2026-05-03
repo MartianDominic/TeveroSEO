@@ -8,6 +8,7 @@ import type { Webhook, WebhookEvent } from "@/actions/webhooks";
 import { getClientWebhooks, getEventRegistry } from "@/actions/webhooks";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function WebhooksSettingsPage() {
   const params = useParams();
   const clientId = params.clientId as string;
@@ -38,7 +39,7 @@ export default function WebhooksSettingsPage() {
         setEvents(registryResult.data.events);
         setCategories(registryResult.data.categories);
       } catch (err) {
-        console.error('[WebhooksPage] Load error:', err);
+        logger.error('[WebhooksPage] Load error', err instanceof Error ? err : { error: String(err) });
         setError('Failed to load webhooks. Please try again.');
       } finally {
         setLoading(false);
@@ -70,7 +71,7 @@ export default function WebhooksSettingsPage() {
           }
         })
         .catch((err) => {
-          console.error('[WebhooksPage] Refresh error:', err);
+          logger.error('[WebhooksPage] Refresh error', err instanceof Error ? err : { error: String(err) });
           setError('Failed to refresh webhooks list.');
         });
     }
@@ -92,7 +93,7 @@ export default function WebhooksSettingsPage() {
         setCategories(registryResult.data.categories);
       })
       .catch((err) => {
-        console.error('[WebhooksPage] Retry error:', err);
+        logger.error('[WebhooksPage] Retry error', err instanceof Error ? err : { error: String(err) });
         setError('Failed to load webhooks. Please try again.');
       })
       .finally(() => {

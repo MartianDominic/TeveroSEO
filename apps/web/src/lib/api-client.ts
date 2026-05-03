@@ -7,6 +7,7 @@ import {
 } from "./fetch-with-timeout";
 import type { ZodLikeSchema } from "./utils/type-guards";
 
+import { logger } from '@/lib/logger';
 export class ApiError extends Error {
   constructor(public status: number, public body: unknown, message: string) {
     super(message);
@@ -56,7 +57,7 @@ async function request<T>(
     if (!result.success) {
       const errorMsg = `Response validation failed for ${method} ${path}: ${result.error.message}`;
       if (process.env.NODE_ENV === 'development') {
-        console.warn(`[api-client] ${errorMsg}`);
+        logger.warn(`[api-client] ${errorMsg}`);
       }
       throw new ApiError(res.status, parsed, errorMsg);
     }

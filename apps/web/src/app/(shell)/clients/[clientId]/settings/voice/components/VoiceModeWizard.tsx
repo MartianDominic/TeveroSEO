@@ -129,23 +129,25 @@ export function VoiceModeWizard({
         </Card>
       )}
 
-      {/* Advanced options */}
+      {/* Advanced options - MEDIUM-06 FIX: Added aria attributes for accessibility */}
       <div>
         <button
           type="button"
           onClick={() => setAdvancedOpen(!advancedOpen)}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          aria-expanded={advancedOpen}
+          aria-controls="voice-advanced-options"
         >
           {advancedOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
           Advanced Options
         </button>
 
         {advancedOpen && (
-          <Card className="p-4 mt-4 space-y-4">
+          <Card id="voice-advanced-options" className="p-4 mt-4 space-y-4">
             {/* Voice blending */}
             <div className="flex items-center justify-between">
               <div>
@@ -163,17 +165,21 @@ export function VoiceModeWizard({
             {blendEnabled && (
               <>
                 <Separator />
+                {/* MEDIUM-06 FIX: Added aria-label for slider accessibility */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Blend Weight</Label>
+                  <Label htmlFor="blend-weight-slider" className="text-sm font-medium">Blend Weight</Label>
                   <div className="px-1">
                     <Slider
+                      id="blend-weight-slider"
                       value={blendWeight}
                       onValueChange={setBlendWeight}
                       min={0}
                       max={1}
                       step={0.05}
+                      aria-label="Voice blend weight"
+                      aria-valuetext={`${Math.round((1 - blendWeight[0]) * 100)}% client voice, ${Math.round(blendWeight[0] * 100)}% template style`}
                     />
-                    <div className="flex justify-between mt-1">
+                    <div className="flex justify-between mt-1" aria-hidden="true">
                       <span className="text-xs text-muted-foreground">
                         Client voice
                       </span>

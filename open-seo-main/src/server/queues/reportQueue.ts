@@ -12,6 +12,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "reportQueue" });
 
@@ -44,22 +45,14 @@ export interface ReportDLQJobData {
 }
 
 /**
- * Default job options following analytics queue pattern.
- * 3 attempts with exponential backoff (10s, 20s, 40s).
- */
-/**
  * Default job options for report generation.
  * Job timeout is controlled via Worker lockDuration (set to 90s in report-worker.ts).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 500 },
-};
+});
 
 /**
  * Report generation queue.

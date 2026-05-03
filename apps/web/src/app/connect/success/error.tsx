@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, Home } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 /**
  * Error boundary for OAuth success callback page.
  * Catches errors during the post-OAuth completion flow.
@@ -16,7 +17,7 @@ export default function ConnectSuccessError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[connect-success-error]", {
+    logger.error("[connect-success-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

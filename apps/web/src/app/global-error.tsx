@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
+import { logger } from '@/lib/logger';
 // SECURITY: Never expose raw error messages to users in production
 const USER_FRIENDLY_MESSAGE = "Something went wrong. Please try again.";
 
@@ -13,13 +15,26 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error details for debugging/monitoring
-    // In production, send to error tracking service (Sentry, etc.)
-    console.error("[global-error]", {
-      digest: error.digest,
-      message: error.message,
-      timestamp: new Date().toISOString(),
+    // Send critical global errors to Sentry immediately
+    Sentry.captureException(error, {
+      extra: {
+        digest: error.digest,
+      },
+      tags: {
+        errorType: "global-error",
+        severity: "critical",
+      },
+      level: "fatal",
     });
+
+    // Also log locally for development debugging
+    if (process.env.NODE_ENV === "development") {
+      logger.error("[global-error]", {
+        digest: error.digest,
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }, [error]);
 
   return (

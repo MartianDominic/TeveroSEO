@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { logger } from '@/lib/logger';
 import {
   ChevronUp,
   ChevronDown,
@@ -361,12 +362,12 @@ export default function ArticleLibraryPage() {
   const [expandedRankId, setExpandedRankId] = useState<string | null>(null);
   const [rankLoading, setRankLoading] = useState<Record<string, boolean>>({});
 
+  // MEDIUM-03 FIX: Include fetchArticles - stable from zustand store
   useEffect(() => {
     if (clientId) {
       fetchArticles(clientId, statusFilter || undefined);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, statusFilter]);
+  }, [clientId, statusFilter, fetchArticles]);
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -439,7 +440,7 @@ export default function ArticleLibraryPage() {
         : [];
       setRankHistory((prev) => ({ ...prev, [article.id]: sorted }));
     } catch (e) {
-      console.error(`Failed to load rank history for article ${article.id}:`, e);
+      logger.error(`Failed to load rank history for article ${article.id}`, e instanceof Error ? e : { error: String(e) });
       // Set empty array to indicate load was attempted but failed
       // The UI will show "No ranking data yet" which is acceptable fallback
       setRankHistory((prev) => ({ ...prev, [article.id]: [] }));
@@ -498,7 +499,7 @@ export default function ArticleLibraryPage() {
             return { success: true, id: item.id };
           } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "Unknown error";
-            console.error(`Bulk operation failed for item ${item.id}:`, e);
+            logger.error(`Bulk operation failed for item ${item.id}`, e instanceof Error ? e : { error: String(e) });
             return { success: false, id: item.id, error: errorMessage };
           }
         })
@@ -528,13 +529,13 @@ export default function ArticleLibraryPage() {
       const successes = results.filter((r) => r.success);
       if (failures.length > 0) {
         const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
-        console.error(`Bulk generate: ${failures.length} failures:`, failures);
+        logger.error(`Bulk generate: ${failures.length} failures`, failures instanceof Error ? failures : { error: String(failures) });
         // Set error state to show banner (existing error state)
         // Note: For a more robust solution, consider adding a toast component
         alert(`${successes.length} article(s) queued for generation, ${failures.length} failed: ${failureMessages}`);
       }
     } catch (e) {
-      console.error("Bulk generate failed:", e);
+      logger.error("Bulk generate failed", e instanceof Error ? e : { error: String(e) });
       alert(`Bulk generation failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);
@@ -562,11 +563,11 @@ export default function ArticleLibraryPage() {
       const successes = results.filter((r) => r.success);
       if (failures.length > 0) {
         const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
-        console.error(`Bulk approve: ${failures.length} failures:`, failures);
+        logger.error(`Bulk approve: ${failures.length} failures`, failures instanceof Error ? failures : { error: String(failures) });
         alert(`${successes.length} article(s) approved, ${failures.length} failed: ${failureMessages}`);
       }
     } catch (e) {
-      console.error("Bulk approve failed:", e);
+      logger.error("Bulk approve failed", e instanceof Error ? e : { error: String(e) });
       alert(`Bulk approval failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);
@@ -600,11 +601,11 @@ export default function ArticleLibraryPage() {
       const successes = results.filter((r) => r.success);
       if (failures.length > 0) {
         const failureMessages = failures.slice(0, 3).map((f) => f.error).join("; ");
-        console.error(`Bulk delete: ${failures.length} failures:`, failures);
+        logger.error(`Bulk delete: ${failures.length} failures`, failures instanceof Error ? failures : { error: String(failures) });
         alert(`${successes.length} article(s) deleted, ${failures.length} failed: ${failureMessages}`);
       }
     } catch (e) {
-      console.error("Bulk delete failed:", e);
+      logger.error("Bulk delete failed", e instanceof Error ? e : { error: String(e) });
       alert(`Bulk deletion failed: ${e instanceof Error ? e.message : "Unknown error"}`);
     } finally {
       setBulkLoading(false);

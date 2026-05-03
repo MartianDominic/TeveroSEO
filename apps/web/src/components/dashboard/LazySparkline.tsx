@@ -59,52 +59,58 @@ export function LazySparkline({
     return () => observer.disconnect();
   }, []);
 
+  // HIGH-01 FIX: Move AbortController to ref for proper cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Fetch data when visible
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
     if (!isVisible || data !== null || loading) return;
 
-    setLoading(true);
-    setError(false);
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10s timeout for quick lookups
+    abortControllerRef.current = controller;
 
-    try {
-      const res = await fetch(`/api/sparkline/${clientId}/${metric}`, {
-        signal: controller.signal,
-      });
+    const fetchData = async () => {
+      setLoading(true);
+      setError(false);
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+      const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+
+      try {
+        const res = await fetch(`/api/sparkline/${clientId}/${metric}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const result: SparklineResponse = await res.json();
+
+        // Transform to SparklineDataPoint format
+        const points: SparklineDataPoint[] = result.data.map((value, i) => ({
+          value,
+          label: result.labels?.[i],
+        }));
+
+        setData(points);
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(true);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+        setLoading(false);
       }
+    };
 
-      const result: SparklineResponse = await res.json();
+    fetchData();
 
-      // Transform to SparklineDataPoint format
-      const points: SparklineDataPoint[] = result.data.map((value, i) => ({
-        value,
-        label: result.labels?.[i],
-      }));
-
-      setData(points);
-    } catch (err) {
-      if (err instanceof Error && err.name !== "AbortError") {
-        setError(true);
-      }
-    } finally {
-      clearTimeout(timeoutId);
-      setLoading(false);
-    }
-
+    // Cleanup: abort fetch on unmount or dependency change
     return () => {
-      clearTimeout(timeoutId);
       controller.abort();
+      abortControllerRef.current = null;
     };
   }, [isVisible, data, loading, clientId, metric]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Show skeleton while loading or not yet visible
   if (!isVisible || loading || data === null) {

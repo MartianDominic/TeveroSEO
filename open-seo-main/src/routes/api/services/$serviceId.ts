@@ -45,7 +45,6 @@ const updateServiceSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/services/$serviceId")({
   server: {
     handlers: {

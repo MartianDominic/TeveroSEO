@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { env } from "@/lib/env";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateProspectOwnership,
@@ -130,7 +131,7 @@ export async function getScrapeConfig(
       } catch {
         // Response wasn't JSON
       }
-      console.error("[getScrapeConfig] API error:", response.status, errorMessage);
+      logger.error("[getScrapeConfig] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -140,7 +141,7 @@ export async function getScrapeConfig(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[getScrapeConfig] Error:", error);
+    logger.error("[getScrapeConfig] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -230,7 +231,7 @@ export async function updateScrapeConfig(
       } catch {
         // Response wasn't JSON
       }
-      console.error("[updateScrapeConfig] API error:", response.status, errorMessage);
+      logger.error("[updateScrapeConfig] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -239,7 +240,7 @@ export async function updateScrapeConfig(
 
     return { success: true, data: undefined };
   } catch (error) {
-    console.error("[updateScrapeConfig] Error:", error);
+    logger.error("[updateScrapeConfig] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -323,7 +324,7 @@ export async function discoverSelectors(
       } catch {
         // Response wasn't JSON
       }
-      console.error("[discoverSelectors] API error:", response.status, errorMessage);
+      logger.error("[discoverSelectors] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -333,7 +334,7 @@ export async function discoverSelectors(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[discoverSelectors] Error:", error);
+    logger.error("[discoverSelectors] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -422,7 +423,7 @@ export async function testExtractionRule(
       } catch {
         // Response wasn't JSON
       }
-      console.error("[testExtractionRule] API error:", response.status, errorMessage);
+      logger.error("[testExtractionRule] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -432,7 +433,7 @@ export async function testExtractionRule(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[testExtractionRule] Error:", error);
+    logger.error("[testExtractionRule] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,

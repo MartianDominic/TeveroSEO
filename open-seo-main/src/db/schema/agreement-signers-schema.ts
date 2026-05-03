@@ -122,14 +122,18 @@ export const agreementSigners = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_agreement_signers_agreement").on(table.agreementId),
     index("ix_agreement_signers_token").on(table.accessToken),
     index("ix_agreement_signers_status").on(table.status),
+    // M-SCHEMA-02: Role filter for provider/client queries
+    index("idx_agreement_signers_role").on(table.role),
     index("ix_agreement_signers_dokobit_session").on(table.dokobitSessionId),
   ]
 );

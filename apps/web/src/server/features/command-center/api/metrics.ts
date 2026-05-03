@@ -1,5 +1,6 @@
 import "server-only";
 
+import { logger } from '@/lib/logger';
 /**
  * Dashboard Metrics Server API
  * Phase 62-05: Command Center Dashboard Core
@@ -41,7 +42,7 @@ export async function getDashboardMetrics(
   } catch (error) {
     // Log error but return a "pending" response rather than throwing
     // This allows the dashboard to render with loading states
-    console.error("[getDashboardMetrics] Failed to fetch metrics:", error);
+    logger.error("[getDashboardMetrics] Failed to fetch metrics", error instanceof Error ? error : { error: String(error) });
 
     return {
       pending: true,

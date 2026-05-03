@@ -63,6 +63,8 @@ export class BriefRepository {
         status: contentBriefs.status,
         serpAnalysis: contentBriefs.serpAnalysis,
         articleId: contentBriefs.articleId,
+        isDeleted: contentBriefs.isDeleted,
+        deletedAt: contentBriefs.deletedAt,
         createdAt: contentBriefs.createdAt,
         updatedAt: contentBriefs.updatedAt,
       })

@@ -86,7 +86,8 @@ export const pipelineMetrics = pgTable(
     outstandingCents: integer("outstanding_cents").default(0).notNull(),
     overdueAmountCents: integer("overdue_amount_cents").default(0).notNull(),
 
-    // Conversion rates (percentage * 100 for precision)
+    // Conversion rates (basis points: percentage * 10000 for precision)
+    // e.g., 45% = 4500, 99.5% = 9950, allowing 2 decimal places
     winRatePct: integer("win_rate_pct").default(0).notNull(),
     prospectToQualifiedPct: integer("prospect_to_qualified_pct")
       .default(0)

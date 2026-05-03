@@ -5,7 +5,7 @@
  * CRUD operations for service_templates table.
  * Supports system templates (workspaceId=null) and workspace-specific templates.
  */
-import { eq, and, or, isNull, asc } from "drizzle-orm";
+import { eq, and, or, isNull, asc, sql, count } from "drizzle-orm";
 import { db } from "@/db";
 import {
   serviceTemplates,
@@ -174,12 +174,13 @@ export async function duplicateService(
 
 /**
  * Count services for a workspace (including system templates).
+ * Uses SQL COUNT aggregate for efficiency (fixes MEDIUM-DB-004).
  */
 export async function countServicesForWorkspace(
   workspaceId: string
 ): Promise<number> {
-  const services = await db
-    .select()
+  const [result] = await db
+    .select({ count: count() })
     .from(serviceTemplates)
     .where(
       and(
@@ -191,7 +192,7 @@ export async function countServicesForWorkspace(
       )
     );
 
-  return services.length;
+  return result?.count ?? 0;
 }
 
 /**

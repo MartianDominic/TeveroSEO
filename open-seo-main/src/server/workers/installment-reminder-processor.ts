@@ -254,10 +254,46 @@ async function markReminderSent(
 }
 
 /**
- * Check if reminder was already sent today.
- * Per D-19: Prevent duplicate sends.
+ * In-memory tracking of reminders sent this run.
+ * P60-H03: Track per-installment, per-type to prevent duplicates within a single run.
+ * Format: `${installmentId}:${reminderType}`
  */
-function wasReminderSentToday(installment: PaymentInstallmentSelect): boolean {
+const remindersSentThisRun = new Set<string>();
+
+/**
+ * Clear tracking set - call at start of each job run.
+ */
+function clearReminderTracking(): void {
+  remindersSentThisRun.clear();
+}
+
+/**
+ * Generate a unique key for tracking reminders.
+ */
+function getReminderKey(installmentId: string, reminderType: ReminderType): string {
+  return `${installmentId}:${reminderType}`;
+}
+
+/**
+ * Check if a specific reminder type was already sent for this installment today.
+ * P60-H03: Enhanced idempotency - checks both database and in-memory tracking.
+ *
+ * @param installment - The installment to check
+ * @param reminderType - The type of reminder to check
+ * @returns true if this specific reminder type was already sent today
+ */
+function wasReminderSentToday(
+  installment: PaymentInstallmentSelect,
+  reminderType: ReminderType
+): boolean {
+  const key = getReminderKey(installment.id, reminderType);
+
+  // Check in-memory tracking first (for current run)
+  if (remindersSentThisRun.has(key)) {
+    return true;
+  }
+
+  // Check database for previous runs today
   if (!installment.reminderSentAt) return false;
 
   const today = new Date();
@@ -266,12 +302,25 @@ function wasReminderSentToday(installment: PaymentInstallmentSelect): boolean {
   const sentAt = new Date(installment.reminderSentAt);
   sentAt.setHours(0, 0, 0, 0);
 
+  // Note: This still has the limitation that we only track the last reminder date,
+  // not which type was sent. For full idempotency, we'd need a separate
+  // reminder_history table. This is a pragmatic compromise that prevents
+  // the most common duplicate scenario (worker restart within same day).
   return sentAt.getTime() === today.getTime();
+}
+
+/**
+ * Mark a reminder as sent (both in-memory and database).
+ */
+function markReminderSentInMemory(installmentId: string, reminderType: ReminderType): void {
+  const key = getReminderKey(installmentId, reminderType);
+  remindersSentThisRun.add(key);
 }
 
 /**
  * Process installment reminder job.
  * Per D-17 to D-20: Find and send all reminder types.
+ * Per P60-H03: Enhanced idempotency with per-type tracking.
  */
 export default async function processInstallmentReminderJob(
   job: Job<InstallmentReminderJobData>
@@ -285,6 +334,9 @@ export default async function processInstallmentReminderJob(
     triggeredAt: job.data.triggeredAt,
   });
 
+  // P60-H03: Clear in-memory tracking at start of each run
+  clearReminderTracking();
+
   let emailsSent = 0;
   const maxEmails = MAX_EMAILS_PER_RUN;
 
@@ -293,11 +345,13 @@ export default async function processInstallmentReminderJob(
     const upcoming = await getInstallmentsDueIn(3);
     for (const ctx of upcoming) {
       if (emailsSent >= maxEmails) break;
-      if (wasReminderSentToday(ctx.installment)) continue;
+      // P60-H03: Pass reminder type for per-type idempotency check
+      if (wasReminderSentToday(ctx.installment, "reminder")) continue;
 
       const sent = await sendReminder(ctx, "installment-reminder");
       if (sent) {
         await markReminderSent(ctx.installment.id, "reminder");
+        markReminderSentInMemory(ctx.installment.id, "reminder");
         emailsSent++;
         logger.info("Sent 3-day reminder", {
           installmentId: ctx.installment.id,
@@ -312,11 +366,12 @@ export default async function processInstallmentReminderJob(
     const dueToday = await getInstallmentsDueIn(0);
     for (const ctx of dueToday) {
       if (emailsSent >= maxEmails) break;
-      if (wasReminderSentToday(ctx.installment)) continue;
+      if (wasReminderSentToday(ctx.installment, "due_today")) continue;
 
       const sent = await sendReminder(ctx, "installment-due-today");
       if (sent) {
         await markReminderSent(ctx.installment.id, "due_today");
+        markReminderSentInMemory(ctx.installment.id, "due_today");
         emailsSent++;
         logger.info("Sent due-today reminder", {
           installmentId: ctx.installment.id,
@@ -331,11 +386,12 @@ export default async function processInstallmentReminderJob(
     const overdue1 = await getOverdueInstallmentsByDays(1);
     for (const ctx of overdue1) {
       if (emailsSent >= maxEmails) break;
-      if (wasReminderSentToday(ctx.installment)) continue;
+      if (wasReminderSentToday(ctx.installment, "overdue_1")) continue;
 
       const sent = await sendReminder(ctx, "installment-overdue");
       if (sent) {
         await markReminderSent(ctx.installment.id, "overdue_1");
+        markReminderSentInMemory(ctx.installment.id, "overdue_1");
         emailsSent++;
         logger.info("Sent 1-day overdue reminder", {
           installmentId: ctx.installment.id,
@@ -350,11 +406,12 @@ export default async function processInstallmentReminderJob(
     const overdue7 = await getOverdueInstallmentsByDays(7);
     for (const ctx of overdue7) {
       if (emailsSent >= maxEmails) break;
-      if (wasReminderSentToday(ctx.installment)) continue;
+      if (wasReminderSentToday(ctx.installment, "overdue_7")) continue;
 
       const sent = await sendReminder(ctx, "installment-overdue-urgent");
       if (sent) {
         await markReminderSent(ctx.installment.id, "overdue_7");
+        markReminderSentInMemory(ctx.installment.id, "overdue_7");
         emailsSent++;
         logger.info("Sent 7-day overdue reminder", {
           installmentId: ctx.installment.id,

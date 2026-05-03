@@ -1,6 +1,8 @@
 /**
  * POST /api/proposals/:id/sections - Add section to proposal.
  * Phase 57-05: Custom Sections API
+ *
+ * SECURITY: Requires authentication and workspace ownership verification.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -9,6 +11,11 @@ import { db } from "@/db";
 import { templateSections } from "@/db/proposal-template-schema";
 import { proposals } from "@/db/proposal-schema";
 import { eq, max } from "drizzle-orm";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+import { AppError } from "@/server/lib/errors";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-proposals-sections" });
 
 /**
  * Custom section types for proposals.
@@ -39,12 +46,12 @@ const createSectionSchema = z.object({
   position: z.number().int().min(0).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
-export const Route = createFileRoute("/api/proposals/id/sections/")({
+export const Route = createFileRoute("/api/proposals/$id/sections")({
   server: {
     handlers: {
       /**
        * POST - Add a new section to a proposal template.
+       * Requires authentication and workspace ownership.
        */
       POST: async ({
         request,
@@ -54,11 +61,13 @@ export const Route = createFileRoute("/api/proposals/id/sections/")({
         params: { id: string };
       }) => {
         try {
+          // Authenticate request
+          const authContext = await requireApiAuth(request);
           const proposalId = params.id;
 
-          // Verify proposal exists
+          // Verify proposal exists and get workspace
           const [proposal] = await db
-            .select({ id: proposals.id, template: proposals.template })
+            .select({ id: proposals.id, template: proposals.template, workspaceId: proposals.workspaceId })
             .from(proposals)
             .where(eq(proposals.id, proposalId))
             .limit(1);
@@ -67,6 +76,14 @@ export const Route = createFileRoute("/api/proposals/id/sections/")({
             return Response.json(
               { success: false, error: "Proposal not found" },
               { status: 404 }
+            );
+          }
+
+          // Verify workspace ownership
+          if (proposal.workspaceId !== authContext.organizationId) {
+            return Response.json(
+              { success: false, error: "Forbidden" },
+              { status: 403 }
             );
           }
 
@@ -135,9 +152,18 @@ export const Route = createFileRoute("/api/proposals/id/sections/")({
             },
           });
         } catch (error) {
-          console.error("Error creating section:", error);
+          if (error instanceof AppError) {
+            const status =
+              error.code === "UNAUTHENTICATED"
+                ? 401
+                : error.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return Response.json({ success: false, error: error.message }, { status });
+          }
+          log.error("Error creating section", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Internal server error" },
+            { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
             { status: 500 }
           );
         }

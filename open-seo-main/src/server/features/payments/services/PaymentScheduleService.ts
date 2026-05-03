@@ -15,6 +15,7 @@
  * - All amounts in cents for precision
  */
 import { nanoid } from "nanoid";
+import { db } from "@/db";
 import { PaymentScheduleRepository } from "../repositories/PaymentScheduleRepository";
 import type {
   PlanType,
@@ -69,40 +70,51 @@ export async function createScheduleForInvoice(
   // Calculate the plan
   const plan = calculatePlan(totalCents, planType);
 
-  // Create schedule
-  const schedule = await PaymentScheduleRepository.insertSchedule({
-    id: nanoid(),
-    invoiceId,
-    planType,
-    totalInstallments: plan.installments.length,
+  // P60-H02: Wrap schedule and installment creation in a transaction
+  // to prevent orphaned records if one insert fails
+  const result = await db.transaction(async (tx) => {
+    // Create schedule
+    const schedule = await PaymentScheduleRepository.insertSchedule(
+      {
+        id: nanoid(),
+        invoiceId,
+        planType,
+        totalInstallments: plan.installments.length,
+      },
+      tx
+    );
+
+    // Create installments
+    const installmentData = plan.installments.map((inst) => ({
+      id: nanoid(),
+      scheduleId: schedule.id,
+      installmentNumber: inst.number,
+      amountCents: inst.amountCents,
+      dueAt: inst.dueDate,
+      status: "pending" as InstallmentStatus,
+    }));
+
+    const installments = await PaymentScheduleRepository.insertInstallments(
+      installmentData,
+      tx
+    );
+
+    return { schedule, installments };
   });
-
-  // Create installments
-  const installmentData = plan.installments.map((inst) => ({
-    id: nanoid(),
-    scheduleId: schedule.id,
-    installmentNumber: inst.number,
-    amountCents: inst.amountCents,
-    dueAt: inst.dueDate,
-    status: "pending" as InstallmentStatus,
-  }));
-
-  const installments =
-    await PaymentScheduleRepository.insertInstallments(installmentData);
 
   log.info("Payment schedule created", {
     invoiceId,
-    scheduleId: schedule.id,
+    scheduleId: result.schedule.id,
     planType,
-    installmentCount: installments.length,
+    installmentCount: result.installments.length,
   });
 
   return {
-    schedule,
-    installments,
+    schedule: result.schedule,
+    installments: result.installments,
     totalPaidCents: 0,
     totalRemainingCents: totalCents,
-    nextInstallment: installments[0] ?? null,
+    nextInstallment: result.installments[0] ?? null,
   };
 }
 

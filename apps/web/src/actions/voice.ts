@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -86,7 +87,7 @@ export async function getVoiceProfile(clientId: string): Promise<VoiceActionResu
     return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[getVoiceProfile]", { message });
+    logger.error("[getVoiceProfile]", { message });
     return { success: false, error: message };
   }
 }
@@ -102,7 +103,7 @@ export async function saveVoiceProfile(
     await validateOrganizationAccess(validated, auth);
     return apiUpdateVoiceProfile(validated, data);
   } catch (error) {
-    console.error("[saveVoiceProfile]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[saveVoiceProfile]", { message: error instanceof Error ? error.message : "Unknown error" });
     throw new Error("Failed to save voice profile. Please try again.");
   }
 }
@@ -122,7 +123,7 @@ export async function analyzeVoice(
 
     return apiTriggerVoiceAnalysis(validated.clientId, validated.urls);
   } catch (error) {
-    console.error("[analyzeVoice]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[analyzeVoice]", { message: error instanceof Error ? error.message : "Unknown error" });
     throw new Error("Failed to analyze voice. Please try again.");
   }
 }
@@ -137,7 +138,7 @@ export async function getProtectionRules(clientId: string): Promise<VoiceActionR
     return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[getProtectionRules]", { message });
+    logger.error("[getProtectionRules]", { message });
     return { success: false, error: message };
   }
 }
@@ -153,7 +154,7 @@ export async function addProtectionRule(
     await validateOrganizationAccess(validated.clientId, auth);
     return apiCreateProtectionRule(validated.clientId, validated.rule);
   } catch (error) {
-    console.error("[addProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[addProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
     throw new Error("Failed to add protection rule. Please try again.");
   }
 }
@@ -166,7 +167,7 @@ export async function removeProtectionRule(clientId: string, ruleId: string): Pr
     await validateOrganizationAccess(validated.clientId, auth);
     return apiDeleteProtectionRule(validated.clientId, validated.ruleId);
   } catch (error) {
-    console.error("[removeProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[removeProtectionRule]", { message: error instanceof Error ? error.message : "Unknown error" });
     throw new Error("Failed to remove protection rule. Please try again.");
   }
 }
@@ -180,7 +181,7 @@ export async function getVoiceTemplates(industry?: string): Promise<VoiceActionR
     return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[getVoiceTemplates]", { message });
+    logger.error("[getVoiceTemplates]", { message });
     return { success: false, error: message };
   }
 }

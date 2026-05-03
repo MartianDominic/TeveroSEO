@@ -13,7 +13,6 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "revolut-webhook" });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/webhooks/revolut")({
   server: {
     handlers: {
@@ -39,13 +38,26 @@ export const Route = createFileRoute("/api/webhooks/revolut")({
           // Verify signature and parse event
           const event = provider.verifyWebhook(rawBody, request.headers);
 
+          // Extract payment ID early for idempotency key
+          // ORDER_COMPLETED can fire multiple times with different payment IDs
+          const eventData = event.data as {
+            order_id: string;
+            payments?: Array<{ id: string }>;
+          };
+          const paymentId = eventData.payments?.[0]?.id ?? "";
+
           log.info("Revolut webhook received", {
             type: event.type,
             orderId: event.orderId,
+            paymentId: paymentId || undefined,
           });
 
-          // Process idempotently using order_id + event type as unique key
-          const eventId = `${event.orderId}:${event.type}`;
+          // Process idempotently using order_id + event type + payment ID as unique key
+          // Including paymentId prevents collision when ORDER_COMPLETED fires twice
+          // with different payment IDs (e.g., retry after partial failure)
+          const eventId = paymentId
+            ? `revolut:${event.orderId}:${event.type}:${paymentId}`
+            : `revolut:${event.orderId}:${event.type}`;
 
           await processWebhookIdempotently(
             eventId,
@@ -55,15 +67,9 @@ export const Route = createFileRoute("/api/webhooks/revolut")({
               switch (event.type) {
                 case "ORDER_COMPLETED": {
                   // Payment successful - mark invoice as paid
-                  const data = event.data as {
-                    order_id: string;
-                    payments?: Array<{ id: string }>;
-                  };
-                  const paymentId = data.payments?.[0]?.id ?? "";
-
                   await InvoiceService.handlePaymentSuccess(
                     event.orderId,
-                    paymentId,
+                    paymentId, // Already extracted above for idempotency key
                     "revolut"
                   );
                   log.info("Revolut payment completed", {

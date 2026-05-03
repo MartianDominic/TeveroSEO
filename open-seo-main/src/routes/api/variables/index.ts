@@ -16,6 +16,9 @@ import { z } from "zod";
 import { VariableDefinitionService } from "@/server/features/proposals/services/VariableDefinitionService";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { VARIABLE_CATEGORIES } from "@/db/variable-definitions-schema";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "api-variables" });
 
 /**
  * Zod schema for creating a custom variable.
@@ -65,7 +68,6 @@ const ListQuerySchema = z.object({
   grouped: z.enum(["true", "false"]).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/variables/")({
   server: {
     handlers: {
@@ -111,9 +113,9 @@ export const Route = createFileRoute("/api/variables/")({
 
           return Response.json({ data: variables });
         } catch (error) {
-          console.error("[api/variables] GET failed:", error);
+          log.error("GET failed", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { error: "Failed to fetch variables" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to fetch variables" } },
             { status: 500 }
           );
         }
@@ -154,26 +156,26 @@ export const Route = createFileRoute("/api/variables/")({
 
           return Response.json({ data: created }, { status: 201 });
         } catch (error) {
-          console.error("[api/variables] POST failed:", error);
+          log.error("POST failed", error instanceof Error ? error : new Error(String(error)));
 
           // Handle specific errors
           if (error instanceof Error) {
             if (error.message.includes("CONFLICT")) {
               return Response.json(
-                { error: error.message },
+                { error: { code: "CONFLICT", message: error.message } },
                 { status: 409 }
               );
             }
             if (error.message.includes("VALIDATION_ERROR")) {
               return Response.json(
-                { error: error.message },
+                { error: { code: "VALIDATION_ERROR", message: error.message } },
                 { status: 400 }
               );
             }
           }
 
           return Response.json(
-            { error: "Failed to create variable" },
+            { error: { code: "INTERNAL_ERROR", message: "Failed to create variable" } },
             { status: 500 }
           );
         }

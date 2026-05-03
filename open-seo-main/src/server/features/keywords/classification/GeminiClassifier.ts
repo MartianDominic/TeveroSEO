@@ -84,7 +84,15 @@ export class GeminiClassifier {
       this.circuit.recordSuccess();
       return parsed.data.classifications;
     } catch (error) {
-      this.circuit.recordFailure();
+      // Only record failure if not already recorded above (avoid double-counting)
+      // Errors with "Invalid Gemini response" or "Gemini API error" were already counted
+      if (
+        error instanceof Error &&
+        !error.message.startsWith("Invalid Gemini response") &&
+        !error.message.startsWith("Gemini API error")
+      ) {
+        this.circuit.recordFailure();
+      }
       throw error;
     }
   }

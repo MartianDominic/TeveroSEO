@@ -13,6 +13,7 @@
 import { redis } from "@/lib/redis/client";
 import type { NextRequest } from "next/server";
 
+import { logger } from '@/lib/logger';
 // --- Types ---
 
 export interface AuthRateLimitResult {
@@ -200,10 +201,7 @@ async function checkLimit(
     // FAIL-CLOSED for auth endpoints in production
     // This is intentionally different from other rate limiters
     if (process.env.NODE_ENV === "production") {
-      console.error(
-        "[auth-limiter] Redis error on auth endpoint - BLOCKING request for safety:",
-        error
-      );
+      logger.error("[auth-limiter] Redis error on auth endpoint - BLOCKING request for safety", error instanceof Error ? error : { error: String(error) });
       return {
         success: false,
         remaining: 0,
@@ -213,7 +211,7 @@ async function checkLimit(
     }
 
     // In development, allow through with warning
-    console.warn("[auth-limiter] Redis error in dev, allowing request:", error);
+    logger.warn("[auth-limiter] Redis error in dev, allowing request", { value: error });
     return {
       success: true,
       remaining: config.maxRequests,

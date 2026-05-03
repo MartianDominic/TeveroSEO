@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function ProposalBuilderError({
   error,
   reset,
@@ -17,7 +18,7 @@ export default function ProposalBuilderError({
   const prospectId = params?.prospectId as string | undefined;
 
   useEffect(() => {
-    console.error('[ProposalBuilderError]', {
+    logger.error('[ProposalBuilderError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

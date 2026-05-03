@@ -297,14 +297,27 @@ export async function rateLimit(
       current: currentCount,
     };
   } catch (error) {
-    // On Redis errors, fail open (allow the request) but log the error
+    // HIGH-05 FIX: Fail closed on Redis errors in production
+    // This prevents brute force attacks during Redis outages
     log.error(
-      "Rate limit check failed",
+      "Rate limit check failed - failing closed",
       error instanceof Error ? error : new Error(String(error)),
       { key: redisKey }
     );
 
-    // Fail open - allow request but report degraded state
+    if (process.env.NODE_ENV === "production") {
+      // In production: fail closed to prevent abuse during outages
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: 60, // Ask client to retry in 60 seconds
+        limit,
+        current: limit, // Report as at limit
+      };
+    }
+
+    // In development/test: fail open with warning for easier debugging
+    log.warn("Rate limit Redis unavailable - allowing request in non-production");
     return {
       allowed: true,
       remaining: limit,

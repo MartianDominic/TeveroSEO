@@ -58,7 +58,6 @@ const extractRequestSchema = z.object({
   contextNotes: z.string().max(50000, "Context notes exceed 50KB limit").optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/prospects/extract")({
   server: {
     handlers: {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { logger } from '@/lib/logger';
 import {
   Link2,
   Link2Off,
@@ -183,7 +184,7 @@ export default function ConnectionsPage() {
       // NEXT_PUBLIC_AI_WRITER_URL must be configured - no unsafe localhost fallback
       const publicUrl = process.env.NEXT_PUBLIC_AI_WRITER_URL;
       if (!publicUrl) {
-        console.error("[Connections] NEXT_PUBLIC_AI_WRITER_URL not configured");
+        logger.error("[Connections] NEXT_PUBLIC_AI_WRITER_URL not configured");
         showToast("OAuth service not configured. Contact support.", "error");
         return;
       }

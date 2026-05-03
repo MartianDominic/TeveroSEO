@@ -8,10 +8,13 @@
  *   NotFoundError,
  *   ValidationError,
  *   formatErrorResponse,
- *   logError
+ *   logError,
+ *   getUserFriendlyError,
+ *   formatErrorForToast,
  * } from '~/lib/errors';
  * ```
  */
 
 export * from './types';
 export * from './handler';
+export * from './user-messages';

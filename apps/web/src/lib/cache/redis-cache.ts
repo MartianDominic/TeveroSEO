@@ -22,6 +22,7 @@ export {
 import { redis } from "@/lib/redis/client";
 import type { ZodLikeSchema } from "@/lib/utils/type-guards";
 
+import { logger } from '@/lib/logger';
 // Namespace prefix for all cache keys - prevents collisions
 const CACHE_PREFIX = "tevero:cache:";
 
@@ -91,7 +92,7 @@ export async function cacheGet<T>(
     // Without schema, return as T (maintains backward compatibility)
     return parsed as T;
   } catch (error) {
-    console.error("[redis-cache] Get error:", error);
+    logger.error("[redis-cache] Get error", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -121,7 +122,7 @@ export async function cacheSet<T>(
       await redis.expire(tagKey, ttl + 60);
     }
   } catch (error) {
-    console.error("[redis-cache] Set error:", error);
+    logger.error("[redis-cache] Set error", error instanceof Error ? error : { error: String(error) });
   }
 }
 
@@ -137,7 +138,7 @@ export async function cacheInvalidateByTag(tag: string): Promise<void> {
       await redis.del(tagKey);
     }
   } catch (error) {
-    console.error("[redis-cache] Invalidate by tag error:", error);
+    logger.error("[redis-cache] Invalidate by tag error", error instanceof Error ? error : { error: String(error) });
   }
 }
 
@@ -149,7 +150,7 @@ export async function cacheInvalidate(key: string): Promise<void> {
   try {
     await redis.del(cacheKey);
   } catch (error) {
-    console.error("[redis-cache] Invalidate error:", error);
+    logger.error("[redis-cache] Invalidate error", error instanceof Error ? error : { error: String(error) });
   }
 }
 
@@ -166,7 +167,7 @@ export async function cacheInvalidatePattern(pattern: string): Promise<number> {
     }
     return keys.length;
   } catch (error) {
-    console.error("[redis-cache] Invalidate pattern error:", error);
+    logger.error("[redis-cache] Invalidate pattern error", error instanceof Error ? error : { error: String(error) });
     return 0;
   }
 }

@@ -40,10 +40,10 @@ const PLATFORM_NAMES: Record<string, string> = {
   hubspot: "HubSpot",
 };
 
-const STATUS_VARIANTS: Record<string, "default" | "success" | "destructive" | "warning"> = {
-  active: "success",
+const STATUS_VARIANTS: Record<string, "default" | "destructive" | "outline" | "secondary" | "zinc"> = {
+  active: "secondary",
   error: "destructive",
-  expired: "warning",
+  expired: "outline",
   pending: "default",
   connecting: "default",
   revoked: "destructive",

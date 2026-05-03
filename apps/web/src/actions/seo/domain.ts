@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -72,7 +73,7 @@ export async function getDomainOverview(params: DomainOverviewParams): Promise<A
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[getDomainOverview] Error:", error);
+    logger.error("[getDomainOverview] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof z.ZodError) {
       return {
         success: false,

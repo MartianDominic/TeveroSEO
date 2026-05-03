@@ -30,12 +30,16 @@ import {
   getSingleflightRatio,
   getDeltaSkipRatio,
 } from "@/server/lib/metrics/crawl-metrics";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
 
 // @ts-expect-error Route not yet in FileRoutesByPath until codegen runs
 export const Route = createFileRoute("/api/metrics/crawl")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }: { request: Request }) => {
+        // CRIT-API-01: Require authentication for internal metrics
+        await requireApiAuth(request);
+
         const metrics = getMetrics();
 
         return new Response(

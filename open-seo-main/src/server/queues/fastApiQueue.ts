@@ -15,6 +15,7 @@
 
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 export const FAST_API_QUEUE_NAME = "fast-api" as const;
 
@@ -51,20 +52,14 @@ export interface FastApiJobData {
 
 /**
  * Default job options for fast-api queue.
- *
- * - 2 attempts with 1s fixed backoff (fast retry for transient failures)
- * - Remove completed jobs after 500 (small footprint)
- * - Remove failed jobs after 200 (audit trail)
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
+ * 2 attempts for fast operations with small footprint.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   attempts: 2,
-  backoff: {
-    type: "fixed",
-    delay: 1000,
-  },
   removeOnComplete: { count: 500 },
   removeOnFail: { count: 200 },
-};
+});
 
 /**
  * Fast API queue for Types B/C/D/E/F SEO operations.

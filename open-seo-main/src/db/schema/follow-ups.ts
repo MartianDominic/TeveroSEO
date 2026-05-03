@@ -132,9 +132,11 @@ export const followUpRules = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_follow_up_rules_workspace_active").on(
@@ -204,7 +206,9 @@ export const followUps = pgTable(
 
     // Automation
     isAutomated: boolean("is_automated").default(false),
-    ruleId: text("rule_id").references(() => followUpRules.id),
+    ruleId: text("rule_id").references(() => followUpRules.id, {
+      onDelete: "set null",
+    }),
 
     // Metadata
     metadata: jsonb("metadata").$type<FollowUpMetadata>().default({}),
@@ -213,9 +217,11 @@ export const followUps = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("ix_follow_ups_workspace_status").on(table.workspaceId, table.status),

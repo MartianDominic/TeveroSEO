@@ -43,11 +43,17 @@ export function AlertDrawer({ clientId, initialCount = 0 }: AlertDrawerProps) {
     }
   }, [open, clientId]);
 
+  // HIGH-02 FIX: Add try/catch around polling logic to handle errors gracefully
   useEffect(() => {
     const interval = setInterval(async () => {
-      const result = await getAlertCount(clientId);
-      if (result.success) {
-        setCount(result.data);
+      try {
+        const result = await getAlertCount(clientId);
+        if (result.success) {
+          setCount(result.data);
+        }
+      } catch {
+        // Silently ignore polling errors to avoid disrupting the UI
+        // The next poll will retry automatically
       }
     }, 60000);
     return () => clearInterval(interval);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { logger } from '@/lib/logger';
 import {
   Card,
   CardContent,
@@ -74,7 +75,7 @@ export function ProspectCard({
       await triggerAnalysisAction(prospect.id);
       router.refresh();
     } catch (error) {
-      console.error("Failed to trigger analysis:", error);
+      logger.error("Failed to trigger analysis", error instanceof Error ? error : { error: String(error) });
     } finally {
       setAnalyzing(false);
     }
@@ -88,7 +89,7 @@ export function ProspectCard({
       await deleteProspectAction(prospect.id);
       router.refresh();
     } catch (error) {
-      console.error("Failed to delete prospect:", error);
+      logger.error("Failed to delete prospect", error instanceof Error ? error : { error: String(error) });
     } finally {
       setDeleting(false);
     }

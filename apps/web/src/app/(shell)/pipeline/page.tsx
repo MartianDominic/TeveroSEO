@@ -13,6 +13,7 @@ import { PageHeader, Skeleton } from "@tevero/ui";
 import { PipelineKanbanContainer } from "./PipelineKanbanContainer";
 import { DEFAULT_PIPELINE_STAGES } from "./constants";
 
+import { logger } from '@/lib/logger';
 // Default empty state
 const defaultGroupedProspects: Record<string, never[]> = {};
 for (const stage of DEFAULT_PIPELINE_STAGES) {
@@ -42,7 +43,7 @@ async function fetchPipelineConfig(workspaceId: string) {
 
     return response.json();
   } catch (error) {
-    console.error("[PipelinePage] Error fetching config:", error);
+    logger.error("[PipelinePage] Error fetching config", error instanceof Error ? error : { error: String(error) });
     return { stages: DEFAULT_PIPELINE_STAGES };
   }
 }
@@ -70,7 +71,7 @@ async function fetchProspectsGroupedByStage(workspaceId: string) {
 
     return response.json();
   } catch (error) {
-    console.error("[PipelinePage] Error fetching prospects:", error);
+    logger.error("[PipelinePage] Error fetching prospects", error instanceof Error ? error : { error: String(error) });
     return defaultGroupedProspects;
   }
 }

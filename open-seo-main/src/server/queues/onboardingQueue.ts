@@ -8,6 +8,7 @@
 import { Queue } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "OnboardingQueue" });
 
@@ -28,6 +29,20 @@ export interface OnboardingJobResult {
   agencyNotified: boolean;
 }
 
+/**
+ * Dead-letter queue job data for failed onboarding jobs.
+ * HIGH-52 fix: Standardized DLQ pattern with inline prefix.
+ */
+export interface OnboardingDLQJobData {
+  originalJobId: string | undefined;
+  originalJobName: string;
+  data: OnboardingJobData;
+  error: string;
+  stack: string | undefined;
+  failedAt: string;
+  attemptsMade: number;
+}
+
 // Lazy-initialized queue
 let onboardingQueue: Queue<OnboardingJobData, OnboardingJobResult> | null = null;
 
@@ -42,12 +57,8 @@ export function getOnboardingQueue(): Queue<OnboardingJobData, OnboardingJobResu
       QUEUE_NAME,
       {
         connection,
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: {
-            type: "exponential",
-            delay: 5000, // 5s, 10s, 20s
-          },
+        // Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
+        defaultJobOptions: getStandardJobOptions({
           removeOnComplete: {
             count: 100,
             age: 7 * 24 * 60 * 60, // 7 days
@@ -56,7 +67,7 @@ export function getOnboardingQueue(): Queue<OnboardingJobData, OnboardingJobResu
             count: 500,
             age: 30 * 24 * 60 * 60, // 30 days
           },
-        },
+        }),
       }
     );
 

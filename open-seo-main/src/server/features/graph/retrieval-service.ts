@@ -4,6 +4,11 @@
  *
  * Provides hybrid retrieval combining vector similarity with graph traversal.
  * Uses Reciprocal Rank Fusion (RRF) to merge results from both sources.
+ *
+ * Performance optimizations:
+ * - Single graph search call for hybrid mode (H-65-02 fix)
+ * - Shared RRF utility (H-65-01 fix)
+ * - Vector-only fallback when graph fails (M-65-05 fix)
  */
 
 import type { LightRAGService } from "@/server/lib/lightrag";
@@ -11,6 +16,7 @@ import { getLightRAGService } from "@/server/lib/lightrag";
 import { getTenantGraphManager, type HybridSearchResult as GraphSearchResult } from "@/server/lib/graph";
 import { getEmbeddingService } from "@/server/lib/embeddings";
 import { createLogger } from "@/server/lib/logger";
+import { fusionRRF } from "@/lib/rrf";
 
 const log = createLogger({ module: "retrieval-service" });
 
@@ -62,63 +68,7 @@ export interface RetrievalResult {
   latencyMs: number;
 }
 
-/**
- * Reciprocal Rank Fusion to combine rankings from multiple sources.
- * RRF(d) = sum(1 / (k + rank_i(d))) for each ranking i
- */
-function reciprocalRankFusion(
-  vectorResults: Array<{ id: string; score: number }>,
-  graphResults: Array<{ id: string; score: number; name?: string; type?: string; related?: string[] }>,
-  k: number = 60
-): HybridSearchResult[] {
-  const scores = new Map<string, { score: number; source: "vector" | "graph" | "both"; name?: string; type?: string; related?: string[] }>();
-
-  // Process vector results
-  vectorResults.forEach((result, rank) => {
-    const rrfScore = 1 / (k + rank + 1);
-    scores.set(result.id, {
-      score: rrfScore,
-      source: "vector",
-    });
-  });
-
-  // Process graph results
-  graphResults.forEach((result, rank) => {
-    const rrfScore = 1 / (k + rank + 1);
-    const existing = scores.get(result.id);
-
-    if (existing) {
-      // Found in both - boost score and mark as "both"
-      scores.set(result.id, {
-        score: existing.score + rrfScore,
-        source: "both",
-        name: result.name,
-        type: result.type,
-        related: result.related,
-      });
-    } else {
-      scores.set(result.id, {
-        score: rrfScore,
-        source: "graph",
-        name: result.name,
-        type: result.type,
-        related: result.related,
-      });
-    }
-  });
-
-  // Sort by fused score and return
-  return Array.from(scores.entries())
-    .map(([id, data]) => ({
-      id,
-      score: data.score,
-      source: data.source,
-      name: data.name,
-      type: data.type,
-      related: data.related,
-    }))
-    .sort((a, b) => b.score - a.score);
-}
+// H-65-01 fix: RRF function moved to shared utility @/lib/rrf.ts
 
 /**
  * RetrievalService provides hybrid retrieval for GraphRAG.
@@ -171,52 +121,62 @@ export class RetrievalService {
       const embeddingOutput = await embeddingService.embedQuery(query);
       const queryEmbedding = embeddingOutput.embedding;
 
-      if (mode === "hybrid" || mode === "vector") {
-        // Vector search via graph manager (uses FalkorDB vector index)
-        const vectorResults = await graphManager.hybridVectorGraphSearch(
+      // H-65-02 fix: Single call to hybrid search, cached for both vector and graph scoring
+      // M-65-05 fix: Try graph search with vector-only fallback
+      let searchResults: GraphSearchResult[] = [];
+      let graphSearchFailed = false;
+
+      try {
+        searchResults = await graphManager.hybridVectorGraphSearch(
           tenantId,
           queryEmbedding,
           { k: k * 2 }
         );
+      } catch (graphError) {
+        graphSearchFailed = true;
+        log.warn("Graph search failed, will use vector-only mode", {
+          tenantId,
+          error: graphError instanceof Error ? graphError.message : String(graphError),
+        });
+      }
 
-        if (mode === "vector") {
-          results = vectorResults.map((r) => ({
+      if (mode === "vector" || graphSearchFailed) {
+        // Vector-only mode (or fallback when graph fails)
+        results = searchResults.map((r) => ({
+          id: r.id,
+          score: r.score,
+          source: "vector" as const,
+          name: r.name,
+          type: r.type,
+          related: r.related,
+        }));
+      } else if (mode === "hybrid") {
+        // Hybrid mode: use single search result for both vector and graph scoring
+        // Score by vector relevance (original order) vs graph connections (by related count)
+        const vectorScored = searchResults.map((r) => ({ id: r.id, score: r.score }));
+        const graphScored = [...searchResults]
+          .sort((a, b) => (b.related?.length ?? 0) - (a.related?.length ?? 0))
+          .map((r) => ({
             id: r.id,
             score: r.score,
-            source: "vector" as const,
             name: r.name,
             type: r.type,
             related: r.related,
           }));
-        } else {
-          // For hybrid, we get both and fuse
-          const graphResults = await graphManager.hybridVectorGraphSearch(
-            tenantId,
-            queryEmbedding,
-            { k: k * 2 }
-          );
 
-          results = reciprocalRankFusion(
-            vectorResults.map((r) => ({ id: r.id, score: r.score })),
-            graphResults.map((r) => ({
-              id: r.id,
-              score: r.score,
-              name: r.name,
-              type: r.type,
-              related: r.related,
-            })),
-            rrfK
-          );
-        }
+        // Use shared RRF utility (H-65-01 fix)
+        const fusedResults = fusionRRF(vectorScored, graphScored, rrfK);
+        results = fusedResults.map((r) => ({
+          id: r.id,
+          score: r.score,
+          source: r.source,
+          name: r.name,
+          type: r.type,
+          related: r.related,
+        }));
       } else if (mode === "graph") {
-        // Graph-only mode
-        const graphResults = await graphManager.hybridVectorGraphSearch(
-          tenantId,
-          queryEmbedding,
-          { k: k * 2 }
-        );
-
-        results = graphResults
+        // Graph-only mode: filter to items with graph connections
+        results = searchResults
           .filter((r) => r.related && r.related.length > 0)
           .map((r) => ({
             id: r.id,

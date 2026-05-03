@@ -7,6 +7,7 @@
 
 import { redis } from "@/lib/cache/redis-cache";
 
+import { logger } from '@/lib/logger';
 /**
  * Rate limit configuration for different operation types.
  */
@@ -104,7 +105,7 @@ export class RateLimiter {
       // Handle Redis failure based on failClosed configuration
       if (this.config.failClosed) {
         // For expensive operations, fail closed to prevent abuse during outages
-        console.error("[rate-limit] Redis error, rejecting request (failClosed):", error);
+        logger.error("[rate-limit] Redis error, rejecting request (failClosed)", error instanceof Error ? error : { error: String(error) });
         return {
           success: false,
           remaining: 0,
@@ -113,7 +114,7 @@ export class RateLimiter {
         };
       }
       // For non-critical operations, fail open to maintain availability
-      console.error("[rate-limit] Redis error, allowing request (failOpen):", error);
+      logger.error("[rate-limit] Redis error, allowing request (failOpen)", error instanceof Error ? error : { error: String(error) });
       return {
         success: true,
         remaining: this.config.maxRequests,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Globe, Check, AlertCircle, ChevronRight } from "lucide-react";
+import { Loader2, Globe, Check, AlertCircle, ChevronRight, ArrowLeft } from "lucide-react";
 import {
   Button,
   Input,
@@ -91,7 +91,19 @@ export function ConnectionWizard({
     }
   }
 
-  // Render step indicator
+  // Handle going back to previous step
+  function handleBack() {
+    setError(null);
+    if (step === "credentials") {
+      setStep("detect");
+      setDetection(null);
+    } else if (step === "verify") {
+      setStep("credentials");
+      setConnection(null);
+    }
+  }
+
+  // Render step indicator with ARIA labels for accessibility
   function renderStepIndicator() {
     const steps = [
       { key: "detect", label: "Detect" },
@@ -102,26 +114,36 @@ export function ConnectionWizard({
     const currentIndex = steps.findIndex((s) => s.key === step);
 
     return (
-      <div className="flex items-center justify-center gap-2 mb-6">
-        {steps.map((s, i) => (
-          <div key={s.key} className="flex items-center">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step === s.key
-                  ? "bg-primary text-primary-foreground"
-                  : currentIndex > i
-                    ? "bg-green-500 text-white"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {currentIndex > i ? <Check className="h-4 w-4" /> : i + 1}
-            </div>
-            {i < steps.length - 1 && (
-              <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
-            )}
-          </div>
-        ))}
-      </div>
+      <nav aria-label="Connection setup progress" className="mb-6">
+        <ol className="flex items-center justify-center gap-2" role="list">
+          {steps.map((s, i) => {
+            const isComplete = currentIndex > i;
+            const isCurrent = step === s.key;
+
+            return (
+              <li key={s.key} className="flex items-center" role="listitem">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    isCurrent
+                      ? "bg-primary text-primary-foreground"
+                      : isComplete
+                        ? "bg-green-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                  aria-current={isCurrent ? "step" : undefined}
+                  aria-label={`Step ${i + 1}: ${s.label}${isComplete ? " (completed)" : isCurrent ? " (current)" : ""}`}
+                >
+                  {isComplete ? <Check className="h-4 w-4" aria-hidden="true" /> : i + 1}
+                </div>
+                <span className="sr-only">{s.label}</span>
+                {i < steps.length - 1 && (
+                  <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" aria-hidden="true" />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
     );
   }
 
@@ -213,9 +235,22 @@ export function ConnectionWizard({
       </CardContent>
 
       <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={onCancel} disabled={loading}>
-          Cancel
-        </Button>
+        <div className="flex gap-2">
+          {step !== "detect" && (
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={loading}
+              aria-label="Go back to previous step"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+        </div>
 
         {step === "detect" && (
           <Button onClick={handleDetect} disabled={!domain.trim() || loading}>

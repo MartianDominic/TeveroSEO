@@ -25,6 +25,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
 import { LOSS_REASONS } from "@/db";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "mark-lost" });
 
 const MarkLostSchema = z.object({
   entityType: z.enum(["prospect", "proposal"]),
@@ -34,7 +37,6 @@ const MarkLostSchema = z.object({
   competitorName: z.string().max(200).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/command-center/actions/mark-lost")({
   server: {
     handlers: {
@@ -68,13 +70,13 @@ export const Route = createFileRoute("/api/command-center/actions/mark-lost")({
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[mark-lost] Error:", error);
+          log.error("Failed to mark as lost", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
             {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to mark as lost",
+              error: {
+                code: "INTERNAL_ERROR",
+                message: error instanceof Error ? error.message : "Failed to mark as lost",
+              },
             },
             { status: 500 }
           );

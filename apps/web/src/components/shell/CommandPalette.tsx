@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
+/**
+ * CommandPalette - Quick navigation and actions
+ *
+ * Phase 65: UX Fix - HIGH-43 (added context indicator showing current scope)
+ */
+
+import React, { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -11,6 +17,8 @@ import {
   Settings,
   BarChart3,
   Plus,
+  Globe,
+  Info,
 } from "lucide-react";
 import {
   Command,
@@ -71,6 +79,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const router = useRouter();
   const { clients, activeClientId, setActiveClient } = useClientStore();
 
+  // Get active client name for context indicator
+  const activeClient = useMemo(
+    () => clients.find((c) => c.id === activeClientId),
+    [clients, activeClientId]
+  );
+
   // Belt-and-suspenders Escape guard (Radix Dialog already handles this)
   useEffect(() => {
     if (!isOpen) return;
@@ -115,6 +129,27 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         )}
       >
         <Command className="rounded-xl">
+          {/* Context indicator - shows current scope (HIGH-43 fix) */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/50">
+            {activeClient ? (
+              <>
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">
+                  {activeClient.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  - Client scope
+                </span>
+              </>
+            ) : (
+              <>
+                <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  No client selected - Global scope
+                </span>
+              </>
+            )}
+          </div>
           <CommandInput placeholder="Search commands..." />
           <CommandList>
             <CommandEmpty>No results.</CommandEmpty>
@@ -136,8 +171,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               ))}
             </CommandGroup>
 
-            {/* Navigation group */}
-            <CommandGroup heading="Navigation">
+            {/* Navigation group - with disabled state explanation (HIGH-44 fix) */}
+            <CommandGroup heading={activeClientId ? "Navigation" : "Navigation (select a client first)"}>
               {NAV_LINKS.map((link) => {
                 const Icon = link.icon;
                 const disabled = !activeClientId;
@@ -149,14 +184,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     disabled={disabled}
                     aria-disabled={disabled ? "true" : undefined}
                     className={cn(
-                      disabled && "opacity-40 pointer-events-none"
+                      disabled && "opacity-40 cursor-not-allowed"
                     )}
                     onSelect={() => {
                       if (!disabled) handleNavSelect(href);
                     }}
                   >
                     <Icon className="mr-2 h-4 w-4 shrink-0" />
-                    <span>{link.label}</span>
+                    <span className="flex-1">{link.label}</span>
+                    {disabled && (
+                      <span className="text-xs text-muted-foreground ml-2">
+                        Select client
+                      </span>
+                    )}
                   </CommandItem>
                 );
               })}

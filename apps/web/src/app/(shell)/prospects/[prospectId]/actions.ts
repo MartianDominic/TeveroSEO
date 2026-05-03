@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
 
+import { logger } from '@/lib/logger';
 // Validation schemas
 const prospectIdSchema = z.string().uuid("Invalid prospect ID format");
 const analysisIdSchema = z.string().uuid("Invalid analysis ID format");
@@ -82,7 +83,7 @@ export async function saveManualBusinessInfo(
     revalidatePath(`/prospects/${validatedProspectId.data}`);
     return { success: true, data: undefined };
   } catch (error) {
-    console.error("[saveManualBusinessInfo] Error:", error);
+    logger.error("[saveManualBusinessInfo] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: sanitizeErrorForClient(error),

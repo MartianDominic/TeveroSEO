@@ -1,5 +1,7 @@
+import * as Sentry from '@sentry/nextjs';
 import { ApplicationError, ErrorCode } from './types';
 
+import { logger } from '@/lib/logger';
 const isDev = process.env.NODE_ENV !== 'production';
 
 /**
@@ -113,7 +115,7 @@ export function sanitizeForLogging(data: Record<string, unknown>): Record<string
 }
 
 /**
- * Log an error with structured context.
+ * Log an error with structured context and send to Sentry.
  * Automatically sanitizes any context data to prevent logging sensitive information.
  */
 export function logError(
@@ -137,19 +139,51 @@ export function logError(
     errorDetails.error = String(error);
   }
 
+  let errorCode: ErrorCode | undefined;
   if (error instanceof ApplicationError) {
+    errorCode = error.code;
     errorDetails.code = error.code;
     if (error.details) {
       errorDetails.details = sanitizeForLogging(error.details);
     }
   }
 
-  if (additionalData) {
-    errorDetails.data = sanitizeForLogging(additionalData);
+  const sanitizedData = additionalData ? sanitizeForLogging(additionalData) : undefined;
+  if (sanitizedData) {
+    errorDetails.data = sanitizedData;
   }
 
-  // In production, this should integrate with error tracking (Sentry, etc.)
-  console.error(`[ERROR:${context}]`, JSON.stringify(errorDetails, null, isDev ? 2 : 0));
+  // Send to Sentry with context
+  if (error instanceof Error) {
+    Sentry.captureException(error, {
+      extra: {
+        context,
+        ...sanitizedData,
+      },
+      tags: {
+        errorContext: context,
+        ...(errorCode && { errorCode }),
+      },
+    });
+  } else {
+    // For non-Error objects, capture as message
+    Sentry.captureMessage(`[${context}] ${String(error)}`, {
+      level: 'error',
+      extra: {
+        context,
+        originalError: String(error),
+        ...sanitizedData,
+      },
+      tags: {
+        errorContext: context,
+      },
+    });
+  }
+
+  // Also log to console in development for easier debugging
+  if (isDev) {
+    console.error(`[ERROR:${context}]`, JSON.stringify(errorDetails, null, 2));
+  }
 }
 
 /**

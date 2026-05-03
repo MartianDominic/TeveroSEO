@@ -6,23 +6,33 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
   Input,
-  Badge,
   Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Checkbox,
 } from "@tevero/ui";
-import { ArrowUpDown, Search, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { FilterBar } from "./FilterBar";
 import { usePaginatedClients } from "@/hooks/usePaginatedClients";
 import type { FilterParams } from "@/types/pagination";
+import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
+import { BulkActionBar } from "./BulkActionBar";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { useClientFiltering } from "./hooks/useClientFiltering";
+import { useClientSorting } from "./hooks/useClientSorting";
+import { ClientTableHeader, SortButton } from "./ClientTableHeader";
+import { ClientTableRow } from "./ClientTableRow";
+import type {
+  ClientMetrics,
+  ClientSortKey,
+  ClientTableFilters,
+} from "@/lib/dashboard/types";
+
+// Virtualized table imports for column definitions
 import { HealthScoreBadge } from "./HealthScoreBadge";
 import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 import { PositionDistributionBar } from "./PositionDistributionBar";
@@ -31,15 +41,13 @@ import {
   TrafficHoverPopover,
   KeywordsHoverPopover,
 } from "./ClientTableHoverPopover";
-import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
 import { LazySparkline } from "./LazySparkline";
-import { BulkActionBar } from "./BulkActionBar";
-import { useRowSelection } from "@/hooks/useRowSelection";
-import type {
-  ClientMetrics,
-  ClientSortKey,
-  ClientTableFilters
-} from "@/lib/dashboard/types";
+import { Badge } from "@tevero/ui";
+import { ChevronRight } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface ClientPortfolioTableProps {
   clients?: ClientMetrics[];
@@ -64,6 +72,21 @@ const DEFAULT_FILTERS: ClientTableFilters = {
   hasAlerts: null,
 };
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatTrend(pct: number): React.ReactNode {
+  const formatted = `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(1)}%`;
+  if (pct > 0.05) return <span className="text-emerald-600">{formatted}</span>;
+  if (pct < -0.05) return <span className="text-red-600">{formatted}</span>;
+  return <span className="text-muted-foreground">{formatted}</span>;
+}
+
+// ---------------------------------------------------------------------------
+// ClientPortfolioTable
+// ---------------------------------------------------------------------------
+
 export function ClientPortfolioTable({
   clients = [],
   onClientClick,
@@ -74,8 +97,6 @@ export function ClientPortfolioTable({
   enableSelection = false,
 }: ClientPortfolioTableProps) {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<ClientSortKey>("healthScore");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc"); // Default descending for priority
   const [filters, setFilters] = useState<ClientTableFilters>(DEFAULT_FILTERS);
   const [paginationFilters, setPaginationFilters] = useState<FilterParams>({});
 
@@ -88,8 +109,8 @@ export function ClientPortfolioTable({
     isLoading: isPaginationLoading,
   } = usePaginatedClients({
     workspaceId,
-    sortBy: sortKey,
-    sortDir,
+    sortBy: "healthScore",
+    sortDir: "desc",
     limit: 50,
     ...paginationFilters,
     enabled: usePagination,
@@ -107,6 +128,21 @@ export function ClientPortfolioTable({
   // Source clients: use paginated data in pagination mode, props otherwise
   const sourceClients = usePagination ? paginatedClients : clients;
 
+  // Use extracted filtering hook
+  const { filtered } = useClientFiltering({
+    clients: sourceClients,
+    filters,
+    skipFiltering: usePagination, // Server handles filtering in pagination mode
+  });
+
+  // Use extracted sorting hook
+  const { sorted, sortKey, toggleSort } = useClientSorting({
+    clients: filtered,
+    initialSortKey: "healthScore",
+    initialSortDir: "desc",
+    skipSorting: usePagination, // Server handles sorting in pagination mode
+  });
+
   // Row selection hook for bulk actions
   const {
     selectedIds,
@@ -120,237 +156,223 @@ export function ClientPortfolioTable({
     getItemId: (client) => client.clientId,
   });
 
-  // Filter clients (only applies in non-pagination mode)
-  const filtered = useMemo(() => {
-    if (usePagination) return sourceClients; // Server handles filtering
-    return sourceClients.filter((client) => {
-      // Search filter
-      if (filters.search) {
-        const query = filters.search.toLowerCase();
-        if (!client.clientName.toLowerCase().includes(query)) return false;
-      }
-
-      // Health range filter
-      if (client.healthScore < filters.healthRange[0] ||
-          client.healthScore > filters.healthRange[1]) {
-        return false;
-      }
-
-      // Connection status filter
-      if (filters.connectionStatus.length > 0 &&
-          !filters.connectionStatus.includes(client.connectionStatus)) {
-        return false;
-      }
-
-      // Has alerts filter
-      if (filters.hasAlerts === true && client.alertsOpen === 0) return false;
-      if (filters.hasAlerts === false && client.alertsOpen > 0) return false;
-
-      return true;
-    });
-  }, [sourceClients, filters, usePagination]);
-
-  // Sort clients (only applies in non-pagination mode)
-  const sorted = useMemo(() => {
-    if (usePagination) return filtered; // Server handles sorting
-    return [...filtered].sort((a, b) => {
-      let aVal: string | number;
-      let bVal: string | number;
-
-      // Handle optional fields that may not exist on ClientMetrics or can be null
-      if (sortKey === "addedAt") {
-        aVal = 0;
-        bVal = 0;
-      } else if (sortKey === "goalAttainmentPct") {
-        aVal = a.goalAttainmentPct ?? 0;
-        bVal = b.goalAttainmentPct ?? 0;
-      } else if (sortKey === "priorityScore") {
-        aVal = a.priorityScore ?? 0;
-        bVal = b.priorityScore ?? 0;
+  const handleRowClick = useCallback(
+    (clientId: string) => {
+      if (onClientClick) {
+        onClientClick(clientId);
       } else {
-        aVal = a[sortKey];
-        bVal = b[sortKey];
+        router.push(
+          `/clients/${clientId}/analytics` as Parameters<typeof router.push>[0]
+        );
       }
-
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortDir === "asc"
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
-      }
-
-      const aNum = aVal as number;
-      const bNum = bVal as number;
-      return sortDir === "asc" ? aNum - bNum : bNum - aNum;
-    });
-  }, [filtered, sortKey, sortDir, usePagination]);
-
-  const toggleSort = (key: ClientSortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      // Default descending for numeric, ascending for text
-      setSortDir(key === "clientName" ? "asc" : "desc");
-    }
-  };
-
-  const handleRowClick = (clientId: string) => {
-    if (onClientClick) {
-      onClientClick(clientId);
-    } else {
-      router.push(`/clients/${clientId}/analytics` as Parameters<typeof router.push>[0]);
-    }
-  };
-
-  const formatTrend = (pct: number) => {
-    const formatted = `${pct >= 0 ? "+" : ""}${(pct * 100).toFixed(1)}%`;
-    if (pct > 0.05) return <span className="text-emerald-600">{formatted}</span>;
-    if (pct < -0.05) return <span className="text-red-600">{formatted}</span>;
-    return <span className="text-muted-foreground">{formatted}</span>;
-  };
-
-  const SortButton = ({ column, children }: { column: ClientSortKey; children: React.ReactNode }) => (
-    <button
-      onClick={() => toggleSort(column)}
-      className="flex items-center gap-1 hover:text-foreground transition-colors"
-    >
-      {children}
-      <ArrowUpDown className={`h-3 w-3 ${sortKey === column ? "text-foreground" : "text-muted-foreground"}`} />
-    </button>
+    },
+    [onClientClick, router]
   );
 
   // Column definitions for VirtualizedTable
-  const virtualizedColumns: VirtualizedColumnDef<ClientMetrics>[] = useMemo(() => [
-    {
-      id: "clientName",
-      header: <SortButton column="clientName">Client</SortButton>,
-      width: 200,
-      cell: (client) => (
-        <div className="flex items-center gap-2 font-medium">
-          <span className="truncate">{client.clientName}</span>
-          {client.connectionStatus === "stale" && (
-            <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800">
-              Stale
-            </Badge>
-          )}
-          {client.connectionStatus === "disconnected" && (
-            <Badge variant="outline" className="text-xs bg-red-100 text-red-800">
-              No GSC
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: "health",
-      header: <SortButton column="healthScore">Health</SortButton>,
-      width: 100,
-      cell: (client) => client.goalsTotalCount > 0 ? (
-        <div className="flex flex-col gap-0.5">
-          <GoalAttainmentBadge
-            attainmentPct={client.goalAttainmentPct}
-            goalsMet={client.goalsMetCount}
-            goalsTotal={client.goalsTotalCount}
-            trend={client.primaryGoalTrend}
-            size="sm"
+  const virtualizedColumns: VirtualizedColumnDef<ClientMetrics>[] = useMemo(
+    () => [
+      {
+        id: "clientName",
+        header: (
+          <SortButton column="clientName" sortKey={sortKey} onSort={toggleSort}>
+            Client
+          </SortButton>
+        ),
+        width: 200,
+        cell: (client) => (
+          <div className="flex items-center gap-2 font-medium">
+            <span className="truncate">{client.clientName}</span>
+            {client.connectionStatus === "stale" && (
+              <Badge
+                variant="outline"
+                className="text-xs bg-yellow-100 text-yellow-800"
+              >
+                Stale
+              </Badge>
+            )}
+            {client.connectionStatus === "disconnected" && (
+              <Badge
+                variant="outline"
+                className="text-xs bg-red-100 text-red-800"
+              >
+                No GSC
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "health",
+        header: (
+          <SortButton column="healthScore" sortKey={sortKey} onSort={toggleSort}>
+            Health
+          </SortButton>
+        ),
+        width: 100,
+        cell: (client) =>
+          client.goalsTotalCount > 0 ? (
+            <div className="flex flex-col gap-0.5">
+              <GoalAttainmentBadge
+                attainmentPct={client.goalAttainmentPct}
+                goalsMet={client.goalsMetCount}
+                goalsTotal={client.goalsTotalCount}
+                trend={client.primaryGoalTrend}
+                size="sm"
+              />
+              {client.primaryGoalName && (
+                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                  {client.primaryGoalName}
+                </span>
+              )}
+            </div>
+          ) : (
+            <HealthHoverPopover
+              data={{
+                score: client.healthScore,
+                breakdown: client.healthBreakdown,
+              }}
+            >
+              <HealthScoreBadge
+                score={client.healthScore}
+                showLabel={false}
+                size="sm"
+              />
+            </HealthHoverPopover>
+          ),
+      },
+      {
+        id: "traffic",
+        header: (
+          <SortButton
+            column="trafficCurrent"
+            sortKey={sortKey}
+            onSort={toggleSort}
+          >
+            Traffic (30d)
+          </SortButton>
+        ),
+        cell: (client) => (
+          <TrafficHoverPopover
+            data={{
+              current: client.trafficCurrent,
+              previous: client.trafficPrevious,
+              trendPct: client.trafficTrendPct,
+              dailyData: [],
+            }}
+          >
+            {client.trafficCurrent.toLocaleString()}
+          </TrafficHoverPopover>
+        ),
+        className: "text-right tabular-nums",
+      },
+      {
+        id: "trend",
+        header: (
+          <SortButton
+            column="trafficTrendPct"
+            sortKey={sortKey}
+            onSort={toggleSort}
+          >
+            Trend
+          </SortButton>
+        ),
+        width: showSparklines ? 120 : undefined,
+        cell: (client) =>
+          showSparklines ? (
+            <div className="flex items-center justify-end gap-2">
+              <LazySparkline
+                clientId={client.clientId}
+                metric="traffic"
+                width={60}
+                height={20}
+              />
+              {formatTrend(client.trafficTrendPct)}
+            </div>
+          ) : (
+            formatTrend(client.trafficTrendPct)
+          ),
+        className: "text-right tabular-nums",
+      },
+      {
+        id: "keywords",
+        header: (
+          <SortButton
+            column="keywordsTotal"
+            sortKey={sortKey}
+            onSort={toggleSort}
+          >
+            Keywords
+          </SortButton>
+        ),
+        cell: (client) => (
+          <KeywordsHoverPopover
+            data={{
+              total: client.keywordsTotal,
+              top10: client.keywordsTop10,
+              top3: client.keywordsTop3,
+              position1: client.keywordsPosition1,
+            }}
+          >
+            {client.keywordsTotal.toLocaleString()}
+          </KeywordsHoverPopover>
+        ),
+        className: "text-right tabular-nums",
+      },
+      {
+        id: "positions",
+        header: "Positions",
+        width: 150,
+        cell: (client) => (
+          <PositionDistributionBar
+            top10={client.keywordsTop10}
+            top3={client.keywordsTop3}
+            position1={client.keywordsPosition1}
+            total={client.keywordsTotal}
+            showLabels={false}
           />
-          {client.primaryGoalName && (
-            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-              {client.primaryGoalName}
-            </span>
-          )}
-        </div>
-      ) : (
-        <HealthHoverPopover data={{
-          score: client.healthScore,
-          breakdown: client.healthBreakdown,
-        }}>
-          <HealthScoreBadge score={client.healthScore} showLabel={false} size="sm" />
-        </HealthHoverPopover>
-      ),
-    },
-    {
-      id: "traffic",
-      header: <SortButton column="trafficCurrent">Traffic (30d)</SortButton>,
-      cell: (client) => (
-        <TrafficHoverPopover data={{
-          current: client.trafficCurrent,
-          previous: client.trafficPrevious,
-          trendPct: client.trafficTrendPct,
-          dailyData: [],
-        }}>
-          {client.trafficCurrent.toLocaleString()}
-        </TrafficHoverPopover>
-      ),
-      className: "text-right tabular-nums",
-    },
-    {
-      id: "trend",
-      header: <SortButton column="trafficTrendPct">Trend</SortButton>,
-      width: showSparklines ? 120 : undefined,
-      cell: (client) => showSparklines ? (
-        <div className="flex items-center justify-end gap-2">
-          <LazySparkline clientId={client.clientId} metric="traffic" width={60} height={20} />
-          {formatTrend(client.trafficTrendPct)}
-        </div>
-      ) : formatTrend(client.trafficTrendPct),
-      className: "text-right tabular-nums",
-    },
-    {
-      id: "keywords",
-      header: <SortButton column="keywordsTotal">Keywords</SortButton>,
-      cell: (client) => (
-        <KeywordsHoverPopover data={{
-          total: client.keywordsTotal,
-          top10: client.keywordsTop10,
-          top3: client.keywordsTop3,
-          position1: client.keywordsPosition1,
-        }}>
-          {client.keywordsTotal.toLocaleString()}
-        </KeywordsHoverPopover>
-      ),
-      className: "text-right tabular-nums",
-    },
-    {
-      id: "positions",
-      header: "Positions",
-      width: 150,
-      cell: (client) => (
-        <PositionDistributionBar
-          top10={client.keywordsTop10}
-          top3={client.keywordsTop3}
-          position1={client.keywordsPosition1}
-          total={client.keywordsTotal}
-          showLabels={false}
-        />
-      ),
-    },
-    {
-      id: "alerts",
-      header: <SortButton column="alertsOpen">Alerts</SortButton>,
-      cell: (client) => client.alertsOpen > 0 ? (
-        <Badge
-          variant="secondary"
-          className={client.alertsCritical > 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}
-        >
-          {client.alertsOpen}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground">-</span>
-      ),
-      className: "text-right",
-    },
-    {
-      id: "arrow",
-      header: "",
-      width: 50,
-      cell: () => <ChevronRight className="h-4 w-4 text-muted-foreground" />,
-    },
-  ], [showSparklines, sortKey]);
+        ),
+      },
+      {
+        id: "alerts",
+        header: (
+          <SortButton column="alertsOpen" sortKey={sortKey} onSort={toggleSort}>
+            Alerts
+          </SortButton>
+        ),
+        cell: (client) =>
+          client.alertsOpen > 0 ? (
+            <Badge
+              variant="secondary"
+              className={
+                client.alertsCritical > 0
+                  ? "bg-red-100 text-red-800"
+                  : "bg-yellow-100 text-yellow-800"
+              }
+            >
+              {client.alertsOpen}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
+        className: "text-right",
+      },
+      {
+        id: "arrow",
+        header: "",
+        width: 50,
+        cell: () => <ChevronRight className="h-4 w-4 text-muted-foreground" />,
+      },
+    ],
+    [showSparklines, sortKey, toggleSort]
+  );
 
-  const handleVirtualizedRowClick = useCallback((row: ClientMetrics) => {
-    handleRowClick(row.clientId);
-  }, []);
+  const handleVirtualizedRowClick = useCallback(
+    (row: ClientMetrics) => {
+      handleRowClick(row.clientId);
+    },
+    [handleRowClick]
+  );
 
   const getRowKey = useCallback((row: ClientMetrics) => row.id, []);
 
@@ -388,57 +410,72 @@ export function ClientPortfolioTable({
 
       {/* Non-pagination mode: Search and Filters */}
       {!usePagination && (
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search clients..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search clients..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="pl-9"
+            />
+          </div>
+
+          <Select
+            value={
+              filters.hasAlerts === null
+                ? "all"
+                : filters.hasAlerts
+                  ? "with-alerts"
+                  : "no-alerts"
+            }
+            onValueChange={(v) =>
+              setFilters({
+                ...filters,
+                hasAlerts: v === "all" ? null : v === "with-alerts",
+              })
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Alert status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All clients</SelectItem>
+              <SelectItem value="with-alerts">With alerts</SelectItem>
+              <SelectItem value="no-alerts">No alerts</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={
+              filters.healthRange[1] <= 60
+                ? "at-risk"
+                : filters.healthRange[0] >= 80
+                  ? "healthy"
+                  : "all"
+            }
+            onValueChange={(v) => {
+              if (v === "at-risk")
+                setFilters({ ...filters, healthRange: [0, 60] });
+              else if (v === "healthy")
+                setFilters({ ...filters, healthRange: [80, 100] });
+              else setFilters({ ...filters, healthRange: [0, 100] });
+            }}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Health filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All health</SelectItem>
+              <SelectItem value="at-risk">At risk (&lt;60)</SelectItem>
+              <SelectItem value="healthy">Healthy (80+)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="text-sm text-muted-foreground">
+            {filtered.length} of {clients.length} clients
+          </div>
         </div>
-
-        <Select
-          value={filters.hasAlerts === null ? "all" : filters.hasAlerts ? "with-alerts" : "no-alerts"}
-          onValueChange={(v) => setFilters({
-            ...filters,
-            hasAlerts: v === "all" ? null : v === "with-alerts",
-          })}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Alert status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All clients</SelectItem>
-            <SelectItem value="with-alerts">With alerts</SelectItem>
-            <SelectItem value="no-alerts">No alerts</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.healthRange[1] <= 60 ? "at-risk" :
-                 filters.healthRange[0] >= 80 ? "healthy" : "all"}
-          onValueChange={(v) => {
-            if (v === "at-risk") setFilters({ ...filters, healthRange: [0, 60] });
-            else if (v === "healthy") setFilters({ ...filters, healthRange: [80, 100] });
-            else setFilters({ ...filters, healthRange: [0, 100] });
-          }}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Health filter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All health</SelectItem>
-            <SelectItem value="at-risk">At risk (&lt;60)</SelectItem>
-            <SelectItem value="healthy">Healthy (80+)</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="text-sm text-muted-foreground">
-          {filtered.length} of {clients.length} clients
-        </div>
-      </div>
       )}
 
       {/* Table - Virtualized or Standard based on prop */}
@@ -455,166 +492,34 @@ export function ClientPortfolioTable({
       ) : (
         <div className="rounded-lg border border-border overflow-hidden">
           <Table>
-            <TableHeader>
-              <TableRow>
-                {enableSelection && (
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={selectAllProps.indeterminate ? "indeterminate" : selectAllProps.checked}
-                      onCheckedChange={selectAllProps.onChange}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                )}
-                <TableHead className="w-[200px]">
-                  <SortButton column="clientName">Client</SortButton>
-                </TableHead>
-                <TableHead className="w-[100px]">
-                  <SortButton column="healthScore">Health</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton column="trafficCurrent">Traffic (30d)</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton column="trafficTrendPct">Trend</SortButton>
-                </TableHead>
-                <TableHead className="text-right">
-                  <SortButton column="keywordsTotal">Keywords</SortButton>
-                </TableHead>
-                <TableHead className="w-[150px]">Positions</TableHead>
-                <TableHead className="text-right">
-                  <SortButton column="alertsOpen">Alerts</SortButton>
-                </TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
+            <ClientTableHeader
+              sortKey={sortKey}
+              onSort={toggleSort}
+              enableSelection={enableSelection}
+              selectAllProps={selectAllProps}
+            />
             <TableBody>
               {sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={enableSelection ? 9 : 8} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={enableSelection ? 9 : 8}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No clients match your filters
                   </TableCell>
                 </TableRow>
               ) : (
                 sorted.map((client) => (
-                  <TableRow
+                  <ClientTableRow
                     key={client.id}
-                    onClick={(e) => {
-                      // Don't navigate if clicking on checkbox
-                      if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
-                      handleRowClick(client.clientId);
-                    }}
-                    className={`cursor-pointer hover:bg-muted/50 ${
-                      selectedIds.has(client.clientId) ? "bg-muted/30" : ""
-                    }`}
-                  >
-                    {enableSelection && (
-                      <TableCell
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectionClick(client.clientId, e);
-                        }}
-                      >
-                        <Checkbox
-                          checked={getRowCheckboxProps(client.clientId).checked}
-                          onCheckedChange={getRowCheckboxProps(client.clientId).onChange}
-                          aria-label={`Select ${client.clientName}`}
-                        />
-                      </TableCell>
-                    )}
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate">{client.clientName}</span>
-                        {client.connectionStatus === "stale" && (
-                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800">
-                            Stale
-                          </Badge>
-                        )}
-                        {client.connectionStatus === "disconnected" && (
-                          <Badge variant="outline" className="text-xs bg-red-100 text-red-800">
-                            No GSC
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {client.goalsTotalCount > 0 ? (
-                        <div className="flex flex-col gap-0.5">
-                          <GoalAttainmentBadge
-                            attainmentPct={client.goalAttainmentPct}
-                            goalsMet={client.goalsMetCount}
-                            goalsTotal={client.goalsTotalCount}
-                            trend={client.primaryGoalTrend}
-                            size="sm"
-                          />
-                          {client.primaryGoalName && (
-                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                              {client.primaryGoalName}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <HealthHoverPopover data={{
-                          score: client.healthScore,
-                          breakdown: client.healthBreakdown,
-                        }}>
-                          <HealthScoreBadge score={client.healthScore} showLabel={false} size="sm" />
-                        </HealthHoverPopover>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      <TrafficHoverPopover data={{
-                        current: client.trafficCurrent,
-                        previous: client.trafficPrevious,
-                        trendPct: client.trafficTrendPct,
-                        dailyData: [], // Would be populated from extended data
-                      }}>
-                        {client.trafficCurrent.toLocaleString()}
-                      </TrafficHoverPopover>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {showSparklines ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <LazySparkline clientId={client.clientId} metric="traffic" width={60} height={20} />
-                          {formatTrend(client.trafficTrendPct)}
-                        </div>
-                      ) : formatTrend(client.trafficTrendPct)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      <KeywordsHoverPopover data={{
-                        total: client.keywordsTotal,
-                        top10: client.keywordsTop10,
-                        top3: client.keywordsTop3,
-                        position1: client.keywordsPosition1,
-                      }}>
-                        {client.keywordsTotal.toLocaleString()}
-                      </KeywordsHoverPopover>
-                    </TableCell>
-                    <TableCell>
-                      <PositionDistributionBar
-                        top10={client.keywordsTop10}
-                        top3={client.keywordsTop3}
-                        position1={client.keywordsPosition1}
-                        total={client.keywordsTotal}
-                        showLabels={false}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {client.alertsOpen > 0 ? (
-                        <Badge
-                          variant="secondary"
-                          className={client.alertsCritical > 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}
-                        >
-                          {client.alertsOpen}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
+                    client={client}
+                    onRowClick={handleRowClick}
+                    showSparklines={showSparklines}
+                    enableSelection={enableSelection}
+                    isSelected={selectedIds.has(client.clientId)}
+                    onSelectionClick={handleSelectionClick}
+                    checkboxProps={getRowCheckboxProps(client.clientId)}
+                  />
                 ))
               )}
             </TableBody>

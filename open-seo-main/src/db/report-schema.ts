@@ -11,6 +11,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
 import { reportSchedules } from "./schedule-schema";
@@ -61,6 +62,10 @@ export const reports = pgTable(
     }),
     // Email delivery tracking (null until email sent)
     emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+
+    // Soft delete columns (migration 0067)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("ix_reports_client_id").on(table.clientId),
@@ -70,6 +75,7 @@ export const reports = pgTable(
     ),
     index("ix_reports_status").on(table.status),
     index("ix_reports_schedule_id").on(table.scheduleId),
+    index("ix_reports_deleted").on(table.isDeleted),
   ],
 );
 

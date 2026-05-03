@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -66,7 +67,7 @@ export async function getBacklinksOverview(params: BacklinksOverviewParams): Pro
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[getBacklinksOverview]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[getBacklinksOverview]", { message: error instanceof Error ? error.message : "Unknown error" });
     if (error instanceof z.ZodError) {
       return { success: false, error: "Invalid backlinks parameters" };
     }
@@ -94,7 +95,7 @@ export async function getBacklinksReferringDomains(params: BacklinksParams): Pro
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[getBacklinksReferringDomains]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[getBacklinksReferringDomains]", { message: error instanceof Error ? error.message : "Unknown error" });
     if (error instanceof z.ZodError) {
       return { success: false, error: "Invalid backlinks parameters" };
     }
@@ -122,7 +123,7 @@ export async function getBacklinksTopPages(params: BacklinksParams): Promise<{ s
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[getBacklinksTopPages]", { message: error instanceof Error ? error.message : "Unknown error" });
+    logger.error("[getBacklinksTopPages]", { message: error instanceof Error ? error.message : "Unknown error" });
     if (error instanceof z.ZodError) {
       return { success: false, error: "Invalid backlinks parameters" };
     }

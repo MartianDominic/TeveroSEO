@@ -1,6 +1,8 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
+import { randomUUID } from "crypto";
 import { getOpenSeoUrl, getAiWriterUrl } from "./env";
+import { logger } from '@/lib/logger';
 import {
   fetchWithTimeout,
   DEFAULT_TIMEOUT_MS,
@@ -73,6 +75,24 @@ const SERVER_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;
 /**
  * Standardized error response format.
  * M-12 FIX: Unified error format across all backends.
+ * HIGH-16 FIX: Consistent normalization layer for cross-app errors.
+ */
+export interface NormalizedError {
+  /** User-friendly error message */
+  error: string;
+  /** Machine-readable error code for programmatic handling */
+  code: string;
+  /** HTTP status code */
+  status: number;
+  /** Source backend service */
+  source: 'open-seo' | 'ai-writer' | 'unknown';
+  /** Original error details (only in development) */
+  details?: unknown;
+}
+
+/**
+ * Legacy interface for backward compatibility.
+ * @deprecated Use NormalizedError instead
  */
 export interface SanitizedError {
   error: string;
@@ -80,62 +100,189 @@ export interface SanitizedError {
 }
 
 /**
- * Sanitize backend error responses to prevent information leakage.
- * Handles both formats:
- * - open-seo-main: {"error": "message", "code": "ERROR_CODE"}
- * - AI-Writer (legacy): {"detail": "message"}
- *
- * M-12 FIX: Now extracts error codes when available.
+ * Derive error code from HTTP status when backend doesn't provide one.
+ * HIGH-03 FIX: Extract meaningful codes from status for open-seo-main responses.
  */
-function sanitizeErrorBody(body: unknown): SanitizedError {
+function deriveErrorCodeFromStatus(status: number): string {
+  switch (status) {
+    case 400: return 'BAD_REQUEST';
+    case 401: return 'UNAUTHORIZED';
+    case 403: return 'FORBIDDEN';
+    case 404: return 'NOT_FOUND';
+    case 409: return 'CONFLICT';
+    case 422: return 'VALIDATION_ERROR';
+    case 429: return 'RATE_LIMITED';
+    case 500: return 'INTERNAL_ERROR';
+    case 502: return 'BAD_GATEWAY';
+    case 503: return 'SERVICE_UNAVAILABLE';
+    case 504: return 'GATEWAY_TIMEOUT';
+    default: return status >= 500 ? 'SERVER_ERROR' : 'CLIENT_ERROR';
+  }
+}
+
+/**
+ * Normalize backend error responses to a consistent format.
+ * HIGH-16 FIX: Unified error normalization layer for cross-app error handling.
+ * HIGH-03 FIX: Extracts code from status when open-seo-main omits it.
+ *
+ * Handles multiple formats:
+ * - open-seo-main: {"error": "message"} (code derived from status)
+ * - open-seo-main: {"error": "message", "code": "ERROR_CODE"}
+ * - AI-Writer standard: {"error": "message", "code": "ERROR_CODE"}
+ * - AI-Writer legacy: {"detail": "message"}
+ * - AI-Writer validation: {"detail": [{"loc": [...], "msg": "...", "type": "..."}]}
+ *
+ * @param body - Raw error response body from backend
+ * @param status - HTTP status code
+ * @param source - Source backend service
+ * @returns Normalized error object
+ */
+export function normalizeBackendError(
+  body: unknown,
+  status: number,
+  source: 'open-seo' | 'ai-writer' | 'unknown' = 'unknown'
+): NormalizedError {
+  const isDev = process.env.NODE_ENV === 'development';
+
   if (typeof body === 'object' && body !== null) {
     const obj = body as Record<string, unknown>;
 
     // Standard format: {"error": "message", "code": "ERROR_CODE"}
-    if ('error' in obj) {
-      const error = obj.error;
-      if (typeof error === 'string' && error.length < 200) {
-        const result: SanitizedError = { error };
-        // Extract error code if present
-        if ('code' in obj && typeof obj.code === 'string') {
-          result.code = obj.code;
-        }
-        return result;
+    // HIGH-03 FIX: Derive code from status when not provided (common in open-seo-main)
+    if ('error' in obj && typeof obj.error === 'string') {
+      const code = typeof obj.code === 'string'
+        ? obj.code
+        : deriveErrorCodeFromStatus(status);
+      return {
+        error: obj.error.slice(0, 200),
+        code,
+        status,
+        source,
+        details: isDev ? obj : undefined,
+      };
+    }
+
+    // AI-Writer validation errors: {"detail": [{"loc": [...], "msg": "...", "type": "..."}]}
+    if ('detail' in obj && Array.isArray(obj.detail)) {
+      const firstError = obj.detail[0];
+      if (firstError && typeof firstError === 'object' && 'msg' in firstError) {
+        const msg = String((firstError as Record<string, unknown>).msg);
+        return {
+          error: msg.slice(0, 200),
+          code: 'VALIDATION_ERROR',
+          status,
+          source,
+          details: isDev ? obj.detail : undefined,
+        };
       }
     }
 
-    // Legacy AI-Writer format: {"detail": "message"}
-    if ('detail' in obj) {
-      const detail = obj.detail;
-      if (typeof detail === 'string' && detail.length < 200) {
-        return { error: detail, code: 'LEGACY_ERROR' };
-      }
+    // AI-Writer legacy format: {"detail": "message"}
+    if ('detail' in obj && typeof obj.detail === 'string') {
+      return {
+        error: obj.detail.slice(0, 200),
+        code: 'LEGACY_ERROR',
+        status,
+        source,
+        details: isDev ? obj : undefined,
+      };
+    }
+
+    // Message-only format: {"message": "..."}
+    if ('message' in obj && typeof obj.message === 'string') {
+      return {
+        error: obj.message.slice(0, 200),
+        code: typeof obj.code === 'string' ? obj.code : 'BACKEND_ERROR',
+        status,
+        source,
+        details: isDev ? obj : undefined,
+      };
     }
   }
-  return { error: 'An error occurred', code: 'UNKNOWN_ERROR' };
+
+  // Fallback for unknown formats
+  return {
+    error: 'An error occurred',
+    code: 'UNKNOWN_ERROR',
+    status,
+    source,
+    details: isDev ? body : undefined,
+  };
+}
+
+/**
+ * Sanitize backend error responses to prevent information leakage.
+ * @deprecated Use normalizeBackendError instead for full error context
+ */
+function sanitizeErrorBody(body: unknown): SanitizedError {
+  const normalized = normalizeBackendError(body, 500, 'unknown');
+  return {
+    error: normalized.error,
+    code: normalized.code,
+  };
 }
 
 export class FastApiError extends Error {
   public sanitizedBody: SanitizedError;
-  public errorCode?: string;
+  public normalizedError: NormalizedError;
+  public errorCode: string;
 
-  constructor(public status: number, public body: unknown, message: string) {
+  constructor(
+    public status: number,
+    public body: unknown,
+    message: string,
+    public source: 'open-seo' | 'ai-writer' | 'unknown' = 'unknown'
+  ) {
     super(message);
     this.name = "FastApiError";
-    // Sanitize body for safe client exposure
-    this.sanitizedBody = sanitizeErrorBody(body);
-    // M-12 FIX: Expose error code for programmatic handling
-    this.errorCode = this.sanitizedBody.code;
+    // HIGH-16 FIX: Full error normalization with source tracking
+    this.normalizedError = normalizeBackendError(body, status, source);
+    // Legacy sanitized body for backward compatibility
+    this.sanitizedBody = {
+      error: this.normalizedError.error,
+      code: this.normalizedError.code,
+    };
+    this.errorCode = this.normalizedError.code;
+  }
+
+  /**
+   * Get a safe JSON representation for API responses.
+   */
+  toJSON(): NormalizedError {
+    return this.normalizedError;
   }
 }
 
 // Re-export circuit breaker error for consumers
 export { CircuitOpenError, getServiceErrorMessage };
 
-async function authHeader(): Promise<Record<string, string>> {
-  const { getToken } = await auth();
+/**
+ * Build authentication and tracing headers for cross-service requests.
+ *
+ * FIX CRIT-11: Always derive X-User-Id from verified Clerk auth context.
+ * FIX HIGH-15: Always include X-Correlation-Id for cross-service tracing.
+ *
+ * @returns Headers object with Authorization, X-User-Id, and X-Correlation-Id
+ */
+async function buildServiceHeaders(): Promise<Record<string, string>> {
+  const { getToken, userId } = await auth();
   const token = await getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+
+  const headers: Record<string, string> = {
+    // HIGH-15: Always include correlation ID for distributed tracing
+    "X-Correlation-Id": randomUUID(),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // CRIT-11: Always derive X-User-Id from verified Clerk auth, never from client input
+  if (userId) {
+    headers["X-User-Id"] = userId;
+  }
+
+  return headers;
 }
 
 export interface ServerFetchInit<T = unknown> extends RequestInit {
@@ -160,9 +307,12 @@ async function requestCore<T>(
   const { timeout = SERVER_TIMEOUT_MS, schema, ...restInit } = init ?? {};
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(await authHeader()),
+    ...(await buildServiceHeaders()),
     ...((restInit?.headers as Record<string, string>) ?? {}),
   };
+
+  // HIGH-16: Determine source for error normalization
+  const source: 'open-seo' | 'ai-writer' = base === AI_WRITER_URL ? 'ai-writer' : 'open-seo';
 
   let lastError: Error | null = null;
 
@@ -185,7 +335,8 @@ async function requestCore<T>(
       }
 
       if (!res.ok) {
-        const error = new FastApiError(res.status, parsed, `${method} ${path} failed: ${res.status}`);
+        // HIGH-16: Include source in error for proper normalization
+        const error = new FastApiError(res.status, parsed, `${method} ${path} failed: ${res.status}`, source);
 
         // Check if this is a transient error that should be retried
         if (isTransientError(res.status) && attempt < RETRY_CONFIG.maxRetries - 1) {
@@ -203,14 +354,25 @@ async function requestCore<T>(
         const result = schema.safeParse(parsed);
         if (!result.success) {
           const errorMsg = `Response validation failed for ${method} ${path}: ${result.error.message}`;
-          console.warn(`[server-fetch] ${errorMsg}`);
-          throw new FastApiError(res.status, parsed, errorMsg);
+          logger.warn(`[server-fetch] ${errorMsg}`);
+          throw new FastApiError(res.status, parsed, errorMsg, source);
         }
         return result.data;
       }
 
+      // CRIT-API-02 FIX: Log warning when schema is not provided
+      // Without schema validation, type assertions bypass runtime validation
+      // which can lead to runtime errors when API contracts change.
+      if (process.env.NODE_ENV === 'development') {
+        logger.warn(
+          `[server-fetch] CRIT-API-02: No schema provided for ${method} ${path}. ` +
+          `Response type assertion bypasses runtime validation. Pass a Zod schema for type safety.`
+        );
+      }
+
       // Without schema, return as T (maintains backward compatibility)
-      // Note: Callers should prefer passing a schema for type safety
+      // @deprecated - Callers should pass a schema for runtime type safety
+      // CRIT-API-02: This pattern bypasses runtime validation and should be avoided
       return parsed as T;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));

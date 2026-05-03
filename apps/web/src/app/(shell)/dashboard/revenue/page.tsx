@@ -9,6 +9,7 @@ import { OutstandingPayments } from "@/components/revenue/OutstandingPayments";
 import { RevenueTrendChart } from "@/components/revenue/RevenueTrendChart";
 import { ChurnRiskAlerts } from "@/components/revenue/ChurnRiskAlerts";
 import { RevenueViewToggle } from "./RevenueViewToggle";
+import { logger } from '@/lib/logger';
 import {
   getRevenueMetrics,
   getOutstandingPayments,
@@ -46,7 +47,7 @@ export default async function RevenuePage() {
   const [metrics, outstandingPayments, monthlyData, mrrTrend, churnRisks] =
     await Promise.all([
       getRevenueMetrics().catch((error) => {
-        console.error("[RevenuePage] getRevenueMetrics failed:", error);
+        logger.error("[RevenuePage] getRevenueMetrics failed", error instanceof Error ? error : { error: String(error) });
         return {
           mrr: {
             currentMrr: 0,
@@ -62,19 +63,19 @@ export default async function RevenuePage() {
         };
       }),
       getOutstandingPayments().catch((error) => {
-        console.error("[RevenuePage] getOutstandingPayments failed:", error);
+        logger.error("[RevenuePage] getOutstandingPayments failed", error instanceof Error ? error : { error: String(error) });
         return [];
       }),
       getMonthlyRevenueData(12).catch((error) => {
-        console.error("[RevenuePage] getMonthlyRevenueData failed:", error);
+        logger.error("[RevenuePage] getMonthlyRevenueData failed", error instanceof Error ? error : { error: String(error) });
         return [];
       }),
       getMrrTrend(6).catch((error) => {
-        console.error("[RevenuePage] getMrrTrend failed:", error);
+        logger.error("[RevenuePage] getMrrTrend failed", error instanceof Error ? error : { error: String(error) });
         return [];
       }),
       getChurnRisks().catch((error) => {
-        console.error("[RevenuePage] getChurnRisks failed:", error);
+        logger.error("[RevenuePage] getChurnRisks failed", error instanceof Error ? error : { error: String(error) });
         return [];
       }),
     ]);
@@ -104,19 +105,19 @@ export default async function RevenuePage() {
 
   // Handle actions (these would be server actions in production)
   const handleSendReminder = (invoiceId: string) => {
-    console.log("Send reminder for invoice:", invoiceId);
+    logger.debug("Send reminder for invoice:", { invoiceId: invoiceId });
   };
 
   const handleLogCall = (invoiceId: string) => {
-    console.log("Log call for invoice:", invoiceId);
+    logger.debug("Log call for invoice:", { invoiceId: invoiceId });
   };
 
   const handleViewInvoice = (invoiceId: string) => {
-    console.log("View invoice:", invoiceId);
+    logger.debug("View invoice:", { invoiceId: invoiceId });
   };
 
   const handleViewClient = (clientId: string) => {
-    console.log("View client:", clientId);
+    logger.debug("View client:", { clientId: clientId });
   };
 
   return (

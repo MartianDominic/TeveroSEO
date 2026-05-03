@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Dialog,
@@ -131,7 +132,7 @@ export function ExportButton({ data }: ExportButtonProps) {
       // Error logged for debugging; user sees disabled state cleared
       if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
-        console.error("Export failed:", error);
+        logger.error("Export failed", error instanceof Error ? error : { error: String(error) });
       }
     } finally {
       setIsExporting(false);

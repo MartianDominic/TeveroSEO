@@ -10,6 +10,9 @@ import { db } from "@/db";
 import { pixelInstallations, pixelAnalyticsDaily } from "@/db/pixel-schema";
 import { redis } from "@/server/lib/redis";
 import { nanoid } from "nanoid";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "pixel-collector" });
 
 // ============================================================================
 // Types
@@ -153,7 +156,7 @@ export class PixelCollectorService {
         processingTimeMs: performance.now() - startTime,
       };
     } catch (error) {
-      console.error("[PixelCollector] Error processing event:", error);
+      log.error("Error processing event", error instanceof Error ? error : new Error(String(error)), { siteId: event.siteId });
       return {
         success: false,
         error: error instanceof Error ? error.message : "UNKNOWN_ERROR",

@@ -12,6 +12,7 @@
  */
 
 import { useState, useCallback, useTransition } from "react";
+import { logger } from '@/lib/logger';
 import {
   DndContext,
   closestCenter,
@@ -105,7 +106,7 @@ export function TemplateEditor({ initialData }: TemplateEditorProps) {
       setTimeout(() => setSaveStatus("idle"), 2000);
     } else {
       setSaveStatus("error");
-      console.error("Save failed:", result.error);
+      logger.error("Save failed", { error: result.error });
     }
   }, [template]);
 

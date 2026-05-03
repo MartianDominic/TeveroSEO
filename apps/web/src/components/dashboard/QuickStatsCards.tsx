@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from '@/lib/logger';
 import {
   DndContext,
   closestCenter,
@@ -133,7 +134,7 @@ export function QuickStatsCards({ summary, initialLayout }: QuickStatsCardsProps
     try {
       await saveCardLayout(newOrder);
     } catch (error) {
-      console.error("Failed to save card layout:", error);
+      logger.error("Failed to save card layout", error instanceof Error ? error : { error: String(error) });
       // Revert on error
       setCardOrder(cardOrder);
     }

@@ -115,21 +115,29 @@ export class GoogleBusinessProfileService {
       throw new Error(`GBP API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
-    return (data.reviews ?? []).map((review: Record<string, unknown>) => ({
-      rating: (review.starRating as string) === "FIVE"
+    const data = await response.json() as {
+      reviews?: Array<{
+        starRating?: string;
+        comment?: string;
+        reviewer?: { displayName?: string };
+        createTime?: string;
+        reviewId?: string;
+      }>;
+    };
+    return (data.reviews ?? []).map((review) => ({
+      rating: review.starRating === "FIVE"
         ? 5
-        : (review.starRating as string) === "FOUR"
+        : review.starRating === "FOUR"
           ? 4
-          : (review.starRating as string) === "THREE"
+          : review.starRating === "THREE"
             ? 3
-            : (review.starRating as string) === "TWO"
+            : review.starRating === "TWO"
               ? 2
               : 1,
-      text: (review.comment as string) || "",
-      author: (review.reviewer as Record<string, string>)?.displayName || "Anonymous",
-      date: (review.createTime as string) || "",
-      reviewId: (review.reviewId as string) || "",
+      text: review.comment || "",
+      author: review.reviewer?.displayName || "Anonymous",
+      date: review.createTime || "",
+      reviewId: review.reviewId || "",
     }));
   }
 
@@ -166,7 +174,11 @@ export class GoogleBusinessProfileService {
       };
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      timeSeries?: {
+        datedValues?: Array<{ value?: number }>;
+      };
+    };
 
     // Aggregate time series data
     let totalViews = 0;
@@ -204,7 +216,13 @@ export class GoogleBusinessProfileService {
       throw new Error(`GBP API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      title?: string;
+      storefrontAddress?: any;
+      phoneNumbers?: { primaryPhone?: string };
+      websiteUri?: string;
+      categories?: { primaryCategory?: { displayName?: string } };
+    };
     return {
       name: data.title || data.storefrontAddress?.locality || "",
       address: this.formatAddress(data.storefrontAddress),
@@ -217,10 +235,10 @@ export class GoogleBusinessProfileService {
   /**
    * Format address from GBP API response.
    */
-  private formatAddress(address: Record<string, string> | undefined): string {
+  private formatAddress(address: any): string {
     if (!address) return "";
     const parts = [
-      address.addressLines?.join(", "),
+      Array.isArray(address.addressLines) ? address.addressLines.join(", ") : address.addressLines,
       address.locality,
       address.administrativeArea,
       address.postalCode,

@@ -79,7 +79,11 @@ export class WixOAuthProvider implements OAuthProvider {
       throw new Error(`Wix token exchange failed: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -108,7 +112,11 @@ export class WixOAuthProvider implements OAuthProvider {
       throw new Error(`Wix token refresh failed: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token ?? refreshToken,

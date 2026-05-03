@@ -142,12 +142,17 @@ export const proposals = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // Soft delete columns (migration 0067)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
   },
   (table) => [
     index("ix_proposals_workspace").on(table.workspaceId),
     index("ix_proposals_prospect").on(table.prospectId),
     index("ix_proposals_status").on(table.status),
     index("ix_proposals_token").on(table.token),
+    index("ix_proposals_deleted").on(table.isDeleted),
   ],
 );
 

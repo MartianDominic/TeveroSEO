@@ -1,6 +1,7 @@
 /**
  * Payment Provider Factory
  * Phase 54-01: Multi-Provider Payments
+ * Phase 54-FIX: Added TTL to cache to ensure credential updates are picked up
  *
  * Factory pattern for creating payment provider instances.
  * Handles credential decryption and provider selection.
@@ -18,13 +19,27 @@ import { createLogger } from "@/server/lib/logger";
 const log = createLogger({ module: "PaymentProviderFactory" });
 
 /**
- * Cache for provider instances.
+ * Cache TTL in milliseconds.
+ * Providers are re-created after this time to pick up credential updates.
+ */
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Cached provider with timestamp for TTL expiration.
+ */
+interface CachedProvider {
+  provider: PaymentProvider;
+  cachedAt: number;
+}
+
+/**
+ * Cache for provider instances with TTL support.
  * Key format: `${workspaceId}:${providerType}`
  *
  * Note: Providers are cached per workspace because each workspace
  * may have different credentials configured.
  */
-const providerCache = new Map<string, PaymentProvider>();
+const providerCache = new Map<string, CachedProvider>();
 
 /**
  * Clear the provider cache for a workspace.
@@ -97,11 +112,19 @@ export async function getProvider(
     providerType = settings?.defaultProvider ?? "stripe";
   }
 
-  // Check cache
+  // Check cache with TTL
   const cacheKey = `${workspaceId}:${providerType}`;
   const cached = providerCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.cachedAt < CACHE_TTL_MS) {
+    return cached.provider;
+  }
+
+  // Cache expired or not found - remove stale entry
   if (cached) {
-    return cached;
+    providerCache.delete(cacheKey);
+    log.debug("Provider cache expired", { workspaceId, providerType });
   }
 
   // Build credentials
@@ -137,8 +160,11 @@ export async function getProvider(
   // Create provider instance
   const provider = await createProvider(providerType, credentials);
 
-  // Cache the provider
-  providerCache.set(cacheKey, provider);
+  // Cache the provider with timestamp for TTL
+  providerCache.set(cacheKey, {
+    provider,
+    cachedAt: Date.now(),
+  });
 
   log.info("Created payment provider", { workspaceId, providerType });
 

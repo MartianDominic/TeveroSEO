@@ -97,7 +97,7 @@ export const Route = createFileRoute("/api/proposals/id/services")({
             );
           }
 
-          // Fetch proposal services with template data
+          // Fetch proposal services with template data and snapshots (HIGH-INT-05)
           const services = await db
             .select({
               id: proposalServices.id,
@@ -109,7 +109,15 @@ export const Route = createFileRoute("/api/proposals/id/services")({
               isIncluded: proposalServices.isIncluded,
               displayOrder: proposalServices.displayOrder,
               createdAt: proposalServices.createdAt,
-              // Template fields
+              // HIGH-INT-05: Snapshot fields (captured at proposal creation)
+              snapshotName: proposalServices.snapshotName,
+              snapshotDescription: proposalServices.snapshotDescription,
+              snapshotCategory: proposalServices.snapshotCategory,
+              snapshotPricingType: proposalServices.snapshotPricingType,
+              snapshotBasePriceCents: proposalServices.snapshotBasePriceCents,
+              snapshotSetupFeeCents: proposalServices.snapshotSetupFeeCents,
+              snapshotInclusions: proposalServices.snapshotInclusions,
+              // Template fields (current values, for reference only)
               templateName: serviceTemplates.name,
               templateNameEn: serviceTemplates.nameEn,
               templateNameLt: serviceTemplates.nameLt,
@@ -139,17 +147,28 @@ export const Route = createFileRoute("/api/proposals/id/services")({
               isIncluded: s.isIncluded,
               displayOrder: s.displayOrder,
               createdAt: s.createdAt?.toISOString(),
-              // Nested template for convenience
-              template: s.serviceTemplateId
+              // HIGH-INT-05: Service data uses snapshot (captured at creation) with fallback to current template
+              // This ensures proposal pricing is stable even if service templates are updated later
+              service: {
+                name: s.snapshotName ?? s.templateName,
+                nameEn: s.templateNameEn, // Only in template, not snapshotted
+                nameLt: s.templateNameLt, // Only in template, not snapshotted
+                description: s.snapshotDescription,
+                category: s.snapshotCategory ?? s.templateCategory,
+                pricingType: s.snapshotPricingType ?? s.templatePricingType,
+                basePriceCents: s.snapshotBasePriceCents ?? s.templateBasePriceCents,
+                setupFeeCents: s.snapshotSetupFeeCents ?? s.templateSetupFeeCents,
+                inclusions: s.snapshotInclusions,
+                icon: s.templateIcon, // Icon comes from current template
+              },
+              // Current template values (for comparison/reference)
+              currentTemplate: s.serviceTemplateId
                 ? {
                     name: s.templateName,
-                    nameEn: s.templateNameEn,
-                    nameLt: s.templateNameLt,
                     category: s.templateCategory,
                     pricingType: s.templatePricingType,
                     basePriceCents: s.templateBasePriceCents,
                     setupFeeCents: s.templateSetupFeeCents,
-                    icon: s.templateIcon,
                   }
                 : null,
             })),
@@ -233,10 +252,36 @@ export const Route = createFileRoute("/api/proposals/id/services")({
           const { services: selections } = parsed.data;
 
           // Verify all service templates exist and are accessible (T-58-09)
+          // HIGH-INT-05: Also fetch full template data for snapshotting
+          let templateMap = new Map<
+            string,
+            {
+              id: string;
+              workspaceId: string | null;
+              name: string;
+              description: string | null;
+              category: string;
+              pricingType: string;
+              basePriceCents: number | null;
+              setupFeeCents: number | null;
+              inclusions: string[] | null;
+            }
+          >();
+
           if (selections.length > 0) {
             const templateIds = selections.map((s) => s.serviceTemplateId);
             const templates = await db
-              .select({ id: serviceTemplates.id, workspaceId: serviceTemplates.workspaceId })
+              .select({
+                id: serviceTemplates.id,
+                workspaceId: serviceTemplates.workspaceId,
+                name: serviceTemplates.name,
+                description: serviceTemplates.description,
+                category: serviceTemplates.category,
+                pricingType: serviceTemplates.pricingType,
+                basePriceCents: serviceTemplates.basePriceCents,
+                setupFeeCents: serviceTemplates.setupFeeCents,
+                inclusions: serviceTemplates.inclusions,
+              })
               .from(serviceTemplates)
               .where(inArray(serviceTemplates.id, templateIds));
 
@@ -260,6 +305,9 @@ export const Route = createFileRoute("/api/proposals/id/services")({
                 { status: 403 }
               );
             }
+
+            // Build template map for snapshotting (HIGH-INT-05)
+            templateMap = new Map(templates.map((t) => [t.id, t]));
           }
 
           // Transaction: delete existing and insert new
@@ -269,18 +317,30 @@ export const Route = createFileRoute("/api/proposals/id/services")({
               .delete(proposalServices)
               .where(eq(proposalServices.proposalId, proposalId));
 
-            // Insert new selections
+            // Insert new selections with snapshot data (HIGH-INT-05)
             if (selections.length > 0) {
-              const toInsert: ProposalServiceInsert[] = selections.map((s, idx) => ({
-                id: crypto.randomUUID(),
-                proposalId,
-                serviceTemplateId: s.serviceTemplateId,
-                customPriceCents: s.customPriceCents ?? null,
-                customSetupCents: s.customSetupCents ?? null,
-                quantity: s.quantity,
-                isIncluded: s.isIncluded,
-                displayOrder: idx,
-              }));
+              const toInsert: ProposalServiceInsert[] = selections.map((s, idx) => {
+                const template = templateMap.get(s.serviceTemplateId);
+                return {
+                  id: crypto.randomUUID(),
+                  proposalId,
+                  serviceTemplateId: s.serviceTemplateId,
+                  // HIGH-INT-05: Snapshot service data at proposal creation time
+                  snapshotName: template?.name ?? null,
+                  snapshotDescription: template?.description ?? null,
+                  snapshotCategory: template?.category ?? null,
+                  snapshotPricingType: template?.pricingType ?? null,
+                  snapshotBasePriceCents: template?.basePriceCents ?? null,
+                  snapshotSetupFeeCents: template?.setupFeeCents ?? null,
+                  snapshotInclusions: template?.inclusions ?? null,
+                  // Custom overrides
+                  customPriceCents: s.customPriceCents ?? null,
+                  customSetupCents: s.customSetupCents ?? null,
+                  quantity: s.quantity,
+                  isIncluded: s.isIncluded,
+                  displayOrder: idx,
+                };
+              });
 
               await tx.insert(proposalServices).values(toInsert);
             }

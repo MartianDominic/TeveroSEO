@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, ArrowLeft } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function KeywordDetailError({
   error,
   reset,
@@ -15,7 +16,7 @@ export default function KeywordDetailError({
   const router = useRouter();
 
   useEffect(() => {
-    console.error("[keyword-detail-error]", {
+    logger.error("[keyword-detail-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

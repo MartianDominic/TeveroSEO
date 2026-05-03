@@ -9,6 +9,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "tokenRefreshQueue" });
 
@@ -24,16 +25,12 @@ export interface CheckExpiringTokensJobData {
 
 /**
  * Default job options for token refresh.
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 5000, // 5s, 10s, 20s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { age: 3600 }, // 1 hour
   removeOnFail: { age: 86400 }, // 24 hours
-};
+});
 
 export const tokenRefreshQueue = new Queue<CheckExpiringTokensJobData>(
   TOKEN_REFRESH_QUEUE_NAME,

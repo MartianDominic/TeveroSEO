@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { logger } from '@/lib/logger';
 import {
   Loader2,
   RefreshCw,
@@ -549,7 +550,7 @@ function ContentGapsTab({
       setKeywordIdeas(Array.isArray(data) ? data : []);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Unknown error";
-      console.error("handleExplore failed:", e);
+      logger.error("handleExplore failed", e instanceof Error ? e : { error: String(e) });
       // Provide context-specific error message
       if (errorMessage.includes("401") || errorMessage.includes("auth")) {
         setIdeasError("Authentication required. Please refresh the page.");
@@ -783,7 +784,7 @@ export default function ClientIntelligencePage() {
       // Refetch intelligence data when we receive an update
       fetchIntelligence(clientId);
     } else if (message.type === 'error') {
-      console.warn('[Intelligence WS] Server error:', message.message);
+      logger.warn('[Intelligence WS] Server error', { detail: message.message });
     }
     // auth_success, auth_refresh_ack, ping, pong, status are handled silently
   }, [clientId, fetchIntelligence]);
@@ -799,7 +800,7 @@ export default function ClientIntelligencePage() {
     onMessage: handleWebSocketMessage,
     messageSchema: intelligenceWsMessageSchema,
     onValidationError: (error) => {
-      console.warn('[Intelligence WS] Invalid message:', error.issues);
+      logger.warn('[Intelligence WS] Invalid message', { detail: error.issues });
     },
     reconnectInterval: 3000,
     maxReconnectAttempts: 5,
@@ -847,7 +848,7 @@ export default function ClientIntelligencePage() {
       await fetchIntelligence(clientId);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Unknown error";
-      console.error("handleRunIntelligence failed:", e);
+      logger.error("handleRunIntelligence failed", e instanceof Error ? e : { error: String(e) });
       // Provide context-specific error message
       if (errorMessage.includes("401") || errorMessage.includes("auth")) {
         setRerunError("Authentication required. Please refresh the page.");

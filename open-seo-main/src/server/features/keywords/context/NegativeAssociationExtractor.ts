@@ -128,10 +128,13 @@ ${context.targetAudience ? `Target: ${context.targetAudience}` : ""}
       // Handle potential markdown code blocks
       const jsonText = textBlock.text.replace(/```json\n?|\n?```/g, "").trim();
 
-      let parsed: z.SafeParseReturnType<unknown, NegativeAssociations>;
+      let parsed: z.infer<typeof NegativeAssociationsSchema> | null = null;
       try {
         const jsonData = JSON.parse(jsonText);
-        parsed = NegativeAssociationsSchema.safeParse(jsonData);
+        const parseResult = NegativeAssociationsSchema.safeParse(jsonData);
+        if (parseResult.success) {
+          parsed = parseResult.data;
+        }
       } catch {
         logger.warn("Failed to parse negative associations JSON", {
           text: jsonText.slice(0, 200),
@@ -139,14 +142,12 @@ ${context.targetAudience ? `Target: ${context.targetAudience}` : ""}
         return this.emptyResult();
       }
 
-      if (!parsed.success) {
-        logger.warn("Failed to validate negative associations schema", {
-          error: parsed.error.message,
-        });
+      if (!parsed) {
+        logger.warn("Failed to validate negative associations schema");
         return this.emptyResult();
       }
 
-      return parsed.data;
+      return parsed;
     } catch (error) {
       logger.error("Negative association extraction failed", {
         error: error instanceof Error ? error.message : String(error),

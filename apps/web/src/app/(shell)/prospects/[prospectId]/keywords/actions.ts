@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
 
+import { logger } from '@/lib/logger';
 /** Default timeout for API requests (30 seconds) */
 const API_TIMEOUT_MS = 30000;
 
@@ -143,7 +144,7 @@ export async function getKeywords(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[getKeywords] API error:", response.status, errorMessage);
+      logger.error("[getKeywords] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -153,7 +154,7 @@ export async function getKeywords(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[getKeywords] Error:", error);
+    logger.error("[getKeywords] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -227,7 +228,7 @@ export async function prioritizeKeywords(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[prioritizeKeywords] API error:", response.status, errorMessage);
+      logger.error("[prioritizeKeywords] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -237,7 +238,7 @@ export async function prioritizeKeywords(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[prioritizeKeywords] Error:", error);
+    logger.error("[prioritizeKeywords] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,
@@ -307,7 +308,7 @@ export async function bulkUpdateTier(
       } catch {
         // Response wasn't JSON (e.g., 502 HTML from nginx)
       }
-      console.error("[bulkUpdateTier] API error:", response.status, errorMessage);
+      logger.error("[bulkUpdateTier] API error", { status: response.status, detail: errorMessage });
       return {
         success: false,
         error: sanitizeErrorForClient(new Error(errorMessage)),
@@ -317,7 +318,7 @@ export async function bulkUpdateTier(
     const result = await response.json();
     return { success: true, data: result.data };
   } catch (error) {
-    console.error("[bulkUpdateTier] Error:", error);
+    logger.error("[bulkUpdateTier] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof Error && error.name === "TimeoutError") {
       return {
         success: false,

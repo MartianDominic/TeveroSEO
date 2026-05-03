@@ -17,6 +17,7 @@
 export interface GuideStep {
   number: number;
   title: string;
+  content: string; // Alias for description for compatibility
   description: string; // 5th-8th grade reading level
   screenshot?: string; // Path to screenshot image
   code?: string; // Copy-pasteable code
@@ -795,17 +796,15 @@ export function getGuide(
     return undefined;
   }
 
-  // If no siteId, return guide as-is
-  if (!siteId) {
-    return guide;
-  }
+  // Clone and ensure content property is populated
+  const normalizedSteps = guide.steps.map((step) => ({
+    ...step,
+    content: step.description, // Ensure content property exists
+    code: siteId ? step.code?.replace(/\{\{SITE_ID\}\}/g, siteId) : step.code,
+  }));
 
-  // Clone and interpolate siteId into code snippets
   return {
     ...guide,
-    steps: guide.steps.map((step) => ({
-      ...step,
-      code: step.code?.replace(/\{\{SITE_ID\}\}/g, siteId),
-    })),
+    steps: normalizedSteps,
   };
 }

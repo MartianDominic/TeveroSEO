@@ -193,11 +193,16 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
 
   const [open, setOpen] = useState(false);
 
+  // MEDIUM-01: Use refs to avoid infinite loops
+  const fetchClientsRef = React.useRef(fetchClients);
+  fetchClientsRef.current = fetchClients;
+  const clientsLengthRef = React.useRef(clients.length);
+  clientsLengthRef.current = clients.length;
+
   useEffect(() => {
-    if (isSignedIn && clients.length === 0) {
-      fetchClients();
+    if (isSignedIn && clientsLengthRef.current === 0) {
+      fetchClientsRef.current();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
   if (!isSignedIn) return null;
@@ -217,12 +222,14 @@ const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
   const triggerLabel = name || 'Select client';
 
   // Collapsed: just the colored initial circle
+  // MEDIUM-04: Added aria-label for accessibility when collapsed
   if (collapsed) {
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             title={triggerLabel}
+            aria-label={`Switch client. Current: ${triggerLabel}`}
             className={cn(
               'flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white',
               'transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -420,10 +427,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     const active = activeClientId ? isActive(item.href(activeClientId)) : false;
     const isGlobalSettings = item.label === 'Global Settings';
 
+    // MEDIUM-04: Added aria-label for collapsed nav items
     return (
       <button
         key={index}
         title={collapsed ? item.label : undefined}
+        aria-label={collapsed ? item.label : undefined}
         disabled={disabled}
         onClick={() => {
           if (!disabled && href !== '#') {

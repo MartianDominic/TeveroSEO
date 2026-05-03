@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 export default function ClientsError({
   error,
   reset,
@@ -12,7 +13,7 @@ export default function ClientsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[clients-error]", {
+    logger.error("[clients-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

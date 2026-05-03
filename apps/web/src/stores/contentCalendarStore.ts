@@ -1,5 +1,25 @@
 "use client";
 
+/**
+ * Content Calendar Store - Article scheduling and publishing settings
+ *
+ * TODO [HIGH-42]: Migrate to TanStack Query for server state
+ * This store currently manages server state which should use React Query for:
+ * - Automatic caching and background refetching
+ * - Stale-while-revalidate patterns
+ * - Request deduplication
+ * - Built-in loading/error states
+ * - Optimistic updates for approve/reject actions
+ *
+ * Migration path:
+ * 1. Create useContentCalendarArticles query hook
+ * 2. Create usePublishingSettings query hook
+ * 3. Create mutations for approve/reject/submit/generate actions
+ * 4. Replace store usage with query hooks in components
+ * 5. Remove this store
+ *
+ * See: https://tanstack.com/query/latest
+ */
 import { create } from "zustand";
 import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 

@@ -13,6 +13,7 @@ import { AuthError } from "@/lib/auth/api-auth";
 import { generalApiLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export async function GET(
     if (err instanceof FastApiError) {
       return NextResponse.json(err.sanitizedBody, { status: err.status });
     }
-    console.error("Crawl job lookup error:", err);
+    logger.error("Crawl job lookup error", err instanceof Error ? err : { error: String(err) });
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

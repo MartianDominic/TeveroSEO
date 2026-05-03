@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -106,7 +107,7 @@ export async function testCmsConnection(
       };
     }
     // Log the actual error for debugging but return a generic message to the client
-    console.error('[testCmsConnection] Error:', error);
+    logger.error('[testCmsConnection] Error', error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: "Connection test failed. Please verify your credentials and try again.",

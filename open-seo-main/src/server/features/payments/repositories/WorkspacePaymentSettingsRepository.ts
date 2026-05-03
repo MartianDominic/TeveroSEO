@@ -37,6 +37,8 @@ export interface DecryptedPaymentSettings {
   revolutApiKey: string | null;
   revolutWebhookSecret: string | null;
   revolutMerchantId: string | null;
+  availablePlans?: string[];
+  splitPaymentsEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

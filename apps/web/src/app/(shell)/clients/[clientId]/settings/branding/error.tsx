@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function BrandingError({
   error,
   reset,
@@ -17,7 +18,7 @@ export default function BrandingError({
   const clientId = params?.clientId as string | undefined;
 
   useEffect(() => {
-    console.error('[BrandingError]', {
+    logger.error('[BrandingError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

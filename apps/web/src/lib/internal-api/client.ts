@@ -23,6 +23,7 @@ import { z } from "zod";
 import * as crypto from "crypto";
 import { getInternalApiKey, getAiWriterUrl } from "../env";
 
+import { logger } from '@/lib/logger';
 /**
  * Request options for internal API calls.
  */
@@ -200,7 +201,7 @@ export async function internalApiRequest<T>(
       }
 
       // Network errors - log stack trace server-side, return sanitized message to client
-      console.error(`[InternalApiClient] Network error for ${path}:`, e);
+      logger.error(`[InternalApiClient] Network error for ${path}`, e instanceof Error ? e : { error: String(e) });
       throw new InternalApiError(
         `Failed to connect to AI-Writer: ${e.message}`,
         503,

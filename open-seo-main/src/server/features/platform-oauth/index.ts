@@ -15,7 +15,8 @@ export type {
 } from "./types";
 
 // Provider base
-export { OAuthProvider, OAuthProviderBase } from "./OAuthProviderBase";
+export type { OAuthProvider } from "./OAuthProviderBase";
+export { OAuthProviderBase } from "./OAuthProviderBase";
 
 // Token encryption
 export {

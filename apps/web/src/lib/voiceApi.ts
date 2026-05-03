@@ -14,6 +14,7 @@ import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { fetchWithTimeout } from "./fetch-with-timeout";
 import { getOpenSeoUrl } from "./env";
+import { logger } from '@/lib/logger';
 import {
   VOICE_API_BREAKER,
   CircuitOpenError,
@@ -224,7 +225,7 @@ export async function fetchVoiceProfile(clientId: string): Promise<VoiceProfile 
     // FIX: Validate response shape and mode enum with Zod
     const parsed = voiceProfileResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid voice profile response:", parsed.error);
+      logger.error("[voiceApi] Invalid voice profile response", { error: parsed.error });
       throw new Error("Invalid voice profile response from backend");
     }
     return parsed.data.data as unknown as VoiceProfile | null;
@@ -248,7 +249,7 @@ export async function updateVoiceProfile(
     const json = await res.json();
     const parsed = updateVoiceProfileResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid update voice profile response:", parsed.error);
+      logger.error("[voiceApi] Invalid update voice profile response", { error: parsed.error });
       throw new Error("Invalid update voice profile response from backend");
     }
     return parsed.data.data as VoiceProfile;
@@ -272,7 +273,7 @@ export async function triggerVoiceAnalysis(
     const json = await res.json();
     const parsed = analyzeJobResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid analyze job response:", parsed.error);
+      logger.error("[voiceApi] Invalid analyze job response", { error: parsed.error });
       throw new Error("Invalid analyze job response from backend");
     }
     return parsed.data.data;
@@ -291,7 +292,7 @@ export async function fetchProtectionRules(clientId: string): Promise<Protection
     const json = await res.json();
     const parsed = protectionRulesResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid protection rules response:", parsed.error);
+      logger.error("[voiceApi] Invalid protection rules response", { error: parsed.error });
       throw new Error("Invalid protection rules response from backend");
     }
     return parsed.data.data as ProtectionRule[];
@@ -315,7 +316,7 @@ export async function createProtectionRule(
     const json = await res.json();
     const parsed = singleProtectionRuleResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid create protection rule response:", parsed.error);
+      logger.error("[voiceApi] Invalid create protection rule response", { error: parsed.error });
       throw new Error("Invalid create protection rule response from backend");
     }
     return parsed.data.data as ProtectionRule;
@@ -353,7 +354,7 @@ export async function fetchVoiceTemplates(industry?: string): Promise<VoiceTempl
     const json = await res.json();
     const parsed = voiceTemplatesResponseSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("[voiceApi] Invalid voice templates response:", parsed.error);
+      logger.error("[voiceApi] Invalid voice templates response", { error: parsed.error });
       throw new Error("Invalid voice templates response from backend");
     }
     return parsed.data.data as VoiceTemplate[];

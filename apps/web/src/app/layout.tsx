@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from "next-intl/server";
+import { ThemeScript } from "@/contexts/ThemeContext";
 import "./globals.css";
 
 const geist = Geist({
@@ -33,7 +34,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <ClerkProvider>
-      <html lang={locale} className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`}>
+      <html lang={locale} className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`} suppressHydrationWarning>
+        <head>
+          {/* MED-25 FIX: Blocking script to prevent theme flash */}
+          <ThemeScript />
+        </head>
         <body className="min-h-screen bg-canvas text-text-2 antialiased font-sans">
           {children}
         </body>

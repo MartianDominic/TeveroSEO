@@ -27,6 +27,7 @@ import { headers } from 'next/headers';
 import { z } from 'zod';
 import { redis } from '@/lib/redis/client';
 
+import { logger } from '@/lib/logger';
 // --- Schemas ---
 
 const rateLimitEntrySchema = z.object({
@@ -102,7 +103,7 @@ async function getRedisRateLimitEntry(key: string): Promise<RateLimitEntry | nul
     const parsed = JSON.parse(data);
     const validated = rateLimitEntrySchema.safeParse(parsed);
     if (!validated.success) {
-      console.warn('[rate-limit] Invalid rate limit entry in Redis, ignoring:', validated.error);
+      logger.warn('[rate-limit] Invalid rate limit entry in Redis, ignoring', { detail: validated.error });
       return null;
     }
     return validated.data;
@@ -232,7 +233,7 @@ export async function checkRateLimit(
   } catch (error) {
     // SECURITY: Fail-closed in production to prevent rate limit bypass
     if (process.env.NODE_ENV === 'production') {
-      console.error('[rate-limit] Redis error in production, blocking request for safety:', error);
+      logger.error('[rate-limit] Redis error in production, blocking request for safety', error instanceof Error ? error : { error: String(error) });
       return {
         success: false,
         remaining: 0,
@@ -242,7 +243,7 @@ export async function checkRateLimit(
     }
 
     // Development fallback: use in-memory store
-    console.warn('[rate-limit] Redis unavailable in development, using in-memory fallback');
+    logger.warn('[rate-limit] Redis unavailable in development, using in-memory fallback');
     let entry = rateLimitMapFallback.get(key);
 
     if (!entry || now > entry.resetTime) {

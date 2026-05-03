@@ -108,7 +108,7 @@ function defaultShouldRetry(error: Error): boolean {
  *   () => db.query.users.findMany(),
  *   {
  *     retries: 3,
- *     onRetry: (err, attempt) => console.warn(`Retry ${attempt}:`, err.message)
+ *     onRetry: (err, attempt) => logger.warn(`Retry ${attempt}:`, { detail: err.message })
  *   }
  * );
  * ```

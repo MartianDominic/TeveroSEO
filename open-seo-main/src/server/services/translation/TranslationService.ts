@@ -27,6 +27,9 @@ import type {
   BatchTranslationResult,
   QualityMetrics,
 } from "./types";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "translation-service" });
 
 /** Gemini model version for cache tracking */
 const GEMINI_MODEL = "gemini-1.5-pro";
@@ -466,7 +469,7 @@ export class TranslationService {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes("duplicate key")) {
-        console.error("[TranslationService] Cache insert failed:", error);
+        log.error("Cache insert failed", error instanceof Error ? error : new Error(errorMessage));
       }
     }
   }

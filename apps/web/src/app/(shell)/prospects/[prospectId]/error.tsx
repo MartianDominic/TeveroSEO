@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 
+import { logger } from '@/lib/logger';
 export default function ProspectError({
   error,
   reset,
@@ -15,7 +16,7 @@ export default function ProspectError({
 
   useEffect(() => {
     // Log to error reporting service
-    console.error('[prospect] Error:', error.digest || error.message);
+    logger.error('[prospect] Error', { error: error.digest || error.message });
   }, [error]);
 
   return (

@@ -8,21 +8,73 @@
  *
  * POST /api/invoices/:id/pay
  * Creates a payment session with the selected provider.
+ *
+ * HIGH-API-02 FIX: Idempotency key validation to prevent duplicate payment sessions.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { InvoiceRepository } from "@/server/features/contracts/repositories/InvoiceRepository";
 import { WorkspacePaymentSettingsRepository } from "@/server/features/payments/repositories/WorkspacePaymentSettingsRepository";
 import { PaymentProviderFactory } from "@/server/features/payments/PaymentProviderFactory";
 import { createLogger } from "@/server/lib/logger";
+import { redis } from "@/server/lib/redis";
 import { z } from "zod";
 
 const log = createLogger({ module: "api/invoices/pay" });
+
+/**
+ * HIGH-API-02 FIX: Idempotency key validation schema.
+ * Prevents duplicate payment sessions from being created.
+ */
+const IdempotencyKeySchema = z.string()
+  .min(16)
+  .max(128)
+  .regex(/^[a-zA-Z0-9_-]+$/, "Idempotency key must be alphanumeric with underscores/hyphens");
+
+/**
+ * Check if an idempotency key has been used and store the result.
+ * Returns the cached response if the key was already used.
+ */
+async function checkIdempotencyKey(
+  key: string,
+  invoiceId: string
+): Promise<{ alreadyUsed: boolean; cachedResponse?: unknown }> {
+  const redisKey = `idempotency:invoice-pay:${invoiceId}:${key}`;
+
+  try {
+    const existing = await redis.get(redisKey);
+    if (existing) {
+      return { alreadyUsed: true, cachedResponse: JSON.parse(existing) };
+    }
+    return { alreadyUsed: false };
+  } catch (error) {
+    log.warn("Failed to check idempotency key, proceeding without check", { error });
+    return { alreadyUsed: false };
+  }
+}
+
+/**
+ * Store the idempotency key with its response.
+ * TTL: 24 hours to allow for retry within reasonable window.
+ */
+async function storeIdempotencyResult(
+  key: string,
+  invoiceId: string,
+  response: unknown
+): Promise<void> {
+  const redisKey = `idempotency:invoice-pay:${invoiceId}:${key}`;
+  const TTL_SECONDS = 24 * 60 * 60; // 24 hours
+
+  try {
+    await redis.set(redisKey, JSON.stringify(response), "EX", TTL_SECONDS);
+  } catch (error) {
+    log.warn("Failed to store idempotency result", { error });
+  }
+}
 
 const createSessionSchema = z.object({
   provider: z.enum(["stripe", "revolut"]),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/invoices/$id/pay")({
   server: {
     handlers: {
@@ -99,13 +151,38 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
 
       POST: async ({ request, params }: { request: Request; params: { id: string } }) => {
         try {
+          // HIGH-API-02 FIX: Check for idempotency key to prevent duplicate payment sessions
+          const idempotencyKeyHeader = request.headers.get("Idempotency-Key") ?? request.headers.get("X-Idempotency-Key");
+          let idempotencyKey: string | null = null;
+
+          if (idempotencyKeyHeader) {
+            const keyValidation = IdempotencyKeySchema.safeParse(idempotencyKeyHeader);
+            if (!keyValidation.success) {
+              return Response.json(
+                { success: false, error: "Invalid Idempotency-Key format. Must be 16-128 alphanumeric characters." },
+                { status: 400 }
+              );
+            }
+            idempotencyKey = keyValidation.data;
+
+            // Check if this idempotency key was already used for this invoice
+            const idempotencyCheck = await checkIdempotencyKey(idempotencyKey, params.id);
+            if (idempotencyCheck.alreadyUsed && idempotencyCheck.cachedResponse) {
+              log.info("Returning cached response for idempotency key", {
+                invoiceId: params.id,
+                idempotencyKey,
+              });
+              return Response.json(idempotencyCheck.cachedResponse);
+            }
+          }
+
           const body = await request.json();
           const parsed = createSessionSchema.safeParse(body);
 
           if (!parsed.success) {
             return Response.json(
-              { success: false, error: "Invalid provider" },
-              { status: 400 }
+              { success: false, error: "Invalid provider", code: "VALIDATION_ERROR" },
+              { status: 422 }
             );
           }
 
@@ -175,7 +252,7 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
             });
           }
 
-          return Response.json({
+          const responseData = {
             success: true,
             data: {
               sessionId: session.externalId,
@@ -183,11 +260,18 @@ export const Route = createFileRoute("/api/invoices/$id/pay")({
               token: session.token,
               merchantId: provider === "revolut" ? settings.revolutMerchantId : undefined,
             },
-          });
+          };
+
+          // HIGH-API-02 FIX: Store the idempotency result for future duplicate requests
+          if (idempotencyKey) {
+            await storeIdempotencyResult(idempotencyKey, params.id, responseData);
+          }
+
+          return Response.json(responseData);
         } catch (error) {
           log.error("Failed to create payment session", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Failed to create payment session" },
+            { success: false, error: "Failed to create payment session", code: "INTERNAL_ERROR" },
             { status: 500 }
           );
         }

@@ -65,15 +65,13 @@ export interface CrawlResult {
   guidance?: string;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<CrawlOptions, "dataForSeo">> & {
-  dataForSeo: undefined;
-} = {
+const DEFAULT_OPTIONS = {
   maxPages: 100,
   respectRobots: true,
   timeout: 30000,
   userAgent: "TeveroSEO-Bot/1.0 (+https://tevero.io/bot)",
-  provider: "auto",
-  dataForSeo: undefined,
+  provider: "auto" as const,
+  dataForSeo: undefined as CrawlOptions["dataForSeo"],
 };
 
 /**
@@ -94,7 +92,14 @@ export class CrawlRequiresUpgradeError extends Error {
 }
 
 export class UniversalCrawler {
-  private options: typeof DEFAULT_OPTIONS & { dataForSeo?: CrawlOptions["dataForSeo"] };
+  private options: {
+    maxPages: number;
+    respectRobots: boolean;
+    timeout: number;
+    userAgent: string;
+    provider: "auto" | "direct" | "dataforseo" | "playwright";
+    dataForSeo?: CrawlOptions["dataForSeo"];
+  };
   private browser: unknown = null; // Only used if playwright explicitly requested
 
   constructor(options?: CrawlOptions) {
@@ -291,7 +296,22 @@ export class UniversalCrawler {
       throw new Error(`DataForSEO API error: ${response.status}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as {
+      tasks?: Array<{
+        status_code?: number;
+        status_message?: string;
+        result?: Array<{
+          items?: Array<{
+            meta?: any;
+            onpage_score?: any;
+            page_timing?: any;
+            links?: {
+              internal?: Array<{ url: string }>;
+            };
+          }>;
+        }>;
+      }>;
+    };
     const task = result.tasks?.[0];
 
     if (task?.status_code !== 20000 || !task?.result?.[0]?.items?.[0]) {
@@ -478,6 +498,7 @@ export class UniversalCrawler {
     }
 
     try {
+      // @ts-ignore - playwright is an optional dependency
       const playwright = await import("playwright");
       this.browser = await playwright.chromium.launch({ headless: true });
       return this.browser;

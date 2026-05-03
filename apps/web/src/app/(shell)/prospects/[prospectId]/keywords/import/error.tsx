@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, ArrowLeft } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 /**
  * Error boundary for keyword import page.
  * Catches errors during CSV/bulk keyword import operations.
@@ -16,7 +17,7 @@ export default function KeywordImportError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[keyword-import-error]", {
+    logger.error("[keyword-import-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

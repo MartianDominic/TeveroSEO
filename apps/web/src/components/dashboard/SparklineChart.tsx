@@ -1,7 +1,29 @@
 "use client";
 
-import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
+/**
+ * PERF FIX (MEDIUM-05): Dynamic import for Recharts to reduce initial bundle size.
+ * Sparklines are frequently used on dashboards, but Recharts is ~54KB.
+ */
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+
+// Dynamically import Recharts components to reduce initial bundle
+const LineChart = dynamic(
+  () => import("recharts").then((mod) => mod.LineChart),
+  { ssr: false }
+);
+const Line = dynamic(
+  () => import("recharts").then((mod) => mod.Line),
+  { ssr: false }
+);
+const ResponsiveContainer = dynamic(
+  () => import("recharts").then((mod) => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import("recharts").then((mod) => mod.Tooltip),
+  { ssr: false }
+);
 
 export interface SparklineDataPoint {
   value: number;

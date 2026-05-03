@@ -13,6 +13,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 import type { EntityType } from "@/db/follow-up-schema";
 
 const log = createLogger({ module: "followUpQueue" });
@@ -52,17 +53,12 @@ export interface FollowUpDLQJobData {
 
 /**
  * Default job options.
- * 3 attempts with exponential backoff.
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 1000, // 1s, 2s, 4s
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 200 },
-};
+});
 
 /**
  * Follow-up queue.

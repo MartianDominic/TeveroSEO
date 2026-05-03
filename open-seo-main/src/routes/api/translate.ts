@@ -16,12 +16,13 @@
  *
  * Response:
  * {
- *   text: string,
- *   cached: boolean,
- *   confidence: number
+ *   success: boolean,
+ *   data?: { text: string, cached: boolean, confidence: number },
+ *   error?: string
  * }
  *
  * SECURITY:
+ * - HIGH-AUTH-03 FIX: Authentication required to protect Gemini API credits
  * - T-55-03: Input validation with max 10000 chars
  * - T-55-04: Rate limiting via cache (aggressive caching reduces API calls)
  */
@@ -34,6 +35,11 @@ import type {
   Formality,
   SupportedLocale,
 } from "@/server/services/translation/types";
+import { createLogger } from "@/server/lib/logger";
+import { AppError } from "@/server/lib/errors";
+import { requireApiAuth } from "@/routes/api/seo/-middleware";
+
+const log = createLogger({ module: "api-translate" });
 
 /**
  * Zod schema for translation request.
@@ -70,7 +76,6 @@ const TranslateRequestSchema = z.object({
 
 type TranslateRequest = z.infer<typeof TranslateRequestSchema>;
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/translate")({
   server: {
     handlers: {
@@ -78,9 +83,13 @@ export const Route = createFileRoute("/api/translate")({
        * POST /api/translate
        *
        * Translates text using Gemini API with database caching.
+       * HIGH-AUTH-03 FIX: Requires authentication to protect Gemini API credits.
        */
       POST: async ({ request }: { request: Request }) => {
         try {
+          // HIGH-AUTH-03 FIX: Require authentication
+          const auth = await requireApiAuth(request);
+
           // Parse and validate request body
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = TranslateRequestSchema.safeParse(body);
@@ -88,6 +97,7 @@ export const Route = createFileRoute("/api/translate")({
           if (!parsed.success) {
             return Response.json(
               {
+                success: false,
                 error: "Invalid input",
                 details: parsed.error.issues.map((issue) => ({
                   field: issue.path.join("."),
@@ -103,7 +113,7 @@ export const Route = createFileRoute("/api/translate")({
           // Get translation service
           const translationService = getTranslationService();
 
-          // Translate the text
+          // Translate the text (use auth workspace if not specified)
           const result = await translationService.translate({
             text: data.text,
             sourceLang: data.sourceLang as SupportedLocale,
@@ -111,23 +121,42 @@ export const Route = createFileRoute("/api/translate")({
             context: {
               type: data.contextType as ContextType,
               formality: data.formality as Formality,
-              workspaceId: data.workspaceId,
+              workspaceId: data.workspaceId ?? auth.organizationId,
             },
             maxLength: data.maxLength,
             preservePlaceholders: true,
           });
 
+          // MEDIUM-01 FIX: Standardized response envelope
           return Response.json({
-            text: result.text,
-            cached: result.cached,
-            confidence: result.confidence,
+            success: true,
+            data: {
+              text: result.text,
+              cached: result.cached,
+              confidence: result.confidence,
+            },
           });
         } catch (error) {
+          // MEDIUM-04 FIX: Handle AppError for proper status codes
+          if (error instanceof AppError) {
+            const status =
+              error.code === "UNAUTHENTICATED"
+                ? 401
+                : error.code === "FORBIDDEN"
+                  ? 403
+                  : error.code === "NOT_FOUND"
+                    ? 404
+                    : error.code === "RATE_LIMITED"
+                      ? 429
+                      : 400;
+            return Response.json(
+              { success: false, error: error.message },
+              { status }
+            );
+          }
+
           // Log error for debugging
-          console.error(
-            "[api/translate] Translation failed:",
-            error instanceof Error ? error.message : error
-          );
+          log.error("Translation failed", error instanceof Error ? error : new Error(String(error)));
 
           // Check for specific error types
           const errorMessage =
@@ -136,13 +165,13 @@ export const Route = createFileRoute("/api/translate")({
           // Return appropriate error response
           if (errorMessage.includes("GEMINI_API_KEY")) {
             return Response.json(
-              { error: "Translation service not configured" },
+              { success: false, error: "Translation service not configured" },
               { status: 503 }
             );
           }
 
           return Response.json(
-            { error: "Translation failed" },
+            { success: false, error: "Translation failed" },
             { status: 500 }
           );
         }

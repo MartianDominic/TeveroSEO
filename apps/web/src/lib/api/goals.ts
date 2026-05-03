@@ -10,6 +10,7 @@
 import { z } from "zod";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
+import { logger } from '@/lib/logger';
 // Default timeout for goal API calls (30 seconds)
 const GOAL_API_TIMEOUT = 30_000;
 
@@ -173,7 +174,7 @@ export async function getGoalTemplates(): Promise<GoalTemplate[]> {
   const json = await res.json();
   const parsed = getGoalTemplatesResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid goal templates response:", parsed.error);
+    logger.error("[goals] Invalid goal templates response", { error: parsed.error });
     return [];
   }
   return (parsed.data.templates ?? []) as GoalTemplate[];
@@ -190,7 +191,7 @@ export async function getClientGoals(clientId: string): Promise<GoalWithTemplate
   const json = await res.json();
   const parsed = getClientGoalsResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid client goals response:", parsed.error);
+    logger.error("[goals] Invalid client goals response", { error: parsed.error });
     return [];
   }
   return (parsed.data.goals ?? []) as GoalWithTemplate[];
@@ -210,7 +211,7 @@ export async function getGoal(
   const json = await res.json();
   const parsed = getSingleGoalResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid single goal response:", parsed.error);
+    logger.error("[goals] Invalid single goal response", { error: parsed.error });
     return null;
   }
   return (parsed.data.goal ?? null) as GoalWithTemplate | null;
@@ -236,7 +237,7 @@ export async function createGoal(
   const json = await res.json();
   const parsed = createGoalResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid create goal response:", parsed.error);
+    logger.error("[goals] Invalid create goal response", { error: parsed.error });
     throw new Error("Invalid response from server");
   }
   return parsed.data;
@@ -263,7 +264,7 @@ export async function updateGoal(
   const json = await res.json();
   const parsed = updateGoalResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid update goal response:", parsed.error);
+    logger.error("[goals] Invalid update goal response", { error: parsed.error });
     throw new Error("Invalid response from server");
   }
   return parsed.data;
@@ -310,7 +311,7 @@ export async function bulkCreateGoals(
   const json = await res.json();
   const parsed = bulkCreateGoalsResponseSchema.safeParse(json);
   if (!parsed.success) {
-    console.error("[goals] Invalid bulk create goals response:", parsed.error);
+    logger.error("[goals] Invalid bulk create goals response", { error: parsed.error });
     throw new Error("Invalid response from server");
   }
   return parsed.data.results ?? [];

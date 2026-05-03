@@ -146,7 +146,7 @@ export class AdaptiveIntentRouter {
 
   /**
    * Quick check: Direct classification without expansion or negative extraction.
-   * Target: Complete in <30s.
+   * Target: Complete in <30s with enforced timeout.
    */
   private async runQuickCheck(
     input: AnalysisInput,
@@ -154,11 +154,24 @@ export class AdaptiveIntentRouter {
   ): Promise<AnalysisResult> {
     const keywords = input.keywords ?? [];
 
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Quick check timeout after ${this.config.quickCheckTimeoutMs}ms`));
+      }, this.config.quickCheckTimeoutMs);
+    });
+
     // Quick check skips negative association extraction for speed
-    const { keywords: classified, stats } = await this.pipeline.classify(
+    const classifyPromise = this.pipeline.classify(
       keywords,
       input.businessContext
     );
+
+    // Race classification against timeout
+    const { keywords: classified, stats } = await Promise.race([
+      classifyPromise,
+      timeoutPromise,
+    ]);
 
     return {
       intent: "quick_check",
@@ -231,11 +244,13 @@ export class AdaptiveIntentRouter {
 
 /**
  * Factory function for creating AdaptiveIntentRouter with environment config.
+ * Uses Grok as primary classifier (cheapest) with Gemini fallback.
  */
 export function createAdaptiveIntentRouter(
   config?: Partial<RouterConfig>
 ): AdaptiveIntentRouter {
   return new AdaptiveIntentRouter({
+    xaiApiKey: process.env.XAI_API_KEY,
     geminiApiKey: process.env.GEMINI_API_KEY,
     claudeApiKey: process.env.ANTHROPIC_API_KEY,
     openaiApiKey: process.env.OPENAI_API_KEY,

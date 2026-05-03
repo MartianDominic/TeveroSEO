@@ -1,68 +1,72 @@
 {
   "serviceCatalog": {
-    "title": "Paslaugu katalogas",
-    "addNew": "Prideti paslauga",
+    "title": "Paslaugų katalogas",
+    "addNew": "Pridėti paslaugą",
     "duplicate": "Kopijuoti",
     "edit": "Redaguoti",
-    "delete": "Istrinti",
-    "confirmDelete": "Ar tikrai norite istrinti sia paslauga?",
+    "delete": "Ištrinti",
+    "confirmDelete": "Ar tikrai norite ištrinti šią paslaugą?",
     "categories": {
       "seo_package": "SEO paketas",
       "addon": "Papildoma paslauga",
-      "one_time": "Vienkartine paslauga"
+      "one_time": "Vienkartinė paslauga"
     },
     "pricingTypes": {
-      "monthly": "Menesinis",
+      "monthly": "Mėnesinis",
       "one_time": "Vienkartinis",
-      "per_unit": "Uz vieneta"
+      "per_unit": "Už vienetą"
     },
     "fields": {
       "name": "Paslaugos pavadinimas",
-      "description": "Aprasymas",
+      "description": "Aprašymas",
       "category": "Kategorija",
       "pricingType": "Kainodaros tipas",
-      "basePrice": "Bazine kaina",
+      "basePrice": "Bazinė kaina",
       "setupFee": "Paleidimo mokestis",
-      "inclusions": "Kas itraukta",
-      "terms": "Sutarties salygos",
+      "inclusions": "Kas įtraukta",
+      "terms": "Sutarties sąlygos",
       "icon": "Ikona"
     },
     "form": {
-      "create": "Kurti paslauga",
-      "update": "Atnaujinti paslauga",
-      "cancel": "Atsaukti",
-      "save": "Issaugoti paslauga"
+      "create": "Kurti paslaugą",
+      "update": "Atnaujinti paslaugą",
+      "cancel": "Atšaukti",
+      "save": "Išsaugoti paslaugą"
     },
-    "empty": "Paslaugu dar nera. Pridekite pirma paslaugos sablona.",
-    "systemTemplate": "Sistemos sablonas",
-    "customTemplate": "Pasirinktinis sablonas",
-    "perMonth": "/men.",
+    "empty": "Paslaugų dar nėra. Pridėkite pirmą paslaugos šabloną.",
+    "systemTemplate": "Sistemos šablonas",
+    "customTemplate": "Pasirinktinis šablonas",
+    "perMonth": "/mėn.",
     "oneTime": "vienkartinis",
     "fromPrice": "nuo {price}",
     "services": {
       "starterSeo": "Pradinis SEO",
       "growthSeo": "Augimo SEO",
-      "enterpriseSeo": "Imones SEO",
+      "enterpriseSeo": "Įmonės SEO",
       "gmbOptimization": "GMB SEO optimizavimas",
-      "googleReviews": "Google atsiliepimu valdymas",
-      "websiteDesign": "Svetaines dizainas",
-      "crmSetup": "CRM ir automatizavimo saranka",
-      "bookingSystem": "Rezervaciju sistema"
+      "googleReviews": "Google atsiliepimų valdymas",
+      "websiteDesign": "Svetainės dizainas",
+      "crmSetup": "CRM ir automatizavimo sąranka",
+      "bookingSystem": "Rezervacijų sistema"
     },
     "selector": {
       "corePackage": "Pagrindinis SEO paketas",
       "addOns": "Papildomos paslaugos",
       "summary": "Santrauka",
-      "monthlyTotal": "Menesine suma",
+      "monthlyTotal": "Mėnesinė suma",
       "oneTimeSetup": "Vienkartinis mokestis",
-      "firstMonth": "Pirmo menesio suma",
+      "firstMonth": "Pirmo mėnesio suma",
       "recommended": "Rekomenduojama",
-      "addCustom": "Prideti pasirinktine paslauga"
+      "addCustom": "Pridėti pasirinktinę paslaugą"
+    },
+    "counts": {
+      "services": "{count, plural, one {# paslauga} few {# paslaugos} many {# paslaugų} other {# paslaugų}}",
+      "items": "{count, plural, one {# elementas} few {# elementai} many {# elementų} other {# elementų}}"
     }
   },
   "report": {
-    "title": "Menesiné SEO Ataskaita",
-    "subtitle": "Veiklos Apzvalga",
+    "title": "Mėnesinė SEO Ataskaita",
+    "subtitle": "Veiklos Apžvalga",
     "dateRange": "{startDate, date, medium} - {endDate, date, medium}",
     "clicks": "Paspaudimai",
     "impressions": "Rodymai",
@@ -72,138 +76,149 @@
     "users": "Vartotojai",
     "conversions": "Konversijos",
     "bounceRate": "Atmetimo rodiklis",
-    "topQueries": "Populiariausios uzklauses",
-    "query": "Uzklausa",
+    "topQueries": "Populiariausios užklausos",
+    "query": "Užklausa",
     "wow": "Sav/Sav",
     "generatedBy": "Sukurta Tevero",
-    "generatedAt": "Sukurta {date, date, medium}, {time, time, short}"
+    "generatedAt": "Sukurta {date, date, medium}, {time, time, short}",
+    "counts": {
+      "days": "{count, plural, one {# diena} few {# dienos} many {# dienų} other {# dienų}}",
+      "clicks": "{count, plural, one {# paspaudimas} few {# paspaudimai} many {# paspaudimų} other {# paspaudimų}}",
+      "sessions": "{count, plural, one {# sesija} few {# sesijos} many {# sesijų} other {# sesijų}}",
+      "users": "{count, plural, one {# vartotojas} few {# vartotojai} many {# vartotojų} other {# vartotojų}}"
+    }
   },
   "proposalEditor": {
-    "title": "Redaguoti pasiulyma",
-    "newProposal": "Naujas pasiulymas",
+    "title": "Redaguoti pasiūlymą",
+    "newProposal": "Naujas pasiūlymas",
     "untitled": "Be pavadinimo",
     "saveStatus": {
-      "saving": "Issaugoma...",
-      "saved": "Issaugota",
-      "error": "Issaugoti nepavyko",
-      "lastSaved": "Paskutini karta issaugota {time, time, short}"
+      "saving": "Išsaugoma...",
+      "saved": "Išsaugota",
+      "error": "Išsaugoti nepavyko",
+      "lastSaved": "Paskutinį kartą išsaugota {time, time, short}"
     },
     "sections": {
       "title": "Sekcijos",
-      "addSection": "Prideti sekcija",
-      "deleteSection": "Istrinti sekcija",
-      "moveUp": "Perkelti aukstyn",
-      "moveDown": "Perkelti zemyn",
-      "reorder": "Vilkite, kad pertvarkytumet",
-      "dragHandle": "Vilkimo rankenele",
-      "dragInstructions": "Paspauskite tarpa arba Enter, kad pradetumete vilkti. Naudokite rodelius, kad perkeltumete. Paspauskite tarpa arba Enter, kad numestumete. Paspauskite Escape, kad atšauktumete.",
-      "sectionMoved": "Sekcija perkelta i pozicija {position}",
+      "addSection": "Pridėti sekciją",
+      "deleteSection": "Ištrinti sekciją",
+      "moveUp": "Perkelti aukštyn",
+      "moveDown": "Perkelti žemyn",
+      "reorder": "Vilkite, kad pertvarkytumėte",
+      "dragHandle": "Vilkimo rankenėlė",
+      "dragInstructions": "Paspauskite tarpą arba Enter, kad pradėtumėte vilkti. Naudokite rodykles, kad perkeltumėte. Paspauskite tarpą arba Enter, kad numestumėte. Paspauskite Escape, kad atšauktumėte.",
+      "sectionMoved": "Sekcija perkelta į poziciją {position}",
       "required": "Privaloma",
       "optional": "Neprivaloma",
-      "locked": "Sios sekcijos redaguoti negalima",
-      "empty": "Sekciju dar nera. Pridekite sekcija, kad pradetumete."
+      "locked": "Šios sekcijos redaguoti negalima",
+      "empty": "Sekcijų dar nėra. Pridėkite sekciją, kad pradėtumėte."
     },
     "sectionTypes": {
-      "hero": "Pagrindine",
-      "introduction": "Ivadas",
-      "current_state": "Dabartine busena",
-      "opportunities": "Galimybes",
+      "hero": "Pagrindinė",
+      "introduction": "Įvadas",
+      "current_state": "Dabartinė būsena",
+      "opportunities": "Galimybės",
       "methodology": "Metodologija",
       "timeline": "Terminas",
       "pricing": "Kainodara",
-      "case_studies": "Atveju analizes",
+      "case_studies": "Atvejų analizės",
       "team": "Komanda",
-      "next_steps": "Kiti zingsniai",
-      "terms": "Salygos",
+      "next_steps": "Kiti žingsniai",
+      "terms": "Sąlygos",
       "custom": "Pasirinkta sekcija"
     },
     "variables": {
       "title": "Kintamieji",
-      "search": "Ieskoti kintamuju...",
+      "search": "Ieškoti kintamųjų...",
       "categories": {
         "client": "Klientas",
-        "provider": "Tiekejas",
+        "provider": "Tiekėjas",
         "pricing": "Kainodara",
         "audit": "Audito rezultatai",
         "dates": "Datos",
         "custom": "Pasirinkta"
       },
-      "addCustom": "Prideti pasirinkta kintamaji",
-      "dragTip": "Vilkite kintamuosius i turini",
-      "noVariables": "Kintamieji neapibrezieti",
-      "missingValue": "Truksta reiksmes"
+      "addCustom": "Pridėti pasirinktą kintamąjį",
+      "dragTip": "Vilkite kintamuosius į turinį",
+      "noVariables": "Kintamieji neapibrėžti",
+      "missingValue": "Trūksta reikšmės"
     },
     "ai": {
       "generateTitle": "Generuoti su DI",
       "generating": "Generuojama turinys...",
-      "regenerate": "Generuoti is naujo",
+      "regenerate": "Generuoti iš naujo",
       "tone": "Tonas ir stilius",
       "sections": "Sekcijos generavimui",
-      "selectSections": "Pasirinkite bent viena sekcija",
-      "generationComplete": "Turinys sekmingai sugeneruotas",
+      "selectSections": "Pasirinkite bent vieną sekciją",
+      "generationComplete": "Turinys sėkmingai sugeneruotas",
       "generationFailed": "Nepavyko sugeneruoti turinio"
     },
     "toolbar": {
-      "undo": "Atsuakti",
+      "undo": "Atšaukti",
       "redo": "Grąžinti",
       "bold": "Pusjuodis",
       "italic": "Kursyvas",
       "underline": "Pabrauktas",
       "strikethrough": "Perbrauktas",
-      "link": "Iterpti nuoroda",
-      "bulletList": "Zenklintas sarasas",
-      "numberedList": "Numeruotas sarasas",
-      "heading1": "Antraste 1",
-      "heading2": "Antraste 2",
-      "heading3": "Antraste 3",
+      "link": "Įterpti nuorodą",
+      "bulletList": "Ženklintas sąrašas",
+      "numberedList": "Numeruotas sąrašas",
+      "heading1": "Antraštė 1",
+      "heading2": "Antraštė 2",
+      "heading3": "Antraštė 3",
       "paragraph": "Pastraipa",
-      "insertVariable": "Iterpti kintamaji",
+      "insertVariable": "Įterpti kintamąjį",
       "characters": "simb."
     },
     "version": {
-      "history": "Versiju istorija",
+      "history": "Versijų istorija",
       "restore": "Atkurti",
-      "preview": "Perziura",
-      "current": "Dabartine versija",
-      "noVersions": "Ankstesniu versiju nera"
+      "preview": "Peržiūra",
+      "current": "Dabartinė versija",
+      "noVersions": "Ankstesnių versijų nėra"
     },
     "templates": {
-      "title": "Sablonai",
-      "useTemplate": "Naudoti sablona",
-      "createFromTemplate": "Kurti is sablono",
-      "systemTemplates": "Sistemos sablonai",
-      "workspaceTemplates": "Darbo erdves sablonai",
-      "noTemplates": "Sablonu nera",
-      "duplicate": "Kopijuoti sablona",
-      "setAsDefault": "Nustatyti kaip numatytuji"
+      "title": "Šablonai",
+      "useTemplate": "Naudoti šabloną",
+      "createFromTemplate": "Kurti iš šablono",
+      "systemTemplates": "Sistemos šablonai",
+      "workspaceTemplates": "Darbo erdvės šablonai",
+      "noTemplates": "Šablonų nėra",
+      "duplicate": "Kopijuoti šabloną",
+      "setAsDefault": "Nustatyti kaip numatytąjį"
     },
     "preview": {
-      "title": "Perziura",
+      "title": "Peržiūra",
       "desktop": "Kompiuteris",
       "mobile": "Mobilusis",
       "print": "Spausdinti"
     },
     "actions": {
-      "save": "Issaugoti",
-      "saveAndClose": "Issaugoti ir uzdaryti",
+      "save": "Išsaugoti",
+      "saveAndClose": "Išsaugoti ir uždaryti",
       "discard": "Atmesti pakeitimus",
       "publish": "Publikuoti",
       "unpublish": "Atpublikuoti",
-      "delete": "Istrinti",
+      "delete": "Ištrinti",
       "duplicate": "Kopijuoti",
       "export": "Eksportuoti",
       "share": "Dalintis"
     },
     "validation": {
-      "nameRequired": "Sablono pavadinimas privalomas",
-      "nameTooLong": "Sablono pavadinimas per ilgas",
-      "contentTooLong": "Sekcijos turinys virsija maksimalu ilgi",
+      "nameRequired": "Šablono pavadinimas privalomas",
+      "nameTooLong": "Šablono pavadinimas per ilgas",
+      "contentTooLong": "Sekcijos turinys viršija maksimalų ilgį",
       "invalidVariable": "Neteisingas kintamojo formatas"
     },
     "confirmations": {
-      "deleteSection": "Ar tikrai norite istrinti sia sekcija?",
-      "discardChanges": "Turite neissaugotu pakeitimu. Ar tikrai norite ju atsisakyti?",
-      "deleteTemplate": "Ar tikrai norite istrinti si sablona?"
+      "deleteSection": "Ar tikrai norite ištrinti šią sekciją?",
+      "discardChanges": "Turite neišsaugotų pakeitimų. Ar tikrai norite jų atsisakyti?",
+      "deleteTemplate": "Ar tikrai norite ištrinti šį šabloną?"
+    },
+    "counts": {
+      "sections": "{count, plural, one {# sekcija} few {# sekcijos} many {# sekcijų} other {# sekcijų}}",
+      "versions": "{count, plural, one {# versija} few {# versijos} many {# versijų} other {# versijų}}",
+      "characters": "{count, plural, one {# simbolis} few {# simboliai} many {# simbolių} other {# simbolių}}"
     }
   }
 }

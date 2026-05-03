@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -92,7 +93,7 @@ export async function getPageFindings(
     const data = await getOpenSeo<PageFindingsResponse>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getPageFindings] Failed:", error);
+    logger.error("[getPageFindings] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch page findings" };
   }
 }
@@ -117,7 +118,7 @@ export async function getAuditFindings(
     const data = await getOpenSeo<{ findings: AuditFinding[] }>(`/api/seo/audits?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getAuditFindings] Failed:", error);
+    logger.error("[getAuditFindings] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch audit findings" };
   }
 }
@@ -177,7 +178,7 @@ export async function exportFindingsCSV(
 
     return { success: true, data: csv };
   } catch (error) {
-    console.error("[exportFindingsCSV] Failed:", error);
+    logger.error("[exportFindingsCSV] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to export findings" };
   }
 }

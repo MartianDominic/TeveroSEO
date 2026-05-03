@@ -18,6 +18,13 @@ from config.env_validator import validate_env, log_env_status, is_configured
 validate_env()
 
 # ============================================================
+# ERROR TRACKING: Initialize Sentry EARLY (before other imports)
+# This ensures all exceptions during startup are captured
+# ============================================================
+from config.sentry_config import init_sentry
+_sentry_initialized = init_sentry()
+
+# ============================================================
 # Standard imports (after environment validation passes)
 # ============================================================
 
@@ -191,11 +198,18 @@ def validate_production_config():
     logger.info("Production config validation passed")
 
 
-# Initialize FastAPI app
+# Import custom JSON response for UUID serialization (CRIT-10 fix)
+from config.json_encoder import UUIDJSONResponse
+
+# Initialize FastAPI app with custom default response class
+# CRIT-10: UUIDJSONResponse ensures all UUIDs are serialized as strings
+# for cross-app compatibility with apps/web and open-seo-main
 app = FastAPI(
     title="ALwrity Backend API",
     description="Backend API for ALwrity - AI-powered content creation platform",
-    version="1.0.0"
+    version="1.0.0",
+    # CRIT-10: Use custom response class that serializes UUIDs as strings
+    default_response_class=UUIDJSONResponse,
 )
 
 
@@ -214,6 +228,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
     SECURITY: Prevents sensitive information leakage by:
     - Logging full error details server-side for debugging
+    - Capturing exception in Sentry with request context
     - Returning generic error message to client
     - Never exposing stack traces or internal details in responses
     """
@@ -223,13 +238,40 @@ async def global_exception_handler(request: Request, exc: Exception):
         exc_info=True
     )
 
+    # Capture exception in Sentry with request context
+    error_id = None
+    try:
+        from config.sentry_config import capture_exception, set_context
+
+        # Add request context for debugging
+        set_context("request", {
+            "method": request.method,
+            "path": request.url.path,
+            "query_string": str(request.query_params),
+            "client_host": request.client.host if request.client else "unknown",
+        })
+
+        # Capture with tags for filtering in Sentry
+        event_id = capture_exception(
+            exc,
+            tags={
+                "endpoint": request.url.path,
+                "method": request.method,
+                "error_type": type(exc).__name__,
+            }
+        )
+        if event_id:
+            error_id = event_id[:8]  # Use Sentry event ID prefix
+    except Exception:
+        pass  # Don't let Sentry errors break the error handler
+
     # SECURITY: Return generic error message to client
     # Never expose internal error details, stack traces, or sensitive info
     return JSONResponse(
         status_code=500,
         content={
             "detail": "An internal error occurred. Please try again.",
-            "error_id": str(id(exc))[:8]  # Short ID for support reference
+            "error_id": error_id or str(id(exc))[:8]  # Sentry ID or fallback
         }
     )
 
@@ -251,7 +293,10 @@ DEVELOPMENT_ORIGINS = [
 ]
 
 # Build allowed origins based on environment
-is_production = os.getenv("NODE_ENV", "").lower() == "production"
+# SECURITY: Standardize on ENV variable for production detection (matches validate_production_config)
+# Accept both ENV and NODE_ENV for backwards compatibility, but prefer ENV
+_env_value = os.getenv("ENV", os.getenv("NODE_ENV", "development")).lower()
+is_production = _env_value == "production"
 
 if is_production:
     # Production: only allow explicit production origins

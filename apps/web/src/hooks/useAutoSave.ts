@@ -1,6 +1,10 @@
 /**
  * useAutoSave Hook - Auto-save with debounce and offline queue
  * Phase 57-06: Auto-Save + Version History
+ *
+ * HIGH-39 FIX: Uses contentRef pattern to prevent stale closures in debounced save.
+ * The contentRef is updated on every render, ensuring the debounced function
+ * always accesses the latest content value.
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useDebouncedCallback } from "use-debounce";
@@ -112,6 +116,14 @@ export function useAutoSave(
   const initialContentRef = useRef<string | null>(null);
   const contentStringRef = useRef<string>("");
 
+  // HIGH-39 FIX: Use ref for content to prevent stale closures in debounced save
+  // This ref is updated on every render, so debounced functions always get fresh content
+  const contentRef = useRef(content);
+  contentRef.current = content;
+
+  // P57-H1 FIX: Lock to prevent concurrent saves causing data loss
+  const isSavingRef = useRef(false);
+
   // Serialize content for comparison
   const contentString = JSON.stringify(content);
 
@@ -120,11 +132,17 @@ export function useAutoSave(
     setOfflineQueueCount(getOfflineQueue().length);
   }, []);
 
-  // Core save function
+  // Core save function with P57-H1 FIX: save-in-progress lock
   const performSave = useCallback(
     async (contentToSave: unknown) => {
       if (!proposalId) return;
 
+      // P57-H1 FIX: Skip if already saving to prevent race conditions
+      if (isSavingRef.current) {
+        return;
+      }
+
+      isSavingRef.current = true;
       setSaveStatus("saving");
 
       try {
@@ -139,13 +157,19 @@ export function useAutoSave(
         queueOfflineSave(proposalId, contentToSave);
         setOfflineQueueCount(getOfflineQueue().length);
         onError?.(err instanceof Error ? err : new Error("Save failed"));
+      } finally {
+        isSavingRef.current = false;
       }
     },
     [proposalId, onSave, onSuccess, onError]
   );
 
-  // Debounced save
-  const debouncedSave = useDebouncedCallback(performSave, debounceMs);
+  // HIGH-39 FIX: Debounced save that reads from contentRef to avoid stale closures
+  // The callback passed to useDebouncedCallback accesses contentRef.current,
+  // which is always updated to the latest content value
+  const debouncedSave = useDebouncedCallback(() => {
+    performSave(contentRef.current);
+  }, debounceMs);
 
   // Track content changes and trigger auto-save
   useEffect(() => {
@@ -166,15 +190,15 @@ export function useAutoSave(
     // Skip if disabled
     if (!enabled) return;
 
-    // Trigger debounced save
-    debouncedSave(content);
-  }, [contentString, content, enabled, debouncedSave]);
+    // HIGH-39 FIX: Trigger debounced save - it will read from contentRef.current
+    debouncedSave();
+  }, [contentString, enabled, debouncedSave]);
 
-  // Manual save function
+  // Manual save function - uses contentRef to ensure we save latest content
   const saveNow = useCallback(async () => {
     debouncedSave.cancel();
-    await performSave(content);
-  }, [content, performSave, debouncedSave]);
+    await performSave(contentRef.current);
+  }, [performSave, debouncedSave]);
 
   // Retry offline saves
   const retryOfflineSaves = useCallback(async () => {

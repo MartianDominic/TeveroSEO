@@ -7,6 +7,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { logger } from '@/lib/logger';
 /**
  * Authentication context returned by requireAuth.
  */
@@ -131,7 +132,7 @@ async function verifyClientAccess(
   // Get session token for backend authentication
   const sessionToken = await getSessionToken();
   if (!sessionToken) {
-    console.error(`[Auth] No session token available for client access verification: client=${clientId}, user=${userId}`);
+    logger.error(`[Auth] No session token available for client access verification: client=${clientId}, user=${userId}`);
     return false;
   }
 
@@ -160,7 +161,7 @@ async function verifyClientAccess(
   } catch {
     // Network error or backend unavailable
     // Fail closed (deny access) for security
-    console.error(`[Auth] Failed to verify client access for client=${clientId}, user=${userId}`);
+    logger.error(`[Auth] Failed to verify client access for client=${clientId}, user=${userId}`);
     return false;
   }
 }
@@ -338,7 +339,7 @@ function handleAuthError(error: unknown): NextResponse {
   }
 
   // Log unexpected errors for debugging
-  console.error('[Auth] Unexpected error:', error);
+  logger.error('[Auth] Unexpected error', error instanceof Error ? error : { error: String(error) });
 
   return NextResponse.json(
     { error: 'Internal server error' },

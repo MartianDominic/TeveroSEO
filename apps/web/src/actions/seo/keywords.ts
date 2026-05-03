@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -105,7 +106,7 @@ export async function researchKeywords(params: ResearchKeywordsParams): Promise<
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[researchKeywords] Error:", error);
+    logger.error("[researchKeywords] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof z.ZodError) {
       return {
         success: false,
@@ -135,7 +136,7 @@ export async function saveKeywords(params: SaveKeywordsParams): Promise<ActionRe
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[saveKeywords] Error:", error);
+    logger.error("[saveKeywords] Error", error instanceof Error ? error : { error: String(error) });
     if (error instanceof z.ZodError) {
       return {
         success: false,
@@ -162,7 +163,7 @@ export async function getSavedKeywords(params: KeywordParams): Promise<ActionRes
     const data = await getOpenSeo<{ rows: unknown[] }>(`/api/seo/keywords?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getSavedKeywords] Error:", error);
+    logger.error("[getSavedKeywords] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get saved keywords",
@@ -186,7 +187,7 @@ export async function removeSavedKeyword(params: RemoveSavedKeywordParams): Prom
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[removeSavedKeyword] Error:", error);
+    logger.error("[removeSavedKeyword] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to remove keyword",
@@ -215,7 +216,7 @@ export async function getSerpAnalysis(params: SerpAnalysisParams): Promise<Actio
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[getSerpAnalysis] Error:", error);
+    logger.error("[getSerpAnalysis] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get SERP analysis",
@@ -263,7 +264,7 @@ export async function getKeywordHistory({
     }>(`/api/seo/keyword-rankings?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getKeywordHistory] Error:", error);
+    logger.error("[getKeywordHistory] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get keyword history",
@@ -305,7 +306,7 @@ export async function getKeywordLatestRanking({
     }>(`/api/seo/keyword-rankings?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getKeywordLatestRanking] Error:", error);
+    logger.error("[getKeywordLatestRanking] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get latest ranking",
@@ -360,7 +361,7 @@ export async function getSavedKeywordsWithRankings(
     }>(`/api/seo/keyword-rankings?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getSavedKeywordsWithRankings] Error:", error);
+    logger.error("[getSavedKeywordsWithRankings] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get keywords with rankings",

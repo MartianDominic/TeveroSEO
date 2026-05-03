@@ -10,6 +10,7 @@ import type { ClientMetrics } from "@/lib/dashboard/types";
 import { cacheGet, cacheSet, cacheKeys, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import { hashParams } from "@/lib/cache/with-cache";
 
+import { logger } from '@/lib/logger';
 // Validation schema for pagination input
 const paginationInputSchema = z.object({
   workspaceId: z.string().uuid("Invalid workspace ID"),  // Required for IDOR prevention
@@ -151,7 +152,7 @@ export async function getClientsPaginated(
       workspaceId ? [cacheTags.workspace(workspaceId)] : []
     );
   } catch (error) {
-    console.error("[getClientsPaginated] Failed:", error);
+    logger.error("[getClientsPaginated] Failed", error instanceof Error ? error : { error: String(error) });
     // Return empty result on error for graceful degradation
     // Include error field so callers can detect and display failures
     return {

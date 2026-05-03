@@ -25,6 +25,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
+import { invoices } from "./invoice-schema";
 
 /**
  * Discount types.
@@ -93,9 +94,11 @@ export const discountCodes = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+    // MED-18: Added $onUpdate for automatic timestamp updates via Drizzle ORM
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     // Unique code per workspace
@@ -146,7 +149,11 @@ export const discountCodeUsages = pgTable(
     discountCodeId: text("discount_code_id")
       .notNull()
       .references(() => discountCodes.id, { onDelete: "cascade" }),
-    invoiceId: text("invoice_id").notNull(), // References invoices table
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    // Note: clientId stored as text (UUID format) - FK not enforced at DB level
+    // due to type mismatch with clients.id (uuid). Application layer validates.
     clientId: text("client_id"), // For per-customer limit tracking (UUID as text)
 
     // Discount applied
@@ -164,7 +171,11 @@ export const discountCodeUsages = pgTable(
     // Index for looking up usages by invoice
     index("ix_discount_code_usages_invoice").on(table.invoiceId),
 
-    // Index for per-customer usage counts
+    // HIGH-34: Standalone index on clientId for per-customer limit queries
+    // Required for efficient lookups like: WHERE clientId = ? (without discountCodeId)
+    index("idx_discount_code_usages_client_id").on(table.clientId),
+
+    // Index for per-customer usage counts (composite for specific code + customer queries)
     index("ix_discount_code_usages_customer").on(
       table.discountCodeId,
       table.clientId

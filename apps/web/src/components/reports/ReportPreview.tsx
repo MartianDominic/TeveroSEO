@@ -6,6 +6,7 @@ import { Button } from "@tevero/ui";
 import { Loader2, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { ReportMetadata } from "@tevero/types";
 
+import { logger } from '@/lib/logger';
 interface ReportPreviewProps {
   reportId: string;
   clientId: string;
@@ -29,7 +30,7 @@ export function ReportPreview({ reportId, clientId, initialStatus }: ReportPrevi
           }
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.error("Failed to fetch status:", error);
+          logger.error("Failed to fetch status", error instanceof Error ? error : { error: String(error) });
         }
       }, 2000);
       return () => clearInterval(interval);

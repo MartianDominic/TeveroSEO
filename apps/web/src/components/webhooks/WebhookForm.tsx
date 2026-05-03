@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { logger } from '@/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -84,7 +85,7 @@ export function WebhookForm({
           events: selectedEvents,
         });
         if (!result.success) {
-          console.error("[WebhookForm] Update failed:", result.error);
+          logger.error("[WebhookForm] Update failed", { error: result.error });
           return;
         }
       } else {
@@ -95,7 +96,7 @@ export function WebhookForm({
           events: selectedEvents,
         });
         if (!result.success) {
-          console.error("[WebhookForm] Create failed:", result.error);
+          logger.error("[WebhookForm] Create failed", { error: result.error });
           return;
         }
         setNewSecret(result.data.secret);

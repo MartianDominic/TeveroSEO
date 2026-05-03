@@ -9,6 +9,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "@/styles/calendar.css";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Upload, X, Loader2, ChevronRight, CalendarOff } from "lucide-react";
+import { logger } from '@/lib/logger';
 import {
   Button,
   Dialog,
@@ -541,7 +542,7 @@ export default function ContentCalendarPage() {
       fetchPendingReview()
         .then((arts) => setPendingReview(arts))
         .catch((error) => {
-          console.error("Failed to fetch pending reviews:", error);
+          logger.error("Failed to fetch pending reviews", error instanceof Error ? error : { error: String(error) });
           setPendingReview([]);
         });
     }

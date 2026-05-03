@@ -13,6 +13,7 @@
 
 import { getFastApi, getOpenSeo, FastApiError, CircuitOpenError } from '@/lib/server-fetch';
 
+import { logger } from '@/lib/logger';
 /**
  * Error thrown when client doesn't exist in one or more services.
  */
@@ -45,7 +46,7 @@ export async function checkAiWriterClientExists(clientId: string): Promise<boole
     }
     // Circuit breaker open - service is down, assume client might exist
     if (error instanceof CircuitOpenError) {
-      console.warn(`[client-validation] AI-Writer circuit open, skipping check for client ${clientId}`);
+      logger.warn(`[client-validation] AI-Writer circuit open, skipping check for client ${clientId}`);
       return true; // Fail open to prevent blocking operations when service is recovering
     }
     throw error;
@@ -70,7 +71,7 @@ export async function checkOpenSeoClientExists(clientId: string): Promise<boolea
     }
     // Circuit breaker open - service is down, assume client might exist
     if (error instanceof CircuitOpenError) {
-      console.warn(`[client-validation] open-seo circuit open, skipping check for client ${clientId}`);
+      logger.warn(`[client-validation] open-seo circuit open, skipping check for client ${clientId}`);
       return true; // Fail open to prevent blocking operations when service is recovering
     }
     throw error;

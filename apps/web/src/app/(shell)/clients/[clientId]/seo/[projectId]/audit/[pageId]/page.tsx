@@ -10,6 +10,7 @@ import { ScoreCard } from "@/components/seo/ScoreCard";
 import { FindingsTable } from "@/components/seo/FindingsTable";
 import type { PageFindingsResponse } from "@/actions/seo/findings";
 
+import { logger } from '@/lib/logger';
 export default function PageFindingsPage() {
   const params = useParams<{
     clientId: string;
@@ -41,7 +42,7 @@ export default function PageFindingsPage() {
     try {
       const result = await exportFindingsCSV({ projectId, clientId, auditId });
       if (!result.success) {
-        console.error("[handleExport] Failed:", result.error);
+        logger.error("[handleExport] Failed", { error: result.error });
         return;
       }
       const blob = new Blob([result.data], { type: "text/csv;charset=utf-8;" });

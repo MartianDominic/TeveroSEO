@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function DomainError({
   error,
   reset,
@@ -18,7 +19,7 @@ export default function DomainError({
   const projectId = params?.projectId as string | undefined;
 
   useEffect(() => {
-    console.error('[DomainError]', {
+    logger.error('[DomainError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

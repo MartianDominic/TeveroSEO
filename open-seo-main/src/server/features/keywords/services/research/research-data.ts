@@ -8,6 +8,9 @@ import {
   type EnrichedKeyword,
 } from "./helpers";
 import type { KeywordSource } from "./selection";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "research-data" });
 
 interface RelatedKeywordItem {
   keyword_data: LabsKeywordDataItem;
@@ -109,7 +112,7 @@ async function fetchRelatedRows(
   // Validate and parse the API response
   const parsed = relatedKeywordsResponseSchema.safeParse(rawItems);
   if (!parsed.success) {
-    console.error('[DataForSEO] Related keywords response validation failed:', parsed.error);
+    log.error("Related keywords response validation failed", new Error(JSON.stringify(parsed.error.format())));
     return [];
   }
 

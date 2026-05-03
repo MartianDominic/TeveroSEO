@@ -199,6 +199,10 @@ async function resolveAddressRecords(
 
 /**
  * Check if hostname resolves to blocked IP addresses.
+ *
+ * MED-03 FIX: Changed to fail-closed on DNS resolution errors.
+ * This prevents SSRF bypasses where an attacker could cause DNS resolution
+ * to fail (e.g., via DNS rebinding or timing attacks) to bypass the check.
  */
 async function hostnameResolvesToBlockedAddress(hostname: string): Promise<boolean> {
   const host = normalizeHost(hostname);
@@ -211,14 +215,23 @@ async function hostnameResolvesToBlockedAddress(hostname: string): Promise<boole
     ]);
 
     const addresses = [...v4, ...v6];
-    if (addresses.length === 0) return false;
+
+    // MED-03 FIX: If DNS resolution returns no addresses, fail closed
+    // An attacker could manipulate DNS to return empty results to bypass checks
+    if (addresses.length === 0) {
+      // Log this for monitoring - could indicate DNS issues or attack attempts
+      console.warn(`[webhook-url-policy] DNS resolution returned no addresses for ${host}`);
+      return true; // Fail closed: treat as blocked
+    }
 
     return addresses.some(
       (address) => isPrivateIpv4(address) || isPrivateIpv6(address),
     );
-  } catch {
-    // Fail open on resolution errors - the fetch will fail anyway
-    return false;
+  } catch (error) {
+    // MED-03 FIX: Fail closed on resolution errors
+    // DNS failures could be used to bypass SSRF protection
+    console.warn(`[webhook-url-policy] DNS resolution failed for ${host}:`, error);
+    return true; // Fail closed: treat as blocked
   }
 }
 

@@ -18,6 +18,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { db } from "./index";
 import { sql, desc, eq, and } from "drizzle-orm";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "audit" });
 
 // Audit log table schema
 export const auditLogs = pgTable(
@@ -182,7 +185,7 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
       hasNewValues: !!entry.newValues,
       hasMetadata: !!entry.metadata,
     };
-    console.error("[AUDIT] Failed to log audit entry:", error, safeEntry);
+    log.error("Failed to log audit entry", error instanceof Error ? error : new Error(String(error)), safeEntry);
   }
 }
 

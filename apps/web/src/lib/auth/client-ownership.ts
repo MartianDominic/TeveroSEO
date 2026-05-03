@@ -22,6 +22,7 @@
 
 import { redis, cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache/redis-cache';
 import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 import {
   AuthorizationError,
   ClientOwnershipError,
@@ -41,7 +42,7 @@ export {
 } from './errors';
 
 /**
- * Cache TTL for ownership checks (2 minutes).
+ * Cache TTL for ownership checks (30 seconds).
  *
  * SECURITY TRADE-OFF DOCUMENTATION:
  * - Caching reduces backend load and improves response times
@@ -49,7 +50,7 @@ export {
  *   after a user's access has been revoked
  *
  * Mitigations:
- * 1. TTL reduced from 5 minutes to 2 minutes to limit stale access window
+ * 1. TTL reduced to 30 seconds to minimize stale access window
  * 2. Webhook-based cache invalidation (invalidateOwnershipCache) should be
  *    called when user membership changes via:
  *    - Clerk organization membership webhooks
@@ -63,8 +64,11 @@ export {
  * - Ensure webhook handlers call invalidateOwnershipCache immediately
  * - For high-security operations, bypass cache with direct backend check
  * - Monitor cache invalidation webhook delivery in production
+ *
+ * SECURITY FIX (2026-05-03): Reduced from 2 minutes to 30 seconds to minimize
+ * the window where revoked permissions could still be used.
  */
-const OWNERSHIP_CACHE_TTL = 2 * 60; // 2 minutes in seconds (reduced from 5 min)
+const OWNERSHIP_CACHE_TTL = 30; // 30 seconds
 
 /**
  * Build cache key for ownership check.
@@ -124,9 +128,7 @@ export async function validateClientOwnership(
 
   if (!result.hasAccess) {
     // Log denial for security audit
-    console.warn(
-      `[client-ownership] Access denied: userId=${userId} clientId=${clientId} reason=${result.reason}`
-    );
+    logger.warn(`[client-ownership] Access denied: userId=${userId} clientId=${clientId} reason=${result.reason}`);
 
     if (result.reason === 'client_not_found') {
       throw new ResourceNotFoundError('Client', clientId);
@@ -165,7 +167,7 @@ export async function checkClientOwnership(
     }
   } catch (err) {
     // Cache read failure is non-fatal, continue with backend check
-    console.warn('[client-ownership] Cache read failed, falling back to backend', err);
+    logger.warn('[client-ownership] Cache read failed, falling back to backend', { value: err });
   }
 
   // Cache miss: verify with backend
@@ -176,7 +178,7 @@ export async function checkClientOwnership(
     await cacheSet(cacheKey, result, { ttl: OWNERSHIP_CACHE_TTL });
   } catch (err) {
     // Cache write failure is non-fatal
-    console.warn('[client-ownership] Cache write failed', err);
+    logger.warn('[client-ownership] Cache write failed', { value: err });
   }
 
   return result;
@@ -217,9 +219,10 @@ async function verifyWithBackend(
         return { hasAccess: false, reason: 'not_member' };
       }
 
-      console.error(
-        `[client-ownership] Backend returned error: status=${response.status} clientId=${clientId}`
-      );
+      logger.error('[client-ownership] Backend returned error', {
+        status: response.status,
+        clientId,
+      });
       return { hasAccess: false, reason: 'backend_error' };
     }
 
@@ -227,7 +230,7 @@ async function verifyWithBackend(
     const parsed = ownershipResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('[client-ownership] Invalid response shape from backend:', parsed.error);
+      logger.error('[client-ownership] Invalid response shape from backend', { error: parsed.error });
       return { hasAccess: false, reason: 'backend_error' };
     }
 
@@ -237,9 +240,10 @@ async function verifyWithBackend(
     };
   } catch (err) {
     // Network error or timeout - fail closed for security
-    console.error(
-      `[client-ownership] Backend request failed: clientId=${clientId} error=${err instanceof Error ? err.message : String(err)}`
-    );
+    logger.error('[client-ownership] Backend request failed', {
+      clientId,
+      error: err instanceof Error ? err.message : String(err),
+    });
 
     // For AbortError (timeout), still fail closed
     return { hasAccess: false, reason: 'backend_error' };
@@ -262,7 +266,7 @@ export async function invalidateOwnershipCache(
     await cacheInvalidate(cacheKey);
     console.debug(`[client-ownership] Invalidated cache: userId=${userId} clientId=${clientId}`);
   } catch (err) {
-    console.warn('[client-ownership] Failed to invalidate cache', err);
+    logger.warn('[client-ownership] Failed to invalidate cache', { value: err });
   }
 }
 
@@ -292,7 +296,7 @@ export async function invalidateClientCaches(clientId: string): Promise<void> {
 
     console.info(`[client-ownership] Invalidated ${deletedCount} caches for client ${clientId}`);
   } catch (err) {
-    console.warn(`[client-ownership] Failed to invalidate client caches: clientId=${clientId}`, err);
+    logger.warn(`[client-ownership] Failed to invalidate client caches: clientId=${clientId}`, { value: err });
   }
 }
 
@@ -320,7 +324,7 @@ export async function invalidateUserCaches(userId: string): Promise<void> {
 
     console.info(`[client-ownership] Invalidated ${deletedCount} caches for user ${userId}`);
   } catch (err) {
-    console.warn(`[client-ownership] Failed to invalidate user caches: userId=${userId}`, err);
+    logger.warn(`[client-ownership] Failed to invalidate user caches: userId=${userId}`, { value: err });
   }
 }
 

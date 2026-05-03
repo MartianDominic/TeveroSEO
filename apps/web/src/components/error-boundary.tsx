@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, ReactNode } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { Button } from '@tevero/ui';
 import { logError } from '@/lib/errors';
 
@@ -13,10 +14,12 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  eventId?: string;
 }
 
 /**
  * Error boundary component that catches JavaScript errors in child components.
+ * Integrates with Sentry for error tracking and reporting.
  *
  * Usage:
  * ```tsx
@@ -41,9 +44,23 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log to error tracking service
+    // Capture error in Sentry with component stack
+    const eventId = Sentry.captureException(error, {
+      extra: {
+        componentStack: errorInfo.componentStack,
+      },
+      tags: {
+        errorBoundary: 'true',
+      },
+    });
+
+    // Store event ID for potential user feedback dialog
+    this.setState({ eventId });
+
+    // Also log locally for debugging
     logError('ErrorBoundary', error, {
       componentStack: errorInfo.componentStack || 'unknown',
+      sentryEventId: eventId,
     });
 
     // Call optional error callback

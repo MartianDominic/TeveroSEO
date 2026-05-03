@@ -9,13 +9,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { ChecklistCompletionService } from "@/server/features/onboarding/services/ChecklistCompletionService";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "onboarding-complete-item" });
 
 const requestSchema = z.object({
   checklistId: z.string().min(1, "checklistId is required"),
   itemId: z.string().min(1, "itemId is required"),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/onboarding/complete-item")({
   server: {
     handlers: {
@@ -63,9 +65,9 @@ export const Route = createFileRoute("/api/onboarding/complete-item")({
 
           return Response.json({ success: true, checklist: result });
         } catch (error) {
-          console.error("Error completing checklist item:", error);
+          log.error("Error completing checklist item", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
-            { success: false, error: "Internal server error" },
+            { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
             { status: 500 }
           );
         }

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw, Home } from "lucide-react";
 
+import { logger } from '@/lib/logger';
 /**
  * Error boundary for sign-up page.
  * Catches errors during the authentication flow.
@@ -16,7 +17,7 @@ export default function SignUpError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[sign-up-error]", {
+    logger.error("[sign-up-error]", {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

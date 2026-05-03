@@ -14,6 +14,7 @@
 
 import { redis } from "@/lib/redis/client";
 
+import { logger } from '@/lib/logger';
 /** Version key prefix */
 const VERSION_PREFIX = "tevero:version:";
 
@@ -135,7 +136,7 @@ export async function getVersion(resource: string): Promise<number> {
     const value = await redis.get(key);
     return value ? parseInt(value, 10) : 0;
   } catch (error) {
-    console.error("[optimistic-lock] getVersion error:", error);
+    logger.error("[optimistic-lock] getVersion error", error instanceof Error ? error : { error: String(error) });
     return 0;
   }
 }
@@ -172,7 +173,7 @@ export async function checkAndIncrementVersion(
     // Positive or zero result means conflict (actual version)
     return null;
   } catch (error) {
-    console.error("[optimistic-lock] checkAndIncrementVersion error:", error);
+    logger.error("[optimistic-lock] checkAndIncrementVersion error", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -206,7 +207,7 @@ export async function checkAndIncrementVersion(
  * );
  *
  * if (!result.success) {
- *   console.log("Conflict: data was modified by another request");
+ *   logger.debug("Conflict: data was modified by another request");
  * }
  * ```
  */
@@ -465,7 +466,7 @@ return 0
  * );
  *
  * if (!success) {
- *   console.log("Job was already picked up by another worker");
+ *   logger.debug("Job was already picked up by another worker");
  * }
  * ```
  */
@@ -485,7 +486,7 @@ export async function compareAndSwap(
     );
     return result === 1;
   } catch (error) {
-    console.error("[optimistic-lock] compareAndSwap error:", error);
+    logger.error("[optimistic-lock] compareAndSwap error", error instanceof Error ? error : { error: String(error) });
     return false;
   }
 }

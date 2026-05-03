@@ -3,6 +3,8 @@
 import { z } from "zod";
 import { getFastApi } from "@/lib/server-fetch";
 import { requireActionAuth } from "@/lib/auth/action-auth";
+import { logger } from '@/lib/logger';
+import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import type {
   ClientMetrics,
   PortfolioSummary,
@@ -64,73 +66,112 @@ const viewNameSchema = z.string()
   .regex(/^[a-zA-Z0-9\s\-_]+$/, "View name contains invalid characters");
 
 /**
+ * Default empty summary for graceful degradation.
+ */
+const defaultSummary: PortfolioSummary = {
+  totalClients: 0,
+  clientsNeedingAttention: 0,
+  winsThisWeek: 0,
+  totalClicks30d: 0,
+  totalImpressions30d: 0,
+  avgTrafficChange: 0,
+  keywordsTotal: 0,
+  keywordsTop10: 0,
+  keywordsTop3: 0,
+  keywordsPosition1: 0,
+  avgGoalAttainment: 0,
+  avgGoalAttainmentTrend: 0,
+  clientsOnTrack: 0,
+  clientsWatching: 0,
+  clientsCritical: 0,
+  goalsMet: 0,
+  goalsTotal: 0,
+};
+
+/**
  * Fetch all client metrics from pre-computed table.
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getDashboardMetrics(): Promise<ClientMetrics[]> {
   await requireActionAuth();
   try {
-    // Call open-seo API endpoint that queries client_dashboard_metrics
-    return await getFastApi<ClientMetrics[]>("/api/dashboard/metrics");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<ClientMetrics[]>(
+      "dashboard:metrics",
+      60, // 60 second cache
+      async () => getFastApi<ClientMetrics[]>("/api/dashboard/metrics"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getDashboardMetrics] Failed to fetch metrics:", error);
+    logger.error("[getDashboardMetrics] Failed to fetch metrics", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
 
 /**
  * Fetch portfolio-wide summary statistics.
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
   await requireActionAuth();
   try {
-    return await getFastApi<PortfolioSummary>("/api/dashboard/summary");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<PortfolioSummary>(
+      "dashboard:summary",
+      60, // 60 second cache
+      async () => getFastApi<PortfolioSummary>("/api/dashboard/summary"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getPortfolioSummary] Failed to fetch summary:", error);
-    return {
-      totalClients: 0,
-      clientsNeedingAttention: 0,
-      winsThisWeek: 0,
-      totalClicks30d: 0,
-      totalImpressions30d: 0,
-      avgTrafficChange: 0,
-      keywordsTotal: 0,
-      keywordsTop10: 0,
-      keywordsTop3: 0,
-      keywordsPosition1: 0,
-      // Goal-based metrics
-      avgGoalAttainment: 0,
-      avgGoalAttainmentTrend: 0,
-      clientsOnTrack: 0,
-      clientsWatching: 0,
-      clientsCritical: 0,
-      goalsMet: 0,
-      goalsTotal: 0,
-    };
+    logger.error("[getPortfolioSummary] Failed to fetch summary", error instanceof Error ? error : { error: String(error) });
+    return defaultSummary;
   }
 }
 
 /**
  * Fetch items needing attention (alerts, low health, connection issues).
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getAttentionItems(): Promise<AttentionItem[]> {
   await requireActionAuth();
   try {
-    return await getFastApi<AttentionItem[]>("/api/dashboard/attention");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<AttentionItem[]>(
+      "dashboard:attention",
+      60, // 60 second cache
+      async () => getFastApi<AttentionItem[]>("/api/dashboard/attention"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getAttentionItems] Failed to fetch attention items:", error);
+    logger.error("[getAttentionItems] Failed to fetch attention items", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
 
 /**
  * Fetch recent wins and milestones.
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getWins(): Promise<WinItem[]> {
   await requireActionAuth();
   try {
-    return await getFastApi<WinItem[]>("/api/dashboard/wins");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<WinItem[]>(
+      "dashboard:wins",
+      60, // 60 second cache
+      async () => getFastApi<WinItem[]>("/api/dashboard/wins"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getWins] Failed to fetch wins:", error);
+    logger.error("[getWins] Failed to fetch wins", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
@@ -172,7 +213,7 @@ export async function saveCardLayout(cardOrder: string[]): Promise<void> {
       body: JSON.stringify({ cardOrder: validatedCardOrder }),
     });
   } catch (error) {
-    console.error("Failed to save card layout:", error);
+    logger.error("Failed to save card layout", error instanceof Error ? error : { error: String(error) });
     throw error;
   }
 }
@@ -186,7 +227,7 @@ export async function getCardLayout(): Promise<string[] | null> {
     const result = await getFastApi<{ cardOrder: string[] | null }>("/api/dashboard/layout");
     return result.cardOrder;
   } catch (error) {
-    console.error("[getCardLayout] Failed to fetch card layout:", error);
+    logger.error("[getCardLayout] Failed to fetch card layout", error instanceof Error ? error : { error: String(error) });
     return null;
   }
 }
@@ -199,7 +240,7 @@ export async function getSavedViews(): Promise<SavedView[]> {
   try {
     return await getFastApi<SavedView[]>("/api/dashboard/views");
   } catch (error) {
-    console.error("[getSavedViews] Failed to fetch saved views:", error);
+    logger.error("[getSavedViews] Failed to fetch saved views", error instanceof Error ? error : { error: String(error) });
     // Return default views on error
     return [
       {
@@ -284,26 +325,44 @@ export async function setDefaultView(viewId: string): Promise<void> {
 
 /**
  * Get team workload data.
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getTeamWorkload(): Promise<TeamMember[]> {
   await requireActionAuth();
   try {
-    return await getFastApi<TeamMember[]>("/api/dashboard/team-workload");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<TeamMember[]>(
+      "dashboard:team-workload",
+      60, // 60 second cache
+      async () => getFastApi<TeamMember[]>("/api/dashboard/team-workload"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getTeamWorkload] Failed to fetch team workload:", error);
+    logger.error("[getTeamWorkload] Failed to fetch team workload", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }
 
 /**
  * Get upcoming scheduled items (reports, audits).
+ * PERF FIX (MEDIUM-02): Uses singleflight to deduplicate concurrent requests.
  */
 export async function getUpcomingScheduled(): Promise<ScheduledItem[]> {
   await requireActionAuth();
   try {
-    return await getFastApi<ScheduledItem[]>("/api/dashboard/upcoming");
+    // PERF FIX: Use singleflight to deduplicate parallel calls
+    return await getCachedWithSingleflight<ScheduledItem[]>(
+      "dashboard:upcoming",
+      60, // 60 second cache
+      async () => getFastApi<ScheduledItem[]>("/api/dashboard/upcoming"),
+      cacheGet,
+      cacheSet,
+      []
+    );
   } catch (error) {
-    console.error("[getUpcomingScheduled] Failed to fetch upcoming items:", error);
+    logger.error("[getUpcomingScheduled] Failed to fetch upcoming items", error instanceof Error ? error : { error: String(error) });
     return [];
   }
 }

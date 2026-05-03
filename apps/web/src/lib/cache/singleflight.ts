@@ -9,6 +9,8 @@
  * a cache miss would all hit the backend simultaneously.
  */
 
+import { logger } from '@/lib/logger';
+
 // In-flight requests map: cacheKey -> Promise
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
@@ -108,7 +110,7 @@ export async function getCachedWithSingleflight<T>(
 
   // Cache the result (fire-and-forget)
   cacheSet(cacheKey, data, { ttl: ttlSeconds, tags }).catch((err) => {
-    console.error("[singleflight] Failed to cache result:", err);
+    logger.error("[singleflight] Failed to cache result", err instanceof Error ? err : { error: String(err) });
   });
 
   return data;

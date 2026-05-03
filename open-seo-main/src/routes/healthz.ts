@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { checkDatabaseHealth } from "@/db";
 import { checkRedisHealth } from "@/server/lib/redis";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "healthz" });
 
 export const Route = createFileRoute("/healthz")({
   server: {
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/healthz")({
         } catch (e) {
           checks.databaseLatencyMs = Date.now() - dbStart;
           const errorMsg = e instanceof Error ? e.message : String(e);
-          console.error("[healthz] Database check failed:", errorMsg);
+          log.error("Database check failed", e instanceof Error ? e : new Error(errorMsg));
           checks.errors?.push(`database: ${errorMsg}`);
         }
 
@@ -40,7 +43,7 @@ export const Route = createFileRoute("/healthz")({
           }
         } catch (e) {
           const errorMsg = e instanceof Error ? e.message : String(e);
-          console.error("[healthz] Redis check failed:", errorMsg);
+          log.error("Redis check failed", e instanceof Error ? e : new Error(errorMsg));
           checks.errors?.push(`redis: ${errorMsg}`);
         }
 

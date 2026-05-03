@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import { logger } from '@/lib/logger';
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Backend sync error:", errorText);
+      logger.error("Backend sync error", { error: errorText });
       return NextResponse.json({ error: "Failed to sync" }, { status: 500 });
     }
 
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       syncedAt: data.syncedAt ?? new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Failed to sync connection:", error);
+    logger.error("Failed to sync connection", error instanceof Error ? error : { error: String(error) });
     return NextResponse.json({ error: "Failed to sync" }, { status: 500 });
   }
 }

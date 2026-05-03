@@ -11,6 +11,8 @@
  * no auth bypass (T-59-04-03).
  */
 
+import { logger } from '@/lib/logger';
+
 export interface ContractSection {
   title: string;
   content: string;
@@ -105,7 +107,7 @@ export async function markContractViewed(
 
     if (!response.ok) {
       // Log error but don't fail - marking viewed is not critical
-      console.error("Failed to mark contract viewed:", await response.text());
+      logger.error("Failed to mark contract viewed");
       return { success: false };
     }
 

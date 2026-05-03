@@ -106,7 +106,10 @@ export class ShopifyOAuthProvider implements OAuthProvider {
       throw new Error(`Shopify token exchange failed: ${error}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      access_token: string;
+      scope?: string;
+    };
 
     // Shopify tokens do NOT expire - use MAX_SAFE_INTEGER
     return {

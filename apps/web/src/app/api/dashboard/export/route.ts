@@ -6,6 +6,7 @@ import { exportLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import type { ClientMetrics, ExportColumn } from "@/lib/dashboard/types";
 import { EXPORT_COLUMN_LABELS } from "@/lib/dashboard/types";
 
+import { logger } from '@/lib/logger';
 /**
  * Valid export columns - derived from ExportColumn type.
  * Used for runtime validation of query string parameters.
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     // Log error in development only
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
-      console.error("Export failed:", error);
+      logger.error("Export failed", error instanceof Error ? error : { error: String(error) });
     }
     return NextResponse.json({ error: "Export failed" }, { status: 500 });
   }

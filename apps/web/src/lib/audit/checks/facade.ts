@@ -17,6 +17,7 @@ import {
 } from "./types";
 import * as crypto from "crypto";
 
+import { logger } from '@/lib/logger';
 /**
  * Request timeout in milliseconds (120 seconds).
  * FIX H-COMM-04: Increased from 30s to 120s because audits can take 5+ minutes.
@@ -80,9 +81,9 @@ function getInternalAuthHeaders(body: string): HeadersInit {
  * });
  *
  * if (error) {
- *   console.error('Check execution failed:', error);
+ *   logger.error('Check execution failed', error instanceof Error ? error : { error: String(error) });
  * } else {
- *   console.log(`Score: ${score.score}/100`);
+ *   logger.debug(`Score: ${score.score}/100`);
  *   console.log(`Gates: ${score.gates.join(', ')}`);
  * }
  * ```
@@ -140,7 +141,7 @@ export async function runAllChecks(
       if (isValidCheckResult(item)) {
         validResults.push(item);
       } else {
-        console.warn("Skipping invalid check result:", item);
+        logger.warn("Skipping invalid check result:", { detail: item });
       }
     }
 

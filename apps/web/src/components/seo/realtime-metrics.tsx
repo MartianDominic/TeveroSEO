@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { z } from 'zod';
 
+import { logger } from '@/lib/logger';
 /**
  * WebSocket URL for metrics - uses NEXT_PUBLIC_WS_URL or falls back to relative path.
  * Configure via environment variable in production.
@@ -118,13 +119,13 @@ export function RealtimeMetrics({
     // Don't connect if cleaning up or if we've exceeded max attempts
     if (isCleaningUpRef.current) return;
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.warn(`[RealtimeMetrics] Max reconnect attempts (${maxReconnectAttempts}) reached for client ${clientId}`);
+      logger.warn(`[RealtimeMetrics] Max reconnect attempts (${maxReconnectAttempts}) reached for client ${clientId}`);
       return;
     }
 
     // Require authentication
     if (!isSignedIn) {
-      console.warn('[RealtimeMetrics] Not authenticated, skipping connection');
+      logger.warn('[RealtimeMetrics] Not authenticated, skipping connection');
       setIsAuthenticated(false);
       return;
     }
@@ -134,13 +135,13 @@ export function RealtimeMetrics({
     try {
       token = await getToken();
     } catch (err) {
-      console.error('[RealtimeMetrics] Failed to get auth token:', err);
+      logger.error('[RealtimeMetrics] Failed to get auth token', err instanceof Error ? err : { error: String(err) });
       setIsAuthenticated(false);
       return;
     }
 
     if (!token) {
-      console.warn('[RealtimeMetrics] No auth token available');
+      logger.warn('[RealtimeMetrics] No auth token available');
       setIsAuthenticated(false);
       return;
     }
@@ -191,7 +192,7 @@ export function RealtimeMetrics({
               ws.send(JSON.stringify({ type: 'auth_refresh', token: newToken }));
             }
           } catch (err) {
-            console.error('[RealtimeMetrics] Token refresh failed:', err);
+            logger.error('[RealtimeMetrics] Token refresh failed', err instanceof Error ? err : { error: String(err) });
           }
         }, TOKEN_REFRESH_INTERVAL);
       };
@@ -211,7 +212,7 @@ export function RealtimeMetrics({
               setLastMetrics(metrics);
               onMetricsUpdateRef.current?.(metrics);
             } else if (message.type === 'error') {
-              console.warn('[RealtimeMetrics] Server error:', message.message);
+              logger.warn('[RealtimeMetrics] Server error', { detail: message.message });
             }
             // auth_success and auth_refresh_ack are handled silently
             return;
@@ -227,9 +228,9 @@ export function RealtimeMetrics({
           }
 
           // Both parsers failed - log warning and ignore
-          console.warn('[RealtimeMetrics] Invalid WS message format:', typedParsed.error.issues);
+          logger.warn('[RealtimeMetrics] Invalid WS message format', { detail: typedParsed.error.issues });
         } catch (e) {
-          console.error('[RealtimeMetrics] Failed to parse metrics:', e);
+          logger.error('[RealtimeMetrics] Failed to parse metrics', e instanceof Error ? e : { error: String(e) });
         }
       };
 
@@ -249,7 +250,7 @@ export function RealtimeMetrics({
 
         // Don't reconnect on auth failure (custom close code 4001)
         if (event.code === 4001) {
-          console.warn('[RealtimeMetrics] Authentication failed');
+          logger.warn('[RealtimeMetrics] Authentication failed');
           setIsAuthenticated(false);
           return;
         }
@@ -266,11 +267,11 @@ export function RealtimeMetrics({
       };
 
       ws.onerror = (err) => {
-        console.error('[RealtimeMetrics] WebSocket error:', err);
+        logger.error('[RealtimeMetrics] WebSocket error', err instanceof Error ? err : { error: String(err) });
         // onclose will handle reconnection
       };
     } catch (e) {
-      console.error('[RealtimeMetrics] Failed to create WebSocket:', e);
+      logger.error('[RealtimeMetrics] Failed to create WebSocket', e instanceof Error ? e : { error: String(e) });
     }
   }, [clientId, reconnectDelay, maxReconnectAttempts, isSignedIn, getToken]);
 

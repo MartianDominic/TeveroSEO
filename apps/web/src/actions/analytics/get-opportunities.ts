@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -186,10 +187,7 @@ export async function getTopOpportunities(
             );
           } catch (error) {
             // Log but don't fail the whole request if one client fails
-            console.warn(
-              `Failed to fetch opportunities for client ${client.id}:`,
-              error
-            );
+            logger.warn(`Failed to fetch opportunities for client ${client.id}:`, { detail: error });
           }
         })
       );
@@ -216,7 +214,7 @@ export async function getTopOpportunities(
       },
     };
   } catch (error) {
-    console.error("Failed to fetch workspace opportunities:", error);
+    logger.error("Failed to fetch workspace opportunities", error instanceof Error ? error : { error: String(error) });
     return {
       data: [],
       pagination: { page, limit, total: 0, totalPages: 0 },

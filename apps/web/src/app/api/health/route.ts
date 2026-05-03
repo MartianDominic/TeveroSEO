@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import {
   getServiceCircuitStates,
   type CircuitState,
 } from "@/lib/utils/service-circuit-breakers";
+
+/**
+ * Timing-safe token comparison to prevent timing attacks.
+ * SECURITY (MED-12): Uses crypto.timingSafeEqual for constant-time comparison.
+ */
+function verifyToken(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  try {
+    const a = Buffer.from(provided, "utf8");
+    const b = Buffer.from(expected, "utf8");
+    // Lengths must match for timingSafeEqual
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -243,9 +261,10 @@ async function checkOpenSeo(): Promise<HealthCheck> {
  */
 export async function GET(request: Request) {
   // Check for internal health token (for monitoring systems)
+  // SECURITY (MED-12): Use timing-safe comparison to prevent timing attacks
   const healthToken = request.headers.get("X-Health-Token");
   const expectedToken = process.env.HEALTH_CHECK_TOKEN;
-  const isAuthenticated = expectedToken && healthToken === expectedToken;
+  const isAuthenticated = expectedToken ? verifyToken(healthToken, expectedToken) : false;
 
   const [database, redis, aiWriter, openSeo] = await Promise.all([
     checkDatabase(),

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@tevero/ui';
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
+import { logger } from '@/lib/logger';
 export default function CalendarError({
   error,
   reset,
@@ -17,7 +18,7 @@ export default function CalendarError({
   const clientId = params?.clientId as string | undefined;
 
   useEffect(() => {
-    console.error('[CalendarError]', {
+    logger.error('[CalendarError]', {
       digest: error.digest,
       message: error.message,
       timestamp: new Date().toISOString(),

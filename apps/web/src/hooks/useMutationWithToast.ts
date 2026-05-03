@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 /**
  * Utility to wrap mutation onError handlers with logging.
  *
@@ -17,10 +19,9 @@ export function withErrorLogging<TError = Error>(
   handler?: (error: TError) => void
 ) {
   return (error: TError) => {
-    console.error(
-      `${context}:`,
-      error instanceof Error ? error.message : "Unknown error",
-      error
+    logger.error(
+      context,
+      error instanceof Error ? error : { error: String(error) }
     );
     handler?.(error);
   };
@@ -39,10 +40,9 @@ export function withErrorLogging<TError = Error>(
  */
 export function createErrorHandler(context: string) {
   return (error: unknown) => {
-    console.error(
-      `${context}:`,
-      error instanceof Error ? error.message : "Unknown error",
-      error
+    logger.error(
+      context,
+      error instanceof Error ? error : { error: String(error) }
     );
   };
 }

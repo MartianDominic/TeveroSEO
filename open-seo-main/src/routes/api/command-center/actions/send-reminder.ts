@@ -23,6 +23,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "send-reminder" });
 
 const SendReminderSchema = z.object({
   entityType: z.enum(["prospect", "proposal", "contract", "invoice"]),
@@ -30,7 +33,6 @@ const SendReminderSchema = z.object({
   message: z.string().max(1000).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute(
   "/api/command-center/actions/send-reminder"
 )({
@@ -64,13 +66,13 @@ export const Route = createFileRoute(
 
           return Response.json({ success: true });
         } catch (error) {
-          console.error("[send-reminder] Error:", error);
+          log.error("Failed to send reminder", error instanceof Error ? error : new Error(String(error)));
           return Response.json(
             {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to send reminder",
+              error: {
+                code: "INTERNAL_ERROR",
+                message: error instanceof Error ? error.message : "Failed to send reminder",
+              },
             },
             { status: 500 }
           );

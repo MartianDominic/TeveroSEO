@@ -154,6 +154,11 @@ export class Singleflight<T> {
    * Wait for result from leader via pub/sub + polling fallback.
    *
    * Per Pitfall 4: Subscribe BEFORE checking result to prevent lost wakeup.
+   *
+   * CRIT-PERF-01 Fix: Properly guard against race conditions by:
+   * 1. Setting `resolved = true` FIRST in cleanup (before other operations)
+   * 2. Checking `resolved` flag at the start of async handlers
+   * 3. Using a single cleanup function that's idempotent
    */
   private async waitForResult(
     resultKey: string,
@@ -184,21 +189,38 @@ export class Singleflight<T> {
 
       return new Promise<SingleflightResult<T>>((resolve, reject) => {
         let resolved = false;
+        let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+        // M64-01 Fix: Set `resolved = true` FIRST to prevent race conditions
+        // where handlers fire after cleanup starts but before disconnect completes
         const cleanup = () => {
-          if (resolved) return;
-          resolved = true;
-          clearInterval(pollTimer);
+          if (resolved) return; // Already cleaned up - idempotent
+          resolved = true; // FIRST: Set flag before any async operations
+
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
           subscriber.removeAllListeners("message");
           subscriber.unsubscribe(channel).catch(() => {});
           subscriber.disconnect();
         };
 
         const messageHandler = async (ch: string, message: string) => {
-          if (resolved || ch !== channel) return;
+          // CRIT-PERF-01 Fix: Check resolved flag FIRST to prevent
+          // processing after timeout/cleanup has occurred
+          if (resolved) return;
+          if (ch !== channel) return;
 
           if (message === "done") {
+            // Double-check resolved hasn't changed during await
+            if (resolved) return;
+
             const result = await this.redis.get(resultKey);
+
+            // Check again after async operation
+            if (resolved) return;
+
             if (result) {
               recordSingleflight(true); // Follower got shared result via pub/sub
               cleanup();
@@ -209,13 +231,15 @@ export class Singleflight<T> {
               });
             }
           } else if (message === "fail") {
+            if (resolved) return;
             cleanup();
             reject(new Error("Leader task failed"));
           }
         };
 
         // Polling fallback in case pub/sub message was lost
-        const pollTimer = setInterval(async () => {
+        pollTimer = setInterval(async () => {
+          // CRIT-PERF-01 Fix: Early return if already resolved
           if (resolved) return;
 
           if (Date.now() > deadline) {
@@ -226,6 +250,10 @@ export class Singleflight<T> {
 
           // Check if result appeared
           const result = await this.redis.get(resultKey);
+
+          // Check again after async operation (may have resolved during await)
+          if (resolved) return;
+
           if (result) {
             recordSingleflight(true); // Follower got shared result via polling
             cleanup();

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
@@ -122,7 +123,7 @@ export async function getMappings(
     const data = await getOpenSeo<GetMappingsResponse>(`/api/seo/keyword-mapping?${query}`);
     return { success: true, data };
   } catch (error) {
-    console.error("[getMappings] Failed:", error);
+    logger.error("[getMappings] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to fetch mappings" };
   }
 }
@@ -156,7 +157,7 @@ export async function suggestMappings(
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[suggestMappings] Failed:", error);
+    logger.error("[suggestMappings] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to suggest mappings" };
   }
 }
@@ -189,7 +190,7 @@ export async function overrideMapping(
     });
     return { success: true, data };
   } catch (error) {
-    console.error("[overrideMapping] Failed:", error);
+    logger.error("[overrideMapping] Failed", error instanceof Error ? error : { error: String(error) });
     return { success: false, error: "Failed to override mapping" };
   }
 }

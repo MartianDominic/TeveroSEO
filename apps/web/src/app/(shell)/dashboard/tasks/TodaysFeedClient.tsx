@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { redirect } from "next/navigation";
 import { TodaysFeed, type AggregatedTask } from "@/components/tasks";
 
+import { logger } from '@/lib/logger';
 type AnyRoute = Parameters<typeof redirect>[0];
 import {
   completeTask,
@@ -125,6 +126,7 @@ export function TodaysFeedClient({ initialTasks }: TodaysFeedClientProps) {
 
   /**
    * Handle task click - navigate to task detail or source entity.
+   * Phase 65: Fixed routes to use correct app structure.
    */
   const handleClick = (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -139,12 +141,14 @@ export function TodaysFeedClient({ initialTasks }: TodaysFeedClientProps) {
         break;
       case "checklist":
         if (task.clientId) {
-          router.push(`/onboarding/${task.clientId}` as AnyRoute);
+          // Fixed: Use correct route /clients/[clientId]/onboarding
+          router.push(`/clients/${task.clientId}/onboarding` as AnyRoute);
         }
         break;
       case "expiring":
-        if (task.entityId) {
-          router.push(`/contracts/${task.entityId}` as AnyRoute);
+        if (task.entityId && task.clientId) {
+          // Fixed: Use correct route /clients/[clientId]/agreements/[agreementId]
+          router.push(`/clients/${task.clientId}/agreements/${task.entityId}` as AnyRoute);
         }
         break;
       default:
@@ -158,7 +162,7 @@ export function TodaysFeedClient({ initialTasks }: TodaysFeedClientProps) {
    */
   const handleAddTask = () => {
     // TODO: Open add task modal
-    console.log("[TodaysFeedClient] Add task clicked");
+    logger.info("[TodaysFeedClient] Add task clicked");
   };
 
   return (

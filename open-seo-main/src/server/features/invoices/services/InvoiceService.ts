@@ -6,7 +6,7 @@
  * Per D-06: Invoice created after contract signed.
  * Per D-07: Payment webhook updates invoice and contract status.
  */
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { invoices, type InvoiceLineItem, type InvoiceInsert, type InvoiceSelect } from "@/db/invoice-schema";
 import { contracts } from "@/db/contract-schema";
@@ -258,17 +258,19 @@ export async function sendToClient(
 /**
  * Handle successful payment from webhook.
  * Phase 54-03: Updated to support multiple providers.
+ * Phase 54-FIX: Added atomic update to prevent race conditions.
  * Per D-07: payment.succeeded → update contract status to "executed".
  *
  * @param externalId - Provider's invoice/order ID (stripeInvoiceId or revolutOrderId)
  * @param paymentId - Provider's payment ID (stripePaymentIntentId or revolut payment ID)
  * @param provider - Payment provider ('stripe' | 'revolut')
+ * @returns Object indicating if payment was processed or already handled
  */
 export async function handlePaymentSuccess(
   externalId: string,
   paymentId: string,
   provider: PaymentProviderType = "stripe",
-): Promise<void> {
+): Promise<{ alreadyProcessed: boolean }> {
   // Look up invoice by provider-specific ID
   const invoice = provider === "revolut"
     ? await InvoiceRepository.getInvoiceByRevolutOrderId(externalId)
@@ -276,23 +278,31 @@ export async function handlePaymentSuccess(
 
   if (!invoice) {
     log.warn(`Invoice not found for ${provider} ID`, { externalId, provider });
-    return; // Not our invoice
+    return { alreadyProcessed: false }; // Not our invoice
   }
 
-  if (invoice.status === "paid") {
-    log.info("Invoice already paid, skipping", { invoiceId: invoice.id });
-    return; // Idempotent
-  }
-
-  // Update invoice to paid with provider-specific payment ID
-  await InvoiceRepository.updateInvoiceStatus(
-    invoice.id,
-    "paid",
-    {
+  // ATOMIC UPDATE: Use WHERE clause to prevent race conditions
+  // Two concurrent webhooks could both pass the status check before either updates,
+  // so we use an atomic update that only succeeds if status is NOT already "paid"
+  const [updated] = await db
+    .update(invoices)
+    .set({
+      status: "paid",
       paidAt: new Date(),
+      updatedAt: new Date(),
       ...(provider === "stripe" && { stripePaymentIntentId: paymentId }),
-    }
-  );
+    })
+    .where(and(
+      eq(invoices.id, invoice.id),
+      ne(invoices.status, "paid") // Only update if not already paid
+    ))
+    .returning();
+
+  if (!updated) {
+    // Invoice was already paid (race condition resolved)
+    log.info("Invoice already paid (atomic check), skipping", { invoiceId: invoice.id });
+    return { alreadyProcessed: true };
+  }
 
   // Update contract to executed (paid contracts are executed)
   if (invoice.contractId) {
@@ -345,6 +355,42 @@ export async function handlePaymentSuccess(
       log.error("Failed to create onboarding checklist", error instanceof Error ? error : new Error(String(error)));
     }
   }
+
+  // Phase 65: Convert prospect to client after successful payment
+  // Look up the contract -> proposal -> prospect chain, then mark converted
+  if (invoice.contractId) {
+    try {
+      const [contract] = await db
+        .select()
+        .from(contracts)
+        .where(eq(contracts.id, invoice.contractId))
+        .limit(1);
+
+      // Get prospectId from the proposal (contracts link to proposals, not prospects directly)
+      if (contract?.proposalId) {
+        const [proposal] = await db
+          .select()
+          .from(proposals)
+          .where(eq(proposals.id, contract.proposalId))
+          .limit(1);
+
+        if (proposal?.prospectId && invoice.clientId) {
+          const { ProspectService } = await import("../../prospects/services/ProspectService");
+          // Convert prospect to client - clientId comes from the invoice
+          await ProspectService.markConverted(proposal.prospectId, invoice.clientId);
+          log.info("Prospect converted to client", {
+            prospectId: proposal.prospectId,
+            clientId: invoice.clientId,
+          });
+        }
+      }
+    } catch (error) {
+      // Log but don't fail - conversion can be done manually
+      log.error("Failed to convert prospect to client", error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  return { alreadyProcessed: false };
 }
 
 export const InvoiceService = {

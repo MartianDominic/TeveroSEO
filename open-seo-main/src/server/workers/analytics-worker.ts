@@ -33,35 +33,69 @@ const SHUTDOWN_TIMEOUT_MS = 25_000; // BQ-06
 const METRICS_LOG_INTERVAL_MS = 300_000; // 5 minutes
 
 /**
+ * Ring buffer for O(1) duration tracking (MED-34 fix).
+ * Replaces array.shift() which is O(n).
+ */
+class RingBuffer {
+  private buffer: number[];
+  private head = 0;
+  private size = 0;
+
+  constructor(private capacity: number) {
+    this.buffer = new Array(capacity).fill(0);
+  }
+
+  push(value: number): void {
+    const index = (this.head + this.size) % this.capacity;
+    if (this.size < this.capacity) {
+      this.buffer[index] = value;
+      this.size++;
+    } else {
+      this.buffer[this.head] = value;
+      this.head = (this.head + 1) % this.capacity;
+    }
+  }
+
+  getValues(): number[] {
+    const result: number[] = [];
+    for (let i = 0; i < this.size; i++) {
+      result.push(this.buffer[(this.head + i) % this.capacity]);
+    }
+    return result;
+  }
+
+  getSize(): number {
+    return this.size;
+  }
+}
+
+/**
  * Simple in-memory metrics for analytics worker.
  * Emitted to stdout every 5 minutes for log aggregation.
  */
 interface WorkerMetrics {
   success: number;
   failed: number;
-  durations: number[]; // Last 100 job durations in ms
+  durations: RingBuffer; // Last 100 job durations in ms (O(1) operations)
 }
 
 const metrics: WorkerMetrics = {
   success: 0,
   failed: 0,
-  durations: [],
+  durations: new RingBuffer(100),
 };
 
 let metricsInterval: ReturnType<typeof setInterval> | null = null;
 
 function recordDuration(durationMs: number): void {
   metrics.durations.push(durationMs);
-  // Keep only last 100 durations to prevent memory growth
-  if (metrics.durations.length > 100) {
-    metrics.durations.shift();
-  }
 }
 
 function getAverageDuration(): number | null {
-  if (metrics.durations.length === 0) return null;
-  const sum = metrics.durations.reduce((a, b) => a + b, 0);
-  return Math.round(sum / metrics.durations.length);
+  const values = metrics.durations.getValues();
+  if (values.length === 0) return null;
+  const sum = values.reduce((a, b) => a + b, 0);
+  return Math.round(sum / values.length);
 }
 
 function emitMetrics(): void {

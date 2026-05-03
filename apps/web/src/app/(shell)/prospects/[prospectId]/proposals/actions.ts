@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
 
+import { logger } from '@/lib/logger';
 // Validation schemas
 const proposalIdSchema = z.string().min(1, "Invalid proposal ID");
 const prospectIdSchema = z.string().min(1, "Invalid prospect ID");
@@ -83,7 +84,7 @@ export async function getProposalsForProspect(
       },
     };
   } catch (error) {
-    console.error("[getProposalsForProspect] Error:", error);
+    logger.error("[getProposalsForProspect] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: sanitizeErrorForClient(error),
@@ -151,7 +152,7 @@ export async function sendProposal(
       },
     };
   } catch (error) {
-    console.error("[sendProposal] Error:", error);
+    logger.error("[sendProposal] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: sanitizeErrorForClient(error),
@@ -205,7 +206,7 @@ export async function resendProposal(
       },
     };
   } catch (error) {
-    console.error("[resendProposal] Error:", error);
+    logger.error("[resendProposal] Error", error instanceof Error ? error : { error: String(error) });
     return {
       success: false,
       error: sanitizeErrorForClient(error),

@@ -10,6 +10,7 @@
  */
 import { Queue, FlowProducer, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 export const PHASE_QUEUE_NAME = "pipeline-phase" as const;
 export const PLAN_QUEUE_NAME = "pipeline-plan" as const;
@@ -56,21 +57,13 @@ export type PlanStep = (typeof PLAN_STEP)[keyof typeof PLAN_STEP];
 /**
  * Default job options for plan jobs.
  * Plans retry up to 3 times with exponential backoff on failure.
- */
-/**
- * Default job options for plan jobs.
- * Plans retry up to 3 times with exponential backoff on failure.
  * Job timeout is controlled via Worker lockDuration in plan-worker.ts.
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_PLAN_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
-  },
+const DEFAULT_PLAN_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 500 },
-};
+});
 
 /**
  * Default job options for phase jobs.

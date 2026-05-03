@@ -5,10 +5,15 @@
  * Resolves HIGH-STATE-008: WebSocket reconnect logic missing.
  * Resolves CRITICAL-WS-001: Client WebSocket Hook Missing Authentication.
  * Resolves M-24: WebSocket message parsing without validation.
+ * HIGH-40 FIX: Added debounce for auth state changes to prevent unnecessary reconnects.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { z, ZodSchema } from 'zod';
+
+import { logger } from '@/lib/logger';
+// HIGH-40 FIX: Debounce delay for auth state changes to prevent rapid reconnections
+const AUTH_STATE_DEBOUNCE_MS = 300;
 
 /**
  * Base WebSocket message schema for common message types.
@@ -76,8 +81,11 @@ export function useWebSocket<T = unknown>({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tokenRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const reconnectAttemptRef = useRef(0);
+  // HIGH-40 FIX: Track previous auth state to detect actual changes
+  const prevIsSignedInRef = useRef<boolean | undefined>(undefined);
 
   // Use refs for callbacks to avoid reconnection on callback changes
   // This resolves HIGH-STATE-009: Context provider re-renders
@@ -122,7 +130,7 @@ export function useWebSocket<T = unknown>({
         wsRef.current.send(JSON.stringify({ type: 'auth_refresh', token: newToken }));
       }
     } catch (err) {
-      console.error('[useWebSocket] Token refresh failed:', err);
+      logger.error('[useWebSocket] Token refresh failed', err instanceof Error ? err : { error: String(err) });
     }
   }, [getToken]);
 
@@ -202,7 +210,7 @@ export function useWebSocket<T = unknown>({
               onMessageRef.current(parsed.data);
             } else {
               // Log validation error and optionally notify consumer
-              console.warn('[useWebSocket] Invalid message format:', parsed.error.issues);
+              logger.warn('[useWebSocket] Invalid message format', { detail: parsed.error.issues });
               onValidationErrorRef.current?.(parsed.error, rawData);
             }
           } else {
@@ -214,7 +222,7 @@ export function useWebSocket<T = unknown>({
           if (!messageSchema) {
             onMessageRef.current(event.data as T);
           } else {
-            console.warn('[useWebSocket] Received non-JSON message when schema validation is enabled');
+            logger.warn('[useWebSocket] Received non-JSON message when schema validation is enabled');
           }
         }
       };
@@ -277,8 +285,24 @@ export function useWebSocket<T = unknown>({
   useEffect(() => {
     mountedRef.current = true;
 
+    // HIGH-40 FIX: Debounce auth state changes to prevent rapid reconnections
+    // during auth transitions (e.g., token refresh, tab focus)
+    const authStateChanged = prevIsSignedInRef.current !== isSignedIn;
+    prevIsSignedInRef.current = isSignedIn;
+
     if (enabled && isSignedIn) {
-      connect();
+      // If auth state changed, debounce the connection to avoid unnecessary reconnects
+      if (authStateChanged && authDebounceTimeoutRef.current === null) {
+        authDebounceTimeoutRef.current = setTimeout(() => {
+          authDebounceTimeoutRef.current = null;
+          if (mountedRef.current && enabled && isSignedIn) {
+            connect();
+          }
+        }, AUTH_STATE_DEBOUNCE_MS);
+      } else if (!authStateChanged) {
+        // URL or enabled changed, connect immediately
+        connect();
+      }
     }
 
     return () => {
@@ -289,11 +313,15 @@ export function useWebSocket<T = unknown>({
       if (tokenRefreshTimeoutRef.current) {
         clearInterval(tokenRefreshTimeoutRef.current);
       }
+      if (authDebounceTimeoutRef.current) {
+        clearTimeout(authDebounceTimeoutRef.current);
+        authDebounceTimeoutRef.current = null;
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
-  }, [url, enabled, isSignedIn]); // Reconnect on URL, enabled, or auth change
+  }, [url, enabled, isSignedIn, connect]); // Reconnect on URL, enabled, or auth change
 
   const send = useCallback((data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

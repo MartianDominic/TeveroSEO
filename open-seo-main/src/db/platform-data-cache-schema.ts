@@ -4,6 +4,25 @@
  *
  * Stores fetched data from connected platforms with expiry.
  * Used for caching GSC queries, GA metrics, Shopify products, etc.
+ *
+ * HIGH-36 LIMITATION: The $onUpdate() hook is client-side only (Drizzle ORM).
+ * It will NOT trigger for:
+ * - Raw SQL updates (e.g., db.execute(sql`UPDATE ...`))
+ * - Database triggers or stored procedures
+ * - Updates from other applications/services
+ *
+ * If server-side auto-update is required, create a PostgreSQL trigger:
+ * CREATE OR REPLACE FUNCTION update_updated_at()
+ * RETURNS TRIGGER AS $$
+ * BEGIN
+ *   NEW.updated_at = NOW();
+ *   RETURN NEW;
+ * END;
+ * $$ LANGUAGE plpgsql;
+ *
+ * CREATE TRIGGER set_updated_at
+ * BEFORE UPDATE ON platform_data_cache
+ * FOR EACH ROW EXECUTE FUNCTION update_updated_at();
  */
 import {
   pgTable,
@@ -67,9 +86,15 @@ export const platformDataCache = pgTable(
       mode: "date",
     }).notNull(),
 
-    // Standard timestamp
+    // Standard timestamps
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
       .defaultNow(),
+    // H-07: Added updatedAt for cache freshness tracking
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     index("idx_platform_data_cache_connection").on(table.connectionId),

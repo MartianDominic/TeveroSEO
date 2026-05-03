@@ -9,6 +9,7 @@
 import { Queue, type JobsOptions } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getStandardJobOptions } from "@/server/lib/queue-utils";
 
 const log = createLogger({ module: "goalQueue" });
 
@@ -24,59 +25,59 @@ export interface GoalProcessorJobData {
 }
 
 /**
- * Default job options.
- * 3 attempts with exponential backoff.
+ * Dead-letter queue job data for failed goal processing jobs.
+ * HIGH-52 fix: Standardized DLQ pattern with inline prefix.
  */
+export interface GoalDLQJobData {
+  originalJobId: string | undefined;
+  originalJobName: string;
+  data: GoalProcessorJobData;
+  error: string;
+  stack: string | undefined;
+  failedAt: string;
+  attemptsMade: number;
+}
+
 /**
  * Default job options for goal processing.
  * Job timeout is controlled via Worker lockDuration (set to 120s in goal-processor.ts).
+ * Uses standardized retry configuration: exponential backoff with 1s base, 60s max.
  */
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 5000,
-  },
+const DEFAULT_JOB_OPTIONS: JobsOptions = getStandardJobOptions({
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 50 },
-};
+});
 
 /**
  * Goal processing queue.
+ * HIGH-52 fix: Queue type includes DLQ jobs for inline prefix pattern.
  */
-export const goalQueue = new Queue<GoalProcessorJobData>(GOAL_QUEUE_NAME, {
+export const goalQueue = new Queue<GoalProcessorJobData | GoalDLQJobData>(GOAL_QUEUE_NAME, {
   connection: getSharedBullMQConnection("queue:goal-processor"),
   defaultJobOptions: DEFAULT_JOB_OPTIONS,
 });
 
 /**
  * Initialize goal processing scheduler.
+ * MED-36 fix: Uses upsertJobScheduler() instead of deprecated repeat option.
  * Runs every 5 minutes to process all goals.
  */
 export async function initGoalProcessingScheduler(): Promise<void> {
-  // Add repeatable job FIRST (safe if duplicate briefly exists)
-  // This ensures the scheduler is never lost even if we crash during init
-  await goalQueue.add(
-    "process-all-goals",
-    { triggeredAt: new Date().toISOString() },
+  // Use upsertJobScheduler for idempotent cron setup (BullMQ v5 pattern)
+  await goalQueue.upsertJobScheduler(
+    "goal-processor-scheduled", // Scheduler ID
+    { pattern: "*/5 * * * *" }, // Every 5 minutes
     {
-      repeat: {
-        pattern: "*/5 * * * *", // Every 5 minutes
+      name: "process-all-goals",
+      data: { triggeredAt: new Date().toISOString() },
+      opts: {
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 50 },
       },
-      jobId: "goal-processor-scheduled",
     },
   );
 
-  // THEN remove old duplicates (any repeatable jobs with different keys)
-  const repeatableJobs = await goalQueue.getRepeatableJobs();
-  for (const job of repeatableJobs) {
-    // Keep the one we just added, remove any stale ones
-    if (job.id !== "goal-processor-scheduled") {
-      await goalQueue.removeRepeatableByKey(job.key);
-    }
-  }
-
-  log.info("Goal processing queue initialized with 5-minute repeatable job");
+  log.info("Goal processing queue initialized with 5-minute scheduler", { pattern: "*/5 * * * *" });
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useClientStore } from "@/stores/clientStore";
 import { PageHeader, Card, CardContent, Button, Skeleton } from "@tevero/ui";
@@ -26,32 +26,35 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<"30" | "90">("30");
   const [isPending, startTransition] = useTransition();
 
-  const loadData = async () => {
+  // HIGH-04 FIX: Use useCallback to avoid stale closure bug with dateRange
+  const loadData = useCallback(async (range: "30" | "90" = dateRange) => {
     setLoading(true);
     setError(false);
-    const result = await fetchAnalyticsData(clientId, parseInt(dateRange) as 30 | 90);
+    const result = await fetchAnalyticsData(clientId, parseInt(range) as 30 | 90);
     if (result) {
       setData(result);
     } else {
       setError(true);
     }
     setLoading(false);
-  };
+  }, [clientId, dateRange]);
 
+  // Initial load on mount and when clientId changes
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]);
+  }, [loadData]);
 
-  const handleDateRangeChange = (value: "30" | "90") => {
+  // HIGH-04 FIX: Pass the new value directly to avoid stale closure
+  const handleDateRangeChange = useCallback((value: "30" | "90") => {
     setDateRange(value);
     startTransition(async () => {
+      // Use the value parameter directly instead of relying on state
       const result = await fetchAnalyticsData(clientId, parseInt(value) as 30 | 90);
       if (result) {
         setData(result);
       }
     });
-  };
+  }, [clientId]);
 
   const handleConnectGoogle = () => {
     router.push(`/clients/${clientId}/connections` as Parameters<typeof router.push>[0]);
@@ -98,7 +101,7 @@ export default function AnalyticsPage() {
               There was a problem loading analytics data.
             </p>
           </div>
-          <Button variant="outline" onClick={loadData}>
+          <Button variant="outline" onClick={() => loadData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Retry
           </Button>
@@ -159,10 +162,11 @@ export default function AnalyticsPage() {
         <DateRangeSelector value={dateRange} onChange={handleDateRangeChange} />
       </div>
 
-      {/* Loading overlay for date range change */}
+      {/* MEDIUM-01 FIX: Non-blocking loading indicator instead of full-screen overlay */}
       {isPending && (
-        <div className="fixed inset-0 bg-background/50 flex items-center justify-center z-50">
-          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Updating data...</span>
         </div>
       )}
 

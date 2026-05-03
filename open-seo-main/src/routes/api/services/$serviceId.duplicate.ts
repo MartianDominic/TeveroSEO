@@ -24,7 +24,6 @@ const duplicateServiceSchema = z.object({
   newName: z.string().min(1).max(200).optional(),
 });
 
-// @ts-expect-error - Route path not in FileRoutesByPath yet
 export const Route = createFileRoute("/api/services/$serviceId/duplicate")({
   server: {
     handlers: {

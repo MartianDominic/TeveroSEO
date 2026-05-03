@@ -2,12 +2,20 @@
  * Shopify OAuth Callback Endpoint
  * Phase 61-03: Platform Integration Excellence
  *
- * Handles OAuth callback from Shopify.
+ * Handles OAuth callback from Shopify:
+ * 1. Rate limits requests (10/minute per IP) to prevent state brute-forcing
+ * 2. Validates state parameter (CSRF protection)
+ * 3. Exchanges authorization code for tokens
+ * 4. Stores tokens via backend
+ * 5. Redirects to settings page with success/error
+ *
  * GET /api/oauth/shopify/callback?code=xxx&state=xxx&shop=xxx
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+import { checkRateLimit, getClientIpFromRequest } from "@/lib/middleware/rate-limit";
 
+import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -39,15 +47,35 @@ interface CreateConnectionPayload {
   metadata: Record<string, string>;
 }
 
+/** OAuth callback rate limit: 10 requests per minute per IP */
+const OAUTH_CALLBACK_RATE_LIMIT = 10;
+const OAUTH_CALLBACK_WINDOW_MS = 60000; // 1 minute
+
 export async function GET(request: NextRequest) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const settingsUrl = `${appUrl}/settings/connections`;
+
+  // Rate limit OAuth callbacks to prevent state brute-forcing attacks
+  const ip = getClientIpFromRequest(request);
+  const rateLimitKey = `oauth:shopify:callback:${ip}`;
+  const rateLimitResult = await checkRateLimit(
+    rateLimitKey,
+    OAUTH_CALLBACK_RATE_LIMIT,
+    OAUTH_CALLBACK_WINDOW_MS
+  );
+
+  if (!rateLimitResult.success) {
+    logger.warn("[OAuth] Rate limit exceeded for IP", { value: ip });
+    return NextResponse.redirect(
+      `${settingsUrl}?error=rate_limited&provider=shopify`
+    );
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const shop = searchParams.get("shop");
   const error = searchParams.get("error");
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const settingsUrl = `${appUrl}/settings/connections`;
 
   if (error) {
     return NextResponse.redirect(
@@ -84,10 +112,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await postOpenSeo<void>(
-      `/api/oauth/states/${storedState.id}/mark-used`,
-      {}
-    );
+    // FIX MED-08: Do NOT mark state as used here - wait until after successful token exchange
 
     const clientId = process.env.SHOPIFY_CLIENT_ID;
     const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
@@ -119,7 +144,15 @@ export async function GET(request: NextRequest) {
 
     const tokens = await tokenResponse.json();
 
+    // FIX MED-08: Mark state as used AFTER successful token exchange
+    await postOpenSeo<void>(
+      `/api/oauth/states/${storedState.id}/mark-used`,
+      {}
+    );
+
     // Shopify tokens do NOT expire
+    // FIX CRIT-12: Add idempotency key to prevent duplicate token storage on retry
+    const idempotencyKey = `oauth-shopify-${state}-${storedState.workspaceId}`;
     const connectionPayload: CreateConnectionPayload = {
       workspaceId: storedState.workspaceId,
       prospectId: storedState.prospectId,
@@ -136,7 +169,12 @@ export async function GET(request: NextRequest) {
 
     await postOpenSeo<{ id: string }>(
       "/api/oauth/connections",
-      connectionPayload
+      connectionPayload,
+      {
+        headers: {
+          "X-Idempotency-Key": idempotencyKey,
+        },
+      }
     );
 
     try {
@@ -147,7 +185,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(`${settingsUrl}?success=shopify`);
   } catch (err) {
-    console.error("[OAuth] Shopify callback failed:", err);
+    logger.error("[OAuth] Shopify callback failed", err instanceof Error ? err : { error: String(err) });
     return NextResponse.redirect(
       `${settingsUrl}?error=internal_error&provider=shopify`
     );

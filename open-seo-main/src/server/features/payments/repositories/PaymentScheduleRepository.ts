@@ -5,8 +5,8 @@
  * CRUD operations for payment_schedules and payment_installments tables.
  * Handles schedule creation, installment tracking, and overdue detection.
  */
-import { eq, and, lt, lte, sql } from "drizzle-orm";
-import { db } from "@/db";
+import { eq, and, lt, gte, sql } from "drizzle-orm";
+import { db, type DrizzleTransaction } from "@/db";
 import {
   paymentSchedules,
   paymentInstallments,
@@ -20,11 +20,14 @@ import type { PaymentProviderType } from "../types";
 
 /**
  * Insert a new payment schedule.
+ * Accepts optional transaction for atomic operations.
  */
 export async function insertSchedule(
-  schedule: PaymentScheduleInsert
+  schedule: PaymentScheduleInsert,
+  tx?: DrizzleTransaction
 ): Promise<PaymentScheduleSelect> {
-  const [inserted] = await db
+  const executor = tx ?? db;
+  const [inserted] = await executor
     .insert(paymentSchedules)
     .values(schedule)
     .returning();
@@ -33,14 +36,17 @@ export async function insertSchedule(
 
 /**
  * Insert multiple installments for a schedule.
+ * Accepts optional transaction for atomic operations.
  */
 export async function insertInstallments(
-  installments: PaymentInstallmentInsert[]
+  installments: PaymentInstallmentInsert[],
+  tx?: DrizzleTransaction
 ): Promise<PaymentInstallmentSelect[]> {
   if (installments.length === 0) {
     return [];
   }
-  return await db
+  const executor = tx ?? db;
+  return await executor
     .insert(paymentInstallments)
     .values(installments)
     .returning();
@@ -125,14 +131,23 @@ export async function getInstallmentsByScheduleId(
 }
 
 /**
- * Get upcoming installments due within N days.
+ * Get upcoming installments due exactly N days from now.
  * Used by reminder worker (D-20).
+ * P60-H05: Fixed to use exact date range instead of all pending <= futureDate.
  */
 export async function getUpcomingInstallments(
   daysAhead: number
 ): Promise<PaymentInstallmentSelect[]> {
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + daysAhead);
+  const now = new Date();
+
+  // Start of target day (midnight)
+  const startOfTargetDay = new Date(now);
+  startOfTargetDay.setDate(startOfTargetDay.getDate() + daysAhead);
+  startOfTargetDay.setHours(0, 0, 0, 0);
+
+  // End of target day (just before midnight next day)
+  const endOfTargetDay = new Date(startOfTargetDay);
+  endOfTargetDay.setDate(endOfTargetDay.getDate() + 1);
 
   return await db
     .select()
@@ -140,7 +155,8 @@ export async function getUpcomingInstallments(
     .where(
       and(
         eq(paymentInstallments.status, "pending"),
-        lte(paymentInstallments.dueAt, futureDate)
+        gte(paymentInstallments.dueAt, startOfTargetDay),
+        lt(paymentInstallments.dueAt, endOfTargetDay)
       )
     )
     .orderBy(paymentInstallments.dueAt);

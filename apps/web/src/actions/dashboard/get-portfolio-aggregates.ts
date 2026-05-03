@@ -4,8 +4,9 @@ import { z } from "zod";
 import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 import { getFastApi } from "@/lib/server-fetch";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
-import { cacheGet, cacheSet, cacheKeys, cacheTags } from "@/lib/cache";
+import { cacheGet, cacheSet, cacheKeys, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 
+import { logger } from '@/lib/logger';
 // Validation schema
 const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
 
@@ -76,56 +77,56 @@ export async function getPortfolioAggregates(
   // Validate workspace membership to prevent IDOR
   await validateWorkspaceMembership(validatedWorkspaceId.data, auth);
 
-  // Check cache first
   const cacheKey = cacheKeys.portfolioAggregates(validatedWorkspaceId.data);
-  const cached = await cacheGet<PortfolioAggregates>(cacheKey);
-  if (cached) {
-    return { data: cached };
-  }
 
   try {
-    // Fetch from backend API
-    const response = await getFastApi<{ data: PortfolioAggregates | null }>(
-      `/api/dashboard/portfolio-aggregates?workspaceId=${encodeURIComponent(validatedWorkspaceId.data)}`
+    // PERF FIX (HIGH-03): Use singleflight to prevent cache stampede
+    // Multiple concurrent requests for same workspace share a single fetch
+    const aggregates = await getCachedWithSingleflight<PortfolioAggregates | null>(
+      cacheKey,
+      60, // 60 second TTL
+      async () => {
+        // Fetch from backend API
+        const response = await getFastApi<{ data: PortfolioAggregates | null }>(
+          `/api/dashboard/portfolio-aggregates?workspaceId=${encodeURIComponent(validatedWorkspaceId.data)}`
+        );
+
+        if (!response.data) {
+          // No aggregates computed yet - this is a valid state, not an error
+          return null;
+        }
+
+        // FIX: Parse numeric fields from strings with robust NaN handling
+        // Backend may return Decimal/Numeric types as strings, or null/undefined
+        const safeParseNum = (val: unknown, fallback: number = 0): number => {
+          if (val === null || val === undefined) return fallback;
+          const parsed = parseFloat(String(val));
+          return Number.isNaN(parsed) ? fallback : parsed;
+        };
+
+        const safeParseNumOrNull = (val: unknown): number | null => {
+          if (val === null || val === undefined) return null;
+          const parsed = parseFloat(String(val));
+          return Number.isNaN(parsed) ? null : parsed;
+        };
+
+        return {
+          ...response.data,
+          avgGoalAttainment: safeParseNum(response.data.avgGoalAttainment, 0),
+          avgGoalAttainmentTrend: safeParseNumOrNull(response.data.avgGoalAttainmentTrend),
+          avgCtr: safeParseNum(response.data.avgCtr, 0),
+          totalClicksTrend: safeParseNumOrNull(response.data.totalClicksTrend),
+          avgDaysSinceTouch: safeParseNumOrNull(response.data.avgDaysSinceTouch),
+        };
+      },
+      cacheGet,
+      cacheSet,
+      [cacheTags.workspace(validatedWorkspaceId.data)]
     );
-
-    if (!response.data) {
-      // No aggregates computed yet - this is a valid state, not an error
-      return { data: null };
-    }
-
-    // FIX: Parse numeric fields from strings with robust NaN handling
-    // Backend may return Decimal/Numeric types as strings, or null/undefined
-    const safeParseNum = (val: unknown, fallback: number = 0): number => {
-      if (val === null || val === undefined) return fallback;
-      const parsed = parseFloat(String(val));
-      return Number.isNaN(parsed) ? fallback : parsed;
-    };
-
-    const safeParseNumOrNull = (val: unknown): number | null => {
-      if (val === null || val === undefined) return null;
-      const parsed = parseFloat(String(val));
-      return Number.isNaN(parsed) ? null : parsed;
-    };
-
-    const aggregates: PortfolioAggregates = {
-      ...response.data,
-      avgGoalAttainment: safeParseNum(response.data.avgGoalAttainment, 0),
-      avgGoalAttainmentTrend: safeParseNumOrNull(response.data.avgGoalAttainmentTrend),
-      avgCtr: safeParseNum(response.data.avgCtr, 0),
-      totalClicksTrend: safeParseNumOrNull(response.data.totalClicksTrend),
-      avgDaysSinceTouch: safeParseNumOrNull(response.data.avgDaysSinceTouch),
-    };
-
-    // Cache for 60 seconds with workspace tag
-    await cacheSet(cacheKey, aggregates, {
-      ttl: 60,
-      tags: [cacheTags.workspace(validatedWorkspaceId.data)],
-    });
 
     return { data: aggregates };
   } catch (error) {
-    console.error("[get-portfolio-aggregates] Error fetching aggregates:", error);
+    logger.error("[get-portfolio-aggregates] Error fetching aggregates", error instanceof Error ? error : { error: String(error) });
     // Return explicit error instead of silent null
     return {
       data: null,

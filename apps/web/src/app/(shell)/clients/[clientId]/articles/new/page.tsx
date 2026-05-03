@@ -10,11 +10,12 @@
  * article ID.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 
+import { logger } from '@/lib/logger';
 import {
   Button,
   Input,
@@ -113,36 +114,80 @@ export default function NewArticlePage() {
 
   const currentArticle = article ?? { ...DEFAULT_ARTICLE, clientId: clientId ?? null };
 
-  // Initialize blank article on mount
+  // Track if there are unsaved changes
+  const initialArticleRef = useRef<string | null>(null);
+  const hasUnsavedChanges = useCallback(() => {
+    if (!article) return false;
+    const currentState = JSON.stringify({
+      title: article.title,
+      keyword: article.keyword,
+      customInstructions: article.customInstructions,
+      quickNotes: article.quickNotes,
+    });
+    // If we have content that differs from initial state
+    return (
+      initialArticleRef.current !== null &&
+      initialArticleRef.current !== currentState &&
+      (article.title.trim() !== "" || article.keyword.trim() !== "" || article.customInstructions.trim() !== "" || article.quickNotes.trim() !== "")
+    );
+  }, [article]);
+
+  // MEDIUM-03 FIX: Add beforeunload warning for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges() || isGenerating) {
+        e.preventDefault();
+        // Modern browsers ignore custom messages but still show a generic warning
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges, isGenerating]);
+
+  // Store initial state after first load
+  useEffect(() => {
+    if (article && initialArticleRef.current === null) {
+      initialArticleRef.current = JSON.stringify({
+        title: article.title,
+        keyword: article.keyword,
+        customInstructions: article.customInstructions,
+        quickNotes: article.quickNotes,
+      });
+    }
+  }, [article]);
+
+  // MEDIUM-05 FIX: Consolidated client initialization and data fetching effects
+  // Initialize blank article on mount and sync active client
   useEffect(() => {
     const kwFromUrl = searchParams.get("keyword") ?? "";
     setArticle({ ...DEFAULT_ARTICLE, clientId: clientId ?? null, keyword: kwFromUrl });
     setGenerationStatus("idle");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  useEffect(() => {
+    // Sync active client if needed
     if (clientId && activeClient?.id !== clientId) {
       setActiveClient(clientId);
     }
-  }, [clientId, activeClient?.id, setActiveClient]);
 
-  useEffect(() => {
-    if (!clientId) return;
-    apiGet<{ organic_keywords?: Array<{ keyword: string; search_volume: number }> }>(
-      `/api/clients/${clientId}/intelligence`
-    )
-      .then((data) => {
-        const kws = data?.organic_keywords;
-        if (Array.isArray(kws)) {
-          const sorted = [...kws].sort((a, b) => b.search_volume - a.search_volume).slice(0, 20);
-          setOrganicKeywords(sorted.map((k) => k.keyword));
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch organic keywords:", err);
-      });
-  }, [clientId]);
+    // Fetch organic keywords for this client
+    if (clientId) {
+      apiGet<{ organic_keywords?: Array<{ keyword: string; search_volume: number }> }>(
+        `/api/clients/${clientId}/intelligence`
+      )
+        .then((data) => {
+          const kws = data?.organic_keywords;
+          if (Array.isArray(kws)) {
+            const sorted = [...kws].sort((a, b) => b.search_volume - a.search_volume).slice(0, 20);
+            setOrganicKeywords(sorted.map((k) => k.keyword));
+          }
+        })
+        .catch((err) => {
+          logger.error("Failed to fetch organic keywords", err instanceof Error ? err : { error: String(err) });
+        });
+    }
+  }, [clientId, searchParams, setArticle, setGenerationStatus, activeClient?.id, setActiveClient]);
 
   useEffect(() => {
     setLoadingTemplates(true);
@@ -254,8 +299,13 @@ export default function NewArticlePage() {
 
   return (
     <div className="min-h-screen p-8 md:p-10">
+      {/* MEDIUM-04 FIX: Added role="alert" for accessibility */}
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-lg bg-card border border-border">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-lg bg-card border border-border"
+        >
           <div className="flex items-center gap-2">
             <StatusChip status={toast.type === "success" ? "published" : "failed"} />
             <span className="text-foreground font-medium">{toast.message}</span>
@@ -355,44 +405,51 @@ export default function NewArticlePage() {
             )}
           </div>
 
+          {/* MEDIUM-06 FIX: Added aria-label and aria-valuetext for slider accessibility */}
           {currentArticle.voiceTemplateId && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Voice Blend</Label>
-                <span className="text-xs text-muted-foreground">
+                <Label htmlFor="voice-blend-slider" className="text-sm font-medium">Voice Blend</Label>
+                <span className="text-xs text-muted-foreground" aria-hidden="true">
                   {blendLabel(currentArticle.blendWeight)}
                 </span>
               </div>
               <Slider
+                id="voice-blend-slider"
                 min={0}
                 max={1}
                 step={0.05}
                 value={[currentArticle.blendWeight]}
                 onValueChange={handleBlendWeight}
                 className="w-full"
+                aria-label="Voice blend weight"
+                aria-valuetext={blendLabel(currentArticle.blendWeight)}
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-xs text-muted-foreground" aria-hidden="true">
                 <span>Brand (100%)</span>
                 <span>Template (100%)</span>
               </div>
             </div>
           )}
 
+          {/* MEDIUM-06 FIX: Added aria-expanded and aria-controls for collapsible accessibility */}
           <div className="rounded-lg border border-border">
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors rounded-lg"
               onClick={() => setAdvancedOpen((prev) => !prev)}
+              aria-expanded={advancedOpen}
+              aria-controls="advanced-options-panel"
             >
               <span>Advanced</span>
               {advancedOpen ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               )}
             </button>
             {advancedOpen && (
-              <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
+              <div id="advanced-options-panel" className="border-t border-border px-4 pb-4 pt-3 space-y-2">
                 <Label htmlFor="custom-instructions" className="text-sm font-medium">
                   Custom Instructions
                 </Label>
