@@ -20,6 +20,17 @@ export * from "./schema";
 export * from "./webhook-schema";
 export * from "./oauth-state-schema"; // MED-VAL-02 FIX: OAuth state for CSRF protection
 
+// Dual-write exports for database consolidation (Phase 67-03)
+export {
+  dualWriteClient,
+  dualWriteClientInsert,
+  dualWriteClientUpdate,
+  createTeveroDb,
+  closeTeveroPool,
+  isShadowWriteEnabled,
+  type ClientData,
+} from "./dual-write";
+
 // Database connection - require explicit configuration
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
