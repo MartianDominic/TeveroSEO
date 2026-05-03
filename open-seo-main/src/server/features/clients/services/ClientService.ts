@@ -3,9 +3,12 @@
  *
  * Provides CRUD operations for clients with comprehensive audit trails.
  * All mutations are logged with before/after values.
+ *
+ * Soft delete cascades to related entities (audits, contracts, schedules, etc.)
+ * to maintain data consistency.
  */
 
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 import { db } from "@/db/index";
 import {
   clients,
@@ -14,7 +17,12 @@ import {
   CLIENT_STATUS,
   type ClientStatus,
 } from "@/db/client-schema";
+import { audits } from "@/db/app.schema";
+import { contracts } from "@/db/contract-schema";
+import { reportSchedules } from "@/db/schedule-schema";
+import { siteConnections } from "@/db/connection-schema";
 import { withAudit, type AuditContext } from "@/db/audit";
+import { withTransaction } from "@/lib/db/transaction";
 import { AppError } from "@/server/lib/errors";
 import { nanoid } from "nanoid";
 import { isEnumValue } from "@/lib/type-guards";
@@ -260,6 +268,14 @@ export const ClientService = {
    * Soft delete client with audit logging.
    * This is the preferred delete method - marks client as deleted without
    * removing data, allowing for recovery.
+   *
+   * Cascades soft delete to related entities:
+   * - audits: Archives audits associated with this client
+   * - contracts: Soft deletes contracts for this client
+   * - schedules: Disables schedules for this client
+   * - siteConnections: Soft deletes site connections for this client
+   *
+   * All operations run in a single transaction for consistency.
    */
   async softDelete(id: string, auditContext: AuditContext): Promise<void> {
     const audit = withAudit<ClientSelect>("client", auditContext);
@@ -277,20 +293,64 @@ export const ClientService = {
 
     const now = new Date();
 
-    const [updated] = await db
-      .update(clients)
-      .set({
-        isDeleted: true,
-        deletedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(clients.id, id))
-      .returning();
+    // Execute all soft delete operations in a single transaction
+    const updated = await withTransaction(async (tx) => {
+      // 1. Soft delete the client
+      const [updatedClient] = await tx
+        .update(clients)
+        .set({
+          isDeleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(clients.id, id))
+        .returning();
 
-    // Log the soft deletion
+      // 2. Cascade to audits - archive them
+      await tx
+        .update(audits)
+        .set({
+          isArchived: true,
+          archivedAt: now,
+        })
+        .where(and(eq(audits.clientId, id), eq(audits.isArchived, false)));
+
+      // 3. Cascade to contracts - soft delete
+      // Note: contracts table uses isArchived pattern
+      await tx
+        .update(contracts)
+        .set({
+          status: "cancelled",
+          updatedAt: now,
+        })
+        .where(and(eq(contracts.clientId, id), isNotNull(contracts.clientId)));
+
+      // 4. Cascade to report schedules - disable them
+      await tx
+        .update(reportSchedules)
+        .set({
+          enabled: false,
+          updatedAt: now,
+        })
+        .where(and(eq(reportSchedules.clientId, id), eq(reportSchedules.enabled, true)));
+
+      // 5. Cascade to site connections - mark as disconnected
+      await tx
+        .update(siteConnections)
+        .set({
+          status: "disconnected",
+          updatedAt: now,
+        })
+        .where(eq(siteConnections.clientId, id));
+
+      return updatedClient;
+    });
+
+    // Log the soft deletion with cascade info
     await audit.logUpdate(id, client, updated, {
       operation: "soft_delete",
       reason: "user_requested",
+      cascadedTo: ["audits", "contracts", "reportSchedules", "siteConnections"],
     });
 
     // CRITICAL: Invalidate all authorization caches for this client.
