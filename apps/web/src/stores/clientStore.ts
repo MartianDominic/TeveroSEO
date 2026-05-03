@@ -14,30 +14,32 @@
  * - validateActiveClient(): Server-side existence check
  * - handleClientDeleted(): Handle deletion events
  *
- * TODO [HIGH-42]: Migrate to TanStack Query for server state
- * This store currently manages server state which should use React Query for:
- * - Automatic caching and background refetching
- * - Stale-while-revalidate patterns
- * - Request deduplication
- * - Built-in loading/error states
+ * Phase 68-04: State Management Migration (HIGH-STATE-01, HIGH-STATE-02)
  *
- * Migration path:
- * 1. Create useClients query hook for fetching client list
- * 2. Keep activeClientId in persisted Zustand store (this is UI state)
- * 3. Derive activeClient from query data + activeClientId
- * 4. Replace fetchClients calls with query hook
- * 5. Simplify this store to only manage activeClientId
+ * TanStack Query migration is now available via:
+ * - useClients(): Fetch client list with 5-min staleTime
+ * - useActiveClient(): Derive active client from store + query
+ * - useSetActiveClient(): Switch client with cache invalidation
  *
- * Note: The persist middleware for activeClientId is valid UI state
- * and should remain in Zustand even after migration.
+ * This store retains:
+ * - activeClientId: UI state, persisted to cookies
+ * - fetchClients/etc: Legacy methods for gradual migration
  *
- * See: https://tanstack.com/query/latest
+ * New code should prefer the hooks in @/hooks/use-clients.ts.
+ * Legacy methods remain for backwards compatibility.
+ *
+ * Multi-tab sync via BroadcastChannel:
+ * - Client switches sync across tabs
+ * - Logout in one tab logs out all tabs
+ *
+ * See: @/hooks/use-clients.ts, @/lib/state/broadcast-sync.ts
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Client } from "@tevero/types";
 import { ACTIVE_CLIENT_COOKIE, cookieStorage } from "@/lib/cookies";
 import { abortManager } from "@/lib/client-context/abort-manager";
+import { broadcastSync } from "@/lib/state/broadcast-sync";
 
 // FIX-17 HIGH-UJ-12: Stale time for client data (5 minutes)
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -260,3 +262,73 @@ export const useClientStore = create<ClientStore>()(
     }
   )
 );
+
+// ============================================================================
+// BroadcastChannel Subscription for Multi-Tab Sync
+// ============================================================================
+
+/**
+ * Phase 68-04: Subscribe to cross-tab state changes.
+ *
+ * This runs once when the module loads (client-side only).
+ * Handles:
+ * - CLIENT_CHANGED: Sync active client across tabs
+ * - LOGOUT: Clear state and redirect to sign-out
+ */
+if (typeof window !== "undefined") {
+  // Initialize broadcast channel
+  broadcastSync.init();
+
+  // Subscribe to cross-tab messages
+  broadcastSync.subscribe("clientStore", (message) => {
+    const store = useClientStore.getState();
+
+    switch (message.type) {
+      case "CLIENT_CHANGED": {
+        // Another tab changed the active client - sync it here
+        const { clients } = store;
+        const activeClient = clients.find((c) => c.id === message.clientId) ?? null;
+
+        if (activeClient) {
+          // Use setState directly to avoid circular broadcast
+          useClientStore.setState({
+            activeClientId: message.clientId,
+            activeClient,
+            lastValidatedAt: Date.now(),
+          });
+        } else {
+          // Client not in local list - may need to refetch
+          useClientStore.setState({
+            activeClientId: message.clientId,
+            activeClient: null,
+            isStale: true,
+          });
+        }
+        break;
+      }
+
+      case "LOGOUT": {
+        // Another tab logged out - clear state and redirect
+        useClientStore.setState({
+          activeClientId: null,
+          activeClient: null,
+          clients: [],
+          lastFetchedAt: null,
+          isStale: false,
+        });
+
+        // Redirect to sign-out page
+        window.location.href = "/sign-out";
+        break;
+      }
+
+      case "CACHE_INVALIDATE": {
+        // Mark clients as stale if the 'clients' key is in the invalidation list
+        if (message.keys.includes("clients")) {
+          useClientStore.setState({ isStale: true });
+        }
+        break;
+      }
+    }
+  });
+}
