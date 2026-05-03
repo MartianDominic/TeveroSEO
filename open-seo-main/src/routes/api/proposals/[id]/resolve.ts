@@ -31,7 +31,7 @@ const ResolveRequestSchema = z.object({
   customValues: z.record(z.string(), z.string()).optional(),
 });
 
-export const Route = createFileRoute("/api/proposals/[id]/resolve")({
+export const Route = createFileRoute("/api/proposals/id/resolve")({
   server: {
     handlers: {
       /**

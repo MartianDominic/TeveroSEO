@@ -1,0 +1,908 @@
+# TeveroSEO Comprehensive Code Review v4
+**Date**: 2026-05-03
+**Methodology**: 20 Opus Subagent Parallel Review
+**Scope**: Full Platform Analysis
+
+## Executive Summary
+*To be populated after all reviews complete*
+
+---
+
+## Platform Architecture Reference
+
+| Component | Stack | Database | Port |
+|-----------|-------|----------|------|
+| apps/web | Next.js 15, shadcn/ui | - | 3000 |
+| open-seo-main | TanStack Start, Drizzle, BullMQ | open_seo | 3001 |
+| AI-Writer | FastAPI, React | alwrity | 8000 |
+
+**Shared Infrastructure**: PostgreSQL, Redis, Clerk Auth, nginx proxy
+
+---
+
+## Review Domains
+
+| # | Agent | Domain | Status |
+|---|-------|--------|--------|
+| 1 | Auth Flow | Clerk integration, session management | Pending |
+| 2 | Client Context | client_id propagation, workspace switching | Pending |
+| 3 | API Contract | REST/RPC contracts between services | Pending |
+| 4 | Queue/Jobs | BullMQ + APScheduler job flows | Pending |
+| 5 | Schema Consistency | Drizzle + SQLAlchemy schemas | Pending |
+| 6 | Data Integrity | Foreign keys, constraints, orphans | Pending |
+| 7 | Query Performance | N+1, indexes, slow queries | Pending |
+| 8 | Migration Safety | Migration scripts, compatibility | Pending |
+| 9 | Next.js Patterns | App Router, RSC, server actions | Pending |
+| 10 | React Components | Component quality, patterns | Pending |
+| 11 | State Management | Client/server state sync | Pending |
+| 12 | User Journey | Navigation, flows, accessibility | Pending |
+| 13 | FastAPI Logic | AI-Writer endpoint correctness | Pending |
+| 14 | TanStack Start | open-seo-main server functions | Pending |
+| 15 | Background Jobs | Job processing logic | Pending |
+| 16 | SEO Checks | Tier 1-4 check implementation | Pending |
+| 17 | Security | OWASP Top 10, injection, XSS | Pending |
+| 18 | Error Handling | Boundaries, recovery, logging | Pending |
+| 19 | Configuration | Env vars, secrets, consistency | Pending |
+| 20 | Edge Cases | Boundaries, null handling, timeouts | Pending |
+
+---
+
+## Severity Legend
+
+| Level | Criteria |
+|-------|----------|
+| CRITICAL | Security vulnerabilities, data loss, system crashes |
+| HIGH | Broken functionality, user-facing bugs, data corruption |
+| MEDIUM | Performance issues, code quality, maintainability |
+| LOW | Style, minor improvements, best practices |
+
+---
+
+# FINDINGS
+
+## 1. Authentication Flow Review
+*Agent: Auth Flow Specialist*
+
+<!-- AUTH_FLOW_START -->
+*Pending review...*
+<!-- AUTH_FLOW_END -->
+
+---
+
+## 2. Client Context Review
+*Agent: Client Context Specialist*
+
+<!-- CLIENT_CONTEXT_START -->
+*Pending review...*
+<!-- CLIENT_CONTEXT_END -->
+
+---
+
+## 3. API Contract Review
+*Agent: API Contract Specialist*
+
+<!-- API_CONTRACT_START -->
+*Pending review...*
+<!-- API_CONTRACT_END -->
+
+---
+
+## 4. Queue/Jobs Review
+*Agent: Queue Jobs Specialist*
+
+<!-- QUEUE_JOBS_START -->
+
+### Executive Summary
+
+The TeveroSEO platform implements a sophisticated dual-queue architecture: BullMQ for open-seo-main (TypeScript/Node.js) and APScheduler for AI-Writer (Python/FastAPI). The implementation is **production-ready** with strong reliability patterns including dead-letter queues, graceful shutdown, circuit breakers, and idempotency protection. A few medium-severity opportunities for improvement were identified.
+
+**Reviewed Files**: 25+ queue/worker implementations across both services
+
+---
+
+### CRITICAL Issues: 0
+
+No critical issues found. The queue infrastructure has been hardened with proper retry strategies, DLQ handling, and data persistence.
+
+---
+
+### HIGH Severity Issues: 0
+
+No high-severity issues found. Previous issues (JOB-HIGH-01 through JOB-HIGH-05) appear to have been addressed in recent commits.
+
+---
+
+### MEDIUM Severity Issues: 4
+
+#### MED-QUEUE-01: Inconsistent DLQ Usage Pattern
+**Location**: Multiple workers use different DLQ patterns
+**Files**:
+- `/open-seo-main/src/server/workers/schedule-worker.ts` (lines 87-103) - Uses same queue with `dlq:` prefix
+- `/open-seo-main/src/server/workers/ranking-worker.ts` (lines 84-98) - Uses centralized DLQ via `getDLQQueue()`
+- `/open-seo-main/src/server/workers/analytics-worker.ts` (lines 177-203) - Uses same queue with `dlq:` prefix
+
+**Issue**: Two different DLQ patterns exist:
+1. Same-queue DLQ with `dlq:` job name prefix (schedule-worker, analytics-worker)
+2. Centralized DLQ queue via `getDLQQueue()` (ranking-worker, token-refresh-worker, maintenance-worker)
+
+**Impact**: Inconsistent monitoring, harder to track all failed jobs centrally, potential for different retention policies.
+
+**Recommendation**: Standardize on centralized DLQ (`getDLQQueue()`) for all workers. The centralized DLQ provides:
+- Single monitoring point
+- Consistent retention (7 days / 10k jobs)
+- Dedicated DLQ worker with alerting
+- External webhook/Sentry integration
+
+---
+
+#### MED-QUEUE-02: AI-Writer Background Jobs In-Memory Risk
+**Location**: `/AI-Writer/backend/services/background_jobs.py`
+**Lines**: 116-119
+
+```python
+# NOTE: In-memory storage is INTENTIONAL for these job types:
+# - bing_comprehensive_insights: Regenerated on-demand, cached results survive
+# - bing_data_collection: Scheduled externally, data persisted to DB
+# - analytics_refresh: Ephemeral refresh operation, results cached in Redis
+```
+
+**Issue**: While documented as intentional, the in-memory job storage means active jobs will be lost on process restart. The `PersistentJobStorage` Redis backing exists but `persist=True` (default) only stores job metadata, not execution state.
+
+**Impact**: If AI-Writer process restarts during a long-running `bing_comprehensive_insights` job, the job will be silently lost.
+
+**Recommendation**: 
+1. Add job recovery logic in `_recover_persistent_jobs()` to also mark orphaned RUNNING jobs as stalled
+2. Consider using APScheduler's SQLAlchemy or Redis job store for critical jobs instead of custom implementation
+
+---
+
+#### MED-QUEUE-03: Missing Job Progress Updates in Some Workers
+**Location**: Multiple workers
+**Files**:
+- `/open-seo-main/src/server/workers/schedule-worker.ts` - No progress tracking
+- `/open-seo-main/src/server/workers/ranking-worker.ts` - No progress tracking  
+- `/open-seo-main/src/server/workers/maintenance-worker.ts` - No progress tracking
+
+**Issue**: Unlike `audit-processor.ts` (which properly uses `job.updateProgress()`), several workers don't report progress. For long-running jobs, this makes it impossible to determine if a job is stuck or progressing.
+
+**Impact**: Operators cannot distinguish between stuck and working jobs without checking logs.
+
+**Recommendation**: Add `job.updateProgress()` calls at key milestones in processors, similar to `audit-processor.ts` lines 97-107.
+
+---
+
+#### MED-QUEUE-04: APScheduler Job Timeout Not Enforced at Execution Level
+**Location**: `/AI-Writer/backend/services/scheduler/core/scheduler.py`
+**Lines**: 130-131
+
+```python
+# MED-SCHED-02 FIX: Job execution timeout configuration
+DEFAULT_JOB_TIMEOUT_SECONDS = int(os.getenv("SCHEDULER_JOB_TIMEOUT_SECONDS", "1800"))
+```
+
+**Issue**: While `DEFAULT_JOB_TIMEOUT_SECONDS` is defined (30 minutes), it's only used for async job timeout in `_run_async_in_thread()` (line 509-543 in background_jobs.py). The APScheduler itself doesn't enforce job timeouts - it relies on `misfire_grace_time` which only handles missed jobs, not stuck jobs.
+
+**Impact**: A stuck APScheduler job can run indefinitely until the next stall detection cycle (60 seconds).
+
+**Recommendation**: Wrap task execution in `execute_task_async()` with an `asyncio.wait_for()` timeout using `DEFAULT_JOB_TIMEOUT_SECONDS`.
+
+---
+
+### LOW Severity Issues: 3
+
+#### LOW-QUEUE-01: Inconsistent Queue Name Prefixes
+**Location**: Various queue definitions
+**Files**:
+- `audit-queue` (hyphenated)
+- `dead-letter-queue` (hyphenated)
+- `webhook-delivery` (hyphenated)
+- `voice-analysis` (hyphenated)
+
+**Issue**: While consistent in using hyphens, some queues use descriptive suffixes (`-queue`, `-delivery`) while others don't. Not a functional issue.
+
+**Recommendation**: Minor - consider standardizing naming pattern like `{domain}-jobs` or just `{domain}`.
+
+---
+
+#### LOW-QUEUE-02: DLQ Cleanup Scheduler Uses setTimeout Instead of BullMQ
+**Location**: `/open-seo-main/src/server/queues/dlq.ts`
+**Lines**: 189-216
+
+```typescript
+// Schedule first cleanup to run at next 3 AM UTC
+setTimeout(() => {
+  cleanupDLQ()...
+  cleanupIntervalId = setInterval(() => {
+    cleanupDLQ()...
+  }, CLEANUP_INTERVAL_MS);
+}, initialDelay);
+```
+
+**Issue**: Uses native `setTimeout`/`setInterval` instead of BullMQ's repeatable jobs pattern used elsewhere. This means cleanup won't survive process restart until next 3 AM.
+
+**Recommendation**: Consider using BullMQ repeatable job pattern for consistency, though current approach is functional.
+
+---
+
+#### LOW-QUEUE-03: Missing Worker Concurrency Documentation
+**Location**: `/open-seo-main/src/server/lib/redis.ts`
+**Lines**: 419-470
+
+**Issue**: `WORKER_CONCURRENCY_LIMITS` is well-defined with comments, but the rationale for specific values (why audit=5, report=3, etc.) isn't documented.
+
+**Recommendation**: Add brief comments explaining concurrency choices (e.g., "audit: 5 - limited by Lighthouse memory usage").
+
+---
+
+### Positive Findings (Well-Implemented Patterns)
+
+1. **Centralized Redis Connection Pooling** (`/open-seo-main/src/server/lib/redis.ts`)
+   - `getSharedBullMQConnection()` prevents connection leaks
+   - Circuit breaker pattern for Redis failures
+   - Service-specific DB isolation (DB 0 vs DB 1)
+
+2. **Standardized Retry Configuration** (`/open-seo-main/src/server/lib/queue-utils.ts`)
+   - Exponential backoff with jitter (`calculateBackoffWithJitter()`)
+   - Consistent `getStandardJobOptions()` helper
+   - Backpressure protection via `addJobWithBackpressure()`
+
+3. **Heartbeat Mechanism** (`/open-seo-main/src/server/lib/queue-utils.ts`, lines 605-712)
+   - `createJobHeartbeat()` for long-running jobs
+   - `withHeartbeat()` wrapper for automatic heartbeat
+
+4. **Graceful Shutdown** (All workers)
+   - Consistent 15-25 second shutdown timeouts
+   - Force close fallback after timeout
+   - Worker cleanup on stop
+
+5. **Cross-Service Idempotency** (`/AI-Writer/backend/config/redis_config.py`, `/open-seo-main/src/server/lib/redis.ts`)
+   - Shared `tevero:idempotency:` key prefix
+   - Both services can check for duplicate operations
+
+6. **Job Validation** (`/open-seo-main/src/server/lib/queue-utils.ts`)
+   - SSRF prevention via `safeUrlSchema`
+   - `validateJobData()` with Zod schemas
+
+7. **APScheduler Persistence** (`/AI-Writer/backend/services/scheduler/core/scheduler.py`)
+   - Redis job store in production
+   - SQLAlchemy job store in development
+   - Job restoration on startup
+
+8. **Thread-Safe Background Jobs** (`/AI-Writer/backend/services/background_jobs.py`)
+   - Double-checked locking for singleton
+   - Lock-protected shared state
+   - Stalled job detection
+   - Bounded memory growth (`_max_jobs_in_memory = 10000`)
+
+---
+
+### Architecture Summary
+
+```
+open-seo-main (BullMQ)
++-- auditQueue (5 concurrent, 120s lock)
++-- failedAuditsQueue (DLQ for audits)
++-- dead-letter-queue (centralized DLQ)
++-- rankingQueue (1 concurrent, 300s lock)
++-- analyticsQueue (5 concurrent, 120s lock)
++-- scheduleQueue (1 concurrent, 60s lock)
++-- webhookQueue (5 concurrent, 60s lock, longer backoff)
++-- voiceAnalysisQueue (3 concurrent, 600s lock)
++-- tokenRefreshQueue (1 concurrent, 60s lock)
++-- maintenanceQueue (1 concurrent, 120s lock)
++-- ... (12+ more queues)
+
+AI-Writer (APScheduler + BackgroundJobService)
++-- AsyncIOScheduler (Redis/SQLAlchemy job store)
+    +-- check_due_tasks (15min interval)
+    +-- leadership_monitor (15s interval)
+    +-- persona_jobs (one-time)
+    +-- oauth_monitoring (recurring)
+    +-- website_analysis (recurring)
+    +-- platform_insights (recurring)
++-- BackgroundJobService (thread-pool)
+    +-- bing_comprehensive_insights
+    +-- bing_data_collection
+    +-- analytics_refresh
+```
+
+---
+
+### Recommendations Summary
+
+| Priority | Action | Effort |
+|----------|--------|--------|
+| Medium | Standardize DLQ pattern to centralized queue | 2-3 hours |
+| Medium | Add timeout wrapper in APScheduler task execution | 1 hour |
+| Low | Add job progress tracking to remaining workers | 2 hours |
+| Low | Document concurrency limit rationale | 30 min |
+
+**Total Technical Debt Estimate**: 6 hours
+
+<!-- QUEUE_JOBS_END -->
+
+---
+
+## 5. Schema Consistency Review
+*Agent: Schema Consistency Specialist*
+
+<!-- SCHEMA_CONSISTENCY_START -->
+*Pending review...*
+<!-- SCHEMA_CONSISTENCY_END -->
+
+---
+
+## 6. Data Integrity Review
+*Agent: Data Integrity Specialist*
+
+<!-- DATA_INTEGRITY_START -->
+*Pending review...*
+<!-- DATA_INTEGRITY_END -->
+
+---
+
+## 7. Query Performance Review
+*Agent: Query Performance Specialist*
+
+<!-- QUERY_PERFORMANCE_START -->
+*Pending review...*
+<!-- QUERY_PERFORMANCE_END -->
+
+---
+
+## 8. Migration Safety Review
+*Agent: Migration Safety Specialist*
+
+<!-- MIGRATION_SAFETY_START -->
+*Pending review...*
+<!-- MIGRATION_SAFETY_END -->
+
+---
+
+## 9. Next.js Patterns Review
+*Agent: Next.js Patterns Specialist*
+
+<!-- NEXTJS_PATTERNS_START -->
+*Pending review...*
+<!-- NEXTJS_PATTERNS_END -->
+
+---
+
+## 10. React Components Review
+*Agent: React Components Specialist*
+
+<!-- REACT_COMPONENTS_START -->
+*Pending review...*
+<!-- REACT_COMPONENTS_END -->
+
+---
+
+## 11. State Management Review
+*Agent: State Management Specialist*
+
+<!-- STATE_MANAGEMENT_START -->
+*Pending review...*
+<!-- STATE_MANAGEMENT_END -->
+
+---
+
+## 12. User Journey Review
+*Agent: User Journey Specialist*
+
+<!-- USER_JOURNEY_START -->
+*Pending review...*
+<!-- USER_JOURNEY_END -->
+
+---
+
+## 13. FastAPI Logic Review
+*Agent: FastAPI Logic Specialist*
+
+<!-- FASTAPI_LOGIC_START -->
+
+### Summary
+Reviewed 40+ API route files, middleware, and dependency patterns in AI-Writer FastAPI backend. The codebase demonstrates mature security practices with proper authentication, authorization, and input validation. However, several issues were identified ranging from background task error handling to potential resource leaks.
+
+### Findings
+
+#### CRITICAL Issues (0 found)
+No critical security vulnerabilities identified. The codebase shows evidence of prior security hardening:
+- SQL injection prevented via SQLAlchemy ORM (no raw SQL detected in API layer)
+- Authentication bypass flags removed (DISABLE_AUTH commented as always False)
+- JWT verification uses cryptographic signature validation with JWKS
+
+---
+
+#### HIGH Issues
+
+##### HIGH-FASTAPI-01: Untracked Background Tasks in Article Generation
+**File**: `/AI-Writer/backend/api/articles.py:755`
+**Pattern**: Fire-and-forget `asyncio.create_task()` without tracking
+```python
+asyncio.create_task(_run_generation_with_timeout())
+```
+**Risk**: Background tasks may be orphaned during server shutdown, leading to incomplete article generation and inconsistent database state.
+**Recommendation**: Use the `track_background_task()` utility from `app.py` that was added for QUEUE-M04 fix:
+```python
+from app import track_background_task
+track_background_task(_run_generation_with_timeout())
+```
+
+##### HIGH-FASTAPI-02: Missing Transaction Rollback in Article Generation
+**File**: `/AI-Writer/backend/api/articles.py:713-752`
+**Pattern**: Background task uses separate database session without proper transaction handling
+```python
+async def _run_generation_with_timeout():
+    bg_db = SessionLocal()
+    try:
+        await asyncio.wait_for(...)
+    except Exception:
+        # Status update uses same session that may be in failed state
+```
+**Risk**: If generation fails mid-transaction, the database session may be corrupted, causing subsequent status updates to fail silently.
+**Recommendation**: Add explicit rollback before status updates in error handlers.
+
+##### HIGH-FASTAPI-03: Race Condition in OAuth Token Update
+**File**: `/AI-Writer/backend/api/internal.py:145-202`
+**Pattern**: Token update without pessimistic locking
+```python
+token = db.query(ClientOAuthToken).filter(...).first()
+# Gap here where another process could update
+token.access_token = encrypt_value(payload.access_token)
+```
+**Risk**: Concurrent token refreshes from multiple workers could cause lost updates.
+**Recommendation**: Add `with_for_update()` to the query or use optimistic locking with version column.
+
+---
+
+#### MEDIUM Issues
+
+##### MED-FASTAPI-01: Missing Request Validation on Internal API
+**File**: `/AI-Writer/backend/api/internal.py:70-134`
+**Pattern**: client_id and provider path parameters not validated for format
+```python
+@router.get("/tokens/{client_id}/{provider}", ...)
+def get_decrypted_token(client_id: str, provider: str, ...):
+```
+**Risk**: Invalid UUIDs or malformed provider strings could cause database errors instead of 400 responses.
+**Recommendation**: Add Pydantic path parameter validation or explicit UUID parsing.
+
+##### MED-FASTAPI-02: Inconsistent Error Response Format
+**File**: Multiple API files
+**Pattern**: Mix of `HTTPException` with string detail and structured responses
+```python
+# Some endpoints use:
+raise HTTPException(status_code=500, detail="Internal server error")
+# Others use:
+raise StandardHTTPException(code=ErrorCode.INTERNAL_ERROR, ...)
+```
+**Recommendation**: Migrate all endpoints to use `StandardHTTPException` from `utils/standard_error.py` for consistent error format.
+
+##### MED-FASTAPI-03: Query Parameter Limit Not Enforced
+**File**: `/AI-Writer/backend/api/analytics.py:169-183`
+**Pattern**: Limit parameter has implicit cap but no validation message
+```python
+.limit(min(limit, 100))  # cap at 100 regardless of param
+```
+**Risk**: Client may expect 500 results but only receive 100 without warning.
+**Recommendation**: Return 400 if limit exceeds 100, or include actual limit in response metadata.
+
+##### MED-FASTAPI-04: Missing Rate Limit on Expensive Operations
+**File**: `/AI-Writer/backend/api/articles.py:630-757`
+**Pattern**: Article generation endpoint lacks explicit rate limit
+**Impact**: The `/api/articles/{article_id}/generate` endpoint is expensive (AI generation) but only has generic `/api/` rate limit (100 req/60s).
+**Recommendation**: Add to `RATE_LIMITS` in `middleware/rate_limit.py`:
+```python
+"/api/articles/": RateLimitConfig(requests=10, window_seconds=60),
+```
+
+##### MED-FASTAPI-05: Background Task Exception Logging Could Leak Secrets
+**File**: `/AI-Writer/backend/api/articles.py:741-751`
+**Pattern**: Exception string truncated but may still contain sensitive data
+```python
+failed_article.error_detail = str(e)[:500]  # Truncate long errors
+```
+**Risk**: Error messages from API calls may contain tokens or credentials in URLs.
+**Recommendation**: Use error message sanitization before storing in database.
+
+---
+
+#### LOW Issues
+
+##### LOW-FASTAPI-01: Duplicate Import in Articles Router
+**File**: `/AI-Writer/backend/api/articles.py:219-229`
+**Pattern**: `uuid` module imported twice with different names
+```python
+import uuid
+# Later:
+import uuid as uuid_module
+```
+**Recommendation**: Consolidate to single import.
+
+##### LOW-FASTAPI-02: Unused BackgroundTasks Import
+**File**: `/AI-Writer/backend/api/onboarding_utils/step4_persona_routes.py:16`
+**Pattern**: BackgroundTasks imported but instantiated locally instead of injected
+```python
+from fastapi import ... BackgroundTasks
+background_tasks: BackgroundTasks = BackgroundTasks()  # Should be dependency
+```
+**Recommendation**: Use FastAPI dependency injection: `background_tasks: BackgroundTasks` as parameter.
+
+##### LOW-FASTAPI-03: Magic Number for Generation Timeout
+**File**: `/AI-Writer/backend/api/articles.py:709`
+**Pattern**: Hardcoded timeout value
+```python
+GENERATION_TIMEOUT_SECONDS = 300
+```
+**Recommendation**: Move to configuration or environment variable.
+
+##### LOW-FASTAPI-04: Deprecated datetime.utcnow() Usage
+**File**: `/AI-Writer/backend/middleware/authorization.py:77`
+**Pattern**: Using deprecated datetime method
+```python
+def _utcnow():
+    return datetime.utcnow()  # Deprecated in Python 3.12
+```
+**Recommendation**: Use `datetime.now(timezone.utc)` instead.
+
+---
+
+### Positive Patterns Observed
+
+1. **Robust Authentication**: `get_current_user` dependency properly enforces JWT validation with signature verification on all protected routes.
+
+2. **Authorization Layer**: `require_client_access` dependency implements proper IDOR prevention with explicit access checks via `ClientUserAccess` table.
+
+3. **Role-Based Access Control**: `require_role()` factory function enables fine-grained permissions for destructive operations (archive, delete, credential updates).
+
+4. **Database Session Management**: `get_shared_db()` dependency uses proper try/finally pattern ensuring session cleanup.
+
+5. **Rate Limiting**: Multi-tier rate limiting with Redis backend for production, in-memory fallback for development, and fail-closed for expensive API operations.
+
+6. **SSRF Protection**: CMS connection test endpoints validate URLs against private IP ranges before making outbound requests.
+
+7. **Encryption at Rest**: Sensitive fields (CMS credentials, OAuth tokens) encrypted before storage, never returned in API responses.
+
+8. **Idempotency Support**: Article creation uses idempotency keys to prevent duplicate submissions.
+
+9. **Timing-Safe Comparisons**: Internal API key verification uses `hmac.compare_digest()` to prevent timing attacks.
+
+10. **Standard Error Format**: Centralized error response utilities with request ID correlation for debugging.
+
+---
+
+### Files Reviewed
+- `/AI-Writer/backend/main.py` - Main application entry
+- `/AI-Writer/backend/app.py` - Alternative entry with graceful shutdown
+- `/AI-Writer/backend/middleware/auth_middleware.py` - Clerk JWT authentication
+- `/AI-Writer/backend/middleware/authorization.py` - RBAC implementation
+- `/AI-Writer/backend/middleware/rate_limit.py` - Rate limiting
+- `/AI-Writer/backend/api/clients.py` - Client CRUD
+- `/AI-Writer/backend/api/articles.py` - Article management
+- `/AI-Writer/backend/api/internal.py` - Service-to-service API
+- `/AI-Writer/backend/api/analytics.py` - Publishing analytics
+- `/AI-Writer/backend/api/brainstorm.py` - AI brainstorming
+- `/AI-Writer/backend/api/client_oauth.py` - OAuth management
+- `/AI-Writer/backend/services/shared_db.py` - Database session
+- `/AI-Writer/backend/utils/standard_error.py` - Error handling
+
+<!-- FASTAPI_LOGIC_END -->
+
+---
+
+## 14. TanStack Start Review
+*Agent: TanStack Start Specialist*
+
+<!-- TANSTACK_START_START -->
+
+### Summary
+Reviewed 18 server function files, 35+ API route handlers, middleware patterns, and Drizzle query implementations in open-seo-main TanStack Start backend. The codebase demonstrates strong security practices with consistent authentication enforcement, proper input validation via Zod schemas, and well-structured error handling. Transaction support is properly implemented with rollback utilities. However, several issues were identified ranging from inconsistent error handling in some server functions to potential N+1 query patterns.
+
+### Findings
+
+#### CRITICAL Issues (0 found)
+No critical security vulnerabilities identified. The codebase shows evidence of comprehensive security hardening:
+- All server functions use middleware authentication (either `requireAuthenticatedContext` or `requireProjectContext`)
+- SQL injection prevented via Drizzle ORM with parameterized queries
+- Client ownership verification implemented via `verifyClientAccess()` helper
+- Timing-safe comparison for internal service tokens using `crypto.timingSafeEqual()`
+- Fail-closed authorization pattern in `resolveClientId()` (CRIT-05 FIX documented)
+
+---
+
+#### HIGH Issues
+
+##### HIGH-TSS-01: Inconsistent AppError Usage in prospects.ts
+**File**: `/open-seo-main/src/serverFunctions/prospects.ts:97-106, 138-140, 159-160`
+**Pattern**: Server functions throw generic `Error` instead of `AppError`
+```typescript
+// Current pattern:
+if (!prospect) {
+  throw new Error("Prospect not found");
+}
+// Should use:
+throw new AppError("NOT_FOUND", "Prospect not found");
+```
+**Risk**: Generic errors bypass the error handling middleware's sanitization and may leak stack traces or internal details to clients. Additionally, error codes are not properly propagated for client-side handling.
+**Files affected**: `getProspect`, `updateProspect`, `deleteProspect` handlers
+**Recommendation**: Replace all `throw new Error()` with `throw new AppError("NOT_FOUND", ...)` for consistency with other server functions like `proposals.ts`.
+
+##### HIGH-TSS-02: Missing Ownership Verification in View Tracking
+**File**: `/open-seo-main/src/serverFunctions/proposals.ts:463-478, 485-498, 504-515`
+**Pattern**: `trackProposalDuration`, `trackProposalSections`, and `trackRoiCalculatorUsage` accept `viewId` without verifying ownership
+```typescript
+export const trackProposalDuration = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => z.object({
+    viewId: z.string().min(1),
+    durationSeconds: z.number().int().positive(),
+  }).parse(data))
+  .handler(async ({ data }) => {
+    // No validation that viewId belongs to a proposal the caller should access
+    await ViewTrackingService.updateViewDuration(data.viewId, data.durationSeconds);
+```
+**Risk**: Attacker could enumerate viewIds and inject false engagement data for any proposal, skewing analytics.
+**Recommendation**: Add token-based verification or limit these endpoints to authenticated calls with proposal ownership checks.
+
+---
+
+#### MEDIUM Issues
+
+##### MED-TSS-01: Potential N+1 Query Pattern in verifyProfileAccess
+**File**: `/open-seo-main/src/serverFunctions/voice.ts:136-154`
+**Pattern**: Two sequential database queries where one could suffice
+```typescript
+async function verifyProfileAccess(profileId: string, workspaceId: string): Promise<void> {
+  const profile = await db.query.voiceProfiles.findFirst({...});
+  if (!profile) throw new AppError("NOT_FOUND");
+  if (!profile.clientId) throw new AppError("NOT_FOUND");
+  await verifyClientAccess(profile.clientId, workspaceId);  // Another DB query
+}
+```
+**Impact**: Every voice profile operation makes 2 database round-trips.
+**Recommendation**: Use a single query with JOIN to verify profile and client access:
+```typescript
+const result = await db.query.voiceProfiles.findFirst({
+  where: eq(voiceProfiles.id, profileId),
+  with: { client: { columns: { workspaceId: true } } }
+});
+if (result?.client?.workspaceId !== workspaceId) throw new AppError("FORBIDDEN");
+```
+
+##### MED-TSS-02: Missing Pagination Metadata in List Responses
+**File**: `/open-seo-main/src/serverFunctions/proposals.ts:168-173`
+**Pattern**: `listProposals` returns `PaginatedProposals` but some callers may not handle it properly
+**Impact**: The API contract is clear, but no explicit total count is returned for `listProspects` in `prospects.ts` which uses different pagination shape.
+**Recommendation**: Standardize pagination response format across all list endpoints to include `{ data, total, page, pageSize, hasMore }`.
+
+##### MED-TSS-03: Hardcoded Timeout Values in briefs.ts
+**File**: `/open-seo-main/src/serverFunctions/briefs.ts:27-30`
+**Pattern**: Timeout constants defined at module level without configuration override
+```typescript
+const BRIEFS_TIMEOUT = 30_000;
+const BRIEFS_ANALYZE_TIMEOUT = 60_000;
+const BRIEFS_GENERATE_TIMEOUT = 120_000;
+```
+**Impact**: Cannot adjust timeouts in production without code changes.
+**Recommendation**: Move to environment variables:
+```typescript
+const BRIEFS_TIMEOUT = Number(process.env.BRIEFS_TIMEOUT_MS) || 30_000;
+```
+
+##### MED-TSS-04: Missing Idempotency on Proposal Creation
+**File**: `/open-seo-main/src/serverFunctions/proposals.ts:121-136`
+**Pattern**: `createProposal` can create duplicates if called twice with same data
+**Impact**: Network retries or double-clicks could create duplicate proposals for same prospect.
+**Recommendation**: Add idempotency key support or unique constraint on (prospectId, status="draft") to prevent duplicates.
+
+##### MED-TSS-05: AI API Key Check Exposes Configuration State
+**File**: `/open-seo-main/src/serverFunctions/voice.ts:465-469`
+**Pattern**: Missing API key results in fallback with warning log but continues
+```typescript
+if (!apiKey) {
+  logger.warn("ANTHROPIC_API_KEY not set, using fallback samples");
+  return generateFallbackSamples(profile);
+}
+```
+**Impact**: Silently degraded functionality without user notification. Users may not realize they're getting static fallback content.
+**Recommendation**: Return a flag indicating whether AI generation was used, or throw an informative error if AI generation was explicitly requested.
+
+---
+
+#### LOW Issues
+
+##### LOW-TSS-01: Unused Import in briefs.ts
+**File**: `/open-seo-main/src/serverFunctions/briefs.ts:32-44`
+**Pattern**: Interface definitions that duplicate Zod-inferred types
+```typescript
+export interface Brief { ... }  // Could use z.infer<typeof briefSchema>
+export interface SerpAnalysisData { ... }
+```
+**Recommendation**: Consider using `z.infer<>` to derive types from schemas for single source of truth.
+
+##### LOW-TSS-02: Magic Number in CSV Import
+**File**: `/open-seo-main/src/serverFunctions/prospects.ts:261`
+**Pattern**: Batch size hardcoded without documentation
+```typescript
+const BATCH_SIZE = 500;
+```
+**Recommendation**: Add comment explaining why 500 was chosen (e.g., PostgreSQL parameter limit, memory constraints).
+
+##### LOW-TSS-03: Verbose Error Recovery Pattern
+**File**: `/open-seo-main/src/serverFunctions/voice.ts:503-509`
+**Pattern**: Catch-log-fallback without propagating AI generation failure info
+```typescript
+} catch (error) {
+  logger.error("AI sample generation failed, using fallback", error);
+  return generateFallbackSamples(profile);
+}
+```
+**Recommendation**: Return `{ samples, generatedByAI: false }` to let UI show appropriate warning.
+
+##### LOW-TSS-04: Inconsistent Method Type for Read Operations
+**File**: `/open-seo-main/src/serverFunctions/voice.ts:163, 227, 240, 254`
+**Pattern**: Some GET operations use POST method for server functions
+```typescript
+export const getVoiceProfileFn = createServerFn({ method: "GET" })  // Good
+export const getProtectionRulesFn = createServerFn({ method: "GET" })  // Good
+// But most other "get" operations use POST
+export const getProposal = createServerFn({ method: "POST" })  // Inconsistent
+```
+**Note**: TanStack Start requires POST for input validation, but pure read operations could use GET with query params for cacheability.
+
+##### LOW-TSS-05: Duplicate Logger Instantiation Pattern
+**File**: Multiple files in `/open-seo-main/src/serverFunctions/`
+**Pattern**: Each file creates its own logger instance
+```typescript
+const log = createLogger({ module: "serverFunctions/audit" });
+const log = createLogger({ module: "serverFunctions/briefs" });
+```
+**Note**: This is acceptable but could benefit from a shared logger factory with consistent module naming.
+
+---
+
+### Positive Patterns Observed
+
+1. **Robust Middleware Chain**: All server functions use `requireAuthenticatedContext` or `requireProjectContext` middleware, ensuring consistent authentication and authorization.
+
+2. **Zod Input Validation**: Every handler uses `.inputValidator()` with Zod schemas, preventing malformed input from reaching business logic.
+
+3. **Type-Safe Context**: Middleware properly narrows context types, providing `projectId`, `userId`, `organizationId`, and `clientId` with TypeScript guarantees.
+
+4. **AppError Standardization**: Most error handling uses `AppError` with standardized error codes (`NOT_FOUND`, `FORBIDDEN`, `VALIDATION_ERROR`, etc.) for consistent client-side handling.
+
+5. **Client-ID Resolution**: The `resolveClientId()` utility implements a fail-closed pattern with proper IDOR prevention - unknown or invalid client IDs are rejected.
+
+6. **Transaction Support**: Critical multi-table operations use `withTransaction()` utility with automatic rollback on failure.
+
+7. **API Response Validation**: The `briefs.ts` server functions validate external API responses with Zod schemas (`BriefsListResponseSchema`, etc.), catching contract violations early.
+
+8. **Atomic State Transitions**: `ProposalService` uses atomic UPDATE with WHERE clause preconditions to prevent race conditions in state machine transitions.
+
+9. **Connection Pool Management**: The `db/index.ts` exports health check and graceful shutdown functions for proper connection lifecycle management.
+
+10. **Logging Standardization**: All server functions use `createLogger()` with module context, enabling structured log correlation.
+
+11. **Rate Limit Awareness**: Expensive operations like bulk analyze are protected by quota checks (`getRemainingAnalysesToday()`).
+
+12. **SSRF Protection**: Domain detection and URL validation use blocklists for internal IP ranges before making outbound requests.
+
+---
+
+### Files Reviewed
+
+**Server Functions (18 files)**:
+- `/open-seo-main/src/serverFunctions/audit.ts` - Audit CRUD operations
+- `/open-seo-main/src/serverFunctions/briefs.ts` - Content brief management
+- `/open-seo-main/src/serverFunctions/middleware.ts` - Auth middleware definitions
+- `/open-seo-main/src/serverFunctions/connections.ts` - Site connection management
+- `/open-seo-main/src/serverFunctions/proposals.ts` - Proposal CRUD + tracking
+- `/open-seo-main/src/serverFunctions/prospects.ts` - Prospect management + bulk ops
+- `/open-seo-main/src/serverFunctions/voice.ts` - Voice profile management
+- `/open-seo-main/src/serverFunctions/goals.ts` - Goal templates
+- `/open-seo-main/src/serverFunctions/keywords.ts` - Keyword research
+- `/open-seo-main/src/serverFunctions/backlinks.ts` - Backlink analysis
+- `/open-seo-main/src/serverFunctions/backlinksAccess.ts` - Access control
+- `/open-seo-main/src/serverFunctions/config.ts` - Configuration endpoints
+- `/open-seo-main/src/serverFunctions/projects.ts` - Project management
+- `/open-seo-main/src/serverFunctions/lighthouse.ts` - Lighthouse results
+
+**API Routes**:
+- `/open-seo-main/src/routes/api/seo/-middleware.ts` - REST API auth
+- `/open-seo-main/src/routes/api/webhooks.ts` - Webhook management
+- `/open-seo-main/src/routes/api/translate.ts` - Translation API
+- `/open-seo-main/src/routes/api/detect-platform.ts` - Platform detection
+- `/open-seo-main/src/routes/api/variables/` - Variable system
+- `/open-seo-main/src/routes/healthz.ts` - Health check
+
+**Core Infrastructure**:
+- `/open-seo-main/src/db/index.ts` - Drizzle connection pool
+- `/open-seo-main/src/middleware/errorHandling.ts` - Error middleware
+- `/open-seo-main/src/middleware/ensureUser.ts` - Auth middleware
+- `/open-seo-main/src/middleware/ensure-user/clerk.ts` - Clerk JWT verification
+- `/open-seo-main/src/server/lib/client-context.ts` - Client ID resolution
+- `/open-seo-main/src/server/lib/errors.ts` - AppError class
+- `/open-seo-main/src/lib/db/transaction.ts` - Transaction utilities
+
+**Service Layer**:
+- `/open-seo-main/src/server/features/audit/services/AuditService.ts`
+- `/open-seo-main/src/server/features/audit/repositories/AuditRepository.ts`
+- `/open-seo-main/src/server/features/proposals/services/ProposalService.ts`
+- `/open-seo-main/src/server/api/pipeline/status.ts`
+
+<!-- TANSTACK_START_END -->
+
+---
+
+## 15. Background Jobs Review
+*Agent: Background Jobs Specialist*
+
+<!-- BACKGROUND_JOBS_START -->
+*Pending review...*
+<!-- BACKGROUND_JOBS_END -->
+
+---
+
+## 16. SEO Checks Review
+*Agent: SEO Checks Specialist*
+
+<!-- SEO_CHECKS_START -->
+*Pending review...*
+<!-- SEO_CHECKS_END -->
+
+---
+
+## 17. Security Review
+*Agent: Security Specialist*
+
+<!-- SECURITY_START -->
+*Pending review...*
+<!-- SECURITY_END -->
+
+---
+
+## 18. Error Handling Review
+*Agent: Error Handling Specialist*
+
+<!-- ERROR_HANDLING_START -->
+*Pending review...*
+<!-- ERROR_HANDLING_END -->
+
+---
+
+## 19. Configuration Review
+*Agent: Configuration Specialist*
+
+<!-- CONFIGURATION_START -->
+*Pending review...*
+<!-- CONFIGURATION_END -->
+
+---
+
+## 20. Edge Cases Review
+*Agent: Edge Cases Specialist*
+
+<!-- EDGE_CASES_START -->
+*Pending review...*
+<!-- EDGE_CASES_END -->
+
+---
+
+# Summary Statistics
+*To be populated after all reviews complete*
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | - |
+| HIGH | - |
+| MEDIUM | - |
+| LOW | - |
+
+---
+
+# Cross-Cutting Concerns
+*Patterns identified across multiple domains*
+
+---
+
+# Recommended Priority Actions
+*Top issues requiring immediate attention*

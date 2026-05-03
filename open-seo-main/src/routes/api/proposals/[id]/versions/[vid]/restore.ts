@@ -20,7 +20,7 @@ import { AppError } from "@/server/lib/errors";
 
 const log = createLogger({ module: "api/proposals/versions/restore" });
 
-export const Route = createFileRoute("/api/proposals/[id]/versions/[vid]/restore")({
+export const Route = createFileRoute("/api/proposals/id/versions/vid/restore")({
   server: {
     handlers: {
       /**

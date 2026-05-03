@@ -56,7 +56,7 @@ function generateToken(): string {
  *   }
  * }
  */
-export const Route = createFileRoute("/api/proposals/[id]/duplicate")({
+export const Route = createFileRoute("/api/proposals/id/duplicate")({
   server: {
     handlers: {
       POST: async ({

@@ -39,7 +39,7 @@ const CreateVersionSchema = z.object({
   significantOnly: z.boolean().optional(),
 });
 
-export const Route = createFileRoute("/api/proposals/[id]/versions")({
+export const Route = createFileRoute("/api/proposals/id/versions")({
   server: {
     handlers: {
       /**

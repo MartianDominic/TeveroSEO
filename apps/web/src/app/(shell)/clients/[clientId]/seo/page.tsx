@@ -152,6 +152,8 @@ export default async function SeoLandingPage({ params }: PageProps) {
             <a
               href="/help/seo-setup"
               className="text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Read our setup guide
             </a>{" "}
@@ -159,6 +161,8 @@ export default async function SeoLandingPage({ params }: PageProps) {
             <a
               href="/support"
               className="text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               contact support
             </a>

@@ -63,7 +63,7 @@ function buildPublicUrl(token: string): string {
  *   }
  * }
  */
-export const Route = createFileRoute("/api/proposals/[id]/link")({
+export const Route = createFileRoute("/api/proposals/id/link")({
   server: {
     handlers: {
       POST: async ({

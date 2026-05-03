@@ -46,7 +46,7 @@ const updateSectionSchema = z.object({
   sectionType: z.enum(CUSTOM_SECTION_TYPES as unknown as readonly [string, ...string[]]).optional(),
 });
 
-export const Route = createFileRoute("/api/proposals/$id/sections/$sid")({
+export const Route = createFileRoute("/api/proposals/id/sections/sid")({
   server: {
     handlers: {
       /**

@@ -76,7 +76,7 @@ export function useUpdateGoal(clientId: string) {
         goalId: variables.goalId,
         updates: variables.updates,
       }),
-    ...createGoalUpdateOptimistic(queryClient, queryKey),
+    ...createGoalUpdateOptimistic(queryClient, [...queryKey]),
     onSuccess: async () => {
       // Invalidate related Redis caches
       await cacheInvalidateByTag(cacheTags.client(clientId));
@@ -98,7 +98,7 @@ export function useDeleteGoal(clientId: string) {
   return useMutation({
     mutationFn: (variables: DeleteGoalVariables) =>
       deleteGoalAction({ goalId: variables.goalId }),
-    ...createGoalDeleteOptimistic(queryClient, queryKey),
+    ...createGoalDeleteOptimistic(queryClient, [...queryKey]),
     onSuccess: async () => {
       // Invalidate related Redis caches
       await cacheInvalidateByTag(cacheTags.client(clientId));

@@ -58,10 +58,10 @@ export function ConnectionChoice({
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-[var(--text-1)] mb-1">
-                  I'll do it myself
+                  I&apos;ll do it myself
                 </h3>
                 <p className="text-[var(--text-3)] text-sm mb-3">
-                  Takes about 2 minutes. We'll guide you step by step with
+                  Takes about 2 minutes. We&apos;ll guide you step by step with
                   pictures.
                 </p>
                 <Button size="sm" aria-label="Start setup">
@@ -92,7 +92,7 @@ export function ConnectionChoice({
                   Send to my tech person
                 </h3>
                 <p className="text-[var(--text-3)] text-sm mb-3">
-                  We'll email them simple instructions. Usually done in 30
+                  We&apos;ll email them simple instructions. Usually done in 30
                   seconds.
                 </p>
                 <Button size="sm" variant="secondary" aria-label="Send instructions">
@@ -124,7 +124,7 @@ export function ConnectionChoice({
                     I have developer access (OAuth)
                   </h3>
                   <p className="text-[var(--text-3)] text-sm mb-3">
-                    Connect directly via {platformName || "your platform"}'s app
+                    Connect directly via {platformName || "your platform"}&apos;s app
                     system for extra features like publishing.
                   </p>
                   <Button size="sm" variant="secondary" aria-label="Connect with OAuth">
@@ -140,7 +140,7 @@ export function ConnectionChoice({
 
       {/* Help text */}
       <p className="text-[var(--text-4)] text-xs mt-6 text-center">
-        Not sure? Start with "I'll do it myself" - it's the easiest option.
+        Not sure? Start with &quot;I&apos;ll do it myself&quot; - it&apos;s the easiest option.
       </p>
     </div>
   );

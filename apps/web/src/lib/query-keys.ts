@@ -27,10 +27,16 @@
 // ----------------------------------------------------------------------------
 
 export interface ClientFilters {
-  status?: string;
+  status?: string | string[];
   search?: string;
   sortBy?: string;
   sortDir?: "asc" | "desc";
+  goalAttainmentMin?: number;
+  goalAttainmentMax?: number;
+  hasAlerts?: boolean;
+  alertSeverity?: string[];
+  ownerId?: string;
+  tags?: string[];
 }
 
 export interface AuditFilters {

@@ -46,7 +46,7 @@ const createSectionSchema = z.object({
   position: z.number().int().min(0).optional(),
 });
 
-export const Route = createFileRoute("/api/proposals/$id/sections")({
+export const Route = createFileRoute("/api/proposals/id/sections/")({
   server: {
     handlers: {
       /**
