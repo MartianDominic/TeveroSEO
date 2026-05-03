@@ -76,6 +76,10 @@ services:
       PERSONAL_CODE_SALT: ${PERSONAL_CODE_SALT}
       # WebSocket server port (must differ from tevero-web:3002)
       WS_PORT: "3003"
+      # Database consolidation (Phase 67-03) - Migration controls
+      TEVERO_DATABASE_URL: ${TEVERO_DATABASE_URL:-}
+      SHADOW_WRITE_ENABLED: ${SHADOW_WRITE_ENABLED:-false}
+      DB_READ_PERCENTAGE_TEVERO: ${DB_READ_PERCENTAGE_TEVERO:-0}
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +115,10 @@ services:
       PUPPETEER_WS_ENDPOINT: "ws://puppeteer-pdf:9222"
       REPORTS_DIR: "/data/reports"
       BRANDING_DIR: "/data/branding"
+      # Database consolidation (Phase 67-03) - Migration controls
+      TEVERO_DATABASE_URL: ${TEVERO_DATABASE_URL:-}
+      SHADOW_WRITE_ENABLED: ${SHADOW_WRITE_ENABLED:-false}
+      DB_READ_PERCENTAGE_TEVERO: ${DB_READ_PERCENTAGE_TEVERO:-0}
     volumes:
       - reports_data:/data/reports
       - branding_data:/data/branding
@@ -196,6 +204,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       # Encryption: Required for CMS credentials at rest
       FERNET_KEY: ${FERNET_KEY}
+      # Database consolidation (Phase 67-03) - Migration controls
+      TEVERO_DATABASE_URL: ${TEVERO_DATABASE_URL:-}
+      SHADOW_WRITE_ENABLED: ${SHADOW_WRITE_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
