@@ -1,0 +1,158 @@
+{
+  "wizard": {
+    "title": "Prijunkime jusu svetaine",
+    "urlInput": {
+      "placeholder": "https://",
+      "example": "Pavyzdys: manosvetaine.lt",
+      "continue": "Testi",
+      "checking": "Tikrinama...",
+      "reassurance": "Tai visikai saugu. Mums tik reikia patikrinti, kokia platforma naudoja jusu svetaine, kad galetume pateikti tinkamas instrukcijas."
+    },
+    "detecting": {
+      "title": "Tikrinama jusu svetaine...",
+      "found": "Rasta: {platform}",
+      "feature": "{feature} aptikta"
+    },
+    "choice": {
+      "title": "Kaip noretumete prisijungti?",
+      "notSure": "Nesate tikri? Pradekite nuo \"Padarysiu pats\" - tai paprasciausias budas.",
+      "diy": {
+        "title": "Padarysiu pats",
+        "description": "Uzims apie 2 minutes. Vesime jus zingsnis po zingsnio su paveikslais.",
+        "cta": "Pradeti nustatyma"
+      },
+      "developer": {
+        "title": "Siusti mano programuotojui",
+        "description": "Issiusime jiems paprastas instrukcijas el. pastu. Paprastai atliekama per 30 sekundziu.",
+        "cta": "Siusti instrukcijas"
+      },
+      "oauth": {
+        "title": "Turiu programuotojo prieiga (OAuth)",
+        "description": "Prisijunkite tiesiogiai per {platform} programu sistema papildomoms funkcijoms, tokioms kaip publikavimas.",
+        "cta": "Prisijungti su OAuth"
+      }
+    },
+    "guide": {
+      "title": "Pridekite TeveroSEO prie savo {platform}",
+      "step": "Zingsnis {current} is {total}",
+      "loading": "Kraunamas vadovas...",
+      "stuck": "Uzsistrigote?",
+      "watchVideo": "Ziureti video",
+      "chat": "Kalbetis su mumis",
+      "back": "Atgal",
+      "next": "Tai padariau",
+      "verify": "Patikrinti diegima",
+      "copy": "Kopijuoti",
+      "copied": "Nukopijuota!"
+    },
+    "handoff": {
+      "title": "Siusti savo techniniam darbuotojui",
+      "subtitle": "Issiusime jiems paprastas instrukcijas el. pastu. Paprastai atliekama per 30 sekundziu.",
+      "emailLabel": "Ju el. pasto adresas",
+      "emailPlaceholder": "programuotojas@imone.lt",
+      "emailInvalid": "Prasome ivesti teisinga el. pasto adresa",
+      "nameLabel": "Ju vardas",
+      "nameOptional": "(nebutina)",
+      "namePlaceholder": "Jonas",
+      "messageLabel": "Prideti zinute",
+      "messageOptional": "(nebutina)",
+      "messagePlaceholder": "Labas! Ar galite tai prideti prie musu svetaines? Turetu uztrukti 30 sekundziu. Aciu!",
+      "messageCount": "{count}/500",
+      "send": "Siusti el. laiska",
+      "sending": "Siunciama...",
+      "preview": "El. laisko perziura",
+      "previewSubject": "Tema:",
+      "magicLinkCta": "Vienu paspaudimu idiegti",
+      "success": {
+        "title": "Instrukcijos issiustos!",
+        "message": "Issiunteme el. laiska adresu {email}",
+        "details": {
+          "title": "Jie gaus:",
+          "item1": "Zingsnis po zingsnio instrukcijas",
+          "item2": "Kodo fragmenta, kuri reikia iklijuoti",
+          "item3": "Magiska nuoroda i musu vadova"
+        }
+      },
+      "back": "Grizti prie prisijungimo",
+      "status": {
+        "title": "Laukiantys persiuntejai",
+        "sent": "Issiusta",
+        "opened": "Atidaryta",
+        "completed": "Uzbaigta",
+        "expired": "Pasibaige galiojimas",
+        "remind": "Priminti",
+        "reminders": "{count} priminimu"
+      }
+    },
+    "verification": {
+      "waiting": "Laukiame, kol jusu svetaine pasisveikins...",
+      "instruction": "Kai pridejote koda, apsilankykite savo svetaineje naujame skirtuke. Mes automatiskai tai aptisime.",
+      "openSite": "Atidaryti mano svetaine naujame skirtuke",
+      "takingLong": "Uzima ilgiau nei tikejotes?",
+      "tips": {
+        "save": "Isitikinkite, kad issaugojote faila",
+        "refresh": "Pabandykite atnaujinti savo svetaine",
+        "cache": "Isvalykite narsykles podeli"
+      },
+      "troubleshoot": {
+        "title": "Greitas tikrinimo sarasas:",
+        "item1": "Kodas yra jusu svetaines <head> sekcijoje",
+        "item2": "Issaugojote pakeitimus savo temoje/sablone",
+        "item3": "Atnaujinote svetaine po issaugojimo",
+        "item4": "Isvalytas jusu narsykles podelis"
+      },
+      "checkManually": "Tikrinti ranka",
+      "needHelp": "Man reikia pagalbos"
+    },
+    "success": {
+      "title": "Jus prijungti!",
+      "detected": "Ka tik aptikome lankytoja is {location}",
+      "detectedDefault": "Ka tik aptikome jusu pirma lankytoja!",
+      "nextSteps": "Jusu pirmosios SEO izvalgyos bus paruostos per 24 valandas. Nieko daugiau nereikia daryti - eikite isgerti kavos!",
+      "enhance": "Norite daugiau funkciju?",
+      "enhanceGsc": "Prijunkite Google Search Console reitingu duomenims",
+      "connectGsc": "Prijungti Google Search Console",
+      "dashboard": "Eiti i valdymo skyde"
+    },
+    "error": {
+      "notDetected": "Hmm, dar nematome pagalbininko.",
+      "notDetectedHint": "Tai paprastai reiskia, kad reikia dar keliu minuciu.",
+      "wrongDomain": "Radome pagalbininka, bet kitoje svetaineje",
+      "wrongDomainHint": "Atrodo, kad kodas idiegtas kitame domene.",
+      "generic": "Kazkasklaida ivyko",
+      "genericHint": "Musu komanda buvo informuota. Prasome pabandyti dar karta po akimirkos.",
+      "retry": "Bandyti dar karta",
+      "sendToDev": "Siusti programuotojui",
+      "contact": "Kalbetis su mumis",
+      "addDifferent": "Prideti kaip kita svetaine"
+    }
+  },
+  "email": {
+    "subject": "Pridekite TeveroSEO prie {domain} (30 sekundziu)",
+    "greeting": "Labas,",
+    "intro": "{sender} paprase jus prideti TeveroSEO sekima prie {domain}. Stai viskas, ko jums reikia:",
+    "instruction": "Pridekite sia eilute i savo svetaines <head>:",
+    "magicLink": "Vienu paspaudimu idiegti",
+    "questions": "Turite klausimu? Atsakykite i si el. laiska.",
+    "reminder": {
+      "subject": "Priminimas: Pridekite TeveroSEO prie {domain}",
+      "intro": "Tik draugiskas priminimas - {sender} vis dar laukia, kol TeveroSEO bus pridetas prie {domain}."
+    }
+  },
+  "platforms": {
+    "wordpress_self_hosted": "WordPress",
+    "wordpress_com": "WordPress.com",
+    "shopify": "Shopify",
+    "wix": "Wix",
+    "squarespace": "Squarespace",
+    "webflow": "Webflow",
+    "weebly": "Weebly",
+    "godaddy": "GoDaddy",
+    "hubspot": "HubSpot",
+    "ghost": "Ghost",
+    "bigcommerce": "BigCommerce",
+    "woocommerce": "WooCommerce",
+    "magento": "Magento",
+    "custom_html": "Pasirinktinis HTML"
+  }
+}

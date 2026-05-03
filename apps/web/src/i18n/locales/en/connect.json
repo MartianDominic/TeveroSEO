@@ -1,0 +1,158 @@
+{
+  "wizard": {
+    "title": "Let's connect your website",
+    "urlInput": {
+      "placeholder": "https://",
+      "example": "Example: mywebsite.com",
+      "continue": "Continue",
+      "checking": "Checking...",
+      "reassurance": "This is completely safe. We just need to check what platform your website uses so we can give you the right instructions."
+    },
+    "detecting": {
+      "title": "Checking your website...",
+      "found": "Found: {platform}",
+      "feature": "{feature} detected"
+    },
+    "choice": {
+      "title": "How would you like to connect?",
+      "notSure": "Not sure? Start with \"I'll do it myself\" - it's the easiest option.",
+      "diy": {
+        "title": "I'll do it myself",
+        "description": "Takes about 2 minutes. We'll guide you step by step with pictures.",
+        "cta": "Start Setup"
+      },
+      "developer": {
+        "title": "Send to my tech person",
+        "description": "We'll email them simple instructions. Usually done in 30 seconds.",
+        "cta": "Send Instructions"
+      },
+      "oauth": {
+        "title": "I have developer access (OAuth)",
+        "description": "Connect directly via {platform}'s app system for extra features like publishing.",
+        "cta": "Connect with OAuth"
+      }
+    },
+    "guide": {
+      "title": "Add TeveroSEO to your {platform}",
+      "step": "Step {current} of {total}",
+      "loading": "Loading guide...",
+      "stuck": "Stuck?",
+      "watchVideo": "Watch Video",
+      "chat": "Chat with us",
+      "back": "Back",
+      "next": "I did this",
+      "verify": "Verify Installation",
+      "copy": "Copy",
+      "copied": "Copied!"
+    },
+    "handoff": {
+      "title": "Send to Your Tech Person",
+      "subtitle": "We will email them simple instructions. Usually done in 30 seconds.",
+      "emailLabel": "Their Email Address",
+      "emailPlaceholder": "developer@company.com",
+      "emailInvalid": "Please enter a valid email address",
+      "nameLabel": "Their Name",
+      "nameOptional": "(optional)",
+      "namePlaceholder": "John",
+      "messageLabel": "Add a Message",
+      "messageOptional": "(optional)",
+      "messagePlaceholder": "Hey! Can you add this to our site? Should take 30 seconds. Thanks!",
+      "messageCount": "{count}/500",
+      "send": "Send Email",
+      "sending": "Sending...",
+      "preview": "Email Preview",
+      "previewSubject": "Subject:",
+      "magicLinkCta": "One-Click Install",
+      "success": {
+        "title": "Instructions Sent!",
+        "message": "We sent an email to {email}",
+        "details": {
+          "title": "They will receive:",
+          "item1": "Step-by-step instructions",
+          "item2": "The code snippet to paste",
+          "item3": "A magic link to our guide"
+        }
+      },
+      "back": "Back to Connection",
+      "status": {
+        "title": "Pending Handoffs",
+        "sent": "Sent",
+        "opened": "Opened",
+        "completed": "Completed",
+        "expired": "Expired",
+        "remind": "Remind",
+        "reminders": "{count} reminders"
+      }
+    },
+    "verification": {
+      "waiting": "Waiting for your website to say hello...",
+      "instruction": "When you've added the code, visit your website in a new tab. We'll detect it automatically.",
+      "openSite": "Open my website in new tab",
+      "takingLong": "Taking longer than expected?",
+      "tips": {
+        "save": "Make sure you saved the file",
+        "refresh": "Try refreshing your website",
+        "cache": "Clear your browser cache"
+      },
+      "troubleshoot": {
+        "title": "Quick checklist:",
+        "item1": "The code is in the <head> section of your site",
+        "item2": "You saved the changes to your theme/template",
+        "item3": "You've refreshed your website after saving",
+        "item4": "Your browser cache is cleared"
+      },
+      "checkManually": "Check Manually",
+      "needHelp": "I need help"
+    },
+    "success": {
+      "title": "You're connected!",
+      "detected": "We just detected a visitor from {location}",
+      "detectedDefault": "We just detected your first visitor!",
+      "nextSteps": "Your first SEO insights will be ready in 24 hours. Nothing else to do - go grab a coffee!",
+      "enhance": "Want more features?",
+      "enhanceGsc": "Connect your Google Search Console for ranking data",
+      "connectGsc": "Connect Google Search Console",
+      "dashboard": "Go to Dashboard"
+    },
+    "error": {
+      "notDetected": "Hmm, we can't see the helper yet.",
+      "notDetectedHint": "This usually means it needs a few more minutes.",
+      "wrongDomain": "We found the helper, but on a different website",
+      "wrongDomainHint": "The code seems to be installed on a different domain.",
+      "generic": "Something went wrong",
+      "genericHint": "Our team has been notified. Please try again in a moment.",
+      "retry": "Try again",
+      "sendToDev": "Send to developer",
+      "contact": "Chat with us",
+      "addDifferent": "Add as different site"
+    }
+  },
+  "email": {
+    "subject": "Add TeveroSEO to {domain} (30 seconds)",
+    "greeting": "Hi,",
+    "intro": "{sender} has asked you to add TeveroSEO tracking to {domain}. Here's all you need:",
+    "instruction": "Add this line to the <head> of your site:",
+    "magicLink": "One-Click Install",
+    "questions": "Questions? Reply to this email.",
+    "reminder": {
+      "subject": "Reminder: Add TeveroSEO to {domain}",
+      "intro": "Just a friendly reminder - {sender} is still waiting for TeveroSEO to be added to {domain}."
+    }
+  },
+  "platforms": {
+    "wordpress_self_hosted": "WordPress",
+    "wordpress_com": "WordPress.com",
+    "shopify": "Shopify",
+    "wix": "Wix",
+    "squarespace": "Squarespace",
+    "webflow": "Webflow",
+    "weebly": "Weebly",
+    "godaddy": "GoDaddy",
+    "hubspot": "HubSpot",
+    "ghost": "Ghost",
+    "bigcommerce": "BigCommerce",
+    "woocommerce": "WooCommerce",
+    "magento": "Magento",
+    "custom_html": "Custom HTML"
+  }
+}
