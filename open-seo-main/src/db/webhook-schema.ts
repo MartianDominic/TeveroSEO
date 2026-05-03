@@ -32,6 +32,8 @@ export const webhooks = pgTable(
     events: jsonb("events").notNull().$type<string[]>(),
     enabled: boolean("enabled").notNull().default(true),
     headers: jsonb("headers").$type<Record<string, string>>(),
+    /** Optimistic locking version - Phase 68-03 */
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

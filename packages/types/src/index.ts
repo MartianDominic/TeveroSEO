@@ -1,6 +1,8 @@
 export type { Client } from "./client";
 export type { Project } from "./project";
 export type { AuditStatus } from "./audit";
+// Event types and schemas (Phase 68-03)
+export * from "./events";
 export type {
   OAuthProvider,
   OAuthConnection,

@@ -103,6 +103,7 @@ export async function updateWebhook(
       ...(params.events !== undefined && { events: params.events }),
       ...(params.headers !== undefined && { headers: params.headers }),
       ...(params.enabled !== undefined && { enabled: params.enabled }),
+      version: sql`${webhooks.version} + 1`,
       updatedAt: new Date(),
     })
     .where(and(...conditions))
