@@ -61,7 +61,8 @@ describe("FalkorDBClient", () => {
       mockGraph = {
         query: vi.fn().mockResolvedValue({ data: [] }),
         delete: vi.fn().mockResolvedValue(undefined),
-      };
+        memoryUsage: vi.fn().mockResolvedValue([1024000]),
+      } as unknown as typeof mockGraph;
 
       mockDb = {
         selectGraph: vi.fn().mockReturnValue(mockGraph),
@@ -125,20 +126,15 @@ describe("FalkorDBClient", () => {
 
     describe("getGraphMemoryUsage", () => {
       it("returns bytes used by tenant graph", async () => {
-        mockGraph.query.mockResolvedValueOnce({
-          data: [[1024000]],
-        });
+        (mockGraph as unknown as { memoryUsage: ReturnType<typeof vi.fn> }).memoryUsage.mockResolvedValueOnce([1024000]);
 
         const bytes = await client.getGraphMemoryUsage("tenant-123");
 
         expect(bytes).toBe(1024000);
-        expect(mockGraph.query).toHaveBeenCalledWith(
-          "CALL db.info() YIELD memory RETURN memory"
-        );
       });
 
       it("returns 0 when memory info is unavailable", async () => {
-        mockGraph.query.mockResolvedValueOnce({ data: [] });
+        (mockGraph as unknown as { memoryUsage: ReturnType<typeof vi.fn> }).memoryUsage.mockResolvedValueOnce([]);
 
         const bytes = await client.getGraphMemoryUsage("tenant-123");
 
@@ -187,11 +183,11 @@ describe("FalkorDBClient", () => {
     });
 
     describe("createTenantGraph vector index", () => {
-      it("creates 384-dim cosine vector index for embeddings", async () => {
+      it("creates 768-dim cosine vector index for embeddings (Phase 65)", async () => {
         await client.createTenantGraph("tenant-123");
 
         expect(mockGraph.query).toHaveBeenCalledWith(
-          "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:384, similarityFunction:'cosine'}"
+          "CREATE VECTOR INDEX FOR (p:Product) ON (p.embedding) OPTIONS {dimension:768, similarityFunction:'cosine', M:16, efConstruction:200}"
         );
       });
     });
@@ -199,7 +195,7 @@ describe("FalkorDBClient", () => {
     describe("hasVectorIndex", () => {
       it("returns true when vector index exists", async () => {
         mockGraph.query.mockResolvedValueOnce({
-          data: [[true]],
+          data: [{ exists: true }],
         });
 
         const exists = await client.hasVectorIndex("tenant-123", "Product", "embedding");
@@ -215,7 +211,7 @@ describe("FalkorDBClient", () => {
 
       it("returns false when vector index does not exist", async () => {
         mockGraph.query.mockResolvedValueOnce({
-          data: [[false]],
+          data: [{ exists: false }],
         });
 
         const exists = await client.hasVectorIndex("tenant-123", "Product", "embedding");
