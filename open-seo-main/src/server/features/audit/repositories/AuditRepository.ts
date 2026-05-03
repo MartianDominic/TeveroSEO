@@ -213,10 +213,15 @@ async function getAuditForProject(auditId: string, projectId: string) {
   });
 }
 
+/**
+ * Get audits for a project.
+ * Phase 69-03: Added default limit to prevent unbounded queries.
+ */
 async function getAuditsByProject(
   projectId: string,
-  opts?: { clientId?: string | null },
+  opts?: { clientId?: string | null; limit?: number; offset?: number },
 ) {
+  const { limit = 100, offset = 0 } = opts ?? {};
   const whereClause = opts?.clientId
     ? and(eq(audits.projectId, projectId), eq(audits.clientId, opts.clientId))
     : eq(audits.projectId, projectId);
@@ -225,7 +230,9 @@ async function getAuditsByProject(
     .select({ audit: audits })
     .from(audits)
     .where(whereClause)
-    .orderBy(desc(audits.startedAt));
+    .orderBy(desc(audits.startedAt))
+    .limit(limit)
+    .offset(offset);
 
   return rows.map(({ audit }) => audit);
 }

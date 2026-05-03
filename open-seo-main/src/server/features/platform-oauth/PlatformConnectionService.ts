@@ -168,13 +168,18 @@ export class PlatformConnectionService {
 
   /**
    * Get connections for workspace.
+   * Phase 69-03: Added default limit to prevent unbounded queries.
    */
   async getConnectionsForWorkspace(
     workspaceId: string,
-    prospectId?: string
+    prospectId?: string,
+    options: { limit?: number; offset?: number } = {}
   ): Promise<ConnectionWithoutCredentials[]> {
+    const { limit = 100, offset = 0 } = options;
     const rows = await db.query.platformConnections.findMany({
       where: eq(platformConnections.workspaceId, workspaceId),
+      limit,
+      offset,
     });
 
     return rows

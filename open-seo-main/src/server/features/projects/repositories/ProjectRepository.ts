@@ -136,14 +136,21 @@ async function restoreProject(projectId: string, organizationId: string) {
 
 /**
  * List soft-deleted projects for potential restoration.
+ * Phase 69-03: Added default limit to prevent unbounded queries.
  */
-async function listDeletedProjects(organizationId: string) {
+async function listDeletedProjects(
+  organizationId: string,
+  options: { limit?: number; offset?: number } = {}
+) {
+  const { limit = 100, offset = 0 } = options;
   return db.query.projects.findMany({
     where: and(
       eq(projects.organizationId, organizationId),
       eq(projects.isDeleted, true),
     ),
     orderBy: desc(projects.deletedAt),
+    limit,
+    offset,
   });
 }
 
