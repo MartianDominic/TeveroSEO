@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **66-05:** 32-char nanoid tokens (~10^57 entropy); 30-day magic link expiry; Rate limit 5 handoffs/site/day; Email injection prevention via sender name sanitization; Max 3 reminders per handoff
 - **66-03:** Subdomain patterns detect with 100% confidence (no fetch); HTML signatures 90-95%; Response headers 80%; SSRF blocks all internal IPs; 3s timeout; GTM as enhancement feature
 - **64-02:** L0 treated as negative-only signal for Shopify-like platforms; Accept weak ETags (W/ prefix) per Cloudflare; 30s timeout for conditional GET
 - **64-01:** SET NX EX for atomic lock (not separate SETNX + EXPIRE); Subscribe before check pattern for lost wakeup prevention; Tenant-prefixed keys for isolation
