@@ -12,12 +12,19 @@
 
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
-// Mock auditQueue
+// Mock auditQueue with all necessary exports
 vi.mock("./auditQueue", () => ({
   auditQueue: {
     add: vi.fn().mockResolvedValue({ id: "audit-job-1" }),
   },
   AUDIT_QUEUE_NAME: "audit-queue",
+  AUDIT_STEP: {
+    DISCOVER: "discover",
+    CRAWL: "crawl",
+    LIGHTHOUSE_SELECT: "lighthouse-select",
+    LIGHTHOUSE_RUN: "lighthouse-run",
+    FINALIZE: "finalize",
+  },
 }));
 
 // Mock fastApiQueue (doesn't exist yet - this is RED phase)
