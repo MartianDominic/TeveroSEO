@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Analitika",
+    "subtitle": "Srauto ir veikimo metrikos is jusu pikselio",
+    "error": {
+      "failed": "Nepavyko ikrauti analitikos",
+      "retry": "Bandyti dar karta"
+    },
+    "dateRange": {
+      "last7d": "Paskutines 7 dienos",
+      "last30d": "Paskutines 30 dienu",
+      "last90d": "Paskutines 90 dienu",
+      "custom": "Pasirinktas"
+    },
+    "metrics": {
+      "pageviews": "Puslapiu perziuros",
+      "sessions": "Sesijos",
+      "visitors": "Unikalus lankytojai",
+      "bounceRate": "Atsokimo rodiklis",
+      "avgTime": "Vid. laikas puslapyje"
+    },
+    "cwv": {
+      "title": "Pagrindiniai tinklo rodikliai (p75)",
+      "lcp": {
+        "name": "LCP",
+        "fullName": "Didziausio turinio piesiamas",
+        "description": "Matuoja ikrovimo greiti. Geras LCP yra maziau nei 2.5 sekundes."
+      },
+      "cls": {
+        "name": "CLS",
+        "fullName": "Sukauptas isdestymo pokytis",
+        "description": "Matuoja vizualini stabiluma. Geras CLS yra maziau nei 0.1."
+      },
+      "inp": {
+        "name": "INP",
+        "fullName": "Saveika iki kito piesiamo",
+        "description": "Matuoja reagavima. Geras INP yra maziau nei 200ms."
+      },
+      "rating": {
+        "good": "Gerai",
+        "needsImprovement": "Reikia tobulinti",
+        "poor": "Blogai"
+      },
+      "thresholds": {
+        "good": "Gerai:",
+        "needsWork": "Reikia darbo:",
+        "poor": "Blogai:"
+      }
+    },
+    "topPages": {
+      "title": "Populiariausi puslapiai",
+      "url": "Puslapis",
+      "views": "Perziuros",
+      "time": "Vid. laikas"
+    },
+    "traffic": {
+      "title": "Srautas laike",
+      "pageviews": "Puslapiu perziuros",
+      "sessions": "Sesijos"
+    }
+  },
+  "changes": {
+    "title": "SEO pakeitimai",
+    "pending": {
+      "title": "Laukiantys pakeitimai",
+      "empty": {
+        "title": "Viskas perziureta!",
+        "message": "Nera laukianciu pakeitimu perziurai."
+      }
+    },
+    "history": {
+      "title": "Pakeitimu istorija",
+      "empty": {
+        "title": "Pakeitimu dar nera",
+        "message": "Pakeitimai, kuriuos patvirtinsite ar atmesite, bus rodomi cia."
+      }
+    },
+    "types": {
+      "meta_title": "Pavadinimo zyma",
+      "meta_description": "Meta aprasas",
+      "canonical": "Kanoninis URL",
+      "schema": "Schema zenklinimas",
+      "internal_link": "Vidine nuoroda",
+      "content": "Turinys"
+    },
+    "typeDescriptions": {
+      "meta_title": "Puslapio pavadinimas, rodomas narsykles skirtukuose ir paiesku rezultatuose",
+      "meta_description": "Aprasymo fragmentas, rodomas paiesku rezultatuose",
+      "canonical": "Pageidaujamas sio puslapio URL (SEO gera praktika)",
+      "schema": "Strukturuoti duomenys turtingiems paiesku rezultatams",
+      "internal_link": "Nuoroda i kita jusu svetaines puslapi",
+      "content": "HTML turinys, iterpiamas i puslapi"
+    },
+    "status": {
+      "pending": "Laukiama",
+      "pendingReview": "Laukia perziuros",
+      "approved": "Patvirtinta",
+      "rejected": "Atmesta",
+      "live": "Veikia",
+      "rolledBack": "Atstatytas"
+    },
+    "actions": {
+      "approve": "Patvirtinti",
+      "reject": "Atmesti",
+      "rollback": "Atstatyti",
+      "viewDiff": "Ziureti pakeitimus",
+      "approving": "Patvirtinama...",
+      "approveDeploy": "Patvirtinti ir diegti"
+    },
+    "approval": {
+      "title": "Perziureti pakeitima",
+      "backToPending": "Grizti prie laukianciu pakeitimu",
+      "details": {
+        "title": "Pakeitimo informacija",
+        "targetUrl": "Tikslinis URL",
+        "allPages": "Visi puslapiai (globalus)",
+        "requested": "Uzklausta",
+        "selector": "CSS selektorius"
+      },
+      "preview": {
+        "title": "Perziureti pakeitimus",
+        "subtitle": "Palyginkite dabartine verte su siulomu pakeitimu",
+        "sideBySide": "Vienas salia kito",
+        "unified": "Sujungtas",
+        "before": "Pries",
+        "after": "Po",
+        "removed": "Pasalinta",
+        "added": "Prideta",
+        "noPrevious": "(ankstesnes vertes nera)",
+        "searchPreview": "Paiesku rezultatu perziura"
+      },
+      "confirmApprove": "Sis pakeitimas iseis i veikima nedelsiant.",
+      "confirmReject": "Sis pakeitimas nebus pritaikytas jusu svetainei."
+    },
+    "reject": {
+      "title": "Atmesti pakeitima",
+      "description": "Sis pakeitimas nebus pritaikytas jusu svetainei.",
+      "reasonLabel": "Priezastis (nebutina)",
+      "reasonPlaceholder": "Kodel atmetate si pakeitima?",
+      "cancel": "Atsaukti",
+      "confirm": "Atmesti pakeitima",
+      "rejecting": "Atmetama..."
+    }
+  },
+  "status": {
+    "connected": "Prijungta",
+    "pending": "Laukiama diegimo",
+    "detected": "Aptikta",
+    "verified": "Patikrinta",
+    "error": "Prisijungimo klaida"
+  }
+}

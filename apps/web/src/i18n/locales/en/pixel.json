@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Analytics",
+    "subtitle": "Traffic and performance metrics from your pixel",
+    "error": {
+      "failed": "Failed to load analytics",
+      "retry": "Retry"
+    },
+    "dateRange": {
+      "last7d": "Last 7 days",
+      "last30d": "Last 30 days",
+      "last90d": "Last 90 days",
+      "custom": "Custom"
+    },
+    "metrics": {
+      "pageviews": "Pageviews",
+      "sessions": "Sessions",
+      "visitors": "Unique Visitors",
+      "bounceRate": "Bounce Rate",
+      "avgTime": "Avg. Time on Page"
+    },
+    "cwv": {
+      "title": "Core Web Vitals (p75)",
+      "lcp": {
+        "name": "LCP",
+        "fullName": "Largest Contentful Paint",
+        "description": "Measures loading performance. Good LCP is under 2.5 seconds."
+      },
+      "cls": {
+        "name": "CLS",
+        "fullName": "Cumulative Layout Shift",
+        "description": "Measures visual stability. Good CLS is under 0.1."
+      },
+      "inp": {
+        "name": "INP",
+        "fullName": "Interaction to Next Paint",
+        "description": "Measures responsiveness. Good INP is under 200ms."
+      },
+      "rating": {
+        "good": "Good",
+        "needsImprovement": "Needs Improvement",
+        "poor": "Poor"
+      },
+      "thresholds": {
+        "good": "Good:",
+        "needsWork": "Needs work:",
+        "poor": "Poor:"
+      }
+    },
+    "topPages": {
+      "title": "Top Pages",
+      "url": "Page",
+      "views": "Views",
+      "time": "Avg. Time"
+    },
+    "traffic": {
+      "title": "Traffic Over Time",
+      "pageviews": "Pageviews",
+      "sessions": "Sessions"
+    }
+  },
+  "changes": {
+    "title": "SEO Changes",
+    "pending": {
+      "title": "Pending Changes",
+      "empty": {
+        "title": "All caught up!",
+        "message": "No pending changes to review."
+      }
+    },
+    "history": {
+      "title": "Change History",
+      "empty": {
+        "title": "No changes yet",
+        "message": "Changes you approve or reject will appear here."
+      }
+    },
+    "types": {
+      "meta_title": "Title Tag",
+      "meta_description": "Meta Description",
+      "canonical": "Canonical URL",
+      "schema": "Schema Markup",
+      "internal_link": "Internal Link",
+      "content": "Content"
+    },
+    "typeDescriptions": {
+      "meta_title": "The page title shown in browser tabs and search results",
+      "meta_description": "The description snippet shown in search results",
+      "canonical": "The preferred URL for this page (SEO best practice)",
+      "schema": "Structured data for rich search results",
+      "internal_link": "Link to another page on your website",
+      "content": "HTML content to inject on the page"
+    },
+    "status": {
+      "pending": "Pending",
+      "pendingReview": "Pending Review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "live": "Live",
+      "rolledBack": "Rolled Back"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "rollback": "Rollback",
+      "viewDiff": "View Changes",
+      "approving": "Approving...",
+      "approveDeploy": "Approve & Deploy"
+    },
+    "approval": {
+      "title": "Review Change",
+      "backToPending": "Back to pending changes",
+      "details": {
+        "title": "Change Details",
+        "targetUrl": "Target URL",
+        "allPages": "All pages (global)",
+        "requested": "Requested",
+        "selector": "CSS Selector"
+      },
+      "preview": {
+        "title": "Preview Changes",
+        "subtitle": "Compare the current value with the proposed change",
+        "sideBySide": "Side by Side",
+        "unified": "Unified",
+        "before": "Before",
+        "after": "After",
+        "removed": "Removed",
+        "added": "Added",
+        "noPrevious": "(no previous value)",
+        "searchPreview": "Search Result Preview"
+      },
+      "confirmApprove": "This change will go live immediately.",
+      "confirmReject": "This change will not be applied to your website."
+    },
+    "reject": {
+      "title": "Reject Change",
+      "description": "This change will not be applied to your website.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "Why are you rejecting this change?",
+      "cancel": "Cancel",
+      "confirm": "Reject Change",
+      "rejecting": "Rejecting..."
+    }
+  },
+  "status": {
+    "connected": "Connected",
+    "pending": "Awaiting Installation",
+    "detected": "Detected",
+    "verified": "Verified",
+    "error": "Connection Error"
+  }
+}
