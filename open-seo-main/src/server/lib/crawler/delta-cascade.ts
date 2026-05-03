@@ -18,6 +18,7 @@ import type { SitemapUrl } from "./sitemap-parser";
 import { filterByLastmod } from "./sitemap-parser";
 import type { DeltaSyncService } from "./delta-sync";
 import { conditionalGet, hasConditionalHeaders, type CachedHeaders } from "./conditional-get";
+import { recordDeltaSkip, recordFullProcess } from "@/server/lib/metrics/crawl-metrics";
 
 /**
  * Result of delta cascade decision.
@@ -89,6 +90,7 @@ export async function deltaCascade(
     const { unchanged } = filterByLastmod([sitemapInfo], lastCrawledAt);
     if (unchanged.length > 0) {
       // Sitemap says unchanged - we can skip
+      recordDeltaSkip("L0");
       return {
         action: "skip",
         reason: "Sitemap lastmod unchanged since last crawl",
@@ -104,6 +106,7 @@ export async function deltaCascade(
     const condResult = await conditionalGet(url, cachedHeaders!);
 
     if (condResult.status === "unchanged") {
+      recordDeltaSkip("L1");
       return {
         action: "skip",
         reason: "304 Not Modified - server confirms unchanged",
@@ -127,6 +130,7 @@ export async function deltaCascade(
   }
 
   // L3: No cached state available, need full fetch
+  recordFullProcess();
   return {
     action: "fetch",
     reason: "No cached state available for delta check",
@@ -152,6 +156,7 @@ async function checkL2(
 
   if (!existing) {
     // No previous snapshot - this is a new URL, need to process
+    recordFullProcess();
     return {
       action: "process",
       reason: "New URL - no previous snapshot for comparison",
@@ -167,6 +172,7 @@ async function checkL2(
   // 3. Compare with existing.seoContentHash
   // For now, we return process since we can't extract product data here
   // The actual hash comparison happens in the crawl pipeline
+  recordFullProcess();
   return {
     action: "process",
     reason: "Content fetched - full processing required",

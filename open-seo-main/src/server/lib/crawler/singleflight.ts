@@ -16,6 +16,7 @@
 
 import type Redis from "ioredis";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { recordSingleflight } from "@/server/lib/metrics/crawl-metrics";
 
 /** Constants per 64-RESEARCH.md */
 const LOCK_TTL_SECONDS = 300; // 5 minutes max for crawl
@@ -90,6 +91,7 @@ export class Singleflight<T> {
     // Check cached result first (fastest path)
     const cached = await this.redis.get(resultKey);
     if (cached) {
+      recordSingleflight(true); // Cache hit - record for metrics
       return {
         result: JSON.parse(cached) as T,
         shared: true,
@@ -106,7 +108,8 @@ export class Singleflight<T> {
     }).set(lockKey, workerId, "NX", "EX", LOCK_TTL_SECONDS);
 
     if (acquired === "OK") {
-      // We are the leader - execute the function
+      // We are the leader - execute the function (miss - we do the work)
+      recordSingleflight(false);
       return this.executeAsLeader(fn, lockKey, resultKey, channel, startTime);
     }
 
@@ -167,6 +170,7 @@ export class Singleflight<T> {
       // Check if result appeared while subscribing
       const cached = await this.redis.get(resultKey);
       if (cached) {
+        recordSingleflight(true); // Follower got shared result
         await this.cleanupSubscriber(subscriber, channel);
         return {
           result: JSON.parse(cached) as T,
@@ -196,6 +200,7 @@ export class Singleflight<T> {
           if (message === "done") {
             const result = await this.redis.get(resultKey);
             if (result) {
+              recordSingleflight(true); // Follower got shared result via pub/sub
               cleanup();
               resolve({
                 result: JSON.parse(result) as T,
@@ -222,6 +227,7 @@ export class Singleflight<T> {
           // Check if result appeared
           const result = await this.redis.get(resultKey);
           if (result) {
+            recordSingleflight(true); // Follower got shared result via polling
             cleanup();
             resolve({
               result: JSON.parse(result) as T,
