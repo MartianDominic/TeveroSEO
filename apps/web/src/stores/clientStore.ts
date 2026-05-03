@@ -37,6 +37,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Client } from "@tevero/types";
 import { ACTIVE_CLIENT_COOKIE, cookieStorage } from "@/lib/cookies";
+import { abortManager } from "@/lib/client-context/abort-manager";
 
 // FIX-17 HIGH-UJ-12: Stale time for client data (5 minutes)
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -127,13 +128,19 @@ export const useClientStore = create<ClientStore>()(
       },
 
       setActiveClient: (id: string) => {
-        const { clients } = get();
+        const { clients, activeClientId: previousClientId } = get();
         const activeClient = clients.find((c) => c.id === id) ?? null;
 
         // FIX-03 HIGH-CW-01: Don't set if client doesn't exist in local list
         if (!activeClient) {
           console.warn(`[ClientStore] Cannot set active client: ${id} not found in client list`);
           return;
+        }
+
+        // Phase 68-02 HIGH-01 FIX: Abort in-flight requests for previous client
+        // This prevents race conditions where stale responses could be processed
+        if (previousClientId && previousClientId !== id) {
+          abortManager.abortClient(previousClientId);
         }
 
         set({ activeClientId: id, activeClient, lastValidatedAt: Date.now() });
