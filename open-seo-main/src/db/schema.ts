@@ -101,3 +101,6 @@ export {
 
 // Service catalog schema (Phase 58)
 export * from "./service-catalog-schema";
+
+// Pixel installation schema (Phase 66)
+export * from "./pixel-schema";
