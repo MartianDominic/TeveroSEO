@@ -54,3 +54,9 @@ export * from "./pipeline-metrics";
 export * from "./notification-preferences";
 export * from "./dashboard-views";
 export * from "./agreement-signers-schema";
+
+// Phase 67-01: Database Consolidation - Unified schemas with namespace prefixes
+export * from "./shared-clients";
+export * from "./shared-voice-profiles";
+export * from "./seo-gsc-snapshots";
+export * from "./seo-ga4-snapshots";
