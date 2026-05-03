@@ -1,0 +1,114 @@
+{
+  "email": {
+    "handoff": {
+      "subject": "Pridekite TeveroSEO prie {domain} (30 sekundziu)",
+      "greeting": "Labas,",
+      "intro": "{sender} paprase jus prideti TeveroSEO sekima prie {domain}. Stai viskas, ko jums reikia:",
+      "codeInstruction": "Pridekite sia eilute i savo svetaines <head>:",
+      "magicLinkCta": "Vienu paspaudimu idiegti",
+      "footer": "Turite klausimu? Atsakykite i si el. laiska.",
+      "reminder": {
+        "subject": "Priminimas: Pridekite TeveroSEO prie {domain}",
+        "intro": "Tik draugiskas priminimas - {sender} vis dar laukia, kol TeveroSEO bus pridetas prie {domain}."
+      }
+    }
+  },
+  "api": {
+    "errors": {
+      "siteNotFound": "Svetaine nerasta",
+      "tokenExpired": "Sios nuorodos galiojimas pasibaige",
+      "invalidPlatform": "Nepalaikoma platforma",
+      "rateLimited": "Per daug uzklausu, bandykite veliau",
+      "unauthorized": "Neturite teises pasiekti sio resurso",
+      "validationFailed": "Tikrinimas nepavyko",
+      "internalError": "Ivyko vidine klaida"
+    },
+    "success": {
+      "handoffSent": "Instrukcijos sekmingai issiustos",
+      "reminderSent": "Priminimas sekmingai issiustas",
+      "pixelVerified": "Pikselis sekmingai patikrintas",
+      "changeApproved": "Pakeitimas sekmingai patvirtintas",
+      "changeRejected": "Pakeitimas sekmingai atmestas"
+    }
+  },
+  "platforms": {
+    "wordpress_self_hosted": "WordPress",
+    "wordpress_com": "WordPress.com",
+    "shopify": "Shopify",
+    "wix": "Wix",
+    "squarespace": "Squarespace",
+    "webflow": "Webflow",
+    "weebly": "Weebly",
+    "godaddy": "GoDaddy",
+    "hubspot": "HubSpot",
+    "ghost": "Ghost",
+    "bigcommerce": "BigCommerce",
+    "woocommerce": "WooCommerce",
+    "magento": "Magento",
+    "custom_html": "Pasirinktinis HTML"
+  },
+  "guides": {
+    "wordpress_self_hosted": {
+      "title": "WordPress diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo savarankiskai talpinamomam WordPress svetainei"
+    },
+    "wordpress_com": {
+      "title": "WordPress.com diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo WordPress.com svetaines (reikalingas Business planas)"
+    },
+    "shopify": {
+      "title": "Shopify diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Shopify parduotuves"
+    },
+    "wix": {
+      "title": "Wix diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Wix svetaines"
+    },
+    "squarespace": {
+      "title": "Squarespace diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Squarespace svetaines"
+    },
+    "webflow": {
+      "title": "Webflow diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Webflow svetaines"
+    },
+    "weebly": {
+      "title": "Weebly diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Weebly svetaines"
+    },
+    "godaddy": {
+      "title": "GoDaddy diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo GoDaddy svetaines"
+    },
+    "hubspot": {
+      "title": "HubSpot diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo HubSpot TVS"
+    },
+    "ghost": {
+      "title": "Ghost diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Ghost tinklarascio"
+    },
+    "bigcommerce": {
+      "title": "BigCommerce diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo BigCommerce parduotuves"
+    },
+    "woocommerce": {
+      "title": "WooCommerce diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo WooCommerce parduotuves"
+    },
+    "magento": {
+      "title": "Magento diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie savo Magento parduotuves"
+    },
+    "custom_html": {
+      "title": "Pasirinktinio HTML diegimo vadovas",
+      "description": "Pridekite TeveroSEO prie bet kurios HTML svetaines"
+    }
+  },
+  "verification": {
+    "pending": "Laukiama pikselio diegimo",
+    "detected": "Pikselis aptiktas, tikrinama...",
+    "verified": "Pikselis patikrintas ir aktyvus",
+    "error": "Tikrinimas nepavyko"
+  }
+}

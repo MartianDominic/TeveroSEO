@@ -1,0 +1,114 @@
+{
+  "email": {
+    "handoff": {
+      "subject": "Add TeveroSEO to {domain} (30 seconds)",
+      "greeting": "Hi,",
+      "intro": "{sender} has asked you to add TeveroSEO tracking to {domain}. Here's all you need:",
+      "codeInstruction": "Add this line to the <head> of your site:",
+      "magicLinkCta": "One-Click Install",
+      "footer": "Questions? Reply to this email.",
+      "reminder": {
+        "subject": "Reminder: Add TeveroSEO to {domain}",
+        "intro": "Just a friendly reminder - {sender} is still waiting for TeveroSEO to be added to {domain}."
+      }
+    }
+  },
+  "api": {
+    "errors": {
+      "siteNotFound": "Site not found",
+      "tokenExpired": "This link has expired",
+      "invalidPlatform": "Unsupported platform",
+      "rateLimited": "Too many requests, please try again later",
+      "unauthorized": "You are not authorized to access this resource",
+      "validationFailed": "Validation failed",
+      "internalError": "An internal error occurred"
+    },
+    "success": {
+      "handoffSent": "Instructions sent successfully",
+      "reminderSent": "Reminder sent successfully",
+      "pixelVerified": "Pixel verified successfully",
+      "changeApproved": "Change approved successfully",
+      "changeRejected": "Change rejected successfully"
+    }
+  },
+  "platforms": {
+    "wordpress_self_hosted": "WordPress",
+    "wordpress_com": "WordPress.com",
+    "shopify": "Shopify",
+    "wix": "Wix",
+    "squarespace": "Squarespace",
+    "webflow": "Webflow",
+    "weebly": "Weebly",
+    "godaddy": "GoDaddy",
+    "hubspot": "HubSpot",
+    "ghost": "Ghost",
+    "bigcommerce": "BigCommerce",
+    "woocommerce": "WooCommerce",
+    "magento": "Magento",
+    "custom_html": "Custom HTML"
+  },
+  "guides": {
+    "wordpress_self_hosted": {
+      "title": "WordPress Installation Guide",
+      "description": "Add TeveroSEO to your self-hosted WordPress site"
+    },
+    "wordpress_com": {
+      "title": "WordPress.com Installation Guide",
+      "description": "Add TeveroSEO to your WordPress.com site (Business plan required)"
+    },
+    "shopify": {
+      "title": "Shopify Installation Guide",
+      "description": "Add TeveroSEO to your Shopify store"
+    },
+    "wix": {
+      "title": "Wix Installation Guide",
+      "description": "Add TeveroSEO to your Wix website"
+    },
+    "squarespace": {
+      "title": "Squarespace Installation Guide",
+      "description": "Add TeveroSEO to your Squarespace site"
+    },
+    "webflow": {
+      "title": "Webflow Installation Guide",
+      "description": "Add TeveroSEO to your Webflow site"
+    },
+    "weebly": {
+      "title": "Weebly Installation Guide",
+      "description": "Add TeveroSEO to your Weebly site"
+    },
+    "godaddy": {
+      "title": "GoDaddy Installation Guide",
+      "description": "Add TeveroSEO to your GoDaddy website"
+    },
+    "hubspot": {
+      "title": "HubSpot Installation Guide",
+      "description": "Add TeveroSEO to your HubSpot CMS"
+    },
+    "ghost": {
+      "title": "Ghost Installation Guide",
+      "description": "Add TeveroSEO to your Ghost blog"
+    },
+    "bigcommerce": {
+      "title": "BigCommerce Installation Guide",
+      "description": "Add TeveroSEO to your BigCommerce store"
+    },
+    "woocommerce": {
+      "title": "WooCommerce Installation Guide",
+      "description": "Add TeveroSEO to your WooCommerce store"
+    },
+    "magento": {
+      "title": "Magento Installation Guide",
+      "description": "Add TeveroSEO to your Magento store"
+    },
+    "custom_html": {
+      "title": "Custom HTML Installation Guide",
+      "description": "Add TeveroSEO to any HTML website"
+    }
+  },
+  "verification": {
+    "pending": "Waiting for pixel installation",
+    "detected": "Pixel detected, verifying...",
+    "verified": "Pixel verified and active",
+    "error": "Verification failed"
+  }
+}
