@@ -55,3 +55,13 @@ export {
   type InstallationGuide,
   type GuideStep,
 } from "./cms-guides";
+
+// Developer handoff service (Phase 66-05)
+export {
+  DeveloperHandoffService,
+  createDeveloperHandoffService,
+  type CreateHandoffRequest,
+  type CreateHandoffResult,
+  type HandoffEmail,
+  type EmailServiceInterface,
+} from "./developer-handoff.service";
