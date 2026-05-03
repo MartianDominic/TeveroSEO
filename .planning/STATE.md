@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-03T11:20:55.958Z"
-last_activity: 2026-05-03 -- Completed 66-03 (CMS platform detection + installation guides)
+last_updated: "2026-05-03T11:23:36.279Z"
+last_activity: 2026-05-03 -- Completed 66-06 (Verification UI with real-time status)
 progress:
-  total_phases: 65
-  completed_phases: 52
-  total_plans: 268
-  completed_plans: 258
-  percent: 96
+  total_phases: 14
+  completed_phases: 14
+  total_plans: 58
+  completed_plans: 58
+  percent: 100
 ---
 
 # Project State
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **66-04:** useState+useCallback for wizard state (simpler than useReducer); 9-step state machine (url/detecting/choice/diy/developer/oauth/verifying/success/error); ConnectApiError for typed error handling; snippet prop for siteId personalization
 - **66-05:** 32-char nanoid tokens (~10^57 entropy); 30-day magic link expiry; Rate limit 5 handoffs/site/day; Email injection prevention via sender name sanitization; Max 3 reminders per handoff
 - **66-03:** Subdomain patterns detect with 100% confidence (no fetch); HTML signatures 90-95%; Response headers 80%; SSRF blocks all internal IPs; 3s timeout; GTM as enhancement feature
 - **64-02:** L0 treated as negative-only signal for Shopify-like platforms; Accept weak ETags (W/ prefix) per Cloudflare; 30s timeout for conditional GET
