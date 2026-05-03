@@ -14,7 +14,7 @@ export {
   generatePixelScript,
   generatePixelLoader,
   type PixelScriptConfig,
-  type ApprovedChange,
+  type ApprovedChange as PixelScriptApprovedChange,
 } from "./pixel-script.service";
 
 // Collector service (Phase 66-02)
@@ -65,6 +65,25 @@ export {
   type HandoffEmail,
   type EmailServiceInterface,
 } from "./developer-handoff.service";
+
+// Analytics service (Phase 66-08)
+export {
+  PixelAnalyticsService,
+  getPixelAnalyticsService,
+  getAnalytics,
+  getTopPages,
+  type AnalyticsQuery,
+  type AnalyticsResponse,
+  type AnalyticsSummary,
+  type CwvResult,
+  type CwvMetricResult,
+  type CwvRating,
+  type CwvMetric,
+  type TimeseriesDataPoint,
+  type TopPage,
+  type CwvTrendPoint,
+  type Granularity,
+} from "./pixel-analytics.service";
 
 // DOM change service (Phase 66-07)
 export {
