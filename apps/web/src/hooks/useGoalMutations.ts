@@ -1,6 +1,7 @@
 /**
  * Goal mutation hooks with optimistic updates.
  * Provides instant UI feedback for goal CRUD operations.
+ * HIGH-STATE-04 FIX: Uses centralized query key factory.
  */
 
 "use client";
@@ -13,6 +14,8 @@ import {
   type DeleteGoalVariables,
 } from "@/lib/optimistic";
 import { cacheInvalidateByTag, cacheTags } from "@/lib/cache";
+// HIGH-STATE-04 FIX: Use centralized query key factory
+import { queryKeys } from "@/lib/query-keys";
 
 /**
  * Server action types (to be implemented in goals actions).
@@ -64,7 +67,8 @@ async function deleteGoalAction(input: DeleteGoalInput): Promise<void> {
  */
 export function useUpdateGoal(clientId: string) {
   const queryClient = useQueryClient();
-  const queryKey = ["clients", "goals", clientId];
+  // HIGH-STATE-04 FIX: Use centralized query key factory
+  const queryKey = queryKeys.goals.byClient(clientId);
 
   return useMutation({
     mutationFn: (variables: UpdateGoalVariables) =>
@@ -88,7 +92,8 @@ export function useUpdateGoal(clientId: string) {
  */
 export function useDeleteGoal(clientId: string) {
   const queryClient = useQueryClient();
-  const queryKey = ["clients", "goals", clientId];
+  // HIGH-STATE-04 FIX: Use centralized query key factory
+  const queryKey = queryKeys.goals.byClient(clientId);
 
   return useMutation({
     mutationFn: (variables: DeleteGoalVariables) =>

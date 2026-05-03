@@ -53,6 +53,45 @@ export const STANDARD_BACKOFF: BackoffOptions = {
 export const STANDARD_BACKOFF_MAX_DELAY = 60_000; // 60 seconds
 
 /**
+ * QUEUE-M02 FIX: Calculate exponential backoff delay with jitter.
+ *
+ * Adds random jitter to prevent thundering herd when multiple workers
+ * retry simultaneously after a shared dependency failure.
+ *
+ * @param attempt - Current attempt number (1-based)
+ * @param baseDelayMs - Base delay in milliseconds (default: 1000)
+ * @param maxDelayMs - Maximum delay in milliseconds (default: 60000)
+ * @param jitterPercent - Jitter as percentage of delay (default: 0.1 = 10%)
+ * @returns Delay in milliseconds with jitter applied
+ *
+ * @example
+ * ```typescript
+ * // Custom retry handler with jitter
+ * const delay = calculateBackoffWithJitter(attemptsMade);
+ * // Attempt 1: ~1000ms (+/- 10%)
+ * // Attempt 2: ~2000ms (+/- 10%)
+ * // Attempt 3: ~4000ms (+/- 10%)
+ * ```
+ */
+export function calculateBackoffWithJitter(
+  attempt: number,
+  baseDelayMs: number = 1000,
+  maxDelayMs: number = STANDARD_BACKOFF_MAX_DELAY,
+  jitterPercent: number = 0.1,
+): number {
+  // Calculate base exponential delay
+  const exponentialDelay = Math.min(
+    baseDelayMs * Math.pow(2, attempt - 1),
+    maxDelayMs,
+  );
+
+  // Add jitter: +/- jitterPercent of the delay
+  const jitter = exponentialDelay * jitterPercent * (Math.random() * 2 - 1);
+
+  return Math.round(exponentialDelay + jitter);
+}
+
+/**
  * Standard number of retry attempts for most queues.
  */
 export const STANDARD_ATTEMPTS = 3;
@@ -559,6 +598,117 @@ export function validateJobData<T>(
   }
 
   return result.data;
+}
+
+// ============================================================================
+// Heartbeat Mechanism for Long-Running Jobs (JOB-HIGH-02)
+// ============================================================================
+
+/**
+ * JOB-HIGH-02: Heartbeat mechanism for long-running jobs.
+ *
+ * BullMQ uses lockDuration to detect stalled jobs. For long-running jobs,
+ * we need to periodically extend the lock to prevent false stall detection.
+ *
+ * Usage:
+ * ```typescript
+ * const worker = new Worker('my-queue', async (job) => {
+ *   const heartbeat = createJobHeartbeat(job, 30_000); // 30s interval
+ *   try {
+ *     // Long-running operation
+ *     await longOperation();
+ *   } finally {
+ *     heartbeat.stop();
+ *   }
+ * });
+ * ```
+ */
+export interface JobHeartbeat {
+  /** Stop the heartbeat timer */
+  stop: () => void;
+  /** Check if heartbeat is still active */
+  isActive: () => boolean;
+  /** Get number of heartbeats sent */
+  getHeartbeatCount: () => number;
+}
+
+/**
+ * Create a heartbeat for a long-running job.
+ *
+ * @param job - BullMQ job instance
+ * @param intervalMs - Heartbeat interval in milliseconds (default: 30s)
+ * @param onHeartbeat - Optional callback on each heartbeat
+ * @returns Heartbeat controller
+ */
+export function createJobHeartbeat<T, R>(
+  job: Job<T, R>,
+  intervalMs: number = 30_000,
+  onHeartbeat?: (count: number) => void,
+): JobHeartbeat {
+  let heartbeatCount = 0;
+  let active = true;
+
+  const timer = setInterval(async () => {
+    if (!active) return;
+
+    try {
+      // Update job progress to extend the lock
+      // This signals to BullMQ that the job is still active
+      await job.updateProgress({
+        heartbeat: Date.now(),
+        count: ++heartbeatCount,
+      });
+
+      if (onHeartbeat) {
+        onHeartbeat(heartbeatCount);
+      }
+
+      log.debug("Job heartbeat sent", {
+        jobId: job.id,
+        jobName: job.name,
+        heartbeatCount,
+      });
+    } catch (err) {
+      // Log but don't throw - heartbeat failure shouldn't crash the job
+      log.warn("Job heartbeat failed", {
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, intervalMs);
+
+  // Prevent timer from keeping process alive during shutdown
+  timer.unref?.();
+
+  return {
+    stop: () => {
+      active = false;
+      clearInterval(timer);
+    },
+    isActive: () => active,
+    getHeartbeatCount: () => heartbeatCount,
+  };
+}
+
+/**
+ * Wrap a processor with automatic heartbeat for long-running jobs.
+ *
+ * @param processor - The job processor function
+ * @param heartbeatIntervalMs - Heartbeat interval (default: 30s)
+ * @returns Wrapped processor with automatic heartbeat
+ */
+export function withHeartbeat<T, R>(
+  processor: (job: Job<T, R>) => Promise<R>,
+  heartbeatIntervalMs: number = 30_000,
+): (job: Job<T, R>) => Promise<R> {
+  return async (job: Job<T, R>): Promise<R> => {
+    const heartbeat = createJobHeartbeat(job, heartbeatIntervalMs);
+    try {
+      return await processor(job);
+    } finally {
+      heartbeat.stop();
+    }
+  };
 }
 
 // ============================================================================

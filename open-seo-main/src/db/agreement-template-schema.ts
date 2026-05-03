@@ -14,6 +14,7 @@ import {
   integer,
   boolean,
   check,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
@@ -148,7 +149,7 @@ export const generatedAgreements = pgTable(
     prospectId: text("prospect_id").references(() => prospects.id, {
       onDelete: "set null",
     }),
-    clientId: text("client_id").references(() => clients.id, {
+    clientId: uuid("client_id").references(() => clients.id, {
       onDelete: "set null",
     }),
     proposalId: text("proposal_id").references(() => proposals.id, {

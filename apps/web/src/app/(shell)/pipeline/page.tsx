@@ -5,6 +5,8 @@
  * Sales pipeline kanban board with drag-and-drop between stages.
  * Implements D-05 (full pipeline stages), D-06 (configurable stages),
  * D-07 (card display), D-08 (quick actions).
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 
 import { Suspense } from "react";
@@ -12,6 +14,7 @@ import { auth } from "@clerk/nextjs/server";
 import { PageHeader, Skeleton } from "@tevero/ui";
 import { PipelineKanbanContainer } from "./PipelineKanbanContainer";
 import { DEFAULT_PIPELINE_STAGES } from "./constants";
+import { getOpenSeoUrl } from "@/lib/env";
 
 import { logger } from '@/lib/logger';
 // Default empty state
@@ -24,7 +27,8 @@ for (const stage of DEFAULT_PIPELINE_STAGES) {
  * Fetch pipeline configuration from the backend.
  */
 async function fetchPipelineConfig(workspaceId: string) {
-  const apiUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     const response = await fetch(`${apiUrl}/api/pipeline/config`, {
@@ -52,7 +56,8 @@ async function fetchPipelineConfig(workspaceId: string) {
  * Fetch prospects grouped by stage from the backend.
  */
 async function fetchProspectsGroupedByStage(workspaceId: string) {
-  const apiUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     const response = await fetch(`${apiUrl}/api/pipeline/prospects`, {

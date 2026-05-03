@@ -80,15 +80,61 @@ function isValidChangeType(type: string): type is PixelChangeType {
 
 /**
  * Sanitize HTML content to prevent XSS (T-66-19).
- * Removes script tags and event handlers.
+ * MED-VAL-01 FIX: Enhanced sanitization with multiple bypass prevention layers.
+ *
+ * NOTE: For production use, consider adding a dedicated sanitization library like
+ * 'isomorphic-dompurify' or 'sanitize-html' for more comprehensive XSS protection.
+ * This implementation provides defense-in-depth but regex-based sanitization
+ * can never be 100% comprehensive against all XSS bypass techniques.
  */
 function sanitizeHtml(content: string): string {
-  // Remove script tags and their content
-  let sanitized = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-  // Remove event handlers
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
-  // Remove javascript: protocol
-  sanitized = sanitized.replace(/javascript:/gi, "");
+  let sanitized = content;
+
+  // 1. Remove null bytes and other control characters that can bypass filters
+  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+  // 2. Decode HTML entities that might hide malicious content
+  // Handle common encoded forms: &#x6A; (hex) and &#106; (decimal) for 'j' etc.
+  sanitized = sanitized.replace(/&#x([0-9a-f]+);?/gi, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+  sanitized = sanitized.replace(/&#(\d+);?/g, (_, dec) =>
+    String.fromCharCode(parseInt(dec, 10))
+  );
+
+  // 3. Remove script tags and their content (including variations)
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  // Handle self-closing and malformed script tags
+  sanitized = sanitized.replace(/<script[^>]*\/?>/gi, "");
+  sanitized = sanitized.replace(/<\/script>/gi, "");
+
+  // 4. Remove dangerous tags: iframe, object, embed, form, meta, link, base, svg (can contain scripts)
+  const dangerousTags = ["iframe", "object", "embed", "form", "meta", "link", "base", "svg", "math", "style"];
+  for (const tag of dangerousTags) {
+    const tagRegex = new RegExp(`<${tag}\\b[^<]*(?:(?!<\\/${tag}>)<[^<]*)*<\\/${tag}>`, "gi");
+    sanitized = sanitized.replace(tagRegex, "");
+    sanitized = sanitized.replace(new RegExp(`<${tag}[^>]*/?>`, "gi"), "");
+    sanitized = sanitized.replace(new RegExp(`</${tag}>`, "gi"), "");
+  }
+
+  // 5. Remove ALL event handlers (on* attributes) - case insensitive with whitespace variations
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, "");
+
+  // 6. Remove javascript:, vbscript:, data: protocols (with whitespace/encoding bypass prevention)
+  sanitized = sanitized.replace(/(?:j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t|vbscript|data)\s*:/gi, "blocked:");
+
+  // 7. Remove expression() CSS (IE vulnerability)
+  sanitized = sanitized.replace(/expression\s*\([^)]*\)/gi, "");
+
+  // 8. Remove url() in style attributes that might load external resources
+  sanitized = sanitized.replace(/url\s*\(\s*["']?\s*(?:javascript|vbscript|data):/gi, "url(blocked:");
+
+  // 9. Sanitize href and src attributes with dangerous protocols
+  sanitized = sanitized.replace(
+    /(href|src|action|formaction|poster|background)\s*=\s*["']?\s*(?:javascript|vbscript|data):/gi,
+    '$1="blocked:'
+  );
+
   return sanitized;
 }
 

@@ -1,12 +1,26 @@
 /**
  * Server functions for content briefs.
  * Phase 36: Content Brief Generation
+ *
+ * FIX CRIT-TYPE-01: Added runtime validation for API responses
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import { AppError } from "@/server/lib/errors";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { createLogger } from "@/server/lib/logger";
+import {
+  BriefsListResponseSchema,
+  BriefResponseSchema,
+  SerpAnalysisResponseSchema,
+  GeneratedBriefResponseSchema,
+  GenerateContentResponseSchema,
+  GenerationStatusResponseSchema,
+  ApiErrorSchema,
+} from "@/types/schemas/api-responses";
+
+const log = createLogger({ module: "serverFunctions/briefs" });
 
 const OPEN_SEO_API = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
@@ -77,12 +91,19 @@ export const getBriefsFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to fetch briefs");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to fetch briefs");
     }
 
-    const result = (await response.json()) as { data: Brief[] };
-    return result.data;
+    const json = await response.json();
+    const result = BriefsListResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid briefs list response", undefined, { zodErrors: result.error.issues, json });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from briefs service");
+    }
+    return result.data.data;
   });
 
 export const getBriefFn = createServerFn({ method: "POST" })
@@ -102,12 +123,19 @@ export const getBriefFn = createServerFn({ method: "POST" })
 
     if (!response.ok) {
       if (response.status === 404) return null;
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to fetch brief");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to fetch brief");
     }
 
-    const result = (await response.json()) as { data: Brief };
-    return result.data;
+    const json = await response.json();
+    const result = BriefResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid brief response", undefined, { zodErrors: result.error.issues, briefId: data.briefId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from briefs service");
+    }
+    return result.data.data;
   });
 
 export const analyzeSerpFn = createServerFn({ method: "POST" })
@@ -128,12 +156,19 @@ export const analyzeSerpFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to analyze SERP");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to analyze SERP");
     }
 
-    const result = (await response.json()) as { data: SerpAnalysisData };
-    return result.data;
+    const json = await response.json();
+    const result = SerpAnalysisResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid SERP analysis response", undefined, { zodErrors: result.error.issues, mappingId: data.mappingId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from SERP analysis service");
+    }
+    return result.data.data;
   });
 
 export const createBriefFn = createServerFn({ method: "POST" })
@@ -151,12 +186,19 @@ export const createBriefFn = createServerFn({ method: "POST" })
     });
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to create brief");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to create brief");
     }
 
-    const result = (await response.json()) as { data: GeneratedBriefResult };
-    return result.data;
+    const json = await response.json();
+    const result = GeneratedBriefResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid create brief response", undefined, { zodErrors: result.error.issues, mappingId: data.mappingId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from briefs service");
+    }
+    return result.data.data;
   });
 
 export const updateBriefStatusFn = createServerFn({ method: "POST" })
@@ -177,12 +219,19 @@ export const updateBriefStatusFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to update status");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to update status");
     }
 
-    const result = (await response.json()) as { data: Brief };
-    return result.data;
+    const json = await response.json();
+    const result = BriefResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid update status response", undefined, { zodErrors: result.error.issues, briefId: data.briefId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from briefs service");
+    }
+    return result.data.data;
   });
 
 export const deleteBriefFn = createServerFn({ method: "POST" })
@@ -202,8 +251,10 @@ export const deleteBriefFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to delete brief");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to delete brief");
     }
 
     return { success: true };
@@ -238,12 +289,19 @@ export const generateContentFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to generate content");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to generate content");
     }
 
-    const result = (await response.json()) as { data: GenerateContentResult };
-    return result.data;
+    const json = await response.json();
+    const result = GenerateContentResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid generate content response", undefined, { zodErrors: result.error.issues, briefId: data.briefId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from content generation service");
+    }
+    return result.data.data;
   });
 
 const getGenerationStatusSchema = z.object({ briefId: z.string() });
@@ -270,10 +328,17 @@ export const getGenerationStatusFn = createServerFn({ method: "POST" })
     );
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new AppError("EXTERNAL_SERVICE_ERROR", error.error || "Failed to get status");
+      const json = await response.json().catch(() => ({}));
+      const errorParsed = ApiErrorSchema.safeParse(json);
+      const errorMsg = errorParsed.success ? (errorParsed.data.error || errorParsed.data.message) : undefined;
+      throw new AppError("EXTERNAL_SERVICE_ERROR", errorMsg || "Failed to get status");
     }
 
-    const result = (await response.json()) as { data: GenerationStatusResult };
-    return result.data;
+    const json = await response.json();
+    const result = GenerationStatusResponseSchema.safeParse(json);
+    if (!result.success) {
+      log.error("Invalid generation status response", undefined, { zodErrors: result.error.issues, briefId: data.briefId });
+      throw new AppError("VALIDATION_ERROR", "Invalid response from status service");
+    }
+    return result.data.data;
   });

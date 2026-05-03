@@ -2,6 +2,7 @@
 
 import { Card, CardContent, Badge } from "@tevero/ui";
 import type { ScoreBreakdown } from "@/lib/audit/checks/types";
+import { QUALITY_THRESHOLDS } from "@tevero/types";
 
 interface ScoreCardProps {
   score: number;
@@ -9,16 +10,24 @@ interface ScoreCardProps {
   gates: string[];
 }
 
+/**
+ * Get score color based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreColor(score: number): string {
-  if (score >= 90) return "text-green-600";
-  if (score >= 70) return "text-yellow-600";
-  return "text-red-600";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "text-green-600"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "text-yellow-600"; // >= 50
+  return "text-red-600"; // < 50
 }
 
+/**
+ * Get score background color based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreBg(score: number): string {
-  if (score >= 90) return "bg-green-500";
-  if (score >= 70) return "bg-yellow-500";
-  return "bg-red-500";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "bg-green-500"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "bg-yellow-500"; // >= 50
+  return "bg-red-500"; // < 50
 }
 
 const TIER_CONFIG = [

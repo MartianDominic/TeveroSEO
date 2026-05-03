@@ -8,6 +8,9 @@
  * - On error events
  * - On component unmount (cleanup function)
  * - On manual disconnect
+ *
+ * HIGH-STATE-05 FIX: Added isMountedRef cleanup flag to prevent state updates
+ * after component unmounts, avoiding React memory leak warnings.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 
@@ -45,6 +48,8 @@ export function useAnalysisProgress({
   });
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  // HIGH-STATE-05 FIX: Cleanup flag to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   const connect = useCallback(() => {
     if (!prospectId || !enabled) return;
@@ -59,11 +64,15 @@ export function useAnalysisProgress({
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
+      // HIGH-STATE-05 FIX: Check if mounted before updating state
+      if (!isMountedRef.current) return;
       setIsConnected(true);
       setState({ stage: "connecting", progress: 10 });
     };
 
     eventSource.addEventListener("progress", (event) => {
+      // HIGH-STATE-05 FIX: Check if mounted before updating state
+      if (!isMountedRef.current) return;
       try {
         const data = JSON.parse(event.data) as ProgressState;
         setState(data);
@@ -73,14 +82,16 @@ export function useAnalysisProgress({
     });
 
     eventSource.addEventListener("complete", () => {
+      // HIGH-41 FIX: Close EventSource and null out ref on completion
+      eventSource.close();
+      eventSourceRef.current = null;
+      // HIGH-STATE-05 FIX: Check if mounted before updating state
+      if (!isMountedRef.current) return;
       setState({
         stage: "complete",
         progress: 100,
         message: "Analysis complete!",
       });
-      // HIGH-41 FIX: Close EventSource and null out ref on completion
-      eventSource.close();
-      eventSourceRef.current = null;
       setIsConnected(false);
       onComplete?.();
     });
@@ -93,16 +104,23 @@ export function useAnalysisProgress({
       } catch {
         // Use default message
       }
-      setState({ stage: "error", progress: 0, error: errorMessage });
       // HIGH-41 FIX: Close EventSource and null out ref on error event
       eventSource.close();
       eventSourceRef.current = null;
+      // HIGH-STATE-05 FIX: Check if mounted before updating state
+      if (!isMountedRef.current) return;
+      setState({ stage: "error", progress: 0, error: errorMessage });
       setIsConnected(false);
       onError?.(errorMessage);
     });
 
     // HIGH-41 FIX: Handle onerror - close EventSource and update ref
     eventSource.onerror = () => {
+      // HIGH-41 FIX: Always close on error to prevent memory leaks
+      eventSource.close();
+      eventSourceRef.current = null;
+      // HIGH-STATE-05 FIX: Check if mounted before updating state
+      if (!isMountedRef.current) return;
       if (eventSource.readyState === EventSource.CLOSED) {
         setState((prev) =>
           prev.stage === "complete"
@@ -111,9 +129,6 @@ export function useAnalysisProgress({
         );
         setIsConnected(false);
       }
-      // HIGH-41 FIX: Always close on error to prevent memory leaks
-      eventSource.close();
-      eventSourceRef.current = null;
     };
 
     // HIGH-41 FIX: Cleanup function ensures EventSource is closed on unmount
@@ -138,8 +153,12 @@ export function useAnalysisProgress({
   }, [disconnect]);
 
   useEffect(() => {
+    // HIGH-STATE-05 FIX: Set mounted flag on mount
+    isMountedRef.current = true;
     const cleanup = connect();
     return () => {
+      // HIGH-STATE-05 FIX: Clear mounted flag before cleanup
+      isMountedRef.current = false;
       cleanup?.();
       disconnect();
     };

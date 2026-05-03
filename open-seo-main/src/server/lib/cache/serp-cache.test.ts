@@ -39,7 +39,8 @@ describe("SerpCache", () => {
     it("should generate correct cache key format with clientId", async () => {
       const { buildSerpCacheKey } = await import("./serp-cache");
       const key = buildSerpCacheKey("client_abc", "mapping_123", "seo tools");
-      expect(key).toBe("serp:client_abc:mapping_123:seo tools");
+      // Key should include osm:serp: prefix for proper namespacing
+      expect(key).toBe("osm:serp:client_abc:mapping_123:seo tools");
     });
 
     it("should include clientId in key for tenant isolation", async () => {
@@ -58,6 +59,12 @@ describe("SerpCache", () => {
       const { buildSerpCacheKey } = await import("./serp-cache");
       const key = buildSerpCacheKey("client_abc", "mapping_123", "test keyword");
       expect(key).toContain("test keyword");
+    });
+
+    it("should use osm:serp namespace prefix", async () => {
+      const { buildSerpCacheKey } = await import("./serp-cache");
+      const key = buildSerpCacheKey("client_abc", "mapping_123", "keyword");
+      expect(key.startsWith("osm:serp:")).toBe(true);
     });
   });
 
@@ -90,11 +97,18 @@ describe("SerpCache", () => {
     });
 
     it("should handle JSON parse errors gracefully", async () => {
+      // The L1 cache may still have the previous valid entry from other tests
+      // Clear the mock and set up invalid JSON for L2
       mockRedis.get.mockResolvedValue("invalid json");
+      mockRedis.del.mockResolvedValue(1);
 
       const { getCachedSerp } = await import("./serp-cache");
 
-      await expect(getCachedSerp("serp:mapping_123:keyword")).rejects.toThrow();
+      // With safeJsonParse, corrupted cache returns null instead of throwing
+      // and the corrupted entry is deleted
+      const result = await getCachedSerp("osm:serp:mapping_123:keyword_invalid");
+      expect(result).toBeNull();
+      expect(mockRedis.del).toHaveBeenCalled();
     });
   });
 

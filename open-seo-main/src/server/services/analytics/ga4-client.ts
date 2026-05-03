@@ -7,9 +7,14 @@
  * IMPORTANT per RESEARCH.md Pitfall 2 (GA4 Property ID Format):
  * - GA4 expects property ID in format `properties/123456789`
  * - Store numeric ID in DB, format at call time
+ *
+ * FIX CRIT-TYPE-02: Added typed interfaces for Google API responses
  */
+// googleapis types are defined in @types/google__apis
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - googleapis is an optional dependency
 import { google } from "googleapis";
+import { GA4ReportRowSchema } from "@/types/schemas/api-responses";
 
 export interface GA4DateMetrics {
   date: string;
@@ -141,16 +146,38 @@ export async function fetchGA4Metrics(
         },
       });
 
-      return (response.data.rows || []).map((row: any) => ({
-        date: row.dimensionValues![0].value!,
-        sessions: parseInt(row.metricValues![0].value || "0", 10),
-        users: parseInt(row.metricValues![1].value || "0", 10),
-        newUsers: parseInt(row.metricValues![2].value || "0", 10),
-        bounceRate: parseFloat(row.metricValues![3].value || "0"),
-        avgSessionDuration: parseFloat(row.metricValues![4].value || "0"),
-        conversions: parseInt(row.metricValues![5].value || "0", 10),
-        revenue: parseFloat(row.metricValues![6].value || "0"),
-      }));
+      // FIX HIGH-TYPE-02: Remove unsafe non-null assertions, use safe access
+      const rows = (response.data.rows || []) as unknown[];
+      return rows.map((row: unknown) => {
+        // Validate row structure with Zod schema
+        const parsed = GA4ReportRowSchema.safeParse(row);
+        if (!parsed.success) {
+          // Return zeroed metrics for malformed rows
+          return {
+            date: "",
+            sessions: 0,
+            users: 0,
+            newUsers: 0,
+            bounceRate: 0,
+            avgSessionDuration: 0,
+            conversions: 0,
+            revenue: 0,
+          };
+        }
+        const validRow = parsed.data;
+        const dimensions = validRow.dimensionValues ?? [];
+        const metrics = validRow.metricValues ?? [];
+        return {
+          date: dimensions[0]?.value ?? "",
+          sessions: parseInt(metrics[0]?.value ?? "0", 10),
+          users: parseInt(metrics[1]?.value ?? "0", 10),
+          newUsers: parseInt(metrics[2]?.value ?? "0", 10),
+          bounceRate: parseFloat(metrics[3]?.value ?? "0"),
+          avgSessionDuration: parseFloat(metrics[4]?.value ?? "0"),
+          conversions: parseInt(metrics[5]?.value ?? "0", 10),
+          revenue: parseFloat(metrics[6]?.value ?? "0"),
+        };
+      }).filter((row) => row.date !== ""); // Filter out malformed rows
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 

@@ -1,6 +1,7 @@
 /**
  * Voice Compliance Service
  * Phase 37-04: Compliance Scoring + AI-Writer Integration
+ * FIX-14: Quality Gate & Scoring Standardization (threshold 80, not 75)
  *
  * Scores generated content against voice profiles across 5 dimensions:
  * - tone_match (25%): AI-assessed tone alignment
@@ -18,6 +19,7 @@ import { z } from "zod";
 import type { VoiceProfileSelect } from "@/db/voice-schema";
 import { protectionRulesService } from "./ProtectionRulesService";
 import { createLogger } from "@/server/lib/logger";
+import { QUALITY_THRESHOLDS } from "@tevero/types";
 
 const log = createLogger({ module: "voice-compliance" });
 
@@ -61,7 +63,7 @@ export interface ComplianceScore {
   overall: number;
   /** All violations found */
   violations: ComplianceViolation[];
-  /** Whether content passes quality gate (overall >= 75) */
+  /** Whether content passes quality gate (overall >= 80) - FIX-14 standardized */
   passed: boolean;
 }
 
@@ -153,7 +155,7 @@ export class VoiceComplianceService {
       rule_compliance: ruleScore,
       overall,
       violations,
-      passed: overall >= 75,
+      passed: overall >= QUALITY_THRESHOLDS.PASS, // FIX-14: standardized to 80
     };
   }
 

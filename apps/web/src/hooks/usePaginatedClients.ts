@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getClientsPaginated } from "@/actions/dashboard/get-clients-paginated";
 import type { FilterParams } from "@/types/pagination";
+// HIGH-STATE-04 FIX: Use centralized query key factory
+import { queryKeys } from "@/lib/query-keys";
 
 interface UsePaginatedClientsOptions extends FilterParams {
   workspaceId?: string;
@@ -38,7 +40,8 @@ export function usePaginatedClients(options: UsePaginatedClientsOptions) {
   } = options;
 
   return useInfiniteQuery({
-    queryKey: ["clients", "paginated", workspaceId, sortBy, sortDir, filters],
+    // HIGH-STATE-04 FIX: Use centralized query key factory
+    queryKey: queryKeys.clients.paginated(workspaceId ?? "", sortBy, sortDir, filters),
     queryFn: async ({ pageParam }) => {
       return getClientsPaginated({
         workspaceId: workspaceId ?? "",

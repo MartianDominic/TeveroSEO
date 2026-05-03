@@ -77,6 +77,7 @@ export async function verifyClerkJWT(token: string): Promise<ClerkJWTPayload> {
       algorithms: ["RS256"],
       issuer, // Validate token issuer
       maxTokenAge: "24h", // Explicit maximum token age
+      clockTolerance: 30, // AUTH-HIGH-02 FIX: 30 seconds clock skew tolerance (reduced from default 60)
     });
 
     // Clerk JWT claims: sub = user ID, email, name (optional)

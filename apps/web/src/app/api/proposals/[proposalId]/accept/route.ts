@@ -14,13 +14,14 @@
  *
  * SECURITY (HIGH-25): Rate limited to prevent brute-force attacks.
  * Public endpoint - strict rate limiting (5 requests per minute per IP).
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { NextRequest, NextResponse } from "next/server";
 import { RateLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import { getOpenSeoUrl } from "@/lib/env";
 
 import { logger } from '@/lib/logger';
-const getOpenSeoUrl = () =>
-  process.env.OPEN_SEO_API_URL || "http://localhost:3001";
 
 /**
  * Strict rate limiter for public proposal acceptance endpoint.

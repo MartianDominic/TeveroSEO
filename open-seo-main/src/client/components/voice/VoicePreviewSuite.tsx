@@ -1,6 +1,7 @@
 /**
  * Voice Preview Suite
  * Phase 37-05: Voice Settings UI
+ * FIX-14: Quality Gate & Scoring Standardization
  *
  * Generate sample content to preview voice settings:
  * - Headline sample
@@ -26,6 +27,7 @@ import { Progress } from "@/client/components/ui/progress";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { generateVoicePreviewFn } from "@/serverFunctions/voice";
 import type { VoiceProfileSelect } from "@/db/voice-schema";
+import { QUALITY_THRESHOLDS } from "@tevero/types";
 
 interface Props {
   profile: VoiceProfileSelect;
@@ -65,18 +67,26 @@ const DIMENSION_LABELS: Record<string, string> = {
   rule_compliance: "Rules",
 };
 
+/**
+ * Get score color based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreColor(score: number): string {
-  if (score >= 80) return "text-green-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-red-600";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "text-green-600"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "text-amber-600"; // >= 50
+  return "text-red-600"; // < 50
 }
 
+/**
+ * Get score badge variant based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreBadgeVariant(
   score: number
 ): "default" | "secondary" | "destructive" {
-  if (score >= 80) return "default";
-  if (score >= 60) return "secondary";
-  return "destructive";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "default"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "secondary"; // >= 50
+  return "destructive"; // < 50
 }
 
 export function VoicePreviewSuite({ profile }: Props) {

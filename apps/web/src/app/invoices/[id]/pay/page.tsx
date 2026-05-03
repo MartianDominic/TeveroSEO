@@ -4,9 +4,12 @@
  *
  * Server component that fetches invoice and renders payment checkout.
  * No authentication required - clients access via shared link.
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { notFound } from "next/navigation";
 import { InvoicePaymentClient } from "./InvoicePaymentClient";
+import { getOpenSeoUrl } from "@/lib/env";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -40,7 +43,8 @@ interface InvoicePaymentData {
 async function getInvoicePaymentDetails(
   id: string
 ): Promise<{ success: boolean; data?: InvoicePaymentData; error?: string }> {
-  const apiUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     const res = await fetch(`${apiUrl}/api/invoices/${id}/pay`, {

@@ -9,11 +9,14 @@
  * - Read-only proposal view
  * - Track view event
  * - Branded experience using proposal brandConfig
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PublicProposalView } from "./PublicProposalView";
+import { getOpenSeoUrl } from "@/lib/env";
 
 import { logger } from '@/lib/logger';
 // ---------------------------------------------------------------------------
@@ -78,7 +81,8 @@ interface PageProps {
 // ---------------------------------------------------------------------------
 
 async function getProposal(token: string): Promise<ProposalData | null> {
-  const apiUrl = process.env.OPEN_SEO_API_URL ?? "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     const response = await fetch(`${apiUrl}/api/proposals/public/${token}`, {
@@ -115,7 +119,8 @@ async function trackView(
   userAgent: string,
   ipAddress: string
 ): Promise<void> {
-  const apiUrl = process.env.OPEN_SEO_API_URL ?? "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     // Fire and forget - don't block page render

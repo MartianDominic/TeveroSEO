@@ -18,7 +18,8 @@
  * { success: true }
  *
  * SECURITY:
- * - T-62-06-01: Workspace validation via X-Workspace-Id header
+ * - AUTH-CRIT-01 FIX: User identity verified via JWT, NOT from X-User-Id header
+ * - T-62-06-01: Workspace validation with authenticated user context
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -26,6 +27,7 @@ import { z } from "zod";
 import { getQuickActionService } from "@/server/features/command-center/services/QuickActionService";
 import { LOSS_REASONS } from "@/db";
 import { createLogger } from "@/server/lib/logger";
+import { authenticateCommandCenterRequest } from "@/server/features/command-center/api/auth";
 
 const log = createLogger({ module: "mark-lost" });
 
@@ -42,15 +44,16 @@ export const Route = createFileRoute("/api/command-center/actions/mark-lost")({
     handlers: {
       POST: async ({ request }: { request: Request }) => {
         try {
-          const workspaceId = request.headers.get("X-Workspace-Id");
-          const userId = request.headers.get("X-User-Id") ?? "system";
-
-          if (!workspaceId) {
+          // AUTH-CRIT-01 FIX: Authenticate via JWT/API key, not trusted headers
+          const auth = await authenticateCommandCenterRequest(request);
+          if (!auth.success) {
             return Response.json(
-              { error: "Workspace ID required" },
-              { status: 401 }
+              { error: auth.error },
+              { status: auth.status }
             );
           }
+
+          const { userId, workspaceId } = auth;
 
           const body = (await request.json()) as Record<string, unknown>;
           const parsed = MarkLostSchema.safeParse(body);

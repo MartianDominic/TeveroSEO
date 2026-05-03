@@ -47,3 +47,11 @@ export {
   type WPTag,
   type WordPressData,
 } from "./WordPressService";
+
+// OAuth State Management (MED-VAL-02 FIX)
+export {
+  OAuthStateService,
+  createOAuthStateService,
+  type CreateStateRequest,
+  type StateVerificationResult,
+} from "./OAuthStateService";

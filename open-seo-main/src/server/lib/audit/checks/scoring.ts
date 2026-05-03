@@ -1,6 +1,7 @@
 /**
  * SEO score calculator with hard gates.
  * Phase 32: 107 SEO Checks Implementation
+ * FIX-14: Quality Gate & Scoring Standardization
  *
  * Scoring formula:
  * - Base: 60 points (fundamentals present)
@@ -20,12 +21,14 @@
  * from scoring and do not trigger gates.
  */
 import type { CheckResult, ScoreResult, ScoreBreakdown } from "./types";
+import { QUALITY_THRESHOLDS, clampScore, passesQualityGate } from "@tevero/types";
 
 /**
  * Quality gate threshold for auto-publish eligibility.
  * Content must score >= 80 to be eligible for auto-publishing.
+ * @deprecated Import from @tevero/types instead
  */
-export const QUALITY_GATE_THRESHOLD = 80;
+export const QUALITY_GATE_THRESHOLD = QUALITY_THRESHOLDS.PASS;
 
 /**
  * Tier weights for score calculation.
@@ -153,12 +156,11 @@ export function calculateOnPageScore(results: CheckResult[]): ScoreResult {
 
 /**
  * Check if a score passes the quality gate for auto-publishing.
+ * FIX-14: Now uses shared passesQualityGate from @tevero/types
  * @param score The SEO score (0-100)
- * @returns true if score >= QUALITY_GATE_THRESHOLD (80)
+ * @returns true if score >= QUALITY_THRESHOLDS.PASS (80)
  */
-export function passesQualityGate(score: number): boolean {
-  return score >= QUALITY_GATE_THRESHOLD;
-}
+export { passesQualityGate };
 
 /**
  * Quality gate result with detailed information.

@@ -24,6 +24,11 @@ import { logger } from '@/lib/logger';
  * - All required secrets must have minimum length validation
  * - CLERK_WEBHOOK_SECRET is required for secure webhook verification
  * - INTERNAL_API_KEY must be at least 32 chars for service-to-service auth
+ *
+ * CFG-CRIT-01 FIX: Standardized on OPEN_SEO_URL (not OPEN_SEO_API_URL)
+ * CFG-HIGH-02 FIX: Added OAuth secrets to validation schema
+ * CFG-HIGH-03 FIX: Added ANTHROPIC_API_KEY validation
+ * CFG-MED-01 FIX: Added Stripe variables to validation schema
  */
 const serverEnvSchema = z.object({
   // Database (REQUIRED)
@@ -41,6 +46,7 @@ const serverEnvSchema = z.object({
 
   // Internal API key for service-to-service authentication (REQUIRED in production)
   // SECURITY: Must be at least 32 characters for cryptographic strength
+  // CFG-HIGH-01 FIX: Standardized validation to 32 chars min
   INTERNAL_API_KEY: z.string().min(32, 'INTERNAL_API_KEY must be at least 32 characters').optional()
     .refine(
       (val) => process.env.NODE_ENV !== 'production' || (val && val.length >= 32),
@@ -48,6 +54,7 @@ const serverEnvSchema = z.object({
     ),
 
   // Backend services - using standardized names
+  // CFG-CRIT-01 FIX: Canonical name is OPEN_SEO_URL (not OPEN_SEO_API_URL)
   // SECURITY: In production, localhost URLs will cause startup failure
   OPEN_SEO_URL: z.string().url('OPEN_SEO_URL must be a valid URL')
     .default('http://localhost:3001')
@@ -62,7 +69,32 @@ const serverEnvSchema = z.object({
       { message: 'AI_WRITER_URL cannot be localhost in production' }
     ),
 
+  // CFG-HIGH-02 FIX: OAuth secrets added to validation schema
+  // Google OAuth (required for GSC integration)
+  GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required').optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1, 'GOOGLE_CLIENT_SECRET is required').optional(),
+
+  // Shopify OAuth (optional platform integration)
+  SHOPIFY_CLIENT_ID: z.string().optional(),
+  SHOPIFY_CLIENT_SECRET: z.string().optional(),
+
+  // Wix OAuth (optional platform integration)
+  WIX_CLIENT_ID: z.string().optional(),
+  WIX_CLIENT_SECRET: z.string().optional(),
+
+  // CFG-HIGH-03 FIX: Anthropic API key for AI features
+  ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required').optional(),
+
+  // CFG-MED-01 FIX: Stripe payment configuration
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_', 'STRIPE_SECRET_KEY must start with sk_').optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_', 'STRIPE_WEBHOOK_SECRET must start with whsec_').optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().startsWith('pk_', 'STRIPE_PUBLISHABLE_KEY must start with pk_').optional(),
+
+  // Health check token for monitoring systems
+  HEALTH_CHECK_TOKEN: z.string().optional(),
+
   // Environment
+  // CFG-MED-03 FIX: Standardized on NODE_ENV for Node.js apps
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

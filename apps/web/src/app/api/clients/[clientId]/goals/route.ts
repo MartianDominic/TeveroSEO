@@ -3,6 +3,8 @@
  *
  * GET  /api/clients/:clientId/goals - List all goals for a client
  * POST /api/clients/:clientId/goals - Create a new goal or bulk create goals
+ *
+ * FIX CRIT-API-01: Uses Zod schemas for runtime response validation.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
@@ -14,48 +16,28 @@ import {
   safeParseJson,
   formatValidationErrors,
 } from "@/lib/validations/api-schemas";
+import {
+  GoalsListResponseSchema,
+  CreateGoalResponseSchema,
+  BulkCreateGoalsResponseSchema,
+  type GoalsListResponse,
+  type CreateGoalResponse,
+  type BulkCreateGoalsResponse,
+} from "@/lib/api/schemas/cross-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ clientId: string }> };
 
-interface GoalTemplate {
-  id: string;
-  name: string;
-  metric: string;
-  description: string | null;
-}
-
-interface GoalResponse {
-  id: string;
-  clientId: string;
-  templateId: string | null;
-  customName: string | null;
-  targetValue: string;
-  currentValue: string;
-  startDate: string | null;
-  targetDate: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface GoalWithTemplate {
-  goal: GoalResponse;
-  template: GoalTemplate;
-}
-
-interface GoalsListResponse {
-  goals: GoalWithTemplate[];
-}
-
 async function handleGet(_req: Request, { params }: Params) {
   const { clientId } = await params;
   try {
     await requireClientAccess(clientId);
+    // FIX CRIT-API-01: Use schema validation for runtime type safety
     const data = await getOpenSeo<GoalsListResponse>(
-      `/api/clients/${clientId}/goals`
+      `/api/clients/${clientId}/goals`,
+      { schema: GoalsListResponseSchema }
     );
     return NextResponse.json(data);
   } catch (err) {
@@ -99,24 +81,28 @@ async function handlePost(req: Request, { params }: Params) {
     const body = parsed.data;
 
     // Handle bulk create if goals array is present
+    // FIX CRIT-API-01: Use schema validation for runtime type safety
     if ("goals" in body && Array.isArray(body.goals)) {
-      const data = await postOpenSeo<{ results: Array<{ success: boolean; id?: string; error?: string }> }>(
+      const data = await postOpenSeo<BulkCreateGoalsResponse>(
         `/api/clients/${clientId}/goals`,
         {
           ...body,
           clientId,
-        }
+        },
+        { schema: BulkCreateGoalsResponseSchema }
       );
       return NextResponse.json(data, { status: 201 });
     }
 
     // Single goal creation
-    const data = await postOpenSeo<{ id: string }>(
+    // FIX CRIT-API-01: Use schema validation for runtime type safety
+    const data = await postOpenSeo<CreateGoalResponse>(
       `/api/clients/${clientId}/goals`,
       {
         ...body,
         clientId,
-      }
+      },
+      { schema: CreateGoalResponseSchema }
     );
     return NextResponse.json(data, { status: 201 });
   } catch (err) {

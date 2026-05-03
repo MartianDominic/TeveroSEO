@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { calculateAuditRefetchInterval } from "@/hooks/use-audit-polling";
+import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
 import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX } from "lucide-react";
 import { logger } from '@/lib/logger';
 import {
@@ -368,13 +370,32 @@ function AuditDetail({
   setSearchParams: (updates: Record<string, string | undefined>) => void;
   onBack: () => void;
 }) {
+  // FIX-17 HIGH-UJ-04: Use adaptive polling with exponential backoff
+  // Replaces fixed 3s interval - starts at 1s, increases to max 30s
+  const statusUnchangedCountRef = useRef(0);
+  const lastStatusRef = useRef<string | undefined>(undefined);
+
   const statusQuery = useQuery({
     queryKey: ["audit-status", projectId, auditId],
     queryFn: () => getAuditStatus({ projectId, clientId, auditId }),
     refetchInterval: (query) => {
       const result = query.state.data;
       const data = result?.success ? result.data : undefined;
-      return data?.status === "running" ? 3000 : false;
+      const currentStatus = data?.status;
+
+      // Track unchanged responses for backoff calculation
+      if (currentStatus === lastStatusRef.current) {
+        statusUnchangedCountRef.current += 1;
+      } else {
+        statusUnchangedCountRef.current = 0;
+        lastStatusRef.current = currentStatus;
+      }
+
+      // Use adaptive polling with exponential backoff
+      return calculateAuditRefetchInterval(
+        currentStatus,
+        statusUnchangedCountRef.current
+      );
     },
   });
 
@@ -532,10 +553,34 @@ function ProgressCard({
             : (status.currentPhase ?? "Running");
   const progress = isLighthousePhase ? lighthouseProgress : crawlProgress;
 
+  // FIX-17 HIGH-UJ-05: Use adaptive polling for crawl progress
+  // Replaces fixed 1.5s interval - starts at 1.5s, increases to max 15s
+  const crawlUnchangedCountRef = useRef(0);
+  const lastCrawlLengthRef = useRef(0);
+
   const crawlProgressQuery = useQuery({
     queryKey: ["audit-crawl-progress", projectId, auditId],
     queryFn: () => getCrawlProgress({ projectId, clientId, auditId }),
-    refetchInterval: 1500,
+    refetchInterval: (query) => {
+      const data = query.state.data ?? [];
+      const currentLength = Array.isArray(data) ? data.length : 0;
+
+      // Track unchanged responses for backoff
+      if (currentLength === lastCrawlLengthRef.current) {
+        crawlUnchangedCountRef.current += 1;
+      } else {
+        crawlUnchangedCountRef.current = 0;
+        lastCrawlLengthRef.current = currentLength;
+      }
+
+      // Adaptive polling: 1.5s initial, max 15s, 1.3x multiplier
+      return getAdaptiveDelay(crawlUnchangedCountRef.current, {
+        initialDelayMs: 1500,
+        maxDelayMs: 15000,
+        backoffMultiplier: 1.3,
+        jitterFactor: 0.15,
+      });
+    },
   });
 
   const crawlProgressRaw = crawlProgressQuery.data ?? [];

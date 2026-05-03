@@ -7,18 +7,87 @@
  *    - Enqueues report generation job
  *    - Updates schedule: lastRun = now, nextRun = calculateNextRun()
  * 2. Polls for completed scheduled reports and sends delivery emails
+ *
+ * JOB-CRIT-02: Implements checkpoint-based processing for crash recovery.
+ * Stores last processed schedule ID in Redis to resume from checkpoint on restart.
  */
 import type { Job } from "bullmq";
 import type { ScheduleJobData } from "@/server/queues/scheduleQueue";
 import { createLogger } from "@/server/lib/logger";
 import { db } from "@/db";
 import { reportSchedules, reports, clients } from "@/db/schema";
-import { eq, and, lte, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, lte, isNotNull, isNull, gt } from "drizzle-orm";
 import { enqueueReportGeneration } from "@/server/queues/reportQueue";
 import { computeReportHash } from "@/server/services/report/content-hasher";
 import { sendReportEmail } from "@/server/lib/email";
 import { reportDeliveryTemplate } from "@/server/lib/email-templates";
+import { redis } from "@/server/lib/redis";
 import CronParser from "cron-parser";
+
+/** Redis key for storing checkpoint state */
+const CHECKPOINT_KEY = "schedule-processor:checkpoint";
+
+/** Checkpoint TTL - expire after 1 hour (covers multiple schedule runs) */
+const CHECKPOINT_TTL_SECONDS = 3600;
+
+/**
+ * JOB-CRIT-02: Checkpoint state for crash recovery.
+ */
+interface ScheduleCheckpoint {
+  jobId: string;
+  lastProcessedScheduleId: string | null;
+  processedCount: number;
+  startedAt: string;
+}
+
+/**
+ * JOB-CRIT-02: Save checkpoint to Redis.
+ */
+async function saveCheckpoint(checkpoint: ScheduleCheckpoint): Promise<void> {
+  try {
+    await redis.setex(
+      CHECKPOINT_KEY,
+      CHECKPOINT_TTL_SECONDS,
+      JSON.stringify(checkpoint)
+    );
+  } catch (err) {
+    // Log but don't fail - checkpoint is for crash recovery, not critical path
+    const log = createLogger({ module: "schedule-processor" });
+    log.warn("Failed to save checkpoint", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * JOB-CRIT-02: Load checkpoint from Redis.
+ */
+async function loadCheckpoint(jobId: string): Promise<ScheduleCheckpoint | null> {
+  try {
+    const data = await redis.get(CHECKPOINT_KEY);
+    if (!data) return null;
+
+    const checkpoint = JSON.parse(data) as ScheduleCheckpoint;
+    // Only use checkpoint if it's for the same job (prevents stale checkpoints)
+    if (checkpoint.jobId === jobId) {
+      return checkpoint;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * JOB-CRIT-02: Clear checkpoint after successful completion.
+ */
+async function clearCheckpoint(): Promise<void> {
+  try {
+    await redis.del(CHECKPOINT_KEY);
+  } catch {
+    // Ignore - TTL will handle cleanup
+  }
+}
 
 /** T-53-09: Rate limit for email sends per schedule check cycle */
 const MAX_EMAILS_PER_RUN = 50;
@@ -66,6 +135,9 @@ function generateScheduleContentHash(
 /**
  * Process a schedule check job.
  * Finds all due schedules and enqueues report generation for each.
+ *
+ * JOB-CRIT-02: Uses checkpoint-based processing for crash recovery.
+ * If the processor crashes mid-batch, it resumes from the last checkpoint.
  */
 export default async function processScheduleJob(
   job: Job<ScheduleJobData>,
@@ -80,15 +152,45 @@ export default async function processScheduleJob(
   });
 
   const now = new Date();
+  const jobId = job.id ?? `schedule-${Date.now()}`;
+
+  // JOB-CRIT-02: Check for existing checkpoint (crash recovery)
+  const existingCheckpoint = await loadCheckpoint(jobId);
+  let lastProcessedId: string | null = null;
+  let processedCount = 0;
+
+  if (existingCheckpoint) {
+    lastProcessedId = existingCheckpoint.lastProcessedScheduleId;
+    processedCount = existingCheckpoint.processedCount;
+    logger.info("Resuming from checkpoint", {
+      lastProcessedId,
+      processedCount,
+      checkpointStartedAt: existingCheckpoint.startedAt,
+    });
+  }
+
+  // Build query with checkpoint support - order by ID for deterministic processing
+  const whereClause = lastProcessedId
+    ? and(
+        lte(reportSchedules.nextRun, now),
+        eq(reportSchedules.enabled, true),
+        gt(reportSchedules.id, lastProcessedId)
+      )
+    : and(lte(reportSchedules.nextRun, now), eq(reportSchedules.enabled, true));
 
   // Find all due schedules: nextRun <= now AND enabled = true
+  // Order by ID for deterministic checkpoint-based processing
   const dueSchedules = await db
     .select()
     .from(reportSchedules)
-    .where(and(lte(reportSchedules.nextRun, now), eq(reportSchedules.enabled, true)))
+    .where(whereClause)
+    .orderBy(reportSchedules.id)
     .limit(100); // Process max 100 schedules per run
 
-  logger.info("Found due schedules", { count: dueSchedules.length });
+  logger.info("Found due schedules", {
+    count: dueSchedules.length,
+    resumedFrom: lastProcessedId,
+  });
 
   for (const schedule of dueSchedules) {
     const scheduleLogger = createLogger({
@@ -167,17 +269,31 @@ export default async function processScheduleJob(
         lastRun: now.toISOString(),
         nextRun: nextRun.toISOString(),
       });
+
+      // JOB-CRIT-02: Save checkpoint after each successful schedule processing
+      processedCount++;
+      await saveCheckpoint({
+        jobId,
+        lastProcessedScheduleId: schedule.id,
+        processedCount,
+        startedAt: existingCheckpoint?.startedAt ?? now.toISOString(),
+      });
     } catch (err) {
       scheduleLogger.error(
         "Failed to process schedule",
         err instanceof Error ? err : new Error(String(err)),
       );
       // Continue with next schedule - don't fail the entire job
+      // Checkpoint is NOT updated on failure, so this schedule will be retried
     }
   }
 
+  // JOB-CRIT-02: Clear checkpoint after successful completion
+  await clearCheckpoint();
+
   logger.info("Schedule check complete", {
-    processed: dueSchedules.length,
+    processed: processedCount,
+    total: dueSchedules.length,
   });
 
   // Phase 2: Send emails for completed scheduled reports

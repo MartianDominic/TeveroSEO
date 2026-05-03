@@ -52,65 +52,54 @@ export const Route = createFileRoute("/api/seo/audits")({
             const action = url.searchParams.get("action") ?? "status";
             if (action === "results") {
               const results = await AuditService.getResults(auditId, ctx.projectId);
-              return Response.json(results);
+              return Response.json({ success: true, data: results });
             }
             if (action === "progress") {
               const progress = await AuditService.getCrawlProgress(auditId, ctx.projectId);
-              return Response.json(progress);
+              return Response.json({ success: true, data: progress });
             }
             // Default: status
             const status = await AuditService.getStatus(auditId, ctx.projectId);
-            return Response.json(status);
+            return Response.json({ success: true, data: status });
           }
 
           // No audit_id: get history
           const parsed = getAuditHistorySchema.safeParse({ clientId: ctx.clientId });
           if (!parsed.success) {
-            return Response.json({ error: parsed.error.message }, { status: 400 });
+            return Response.json({ success: false, error: { message: parsed.error.message, code: "VALIDATION_ERROR" } }, { status: 400 });
           }
           const history = await AuditService.getHistory(ctx.projectId, { clientId: ctx.clientId });
-          return Response.json(history);
+          return Response.json({ success: true, data: history });
         } catch (error) {
           if (error instanceof AppError) {
             const status = error.code === "NOT_FOUND" ? 404 : error.code === "FORBIDDEN" ? 403 : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json({ success: false, error: { message: error.message, code: error.code } }, { status });
           }
           log.error("GET error", error instanceof Error ? error : new Error(String(error)));
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json({ success: false, error: { message: "Internal server error", code: "INTERNAL_ERROR" } }, { status: 500 });
         }
       },
 
-      // POST /api/seo/audits - Start audit or delete audit
+      // POST /api/seo/audits - Start audit
+      // FIX HIGH-API-01: Use consistent response envelope
       POST: async ({ request }: { request: Request }) => {
         try {
           const ctx = await getProjectContext(request);
           const body = (await request.json()) as Record<string, unknown>;
-          const action = (body.action as string) ?? "start";
 
           // Rate limit audit start operations (heavy operation)
-          if (action === "start") {
-            const rateLimitResult = await rateLimit({
-              key: `audit:start:${ctx.userId}`,
-              ...AUDIT_RATE_LIMIT,
-            });
-            if (!rateLimitResult.allowed) {
-              return rateLimitExceededResponse(rateLimitResult);
-            }
+          const rateLimitResult = await rateLimit({
+            key: `audit:start:${ctx.userId}`,
+            ...AUDIT_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
           }
 
-          if (action === "delete") {
-            const parsed = deleteAuditSchema.safeParse(body);
-            if (!parsed.success) {
-              return Response.json({ error: parsed.error.message }, { status: 400 });
-            }
-            await AuditService.remove(parsed.data.auditId, ctx.projectId);
-            return Response.json({ success: true });
-          }
-
-          // Default: start audit
+          // Validate input
           const parsed = startAuditSchema.safeParse(body);
           if (!parsed.success) {
-            return Response.json({ error: parsed.error.message }, { status: 400 });
+            return Response.json({ success: false, error: { message: parsed.error.message, code: "VALIDATION_ERROR" } }, { status: 400 });
           }
 
           const result = await AuditService.startAudit({
@@ -127,14 +116,42 @@ export const Route = createFileRoute("/api/seo/audits")({
             clientId: ctx.clientId,
           });
 
-          return Response.json(result);
+          return Response.json({ success: true, data: result }, { status: 201 });
         } catch (error) {
           if (error instanceof AppError) {
             const status = error.code === "NOT_FOUND" ? 404 : error.code === "FORBIDDEN" ? 403 : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json({ success: false, error: { message: error.message, code: error.code } }, { status });
           }
           log.error("POST error", error instanceof Error ? error : new Error(String(error)));
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json({ success: false, error: { message: "Internal server error", code: "INTERNAL_ERROR" } }, { status: 500 });
+        }
+      },
+
+      // FIX HIGH-API-02: Use proper HTTP DELETE method instead of POST with action=delete
+      DELETE: async ({ request }: { request: Request }) => {
+        try {
+          const ctx = await getProjectContext(request);
+          const url = new URL(request.url);
+          const auditId = url.searchParams.get("audit_id");
+
+          if (!auditId) {
+            return Response.json({ success: false, error: { message: "audit_id query parameter required", code: "VALIDATION_ERROR" } }, { status: 400 });
+          }
+
+          const parsed = deleteAuditSchema.safeParse({ projectId: ctx.projectId, auditId });
+          if (!parsed.success) {
+            return Response.json({ success: false, error: { message: parsed.error.message, code: "VALIDATION_ERROR" } }, { status: 400 });
+          }
+
+          await AuditService.remove(parsed.data.auditId, ctx.projectId);
+          return Response.json({ success: true }, { status: 200 });
+        } catch (error) {
+          if (error instanceof AppError) {
+            const status = error.code === "NOT_FOUND" ? 404 : error.code === "FORBIDDEN" ? 403 : 400;
+            return Response.json({ success: false, error: { message: error.message, code: error.code } }, { status });
+          }
+          log.error("DELETE error", error instanceof Error ? error : new Error(String(error)));
+          return Response.json({ success: false, error: { message: "Internal server error", code: "INTERNAL_ERROR" } }, { status: 500 });
         }
       },
     },

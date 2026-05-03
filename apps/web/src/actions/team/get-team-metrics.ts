@@ -10,7 +10,7 @@ import {
   type ActionAuthContext,
 } from "@/lib/auth/action-auth";
 import { getFastApi, getOpenSeo } from "@/lib/server-fetch";
-import { cacheGet, cacheSet, cacheTags } from "@/lib/cache";
+import { cacheGet, cacheSet, cacheTags, cacheInvalidatePattern, publishInvalidation } from "@/lib/cache";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
 import type {
   TeamMetrics,
@@ -317,14 +317,12 @@ export async function reassignClient(
       } as RequestInit
     );
 
-    // DI-M02 FIX: Invalidate cache for ALL role variants, not just owner
-    // This ensures all users see updated team metrics after reassignment
-    const roleVariants = ['owner', 'admin', 'member', 'intern'];
-    await Promise.all(
-      roleVariants.map((role) =>
-        cacheSet(teamMetricsCacheKey(validatedWorkspaceId, role), null, { ttl: 0 })
-      )
-    );
+    // HIGH-CACHE-03 FIX: Use pattern invalidation instead of iterating role variants
+    // This is more robust and handles any future role additions
+    await cacheInvalidatePattern(`team:metrics:${validatedWorkspaceId}:*`);
+
+    // CRIT-CACHE-01: Notify other instances to clear their L1 caches
+    await publishInvalidation([], [`team:metrics:${validatedWorkspaceId}:*`], "team_reassignment");
 
     return { success: true };
   } catch (error) {

@@ -3,6 +3,9 @@
  * Phase 50: Pipeline Kanban
  *
  * Client-side API functions for pipeline operations.
+ *
+ * CFG-CRIT-01 FIX: Standardized to NEXT_PUBLIC_OPEN_SEO_URL
+ * (Client-side code must use NEXT_PUBLIC_ prefix)
  */
 
 import type {
@@ -10,7 +13,8 @@ import type {
   PipelineStageConfig,
 } from "@/components/pipeline/PipelineKanban";
 
-const OPEN_SEO_API_URL = process.env.NEXT_PUBLIC_OPEN_SEO_API_URL || "http://localhost:3001";
+// CFG-CRIT-01 FIX: Use standardized env var name (NEXT_PUBLIC_OPEN_SEO_URL)
+const OPEN_SEO_API_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:3001";
 
 /**
  * Get pipeline configuration for the current workspace.

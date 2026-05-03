@@ -1,9 +1,11 @@
 /**
  * ScoreCard component for displaying on-page SEO score.
  * Phase 32: 107 SEO Checks Implementation
+ * FIX-14: Quality Gate & Scoring Standardization
  */
 import { cn } from "@/client/lib/utils";
 import type { ScoreBreakdown } from "@/server/lib/audit/checks/types";
+import { QUALITY_THRESHOLDS } from "@tevero/types";
 
 interface ScoreCardProps {
   score: number;
@@ -12,25 +14,35 @@ interface ScoreCardProps {
   className?: string;
 }
 
+/**
+ * Get score color based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreColor(score: number): string {
-  if (score >= 90) return "text-green-600";
-  if (score >= 80) return "text-blue-600";
-  if (score >= 70) return "text-yellow-600";
-  return "text-red-600";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "text-green-600"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "text-yellow-600"; // >= 50
+  return "text-red-600"; // < 50
 }
 
+/**
+ * Get score label based on standardized thresholds.
+ * FIX-14: Standardized labels
+ */
 function getScoreLabel(score: number): string {
   if (score >= 90) return "Excellent";
-  if (score >= 80) return "Good";
-  if (score >= 70) return "Average";
-  return "Poor";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "Good"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "Needs Attention"; // >= 50
+  return "Poor"; // < 50
 }
 
+/**
+ * Get score background color based on standardized thresholds.
+ * FIX-14: Red (0-49), Yellow (50-79), Green (80-100)
+ */
 function getScoreBgColor(score: number): string {
-  if (score >= 90) return "bg-green-50 border-green-200";
-  if (score >= 80) return "bg-blue-50 border-blue-200";
-  if (score >= 70) return "bg-yellow-50 border-yellow-200";
-  return "bg-red-50 border-red-200";
+  if (score >= QUALITY_THRESHOLDS.PASS) return "bg-green-50 border-green-200"; // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "bg-yellow-50 border-yellow-200"; // >= 50
+  return "bg-red-50 border-red-200"; // < 50
 }
 
 const GATE_LABELS: Record<string, string> = {

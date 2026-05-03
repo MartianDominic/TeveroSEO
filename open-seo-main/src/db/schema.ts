@@ -212,3 +212,6 @@ export * from "./platform-connection-schema";
 
 // Platform data cache schema (Phase 61)
 export * from "./platform-data-cache-schema";
+
+// OAuth state schema (MED-VAL-02 FIX: CSRF protection with user binding)
+export * from "./oauth-state-schema";

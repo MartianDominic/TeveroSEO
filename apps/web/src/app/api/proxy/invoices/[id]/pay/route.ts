@@ -10,12 +10,14 @@
  * FIX HIGH-API-01: Added Zod validation on responses before forwarding to client.
  * FIX HIGH-API-02: Added correlation ID propagation to downstream requests.
  * FIX MED-API-02: Extract and forward x-request-id from edge.
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, AuthError } from "@/lib/auth/api-auth";
 import { validateCsrf } from "@/lib/api/security";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { logger } from "@/lib/logger";
+import { getOpenSeoUrl } from "@/lib/env";
 import {
   extractRequestContextFromRequest,
   buildTracingHeaders,
@@ -28,7 +30,8 @@ import {
   invoiceAccessVerificationSchema,
 } from "@/lib/api/schemas/invoice-schemas";
 
-const OPEN_SEO_API_URL = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+// CFG-CRIT-01 FIX: Use centralized env validation
+const OPEN_SEO_API_URL = getOpenSeoUrl();
 
 /**
  * Verify that the authenticated user has access to the specified invoice.

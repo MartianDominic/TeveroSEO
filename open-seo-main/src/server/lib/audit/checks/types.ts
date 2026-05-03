@@ -72,6 +72,8 @@ export interface CheckContext {
   pageAnalysis?: PageAnalysis | ExtendedPageAnalysis;
   /** Site-wide context for Tier 4 checks */
   siteContext?: SiteContext;
+  /** HTTP response headers (optional, for X-Robots-Tag check) - FIX-13 */
+  responseHeaders?: Record<string, string>;
 }
 
 /**

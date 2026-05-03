@@ -131,3 +131,92 @@ export function detectUrlTemplate(pathname: string): string {
 export function getOrigin(url: string): string {
   return new URL(url).origin;
 }
+
+/**
+ * FIX-13 (MED-SEO-02): Normalize URL for click depth calculation.
+ * Ensures consistent URL comparison by:
+ * - Removing trailing slashes (except root)
+ * - Lowercasing hostname
+ * - Removing fragments
+ * - Sorting query parameters
+ * - Normalizing protocol (http -> https if both exist)
+ *
+ * @param url - URL to normalize
+ * @param siteUrls - Optional set of known site URLs for protocol normalization
+ * @returns Normalized URL string
+ */
+export function normalizeUrlForClickDepth(url: string, siteUrls?: Set<string>): string {
+  const normalized = normalizeUrl(url);
+  if (!normalized) return url;
+
+  // If we have site URLs, check if the https version exists and prefer it
+  if (siteUrls) {
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.protocol === "http:") {
+        const httpsVersion = normalized.replace("http://", "https://");
+        if (siteUrls.has(httpsVersion)) {
+          return httpsVersion;
+        }
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }
+
+  return normalized;
+}
+
+/**
+ * FIX-13 (MED-SEO-02): Build a click depth map with normalized URLs.
+ * Performs BFS from the homepage to calculate the minimum number of clicks
+ * to reach each page.
+ *
+ * @param linkGraph - Map of source URL -> array of target URLs (outbound links)
+ * @param homepageUrl - The homepage URL to start BFS from
+ * @returns Map of URL -> click depth
+ */
+export function buildClickDepthMap(
+  linkGraph: Map<string, string[]>,
+  homepageUrl: string
+): Map<string, number> {
+  const clickDepths = new Map<string, number>();
+  const siteUrls = new Set<string>();
+
+  // Collect all known URLs for normalization
+  for (const [source, targets] of linkGraph) {
+    siteUrls.add(source);
+    for (const target of targets) {
+      siteUrls.add(target);
+    }
+  }
+
+  // Normalize the link graph
+  const normalizedGraph = new Map<string, string[]>();
+  for (const [source, targets] of linkGraph) {
+    const normalizedSource = normalizeUrlForClickDepth(source, siteUrls);
+    const normalizedTargets = targets.map((t) => normalizeUrlForClickDepth(t, siteUrls));
+    normalizedGraph.set(normalizedSource, normalizedTargets);
+  }
+
+  // Normalize homepage
+  const normalizedHomepage = normalizeUrlForClickDepth(homepageUrl, siteUrls);
+
+  // BFS from homepage
+  const queue: Array<{ url: string; depth: number }> = [{ url: normalizedHomepage, depth: 0 }];
+  clickDepths.set(normalizedHomepage, 0);
+
+  while (queue.length > 0) {
+    const { url, depth } = queue.shift()!;
+    const outboundLinks = normalizedGraph.get(url) ?? [];
+
+    for (const targetUrl of outboundLinks) {
+      if (!clickDepths.has(targetUrl)) {
+        clickDepths.set(targetUrl, depth + 1);
+        queue.push({ url: targetUrl, depth: depth + 1 });
+      }
+    }
+  }
+
+  return clickDepths;
+}

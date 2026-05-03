@@ -1,6 +1,7 @@
 /**
  * VoiceComplianceService Tests
  * Phase 37-04: Compliance Scoring + AI-Writer Integration
+ * FIX-14: Quality Gate & Scoring Standardization (threshold 80, not 75)
  *
  * Tests voice compliance scoring across 5 dimensions:
  * - tone_match: Tone alignment with profile
@@ -18,6 +19,7 @@ import {
   type ComplianceViolation,
 } from "./VoiceComplianceService";
 import type { VoiceProfileSelect } from "@/db/voice-schema";
+import { QUALITY_THRESHOLDS } from "@tevero/types";
 
 // Store original env
 const originalEnv = { ...process.env };
@@ -157,7 +159,7 @@ describe("VoiceComplianceService", () => {
       expect(result.overall).toBeLessThanOrEqual(100);
     });
 
-    it("returns passed boolean based on overall >= 75", async () => {
+    it("returns passed boolean based on overall >= 80 (FIX-14 standardized)", async () => {
       const profile = createMockProfile();
       const content = "Our expertise delivers innovative solutions.";
 
@@ -165,7 +167,8 @@ describe("VoiceComplianceService", () => {
 
       expect(result).toHaveProperty("passed");
       expect(typeof result.passed).toBe("boolean");
-      expect(result.passed).toBe(result.overall >= 75);
+      // FIX-14: Standardized threshold from 75 to 80
+      expect(result.passed).toBe(result.overall >= QUALITY_THRESHOLDS.PASS);
     });
 
     it("returns violations array", async () => {

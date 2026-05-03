@@ -77,8 +77,9 @@ export async function GET(request: NextRequest) {
   const scopes = requestedServices.map((s) => GOOGLE_SCOPES[s]);
 
   // Generate CSRF state token
+  // SEC-07 FIX: Reduced TTL from 10 minutes to 5 minutes for tighter security
   const state = nanoid(32);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes per D-03
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes (SEC-07 FIX: reduced from 10)
 
   // Build redirect URI
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

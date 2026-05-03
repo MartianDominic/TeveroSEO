@@ -15,13 +15,17 @@
  * Security:
  * - T-62-06-01: Workspace validation in backend API
  * - T-62-06-02: Rate limiting in backend API
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getOpenSeoUrl } from "@/lib/env";
 
-const OPEN_SEO_API_URL = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+// CFG-CRIT-01 FIX: Use centralized env validation
+const OPEN_SEO_API_URL = getOpenSeoUrl();
 
 /**
  * Send Reminder Action

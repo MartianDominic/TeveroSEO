@@ -18,6 +18,7 @@ import * as schema from "./schema";
 // Schema exports
 export * from "./schema";
 export * from "./webhook-schema";
+export * from "./oauth-state-schema"; // MED-VAL-02 FIX: OAuth state for CSRF protection
 
 // Database connection - require explicit configuration
 const connectionString = process.env.DATABASE_URL;

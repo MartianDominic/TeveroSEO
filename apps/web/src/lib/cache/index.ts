@@ -38,11 +38,20 @@ export {
 } from "./singleflight";
 
 // DFI-007/DFI-012: Unified cache invalidation (Next.js + Redis)
+// CRIT-CACHE-01: Cross-instance pub/sub invalidation
+// HIGH-CACHE-01: Workspace transfer invalidation
 export {
   invalidateClientData,
   invalidateWorkspaceData,
+  invalidateWorkspaceTransfer,
   markCacheAsStale,
   isCacheStale,
   getStaleInfo,
+  publishInvalidation,
+  startInvalidationSubscriber,
+  stopInvalidationSubscriber,
+  isSubscriberActive,
+  getInstanceId,
   type ClientDataCategory,
+  type InvalidationMessage,
 } from "./unified-invalidation";

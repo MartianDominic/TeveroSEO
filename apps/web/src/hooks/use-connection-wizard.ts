@@ -13,6 +13,7 @@ import {
   type DetectionResult,
   type GuideResponse,
 } from "@/lib/api/connect";
+import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
 
 // ============================================================================
 // Types
@@ -234,10 +235,15 @@ export function useConnectionWizard(
   const startVerification = useCallback(() => {
     if (!state.siteId) return;
 
-    // Clear any existing interval
+    // Clear any existing interval/timeout
     if (verificationIntervalRef.current) {
-      clearInterval(verificationIntervalRef.current);
+      clearTimeout(verificationIntervalRef.current);
     }
+
+    // FIX-17: Use adaptive polling with exponential backoff
+    // Starts at 2s, increases to max 15s to reduce server load
+    let attemptCount = 0;
+    const maxAttempts = 30; // ~2.5 minutes max
 
     const pollVerification = async () => {
       try {
@@ -246,7 +252,7 @@ export function useConnectionWizard(
         if (result.status === "detected" || result.status === "verified") {
           // Clear polling
           if (verificationIntervalRef.current) {
-            clearInterval(verificationIntervalRef.current);
+            clearTimeout(verificationIntervalRef.current);
             verificationIntervalRef.current = null;
           }
 
@@ -256,17 +262,36 @@ export function useConnectionWizard(
             step: "success",
           }));
           onSuccess?.(state.siteId!);
+          return;
         }
-        // If still pending, continue polling
+
+        // If still pending, schedule next poll with adaptive backoff
+        attemptCount++;
+        if (attemptCount < maxAttempts) {
+          const delay = getAdaptiveDelay(attemptCount, {
+            initialDelayMs: 2000,
+            maxDelayMs: 15000,
+            backoffMultiplier: 1.3,
+            jitterFactor: 0.2,
+          });
+          verificationIntervalRef.current = setTimeout(pollVerification, delay);
+        }
       } catch (error) {
-        // Ignore errors during polling, keep trying
+        // On error, still retry with backoff
+        attemptCount++;
+        if (attemptCount < maxAttempts) {
+          const delay = getAdaptiveDelay(attemptCount, {
+            initialDelayMs: 2000,
+            maxDelayMs: 15000,
+            backoffMultiplier: 1.5, // Faster backoff on errors
+            jitterFactor: 0.2,
+          });
+          verificationIntervalRef.current = setTimeout(pollVerification, delay);
+        }
       }
     };
 
-    // Start polling every 3 seconds
-    verificationIntervalRef.current = setInterval(pollVerification, 3000);
-
-    // Also poll immediately
+    // Poll immediately
     pollVerification();
   }, [state.siteId, onSuccess]);
 
@@ -275,9 +300,9 @@ export function useConnectionWizard(
   // ---------------------------------------------------------------------------
 
   const retry = useCallback(() => {
-    // Clear any polling
+    // Clear any polling (now uses setTimeout instead of setInterval)
     if (verificationIntervalRef.current) {
-      clearInterval(verificationIntervalRef.current);
+      clearTimeout(verificationIntervalRef.current);
       verificationIntervalRef.current = null;
     }
 

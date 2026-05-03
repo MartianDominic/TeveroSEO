@@ -9,9 +9,12 @@
  *
  * Security: Token validation (T-59-04-01), content from DB (T-59-04-02),
  * no auth bypass (T-59-04-03).
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 
 import { logger } from '@/lib/logger';
+import { getOpenSeoUrl } from "@/lib/env";
 
 export interface ContractSection {
   title: string;
@@ -46,9 +49,6 @@ export interface ContractData {
   canSign: boolean;
   signingMessage?: string;
 }
-
-const getOpenSeoUrl = () =>
-  process.env.OPEN_SEO_API_URL || "http://localhost:3001";
 
 /**
  * Fetch contract by public access token.

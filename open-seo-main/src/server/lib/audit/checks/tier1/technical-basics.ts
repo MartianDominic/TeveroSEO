@@ -7,6 +7,7 @@ import type { CheckContext, CheckResult } from "../types";
 
 // T1-67: No noindex meta tag
 // NOTE: This check is used by scoring.ts Gate 1 - if this fails, score is capped at 0
+// FIX-13 (HIGH-SEO-04): Now also checks X-Robots-Tag HTTP header
 registerCheck({
   id: "T1-67",
   name: "No noindex meta tag",
@@ -22,14 +23,32 @@ registerCheck({
     const robotsMeta = $('meta[name="robots"]').attr("content") ?? "";
     const googlebotMeta = $('meta[name="googlebot"]').attr("content") ?? "";
 
-    // Check for noindex directive
-    const hasNoindex =
+    // Check for noindex directive in meta tags
+    const hasMetaNoindex =
       /noindex/i.test(robotsMeta) ||
       /noindex/i.test(googlebotMeta);
 
-    // Also check X-Robots-Tag if available in response headers (via context)
-    // Note: This would require headers to be passed in context for full coverage
+    // FIX-13 (HIGH-SEO-04): Check X-Robots-Tag HTTP header
+    // The header can be "X-Robots-Tag" or lowercase "x-robots-tag"
+    let xRobotsTag: string | null = null;
+    let hasHeaderNoindex = false;
 
+    if (ctx.responseHeaders) {
+      // Headers may be case-insensitive, check both variations
+      xRobotsTag =
+        ctx.responseHeaders["X-Robots-Tag"] ||
+        ctx.responseHeaders["x-robots-tag"] ||
+        ctx.responseHeaders["X-ROBOTS-TAG"] ||
+        null;
+
+      if (xRobotsTag) {
+        // X-Robots-Tag can have multiple values separated by commas
+        // or can specify user-agents like "googlebot: noindex"
+        hasHeaderNoindex = /noindex/i.test(xRobotsTag);
+      }
+    }
+
+    const hasNoindex = hasMetaNoindex || hasHeaderNoindex;
     const passed = !hasNoindex;
 
     return {
@@ -38,10 +57,15 @@ registerCheck({
       severity: passed ? "info" : "critical",
       message: passed
         ? "Page is indexable (no noindex directive)"
-        : "Page has noindex directive - will NOT be indexed by search engines",
+        : hasHeaderNoindex
+          ? "Page has noindex in X-Robots-Tag header - will NOT be indexed"
+          : "Page has noindex meta tag - will NOT be indexed by search engines",
       details: {
         robotsMeta: robotsMeta || null,
         googlebotMeta: googlebotMeta || null,
+        xRobotsTag, // FIX-13: Include header value in details
+        hasMetaNoindex,
+        hasHeaderNoindex, // FIX-13: Separate flag for header-based noindex
         hasNoindex,
       },
       autoEditable: !passed,

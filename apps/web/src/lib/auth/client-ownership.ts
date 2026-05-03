@@ -9,7 +9,7 @@
  *   User (Clerk) -> Organization (Clerk) -> Client (AI-Writer DB)
  *
  * Caching Strategy:
- * - Ownership checks are cached in Redis for 2 minutes
+ * - Ownership checks are cached in Redis for 30 seconds (AUTH-MED-01 fix)
  * - Cache key: ownership:{userId}:{clientId}
  * - Negative results are also cached to prevent repeated DB queries for denied access
  *

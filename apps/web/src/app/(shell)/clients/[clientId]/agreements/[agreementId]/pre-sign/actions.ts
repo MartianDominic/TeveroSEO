@@ -8,7 +8,11 @@
  * Admin configures signers, sets signing order, and sends invitations.
  *
  * Security: Requires auth (T-59-06-01), logs invitation sending (T-59-06-03).
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
+
+import { getOpenSeoUrl } from "@/lib/env";
 
 export interface SignerData {
   id: string;
@@ -34,9 +38,6 @@ export interface PreSigningData {
   canSend: boolean;
   sendMessage?: string;
 }
-
-const getOpenSeoUrl = () =>
-  process.env.OPEN_SEO_API_URL || "http://localhost:3001";
 
 /**
  * Get pre-signing configuration data for an agreement.

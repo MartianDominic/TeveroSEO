@@ -3,9 +3,11 @@
  *
  * Calculates overall SEO score from check results.
  * Aligns with open-seo-main scoring formula.
+ * FIX-14: Quality Gate & Scoring Standardization
  */
 
 import type { CheckResult, ScoreResult, ScoreBreakdown, CheckTier } from "./types";
+import { QUALITY_THRESHOLDS, clampScore } from "@tevero/types";
 
 /**
  * Tier weights for score calculation (points per passed check)
@@ -182,10 +184,10 @@ export function getScoreGrade(score: number): "A" | "B" | "C" | "D" | "F" {
 
 /**
  * Get score color for UI
+ * FIX-14: Standardized color thresholds (Red: 0-49, Yellow: 50-79, Green: 80-100)
  */
-export function getScoreColor(score: number): "green" | "yellow" | "orange" | "red" {
-  if (score >= 80) return "green";
-  if (score >= 60) return "yellow";
-  if (score >= 40) return "orange";
-  return "red";
+export function getScoreColor(score: number): "green" | "yellow" | "red" {
+  if (score >= QUALITY_THRESHOLDS.PASS) return "green";  // >= 80
+  if (score >= QUALITY_THRESHOLDS.WARN) return "yellow"; // >= 50
+  return "red"; // < 50
 }

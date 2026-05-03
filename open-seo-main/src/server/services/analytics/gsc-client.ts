@@ -8,12 +8,16 @@
  * - GSC data is delayed 2-3 days
  * - For incremental: end_date = today - 3 days, start_date = end_date - 2 days
  * - For backfill: end_date = today - 3 days, start_date = end_date - 87 days (90 total)
+ *
+ * FIX CRIT-TYPE-02: Added typed interfaces for Google API responses
  */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - googleapis is an optional dependency
 import { google } from "googleapis";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
 import { withRetry } from "@/server/lib/retry";
+import { GSCSearchAnalyticsRowSchema } from "@/types/schemas/api-responses";
 
 const log = createLogger({ module: "gsc-client" });
 
@@ -110,15 +114,23 @@ export async function fetchGSCDateMetrics(
         GSC_TIMEOUT_MS
       ),
       GSC_RETRY_OPTIONS
-    );
+    ) as { data: { rows?: unknown[] } };
 
-    return (response.data.rows || []).map((row: any) => ({
-      date: row.keys?.[0] || "",
-      clicks: row.clicks ?? 0,
-      impressions: row.impressions ?? 0,
-      ctr: row.ctr ?? 0,
-      position: row.position ?? 0,
-    }));
+    // FIX CRIT-TYPE-02: Use typed schema validation instead of `any`
+    return (response.data.rows || []).map((row: unknown) => {
+      const parsed = GSCSearchAnalyticsRowSchema.safeParse(row);
+      if (!parsed.success) {
+        return { date: "", clicks: 0, impressions: 0, ctr: 0, position: 0 };
+      }
+      const validRow = parsed.data;
+      return {
+        date: validRow.keys?.[0] ?? "",
+        clicks: validRow.clicks ?? 0,
+        impressions: validRow.impressions ?? 0,
+        ctr: validRow.ctr ?? 0,
+        position: validRow.position ?? 0,
+      };
+    }).filter((row) => row.date !== "");
   } catch (error) {
     log.error("GSC fetchGSCDateMetrics failed", error instanceof Error ? error : new Error(String(error)), {
       siteUrl,
@@ -170,16 +182,24 @@ export async function fetchGSCTopQueries(
         GSC_TIMEOUT_MS
       ),
       GSC_RETRY_OPTIONS
-    );
+    ) as { data: { rows?: unknown[] } };
 
-    const allRows = (response.data.rows || []).map((row: any) => ({
-      date: row.keys?.[0] || "",
-      query: row.keys?.[1] || "",
-      clicks: row.clicks ?? 0,
-      impressions: row.impressions ?? 0,
-      ctr: row.ctr ?? 0,
-      position: row.position ?? 0,
-    }));
+    // FIX CRIT-TYPE-02: Use typed schema validation instead of `any`
+    const allRows = (response.data.rows || []).map((row: unknown) => {
+      const parsed = GSCSearchAnalyticsRowSchema.safeParse(row);
+      if (!parsed.success) {
+        return { date: "", query: "", clicks: 0, impressions: 0, ctr: 0, position: 0 };
+      }
+      const validRow = parsed.data;
+      return {
+        date: validRow.keys?.[0] ?? "",
+        query: validRow.keys?.[1] ?? "",
+        clicks: validRow.clicks ?? 0,
+        impressions: validRow.impressions ?? 0,
+        ctr: validRow.ctr ?? 0,
+        position: validRow.position ?? 0,
+      };
+    }).filter((row) => row.date !== "" && row.query !== "");
 
     // Group by date and take top N by clicks
     const byDate = new Map<string, GSCQueryMetrics[]>();
@@ -279,15 +299,23 @@ export async function fetchGSCQueryPageMetrics(
         GSC_TIMEOUT_MS
       ),
       GSC_RETRY_OPTIONS
-    );
+    ) as { data: { rows?: unknown[] } };
 
-    return (response.data.rows || []).map((row: any) => ({
-      query: row.keys?.[0] || "",
-      pageUrl: row.keys?.[1] || "",
-      clicks: row.clicks ?? 0,
-      impressions: row.impressions ?? 0,
-      position: row.position ?? 0,
-    }));
+    // FIX CRIT-TYPE-02: Use typed schema validation instead of `any`
+    return (response.data.rows || []).map((row: unknown) => {
+      const parsed = GSCSearchAnalyticsRowSchema.safeParse(row);
+      if (!parsed.success) {
+        return { query: "", pageUrl: "", clicks: 0, impressions: 0, position: 0 };
+      }
+      const validRow = parsed.data;
+      return {
+        query: validRow.keys?.[0] ?? "",
+        pageUrl: validRow.keys?.[1] ?? "",
+        clicks: validRow.clicks ?? 0,
+        impressions: validRow.impressions ?? 0,
+        position: validRow.position ?? 0,
+      };
+    }).filter((row) => row.query !== "" && row.pageUrl !== "");
   } catch (error) {
     log.error("GSC fetchGSCQueryPageMetrics failed", error instanceof Error ? error : new Error(String(error)), {
       siteUrl,

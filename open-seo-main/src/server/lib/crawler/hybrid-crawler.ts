@@ -39,6 +39,8 @@ export interface CrawlOptions {
   lastCrawlDate?: Date;
   /** Enable Playwright fallback for JS-heavy pages (default: true) */
   playwrightFallback?: boolean;
+  /** Maximum redirect chain depth (default: 10) - FIX-13 (HIGH-SEO-02) */
+  maxRedirects?: number;
 }
 
 export interface CrawlResult {
@@ -83,6 +85,7 @@ const DEFAULT_OPTIONS: Required<CrawlOptions> = {
   enableDeltaSync: true,
   lastCrawlDate: new Date(0),
   playwrightFallback: true,
+  maxRedirects: 10, // FIX-13 (HIGH-SEO-02): Limit redirect chain depth
 };
 
 /**
@@ -231,54 +234,103 @@ export class HybridCrawler {
 
   /**
    * Fetch a single page, with Playwright fallback if needed.
+   * FIX-13 (HIGH-SEO-02): Added redirect loop detection with visited URL tracking.
    */
   async fetchPage(url: string): Promise<CrawlResult> {
     const fetchStart = Date.now();
 
-    // Try HTTP first
+    // FIX-13 (HIGH-SEO-02): Track visited URLs to detect redirect loops
+    const visitedUrls = new Set<string>();
+    let currentUrl = url;
+    let redirectCount = 0;
+    let needsPlaywright = false;
+
+    // Try HTTP first with manual redirect handling for loop detection
     try {
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": this.options.userAgent,
-          "Accept-Language": this.options.acceptLanguage,
-          Accept: "text/html,application/xhtml+xml",
-        },
-        signal: AbortSignal.timeout(this.options.timeoutMs),
-      });
+      while (redirectCount < this.options.maxRedirects) {
+        // Check for redirect loop
+        if (visitedUrls.has(currentUrl)) {
+          log.warn(`Redirect loop detected: ${url} -> ${currentUrl}`);
+          throw new Error(`Redirect loop detected after ${redirectCount} redirects`);
+        }
+        visitedUrls.add(currentUrl);
 
-      const html = await response.text();
-      const validation = validatePage(html);
+        const response = await fetch(currentUrl, {
+          headers: {
+            "User-Agent": this.options.userAgent,
+            "Accept-Language": this.options.acceptLanguage,
+            Accept: "text/html,application/xhtml+xml",
+          },
+          signal: AbortSignal.timeout(this.options.timeoutMs),
+          redirect: "manual", // FIX-13: Handle redirects manually
+        });
 
-      // Check if we got a consent/challenge page
-      if (!validation.valid && this.options.playwrightFallback) {
-        log.debug(`HTTP returned blocked page, retrying with Playwright: ${url}`);
-        return this.fetchWithPlaywright(url, fetchStart);
+        // Handle redirects manually to track the chain
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get("location");
+          if (!location) {
+            log.warn(`Redirect without Location header: ${currentUrl}`);
+            break;
+          }
+
+          // Resolve relative URLs
+          currentUrl = new URL(location, currentUrl).href;
+          redirectCount++;
+          continue;
+        }
+
+        // Check for too many redirects
+        if (redirectCount >= this.options.maxRedirects) {
+          log.warn(`Too many redirects (${redirectCount}): ${url}`);
+          throw new Error(`Too many redirects (max: ${this.options.maxRedirects})`);
+        }
+
+        const html = await response.text();
+        const validation = validatePage(html);
+
+        // Check if we got a consent/challenge page
+        if (!validation.valid && this.options.playwrightFallback) {
+          log.debug(`HTTP returned blocked page, retrying with Playwright: ${url}`);
+          needsPlaywright = true;
+          break;
+        }
+
+        // Check if page is suspiciously small (likely needs JS)
+        if (html.length < 2000 && this.options.playwrightFallback) {
+          log.debug(`Page too small, retrying with Playwright: ${url}`);
+          needsPlaywright = true;
+          break;
+        }
+
+        return {
+          url: currentUrl, // Use final URL after redirects
+          html,
+          statusCode: response.status,
+          fetchMethod: "http",
+          changeType: ChangeType.ADD, // Will be refined by delta sync
+          fetchTimeMs: Date.now() - fetchStart,
+        };
       }
-
-      // Check if page is suspiciously small (likely needs JS)
-      if (html.length < 2000 && this.options.playwrightFallback) {
-        log.debug(`Page too small, retrying with Playwright: ${url}`);
-        return this.fetchWithPlaywright(url, fetchStart);
-      }
-
-      return {
-        url,
-        html,
-        statusCode: response.status,
-        fetchMethod: "http",
-        changeType: ChangeType.ADD, // Will be refined by delta sync
-        fetchTimeMs: Date.now() - fetchStart,
-      };
     } catch (error) {
-      if (this.options.playwrightFallback) {
+      // Only retry with Playwright for HTTP/network errors, not for Playwright errors
+      if (this.options.playwrightFallback && !needsPlaywright) {
         log.debug(
           `HTTP failed, retrying with Playwright: ${url}`,
           error instanceof Error ? { error: error.message } : { error: String(error) }
         );
-        return this.fetchWithPlaywright(url, fetchStart);
+        needsPlaywright = true;
+      } else {
+        throw error;
       }
-      throw error;
     }
+
+    // Handle Playwright fallback outside the try-catch to properly propagate errors
+    if (needsPlaywright) {
+      return this.fetchWithPlaywright(url, fetchStart);
+    }
+
+    // Should not reach here, but handle edge case
+    throw new Error(`Unexpected redirect handling state for ${url}`);
   }
 
   /**

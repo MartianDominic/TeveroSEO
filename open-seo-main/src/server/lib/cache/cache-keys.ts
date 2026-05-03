@@ -4,10 +4,16 @@
  * All Redis cache keys should use these namespaced prefixes to prevent
  * collision between different services sharing the same Redis instance.
  *
- * Namespace format: osm:{domain}:{identifier}
- * - osm = open-seo-main (distinguishes from AI-Writer, apps/web)
- * - domain = functional area (serp, kw, qc, etc.)
- * - identifier = specific key data
+ * MED-CACHE-04 FIX: Standardized namespace pattern.
+ * Format: {service}:{type}:{id}
+ * - service = osm (open-seo-main)
+ * - type = functional area (serp, kw, qc, etc.)
+ * - id = specific key data (clientId:mappingId:keyword)
+ *
+ * This standardization enables:
+ * - Consistent pattern-based invalidation
+ * - Clear ownership of cache entries
+ * - Easy debugging and monitoring
  */
 
 /**
@@ -115,4 +121,73 @@ export function safeJsonParseWithValidation<T>(
   }
 
   return parsed;
+}
+
+// ============================================================================
+// MED-CACHE-04: Standardized Key Builders
+// ============================================================================
+
+/**
+ * Build a client-scoped cache key with standardized format.
+ * Format: osm:{type}:{clientId}:{...parts}
+ *
+ * @param type - Cache type (from CACHE_NS values, without osm: prefix)
+ * @param clientId - Client ID for tenant isolation
+ * @param parts - Additional key components
+ *
+ * @example
+ * buildClientCacheKey('serp', 'client-123', 'mapping-456', 'keyword')
+ * // Returns: "osm:serp:client-123:mapping-456:keyword"
+ */
+export function buildClientCacheKey(
+  type: "serp" | "kw" | "qc" | "competitor" | "embed",
+  clientId: string,
+  ...parts: string[]
+): string {
+  return `osm:${type}:${clientId}:${parts.join(":")}`;
+}
+
+/**
+ * Build a workspace-scoped cache key.
+ * Format: osm:{type}:ws:{workspaceId}:{...parts}
+ *
+ * @param type - Cache type
+ * @param workspaceId - Workspace ID
+ * @param parts - Additional key components
+ */
+export function buildWorkspaceCacheKey(
+  type: string,
+  workspaceId: string,
+  ...parts: string[]
+): string {
+  return `osm:${type}:ws:${workspaceId}:${parts.join(":")}`;
+}
+
+/**
+ * Build a pattern for matching client-scoped cache keys.
+ * Format: osm:{type}:{clientId}:*
+ *
+ * @param type - Cache type
+ * @param clientId - Client ID
+ */
+export function buildClientCachePattern(
+  type: "serp" | "kw" | "qc" | "competitor" | "embed",
+  clientId: string
+): string {
+  return `osm:${type}:${clientId}:*`;
+}
+
+/**
+ * Extract clientId from a cache key if it follows the standard format.
+ * Returns null if the key doesn't match the expected format.
+ *
+ * @param key - Cache key to parse
+ */
+export function extractClientIdFromKey(key: string): string | null {
+  // Expected format: osm:{type}:{clientId}:...
+  const parts = key.split(":");
+  if (parts.length >= 3 && parts[0] === "osm") {
+    return parts[2];
+  }
+  return null;
 }

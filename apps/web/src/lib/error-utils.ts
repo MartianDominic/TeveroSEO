@@ -261,3 +261,73 @@ export function badRequestResponse(
 ): NextResponse {
   return createErrorJsonResponse("BAD_REQUEST", message, requestId);
 }
+
+/**
+ * Safely parse JSON from a Response object.
+ *
+ * FIX HIGH-ERR-04: Use this instead of response.json().catch(() => ({}))
+ * to properly log parse failures while returning a typed fallback.
+ *
+ * @param response - The fetch Response to parse
+ * @param fallback - Value to return if parsing fails (defaults to empty object)
+ * @param context - Optional context string for error logging
+ * @returns Parsed JSON or fallback value
+ */
+export async function safeParseJson<T = Record<string, unknown>>(
+  response: Response,
+  fallback: T = {} as T,
+  context?: string
+): Promise<T> {
+  try {
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return fallback;
+    }
+    return JSON.parse(text) as T;
+  } catch (error) {
+    if (context) {
+      logger.warn(`[${context}] Failed to parse JSON response`, {
+        status: response.status,
+        url: response.url,
+        error: error instanceof Error ? error.message : 'Unknown parse error',
+      });
+    }
+    return fallback;
+  }
+}
+
+/**
+ * Extract error message from a response body.
+ *
+ * Handles multiple error response formats:
+ * - { error: { message: "..." } } - Standard format
+ * - { error: "..." } - Simple string error
+ * - { message: "..." } - Legacy format
+ *
+ * @param body - Parsed response body
+ * @param defaultMessage - Default message if none found
+ */
+export function extractErrorMessage(
+  body: Record<string, unknown>,
+  defaultMessage: string = "An error occurred"
+): string {
+  // Standard format: { error: { message: "..." } }
+  if (typeof body.error === 'object' && body.error !== null) {
+    const errorObj = body.error as Record<string, unknown>;
+    if (typeof errorObj.message === 'string') {
+      return errorObj.message;
+    }
+  }
+
+  // Simple format: { error: "..." }
+  if (typeof body.error === 'string') {
+    return body.error;
+  }
+
+  // Legacy format: { message: "..." }
+  if (typeof body.message === 'string') {
+    return body.message;
+  }
+
+  return defaultMessage;
+}

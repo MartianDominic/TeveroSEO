@@ -12,7 +12,7 @@
  */
 import { Worker, type Job } from "bullmq";
 import { fileURLToPath } from "node:url";
-import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getSharedBullMQConnection, WORKER_CONCURRENCY_LIMITS } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   AUDIT_QUEUE_NAME,
@@ -39,6 +39,7 @@ let worker: Worker<AuditJobData> | null = null;
 export function startAuditWorker(): Worker<AuditJobData> {
   if (worker) return worker;
 
+  // QUEUE-H02: Use centralized concurrency limits to prevent DB connection exhaustion
   worker = new Worker<AuditJobData>(
     AUDIT_QUEUE_NAME,
     PROCESSOR_PATH, // Sandboxed processor — runs in child process (BQ-04)
@@ -46,7 +47,7 @@ export function startAuditWorker(): Worker<AuditJobData> {
       connection: getSharedBullMQConnection("worker:audit"), // Shared connection (prevents leaks)
       lockDuration: LOCK_DURATION_MS, // BQ-05
       maxStalledCount: MAX_STALLED_COUNT, // BQ-06
-      concurrency: 5, // HIGH-QUEUE-02 FIX: Increased from 2 to 5 for better throughput
+      concurrency: WORKER_CONCURRENCY_LIMITS.audit,
     },
   );
 

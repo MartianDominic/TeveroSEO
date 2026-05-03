@@ -6,7 +6,11 @@
  *
  * These actions fetch and modify proposal data via the open-seo-main API.
  * No authentication required - token provides access.
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
+
+import { getOpenSeoUrl } from "@/lib/env";
 
 export interface ProposalContent {
   hero: {
@@ -58,9 +62,6 @@ export interface PublicProposal {
   expiresAt: string | null;
   createdAt: string;
 }
-
-const getOpenSeoUrl = () =>
-  process.env.OPEN_SEO_API_URL || "http://localhost:3001";
 
 // Service with selection data (merged from template + proposal selection)
 export interface ServiceWithSelection {

@@ -14,6 +14,7 @@ import { Worker, type Job } from "bullmq";
 import { fileURLToPath } from "node:url";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 import {
   TOKEN_REFRESH_QUEUE_NAME,
   initTokenRefreshScheduler,
@@ -33,12 +34,14 @@ const SHUTDOWN_TIMEOUT_MS = 15_000; // 15 seconds
 interface WorkerMetrics {
   success: number;
   failed: number;
+  dlqMoved: number;
   lastRunAt: string | null;
 }
 
 const metrics: WorkerMetrics = {
   success: 0,
   failed: 0,
+  dlqMoved: 0,
   lastRunAt: null,
 };
 
@@ -84,7 +87,7 @@ export async function startTokenRefreshWorker(): Promise<
 
   worker.on(
     "failed",
-    (job: Job<CheckExpiringTokensJobData> | undefined, err: Error) => {
+    async (job: Job<CheckExpiringTokensJobData> | undefined, err: Error) => {
       metrics.failed++;
 
       if (!job) {
@@ -92,11 +95,44 @@ export async function startTokenRefreshWorker(): Promise<
         return;
       }
 
+      const maxAttempts = job.opts.attempts ?? 1;
       workerLogger.error("Job failed", err, {
         jobId: job.id,
         attempt: job.attemptsMade,
-        maxAttempts: job.opts.attempts ?? 1,
+        maxAttempts,
       });
+
+      // JOB-CRIT-01 FIX: Move to DLQ after exhausting retries
+      // Token refresh failures are critical - users lose platform access silently
+      if (job.attemptsMade >= maxAttempts) {
+        try {
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: TOKEN_REFRESH_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
+            error: err.message,
+            stack: err.stack,
+            failedAt: new Date().toISOString(),
+          };
+          await dlqQueue.add(`dlq:${TOKEN_REFRESH_QUEUE_NAME}`, dlqData, {
+            removeOnComplete: { age: 604800 }, // 7 days
+            removeOnFail: { age: 604800 },
+            attempts: 1,
+          });
+          metrics.dlqMoved++;
+          workerLogger.warn("Token refresh job moved to DLQ", {
+            jobId: job.id,
+            attemptsMade: job.attemptsMade,
+          });
+        } catch (dlqErr) {
+          workerLogger.error(
+            "Failed to move token refresh job to DLQ",
+            dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)),
+            { jobId: job.id }
+          );
+        }
+      }
     }
   );
 
@@ -146,6 +182,37 @@ export async function stopTokenRefreshWorker(): Promise<void> {
   }
 
   workerLogger.info("Worker stopped", { metrics });
+}
+
+/**
+ * JOB-CRIT-01: DLQ processor for token refresh failures.
+ * Notifies users when their platform tokens could not be refreshed.
+ *
+ * This is registered as a handler in the DLQ worker to process
+ * token-refresh specific failures and send user notifications.
+ */
+export async function handleTokenRefreshDLQ(
+  jobData: DLQJobData
+): Promise<void> {
+  const dlqLogger = createLogger({
+    module: "token-refresh-dlq",
+    originalJobId: jobData.jobId,
+  });
+
+  dlqLogger.warn("Processing token refresh DLQ entry", {
+    error: jobData.error,
+    failedAt: jobData.failedAt,
+  });
+
+  // TODO: Implement user notification when email service is available
+  // For now, log for ops alerting via structured logs
+  dlqLogger.error("Token refresh permanently failed - user notification required", undefined, {
+    originalQueue: jobData.originalQueue,
+    jobId: jobData.jobId,
+    error: jobData.error,
+    failedAt: jobData.failedAt,
+    action: "USER_NOTIFICATION_REQUIRED",
+  });
 }
 
 /**

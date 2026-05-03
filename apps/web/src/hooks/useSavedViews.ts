@@ -11,6 +11,8 @@ import type {
   CreateSavedViewInput,
   UpdateSavedViewInput,
 } from "@/types/saved-views";
+// HIGH-STATE-04 FIX: Use centralized query key factory
+import { queryKeys } from "@/lib/query-keys";
 
 interface UseSavedViewsOptions {
   workspaceId: string;
@@ -20,10 +22,12 @@ interface UseSavedViewsOptions {
 /**
  * Hook for managing saved views with column customization.
  * Uses React Query for fetching and mutating views.
+ * HIGH-STATE-04 FIX: Uses centralized query key factory for consistency.
  */
 export function useSavedViews({ workspaceId, enabled = true }: UseSavedViewsOptions) {
   const queryClient = useQueryClient();
-  const queryKey = ["saved-views", workspaceId];
+  // HIGH-STATE-04 FIX: Use centralized query key factory
+  const queryKey = queryKeys.views.workspace(workspaceId);
 
   // Fetch all views for the workspace
   const {

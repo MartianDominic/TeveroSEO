@@ -9,11 +9,14 @@
  * - Display agreement/contract for signing
  * - Electronic signature capture
  * - Redirect to invoice/payment after signing
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { PublicAgreementView } from "./PublicAgreementView";
+import { getOpenSeoUrl } from "@/lib/env";
 
 import { logger } from '@/lib/logger';
 // ---------------------------------------------------------------------------
@@ -62,7 +65,8 @@ interface PageProps {
 // ---------------------------------------------------------------------------
 
 async function getAgreement(token: string): Promise<AgreementData | null> {
-  const apiUrl = process.env.OPEN_SEO_API_URL ?? "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const apiUrl = getOpenSeoUrl();
 
   try {
     const response = await fetch(`${apiUrl}/api/agreements/public/${token}`, {

@@ -7,6 +7,8 @@
  * creates a local record. This enables seamless cross-service client access
  * without requiring webhooks or dual-write orchestration.
  *
+ * FIX-03 CRIT-CW-01: Added UUID normalization for cross-service consistency.
+ *
  * Architecture:
  *   AI-Writer (source of truth) -> ClientSyncService -> open-seo-main clients table
  *
@@ -19,6 +21,37 @@ import { clients } from "@/db/client-schema";
 import { eq } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { AppError } from "@/server/lib/errors";
+
+/**
+ * FIX-03 CRIT-CW-01: Normalize UUID to lowercase string format.
+ *
+ * AI-Writer uses Python uuid.UUID objects, open-seo-main uses native UUID strings.
+ * This ensures consistent format for cross-service lookups.
+ */
+function normalizeUUID(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().toLowerCase();
+  // Validate UUID format
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
+/**
+ * FIX-03 CRIT-CW-01: Compare two UUIDs for equality, ignoring case.
+ */
+function compareUUIDs(
+  uuid1: string | null | undefined,
+  uuid2: string | null | undefined
+): boolean {
+  const normalized1 = normalizeUUID(uuid1);
+  const normalized2 = normalizeUUID(uuid2);
+  if (!normalized1 || !normalized2) return false;
+  return normalized1 === normalized2;
+}
 
 const log = createLogger({ module: "ClientSyncService" });
 
@@ -127,8 +160,16 @@ async function fetchClientFromAIWriter(
 
 /**
  * Check if client exists locally in open-seo-main database.
+ * FIX-03 CRIT-CW-01: Normalizes UUID before lookup to handle format differences.
  */
 async function getLocalClient(clientId: string): Promise<LocalClient | null> {
+  // FIX-03 CRIT-CW-01: Normalize UUID before lookup
+  const normalizedId = normalizeUUID(clientId);
+  if (!normalizedId) {
+    log.warn("Invalid client ID format", { clientId });
+    return null;
+  }
+
   const result = await db
     .select({
       id: clients.id,
@@ -138,7 +179,7 @@ async function getLocalClient(clientId: string): Promise<LocalClient | null> {
       status: clients.status,
     })
     .from(clients)
-    .where(eq(clients.id, clientId))
+    .where(eq(clients.id, normalizedId))
     .limit(1);
 
   return result.length > 0 ? result[0] : null;
@@ -198,21 +239,96 @@ async function createLocalClient(
 }
 
 /**
+ * Verify user has access to a client in AI-Writer before syncing.
+ * HIGH-AUTH-03 FIX: Prevents syncing clients the user doesn't have access to.
+ *
+ * @param clientId - UUID of the client to verify
+ * @param authToken - Bearer token for authentication
+ * @returns true if user has access, false otherwise
+ */
+async function verifyClientAccessInAIWriter(
+  clientId: string,
+  authToken: string
+): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: authToken.startsWith("Bearer ")
+        ? authToken
+        : `Bearer ${authToken}`,
+    };
+
+    // Extract user ID from token (we need it for the verify-access endpoint)
+    // The token payload contains the user ID as 'sub' claim
+    let userId: string | null = null;
+    try {
+      const tokenPart = authToken.replace(/^Bearer\s+/i, "");
+      const payload = JSON.parse(
+        Buffer.from(tokenPart.split(".")[1], "base64").toString()
+      );
+      userId = payload.sub || payload.user_id || payload.id;
+    } catch {
+      log.warn("Failed to extract user ID from auth token for access verification");
+      // If we can't extract user ID, we can't verify access - fail closed
+      return false;
+    }
+
+    if (!userId) {
+      log.warn("No user ID found in auth token for access verification");
+      return false;
+    }
+
+    const response = await fetch(
+      `${AI_WRITER_API}/api/clients/${clientId}/verify-access`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      }
+    );
+
+    if (!response.ok) {
+      log.debug("Client access verification failed", {
+        clientId,
+        status: response.status,
+      });
+      return false;
+    }
+
+    const data = (await response.json()) as { hasAccess: boolean };
+    return data.hasAccess === true;
+  } catch (error) {
+    log.warn(
+      "Failed to verify client access in AI-Writer",
+      error instanceof Error ? error : new Error(String(error)),
+      { clientId }
+    );
+    // Fail closed - if we can't verify, don't allow access
+    return false;
+  }
+}
+
+/**
  * Ensure a client exists locally, syncing from AI-Writer if necessary.
  *
  * This is the primary entry point for lazy client synchronization.
  * Call this before any operation that requires a local client record.
  *
+ * HIGH-AUTH-03 FIX: Now verifies user has access to the client in AI-Writer
+ * before syncing. This prevents unauthorized access to client data through
+ * the sync mechanism.
+ *
  * @param clientId - UUID of the client
  * @param workspaceId - Workspace/organization ID for the client
- * @param authToken - Optional auth token for AI-Writer API
- * @returns Local client record, or null if client doesn't exist anywhere
+ * @param authToken - Auth token for AI-Writer API (REQUIRED for access verification)
+ * @returns Local client record, or null if client doesn't exist or user lacks access
  *
  * @example
  * ```ts
- * const client = await ClientSyncService.ensureClient(clientId, workspaceId);
+ * const client = await ClientSyncService.ensureClient(clientId, workspaceId, authToken);
  * if (!client) {
- *   throw new AppError("NOT_FOUND", "Client not found");
+ *   throw new AppError("NOT_FOUND", "Client not found or access denied");
  * }
  * // Client exists locally, proceed with operation
  * ```
@@ -234,6 +350,26 @@ export async function ensureClient(
     workspaceId,
   });
 
+  // HIGH-AUTH-03 FIX: Verify user has access before syncing
+  // If no auth token provided, we cannot verify access - fail closed
+  if (!authToken) {
+    log.warn(
+      "No auth token provided for client sync - cannot verify access",
+      { clientId, workspaceId }
+    );
+    return null;
+  }
+
+  // Verify access before fetching client data
+  const hasAccess = await verifyClientAccessInAIWriter(clientId, authToken);
+  if (!hasAccess) {
+    log.info("Client sync blocked - user does not have access in AI-Writer", {
+      clientId,
+      workspaceId,
+    });
+    return null;
+  }
+
   const aiWriterClient = await fetchClientFromAIWriter(clientId, authToken);
   if (!aiWriterClient) {
     // Client doesn't exist in AI-Writer either
@@ -248,16 +384,37 @@ export async function ensureClient(
  * Force sync a client from AI-Writer, updating local record if it exists.
  * Use this for explicit sync operations (e.g., refresh button, webhooks).
  *
+ * HIGH-AUTH-03 FIX: Now verifies user has access to the client in AI-Writer
+ * before syncing.
+ *
  * @param clientId - UUID of the client
  * @param workspaceId - Workspace/organization ID
- * @param authToken - Optional auth token for AI-Writer API
- * @returns Updated local client record, or null if client doesn't exist
+ * @param authToken - Auth token for AI-Writer API (REQUIRED for access verification)
+ * @returns Updated local client record, or null if client doesn't exist or access denied
  */
 export async function syncClient(
   clientId: string,
   workspaceId: string,
   authToken?: string
 ): Promise<LocalClient | null> {
+  // HIGH-AUTH-03 FIX: Verify user has access before syncing
+  if (!authToken) {
+    log.warn("No auth token provided for client sync - cannot verify access", {
+      clientId,
+      workspaceId,
+    });
+    return null;
+  }
+
+  const hasAccess = await verifyClientAccessInAIWriter(clientId, authToken);
+  if (!hasAccess) {
+    log.info("Client sync blocked - user does not have access in AI-Writer", {
+      clientId,
+      workspaceId,
+    });
+    return null;
+  }
+
   const aiWriterClient = await fetchClientFromAIWriter(clientId, authToken);
   if (!aiWriterClient) {
     return null;

@@ -149,6 +149,9 @@ registerCheck({
 /**
  * T4-03: Pillar links to all spokes
  * Hub pages should link to all related spoke/cluster pages.
+ *
+ * FIX-13 (CRIT-SEO-01): Changed to passed=true when skipped to avoid
+ * negatively impacting score. Skipped checks should be N/A, not failures.
  */
 registerCheck({
   id: "T4-03",
@@ -162,10 +165,10 @@ registerCheck({
     if (!hasCrawlData(ctx.siteContext)) {
       return {
         checkId: "T4-03",
-        passed: false,
+        passed: true, // FIX-13: N/A should not penalize score
         severity: "info",
         message: "Skipped: Site crawl data not available",
-        details: { skipped: true, reason: "SiteContext required" },
+        details: { skipped: true, reason: "SiteContext required", status: "not-applicable" },
         autoEditable: false,
       };
     }
@@ -175,12 +178,13 @@ registerCheck({
     // This check requires topic cluster mapping which isn't in basic SiteContext
     return {
       checkId: "T4-03",
-      passed: false, // Not passed - we cannot evaluate without topic cluster data
+      passed: true, // FIX-13: N/A should not penalize score
       severity: "info",
       message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
+        status: "not-applicable",
         note: "Define topic clusters via the Topic Clusters feature to enable hub-spoke validation",
       },
       autoEditable: false,
@@ -191,6 +195,9 @@ registerCheck({
 /**
  * T4-04: Spokes link back to pillar
  * Spoke pages should link back to their pillar/hub page.
+ *
+ * FIX-13 (CRIT-SEO-01): Changed to passed=true when skipped to avoid
+ * negatively impacting score. Skipped checks should be N/A, not failures.
  */
 registerCheck({
   id: "T4-04",
@@ -204,10 +211,10 @@ registerCheck({
     if (!hasCrawlData(ctx.siteContext)) {
       return {
         checkId: "T4-04",
-        passed: false,
+        passed: true, // FIX-13: N/A should not penalize score
         severity: "info",
         message: "Skipped: Site crawl data not available",
-        details: { skipped: true, reason: "SiteContext required" },
+        details: { skipped: true, reason: "SiteContext required", status: "not-applicable" },
         autoEditable: false,
       };
     }
@@ -215,12 +222,13 @@ registerCheck({
     // TODO(P40): Implement spoke-to-pillar validation when topic_clusters table is populated
     return {
       checkId: "T4-04",
-      passed: false, // Not passed - we cannot evaluate without topic cluster data
+      passed: true, // FIX-13: N/A should not penalize score
       severity: "info",
       message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
+        status: "not-applicable",
         note: "Define topic clusters via the Topic Clusters feature to enable spoke validation",
       },
       autoEditable: false,
@@ -231,6 +239,9 @@ registerCheck({
 /**
  * T4-05: 15-25 spokes per cluster
  * Topic clusters should have appropriate depth.
+ *
+ * FIX-13 (CRIT-SEO-01): Changed to passed=true when skipped to avoid
+ * negatively impacting score. Skipped checks should be N/A, not failures.
  */
 registerCheck({
   id: "T4-05",
@@ -243,10 +254,10 @@ registerCheck({
     if (!hasCrawlData(ctx.siteContext)) {
       return {
         checkId: "T4-05",
-        passed: false,
+        passed: true, // FIX-13: N/A should not penalize score
         severity: "info",
         message: "Skipped: Site crawl data not available",
-        details: { skipped: true, reason: "SiteContext required" },
+        details: { skipped: true, reason: "SiteContext required", status: "not-applicable" },
         autoEditable: false,
       };
     }
@@ -254,12 +265,13 @@ registerCheck({
     // TODO(P40): Implement cluster size validation when topic_clusters table is populated
     return {
       checkId: "T4-05",
-      passed: false, // Not passed - we cannot evaluate without topic cluster data
+      passed: true, // FIX-13: N/A should not penalize score
       severity: "info",
       message: "Skipped: Topic cluster mapping not configured for this site",
       details: {
         skipped: true,
         reason: "Topic cluster data required",
+        status: "not-applicable",
         targetRange: "15-25 spokes per cluster",
         note: "Define topic clusters via the Topic Clusters feature to enable cluster size analysis",
       },

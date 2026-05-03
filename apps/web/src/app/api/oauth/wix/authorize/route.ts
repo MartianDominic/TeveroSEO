@@ -38,8 +38,9 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const prospectId = searchParams.get("prospectId");
 
+  // SEC-07 FIX: Reduced TTL from 10 minutes to 5 minutes for tighter security
   const state = nanoid(32);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const redirectUri = `${appUrl}/api/oauth/wix/callback`;

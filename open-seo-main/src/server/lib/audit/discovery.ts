@@ -263,13 +263,24 @@ export async function discoverUrls(
     );
   }
 
+  // FIX-13 (MED-SEO-04): Enhanced sitemap fetch failure logging and reporting
+  const sitemapFetchResult = {
+    fetched: fetchedDocs,
+    failed: failedDocs,
+    timedOut: timedOutDocs,
+    discoveredUrls: allUrls.size,
+    success: failedDocs === 0,
+  };
+
   if (failedDocs > 0) {
     log.warn("Sitemap discovery completed with partial failures", {
       origin,
-      fetched: fetchedDocs,
-      failed: failedDocs,
-      timedOut: timedOutDocs,
-      discoveredUrls: allUrls.size,
+      ...sitemapFetchResult,
+    });
+  } else {
+    log.info("Sitemap discovery completed successfully", {
+      origin,
+      ...sitemapFetchResult,
     });
   }
 
@@ -277,5 +288,7 @@ export async function discoverUrls(
     urls: Array.from(allUrls),
     robots,
     sitemapUrls: allUrls,
+    // FIX-13 (MED-SEO-04): Include sitemap fetch stats for audit report
+    sitemapFetchResult,
   };
 }

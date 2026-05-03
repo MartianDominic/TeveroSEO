@@ -11,10 +11,13 @@
  * - Signed tokens provide cryptographic validation and expiration
  * - Invalid/expired tokens are rejected and logged for monitoring
  * - Uses fire-and-forget pattern to not block image response
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { NextRequest, NextResponse } from "next/server";
 
 import { logger } from "@/lib/logger";
+import { getOpenSeoUrl } from "@/lib/env";
 import {
   verifyBeaconToken,
   isSignedBeaconToken,
@@ -111,7 +114,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Forward to open-seo-main for tracking (fire-and-forget)
-  const openSeoUrl = process.env.OPEN_SEO_API_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Use centralized env validation
+  const openSeoUrl = getOpenSeoUrl();
 
   try {
     const userAgent = request.headers.get("user-agent") || "";

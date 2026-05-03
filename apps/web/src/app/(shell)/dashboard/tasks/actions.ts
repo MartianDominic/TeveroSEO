@@ -10,13 +10,16 @@
  * - pinTask/unpinTask: D-11 Layer 2 pin operations
  * - snoozeTask: D-11 Layer 2 snooze operation
  * - updateTaskPriority: D-11 Layer 2 priority operation
+ *
+ * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { revalidatePath } from "next/cache";
 import type { AggregatedTask } from "@/components/tasks/types";
+import { getOpenSeoUrl } from "@/lib/env";
 
 import { logger } from '@/lib/logger';
-// Base URL for open-seo-main API
-const API_BASE = process.env.OPEN_SEO_API_URL ?? "http://localhost:3001";
+// CFG-CRIT-01 FIX: Use centralized env validation
+const API_BASE = getOpenSeoUrl();
 
 /**
  * Fetch aggregated tasks for the workspace.

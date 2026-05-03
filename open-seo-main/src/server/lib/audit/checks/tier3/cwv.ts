@@ -39,13 +39,16 @@ interface CruxCacheEntry {
 }
 
 /**
- * Origin-level cache for CrUX data with TTL and size limit.
+ * Origin-level cache for CrUX data with TTL, size limit, and client isolation.
  * CrUX data is per-origin (not per-page), so we cache to avoid redundant API calls.
  * Cache entries expire after CRUX_CACHE_TTL_MS (default: 1 hour).
  * Cache is also cleared at the start of each audit run via clearCruxCache().
  *
  * MED-PERF-02: Added max size limit to prevent unbounded memory growth.
  * LRU eviction uses Map insertion order for O(1) performance.
+ *
+ * FIX-13 (HIGH-SEO-03): Cache keys are now namespaced by clientId to prevent
+ * data leakage between clients in multi-tenant deployments.
  */
 const cruxOriginCache = new Map<string, CruxCacheEntry>();
 
@@ -64,10 +67,75 @@ const CRUX_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const CRUX_CACHE_MAX_SIZE = 1000;
 
 /**
- * Clear the CrUX cache. Call at the start of each audit run.
+ * FIX-13 (MED-SEO-03): Rate limiting for CrUX API calls.
+ * Google CrUX API allows 400 requests per minute.
+ * We track request timestamps in a sliding window.
  */
-export function clearCruxCache(): void {
-  cruxOriginCache.clear();
+const CRUX_RATE_LIMIT_PER_MINUTE = 400;
+const cruxRequestTimestamps: number[] = [];
+
+/**
+ * Current client ID for cache namespacing.
+ * FIX-13 (HIGH-SEO-03): Set via setCruxClientContext() before running checks.
+ */
+let currentClientId: string | null = null;
+
+/**
+ * Set the current client context for CrUX cache namespacing.
+ * FIX-13 (HIGH-SEO-03): Call this before running CrUX checks to ensure
+ * cache isolation between clients.
+ */
+export function setCruxClientContext(clientId: string | null): void {
+  currentClientId = clientId;
+}
+
+/**
+ * Get cache key with client namespace.
+ * FIX-13 (HIGH-SEO-03): Prevents data leakage between clients.
+ */
+function getCacheKey(origin: string): string {
+  return currentClientId ? `${currentClientId}:${origin}` : origin;
+}
+
+/**
+ * Clear the CrUX cache. Call at the start of each audit run.
+ * FIX-13: Optionally clear only for a specific client.
+ */
+export function clearCruxCache(clientId?: string): void {
+  if (clientId) {
+    // Clear only entries for this client
+    const prefix = `${clientId}:`;
+    for (const key of cruxOriginCache.keys()) {
+      if (key.startsWith(prefix)) {
+        cruxOriginCache.delete(key);
+      }
+    }
+  } else {
+    cruxOriginCache.clear();
+  }
+}
+
+/**
+ * FIX-13 (MED-SEO-03): Check if we can make a CrUX API request without exceeding rate limit.
+ * Returns true if request is allowed, false if rate limited.
+ */
+function checkRateLimit(): boolean {
+  const now = Date.now();
+  const oneMinuteAgo = now - 60_000;
+
+  // Remove timestamps older than 1 minute
+  while (cruxRequestTimestamps.length > 0 && cruxRequestTimestamps[0] < oneMinuteAgo) {
+    cruxRequestTimestamps.shift();
+  }
+
+  // Check if under limit
+  if (cruxRequestTimestamps.length >= CRUX_RATE_LIMIT_PER_MINUTE) {
+    return false;
+  }
+
+  // Record this request
+  cruxRequestTimestamps.push(now);
+  return true;
 }
 
 /**
@@ -93,21 +161,31 @@ function evictIfNeeded(): void {
 }
 
 /**
- * Fetch CrUX data for a URL with origin-level caching and TTL.
+ * Fetch CrUX data for a URL with origin-level caching, TTL, and rate limiting.
  * CrUX API returns origin-level metrics, so all pages from the same origin share data.
+ *
+ * FIX-13 (HIGH-SEO-03): Cache is now namespaced by client ID.
+ * FIX-13 (MED-SEO-03): Rate limiting applied (400 req/min).
  */
 async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse | null> {
   const origin = new URL(url).origin;
+  const cacheKey = getCacheKey(origin); // FIX-13: Client-namespaced key
 
   // Check cache first with TTL validation
-  const cached = cruxOriginCache.get(origin);
+  const cached = cruxOriginCache.get(cacheKey);
   if (cached && isCacheValid(cached)) {
     return cached.data;
   }
 
   // Remove expired entry if exists
   if (cached) {
-    cruxOriginCache.delete(origin);
+    cruxOriginCache.delete(cacheKey);
+  }
+
+  // FIX-13 (MED-SEO-03): Check rate limit before making request
+  if (!checkRateLimit()) {
+    // Rate limited - return null without caching to allow retry later
+    return null;
   }
 
   try {
@@ -124,18 +202,18 @@ async function fetchCruxData(url: string, apiKey: string): Promise<CruxResponse 
     if (!response.ok) {
       // Cache the null result with TTL to avoid retrying failed origins too frequently
       evictIfNeeded();
-      cruxOriginCache.set(origin, { data: null, timestamp: Date.now() });
+      cruxOriginCache.set(cacheKey, { data: null, timestamp: Date.now() });
       return null;
     }
 
     const data = (await response.json()) as CruxResponse;
     evictIfNeeded();
-    cruxOriginCache.set(origin, { data, timestamp: Date.now() });
+    cruxOriginCache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   } catch {
     // Cache failures with TTL to prevent repeated failed requests
     evictIfNeeded();
-    cruxOriginCache.set(origin, { data: null, timestamp: Date.now() });
+    cruxOriginCache.set(cacheKey, { data: null, timestamp: Date.now() });
     return null;
   }
 }

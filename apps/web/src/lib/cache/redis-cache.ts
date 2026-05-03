@@ -155,17 +155,30 @@ export async function cacheInvalidate(key: string): Promise<void> {
 }
 
 /**
- * Invalidate cache entries matching a pattern.
- * Use with caution - KEYS command can be slow on large datasets.
+ * HIGH-CACHE-02 FIX: Invalidate cache entries matching a pattern.
+ * Uses SCAN instead of KEYS for production safety.
+ *
+ * @param pattern - Glob pattern to match (e.g., "*:client-123:*")
+ * @returns Number of keys deleted
  */
 export async function cacheInvalidatePattern(pattern: string): Promise<number> {
   const fullPattern = `${CACHE_PREFIX}${pattern}`;
+  let cursor = "0";
+  let deletedCount = 0;
+
   try {
-    const keys = await redis.keys(fullPattern);
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
-    return keys.length;
+    // HIGH-CACHE-02: Use SCAN instead of KEYS for large datasets
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", fullPattern, "COUNT", 100);
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        await redis.del(...keys);
+        deletedCount += keys.length;
+      }
+    } while (cursor !== "0");
+
+    return deletedCount;
   } catch (error) {
     logger.error("[redis-cache] Invalidate pattern error", error instanceof Error ? error : { error: String(error) });
     return 0;

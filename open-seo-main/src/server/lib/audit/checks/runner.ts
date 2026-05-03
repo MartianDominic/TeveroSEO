@@ -82,6 +82,8 @@ export interface ExtendedRunChecksOptions extends RunChecksOptions {
   totalTimeoutMs?: number;
   /** Whether to deduplicate results (default: true) */
   deduplicate?: boolean;
+  /** HTTP response headers for X-Robots-Tag check - FIX-13 (HIGH-SEO-04) */
+  responseHeaders?: Record<string, string>;
 }
 
 /**
@@ -114,6 +116,7 @@ export async function runChecks(
     keyword: options.keyword,
     pageAnalysis: options.pageAnalysis,
     siteContext: options.siteContext,
+    responseHeaders: options.responseHeaders, // FIX-13 (HIGH-SEO-04): Pass headers for X-Robots-Tag check
   };
 
   // Get checks to run

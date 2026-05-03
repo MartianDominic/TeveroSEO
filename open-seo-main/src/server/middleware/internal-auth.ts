@@ -38,6 +38,10 @@ export interface InternalAuthResult {
   method?: "hmac" | "legacy_key";
   /** Error message if verification failed */
   error?: string;
+  /** Request path for audit logging */
+  path?: string;
+  /** Source service identifier if provided */
+  sourceService?: string;
 }
 
 /**
@@ -48,6 +52,9 @@ export interface InternalAuthResult {
  * - Validates timestamp to prevent replay attacks
  * - Fails closed if any validation step fails
  *
+ * HIGH-AUTH-04 FIX: Added comprehensive audit logging for all internal auth
+ * attempts to enable security monitoring and incident investigation.
+ *
  * @param request - The incoming HTTP request
  * @param payload - The request body as string (empty string for GET requests)
  * @returns InternalAuthResult indicating verification status
@@ -56,9 +63,22 @@ export async function verifyInternalAuth(
   request: Request,
   payload: string = ""
 ): Promise<InternalAuthResult> {
+  const path = new URL(request.url).pathname;
+  const method = request.method;
+  const sourceService = request.headers.get("X-Source-Service") || "unknown";
+  const requestId = request.headers.get("X-Request-Id") || "none";
+
   if (!INTERNAL_API_KEY) {
     log.error("INTERNAL_API_KEY not configured");
-    return { verified: false, error: "Internal API key not configured" };
+    // HIGH-AUTH-04: Audit log for configuration error
+    log.warn("AUDIT: Internal auth failed - API key not configured", {
+      path,
+      method,
+      sourceService,
+      requestId,
+      reason: "config_missing",
+    });
+    return { verified: false, error: "Internal API key not configured", path, sourceService };
   }
 
   // Try HMAC-based auth first (new protocol from apps/web)
@@ -66,19 +86,64 @@ export async function verifyInternalAuth(
   const timestampStr = request.headers.get("X-Internal-Timestamp");
 
   if (signature && timestampStr) {
-    return verifyHmacSignature(signature, timestampStr, payload);
+    const result = verifyHmacSignature(signature, timestampStr, payload);
+    // HIGH-AUTH-04: Audit log for HMAC auth attempts
+    if (result.verified) {
+      log.info("AUDIT: Internal auth SUCCESS via HMAC", {
+        path,
+        method,
+        sourceService,
+        requestId,
+        authMethod: "hmac",
+      });
+    } else {
+      log.warn("AUDIT: Internal auth FAILED via HMAC", {
+        path,
+        method,
+        sourceService,
+        requestId,
+        authMethod: "hmac",
+        reason: result.error,
+      });
+    }
+    return { ...result, path, sourceService };
   }
 
   // Fallback: legacy X-Internal-Api-Key header (for backward compatibility)
   const apiKey = request.headers.get("X-Internal-Api-Key");
   if (apiKey) {
-    return verifyLegacyApiKey(apiKey);
+    const result = verifyLegacyApiKey(apiKey);
+    // HIGH-AUTH-04: Audit log for legacy key auth attempts
+    if (result.verified) {
+      log.info("AUDIT: Internal auth SUCCESS via legacy key", {
+        path,
+        method,
+        sourceService,
+        requestId,
+        authMethod: "legacy_key",
+      });
+    } else {
+      log.warn("AUDIT: Internal auth FAILED via legacy key", {
+        path,
+        method,
+        sourceService,
+        requestId,
+        authMethod: "legacy_key",
+        reason: result.error,
+      });
+    }
+    return { ...result, path, sourceService };
   }
 
-  log.warn("No internal auth credentials provided", {
-    path: new URL(request.url).pathname,
+  // HIGH-AUTH-04: Audit log for missing credentials
+  log.warn("AUDIT: Internal auth FAILED - no credentials provided", {
+    path,
+    method,
+    sourceService,
+    requestId,
+    reason: "no_credentials",
   });
-  return { verified: false, error: "Internal authentication required" };
+  return { verified: false, error: "Internal authentication required", path, sourceService };
 }
 
 /**

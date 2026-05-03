@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from api.model_constants import ALLOWED_TEXT_MODELS, ALLOWED_IMAGE_MODELS
 from middleware.auth_middleware import get_current_user
-from middleware.authorization import require_client_access, grant_creator_access, get_user_clients
+from middleware.authorization import require_client_access, grant_creator_access, get_user_clients, require_role
 from models.client import Client, ClientSettings
 from services.shared_db import get_shared_db
 from services.encryption import encrypt_value, decrypt_value
@@ -267,9 +267,17 @@ def create_client(
 
     The creating user is automatically granted admin access to the new client.
 
+    FIX-03 HIGH-CW-02: workspace_id is now auto-assigned from user's org or default.
+
     RESOURCE LIMIT: Users are limited to MAX_CLIENTS_PER_USER clients to prevent abuse.
     """
     clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
+
+    # FIX-03 HIGH-CW-02: Get workspace_id from user's organization or assign default
+    workspace_id = current_user.get("org_id") or current_user.get("organization_id")
+    if not workspace_id:
+        # Use user's personal workspace (clerk_user_id as fallback)
+        workspace_id = f"personal_{clerk_user_id}"
 
     # RESOURCE LIMIT FIX: Check user's current client count before allowing creation
     current_client_count = len(get_user_clients(db, clerk_user_id))
@@ -281,13 +289,38 @@ def create_client(
 
     # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
     try:
-        client = Client(name=payload.name, website_url=payload.website_url)
+        # FIX-03 HIGH-CW-02: Set workspace_id during creation
+        client = Client(
+            name=payload.name,
+            website_url=payload.website_url,
+            workspace_id=workspace_id,
+        )
         db.add(client)
         db.commit()
         db.refresh(client)
 
         # Grant creator admin access to the new client
         grant_creator_access(db, client.id, clerk_user_id)
+
+        # FIX-03 CRIT-CW-02: Emit creation event for cross-service sync
+        try:
+            from services.client_sync.events import (
+                ClientEventType,
+                emit_client_event,
+            )
+            emit_client_event(
+                event_type=ClientEventType.CREATED,
+                client_id=str(client.id),
+                workspace_id=workspace_id,
+                data={
+                    "name": client.name,
+                    "website_url": client.website_url,
+                    "created_by": clerk_user_id,
+                },
+            )
+        except Exception as event_err:
+            # Log but don't fail the creation
+            logger.warning(f"Failed to emit creation event: {event_err}")
 
         return _client_to_response(client)
     except Exception as e:
@@ -339,16 +372,44 @@ def update_client(
 def archive_client(
     client_id: str,
     db: Session = Depends(get_shared_db),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     _authorized: bool = Depends(require_client_access),
+    _admin_role: str = Depends(require_role("archive_client")),  # HIGH-AUTH-01: Require admin role
 ):
-    """Soft-delete a client by setting is_archived=True. Does NOT delete the row."""
+    """Soft-delete a client by setting is_archived=True. Does NOT delete the row.
+
+    HIGH-AUTH-01 FIX: This destructive operation now requires admin role.
+    FIX-03 CRIT-CW-02: Emits client.archived event for cross-service sync.
+    This event triggers:
+    - Redis cache invalidation
+    - Notification to open-seo-main to mark related data
+    """
     # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
     try:
         client = _get_active_client_or_404(client_id, db)
         client.is_archived = True
         db.commit()
         db.refresh(client)
+
+        # FIX-03 CRIT-CW-02: Emit archive event for cross-service sync
+        try:
+            from services.client_sync.events import (
+                ClientEventType,
+                emit_client_event,
+            )
+            emit_client_event(
+                event_type=ClientEventType.ARCHIVED,
+                client_id=str(client.id),
+                workspace_id=client.workspace_id,
+                data={
+                    "name": client.name,
+                    "archived_by": current_user.get("clerk_user_id") or current_user.get("id"),
+                },
+            )
+        except Exception as event_err:
+            # Log but don't fail the archive operation
+            logger.warning(f"Failed to emit archive event: {event_err}")
+
         return _client_to_response(client)
     except HTTPException:
         raise
@@ -377,7 +438,7 @@ def upsert_settings(
     client_id: str,
     payload: SettingsUpdate,
     db: Session = Depends(get_shared_db),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     _authorized: bool = Depends(require_client_access),
 ):
     """
@@ -385,10 +446,53 @@ def upsert_settings(
 
     CMS credential plaintext (wp_app_password, shopify_api_key) is encrypted
     before storage and never returned in the response.
+
+    HIGH-AUTH-01 FIX: Credential updates (wp_app_password, shopify_api_key) require
+    admin role. Other settings updates require editor role.
     """
+    from middleware.authorization import get_user_role_for_client, has_role_permission
+
     # SECURITY FIX: HIGH-DB-02 - Add transaction rollback on error
     try:
         client = _get_active_client_or_404(client_id, db)
+
+        # HIGH-AUTH-01 FIX: Check if credentials are being updated - requires admin
+        is_credential_update = (
+            payload.wp_app_password is not None or
+            payload.shopify_api_key is not None
+        )
+
+        clerk_user_id = current_user.get("clerk_user_id") or current_user.get("id")
+        user_role = get_user_role_for_client(db, client.id, clerk_user_id)
+
+        if not user_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this client"
+            )
+
+        if is_credential_update:
+            # Credential updates require admin role
+            if not has_role_permission(user_role, "admin"):
+                logger.warning(
+                    f"ROLE CHECK DENIED: user={clerk_user_id} role={user_role} "
+                    f"attempted credential update on client={client_id} (requires admin)"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions: credential updates require admin role"
+                )
+        else:
+            # Non-credential updates require editor role
+            if not has_role_permission(user_role, "editor"):
+                logger.warning(
+                    f"ROLE CHECK DENIED: user={clerk_user_id} role={user_role} "
+                    f"attempted settings update on client={client_id} (requires editor)"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Insufficient permissions: settings updates require editor role"
+                )
 
         settings = client.settings
         if settings is None:
@@ -741,14 +845,13 @@ async def verify_client_access(
     1. User is authenticated via Bearer token (get_current_user dependency)
     2. UserId in request body matches authenticated user (prevents spoofing)
     3. Client exists and is not archived
-
-    NOTE: Currently all authenticated users have access to all clients
-    in the agency model. Future versions may implement per-client
-    workspace membership via the member table.
+    4. User has an active ClientUserAccess record for this client (CRIT-AUTH-01 FIX)
 
     Returns:
-        VerifyAccessResponse with hasAccess=true if user has access
+        VerifyAccessResponse with hasAccess=true if user has explicit access
     """
+    from middleware.authorization import check_client_access, ClientUserAccess
+
     # Validate userId is provided in request body
     if not payload.userId:
         raise HTTPException(
@@ -787,20 +890,37 @@ async def verify_client_access(
             detail="Client not found"
         )
 
-    # In the current agency model, all authenticated users have access
-    # to all active clients. Future enhancement: check member table
-    # for workspace-based access control.
-    #
-    # Example future implementation:
-    # member = db.query(WorkspaceMember).filter(
-    #     WorkspaceMember.workspace_id == client.workspace_id,
-    #     WorkspaceMember.user_id == payload.userId
-    # ).first()
-    # if not member:
-    #     return VerifyAccessResponse(hasAccess=False, isMember=False)
+    # CRIT-AUTH-01 FIX: Check ClientUserAccess table for explicit access grant
+    # This matches the behavior of require_client_access dependency
+    try:
+        client_uuid = uuid.UUID(client_id)
+    except ValueError:
+        return VerifyAccessResponse(
+            hasAccess=False,
+            isMember=False,
+            role=None
+        )
 
+    access = check_client_access(db, client_uuid, authenticated_user_id)
+
+    if access is None:
+        logger.info(
+            f"verify-access: no access record for user={authenticated_user_id[:8]}*** "
+            f"client={client_id}"
+        )
+        return VerifyAccessResponse(
+            hasAccess=False,
+            isMember=False,
+            role=None
+        )
+
+    # User has explicit access - return their role
+    logger.debug(
+        f"verify-access: granted for user={authenticated_user_id[:8]}*** "
+        f"client={client_id} role={access.role}"
+    )
     return VerifyAccessResponse(
         hasAccess=True,
         isMember=True,
-        role="member"  # Default role for agency model
+        role=access.role
     )

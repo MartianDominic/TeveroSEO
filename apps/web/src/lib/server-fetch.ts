@@ -15,6 +15,7 @@ import {
   getServiceErrorMessage,
 } from "./utils/service-circuit-breakers";
 import { extractRequestContext, type RequestContext } from "./api/request-context";
+import { toCamelCase, toSnakeCase } from "./utils/case-transform";
 
 /** Retry configuration for transient errors */
 const RETRY_CONFIG = {
@@ -312,6 +313,18 @@ export interface ServerFetchInit<T = unknown> extends RequestInit {
   schema?: ZodLikeSchema<T>;
   /** Optional request context for tracing ID propagation (HIGH-API-02, MED-API-02) */
   requestContext?: RequestContext;
+  /**
+   * Automatically transform response keys from snake_case to camelCase.
+   * FIX CRIT-API-02: Consistent naming convention at API boundary.
+   * Default: true for AI-Writer (Python), false for open-seo-main (TypeScript).
+   */
+  transformResponse?: boolean;
+  /**
+   * Automatically transform request body keys from camelCase to snake_case.
+   * FIX CRIT-API-02: Consistent naming convention at API boundary.
+   * Default: true for AI-Writer (Python), false for open-seo-main (TypeScript).
+   */
+  transformRequest?: boolean;
 }
 
 /**
@@ -326,7 +339,7 @@ async function requestCore<T>(
   init?: ServerFetchInit<T>,
 ): Promise<T> {
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const { timeout = SERVER_TIMEOUT_MS, schema, requestContext, ...restInit } = init ?? {};
+  const { timeout = SERVER_TIMEOUT_MS, schema, requestContext, transformResponse, transformRequest, ...restInit } = init ?? {};
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(await buildServiceHeaders(requestContext)),
@@ -336,6 +349,16 @@ async function requestCore<T>(
   // HIGH-16: Determine source for error normalization
   const source: 'open-seo' | 'ai-writer' = base === AI_WRITER_URL ? 'ai-writer' : 'open-seo';
 
+  // CRIT-API-02 FIX: Automatic case transformation for AI-Writer (Python uses snake_case)
+  // Default: transform for AI-Writer, don't transform for open-seo-main (TypeScript)
+  const shouldTransformRequest = transformRequest ?? (source === 'ai-writer');
+  const shouldTransformResponse = transformResponse ?? (source === 'ai-writer');
+
+  // Transform request body if needed
+  const transformedBody = shouldTransformRequest && body !== undefined
+    ? toSnakeCase(body as Record<string, unknown>)
+    : body;
+
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < RETRY_CONFIG.maxRetries; attempt++) {
@@ -343,7 +366,7 @@ async function requestCore<T>(
       const res = await fetchWithTimeout(url, {
         method,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: transformedBody !== undefined ? JSON.stringify(transformedBody) : undefined,
         cache: restInit?.cache ?? "no-store",
         next: restInit?.next,
         timeout,
@@ -352,6 +375,10 @@ async function requestCore<T>(
       let parsed: unknown = null;
       try {
         parsed = text ? JSON.parse(text) : null;
+        // CRIT-API-02 FIX: Transform response keys from snake_case to camelCase
+        if (shouldTransformResponse && parsed && typeof parsed === 'object') {
+          parsed = toCamelCase(parsed as Record<string, unknown>);
+        }
       } catch {
         parsed = text;
       }
