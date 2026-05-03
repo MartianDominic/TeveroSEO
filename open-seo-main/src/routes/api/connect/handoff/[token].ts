@@ -63,7 +63,7 @@ interface HandoffResponse {
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/connect/handoff/$token")({
+export const Route = createFileRoute("/api/connect/handoff/token")({
   server: {
     handlers: {
       /**

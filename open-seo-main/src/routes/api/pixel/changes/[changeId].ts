@@ -36,7 +36,7 @@ const ActionSchema = z.object({
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/changes/$changeId")({
+export const Route = createFileRoute("/api/pixel/changes/changeId")({
   server: {
     handlers: {
       /**

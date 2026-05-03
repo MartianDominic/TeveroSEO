@@ -46,7 +46,7 @@ const PaginationSchema = z.object({
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/$siteId/changes")({
+export const Route = createFileRoute("/api/pixel/siteId/changes")({
   server: {
     handlers: {
       /**

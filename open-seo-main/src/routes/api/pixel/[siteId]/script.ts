@@ -37,7 +37,7 @@ interface ScriptResponse {
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/$siteId/script")({
+export const Route = createFileRoute("/api/pixel/siteId/script")({
   server: {
     handlers: {
       /**

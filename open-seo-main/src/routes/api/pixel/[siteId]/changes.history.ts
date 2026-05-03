@@ -25,7 +25,7 @@ const PaginationSchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-export const Route = createFileRoute("/api/pixel/$siteId/changes/history")({
+export const Route = createFileRoute("/api/pixel/siteId/changes/history")({
   server: {
     handlers: {
       /**

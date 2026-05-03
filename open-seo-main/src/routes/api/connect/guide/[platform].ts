@@ -55,7 +55,7 @@ const PIXEL_SCRIPT_TEMPLATE = `<script async src="https://pixel.tevero.io/t.js" 
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/connect/guide/$platform")({
+export const Route = createFileRoute("/api/connect/guide/platform")({
   server: {
     handlers: {
       /**

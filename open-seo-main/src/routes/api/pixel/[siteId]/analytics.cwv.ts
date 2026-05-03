@@ -52,7 +52,7 @@ function validateDateRange(startDate: Date, endDate: Date): boolean {
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/$siteId/analytics/cwv")({
+export const Route = createFileRoute("/api/pixel/siteId/analytics/cwv")({
   server: {
     handlers: {
       /**

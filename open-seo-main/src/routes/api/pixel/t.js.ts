@@ -25,7 +25,7 @@ const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/t.js")({
+export const Route = createFileRoute("/api/pixel/t/js")({
   server: {
     handlers: {
       /**

@@ -15,7 +15,7 @@ import { db } from "@/db";
 
 const log = createLogger({ module: "api/pixel/changes/pending" });
 
-export const Route = createFileRoute("/api/pixel/$siteId/changes/pending")({
+export const Route = createFileRoute("/api/pixel/siteId/changes/pending")({
   server: {
     handlers: {
       /**

@@ -20,7 +20,7 @@ const log = createLogger({ module: "api/pixel/config" });
 // Route Handler
 // ============================================================================
 
-export const Route = createFileRoute("/api/pixel/config/$siteId")({
+export const Route = createFileRoute("/api/pixel/config/siteId")({
   server: {
     handlers: {
       /**
