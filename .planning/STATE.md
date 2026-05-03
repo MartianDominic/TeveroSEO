@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.1
-milestone_name: Platform Intelligence
-status: complete
-last_updated: "2026-05-03T14:30:00Z"
-last_activity: 2026-05-03 -- Completed v7.1 Platform Intelligence (Phases 63-66)
+milestone: v8.0
+milestone_name: SaaS Hardening
+status: planning
+last_updated: "2026-05-04T00:00:00Z"
+last_activity: 2026-05-04 -- Created v8.0 SaaS Hardening phase plans (Phases 67-72)
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 20
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -369,14 +369,39 @@ Full platform internationalization with Lithuanian as primary target:
 
 **Phase 59: COMPLETE** — 3-click signing experience with multi-signer support, sequential/parallel signing modes, pre-signing flow, professional PDF generation with custom fonts, EN/LT localization, Dokobit Smart-ID/Mobile-ID integration.
 
+## v8.0 Phases Summary (SaaS Hardening)
+
+| Phase | Title | Status | Duration |
+|-------|-------|--------|----------|
+| 67 | Database Consolidation | Pending | 3 weeks |
+| 68 | Integration Hardening | Pending | 2 weeks |
+| 69 | Data Integrity & Performance | Pending | 2.5 weeks |
+| 70 | Frontend Quality | Pending | 2 weeks |
+| 71 | Security & Configuration | Pending | 2 weeks |
+| 72 | SaaS Readiness | Pending | 1.5 weeks |
+
+### v8.0 Dependencies
+
+- Phase 67 (DB Consolidation) has no dependencies - start here
+- Phase 68 depends on 67-03 (unified DB)
+- Phase 69 depends on 68
+- Phase 70 can run parallel with 69 (no DB deps)
+- Phase 71 depends on 67 (migrations)
+- Phase 72 depends on all prior phases
+
+### v8.0 Source Documents
+
+- `.planning/UNIFIED_REMEDIATION_PLAN.md` - Consolidated 20-agent review
+- `.planning/phases/DB-CONSOLIDATION-PLAN.md` - Phase 67 details
+
 ## v7.1 Phases Summary
 
 | Phase | Title | Status |
 |-------|-------|--------|
-| 63 | AI Search Optimization | Pending |
-| 64 | Crawling Infrastructure | Wave 1 In Progress |
-| 65 | Job Queue Excellence | Pending |
-| 66 | Platform Observability | Pending |
+| 63 | AI Search Optimization | Complete |
+| 64 | Crawling Infrastructure | Complete |
+| 65 | Job Queue Excellence | Complete |
+| 66 | Platform Observability | Complete |
 
 ### Phase 64 Progress (2026-05-02)
 
