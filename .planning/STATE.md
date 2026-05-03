@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-03T11:37:14Z"
-last_activity: 2026-05-03 -- Completed 66-08 (Pixel Analytics Dashboard)
+last_updated: "2026-05-03T11:44:42Z"
+last_activity: 2026-05-03 -- Completed 66-10 (Internationalization)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 59
-  completed_plans: 59
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 66
-Plan: 08 (completed)
+Plan: 10 (completed)
 Milestone: v7.1 Platform Intelligence (Phases 63-66)
 Status: Executing
-Last activity: 2026-05-03 -- Completed 66-08 (Pixel Analytics Dashboard)
+Last activity: 2026-05-03 -- Completed 66-10 (Internationalization)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **66-10:** {{variable}} interpolation syntax matching existing patterns; Lithuanian uses natural phrasing not literal translations; CMS guide i18n via translation keys
 - **66-09:** Facade routes to best source (GA OAuth > pixel for traffic); GSC required for rankings (no fallback); CWV always pixel; Prompt dismissal 7-day localStorage TTL; window.location for navigation (avoids Next.js typed routes)
 - **66-04:** useState+useCallback for wizard state (simpler than useReducer); 9-step state machine (url/detecting/choice/diy/developer/oauth/verifying/success/error); ConnectApiError for typed error handling; snippet prop for siteId personalization
 - **66-07:** Change lifecycle: pending -> live (immediate on approve) -> rolled_back; Rollback creates new live change (preserves audit trail); HTML sanitization strips script tags and event handlers; JSON validation for schema type; Native title attribute for tooltips (Tooltip not in @tevero/ui)
