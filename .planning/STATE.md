@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 69
-Plan: 02 (next)
+Plan: 03 (next)
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: EXECUTING
-Last activity: 2026-05-03 -- Completed 69-01 Transaction Wrappers (withTransaction, TransactionContext, saga pattern)
+Last activity: 2026-05-03 -- Completed 69-02 Cascade & Constraints (APIKey CASCADE, soft delete cascade, status CHECK constraints)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **69-02:** Soft delete cascades to audits (archive), contracts (cancel), reportSchedules (disable), siteConnections (disconnect); PostgreSQL ENUMs created for type safety but CHECK constraints used for flexibility; Conditional DDL pattern (IF NOT EXISTS) for idempotent migrations
 - **69-01:** INTERNAL_ERROR code for transaction failures; PostCommitJob queued but not enqueued until after commit; Row-level FOR UPDATE locking for concurrent conversion prevention; Saga compensation runs all compensations even if some fail; noOpCompensation helper for irreversible operations
 - **68-04:** 5-minute staleTime + 10-minute gcTime for client query cache; BroadcastChannel for cross-tab sync (not localStorage events); Store retains legacy methods for gradual migration; Direct setState in broadcast handler to avoid circular broadcasts
 - **68-03:** Zod schemas inline in webhooks.ts for co-location; Version column integer default 1 incremented on update; Event schema uses snake_case (event_type, client_id); api_version literal "2026-05-01"; Error envelope includes code, message, optional details
