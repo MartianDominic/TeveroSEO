@@ -31,3 +31,23 @@ export type { ErrorScreenProps, ErrorType } from "./error-screen";
 
 export { ManualCheck } from "./manual-check";
 export type { ManualCheckProps } from "./manual-check";
+
+// Phase 66-09: OAuth Enhancement
+export { OAuthEnhancement } from "./oauth-enhancement";
+export type { OAuthEnhancementProps, EnhancementPlatform } from "./oauth-enhancement";
+
+export {
+  GscPrompt,
+  GaPrompt,
+  GbpPrompt,
+  CmsPublishPrompt,
+  useOAuthPrompts,
+  isPromptDismissed,
+  dismissPrompt,
+} from "./oauth-prompts";
+export type {
+  PromptProps,
+  CmsPublishPromptProps,
+  UseOAuthPromptsOptions,
+  UseOAuthPromptsResult,
+} from "./oauth-prompts";
