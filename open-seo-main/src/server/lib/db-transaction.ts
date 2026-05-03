@@ -222,3 +222,89 @@ export async function withTransactionAndContext<T>(
 
   return { result, context };
 }
+
+/**
+ * Queue registry for post-commit job enqueuing.
+ * Maps queue names to their enqueue functions.
+ * Lazy-load to avoid circular dependencies.
+ */
+let queueRegistry: Map<string, (job: PostCommitJob) => Promise<void>> | null = null;
+
+async function getQueueRegistry(): Promise<Map<string, (job: PostCommitJob) => Promise<void>>> {
+  if (!queueRegistry) {
+    queueRegistry = new Map();
+
+    // Register webhook queue
+    // Dynamically import to avoid circular dependencies at module load time
+    const { enqueueWebhookDelivery } = await import("@/server/queues/webhookQueue");
+
+    queueRegistry.set("webhooks", async (job) => {
+      // For webhooks, we need to transform PostCommitJob to WebhookDeliveryJobData
+      // This is a simplified mapping - real implementation would need webhook lookup
+      await enqueueWebhookDelivery({
+        deliveryId: job.options?.jobId ?? `${job.jobName}-${Date.now()}`,
+        webhookId: (job.data.webhookId as string) ?? "",
+        url: (job.data.url as string) ?? "",
+        headers: (job.data.headers as Record<string, string>) ?? {},
+        payload: job.data.payload as Parameters<typeof enqueueWebhookDelivery>[0]["payload"],
+        attempt: 1,
+      });
+    });
+  }
+  return queueRegistry;
+}
+
+/**
+ * Enqueue all collected post-commit jobs.
+ * Call this AFTER transaction commits successfully.
+ *
+ * Jobs are enqueued in order but processing is async.
+ * Failures are logged but don't throw - DB commit already succeeded.
+ *
+ * @param jobs - Jobs collected via TransactionContext
+ * @returns Number of jobs successfully enqueued
+ *
+ * @example
+ * ```typescript
+ * const txContext = new TransactionContext();
+ * const client = await withTransaction(async (tx) => {
+ *   // ... operations ...
+ *   txContext.addPostCommitJob({ queue: 'webhooks', jobName: 'client.created', data: {...} });
+ *   return client;
+ * });
+ *
+ * // Enqueue after commit
+ * await enqueuePostCommitJobs(txContext.getPostCommitJobs());
+ * ```
+ */
+export async function enqueuePostCommitJobs(jobs: PostCommitJob[]): Promise<number> {
+  if (jobs.length === 0) {
+    return 0;
+  }
+
+  const registry = await getQueueRegistry();
+  let enqueued = 0;
+
+  for (const job of jobs) {
+    const enqueuer = registry.get(job.queue);
+
+    if (!enqueuer) {
+      console.warn(`[enqueuePostCommitJobs] Unknown queue: ${job.queue}, skipping job ${job.jobName}`);
+      continue;
+    }
+
+    try {
+      await enqueuer(job);
+      enqueued++;
+    } catch (error) {
+      // Log but don't throw - the transaction already committed
+      // The job can be retried via manual intervention or monitoring
+      console.error(
+        `[enqueuePostCommitJobs] Failed to enqueue ${job.jobName} to ${job.queue}:`,
+        error
+      );
+    }
+  }
+
+  return enqueued;
+}

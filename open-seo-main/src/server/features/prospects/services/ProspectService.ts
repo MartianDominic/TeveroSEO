@@ -17,8 +17,14 @@ import {
   type PipelineStage,
   PROSPECT_STATUS,
 } from "@/db/prospect-schema";
+import { clients, type ClientSelect } from "@/db/client-schema";
 import { withAudit, type AuditContext } from "@/db/audit";
 import { AppError } from "@/server/lib/errors";
+import {
+  withTransaction,
+  TransactionContext,
+  type PostCommitJob,
+} from "@/server/lib/db-transaction";
 import { nanoid } from "nanoid";
 import { isEnumValue } from "@/lib/type-guards";
 
@@ -353,5 +359,106 @@ export const ProspectService = {
         updatedAt: new Date(),
       })
       .where(eq(prospects.id, id));
+  },
+
+  /**
+   * Convert a prospect to a client with full transaction safety.
+   *
+   * Phase 69-01: Transaction wrapper with post-commit job collection.
+   *
+   * Operations (all in single transaction):
+   * 1. Fetch prospect (validates existence)
+   * 2. Create client record
+   * 3. Update prospect status to 'converted'
+   * 4. Collect webhook job for post-commit delivery
+   *
+   * Webhook jobs are enqueued AFTER transaction commits to ensure
+   * workers don't process events for uncommitted data.
+   *
+   * @param prospectId - Prospect to convert
+   * @param userId - User performing the conversion (for audit)
+   * @param workspaceId - Workspace context
+   * @returns Created client record
+   * @throws AppError if prospect not found or already converted
+   */
+  async convertProspectToClient(
+    prospectId: string,
+    userId: string,
+    workspaceId: string,
+  ): Promise<{
+    client: ClientSelect;
+    postCommitJobs: PostCommitJob[];
+  }> {
+    const txContext = new TransactionContext();
+
+    const client = await withTransaction(async (tx) => {
+      // 1. Fetch prospect within transaction for consistency
+      const [prospect] = await tx
+        .select()
+        .from(prospects)
+        .where(and(eq(prospects.id, prospectId), eq(prospects.workspaceId, workspaceId)))
+        .for("update") // Lock row to prevent concurrent conversion
+        .limit(1);
+
+      if (!prospect) {
+        throw new AppError("NOT_FOUND", `Prospect not found: ${prospectId}`);
+      }
+
+      if (prospect.status === "converted") {
+        throw new AppError("CONFLICT", `Prospect already converted: ${prospectId}`);
+      }
+
+      // 2. Create client record
+      const now = new Date();
+      const [createdClient] = await tx
+        .insert(clients)
+        .values({
+          workspaceId,
+          name: prospect.companyName ?? prospect.domain,
+          domain: prospect.domain,
+          contactEmail: prospect.contactEmail,
+          contactName: prospect.contactName,
+          industry: prospect.industry,
+          status: "onboarding",
+          convertedFromProspectId: prospectId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      // 3. Update prospect status
+      await tx
+        .update(prospects)
+        .set({
+          status: "converted",
+          convertedClientId: createdClient.id,
+          pipelineStage: "converted",
+          updatedAt: now,
+        })
+        .where(eq(prospects.id, prospectId));
+
+      // 4. Collect post-commit webhook job
+      // Job is NOT enqueued yet - caller must call enqueuePostCommitJobs after this returns
+      txContext.addPostCommitJob({
+        queue: "webhooks",
+        jobName: "client.created",
+        data: {
+          clientId: createdClient.id,
+          prospectId,
+          workspaceId,
+          domain: prospect.domain,
+          convertedBy: userId,
+          convertedAt: now.toISOString(),
+        },
+      });
+
+      return createdClient;
+    });
+
+    // Return client and jobs for caller to enqueue after commit
+    return {
+      client,
+      postCommitJobs: txContext.getPostCommitJobs(),
+    };
   },
 };
