@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: SaaS Hardening
 status: executing
-last_updated: "2026-05-04T01:14:00Z"
-last_activity: 2026-05-04 -- Completed 68-04 State Management Migration (TanStack Query + BroadcastChannel)
+last_updated: "2026-05-03T22:29:00Z"
+last_activity: 2026-05-03 -- Completed 69-01 Transaction Wrappers (withTransaction, saga pattern)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 6
-  percent: 30
+  completed_plans: 7
+  percent: 35
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 69 (next)
-Plan: --
+Phase: 69
+Plan: 02 (next)
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: EXECUTING
-Last activity: 2026-05-04 -- Completed 68-04 State Management Migration (TanStack Query hooks, BroadcastChannel multi-tab sync)
+Last activity: 2026-05-03 -- Completed 69-01 Transaction Wrappers (withTransaction, TransactionContext, saga pattern)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **69-01:** INTERNAL_ERROR code for transaction failures; PostCommitJob queued but not enqueued until after commit; Row-level FOR UPDATE locking for concurrent conversion prevention; Saga compensation runs all compensations even if some fail; noOpCompensation helper for irreversible operations
 - **68-04:** 5-minute staleTime + 10-minute gcTime for client query cache; BroadcastChannel for cross-tab sync (not localStorage events); Store retains legacy methods for gradual migration; Direct setState in broadcast handler to avoid circular broadcasts
 - **68-03:** Zod schemas inline in webhooks.ts for co-location; Version column integer default 1 incremented on update; Event schema uses snake_case (event_type, client_id); api_version literal "2026-05-01"; Error envelope includes code, message, optional details
 - **68-02:** VALIDATION_ERROR code for 400 responses (consistent with error-codes.ts); AbortManager singleton for cross-component abort coordination; 30s cache TTL matches existing ownership cache; In-memory cache supplements Redis for dual-layer invalidation; 58 tests across 4 modules

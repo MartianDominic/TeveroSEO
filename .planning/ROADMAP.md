@@ -2195,8 +2195,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   3. No N+1 queries in hot paths
   4. Failed jobs retry with exponential backoff
 **Estimated effort**: 80 hours (2.5 weeks)
-**Plans**: 4 plans
-  - [ ] 69-01-PLAN.md — Transaction Wrappers (Wave 1)
+**Plans**: 4 plans (1/4 complete)
+  - [x] 69-01-PLAN.md — Transaction Wrappers (Wave 1)
   - [ ] 69-02-PLAN.md — Cascade & Constraints (Wave 1)
   - [ ] 69-03-PLAN.md — Query Optimization (Wave 2)
   - [ ] 69-04-PLAN.md — Background Job Reliability (Wave 2)
