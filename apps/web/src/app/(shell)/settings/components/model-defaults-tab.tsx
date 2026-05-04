@@ -7,7 +7,7 @@
  * This component manages default AI models for text and image generation.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 import { logger } from "@/lib/logger";
@@ -97,6 +97,7 @@ export function ModelDefaultsTab() {
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const savedOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -108,17 +109,30 @@ export function ModelDefaultsTab() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Cleanup savedOk timer on unmount
+  useEffect(() => {
+    return () => {
+      if (savedOkTimerRef.current) {
+        clearTimeout(savedOkTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
     setSavedOk(false);
+    // Clear any existing timer
+    if (savedOkTimerRef.current) {
+      clearTimeout(savedOkTimerRef.current);
+    }
     try {
       await apiPut("/api/settings/global", {
         default_text_model: settings.default_text_model,
         default_image_model: settings.default_image_model,
       });
       setSavedOk(true);
-      setTimeout(() => setSavedOk(false), 3000);
+      savedOkTimerRef.current = setTimeout(() => setSavedOk(false), 3000);
     } catch (error) {
       logger.error("[ModelDefaultsTab] Failed to save model defaults", error instanceof Error ? error : { error: String(error) });
       setSaveError("Failed to save model defaults. Please try again.");

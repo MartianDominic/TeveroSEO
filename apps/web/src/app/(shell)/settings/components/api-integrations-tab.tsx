@@ -7,7 +7,7 @@
  * This component manages platform API secrets (DataForSEO, OpenAI, etc.).
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   CheckCircle,
   Eye,
@@ -69,6 +69,16 @@ export function ApiIntegrationsTab() {
 
   const [verifying, setVerifying] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<Record<string, { ok: boolean; error: string | null }>>({});
+  const verifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup verify timer on unmount
+  useEffect(() => {
+    return () => {
+      if (verifyTimerRef.current) {
+        clearTimeout(verifyTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadSecrets = useCallback(() => {
     setLoading(true);
@@ -130,7 +140,11 @@ export function ApiIntegrationsTab() {
         setEditing(null);
         setEditValue("");
         loadSecrets();
-        setTimeout(() => handleVerify(keyName), 500);
+        // Clear any existing timer before setting new one
+        if (verifyTimerRef.current) {
+          clearTimeout(verifyTimerRef.current);
+        }
+        verifyTimerRef.current = setTimeout(() => handleVerify(keyName), 500);
       } catch (error) {
         logger.error("[ApiIntegrationsTab] Failed to save secret", error instanceof Error ? error : { error: String(error) });
         setSaveError("Failed to save. Please try again.");

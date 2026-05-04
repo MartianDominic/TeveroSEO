@@ -7,7 +7,7 @@
  * This component manages reusable voice/writing style templates.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { logger } from "@/lib/logger";
@@ -72,10 +72,24 @@ export function VoiceTemplatesTab() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
+    // Clear any existing timer to prevent memory leaks
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // Cleanup toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   const loadTemplates = useCallback(() => {
