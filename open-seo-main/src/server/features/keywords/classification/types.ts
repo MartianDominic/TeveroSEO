@@ -82,4 +82,23 @@ export type ClassificationResponse = z.infer<typeof ClassificationResponseSchema
 export interface ClassifiedKeyword extends ClassificationItem {
   /** Which pass made the final decision (1=Grok, 2=Claude) */
   pass: 1 | 2;
+  /** Whether RAG context was used for this classification */
+  ragContextUsed?: boolean;
+}
+
+/**
+ * RAG context fields added to classification stats.
+ * Per Plan 73-04: Track whether RAG enhanced the classification.
+ */
+export interface RAGClassificationStats {
+  /** Whether RAG context was retrieved and used */
+  ragContextUsed: boolean;
+  /** Confidence from RAG context (0-1), 0 if not used */
+  ragConfidence: number;
+  /** Number of entities from knowledge graph */
+  ragEntityCount: number;
+  /** Number of categories suggested by RAG */
+  ragCategoryCount: number;
+  /** Error message if RAG retrieval failed */
+  ragError?: string;
 }

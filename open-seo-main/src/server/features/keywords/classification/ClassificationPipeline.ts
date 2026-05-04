@@ -11,14 +11,15 @@ import { GrokClassifier } from "./GrokClassifier";
 import { GeminiClassifier } from "./GeminiClassifier";
 import { ResilientClassifier } from "../services/ResilientClassifier";
 import { CLASSIFICATION_CONFIG } from "./config";
-import type { BusinessContext, ClassifiedKeyword, ClassificationItem } from "./types";
+import type { BusinessContext, ClassifiedKeyword, ClassificationItem, RAGClassificationStats } from "./types";
 import { createLogger } from "@/server/lib/logger";
 import { getCostTracker } from "../services/CostTracker";
 import { API_SERVICES, API_OPERATIONS, estimateTokens } from "@/db/api-costs-schema";
+import { getClassificationContext, type RAGContext } from "./rag-context";
 
 const log = createLogger({ module: "ClassificationPipeline" });
 
-export interface ClassificationStats {
+export interface ClassificationStats extends RAGClassificationStats {
   totalInput: number;
   pass1Resolved: number;
   pass2Resolved: number;
@@ -35,6 +36,8 @@ export interface PipelineConfig {
   claudeApiKey?: string;
   openaiApiKey?: string;
   confidenceThreshold?: number;
+  /** Enable RAG context retrieval for enhanced classification */
+  enableRAG?: boolean;
 }
 
 /**
@@ -91,6 +94,8 @@ export class ClassificationPipeline {
   /** Pass 2 classifier for uncertain keywords */
   private claude: ResilientClassifier;
   private confidenceThreshold: number;
+  /** Whether RAG context retrieval is enabled */
+  private enableRAG: boolean;
 
   constructor(config: PipelineConfig) {
     // Primary: Grok ($0.20/1M tokens - most cost effective)
@@ -110,25 +115,31 @@ export class ClassificationPipeline {
     });
 
     this.confidenceThreshold = config.confidenceThreshold ?? CLASSIFICATION_CONFIG.CONFIDENCE_THRESHOLD;
+    this.enableRAG = config.enableRAG ?? true; // RAG enabled by default
 
     log.info("Pipeline initialized", {
       hasPrimary: !!this.primaryClassifier,
       hasFallback: !!this.fallbackClassifier,
       threshold: this.confidenceThreshold,
+      ragEnabled: this.enableRAG,
     });
   }
 
   /**
-   * Classify keywords using the two-pass cascade.
+   * Classify keywords using the two-pass cascade with optional RAG enhancement.
    *
    * @param keywords - Keywords to classify
    * @param context - Business context for classification decisions
    * @param workspaceId - Optional workspace ID for cost tracking
+   * @param options - Optional classification options
+   * @param options.tenantId - Tenant ID for RAG context retrieval
+   * @param options.pageContent - Page content for RAG query
    */
   async classify(
     keywords: string[],
     context: BusinessContext,
-    workspaceId?: string
+    workspaceId?: string,
+    options?: { tenantId?: string; pageContent?: string }
   ): Promise<{ keywords: ClassifiedKeyword[]; stats: ClassificationStats }> {
     const stats: ClassificationStats = {
       totalInput: keywords.length,
@@ -138,11 +149,44 @@ export class ClassificationPipeline {
       included: 0,
       pass1Rate: 0,
       costCents: 0,
+      // RAG stats initialized
+      ragContextUsed: false,
+      ragConfidence: 0,
+      ragEntityCount: 0,
+      ragCategoryCount: 0,
     };
 
     if (keywords.length === 0) {
       return { keywords: [], stats };
     }
+
+    // Retrieve RAG context if enabled and tenant/content provided
+    let ragContext: RAGContext | null = null;
+    if (this.enableRAG && options?.tenantId && options?.pageContent) {
+      try {
+        ragContext = await getClassificationContext(options.tenantId, options.pageContent);
+        stats.ragContextUsed = ragContext.entities.length > 0;
+        stats.ragConfidence = ragContext.confidence;
+        stats.ragEntityCount = ragContext.entities.length;
+        stats.ragCategoryCount = ragContext.relevantCategories.length;
+        if (ragContext.error) {
+          stats.ragError = ragContext.error;
+        }
+        log.info("RAG context retrieved for classification", {
+          tenantId: options.tenantId,
+          entityCount: ragContext.entities.length,
+          categoryCount: ragContext.relevantCategories.length,
+          confidence: ragContext.confidence,
+        });
+      } catch (error) {
+        // RAG is enhancement, not requirement - log and continue
+        log.warn("RAG context retrieval failed, proceeding without", { error });
+        stats.ragError = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    // Build enhanced context with RAG data
+    const enhancedContext = this.buildEnhancedContext(context, ragContext);
 
     // Select Pass 1 classifier: Grok (primary) -> Gemini (fallback) -> defaults
     const pass1Classifier = this.selectPass1Classifier();
@@ -151,7 +195,7 @@ export class ClassificationPipeline {
 
     if (pass1Classifier) {
       try {
-        pass1Results = await pass1Classifier.classify(keywords, context);
+        pass1Results = await pass1Classifier.classify(keywords, enhancedContext);
         pass1Service = pass1Classifier.name;
         log.info(`Pass 1 (${pass1Service}) complete`, { count: pass1Results.length });
 
@@ -174,7 +218,7 @@ export class ClassificationPipeline {
         const fallback = this.getFallbackClassifier(pass1Classifier.name);
         if (fallback && !fallback.isCircuitOpen) {
           try {
-            pass1Results = await fallback.classify(keywords, context);
+            pass1Results = await fallback.classify(keywords, enhancedContext);
             pass1Service = fallback.name;
             log.info(`Pass 1 fallback (${pass1Service}) complete`, { count: pass1Results.length });
 
@@ -211,6 +255,7 @@ export class ClassificationPipeline {
         resolved.push({
           ...result,
           pass: 1,
+          ragContextUsed: stats.ragContextUsed,
         });
         stats.pass1Resolved++;
         if (result.include) {
@@ -357,6 +402,69 @@ export class ClassificationPipeline {
       type: null,
       reasoning: "No classifier available - default include",
     }));
+  }
+
+  /**
+   * Build enhanced business context with RAG information.
+   * Adds known entities and suggested categories from knowledge graph.
+   */
+  private buildEnhancedContext(
+    context: BusinessContext,
+    ragContext: RAGContext | null
+  ): BusinessContext {
+    if (!ragContext || ragContext.entities.length === 0) {
+      return context;
+    }
+
+    // Extract entity names by type for context enrichment
+    const entityNamesByType: Record<string, string[]> = {};
+    for (const entity of ragContext.entities) {
+      if (!entityNamesByType[entity.type]) {
+        entityNamesByType[entity.type] = [];
+      }
+      entityNamesByType[entity.type].push(entity.name);
+    }
+
+    // Build RAG context string for prompt enhancement
+    const ragContextParts: string[] = [];
+
+    if (ragContext.relevantCategories.length > 0) {
+      ragContextParts.push(
+        `Known categories from knowledge graph: ${ragContext.relevantCategories.join(", ")}`
+      );
+    }
+
+    if (entityNamesByType["brand"]?.length) {
+      ragContextParts.push(`Known brands: ${entityNamesByType["brand"].join(", ")}`);
+    }
+
+    if (entityNamesByType["product"]?.length) {
+      ragContextParts.push(
+        `Known products: ${entityNamesByType["product"].slice(0, 10).join(", ")}${
+          entityNamesByType["product"].length > 10 ? "..." : ""
+        }`
+      );
+    }
+
+    if (entityNamesByType["material"]?.length) {
+      ragContextParts.push(`Known materials: ${entityNamesByType["material"].join(", ")}`);
+    }
+
+    if (entityNamesByType["audience"]?.length) {
+      ragContextParts.push(`Target audiences: ${entityNamesByType["audience"].join(", ")}`);
+    }
+
+    // Merge RAG context into services for prompt enhancement
+    // This preserves the original BusinessContext interface while adding RAG data
+    const enhancedServices = [
+      ...context.services,
+      ...(ragContextParts.length > 0 ? [`[RAG Context] ${ragContextParts.join("; ")}`] : []),
+    ];
+
+    return {
+      ...context,
+      services: enhancedServices,
+    };
   }
 
   /**
