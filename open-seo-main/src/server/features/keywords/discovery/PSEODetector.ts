@@ -139,7 +139,7 @@ export function detectPSEOPatterns(
   // Filter to clusters with minimum size
   const clusters: PSEOCluster[] = [];
 
-  for (const [base, group] of groups) {
+  Array.from(groups.entries()).forEach(([base, group]) => {
     if (group.keywords.length >= config.minClusterSize) {
       const totalVolume = group.keywords.reduce((sum, k) => sum + k.volume, 0);
       const avgDifficulty = group.keywords.reduce((sum, k) => sum + k.difficulty, 0) / group.keywords.length;
@@ -160,7 +160,7 @@ export function detectPSEOPatterns(
 
       clusters.push(cluster);
     }
-  }
+  });
 
   // Sort by opportunity score descending
   return clusters.sort((a, b) => b.opportunityScore - a.opportunityScore);
