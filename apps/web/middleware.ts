@@ -246,12 +246,17 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Run next-intl middleware for locale handling
   // This handles locale detection and URL rewriting
-  const intlResponse = intlMiddleware(req);
+  const intlResponse = intlMiddleware(req) as NextResponse | Response;
 
   // Convert to NextResponse if needed and apply CSP headers
-  const response = intlResponse instanceof NextResponse
-    ? intlResponse
-    : NextResponse.next({ headers: intlResponse.headers });
+  let response: NextResponse;
+  if (intlResponse instanceof NextResponse) {
+    response = intlResponse;
+  } else {
+    // intlResponse is a Response, copy its headers
+    const headers = new Headers(intlResponse.headers);
+    response = NextResponse.next({ headers });
+  }
 
   // Apply CSP headers to all page responses
   applyCSPHeaders(response, nonce);
