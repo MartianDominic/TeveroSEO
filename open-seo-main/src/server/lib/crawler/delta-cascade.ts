@@ -20,6 +20,7 @@ import type { DeltaSyncService } from "./delta-sync";
 import { conditionalGet, hasConditionalHeaders, type CachedHeaders } from "./conditional-get";
 import { recordDeltaSkip, recordFullProcess } from "@/server/lib/metrics/crawl-metrics";
 import { enqueueGraphIngestion } from "@/server/queues/graphIngestionQueue";
+import { computeTemplateAwareHash } from "./template-hash";
 
 /**
  * Result of delta cascade decision.
@@ -143,8 +144,13 @@ export async function deltaCascade(
  * L2: Template-aware hash comparison using DeltaSyncService.
  *
  * H64-01 Fix: Implements actual SEO content hash comparison.
+ * H73-02 Enhancement: Uses Cheerio-based template-aware hashing.
+ *
  * Compares SEO content hash (excludes volatile price/stock data).
  * Only triggers full reprocess when SEO-relevant content changes.
+ *
+ * Per 73-02-PLAN.md: Upgrade from regex to Cheerio-based extraction
+ * to improve L2 skip rate from 50-70% to 65-80%.
  */
 async function checkL2(
   url: string,
@@ -168,16 +174,15 @@ async function checkL2(
     };
   }
 
-  // H64-01: Extract SEO content from HTML and compute hash
-  const seoContent = extractSeoContentFromHtml(html);
-  const newSeoHash = computeSeoContentHash(seoContent);
+  // H73-02: Use template-aware hash (Cheerio-based, strips dynamic blocks)
+  const { hash: newSeoHash, dynamicBlocksRemoved } = computeTemplateAwareHash(html);
 
   // Compare with stored hash
   if (existing.seoContentHash === newSeoHash) {
     recordDeltaSkip("L2");
     return {
       action: "skip",
-      reason: "L2 SEO content hash unchanged",
+      reason: `L2 template-aware hash unchanged (${dynamicBlocksRemoved} dynamic blocks stripped)`,
       layer: "L2",
     };
   }
@@ -193,91 +198,13 @@ async function checkL2(
   };
 }
 
-/**
- * SEO content extracted from HTML for hash comparison.
- */
-interface SeoContent {
-  title: string;
-  metaDescription: string;
-  h1: string;
-  canonical: string;
-  structuredData: string;
-}
-
-/**
- * Extract SEO-relevant content from HTML for L2 hash comparison.
- *
- * Focuses on elements that affect SEO ranking:
- * - Title tag
- * - Meta description
- * - H1 heading
- * - Canonical URL
- * - Structured data (JSON-LD)
- */
-function extractSeoContentFromHtml(html: string): SeoContent {
-  // Use regex for lightweight extraction (no DOM parser needed)
-  // This is intentionally simple - complex extraction happens in full processing
-
-  const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-  const title = titleMatch?.[1]?.trim() ?? "";
-
-  const metaDescMatch = html.match(
-    /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i
-  ) || html.match(
-    /<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["'][^>]*>/i
-  );
-  const metaDescription = metaDescMatch?.[1]?.trim() ?? "";
-
-  const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/i);
-  const h1 = h1Match?.[1]?.trim() ?? "";
-
-  const canonicalMatch = html.match(
-    /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["'][^>]*>/i
-  ) || html.match(
-    /<link[^>]*href=["']([^"']*)["'][^>]*rel=["']canonical["'][^>]*>/i
-  );
-  const canonical = canonicalMatch?.[1]?.trim() ?? "";
-
-  // Extract JSON-LD structured data
-  const jsonLdMatches = html.matchAll(
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
-  );
-  const structuredDataParts: string[] = [];
-  for (const match of jsonLdMatches) {
-    if (match[1]) {
-      structuredDataParts.push(match[1].trim());
-    }
-  }
-  const structuredData = structuredDataParts.join("|");
-
-  return {
-    title,
-    metaDescription,
-    h1,
-    canonical,
-    structuredData,
-  };
-}
-
-/**
- * Compute hash of SEO content for comparison.
- *
- * Uses the same hashing approach as DeltaSyncService for consistency.
- */
-function computeSeoContentHash(content: SeoContent): string {
-  const { createHash } = require("crypto") as typeof import("crypto");
-  const parts = [
-    content.title,
-    content.metaDescription,
-    content.h1,
-    content.canonical,
-    content.structuredData,
-  ];
-  return createHash("sha256")
-    .update(parts.filter(Boolean).join("|"))
-    .digest("hex")
-    .slice(0, 16);
-}
+// Note: Old regex-based extractSeoContentFromHtml and computeSeoContentHash
+// have been replaced by computeTemplateAwareHash from ./template-hash.ts
+// per H73-02 enhancement. The new implementation:
+// - Uses Cheerio for proper DOM manipulation
+// - Strips 30 dynamic block selectors (price, stock, widgets)
+// - Extracts 16 SEO-relevant selectors (title, meta, h1-h3, main, article)
+// - Produces full 64-char SHA256 hash (not truncated)
 
 /**
  * Trigger GraphRAG ingestion for a processed page.

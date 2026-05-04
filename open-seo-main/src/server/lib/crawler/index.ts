@@ -8,3 +8,4 @@
 export * from "./sitemap-parser";
 export * from "./delta-sync";
 export * from "./hybrid-crawler";
+export * from "./template-hash";
