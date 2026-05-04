@@ -92,37 +92,51 @@ export function AddSignerDialog({ open, onOpenChange, onAdd }: AddSignerDialogPr
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="signer-name">
               Name <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="name"
+              id="signer-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="John Smith"
               required
               autoFocus
+              aria-invalid={!name.trim() && name !== "" ? "true" : undefined}
+              aria-describedby="signer-name-error"
             />
+            {!name.trim() && name !== "" && (
+              <p id="signer-name-error" role="alert" className="text-sm text-red-500">
+                Name is required
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">
+            <Label htmlFor="signer-email">
               Email <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="email"
+              id="signer-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="john@example.com"
               required
+              aria-invalid={!email.trim() && email !== "" ? "true" : undefined}
+              aria-describedby="signer-email-error"
             />
+            {!email.trim() && email !== "" && (
+              <p id="signer-email-error" role="alert" className="text-sm text-red-500">
+                Email is required
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="signer-phone">Phone</Label>
             <Input
-              id="phone"
+              id="signer-phone"
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -131,9 +145,9 @@ export function AddSignerDialog({ open, onOpenChange, onAdd }: AddSignerDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Title / Position</Label>
+            <Label htmlFor="signer-title">Title / Position</Label>
             <Input
-              id="title"
+              id="signer-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="CEO, Director, etc."

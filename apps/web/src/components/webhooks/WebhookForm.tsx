@@ -165,7 +165,7 @@ export function WebhookForm({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" id="webhook-form-error" role="alert">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
@@ -173,25 +173,29 @@ export function WebhookForm({
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="webhook-name">Name</Label>
               <Input
-                id="name"
+                id="webhook-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My webhook"
                 required
+                aria-invalid={error ? "true" : undefined}
+                aria-describedby={error ? "webhook-form-error" : undefined}
               />
             </div>
 
             <div>
-              <Label htmlFor="url">Endpoint URL</Label>
+              <Label htmlFor="webhook-url">Endpoint URL</Label>
               <Input
-                id="url"
+                id="webhook-url"
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/webhook"
                 required
+                aria-invalid={error ? "true" : undefined}
+                aria-describedby={error ? "webhook-form-error" : undefined}
               />
             </div>
 
