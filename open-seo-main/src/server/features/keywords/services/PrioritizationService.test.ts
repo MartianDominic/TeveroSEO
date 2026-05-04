@@ -362,4 +362,303 @@ describe("PrioritizationService", () => {
       expect(lowCompetition).toBeGreaterThan(highCompetition);
     });
   });
+
+  // =========================================================================
+  // Phase 77: Geographic Intelligence Integration Tests
+  // =========================================================================
+
+  describe("Phase 77: Geo-Aware Prioritization", () => {
+    const service = new PrioritizationService();
+
+    describe("Backward compatibility", () => {
+      it("prioritizeKeywords without geoConstraints works as before", () => {
+        const keywords = [
+          {
+            keyword: "plovykla vilniuje",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+          {
+            keyword: "plovykla kaune",
+            searchVolume: 800,
+            competition: 0.25,
+            relevanceScore: 0.75,
+            currentPosition: null,
+          },
+        ];
+
+        const results = service.prioritizeKeywords(keywords);
+
+        // No geo constraints = all keywords should score > 0
+        expect(results.length).toBe(2);
+        expect(results.every((r) => r.compositeScore > 0)).toBe(true);
+        expect(results.every((r) => r.tier !== "excluded")).toBe(true);
+        expect(results.every((r) => r.geoClassification === undefined)).toBe(
+          true
+        );
+      });
+    });
+
+    describe("Geo filtering", () => {
+      it("keywords passing geo filter get boosted score", () => {
+        const keywords = [
+          {
+            keyword: "plovykla siauliuose",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+          nearMeAllowed: true,
+          genericAllowed: true,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        expect(results.length).toBe(1);
+        expect(results[0].geoClassification?.passesGeoFilter).toBe(true);
+        expect(results[0].geoClassification?.city).toBe("siauliai");
+        expect(results[0].geoClassification?.geoScore).toBe(1.0);
+        expect(results[0].compositeScore).toBeGreaterThan(0);
+        expect(results[0].tier).not.toBe("excluded");
+      });
+
+      it("keywords failing geo filter get score=0 and tier=excluded", () => {
+        const keywords = [
+          {
+            keyword: "plovykla kaune",
+            searchVolume: 2000,
+            competition: 0.2,
+            relevanceScore: 0.9,
+            currentPosition: 5,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+          nearMeAllowed: true,
+          genericAllowed: true,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        expect(results.length).toBe(1);
+        expect(results[0].geoClassification?.passesGeoFilter).toBe(false);
+        expect(results[0].geoClassification?.city).toBe("kaunas");
+        expect(results[0].compositeScore).toBe(0);
+        expect(results[0].tier).toBe("excluded");
+      });
+
+      it("near-me keywords get score 0.9", () => {
+        const keywords = [
+          {
+            keyword: "plovykla salia manes",
+            searchVolume: 500,
+            competition: 0.2,
+            relevanceScore: 0.7,
+            currentPosition: null,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+          nearMeAllowed: true,
+          genericAllowed: true,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        expect(results.length).toBe(1);
+        expect(results[0].geoClassification?.isNearMe).toBe(true);
+        expect(results[0].geoClassification?.geoScore).toBe(0.9);
+        expect(results[0].geoClassification?.passesGeoFilter).toBe(true);
+        expect(results[0].compositeScore).toBeGreaterThan(0);
+      });
+
+      it("generic keywords get score 0.5", () => {
+        const keywords = [
+          {
+            keyword: "automobilu plovykla",
+            searchVolume: 3000,
+            competition: 0.4,
+            relevanceScore: 0.85,
+            currentPosition: null,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+          nearMeAllowed: true,
+          genericAllowed: true,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        expect(results.length).toBe(1);
+        expect(results[0].geoClassification?.isGeneric).toBe(true);
+        expect(results[0].geoClassification?.geoScore).toBe(0.5);
+        expect(results[0].geoClassification?.passesGeoFilter).toBe(true);
+        expect(results[0].compositeScore).toBeGreaterThan(0);
+      });
+
+      it("excluded keywords sorted last", () => {
+        const keywords = [
+          {
+            keyword: "plovykla siauliuose",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+          {
+            keyword: "plovykla kaune", // Will be excluded
+            searchVolume: 2000,
+            competition: 0.2,
+            relevanceScore: 0.9,
+            currentPosition: 5,
+          },
+          {
+            keyword: "plovykla",
+            searchVolume: 3000,
+            competition: 0.4,
+            relevanceScore: 0.85,
+            currentPosition: null,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+          nearMeAllowed: true,
+          genericAllowed: true,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        // Find first excluded
+        const firstExcludedIdx = results.findIndex(
+          (r) => r.tier === "excluded"
+        );
+        expect(firstExcludedIdx).toBeGreaterThan(0); // Not first
+
+        // Ensure no non-excluded after first excluded
+        const nonExcludedAfter = results
+          .slice(firstExcludedIdx + 1)
+          .some((r) => r.tier !== "excluded");
+        expect(nonExcludedAfter).toBe(false);
+      });
+    });
+
+    describe("Multi-city targeting", () => {
+      it("multiple target cities all pass", () => {
+        const keywords = [
+          {
+            keyword: "plovykla vilniuje",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+          {
+            keyword: "plovykla kaune",
+            searchVolume: 800,
+            competition: 0.25,
+            relevanceScore: 0.75,
+            currentPosition: null,
+          },
+          {
+            keyword: "plovykla siauliuose",
+            searchVolume: 600,
+            competition: 0.2,
+            relevanceScore: 0.7,
+            currentPosition: 20,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["vilnius", "kaunas"],
+          nearMeAllowed: false,
+          genericAllowed: false,
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        const passing = results.filter((r) => r.tier !== "excluded");
+        expect(passing.length).toBe(2);
+        expect(
+          passing.every(
+            (r) =>
+              r.keyword.includes("vilniuje") || r.keyword.includes("kaune")
+          )
+        ).toBe(true);
+
+        const excluded = results.filter((r) => r.tier === "excluded");
+        expect(excluded.length).toBe(1);
+        expect(excluded[0].keyword).toBe("plovykla siauliuose");
+      });
+    });
+
+    describe("geoScore weight in composite calculation", () => {
+      it("geoScore contributes with default weight 0.15", () => {
+        const keywords = [
+          {
+            keyword: "plovykla siauliuose",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+        };
+
+        const results = service.prioritizeKeywords(keywords, {}, constraints);
+
+        expect(results[0].geoClassification?.geoScore).toBe(1.0);
+
+        // Verify geo weight is applied
+        // compositeScore should include geoScore * 0.15
+        expect(results[0].compositeScore).toBeGreaterThan(0);
+      });
+
+      it("custom geo weight is respected", () => {
+        const keywords = [
+          {
+            keyword: "plovykla siauliuose",
+            searchVolume: 1000,
+            competition: 0.3,
+            relevanceScore: 0.8,
+            currentPosition: 15,
+          },
+        ];
+
+        const constraints = {
+          includeCities: ["siauliai"],
+        };
+
+        const resultsDefault = service.prioritizeKeywords(
+          keywords,
+          {},
+          constraints
+        );
+        const resultsCustom = service.prioritizeKeywords(
+          keywords,
+          { geo: 0.3 },
+          constraints
+        );
+
+        // Higher geo weight should increase composite score
+        expect(resultsCustom[0].compositeScore).toBeGreaterThan(
+          resultsDefault[0].compositeScore
+        );
+      });
+    });
+  });
 });

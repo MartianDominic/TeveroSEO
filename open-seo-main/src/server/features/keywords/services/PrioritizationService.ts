@@ -6,6 +6,10 @@
  * - Volume (0.15), Competition (0.10), Relevance (0.25), Focus (0.35), Position (0.15)
  *
  * Tier thresholds: Must-Do >= 0.75, Should-Do >= 0.50, Nice-to-Have >= 0.25, Ignore < 0.25
+ *
+ * Phase 77: Geographic Intelligence Integration
+ * - Geo weight: 0.15 (configurable)
+ * - Geo filtering: excluded keywords get score=0, tier="excluded"
  */
 
 import { db } from "@/db";
@@ -15,6 +19,8 @@ import {
 } from "@/db/prospect-keyword-schema";
 import { eq, inArray } from "drizzle-orm";
 import { quickWinDetector } from "./QuickWinDetector";
+import { geoClassifier } from "../geo";
+import type { GeoConstraints, GeoClassification } from "../geo/types";
 
 export interface ScoreWeights {
   volume: number; // Default: 0.15
@@ -22,6 +28,7 @@ export interface ScoreWeights {
   relevance: number; // Default: 0.25
   focus: number; // Default: 0.35
   position: number; // Default: 0.15
+  geo: number; // Default: 0.15 (Phase 77)
 }
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
@@ -30,6 +37,7 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   relevance: 0.25,
   focus: 0.35,
   position: 0.15,
+  geo: 0.15, // Phase 77: Geographic Intelligence
 };
 
 export interface TierThresholds {
@@ -52,6 +60,18 @@ export interface PrioritizationResult {
     lowHanging: number;
     freshOpportunity: number;
   };
+}
+
+// Phase 77: Individual keyword prioritization result
+export interface KeywordPrioritizationResult {
+  keyword: string;
+  compositeScore: number;
+  tier: KeywordTier;
+  searchVolume: number | null;
+  competition: number | null;
+  relevanceScore: number | null;
+  currentPosition: number | null;
+  geoClassification?: GeoClassification; // Phase 77
 }
 
 export class PrioritizationService {
@@ -180,6 +200,117 @@ export class PrioritizationService {
       .where(inArray(prospectKeywords.id, keywordIds));
 
     return keywordIds.length;
+  }
+
+  /**
+   * Phase 77: Geo-aware keyword prioritization (non-database version)
+   * Prioritize keywords with optional geographic filtering.
+   *
+   * @param keywords - Array of keywords to prioritize
+   * @param weights - Custom score weights (optional)
+   * @param geoConstraints - Geographic filtering constraints (optional)
+   * @returns Array of prioritized keywords with scores and tiers
+   */
+  prioritizeKeywords(
+    keywords: Array<{
+      keyword: string;
+      searchVolume: number | null;
+      competition: number | null;
+      relevanceScore: number | null;
+      currentPosition: number | null;
+    }>,
+    weights?: Partial<ScoreWeights>,
+    geoConstraints?: Partial<GeoConstraints>
+  ): KeywordPrioritizationResult[] {
+    const w = { ...this.weights, ...weights };
+
+    // Pre-classify all keywords for geo if constraints provided
+    const geoResults = geoConstraints
+      ? geoClassifier.classifyBatch(
+          keywords.map((k) => k.keyword),
+          geoConstraints
+        )
+      : null;
+
+    const results: KeywordPrioritizationResult[] = keywords.map((kw, i) => {
+      const geo = geoResults?.[i];
+
+      // If geo constraint provided and keyword fails, score = 0
+      if (geo && !geo.passesGeoFilter) {
+        return {
+          keyword: kw.keyword,
+          compositeScore: 0,
+          tier: "excluded" as KeywordTier,
+          searchVolume: kw.searchVolume,
+          competition: kw.competition,
+          relevanceScore: kw.relevanceScore,
+          currentPosition: kw.currentPosition,
+          geoClassification: geo,
+        };
+      }
+
+      // Normal scoring with optional geo boost
+      const baseScore = this.computeBaseScore(kw, w);
+      const geoBoost = geo ? geo.geoScore * w.geo : w.geo; // Default to full weight if no constraint
+      const compositeScore = Math.min(1, Math.max(0, baseScore + geoBoost));
+
+      return {
+        keyword: kw.keyword,
+        compositeScore,
+        tier: this.assignTier(compositeScore),
+        searchVolume: kw.searchVolume,
+        competition: kw.competition,
+        relevanceScore: kw.relevanceScore,
+        currentPosition: kw.currentPosition,
+        geoClassification: geo,
+      };
+    });
+
+    // Sort by compositeScore descending, excluded last
+    return this.sortResults(results);
+  }
+
+  /**
+   * Compute base score without geo factor
+   */
+  private computeBaseScore(
+    keyword: {
+      searchVolume: number | null;
+      competition: number | null;
+      relevanceScore: number | null;
+      currentPosition: number | null;
+    },
+    weights: ScoreWeights
+  ): number {
+    // Normalize factors to 0-1 scale
+    const volumeScore = this.normalizeVolume(keyword.searchVolume ?? 0);
+    const competitionScore = 1 - (keyword.competition ?? 0.5); // Lower is better
+    const relevanceScore = keyword.relevanceScore ?? 0.5;
+    const positionScore = this.normalizePosition(keyword.currentPosition);
+    const focusScore = 0.5; // Default focus score
+
+    // Compute weighted sum (excluding geo)
+    return (
+      volumeScore * weights.volume +
+      competitionScore * weights.competition +
+      relevanceScore * weights.relevance +
+      focusScore * weights.focus +
+      positionScore * weights.position
+    );
+  }
+
+  /**
+   * Sort results: non-excluded by score descending, then excluded last
+   */
+  private sortResults(
+    results: KeywordPrioritizationResult[]
+  ): KeywordPrioritizationResult[] {
+    const nonExcluded = results.filter((r) => r.tier !== "excluded");
+    const excluded = results.filter((r) => r.tier === "excluded");
+
+    nonExcluded.sort((a, b) => b.compositeScore - a.compositeScore);
+
+    return [...nonExcluded, ...excluded];
   }
 
   /**
