@@ -8,7 +8,13 @@ import type { PageAnalysis } from "../types";
 /** Severity levels for check results */
 export type CheckSeverity = "critical" | "high" | "medium" | "low" | "info";
 
-/** Check tiers: 1=DOM/regex, 2=calculation, 3=API, 4=crawl */
+/**
+ * Check tiers with scoring weights (see scoring.ts):
+ * - Tier 1: DOM/regex checks (68 total, 0.3 pts each, max 20 pts)
+ * - Tier 2: Calculation checks (21 total, 0.5 pts each, max 10 pts)
+ * - Tier 3: API-based checks (13 total, 0.8 pts each, max 6 pts)
+ * - Tier 4: Crawl-based checks (7 total, 0.4 pts each, max 4 pts)
+ */
 export type CheckTier = 1 | 2 | 3 | 4;
 
 /** Categories for organizing checks */

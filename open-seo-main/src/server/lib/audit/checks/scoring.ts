@@ -2,14 +2,22 @@
  * SEO score calculator with hard gates.
  * Phase 32: 107 SEO Checks Implementation
  * FIX-14: Quality Gate & Scoring Standardization
+ * Phase 72-02: SEO Checks Validation
  *
  * Scoring formula:
  * - Base: 60 points (fundamentals present)
- * - Tier 1: +0.3 per pass, max 20 points
- * - Tier 2: +0.5 per pass, max 10 points
- * - Tier 3: +0.8 per pass, max 6 points
- * - Tier 4: +0.4 per pass, max 4 points
+ * - Tier 1: +0.3 per pass, max 20 points (68 DOM/regex checks)
+ * - Tier 2: +0.5 per pass, max 10 points (21 calculation checks)
+ * - Tier 3: +0.8 per pass, max 6 points (13 API-based checks)
+ * - Tier 4: +0.4 per pass, max 4 points (7 crawl-based checks)
  * - Total max: 60 + 20 + 10 + 6 + 4 = 100 (normalized)
+ *
+ * Severity levels (used for display, not scoring):
+ * - critical: Blocks indexing or causes major SEO penalty (noindex, CWV poor)
+ * - high: Significant impact on rankings (missing H1, orphan pages)
+ * - medium: Moderate impact, should fix (title length, meta desc)
+ * - low: Minor optimizations (year in title, brackets for CTR)
+ * - info: Informational, no action required (check passed or skipped)
  *
  * Hard gates (cap score regardless of other factors) - evaluated in precedence order:
  * 1. noindex (T1-67 fail) -> max 0 (highest priority)
