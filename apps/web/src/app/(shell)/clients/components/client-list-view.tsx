@@ -97,8 +97,8 @@ export function ClientListView({ initialClients }: ClientListViewProps) {
 
   const handleClientCreated = (id: string) => {
     setAddModalOpen(false);
-    // Navigate immediately - the new page will fetch fresh data
-    router.push(`/clients/${id}` as Parameters<typeof router.push>[0]);
+    // MEDIUM-11-02: Redirect new clients to onboarding checklist instead of dashboard
+    router.push(`/clients/${id}/onboarding` as Parameters<typeof router.push>[0]);
   };
 
   return (

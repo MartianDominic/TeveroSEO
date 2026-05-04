@@ -23,8 +23,7 @@ export const Route = createFileRoute("/_app/clients/$clientId/voice/")({
 
 function VoiceSettingsPage() {
   const { clientId } = useParams({
-    // @ts-ignore - Route not yet in generated route tree
-    from: "/_app/clients/$clientId/voice/",
+        from: "/_app/clients/$clientId/voice/",
   });
 
   const {

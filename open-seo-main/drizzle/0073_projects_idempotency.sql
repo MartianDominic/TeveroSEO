@@ -4,6 +4,9 @@
 -- This migration adds an idempotency_key column to the projects table
 -- to prevent duplicate project creation when users retry after network errors.
 -- The key is a composite of client_id + normalized_domain + time_window.
+-- Transaction wrapper added for atomic execution (FIX-13: HIGH-02-01)
+
+BEGIN;
 
 -- Add idempotency_key column to projects table
 ALTER TABLE projects
@@ -23,3 +26,5 @@ WHERE idempotency_key IS NOT NULL;
 -- Add comment for documentation
 COMMENT ON COLUMN projects.idempotency_key IS
   'H-ONBOARD-01: Idempotency key to prevent duplicate project creation on retry. Format: seo-project:{client_id}:{normalized_domain}:{5min_window}';
+
+COMMIT;

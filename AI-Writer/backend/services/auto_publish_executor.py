@@ -389,6 +389,81 @@ def _publish_single_article(article_id: str) -> None:
     finally:
         db.close()
 
+    # --- HIGH-10-01 FIX: Re-verify quality score before final publish ---
+    # Defense-in-depth: score could have changed since initial approval
+    try:
+        from services.article_generation_service import check_quality_gate, QualityGateError, QUALITY_GATE_THRESHOLD
+        quality_result = asyncio.run(check_quality_gate(client_id, content_html, article_title))
+        raw_score = quality_result.get("score")
+        # HIGH-14-01 FIX: Explicit type validation for quality score
+        if raw_score is None or not isinstance(raw_score, (int, float)):
+            logger.warning(
+                f"Quality score re-verification invalid type: {type(raw_score).__name__}",
+                extra={"article_id": article_id, "raw_score": raw_score}
+            )
+            quality_score = 0
+        else:
+            quality_score = int(raw_score)
+
+        if quality_score < QUALITY_GATE_THRESHOLD:
+            logger.warning(
+                "Quality score dropped below threshold before publish - blocking",
+                extra={
+                    "article_id": article_id,
+                    "quality_score": quality_score,
+                    "threshold": QUALITY_GATE_THRESHOLD,
+                }
+            )
+            result = PublishResult(
+                success=False,
+                error=f"Quality score {quality_score} dropped below threshold {QUALITY_GATE_THRESHOLD}"
+            )
+            cms_type = getattr(client_settings, "cms_type", None) or "unknown"
+            _save_result(
+                article_id=article_id,
+                client_id=client_id,
+                attempt_number=attempt_number,
+                cms_type=cms_type,
+                result=result,
+                now_utc=now_utc,
+            )
+            return
+    except QualityGateError as qge:
+        # Fail-closed: if we can't verify quality, don't publish
+        logger.warning(
+            "Quality re-verification failed - blocking publish",
+            extra={"article_id": article_id, "error": str(qge)}
+        )
+        result = PublishResult(success=False, error=f"Quality re-verification failed: {qge}")
+        cms_type = getattr(client_settings, "cms_type", None) or "unknown"
+        _save_result(
+            article_id=article_id,
+            client_id=client_id,
+            attempt_number=attempt_number,
+            cms_type=cms_type,
+            result=result,
+            now_utc=now_utc,
+        )
+        return
+    except Exception as exc:
+        logger.error(
+            "Unexpected error during quality re-verification",
+            extra={"article_id": article_id, "error": str(exc)},
+            exc_info=True
+        )
+        # Fail-closed on unexpected errors
+        result = PublishResult(success=False, error=f"Quality re-verification error: {exc}")
+        cms_type = getattr(client_settings, "cms_type", None) or "unknown"
+        _save_result(
+            article_id=article_id,
+            client_id=client_id,
+            attempt_number=attempt_number,
+            cms_type=cms_type,
+            result=result,
+            now_utc=now_utc,
+        )
+        return
+
     # --- No session open during publish() call ---
     try:
         publisher = get_publisher(client_settings)

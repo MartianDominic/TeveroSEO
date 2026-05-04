@@ -1,6 +1,7 @@
 /**
  * Developer Handoff API Endpoint
  * Phase 66-05: Developer Handoff Flow
+ * Phase 68-03: Standardized API envelope
  *
  * POST /api/connect/handoff
  * Creates a developer handoff and sends email with installation instructions.
@@ -22,6 +23,7 @@ import {
   type CreateHandoffRequest,
 } from "@/server/features/pixel/developer-handoff.service";
 import { getEmailService } from "@/server/services/email/EmailService";
+import { successResponse, errorResponse } from "@/server/lib/response";
 
 const log = createLogger({ module: "api/connect/handoff" });
 
@@ -82,7 +84,7 @@ export const Route = createFileRoute("/api/connect/handoff")({
        * Creates a developer handoff and sends installation instructions.
        *
        * Request body: { installationId, email, name?, message?, senderName, domain }
-       * Response: { handoffId, magicLink, status }
+       * Response: { success: true, data: { handoffId, magicLink, status } }
        */
       POST: async ({ request }: { request: Request }) => {
         try {
@@ -90,10 +92,10 @@ export const Route = createFileRoute("/api/connect/handoff")({
           const parsed = CreateHandoffSchema.safeParse(body);
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid input", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid input", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           log.info("Creating developer handoff", {
@@ -141,30 +143,29 @@ export const Route = createFileRoute("/api/connect/handoff")({
             email: parsed.data.email,
           });
 
-          return Response.json(response, { status: 201 });
+          // Return 201 with success envelope
+          const successResp = successResponse(response);
+          return new Response(successResp.body, {
+            status: 201,
+            headers: successResp.headers,
+          });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
 
           // Handle known errors
           if (message.includes("Rate limit")) {
-            return Response.json(
-              { error: "Rate limit exceeded", details: message },
-              { status: 429 }
-            );
+            return errorResponse(429, "Rate limit exceeded", {
+              code: "RATE_LIMIT_EXCEEDED",
+              details: message,
+            });
           }
 
           if (message.includes("Installation not found")) {
-            return Response.json(
-              { error: "Installation not found" },
-              { status: 404 }
-            );
+            return errorResponse(404, "Installation not found", { code: "NOT_FOUND" });
           }
 
           if (message.includes("Invalid email")) {
-            return Response.json(
-              { error: "Invalid email format" },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid email format", { code: "VALIDATION_ERROR" });
           }
 
           log.error(
@@ -172,10 +173,10 @@ export const Route = createFileRoute("/api/connect/handoff")({
             error instanceof Error ? error : new Error(message)
           );
 
-          return Response.json(
-            { error: "Failed to create handoff", details: "An unexpected error occurred" },
-            { status: 500 }
-          );
+          return errorResponse(500, "Failed to create handoff", {
+            code: "INTERNAL_ERROR",
+            details: "An unexpected error occurred",
+          });
         }
       },
 
@@ -184,7 +185,7 @@ export const Route = createFileRoute("/api/connect/handoff")({
        *
        * Gets all handoffs for a pixel installation.
        *
-       * Response: { handoffs: [...] }
+       * Response: { success: true, data: { handoffs: [...] } }
        */
       GET: async ({ request }: { request: Request }) => {
         try {
@@ -194,10 +195,10 @@ export const Route = createFileRoute("/api/connect/handoff")({
           const parsed = GetHandoffsSchema.safeParse({ installationId });
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid input", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid input", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           const handoffService = new DeveloperHandoffService(db);
@@ -218,17 +219,14 @@ export const Route = createFileRoute("/api/connect/handoff")({
             })),
           };
 
-          return Response.json(response);
+          return successResponse(response);
         } catch (error) {
           log.error(
             "Failed to get handoffs",
             error instanceof Error ? error : new Error(String(error))
           );
 
-          return Response.json(
-            { error: "Failed to get handoffs" },
-            { status: 500 }
-          );
+          return errorResponse(500, "Failed to get handoffs", { code: "INTERNAL_ERROR" });
         }
       },
     },

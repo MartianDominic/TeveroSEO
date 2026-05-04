@@ -12,25 +12,50 @@
  * - updateTaskPriority: D-11 Layer 2 priority operation
  *
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
+ * CRIT-NX-02 FIX: Added requireActionAuth and validateWorkspaceMembership
  */
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import type { AggregatedTask } from "@/components/tasks/types";
 import { getOpenSeoUrl } from "@/lib/env";
+import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
 
 import { logger } from '@/lib/logger';
+
+// Validation schemas
+const workspaceIdSchema = z.string().min(1, "Workspace ID is required");
+const userIdSchema = z.string().min(1, "User ID is required");
+const taskIdSchema = z.string().min(1, "Task ID is required");
+const prioritySchema = z.enum(["high", "medium", "low"]);
 // CFG-CRIT-01 FIX: Use centralized env validation
 const API_BASE = getOpenSeoUrl();
 
 /**
  * Fetch aggregated tasks for the workspace.
+ * CRIT-NX-02 FIX: Added auth and workspace validation to prevent IDOR
  */
 export async function getTasks(
   workspaceId: string,
   userId: string
 ): Promise<AggregatedTask[]> {
   try {
+    // SECURITY: Validate authentication and workspace membership
+    const validatedWorkspaceId = workspaceIdSchema.parse(workspaceId);
+    const validatedUserId = userIdSchema.parse(userId);
+    const auth = await requireActionAuth();
+
+    // IDOR FIX: Verify caller has access to this workspace
+    await validateWorkspaceMembership(validatedWorkspaceId, auth);
+
+    // IDOR FIX: Verify the userId matches the authenticated user
+    // This prevents fetching another user's tasks
+    if (validatedUserId !== auth.userId) {
+      logger.warn("[getTasks] User ID mismatch", { requestedUserId: validatedUserId, authUserId: auth.userId });
+      return [];
+    }
+
     const response = await fetch(
-      `${API_BASE}/api/tasks/aggregated?workspaceId=${encodeURIComponent(workspaceId)}&userId=${encodeURIComponent(userId)}`,
+      `${API_BASE}/api/tasks/aggregated?workspaceId=${encodeURIComponent(validatedWorkspaceId)}&userId=${encodeURIComponent(validatedUserId)}`,
       {
         cache: "no-store",
         headers: {
@@ -63,10 +88,14 @@ export async function getTasks(
 
 /**
  * Mark a task as complete.
+ * CRIT-NX-02 FIX: Added auth validation
  */
 export async function completeTask(taskId: string): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/api/tasks/${taskId}/complete`, {
+    const validatedTaskId = taskIdSchema.parse(taskId);
+    await requireActionAuth();
+
+    const response = await fetch(`${API_BASE}/api/tasks/${validatedTaskId}/complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -86,10 +115,14 @@ export async function completeTask(taskId: string): Promise<void> {
 
 /**
  * Pin a task to My Focus section (D-11 Layer 2).
+ * CRIT-NX-02 FIX: Added auth validation
  */
 export async function pinTask(taskId: string): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/api/tasks/${taskId}/pin`, {
+    const validatedTaskId = taskIdSchema.parse(taskId);
+    await requireActionAuth();
+
+    const response = await fetch(`${API_BASE}/api/tasks/${validatedTaskId}/pin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -109,10 +142,14 @@ export async function pinTask(taskId: string): Promise<void> {
 
 /**
  * Unpin a task from My Focus section (D-11 Layer 2).
+ * CRIT-NX-02 FIX: Added auth validation
  */
 export async function unpinTask(taskId: string): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/api/tasks/${taskId}/unpin`, {
+    const validatedTaskId = taskIdSchema.parse(taskId);
+    await requireActionAuth();
+
+    const response = await fetch(`${API_BASE}/api/tasks/${validatedTaskId}/unpin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -132,10 +169,14 @@ export async function unpinTask(taskId: string): Promise<void> {
 
 /**
  * Snooze a task until specified date (D-11 Layer 2).
+ * CRIT-NX-02 FIX: Added auth validation
  */
 export async function snoozeTask(taskId: string, until: Date): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/api/tasks/${taskId}/snooze`, {
+    const validatedTaskId = taskIdSchema.parse(taskId);
+    await requireActionAuth();
+
+    const response = await fetch(`${API_BASE}/api/tasks/${validatedTaskId}/snooze`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -156,18 +197,23 @@ export async function snoozeTask(taskId: string, until: Date): Promise<void> {
 
 /**
  * Update task priority (D-11 Layer 2).
+ * CRIT-NX-02 FIX: Added auth validation
  */
 export async function updateTaskPriority(
   taskId: string,
   priority: "high" | "medium" | "low"
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/api/tasks/${taskId}/priority`, {
+    const validatedTaskId = taskIdSchema.parse(taskId);
+    const validatedPriority = prioritySchema.parse(priority);
+    await requireActionAuth();
+
+    const response = await fetch(`${API_BASE}/api/tasks/${validatedTaskId}/priority`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ priority }),
+      body: JSON.stringify({ priority: validatedPriority }),
     });
 
     if (!response.ok) {

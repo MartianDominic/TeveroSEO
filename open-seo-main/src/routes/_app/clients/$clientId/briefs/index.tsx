@@ -64,7 +64,6 @@ const VOICE_MODE_LABELS: Record<Brief["voiceMode"], string> = {
 
 function BriefsListPage() {
   const { clientId } = useParams({
-    // @ts-ignore - Route not yet in generated route tree
     from: "/_app/clients/$clientId/briefs/",
   });
   const queryClient = useQueryClient();
@@ -119,10 +118,8 @@ function BriefsListPage() {
             </div>
             <Button asChild>
               <Link
-                // @ts-ignore - Route not yet in generated route tree
-                to="/clients/$clientId/briefs/new"
-                // @ts-ignore - Route not yet in generated route tree
-                params={{ clientId }}
+                                to="/clients/$clientId/briefs/new"
+                                params={{ clientId }}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 New Brief
@@ -139,10 +136,8 @@ function BriefsListPage() {
               </p>
               <Button asChild variant="outline">
                 <Link
-                  // @ts-ignore - Route not yet in generated route tree
-                  to="/clients/$clientId/briefs/new"
-                  // @ts-ignore - Route not yet in generated route tree
-                  params={{ clientId }}
+                                    to="/clients/$clientId/briefs/new"
+                                    params={{ clientId }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Your First Brief
@@ -185,10 +180,8 @@ function BriefsListPage() {
                           asChild
                         >
                           <Link
-                            // @ts-ignore - Route not yet in generated route tree
-                            to="/clients/$clientId/briefs/$briefId"
-                            // @ts-ignore - Route not yet in generated route tree
-                            params={{ clientId, briefId: brief.id }}
+                                                        to="/clients/$clientId/briefs/$briefId"
+                                                        params={{ clientId, briefId: brief.id }}
                           >
                             <Eye className="w-4 h-4" />
                             <span className="ml-1">View</span>

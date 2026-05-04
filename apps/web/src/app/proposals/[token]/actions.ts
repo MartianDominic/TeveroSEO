@@ -8,9 +8,41 @@
  * No authentication required - token provides access.
  *
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
+ * HIGH-NX-04 FIX: Added Zod validation for all action inputs
  */
 
+import { z } from "zod";
 import { getOpenSeoUrl } from "@/lib/env";
+
+// ---------------------------------------------------------------------------
+// Validation Schemas (HIGH-NX-04 FIX)
+// ---------------------------------------------------------------------------
+
+/**
+ * Proposal ID schema - validates UUID format to prevent injection
+ */
+const proposalIdSchema = z
+  .string()
+  .uuid("Invalid proposal ID format")
+  .max(36, "Proposal ID too long");
+
+/**
+ * Public token schema - validates token format for public access
+ * Tokens are typically URL-safe base64 or UUID format
+ */
+const publicTokenSchema = z
+  .string()
+  .min(1, "Token is required")
+  .max(255, "Token too long")
+  .regex(/^[a-zA-Z0-9_-]+$/, "Invalid token format");
+
+/**
+ * Rejection reason schema - validates optional rejection reason
+ */
+const rejectionReasonSchema = z
+  .string()
+  .max(2000, "Rejection reason too long")
+  .optional();
 
 export interface ProposalContent {
   hero: {
@@ -83,13 +115,20 @@ export interface ServiceWithSelection {
 /**
  * Fetch proposal by public token.
  * Returns proposal data for rendering or error state.
+ * HIGH-NX-04 FIX: Added token validation
  */
 export async function getPublicProposal(
   token: string
 ): Promise<{ success: boolean; data?: PublicProposal; error?: string }> {
+  // Validate token format
+  const validatedToken = publicTokenSchema.safeParse(token);
+  if (!validatedToken.success) {
+    return { success: false, error: validatedToken.error.issues[0]?.message || "Invalid token" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/proposals/public/${token}`,
+      `${getOpenSeoUrl()}/api/proposals/public/${encodeURIComponent(validatedToken.data)}`,
       {
         cache: "no-store",
       }
@@ -116,13 +155,20 @@ export async function getPublicProposal(
 /**
  * Accept proposal.
  * Transitions status from viewed to accepted.
+ * HIGH-NX-04 FIX: Added proposalId validation
  */
 export async function acceptProposal(
   proposalId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Validate proposal ID format
+  const validatedId = proposalIdSchema.safeParse(proposalId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid proposal ID" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/proposals/${proposalId}/accept`,
+      `${getOpenSeoUrl()}/api/proposals/${encodeURIComponent(validatedId.data)}/accept`,
       {
         method: "POST",
       }
@@ -142,18 +188,31 @@ export async function acceptProposal(
 /**
  * Reject proposal with optional reason.
  * Transitions status to declined.
+ * HIGH-NX-04 FIX: Added proposalId and reason validation
  */
 export async function rejectProposal(
   proposalId: string,
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Validate proposal ID format
+  const validatedId = proposalIdSchema.safeParse(proposalId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid proposal ID" };
+  }
+
+  // Validate optional reason
+  const validatedReason = rejectionReasonSchema.safeParse(reason);
+  if (!validatedReason.success) {
+    return { success: false, error: validatedReason.error.issues[0]?.message || "Invalid reason" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/proposals/${proposalId}/reject`,
+      `${getOpenSeoUrl()}/api/proposals/${encodeURIComponent(validatedId.data)}/reject`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: validatedReason.data }),
       }
     );
 
@@ -174,13 +233,20 @@ export async function rejectProposal(
  *
  * Returns services with template data merged with proposal selection data.
  * Called by public proposal page to display service line items.
+ * HIGH-NX-04 FIX: Added proposalId validation
  */
 export async function getProposalServices(
   proposalId: string
 ): Promise<{ success: boolean; data?: ServiceWithSelection[]; error?: string }> {
+  // Validate proposal ID format
+  const validatedId = proposalIdSchema.safeParse(proposalId);
+  if (!validatedId.success) {
+    return { success: false, error: validatedId.error.issues[0]?.message || "Invalid proposal ID" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/proposals/${proposalId}/services/resolved`,
+      `${getOpenSeoUrl()}/api/proposals/${encodeURIComponent(validatedId.data)}/services/resolved`,
       {
         cache: "no-store",
       }

@@ -10,14 +10,14 @@
  * - Execution logging to prevent duplicates
  */
 
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, lt, inArray } from "drizzle-orm";
 import { db } from "@/db/index";
-import { proposals, type ProposalSelect } from "@/db/proposal-schema";
+import { proposals, type ProposalSelect, proposalViews } from "@/db/proposal-schema";
 import { automationLogs } from "@/db/automation-schema";
-import { calculateEngagementSignals } from "@/server/features/proposals/tracking/EngagementSignals";
 import { notifyAgencySlack } from "@/server/features/proposals/onboarding/notifications";
 import { sendFollowUpEmail } from "./email";
 import { createLogger } from "@/server/lib/logger";
+import type { EngagementSignals } from "@/server/features/proposals/tracking/EngagementSignals";
 
 const log = createLogger({ module: "proposal-automation" });
 
@@ -123,6 +123,32 @@ export async function hasBeenExecuted(
 }
 
 /**
+ * Batch check if automations have been executed for multiple proposals.
+ * Returns a Set of `${proposalId}:${ruleId}` keys that have been executed.
+ * FIX: HIGH-17-01 - Eliminates N+1 queries by batching execution checks.
+ */
+export async function batchHasBeenExecuted(
+  proposalIds: string[],
+  ruleId: string
+): Promise<Set<string>> {
+  if (proposalIds.length === 0) {
+    return new Set();
+  }
+
+  const existing = await db
+    .select({ proposalId: automationLogs.proposalId })
+    .from(automationLogs)
+    .where(
+      and(
+        inArray(automationLogs.proposalId, proposalIds),
+        eq(automationLogs.ruleId, ruleId)
+      )
+    );
+
+  return new Set(existing.map((e) => `${e.proposalId}:${ruleId}`));
+}
+
+/**
  * Log an automation execution to the database.
  * Persists the execution record to prevent duplicate executions after server restart.
  */
@@ -183,8 +209,92 @@ async function findTimeSinceStageMatches(
   return matches as ProposalWithProspect[];
 }
 
+// Constants for engagement signal calculation (imported from EngagementSignals)
+const HOT_PROSPECT_VIEWS_THRESHOLD = 3;
+const HOT_PROSPECT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PRICING_FOCUSED_THRESHOLD = 3;
+const READY_TO_CLOSE_CTA_THRESHOLD = 2;
+const READY_TO_CLOSE_PRICING_THRESHOLD = 2;
+
+/**
+ * Calculate engagement signals for multiple proposals in a batch.
+ * FIX: HIGH-17-01 - Eliminates N+1 queries by fetching all views in one query.
+ */
+async function batchCalculateEngagementSignals(
+  proposalIds: string[]
+): Promise<Map<string, EngagementSignals>> {
+  if (proposalIds.length === 0) {
+    return new Map();
+  }
+
+  // Fetch all views for all proposals in one query
+  const allViews = await db
+    .select()
+    .from(proposalViews)
+    .where(inArray(proposalViews.proposalId, proposalIds));
+
+  // Group views by proposal ID
+  const viewsByProposal = new Map<string, typeof allViews>();
+  for (const view of allViews) {
+    const existing = viewsByProposal.get(view.proposalId) || [];
+    existing.push(view);
+    viewsByProposal.set(view.proposalId, existing);
+  }
+
+  // Calculate signals for each proposal
+  const results = new Map<string, EngagementSignals>();
+  const now = Date.now();
+  const recentWindowStart = now - HOT_PROSPECT_WINDOW_MS;
+
+  for (const proposalId of proposalIds) {
+    const views = viewsByProposal.get(proposalId) || [];
+
+    if (views.length === 0) {
+      results.set(proposalId, {
+        hot: false,
+        pricingFocused: false,
+        calculatedRoi: false,
+        readyToClose: false,
+        score: 0,
+      });
+      continue;
+    }
+
+    // Count views in last 24 hours
+    const recentViews = views.filter(
+      (v) => new Date(v.viewedAt).getTime() > recentWindowStart
+    );
+
+    // Count pricing/investment section views
+    const pricingSectionViews = views.filter((v) =>
+      v.sectionsViewed?.includes("investment")
+    ).length;
+
+    // Count CTA section views
+    const ctaSectionViews = views.filter((v) =>
+      v.sectionsViewed?.includes("cta")
+    ).length;
+
+    // Check if ROI calculator was ever used
+    const roiCalculatorUsed = views.some((v) => v.roiCalculatorUsed === true);
+
+    results.set(proposalId, {
+      hot: recentViews.length >= HOT_PROSPECT_VIEWS_THRESHOLD,
+      pricingFocused: pricingSectionViews >= PRICING_FOCUSED_THRESHOLD,
+      calculatedRoi: roiCalculatorUsed,
+      readyToClose:
+        ctaSectionViews >= READY_TO_CLOSE_CTA_THRESHOLD &&
+        pricingSectionViews >= READY_TO_CLOSE_PRICING_THRESHOLD,
+      score: 0, // Score not needed for automation matching
+    });
+  }
+
+  return results;
+}
+
 /**
  * Find proposals matching an engagement signal trigger.
+ * FIX: HIGH-17-01 - Uses batched engagement signal calculation.
  */
 async function findEngagementSignalMatches(
   trigger: AutomationTrigger,
@@ -206,10 +316,20 @@ async function findEngagementSignalMatches(
       )
     );
 
+  if (viewedProposals.length === 0) {
+    return [];
+  }
+
+  // Batch calculate engagement signals for all proposals
+  const signalsMap = await batchCalculateEngagementSignals(
+    viewedProposals.map((p) => p.id)
+  );
+
   const matching: ProposalWithProspect[] = [];
 
   for (const proposal of viewedProposals) {
-    const signals = await calculateEngagementSignals(proposal.id);
+    const signals = signalsMap.get(proposal.id);
+    if (!signals) continue;
 
     // Check if the specified signal is true
     if (trigger.signal === "hot" && signals.hot) {
@@ -334,10 +454,19 @@ export async function processAutomations(workspaceId: string): Promise<{
       const matchingProposals = await findMatchingProposals(rule, workspaceId);
       processed += matchingProposals.length;
 
+      if (matchingProposals.length === 0) {
+        continue;
+      }
+
+      // FIX: HIGH-17-01 - Batch check execution status for all proposals
+      const executedSet = await batchHasBeenExecuted(
+        matchingProposals.map((p) => p.id),
+        rule.id
+      );
+
       for (const proposal of matchingProposals) {
-        // Check if already executed
-        const alreadyExecuted = await hasBeenExecuted(proposal.id, rule.id);
-        if (alreadyExecuted) {
+        // Check if already executed using the batched result
+        if (executedSet.has(`${proposal.id}:${rule.id}`)) {
           continue;
         }
 

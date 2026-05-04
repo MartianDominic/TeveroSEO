@@ -12,13 +12,15 @@ import { NextRequest } from "next/server";
 import { headers } from "next/headers";
 
 /**
- * Request context containing tracing identifiers.
+ * Request context containing tracing identifiers and client context.
  */
 export interface RequestContext {
   /** Unique ID for this request (from edge or generated) */
   requestId: string;
   /** Correlation ID for tracing across services */
   correlationId: string;
+  /** Client ID from incoming request (HIGH-12-01: propagated to downstream services) */
+  clientId?: string;
 }
 
 /**
@@ -43,9 +45,13 @@ export async function extractRequestContext(): Promise<RequestContext> {
   // Extract or generate correlation ID
   const incomingCorrelationId = headersList.get("x-correlation-id");
 
+  // HIGH-12-01 FIX: Extract client ID for propagation to downstream services
+  const incomingClientId = headersList.get("x-client-id");
+
   return {
     requestId: incomingRequestId || randomUUID(),
     correlationId: incomingCorrelationId || randomUUID(),
+    clientId: incomingClientId || undefined,
   };
 }
 
@@ -65,9 +71,13 @@ export function extractRequestContextFromRequest(
   // Extract or generate correlation ID
   const incomingCorrelationId = req.headers.get("x-correlation-id");
 
+  // HIGH-12-01 FIX: Extract client ID for propagation to downstream services
+  const incomingClientId = req.headers.get("x-client-id");
+
   return {
     requestId: incomingRequestId || randomUUID(),
     correlationId: incomingCorrelationId || randomUUID(),
+    clientId: incomingClientId || undefined,
   };
 }
 

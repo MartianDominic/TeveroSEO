@@ -459,6 +459,9 @@ export const trackProposalView = createServerFn({ method: "POST" })
  * Update view duration (heartbeat from client).
  *
  * Called every 30 seconds while viewing.
+ *
+ * HIGH-06-02 FIX: Added viewId validation to verify it exists before updating.
+ * This prevents attackers from spamming arbitrary viewIds.
  */
 export const trackProposalDuration = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
@@ -470,6 +473,12 @@ export const trackProposalDuration = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
+    // HIGH-06-02: Verify viewId exists before updating
+    const existingView = await ViewTrackingService.getViewById(data.viewId);
+    if (!existingView) {
+      throw new AppError("NOT_FOUND", "View not found");
+    }
+
     await ViewTrackingService.updateViewDuration(
       data.viewId,
       data.durationSeconds,
@@ -481,6 +490,8 @@ export const trackProposalDuration = createServerFn({ method: "POST" })
  * Update sections viewed (from intersection observer).
  *
  * Called when user scrolls to new sections.
+ *
+ * HIGH-06-02 FIX: Added viewId validation to verify it exists before updating.
  */
 export const trackProposalSections = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
@@ -492,6 +503,12 @@ export const trackProposalSections = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
+    // HIGH-06-02: Verify viewId exists before updating
+    const existingView = await ViewTrackingService.getViewById(data.viewId);
+    if (!existingView) {
+      throw new AppError("NOT_FOUND", "View not found");
+    }
+
     await ViewTrackingService.updateSectionsViewed(data.viewId, data.sections);
     return { success: true };
   });
@@ -500,6 +517,8 @@ export const trackProposalSections = createServerFn({ method: "POST" })
  * Mark ROI calculator as used.
  *
  * Called when user interacts with ROI calculator.
+ *
+ * HIGH-06-02 FIX: Added viewId validation to verify it exists before updating.
  */
 export const trackRoiCalculatorUsage = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
@@ -510,6 +529,12 @@ export const trackRoiCalculatorUsage = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
+    // HIGH-06-02: Verify viewId exists before updating
+    const existingView = await ViewTrackingService.getViewById(data.viewId);
+    if (!existingView) {
+      throw new AppError("NOT_FOUND", "View not found");
+    }
+
     await ViewTrackingService.markRoiCalculatorUsed(data.viewId);
     return { success: true };
   });

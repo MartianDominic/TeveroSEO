@@ -1,6 +1,7 @@
 /**
  * Platform Detection API Endpoint
  * Phase 66-03: CMS Platform Detection
+ * Phase 68-03: Standardized API envelope
  *
  * POST /api/connect/detect
  * Detects CMS platform from a URL with 95%+ accuracy.
@@ -18,6 +19,7 @@ import {
   type PlatformDetectionResult,
 } from "@/server/features/pixel/platform-detector.service";
 import { CMS_GUIDES } from "@/server/features/pixel/cms-guides";
+import { successResponse, errorResponse } from "@/server/lib/response";
 
 const log = createLogger({ module: "api/connect/detect" });
 
@@ -125,7 +127,7 @@ export const Route = createFileRoute("/api/connect/detect")({
        * POST /api/connect/detect
        *
        * Request body: { url: string }
-       * Response: { platform, confidence, features, paidPlanRequired, estimatedTime, hasGuide }
+       * Response: { success: true, data: { platform, confidence, features, paidPlanRequired, estimatedTime, hasGuide } }
        */
       POST: async ({ request }: { request: Request }) => {
         try {
@@ -133,10 +135,10 @@ export const Route = createFileRoute("/api/connect/detect")({
           const parsed = DetectRequestSchema.safeParse(body);
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid input", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid input", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           // Normalize URL
@@ -175,17 +177,17 @@ export const Route = createFileRoute("/api/connect/detect")({
             confidence: result.confidence,
           });
 
-          return Response.json(response);
+          return successResponse(response);
         } catch (error) {
           log.error(
             "Platform detection failed",
             error instanceof Error ? error : new Error(String(error))
           );
 
-          return Response.json(
-            { error: "Detection failed", details: "An unexpected error occurred" },
-            { status: 500 }
-          );
+          return errorResponse(500, "Detection failed", {
+            code: "INTERNAL_ERROR",
+            details: "An unexpected error occurred",
+          });
         }
       },
     },

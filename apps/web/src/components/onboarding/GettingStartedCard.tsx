@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useClientStore } from "@/stores/clientStore";
-import { apiGet } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,6 +15,13 @@ interface PlatformSecretStatus {
   configured: boolean;
   required: boolean;
 }
+
+// MEDIUM-11-01: Fetcher for TanStack Query with caching and retry
+const fetchPlatformSecrets = async (): Promise<PlatformSecretStatus[]> => {
+  const res = await fetch("/api/platform-secrets/status");
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+};
 
 // ---------------------------------------------------------------------------
 // StepIndicator
@@ -47,30 +54,22 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
   const router = useRouter();
   const { clients } = useClientStore();
 
-  const [apisReady, setApisReady] = useState(false);
-  const [secretsLoading, setSecretsLoading] = useState(true);
+  // MEDIUM-11-01: Use TanStack Query for caching and automatic retry
+  const { data: statuses, isLoading: secretsLoading } = useQuery({
+    queryKey: ["platform-secrets-status"],
+    queryFn: fetchPlatformSecrets,
+    staleTime: 60000, // Cache for 1 minute
+    retry: 3,
+    retryDelay: 5000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    setSecretsLoading(true);
-    apiGet<PlatformSecretStatus[]>("/api/platform-secrets/status")
-      .then((statuses) => {
-        if (cancelled) return;
-        const requiredKeys = statuses.filter((s) => s.required);
-        const allConfigured =
-          requiredKeys.length > 0 && requiredKeys.every((s) => s.configured);
-        setApisReady(allConfigured);
-      })
-      .catch(() => {
-        if (!cancelled) setApisReady(false);
-      })
-      .finally(() => {
-        if (!cancelled) setSecretsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const apisReady = statuses
+    ? (() => {
+        const requiredKeys = statuses.filter((s: PlatformSecretStatus) => s.required);
+        return requiredKeys.length > 0 && requiredKeys.every((s: PlatformSecretStatus) => s.configured);
+      })()
+    : false;
 
   const hasClients = clients.length > 0;
 

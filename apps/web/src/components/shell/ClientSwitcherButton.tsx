@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { Globe, ChevronDown, Check, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+// HIGH-12-02 FIX: Migrate from Zustand to TanStack Query hooks for improved caching
+import { useClients, useActiveClient, useSetActiveClient } from "@/hooks/use-clients";
 import { useClientStore } from "@/stores";
 import {
   Command,
@@ -105,38 +107,31 @@ export const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
 }) => {
   const { isSignedIn } = useAuth();
   const router = useRouter();
-  const {
-    clients,
-    activeClient,
-    activeClientId,
-    isLoading,
-    fetchClients,
-    setActiveClient,
-  } = useClientStore();
+
+  // HIGH-12-02 FIX: Use TanStack Query hooks for improved caching and automatic refetching
+  const { data: clients = [], isLoading } = useClients();
+  const activeClient = useActiveClient();
+  const setActiveClient = useSetActiveClient();
+  const activeClientId = useClientStore((state) => state.activeClientId);
 
   const [open, setOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
-  // MEDIUM-03 FIX: Include all dependencies - fetchClients is stable from zustand
-  useEffect(() => {
-    if (isSignedIn && clients.length === 0) {
-      fetchClients();
-    }
-  }, [isSignedIn, clients.length, fetchClients]);
+  // No useEffect needed - TanStack Query handles data fetching automatically
 
   if (!isSignedIn) return null;
 
-  const handleSelect = (clientId: string) => {
+  const handleSelect = async (clientId: string) => {
     // Validate client exists before navigation
     const clientExists = clients.some((c) => c.id === clientId);
     if (!clientExists) {
-      // Client may have been deleted - refresh the client list
-      fetchClients();
+      // Client may have been deleted - TanStack Query will refetch automatically
       return;
     }
     setIsSwitching(true);
-    setActiveClient(clientId);
     setOpen(false);
+    // HIGH-12-02 FIX: Use TanStack Query mutation which handles cache invalidation
+    await setActiveClient(clientId);
     router.push(`/clients/${clientId}` as Parameters<typeof router.push>[0]);
     router.refresh();
     // Clear loading state after navigation starts (short delay for UX)

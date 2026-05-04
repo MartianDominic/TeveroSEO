@@ -127,9 +127,9 @@ REQUIRED_VARS: List[EnvVar] = [
     ),
 
     # Cross-service integration (required for autonomous pipeline)
-    # CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL (not OPEN_SEO_API_URL)
+    # CRIT-19-01 FIX: Standardized to OPEN_SEO_API_URL (matches codebase usage)
     EnvVar(
-        "OPEN_SEO_URL",
+        "OPEN_SEO_API_URL",
         SecretType.API_KEY,
         required=True,
         min_length=10,

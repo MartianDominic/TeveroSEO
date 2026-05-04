@@ -1,12 +1,13 @@
 /**
  * Platform Detection API Route
  * Phase 31-04: API Endpoints
+ * Phase 68-03: Standardized API envelope
  *
  * Detects the CMS platform of a given domain using multi-probe fingerprinting.
  *
  * POST /api/detect-platform
  * Body: { domain: "example.com" }
- * Returns: { platform, confidence, signals }
+ * Returns: { success: true, data: { platform, confidence, signals } }
  *
  * SECURITY: Requires authentication via API key or Clerk JWT.
  */
@@ -16,6 +17,7 @@ import { detectPlatform } from "@/server/features/connections/services/PlatformD
 import { createLogger } from "@/server/lib/logger";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { AppError } from "@/server/lib/errors";
+import { successResponse, errorResponse } from "@/server/lib/response";
 
 const log = createLogger({ module: "api/detect-platform" });
 
@@ -76,10 +78,10 @@ export const Route = createFileRoute("/api/detect-platform")({
           const parsed = DetectPlatformSchema.safeParse(body);
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid input", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid input", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           const result = await detectPlatform(parsed.data.domain);
@@ -90,16 +92,17 @@ export const Route = createFileRoute("/api/detect-platform")({
             confidence: result.confidence,
           });
 
-          return Response.json(result);
+          return successResponse(result);
         } catch (error) {
           // Handle authentication errors
           if (error instanceof AppError) {
-            if (error.code === "UNAUTHENTICATED") {
-              return Response.json({ error: error.message }, { status: 401 });
-            }
-            if (error.code === "FORBIDDEN") {
-              return Response.json({ error: error.message }, { status: 403 });
-            }
+            const status =
+              error.code === "UNAUTHENTICATED"
+                ? 401
+                : error.code === "FORBIDDEN"
+                  ? 403
+                  : 400;
+            return errorResponse(status, error.message, { code: error.code });
           }
 
           // detectPlatform handles its own errors and returns a result
@@ -108,7 +111,7 @@ export const Route = createFileRoute("/api/detect-platform")({
             "Platform detection failed",
             error instanceof Error ? error : new Error(String(error))
           );
-          return Response.json({ error: "Internal error" }, { status: 500 });
+          return errorResponse(500, "Internal error", { code: "INTERNAL_ERROR" });
         }
       },
     },

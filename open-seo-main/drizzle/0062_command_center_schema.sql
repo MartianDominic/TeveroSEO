@@ -1,5 +1,8 @@
 -- Phase 62-01: Agency Command Center Schema
 -- Creates tables for follow-ups, workflows, deal outcomes, pipeline metrics, alerts, and preferences
+-- Transaction wrapper added for atomic execution (FIX-13: HIGH-02-01)
+
+BEGIN;
 
 -- Follow-up rules table (must be created before follow_ups due to FK)
 CREATE TABLE IF NOT EXISTS "follow_up_rules" (
@@ -278,3 +281,5 @@ CREATE TABLE IF NOT EXISTS "notification_preferences" (
 
 CREATE INDEX IF NOT EXISTS "ix_notification_preferences_user" ON "notification_preferences"("user_id");
 CREATE INDEX IF NOT EXISTS "ix_notification_preferences_workspace" ON "notification_preferences"("workspace_id");
+
+COMMIT;

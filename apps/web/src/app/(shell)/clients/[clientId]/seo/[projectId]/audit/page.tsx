@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { calculateAuditRefetchInterval } from "@/hooks/use-audit-polling";
 import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
-import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX } from "lucide-react";
+import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX, XCircle, RotateCcw, Clock, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import { logger } from '@/lib/logger';
 import {
   Button,
@@ -29,6 +29,8 @@ import {
   getAuditHistory,
   getCrawlProgress,
   deleteAudit,
+  cancelAudit,
+  retryAudit,
 } from "@/actions/seo/audit";
 import { getProject } from "@/actions/seo/projects";
 import {
@@ -69,7 +71,19 @@ const AuditResultsSchema = z.object({
     title: z.string().nullable(),
     issues: z.number(),
   })).optional(),
+  // HIGH-13-02: Check breakdown by category
+  findings: z.array(z.object({
+    checkId: z.string(),
+    tier: z.number(),
+    category: z.string(),
+    passed: z.boolean(),
+    severity: z.string(),
+    message: z.string(),
+  })).optional(),
 });
+
+// MEDIUM-13-01: Pagination constants
+const PAGES_PER_PAGE = 25;
 import { safeFirst, safeFormatTime } from "@/lib/utils/safe-parse";
 
 export default function SiteAuditPage() {
@@ -399,10 +413,30 @@ function AuditDetail({
     },
   });
 
+  const queryClient = useQueryClient();
   const statusData = statusQuery.data?.success ? statusQuery.data.data : undefined;
   const isComplete = statusData?.status === "completed";
   const isFailed = statusData?.status === "failed";
+  const isCancelled = statusData?.status === "cancelled";
   const isRunning = statusData?.status === "running";
+
+  // HIGH-13-01: Cancel mutation for running audits
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelAudit({ projectId, clientId, auditId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-status", projectId, auditId] });
+    },
+  });
+
+  // HIGH-13-01: Retry mutation for failed/cancelled audits
+  const retryMutation = useMutation({
+    mutationFn: () => retryAudit({ projectId, clientId, auditId }),
+    onSuccess: (result) => {
+      if (result.success && result.data?.auditId) {
+        setSearchParams({ auditId: result.data.auditId });
+      }
+    },
+  });
 
   const resultsQuery = useQuery({
     queryKey: ["audit-results", projectId, auditId],
@@ -451,9 +485,43 @@ function AuditDetail({
           </Button>
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold">Site Audit</h1>
-            {status?.status !== "running" && status && (
-              <StatusBadge status={status.status} />
-            )}
+            <div className="flex items-center gap-2">
+              {/* HIGH-13-01: Cancel button for running audits */}
+              {isRunning && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <XCircle className="mr-1 h-3 w-3" />
+                  )}
+                  Cancel
+                </Button>
+              )}
+              {/* HIGH-13-01: Retry button for failed/cancelled audits */}
+              {(isFailed || isCancelled) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => retryMutation.mutate()}
+                  disabled={retryMutation.isPending}
+                >
+                  {retryMutation.isPending ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                  )}
+                  Retry
+                </Button>
+              )}
+              {status?.status !== "running" && status && (
+                <StatusBadge status={status.status} />
+              )}
+            </div>
           </div>
           {status && (
             <p className="text-sm text-foreground/70">
@@ -553,6 +621,20 @@ function ProgressCard({
             : (status.currentPhase ?? "Running");
   const progress = isLighthousePhase ? lighthouseProgress : crawlProgress;
 
+  // MEDIUM-13-02: Calculate ETA based on progress
+  const startTime = new Date(status.startedAt).getTime();
+  const elapsedMs = Date.now() - startTime;
+  const estimatedEta = (() => {
+    if (progress <= 0) return null;
+    const totalEstimatedMs = (elapsedMs / progress) * 100;
+    const remainingMs = totalEstimatedMs - elapsedMs;
+    if (remainingMs <= 0) return "Almost done";
+    const remainingMins = Math.ceil(remainingMs / 60000);
+    if (remainingMins < 1) return "Less than a minute";
+    if (remainingMins === 1) return "About 1 minute";
+    return `About ${remainingMins} minutes`;
+  })();
+
   // FIX-17 HIGH-UJ-05: Use adaptive polling for crawl progress
   // Replaces fixed 1.5s interval - starts at 1.5s, increases to max 15s
   const crawlUnchangedCountRef = useRef(0);
@@ -623,6 +705,13 @@ function ProgressCard({
             )}
             <span className="text-muted-foreground">{progress}%</span>
           </div>
+          {/* MEDIUM-13-02: Display ETA */}
+          {estimatedEta && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{estimatedEta} remaining</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -687,6 +776,11 @@ function ResultsView({
   tab: string;
   setSearchParams: (updates: Record<string, string | undefined>) => void;
 }) {
+  // MEDIUM-13-01: Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  // HIGH-13-02: Expanded categories for check breakdown
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
   // Validate audit results with Zod schema instead of unsafe type assertion
   const parsed = AuditResultsSchema.safeParse(data);
   if (!parsed.success) {
@@ -701,6 +795,35 @@ function ResultsView({
     );
   }
   const results = parsed.data;
+
+  // MEDIUM-13-01: Paginate pages list
+  const pages = results.pages ?? [];
+  const totalPages = Math.ceil(pages.length / PAGES_PER_PAGE);
+  const paginatedPages = pages.slice(
+    (currentPage - 1) * PAGES_PER_PAGE,
+    currentPage * PAGES_PER_PAGE
+  );
+
+  // HIGH-13-02: Group findings by category
+  const findings = results.findings ?? [];
+  const findingsByCategory = findings.reduce((acc, finding) => {
+    const cat = finding.category || "Other";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(finding);
+    return acc;
+  }, {} as Record<string, typeof findings>);
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -754,15 +877,111 @@ function ResultsView({
         </div>
       )}
 
-      {/* Pages Table */}
-      {results.pages && results.pages.length > 0 && (
+      {/* HIGH-13-02: Check Breakdown by Category (109 checks) */}
+      {findings.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Crawled Pages</CardTitle>
+            <CardTitle>SEO Check Results ({findings.length} checks)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {Object.entries(findingsByCategory).map(([category, catFindings]) => {
+              const passedCount = catFindings.filter((f) => f.passed).length;
+              const failedCount = catFindings.length - passedCount;
+              const isExpanded = expandedCategories.has(category);
+
+              return (
+                <div key={category} className="border rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category)}
+                    className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      <span className="font-medium">{category}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs">
+                        {passedCount} passed
+                      </Badge>
+                      {failedCount > 0 && (
+                        <Badge variant="destructive" className="text-xs">
+                          {failedCount} failed
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t px-3 py-2 space-y-1">
+                      {catFindings.map((finding) => (
+                        <div
+                          key={finding.checkId}
+                          className="flex items-start justify-between py-1.5 text-sm"
+                        >
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            {finding.passed ? (
+                              <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs shrink-0">
+                                Pass
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="text-xs shrink-0">
+                                {finding.severity}
+                              </Badge>
+                            )}
+                            <span className="text-muted-foreground">{finding.message}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                            Tier {finding.tier}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pages Table with MEDIUM-13-01: Pagination */}
+      {pages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Crawled Pages ({pages.length})</CardTitle>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {results.pages.slice(0, 50).map((page) => (
+              {paginatedPages.map((page) => (
                 <div
                   key={page.url}
                   className="flex items-center justify-between p-2 rounded hover:bg-muted/50"

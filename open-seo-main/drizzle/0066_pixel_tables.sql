@@ -1,5 +1,8 @@
 -- Phase 66-01: Platform Unification - TeveroPixel Tables
 -- Creates tables for pixel installations, DOM changes, analytics, and developer handoffs
+-- Transaction wrapper added for atomic execution (FIX-13: HIGH-02-01)
+
+BEGIN;
 
 -- Create pixel_installations table for tracking script deployments
 CREATE TABLE IF NOT EXISTS "pixel_installations" (
@@ -162,3 +165,5 @@ COMMENT ON TABLE "pixel_installations" IS 'TeveroPixel script installations with
 COMMENT ON TABLE "pixel_dom_changes" IS 'Approved SEO DOM modifications via pixel script (Phase 66)';
 COMMENT ON TABLE "pixel_analytics_daily" IS 'Aggregated daily analytics from pixel (Phase 66)';
 COMMENT ON TABLE "developer_handoffs" IS 'Developer email flow tracking for pixel installation (Phase 66)';
+
+COMMIT;

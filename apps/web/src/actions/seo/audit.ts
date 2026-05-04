@@ -377,3 +377,58 @@ export async function deleteAudit(params: AuditIdParams): Promise<ActionResult<{
     return { success: false, error: "Failed to delete audit" };
   }
 }
+
+/**
+ * HIGH-13-01: Cancel a running audit.
+ */
+export async function cancelAudit(params: AuditIdParams): Promise<ActionResult<{ success: boolean }>> {
+  const parseResult = auditIdParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
+
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    const query = buildQuery(validated);
+    const data = await postOpenSeo<{ success: boolean }>(`/api/seo/audits?${query}`, {
+      action: "cancel",
+      auditId: validated.auditId,
+    });
+    return { success: true, data };
+  } catch (error) {
+    logger.error("[cancelAudit] Failed", error instanceof Error ? error : { error: String(error) });
+    return { success: false, error: "Failed to cancel audit" };
+  }
+}
+
+/**
+ * HIGH-13-01: Retry a failed audit.
+ */
+export async function retryAudit(params: AuditIdParams): Promise<ActionResult<{ auditId: string }>> {
+  const parseResult = auditIdParamsSchema.safeParse(params);
+  if (!parseResult.success) {
+    return { success: false, error: "Invalid parameters" };
+  }
+  const validated = parseResult.data;
+
+  try {
+    const auth = await requireActionAuth();
+    await validateClientOwnership(validated.clientId, auth);
+
+    // Rate limit retries same as new audits
+    await checkRateLimit(auditLimiter, auth.userId);
+
+    const query = buildQuery(validated);
+    const data = await postOpenSeo<{ auditId: string }>(`/api/seo/audits?${query}`, {
+      action: "retry",
+      auditId: validated.auditId,
+    });
+    return { success: true, data };
+  } catch (error) {
+    logger.error("[retryAudit] Failed", error instanceof Error ? error : { error: String(error) });
+    return { success: false, error: "Failed to retry audit" };
+  }
+}

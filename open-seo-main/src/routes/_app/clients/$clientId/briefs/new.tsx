@@ -64,8 +64,7 @@ const VOICE_MODE_INFO: Record<VoiceMode, { label: string; description: string }>
 
 function NewBriefWizard() {
   const { clientId } = useParams({
-    // @ts-ignore - Route not yet in generated route tree
-    from: "/_app/clients/$clientId/briefs/new",
+        from: "/_app/clients/$clientId/briefs/new",
   });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -95,8 +94,7 @@ function NewBriefWizard() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["briefs", clientId] });
-      // @ts-ignore - Route not yet in generated route tree
-      navigate({ to: "/clients/$clientId/briefs", params: { clientId } });
+            navigate({ to: "/clients/$clientId/briefs", params: { clientId } });
     },
   });
 
@@ -194,8 +192,7 @@ function NewBriefWizard() {
         <CardFooter className="flex justify-between">
           <Button
             variant="outline"
-            // @ts-ignore - Route not yet in generated route tree
-            onClick={state.step === 1 ? () => navigate({ to: "/clients/$clientId/briefs", params: { clientId } }) : handleBack}
+                        onClick={state.step === 1 ? () => navigate({ to: "/clients/$clientId/briefs", params: { clientId } }) : handleBack}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             {state.step === 1 ? "Cancel" : "Back"}

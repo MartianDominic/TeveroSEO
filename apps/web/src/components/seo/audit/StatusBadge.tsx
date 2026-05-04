@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, Ban } from "lucide-react";
 import { Badge } from "@tevero/ui";
 
 export function StatusBadge({ status }: { status: string }) {
@@ -16,6 +16,15 @@ export function StatusBadge({ status }: { status: string }) {
     return (
       <Badge className="bg-green-500/5 text-green-700 dark:text-green-400 text-xs border-green-500/30 gap-1">
         <CheckCircle className="size-3" /> Done
+      </Badge>
+    );
+  }
+
+  // LOW-13-01: Add cancelled variant
+  if (status === "cancelled") {
+    return (
+      <Badge className="bg-gray-500/20 text-gray-700 dark:text-gray-400 text-xs border-gray-500/30 gap-1">
+        <Ban className="size-3" /> Cancelled
       </Badge>
     );
   }

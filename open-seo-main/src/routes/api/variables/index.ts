@@ -17,6 +17,7 @@ import { VariableDefinitionService } from "@/server/features/proposals/services/
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { VARIABLE_CATEGORIES } from "@/db/variable-definitions-schema";
 import { createLogger } from "@/server/lib/logger";
+import { successResponse, errorResponse } from "@/server/lib/response";
 
 const log = createLogger({ module: "api-variables" });
 
@@ -88,10 +89,9 @@ export const Route = createFileRoute("/api/variables/")({
           });
 
           if (!params.success) {
-            return Response.json(
-              { error: "Invalid query parameters" },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid query parameters", {
+              code: "VALIDATION_ERROR",
+            });
           }
 
           const locale = params.data.locale ?? "en";
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/api/variables/")({
               auth.organizationId,
               locale as "en" | "lt"
             );
-            return Response.json({ data: categories });
+            return successResponse(categories);
           }
 
           const variables = await VariableDefinitionService.listAll(
@@ -111,13 +111,10 @@ export const Route = createFileRoute("/api/variables/")({
             locale as "en" | "lt"
           );
 
-          return Response.json({ data: variables });
+          return successResponse(variables);
         } catch (error) {
           log.error("GET failed", error instanceof Error ? error : new Error(String(error)));
-          return Response.json(
-            { error: { code: "INTERNAL_ERROR", message: "Failed to fetch variables" } },
-            { status: 500 }
-          );
+          return errorResponse(500, "Failed to fetch variables", { code: "INTERNAL_ERROR" });
         }
       },
 
@@ -135,16 +132,13 @@ export const Route = createFileRoute("/api/variables/")({
           const parsed = CreateVariableSchema.safeParse(body);
 
           if (!parsed.success) {
-            return Response.json(
-              {
-                error: "Invalid input",
-                details: parsed.error.issues.map((issue) => ({
-                  field: issue.path.join("."),
-                  message: issue.message,
-                })),
-              },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid input", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues.map((issue) => ({
+                field: issue.path.join("."),
+                message: issue.message,
+              })),
+            });
           }
 
           // Create variable
@@ -154,30 +148,26 @@ export const Route = createFileRoute("/api/variables/")({
             category: parsed.data.category as "custom" | "client" | "audit" | "provider" | "pricing" | "dates" | undefined,
           });
 
-          return Response.json({ data: created }, { status: 201 });
+          // Return 201 with success envelope
+          const successResp = successResponse(created);
+          return new Response(successResp.body, {
+            status: 201,
+            headers: successResp.headers,
+          });
         } catch (error) {
           log.error("POST failed", error instanceof Error ? error : new Error(String(error)));
 
           // Handle specific errors
           if (error instanceof Error) {
             if (error.message.includes("CONFLICT")) {
-              return Response.json(
-                { error: { code: "CONFLICT", message: error.message } },
-                { status: 409 }
-              );
+              return errorResponse(409, error.message, { code: "CONFLICT" });
             }
             if (error.message.includes("VALIDATION_ERROR")) {
-              return Response.json(
-                { error: { code: "VALIDATION_ERROR", message: error.message } },
-                { status: 400 }
-              );
+              return errorResponse(400, error.message, { code: "VALIDATION_ERROR" });
             }
           }
 
-          return Response.json(
-            { error: { code: "INTERNAL_ERROR", message: "Failed to create variable" } },
-            { status: 500 }
-          );
+          return errorResponse(500, "Failed to create variable", { code: "INTERNAL_ERROR" });
         }
       },
     },

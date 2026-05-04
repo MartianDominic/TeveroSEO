@@ -5,6 +5,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import PageErrorBoundary from './components/shared/PageErrorBoundary';
 import ErrorBoundaryTest from './components/shared/ErrorBoundaryTest';
 import InitialRouteHandler from './components/App/InitialRouteHandler';
 import TokenInstaller from './components/App/TokenInstaller';
@@ -117,7 +118,11 @@ const App: React.FC = () => {
                     path="/clients"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ClientListPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Client List" backUrl="/">
+                            <ClientListPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -127,7 +132,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ClientDashboardPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Client Dashboard" backUrl="/clients">
+                            <ClientDashboardPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -137,7 +146,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/calendar"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ContentCalendarPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Content Calendar" backUrl="/clients">
+                            <ContentCalendarPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -147,7 +160,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/intelligence"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ClientIntelligencePageImpl /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Client Intelligence" backUrl="/clients">
+                            <ClientIntelligencePageImpl />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -157,7 +174,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/settings"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ClientSettingsPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Client Settings" backUrl="/clients">
+                            <ClientSettingsPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -167,7 +188,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/analytics"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ClientAnalyticsPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Client Analytics" backUrl="/clients">
+                            <ClientAnalyticsPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -177,7 +202,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/articles"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ArticleLibraryPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Article Library" backUrl="/clients">
+                            <ArticleLibraryPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -187,7 +216,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/articles/new"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ArticleEditorPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="New Article" backUrl="/clients">
+                            <ArticleEditorPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -197,7 +230,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/articles/:articleId"
                     element={
                       <ProtectedRoute>
-                        <AppShell><ArticleEditorPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Article Editor" backUrl="/clients">
+                            <ArticleEditorPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -207,7 +244,11 @@ const App: React.FC = () => {
                     path="/settings"
                     element={
                       <ProtectedRoute>
-                        <AppShell><GlobalSettingsPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="Global Settings" backUrl="/clients">
+                            <GlobalSettingsPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />
@@ -217,7 +258,11 @@ const App: React.FC = () => {
                     path="/clients/:clientId/seo"
                     element={
                       <ProtectedRoute>
-                        <AppShell><SeoAuditPage /></AppShell>
+                        <AppShell>
+                          <PageErrorBoundary pageName="SEO Audit" backUrl="/clients">
+                            <SeoAuditPage />
+                          </PageErrorBoundary>
+                        </AppShell>
                       </ProtectedRoute>
                     }
                   />

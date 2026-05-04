@@ -1,5 +1,8 @@
 -- Phase 54-01: Multi-Provider Payments Schema
 -- Creates workspace_payment_settings table and extends invoices
+-- Transaction wrapper added for atomic execution (FIX-13: HIGH-02-01)
+
+BEGIN;
 
 -- Create workspace_payment_settings table for encrypted provider credentials
 CREATE TABLE IF NOT EXISTS "workspace_payment_settings" (
@@ -40,3 +43,5 @@ BEGIN
       CHECK (payment_provider IS NULL OR payment_provider IN ('stripe', 'revolut'));
   END IF;
 END $$;
+
+COMMIT;

@@ -1,5 +1,8 @@
 -- Phase 61-01: Platform Integration - OAuth Platform Connections
 -- Creates tables for OAuth platform connections, state management, and data cache
+-- Transaction wrapper added for atomic execution (FIX-13: HIGH-02-01)
+
+BEGIN;
 
 -- Create platform_connections table for OAuth tokens and credentials
 CREATE TABLE IF NOT EXISTS "platform_connections" (
@@ -129,3 +132,5 @@ CREATE INDEX IF NOT EXISTS "idx_platform_data_cache_expiry"
 COMMENT ON TABLE "platform_connections" IS 'OAuth platform connections with encrypted tokens (Phase 61)';
 COMMENT ON TABLE "oauth_states" IS 'OAuth CSRF state parameters with 10-minute expiry (Phase 61)';
 COMMENT ON TABLE "platform_data_cache" IS 'Cached data from connected platforms (Phase 61)';
+
+COMMIT;

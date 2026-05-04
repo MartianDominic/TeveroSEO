@@ -11,10 +11,33 @@
  * no auth bypass (T-59-04-03).
  *
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
+ * MEDIUM-NX-02 FIX: Added Zod validation for all action inputs
  */
 
+import { z } from "zod";
 import { logger } from '@/lib/logger';
 import { getOpenSeoUrl } from "@/lib/env";
+
+// ---------------------------------------------------------------------------
+// Validation Schemas (MEDIUM-NX-02 FIX)
+// ---------------------------------------------------------------------------
+
+/**
+ * Public token schema - validates token format for public access
+ * Tokens are typically URL-safe base64 or UUID format
+ */
+const publicTokenSchema = z
+  .string()
+  .min(1, "Token is required")
+  .max(255, "Token too long")
+  .regex(/^[a-zA-Z0-9_-]+$/, "Invalid token format");
+
+/**
+ * Signing method schema - validates allowed signing methods
+ */
+const signingMethodSchema = z.enum(["smart-id", "mobile-id", "id-card"], {
+  message: "Invalid signing method",
+});
 
 export interface ContractSection {
   title: string;
@@ -58,13 +81,20 @@ export interface ContractData {
  * Per T-59-04-01: Token validation prevents spoofing.
  * Per D-07: Sequential mode enforces signing order (signingOrder === signedCount + 1).
  * Per D-08: Parallel mode allows any signer to sign.
+ * MEDIUM-NX-02 FIX: Added token format validation
  */
 export async function getContractByToken(
   token: string
 ): Promise<ContractData | { error: string }> {
+  // Validate token format
+  const validatedToken = publicTokenSchema.safeParse(token);
+  if (!validatedToken.success) {
+    return { error: validatedToken.error.issues[0]?.message || "Invalid token" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/contracts/public/${token}`,
+      `${getOpenSeoUrl()}/api/contracts/public/${encodeURIComponent(validatedToken.data)}`,
       {
         cache: "no-store",
       }
@@ -93,13 +123,20 @@ export async function getContractByToken(
  * Updates signer.viewedAt = now, status = "viewed" if was "notified".
  *
  * Fire-and-forget: errors are logged but not returned.
+ * MEDIUM-NX-02 FIX: Added token format validation
  */
 export async function markContractViewed(
   token: string
 ): Promise<{ success: boolean }> {
+  // Validate token format
+  const validatedToken = publicTokenSchema.safeParse(token);
+  if (!validatedToken.success) {
+    return { success: false };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/contracts/public/${token}/viewed`,
+      `${getOpenSeoUrl()}/api/contracts/public/${encodeURIComponent(validatedToken.data)}/viewed`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,18 +163,31 @@ export async function markContractViewed(
  * 2. Calls Dokobit API to create signing session
  * 3. Stores dokobitSessionId on signer
  * 4. Returns Dokobit redirect URL
+ * MEDIUM-NX-02 FIX: Added token and method validation
  */
 export async function initiateSigning(
   token: string,
   method: "smart-id" | "mobile-id" | "id-card" = "smart-id"
 ): Promise<{ redirectUrl: string } | { error: string }> {
+  // Validate token format
+  const validatedToken = publicTokenSchema.safeParse(token);
+  if (!validatedToken.success) {
+    return { error: validatedToken.error.issues[0]?.message || "Invalid token" };
+  }
+
+  // Validate signing method
+  const validatedMethod = signingMethodSchema.safeParse(method);
+  if (!validatedMethod.success) {
+    return { error: validatedMethod.error.issues[0]?.message || "Invalid signing method" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/contracts/public/${token}/sign`,
+      `${getOpenSeoUrl()}/api/contracts/public/${encodeURIComponent(validatedToken.data)}/sign`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method }),
+        body: JSON.stringify({ method: validatedMethod.data }),
       }
     );
 
@@ -162,13 +212,20 @@ export async function initiateSigning(
 /**
  * Check signing status for polling.
  * Returns current signer status and signedAt timestamp if signed.
+ * MEDIUM-NX-02 FIX: Added token format validation
  */
 export async function checkSigningStatus(
   token: string
 ): Promise<{ status: string; signedAt?: string } | { error: string }> {
+  // Validate token format
+  const validatedToken = publicTokenSchema.safeParse(token);
+  if (!validatedToken.success) {
+    return { error: validatedToken.error.issues[0]?.message || "Invalid token" };
+  }
+
   try {
     const response = await fetch(
-      `${getOpenSeoUrl()}/api/contracts/public/${token}/status`,
+      `${getOpenSeoUrl()}/api/contracts/public/${encodeURIComponent(validatedToken.data)}/status`,
       {
         cache: "no-store",
       }

@@ -4,8 +4,12 @@
  *
  * Security: All endpoints require authentication and validate ownership
  * via the brief -> mapping -> project -> organization chain.
+ *
+ * HIGH-06-01 FIX: Added rate limiting to all endpoints
+ * HIGH-06-03 FIX: Standardized API response envelope pattern
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { keywordPageMapping } from "@/db/mapping-schema";
@@ -18,6 +22,12 @@ import { requireApiAuth, type ApiAuthContext } from "@/routes/api/seo/-middlewar
 import { resolveClientId } from "@/server/lib/client-context";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
+import {
+  rateLimit,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/seo/briefs" });
 const repository = new BriefRepository();
@@ -100,6 +110,19 @@ async function verifyProjectOwnership(
   }
 }
 
+/**
+ * Zod schemas for request validation (MEDIUM-06-02 FIX).
+ */
+const createBriefBodySchema = z.object({
+  mappingId: z.string().min(1, "mappingId is required"),
+  voiceMode: z.enum(VOICE_MODES as unknown as [string, ...string[]]),
+  locationCode: z.number().int().positive().optional(),
+});
+
+const updateStatusBodySchema = z.object({
+  status: z.enum(BRIEF_STATUSES as unknown as [string, ...string[]]),
+});
+
 interface CreateBriefBody {
   mappingId: string;
   voiceMode: VoiceMode;
@@ -110,12 +133,43 @@ interface UpdateStatusBody {
   status: BriefStatus;
 }
 
-function isValidVoiceMode(mode: string): mode is VoiceMode {
-  return VOICE_MODES.includes(mode as VoiceMode);
+/**
+ * Standard API response envelope (HIGH-06-03 FIX).
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  meta?: {
+    rateLimitRemaining?: number;
+    rateLimitReset?: number;
+  };
 }
 
-function isValidBriefStatus(status: string): status is BriefStatus {
-  return BRIEF_STATUSES.includes(status as BriefStatus);
+function successResponse<T>(data: T, meta?: ApiResponse<T>["meta"]): ApiResponse<T> {
+  return { success: true, data, meta };
+}
+
+function errorResponse(error: string): ApiResponse<never> {
+  return { success: false, error };
+}
+
+/**
+ * Extract client ID for rate limiting.
+ */
+async function extractRateLimitKey(request: Request): Promise<string> {
+  const clientId = request.headers.get("X-Client-ID");
+  if (clientId) return clientId;
+
+  const url = new URL(request.url);
+  const queryClientId = url.searchParams.get("clientId");
+  if (queryClientId) return queryClientId;
+
+  // Fallback to IP
+  const forwarded = request.headers.get("X-Forwarded-For");
+  if (forwarded) return `ip:${forwarded.split(",")[0].trim()}`;
+
+  return "anonymous";
 }
 
 export const Route = createFileRoute("/api/seo/briefs")({
@@ -129,9 +183,23 @@ export const Route = createFileRoute("/api/seo/briefs")({
        * Returns a single brief by ID.
        *
        * Security: Validates ownership via brief/project -> organization chain.
+       * HIGH-06-01 FIX: Added rate limiting (60 req/min per client)
+       * HIGH-06-03 FIX: Standardized response envelope
        */
       GET: async ({ request }: { request: Request }) => {
         try {
+          // HIGH-06-01: Apply rate limiting
+          const rateLimitKey = await extractRateLimitKey(request);
+          const rateLimitResult = await rateLimit({
+            key: `${RATE_LIMITS.DEFAULT.keyPrefix}briefs:get:${rateLimitKey}`,
+            limit: RATE_LIMITS.DEFAULT.limit,
+            window: RATE_LIMITS.DEFAULT.window,
+          });
+
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           const auth = await requireApiAuth(request);
           const url = new URL(request.url);
           const projectId = url.searchParams.get("projectId");
@@ -140,16 +208,19 @@ export const Route = createFileRoute("/api/seo/briefs")({
           if (briefId) {
             const brief = await repository.findById(briefId);
             if (!brief) {
-              return Response.json({ error: "Brief not found" }, { status: 404 });
+              return Response.json(errorResponse("Brief not found"), { status: 404 });
             }
             // Verify ownership before returning
             await verifyBriefOwnership(brief, auth);
-            return Response.json({ data: brief });
+            return addRateLimitHeaders(
+              Response.json(successResponse(brief)),
+              rateLimitResult
+            );
           }
 
           if (!projectId) {
             return Response.json(
-              { error: "projectId query parameter required" },
+              errorResponse("projectId query parameter required"),
               { status: 400 }
             );
           }
@@ -158,7 +229,10 @@ export const Route = createFileRoute("/api/seo/briefs")({
           await verifyProjectOwnership(projectId, auth);
 
           const briefs = await repository.findByProjectId(projectId);
-          return Response.json({ data: briefs });
+          return addRateLimitHeaders(
+            Response.json(successResponse(briefs)),
+            rateLimitResult
+          );
         } catch (error) {
           if (error instanceof AppError) {
             const status =
@@ -169,13 +243,13 @@ export const Route = createFileRoute("/api/seo/briefs")({
                   : error.code === "UNAUTHENTICATED"
                     ? 401
                     : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json(errorResponse(error.message), { status });
           }
           log.error(
             "GET error",
             error instanceof Error ? error : new Error(String(error))
           );
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json(errorResponse("Internal server error"), { status: 500 });
         }
       },
 
@@ -184,47 +258,68 @@ export const Route = createFileRoute("/api/seo/briefs")({
        * Creates a new brief from a mapping.
        *
        * Body: { mappingId, voiceMode, locationCode? }
+       *
+       * HIGH-06-01 FIX: Added rate limiting (10 req/min for brief generation)
+       * HIGH-06-03 FIX: Standardized response envelope
+       * MEDIUM-06-02 FIX: Added Zod validation
        */
       POST: async ({ request }: { request: Request }) => {
         try {
+          // HIGH-06-01: Apply rate limiting for brief generation
+          const rateLimitKey = await extractRateLimitKey(request);
+          const rateLimitResult = await rateLimit({
+            key: `${RATE_LIMITS.BRIEF_GENERATE.keyPrefix}${rateLimitKey}`,
+            limit: RATE_LIMITS.BRIEF_GENERATE.limit,
+            window: RATE_LIMITS.BRIEF_GENERATE.window,
+          });
+
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           await requireApiAuth(request);
 
           // Validate client ownership
           const clientId = await resolveClientId(request.headers, request.url);
           if (!clientId) {
             return Response.json(
-              { error: "client_id header or query parameter is required" },
+              errorResponse("client_id header or query parameter is required"),
               { status: 400 },
             );
           }
 
-          const body = (await request.json()) as CreateBriefBody;
+          // MEDIUM-06-02: Parse and validate with Zod
+          let rawBody: unknown;
+          try {
+            rawBody = await request.json();
+          } catch {
+            return Response.json(errorResponse("Invalid JSON body"), { status: 400 });
+          }
 
-          if (!body.mappingId) {
+          const validation = createBriefBodySchema.safeParse(rawBody);
+          if (!validation.success) {
             return Response.json(
-              { error: "mappingId is required" },
+              errorResponse(validation.error.issues.map(i => i.message).join(", ")),
               { status: 400 }
             );
           }
 
-          if (!body.voiceMode || !isValidVoiceMode(body.voiceMode)) {
-            return Response.json(
-              { error: `voiceMode must be one of: ${VOICE_MODES.join(", ")}` },
-              { status: 400 }
-            );
-          }
+          const body = validation.data;
 
           const result = await generateBrief(
             {
               mappingId: body.mappingId,
-              voiceMode: body.voiceMode,
+              voiceMode: body.voiceMode as VoiceMode,
               locationCode: body.locationCode,
               clientId,
             },
             repository
           );
 
-          return Response.json({ data: result }, { status: 201 });
+          return addRateLimitHeaders(
+            Response.json(successResponse(result), { status: 201 }),
+            rateLimitResult
+          );
         } catch (error) {
           if (error instanceof AppError) {
             const status =
@@ -233,13 +328,13 @@ export const Route = createFileRoute("/api/seo/briefs")({
                 : error.code === "FORBIDDEN"
                   ? 403
                   : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json(errorResponse(error.message), { status });
           }
           log.error(
             "POST error",
             error instanceof Error ? error : new Error(String(error))
           );
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json(errorResponse("Internal server error"), { status: 500 });
         }
       },
 
@@ -250,16 +345,31 @@ export const Route = createFileRoute("/api/seo/briefs")({
        * Body: { status }
        *
        * Security: Validates ownership via brief -> mapping -> project -> organization chain.
+       * HIGH-06-01 FIX: Added rate limiting
+       * HIGH-06-03 FIX: Standardized response envelope
+       * MEDIUM-06-02 FIX: Added Zod validation
        */
       PATCH: async ({ request }: { request: Request }) => {
         try {
+          // HIGH-06-01: Apply rate limiting
+          const rateLimitKey = await extractRateLimitKey(request);
+          const rateLimitResult = await rateLimit({
+            key: `${RATE_LIMITS.DEFAULT.keyPrefix}briefs:patch:${rateLimitKey}`,
+            limit: RATE_LIMITS.DEFAULT.limit,
+            window: RATE_LIMITS.DEFAULT.window,
+          });
+
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           const auth = await requireApiAuth(request);
           const url = new URL(request.url);
           const briefId = url.searchParams.get("id");
 
           if (!briefId) {
             return Response.json(
-              { error: "id query parameter required" },
+              errorResponse("id query parameter required"),
               { status: 400 }
             );
           }
@@ -267,27 +377,39 @@ export const Route = createFileRoute("/api/seo/briefs")({
           // Fetch brief first to verify ownership
           const existingBrief = await repository.findById(briefId);
           if (!existingBrief) {
-            return Response.json({ error: "Brief not found" }, { status: 404 });
+            return Response.json(errorResponse("Brief not found"), { status: 404 });
           }
 
           // Verify ownership before allowing update
           await verifyBriefOwnership(existingBrief, auth);
 
-          const body = (await request.json()) as UpdateStatusBody;
+          // MEDIUM-06-02: Parse and validate with Zod
+          let rawBody: unknown;
+          try {
+            rawBody = await request.json();
+          } catch {
+            return Response.json(errorResponse("Invalid JSON body"), { status: 400 });
+          }
 
-          if (!body.status || !isValidBriefStatus(body.status)) {
+          const validation = updateStatusBodySchema.safeParse(rawBody);
+          if (!validation.success) {
             return Response.json(
-              { error: `status must be one of: ${BRIEF_STATUSES.join(", ")}` },
+              errorResponse(`status must be one of: ${BRIEF_STATUSES.join(", ")}`),
               { status: 400 }
             );
           }
 
-          const updated = await repository.updateStatus(briefId, body.status);
+          const body = validation.data;
+
+          const updated = await repository.updateStatus(briefId, body.status as BriefStatus);
           if (!updated) {
-            return Response.json({ error: "Brief not found" }, { status: 404 });
+            return Response.json(errorResponse("Brief not found"), { status: 404 });
           }
 
-          return Response.json({ data: updated });
+          return addRateLimitHeaders(
+            Response.json(successResponse(updated)),
+            rateLimitResult
+          );
         } catch (error) {
           if (error instanceof AppError) {
             const status =
@@ -298,13 +420,13 @@ export const Route = createFileRoute("/api/seo/briefs")({
                   : error.code === "UNAUTHENTICATED"
                     ? 401
                     : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json(errorResponse(error.message), { status });
           }
           log.error(
             "PATCH error",
             error instanceof Error ? error : new Error(String(error))
           );
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json(errorResponse("Internal server error"), { status: 500 });
         }
       },
 
@@ -313,16 +435,30 @@ export const Route = createFileRoute("/api/seo/briefs")({
        * Deletes a brief.
        *
        * Security: Validates ownership via brief -> mapping -> project -> organization chain.
+       * HIGH-06-01 FIX: Added rate limiting
+       * HIGH-06-03 FIX: Standardized response envelope
        */
       DELETE: async ({ request }: { request: Request }) => {
         try {
+          // HIGH-06-01: Apply rate limiting
+          const rateLimitKey = await extractRateLimitKey(request);
+          const rateLimitResult = await rateLimit({
+            key: `${RATE_LIMITS.DEFAULT.keyPrefix}briefs:delete:${rateLimitKey}`,
+            limit: RATE_LIMITS.DEFAULT.limit,
+            window: RATE_LIMITS.DEFAULT.window,
+          });
+
+          if (!rateLimitResult.allowed) {
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           const auth = await requireApiAuth(request);
           const url = new URL(request.url);
           const briefId = url.searchParams.get("id");
 
           if (!briefId) {
             return Response.json(
-              { error: "id query parameter required" },
+              errorResponse("id query parameter required"),
               { status: 400 }
             );
           }
@@ -330,7 +466,7 @@ export const Route = createFileRoute("/api/seo/briefs")({
           // Fetch brief first to verify ownership
           const existingBrief = await repository.findById(briefId);
           if (!existingBrief) {
-            return Response.json({ error: "Brief not found" }, { status: 404 });
+            return Response.json(errorResponse("Brief not found"), { status: 404 });
           }
 
           // Verify ownership before allowing delete
@@ -338,10 +474,13 @@ export const Route = createFileRoute("/api/seo/briefs")({
 
           const deleted = await repository.delete(briefId);
           if (!deleted) {
-            return Response.json({ error: "Brief not found" }, { status: 404 });
+            return Response.json(errorResponse("Brief not found"), { status: 404 });
           }
 
-          return Response.json({ success: true });
+          return addRateLimitHeaders(
+            Response.json(successResponse({ deleted: true })),
+            rateLimitResult
+          );
         } catch (error) {
           if (error instanceof AppError) {
             const status =
@@ -352,13 +491,13 @@ export const Route = createFileRoute("/api/seo/briefs")({
                   : error.code === "UNAUTHENTICATED"
                     ? 401
                     : 400;
-            return Response.json({ error: error.message }, { status });
+            return Response.json(errorResponse(error.message), { status });
           }
           log.error(
             "DELETE error",
             error instanceof Error ? error : new Error(String(error))
           );
-          return Response.json({ error: "Internal server error" }, { status: 500 });
+          return Response.json(errorResponse("Internal server error"), { status: 500 });
         }
       },
     },

@@ -50,7 +50,6 @@ const VOICE_MODE_LABELS: Record<string, string> = {
 
 function BriefDetailPage() {
   const { clientId, briefId } = useParams({
-    // @ts-ignore - Route not yet in generated route tree
     from: "/_app/clients/$clientId/briefs/$briefId",
   });
   const queryClient = useQueryClient();
@@ -112,9 +111,7 @@ function BriefDetailPage() {
         </p>
         <Button variant="outline" className="mt-4" asChild>
           <Link
-            // @ts-ignore - Route not yet in generated route tree
-            to="/clients/$clientId/briefs"
-            // @ts-ignore - Route not yet in generated route tree
+            to="/_app/clients/$clientId/briefs/"
             params={{ clientId }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -141,9 +138,7 @@ function BriefDetailPage() {
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
           <Link
-            // @ts-ignore - Route not yet in generated route tree
-            to="/clients/$clientId/briefs"
-            // @ts-ignore - Route not yet in generated route tree
+            to="/_app/clients/$clientId/briefs/"
             params={{ clientId }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

@@ -8,7 +8,7 @@
  * and D-08 quick actions (move, view, archive).
  */
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { differenceInDays } from "date-fns";
 import { KanbanCard, Button, Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
 import { MoreHorizontal, Eye, Archive, ArrowRight, ChevronRight } from "lucide-react";
@@ -58,22 +58,47 @@ export function PipelineCard({
   const [stagesOpen, setStagesOpen] = useState(false);
 
   // D-07: Calculate days in current stage
-  const daysInStage = differenceInDays(new Date(), stageEnteredAt);
+  const daysInStage = useMemo(
+    () => differenceInDays(new Date(), stageEnteredAt),
+    [stageEnteredAt]
+  );
 
   // D-07: Format deal value for display
-  const formattedValue = dealValueCents
-    ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: 0,
-      }).format(dealValueCents / 100)
-    : null;
+  const formattedValue = useMemo(
+    () =>
+      dealValueCents
+        ? new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 0,
+          }).format(dealValueCents / 100)
+        : null,
+    [dealValueCents]
+  );
 
-  const handleAction = (action: () => void) => {
-    action();
-    setMenuOpen(false);
-    setStagesOpen(false);
-  };
+  const handleAction = useCallback(
+    (action: () => void) => {
+      action();
+      setMenuOpen(false);
+      setStagesOpen(false);
+    },
+    []
+  );
+
+  const handleViewDetails = useCallback(
+    () => handleAction(onViewDetails),
+    [handleAction, onViewDetails]
+  );
+
+  const handleArchive = useCallback(
+    () => handleAction(onArchive),
+    [handleAction, onArchive]
+  );
+
+  const handleMoveToStage = useCallback(
+    (stageId: string) => handleAction(() => onMoveToStage(stageId)),
+    [handleAction, onMoveToStage]
+  );
 
   return (
     <KanbanCard
@@ -107,7 +132,7 @@ export function PipelineCard({
             <PopoverContent align="end" className="w-48 p-1">
               <div className="flex flex-col gap-0.5">
                 <button
-                  onClick={() => handleAction(onViewDetails)}
+                  onClick={handleViewDetails}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded text-text-2 hover:bg-surface-2 hover:text-text-1"
                 >
                   <Eye className="h-4 w-4" />
@@ -132,7 +157,7 @@ export function PipelineCard({
                       {stages.map((stage) => (
                         <button
                           key={stage.id}
-                          onClick={() => handleAction(() => onMoveToStage(stage.id))}
+                          onClick={() => handleMoveToStage(stage.id)}
                           className="w-full px-3 py-2 text-sm text-left rounded text-text-2 hover:bg-surface-2 hover:text-text-1"
                         >
                           {stage.name}
@@ -145,7 +170,7 @@ export function PipelineCard({
                 <div className="h-px bg-hairline-2 my-1" />
 
                 <button
-                  onClick={() => handleAction(onArchive)}
+                  onClick={handleArchive}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded text-error hover:bg-error-soft"
                 >
                   <Archive className="h-4 w-4" />

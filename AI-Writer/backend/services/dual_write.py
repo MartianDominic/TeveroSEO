@@ -23,6 +23,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.exc import SQLAlchemyError
 from loguru import logger
 
+from utils.async_tasks import create_task_with_error_handling
+
 # Feature flag for shadow writes
 SHADOW_WRITE_ENABLED = os.getenv("SHADOW_WRITE_ENABLED", "false").lower() == "true"
 
@@ -186,8 +188,11 @@ def fire_and_forget_shadow_write(client_data: Dict[str, Any]) -> None:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            # Schedule as background task
-            asyncio.create_task(shadow_write_client(client_data))
+            # Schedule as background task with error handling (FIX: HIGH-16-01)
+            create_task_with_error_handling(
+                shadow_write_client(client_data),
+                task_name="shadow_write_client",
+            )
         else:
             # Run synchronously if no event loop
             loop.run_until_complete(shadow_write_client(client_data))
@@ -213,7 +218,11 @@ def fire_and_forget_shadow_update(client_id: str, update_data: Dict[str, Any]) -
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            asyncio.create_task(shadow_update_client(client_id, update_data))
+            # Schedule as background task with error handling (FIX: HIGH-16-01)
+            create_task_with_error_handling(
+                shadow_update_client(client_id, update_data),
+                task_name="shadow_update_client",
+            )
         else:
             loop.run_until_complete(shadow_update_client(client_id, update_data))
     except RuntimeError:

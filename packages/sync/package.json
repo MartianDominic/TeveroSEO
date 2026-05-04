@@ -1,0 +1,28 @@
+{
+  "name": "@tevero/sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-service synchronization utilities for TeveroSEO",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.22.0"
+  }
+}

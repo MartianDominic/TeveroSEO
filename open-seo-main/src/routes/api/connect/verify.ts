@@ -1,6 +1,7 @@
 /**
  * Connection Verification API Route
  * Phase 66-02: Pixel Event Collection + Real-Time Verification
+ * Phase 68-03: Standardized API envelope
  *
  * POST /api/connect/verify
  * GET /api/connect/verify?siteId=xxx
@@ -12,6 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
 import { getPixelVerificationService } from "@/server/features/pixel/pixel-verification.service";
+import { successResponse, errorResponse } from "@/server/lib/response";
 
 const log = createLogger({ module: "api/connect/verify" });
 
@@ -33,10 +35,10 @@ export const Route = createFileRoute("/api/connect/verify")({
           const parsed = VerifyRequestSchema.safeParse(body);
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid request", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid request", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           const verificationService = getPixelVerificationService();
@@ -51,21 +53,17 @@ export const Route = createFileRoute("/api/connect/verify")({
             timedOut: status.timedOut,
           });
 
-          return Response.json(status, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-            },
-          });
+          // Return with cache headers for long-polling
+          const response = successResponse(status);
+          response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+          return response;
         } catch (error) {
           log.error(
             "Connection verification error",
             error instanceof Error ? error : new Error(String(error))
           );
 
-          return Response.json(
-            { error: "Internal error" },
-            { status: 500 }
-          );
+          return errorResponse(500, "Internal error", { code: "INTERNAL_ERROR" });
         }
       },
 
@@ -79,10 +77,10 @@ export const Route = createFileRoute("/api/connect/verify")({
           const parsed = VerifyRequestSchema.safeParse({ siteId, timeoutMs });
 
           if (!parsed.success) {
-            return Response.json(
-              { error: "Invalid request", details: parsed.error.issues },
-              { status: 400 }
-            );
+            return errorResponse(400, "Invalid request", {
+              code: "VALIDATION_ERROR",
+              details: parsed.error.issues,
+            });
           }
 
           const verificationService = getPixelVerificationService();
@@ -91,21 +89,17 @@ export const Route = createFileRoute("/api/connect/verify")({
             parsed.data.timeoutMs
           );
 
-          return Response.json(status, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-            },
-          });
+          // Return with cache headers for long-polling
+          const response = successResponse(status);
+          response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+          return response;
         } catch (error) {
           log.error(
             "Connection verification error",
             error instanceof Error ? error : new Error(String(error))
           );
 
-          return Response.json(
-            { error: "Internal error" },
-            { status: 500 }
-          );
+          return errorResponse(500, "Internal error", { code: "INTERNAL_ERROR" });
         }
       },
     },

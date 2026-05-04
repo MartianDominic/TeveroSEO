@@ -66,12 +66,20 @@ export interface AnalyticsDLQJobData {
 /**
  * Default job options for analytics sync.
  * Job timeout is controlled via Worker lockDuration (set to 120s in analytics-worker.ts).
+ *
+ * NOTE: Analytics queue intentionally uses longer retry delays (10s base) than the
+ * standard configuration (1s base). This is because:
+ * - Analytics sync calls Google APIs (GSC, GA4) with strict rate limits
+ * - Google APIs may throttle requests, requiring longer backoff windows
+ * - Backfill operations process large datasets that benefit from spaced retries
+ *
+ * See queue-utils.ts for the standard retry configuration used by internal queues.
  */
 const DEFAULT_JOB_OPTIONS: JobsOptions = {
   attempts: 3,
   backoff: {
     type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
+    delay: 10_000, // 10s, 20s, 40s (longer delays for Google API rate limits)
   },
   removeOnComplete: { count: 100 },
   removeOnFail: { count: 500 },

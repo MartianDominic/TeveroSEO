@@ -46,12 +46,20 @@ export interface RankingDLQJobData {
 /**
  * Default job options for ranking jobs.
  * Job timeout is controlled via Worker lockDuration (set to 300s in ranking-worker.ts).
+ *
+ * NOTE: Ranking queue intentionally uses longer retry delays (10s base) than the
+ * standard configuration (1s base). This is because:
+ * - Ranking checks call external APIs (DataForSEO, Google SERP) with rate limits
+ * - External services need longer recovery windows after transient failures
+ * - Batched keyword processing means each retry processes many keywords
+ *
+ * See queue-utils.ts for the standard retry configuration used by internal queues.
  */
 const DEFAULT_JOB_OPTIONS: JobsOptions = {
   attempts: 3,
   backoff: {
     type: "exponential",
-    delay: 10_000, // 10s, 20s, 40s
+    delay: 10_000, // 10s, 20s, 40s (longer delays for external API rate limits)
   },
   removeOnComplete: { count: 50 },
   removeOnFail: { count: 100 },

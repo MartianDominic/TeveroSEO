@@ -273,4 +273,21 @@ export const ViewTrackingService = {
 
     return views;
   },
+
+  /**
+   * Get a single view by ID.
+   * HIGH-06-02 FIX: Added to support viewId validation in tracking functions.
+   *
+   * @param viewId - The view ID to look up
+   * @returns The view record or null if not found
+   */
+  async getViewById(viewId: string): Promise<ProposalViewSelect | null> {
+    const [view] = await db
+      .select()
+      .from(proposalViews)
+      .where(eq(proposalViews.id, viewId))
+      .limit(1);
+
+    return view ?? null;
+  },
 };

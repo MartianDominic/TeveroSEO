@@ -23,6 +23,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getOpenSeoUrl } from "@/lib/env";
+import { requireActionAuth } from "@/lib/auth/action-auth";
 
 // CFG-CRIT-01 FIX: Use centralized env validation
 const OPEN_SEO_API_URL = getOpenSeoUrl();
@@ -41,6 +42,7 @@ const sendReminderSchema = z.object({
 export type SendReminderInput = z.infer<typeof sendReminderSchema>;
 
 export async function sendReminder(data: SendReminderInput) {
+  await requireActionAuth();
   const validated = sendReminderSchema.parse(data);
 
   const response = await fetch(
@@ -83,6 +85,7 @@ const snoozeSchema = z.object({
 export type SnoozeFollowUpInput = z.infer<typeof snoozeSchema>;
 
 export async function snoozeFollowUp(data: SnoozeFollowUpInput) {
+  await requireActionAuth();
   const validated = snoozeSchema.parse(data);
 
   const response = await fetch(
@@ -137,6 +140,7 @@ const markLostSchema = z.object({
 export type MarkAsLostInput = z.infer<typeof markLostSchema>;
 
 export async function markAsLost(data: MarkAsLostInput) {
+  await requireActionAuth();
   const validated = markLostSchema.parse(data);
 
   const response = await fetch(
@@ -176,6 +180,7 @@ const addNoteSchema = z.object({
 export type AddNoteInput = z.infer<typeof addNoteSchema>;
 
 export async function addNote(data: AddNoteInput) {
+  await requireActionAuth();
   const validated = addNoteSchema.parse(data);
 
   const response = await fetch(
@@ -200,13 +205,14 @@ export async function addNote(data: AddNoteInput) {
  *
  * Dismisses a smart alert from the dashboard.
  */
+const alertIdSchema = z.string().min(1, "Alert ID is required");
+
 export async function dismissAlert(alertId: string) {
-  if (!alertId) {
-    throw new Error("Alert ID is required");
-  }
+  await requireActionAuth();
+  const validatedAlertId = alertIdSchema.parse(alertId);
 
   const response = await fetch(
-    `${OPEN_SEO_API_URL}/api/command-center/alerts/${alertId}/dismiss`,
+    `${OPEN_SEO_API_URL}/api/command-center/alerts/${validatedAlertId}/dismiss`,
     {
       method: "POST",
     }

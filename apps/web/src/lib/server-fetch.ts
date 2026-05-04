@@ -303,6 +303,12 @@ async function buildServiceHeaders(
     headers["X-User-Id"] = userId;
   }
 
+  // HIGH-12-01 FIX: Propagate X-Client-ID for cross-service client context
+  // This ensures downstream services receive the client context from the original request
+  if (context.clientId) {
+    headers["X-Client-Id"] = context.clientId;
+  }
+
   return headers;
 }
 
