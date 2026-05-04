@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-04T11:08:30Z"
-last_activity: 2026-05-04 -- Completed 71-03 Migration Safety (transaction wrappers, testing script, runbook)
+last_updated: "2026-05-04T11:09:30Z"
+last_activity: 2026-05-04 -- Completed 71-02 Security Hardening (pre-commit secrets, Gitleaks CI, pinned deps, CSP nonces)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 60
-  completed_plans: 60
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -94,6 +94,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 ## Decisions
 
 - **71-03:** All 22 Alembic migrations already had downgrade() - no changes needed; Migration test script uses PID-suffixed database name for isolation; SQL migrations wrapped in BEGIN/COMMIT for atomic execution
+- **71-02:** Pre-commit regex patterns for OpenAI/Stripe/GitHub/AWS/Slack/Google secrets; Gitleaks with full history scan; CSP strict-dynamic with nonce via x-nonce header; Security deps pinned exact (no ^)
 - **71-01:** BACKEND_URL -> OPEN_SEO_URL, AIWRITER_INTERNAL_URL -> AI_WRITER_URL for consistent naming; Zod refine() for production-only required validation; Legacy fallbacks removed to enforce standardized naming
 - **70-03:** Minimum 300ms overlay duration prevents jarring flash on fast client switches; Help redirects in middleware for external URL handling; Breadcrumb uses aria-current=page for accessibility; safeParseJsonString for strings, safeParseJson for Response objects; Debug-level logging for localStorage errors (expected in private browsing)
 - **70-01:** useRef for timer cleanup on unmount (prevents memory leaks); Stable keys from content.slice(0,30).replace(/\s/g,'-') when no ID; item.href as key for nav items; aria-describedby points to hint normally, error when invalid; role=alert on error messages
