@@ -129,7 +129,7 @@ describe("MOFU Patterns", () => {
       matched: true,
       patternType: "selection",
     });
-    expect(matchPatterns("koks šampūnas geriausias", MOFU_PATTERNS)).toEqual({
+    expect(matchPatterns("koks šampūnas tinka", MOFU_PATTERNS)).toEqual({
       matched: true,
       patternType: "selection",
     });
