@@ -33,6 +33,13 @@ import {
   type SectionType,
   type GeneratedSection,
 } from "./SectionGenerator";
+import {
+  cascadeSelector,
+  DEFAULT_CASCADE,
+  type SelectionResult,
+  type FunnelStage,
+  type CascadeConfig,
+} from "@/server/features/keywords";
 
 const log = createLogger({ module: "ProposalGeneratorService" });
 
@@ -323,17 +330,37 @@ export class ProposalGeneratorService {
       keyword: string;
       searchVolume: number;
       difficulty: number;
-    }>
+      funnelStage?: FunnelStage;
+      compositeScore?: number;
+    }>,
+    cascadeConfig?: CascadeConfig
   ): ProposalContent {
     // Map sections to ProposalContent structure
     const execSummary = sections.find((s) => s.type === "executive_summary");
 
-    // Build opportunities from keyword gaps
-    const opportunities = keywordGaps.slice(0, 10).map((kw) => ({
+    // Prepare keywords for cascade selection
+    const keywordsForSelection = keywordGaps.map((kw) => ({
       keyword: kw.keyword,
-      volume: kw.searchVolume,
-      difficulty: this.mapDifficulty(kw.difficulty),
-      potential: Math.round(kw.searchVolume * 0.15), // Estimated CTR at top position
+      funnelStage: kw.funnelStage || this.inferFunnelStage(kw),
+      compositeScore: kw.compositeScore || 0.5,
+      metrics: {
+        volume: kw.searchVolume,
+        difficulty: kw.difficulty,
+      },
+    }));
+
+    // Run cascade selection
+    const selection = cascadeSelector.select(
+      keywordsForSelection,
+      cascadeConfig || { ...DEFAULT_CASCADE, targetCount: 10 }
+    );
+
+    // Map selected keywords to opportunities
+    const opportunities = selection.selected.map((kw) => ({
+      keyword: kw.keyword,
+      volume: kw.metrics.volume,
+      difficulty: this.mapDifficulty(kw.metrics.difficulty),
+      potential: Math.round(kw.metrics.volume * 0.15),
     }));
 
     return {
@@ -380,6 +407,41 @@ export class ProposalGeneratorService {
     if (difficulty <= 30) return "easy";
     if (difficulty <= 60) return "medium";
     return "hard";
+  }
+
+  /**
+   * Infer funnel stage from keyword characteristics.
+   * Heuristic: high-intent signals -> BOFU, question words -> TOFU
+   */
+  private inferFunnelStage(kw: { keyword: string; difficulty: number }): FunnelStage {
+    const keyword = kw.keyword.toLowerCase();
+
+    // BOFU indicators (commercial intent)
+    if (
+      keyword.includes('buy') ||
+      keyword.includes('price') ||
+      keyword.includes('kaina') ||
+      keyword.includes('pirkti') ||
+      keyword.includes('įsigyti') ||
+      keyword.includes('užsakyti')
+    ) {
+      return 'bofu';
+    }
+
+    // TOFU indicators (informational)
+    if (
+      keyword.includes('what') ||
+      keyword.includes('how') ||
+      keyword.includes('kas') ||
+      keyword.includes('kaip') ||
+      keyword.includes('kodėl') ||
+      keyword.includes('why')
+    ) {
+      return 'tofu';
+    }
+
+    // Default to MOFU (consideration)
+    return 'mofu';
   }
 
   /**
