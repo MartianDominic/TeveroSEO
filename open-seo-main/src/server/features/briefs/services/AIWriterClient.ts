@@ -7,9 +7,8 @@ import { createLogger } from "@/server/lib/logger";
 import type { ContentBriefSelect } from "@/db/brief-schema";
 
 const log = createLogger({ module: "AIWriterClient" });
-// ENV-H04 FIX: Standardized to AI_WRITER_URL to match apps/web and docker-compose.vps.yml
-// Supports legacy AIWRITER_INTERNAL_URL for backward compatibility during migration
-const AI_WRITER_API = process.env.AI_WRITER_URL || process.env.AIWRITER_INTERNAL_URL || "http://localhost:8000";
+// CFG-CRIT-01 FIX: Standardized to AI_WRITER_URL
+const AI_WRITER_API = process.env.AI_WRITER_URL || "http://localhost:8000";
 
 /** Timeout for AI operations (60 seconds) */
 const AI_WRITER_TIMEOUT_MS = 60000;

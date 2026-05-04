@@ -5,7 +5,8 @@
  * Client-side wrappers for calling open-seo-main backend endpoints.
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+// CFG-CRIT-01 FIX: Standardized to NEXT_PUBLIC_OPEN_SEO_URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:3001";
 
 export interface ChecklistItem {
   id: string;

@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
   }
 
   const prospectId = request.nextUrl.searchParams.get("prospectId");
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
+  const backendUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   try {
     const params = new URLSearchParams({ workspaceId: orgId });

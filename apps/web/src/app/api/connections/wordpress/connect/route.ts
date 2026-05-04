@@ -79,8 +79,9 @@ export async function POST(request: NextRequest) {
 
     // Store connection via backend API
     // credentialType: 'app_password' per D-15
+    // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
     const backendUrl =
-      process.env.BACKEND_URL || "http://localhost:3001";
+      process.env.OPEN_SEO_URL || "http://localhost:3001";
 
     const connectionId = nanoid();
     const storeResponse = await fetch(

@@ -55,10 +55,9 @@ function compareUUIDs(
 
 const log = createLogger({ module: "ClientSyncService" });
 
-// AI-Writer API URL (matches AIWriterClient.ts configuration)
+// AI-Writer API URL (CFG-CRIT-01 FIX: Standardized to AI_WRITER_URL)
 const AI_WRITER_API =
   process.env.AI_WRITER_URL ||
-  process.env.AIWRITER_INTERNAL_URL ||
   "http://localhost:8000";
 
 // Timeout for fetching client from AI-Writer

@@ -38,7 +38,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params;
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
+  const backendUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   try {
     const response = await fetch(
@@ -100,7 +101,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params;
-  const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+  // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
+  const backendUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
 
   try {
     const response = await fetch(

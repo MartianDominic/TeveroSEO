@@ -65,9 +65,8 @@ services:
       ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
       DATAFORSEO_API_KEY: ${DATAFORSEO_API_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
-      # Alias for backwards compatibility with code using AI_WRITER_API_URL
-      AI_WRITER_API_URL: "http://ai-writer-backend:8000"
+      # CFG-CRIT-01 FIX: Standardized to AI_WRITER_URL
+      AI_WRITER_URL: "http://ai-writer-backend:8000"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       # Security: Rate limiting and encryption
@@ -107,9 +106,8 @@ services:
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
       ALWRITY_DATABASE_URL: "postgresql://alwrity_user:${ALWRITY_DB_PASSWORD}@postgres:5432/alwrity"
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      AIWRITER_INTERNAL_URL: "http://ai-writer-backend:8000"
-      # Alias for backwards compatibility with code using AI_WRITER_API_URL
-      AI_WRITER_API_URL: "http://ai-writer-backend:8000"
+      # CFG-CRIT-01 FIX: Standardized to AI_WRITER_URL
+      AI_WRITER_URL: "http://ai-writer-backend:8000"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       PUPPETEER_WS_ENDPOINT: "ws://puppeteer-pdf:9222"
