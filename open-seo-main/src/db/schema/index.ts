@@ -60,3 +60,6 @@ export * from "./shared-clients";
 export * from "./shared-voice-profiles";
 export * from "./seo-gsc-snapshots";
 export * from "./seo-ga4-snapshots";
+
+// Phase 82: Chat Integration
+export * from "./analysis-sessions";
