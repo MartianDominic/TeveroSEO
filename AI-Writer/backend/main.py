@@ -95,6 +95,9 @@ from routers.seo_tools import router as seo_tools_router
 # Import SEO analytics router (Phase 14 - dashboard aggregation)
 from routers.seo_analytics import router as seo_analytics_router
 
+# Import embeddings router (Phase 73-03 - reranking)
+from routers.embeddings import router as embeddings_router
+
 # Import dashboard API router (metrics + saved views)
 from api.dashboard import router as dashboard_router
 # Import Facebook Writer endpoints
@@ -669,6 +672,9 @@ app.include_router(internal_router)
 
 # SEO Analytics routes (Phase 14 - dashboard aggregation)
 app.include_router(seo_analytics_router)
+
+# Embeddings routes (Phase 73-03 - reranking)
+app.include_router(embeddings_router)
 
 # Dashboard API routes (metrics + saved views)
 app.include_router(dashboard_router)
