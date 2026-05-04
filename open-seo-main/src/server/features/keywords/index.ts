@@ -224,3 +224,22 @@ export {
   RelevanceScorer,
   createRelevanceScorer,
 } from './relevance';
+
+// =============================================================================
+// Phase 80: Cascade Selection - BOFU-first keyword selection
+// =============================================================================
+export {
+  CascadeSelector,
+  cascadeSelector,
+  DEFAULT_CASCADE,
+  SERVICE_CASCADE,
+  ECOMMERCE_CASCADE,
+  CONTENT_CASCADE,
+  type CascadeConfig,
+  type SelectionResult,
+  type SelectedKeyword,
+  type ExcludedKeyword,
+  type SelectionBreakdown,
+  type StageConfig,
+  type FunnelStage,
+} from './selection';
