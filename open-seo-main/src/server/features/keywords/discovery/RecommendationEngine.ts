@@ -75,7 +75,7 @@ function generateContentGapRecommendations(
   }
 
   const recommendations: DiscoveryRecommendation[] = [];
-  for (const [landingPage, links] of grouped) {
+  Array.from(grouped.entries()).forEach(([landingPage, links]) => {
     recommendations.push({
       type: 'content_gap' as const,
       priority: 'medium',
@@ -87,7 +87,7 @@ function generateContentGapRecommendations(
         pages: 1,
       },
     });
-  }
+  });
 
   return recommendations;
 }
