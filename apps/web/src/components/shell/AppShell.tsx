@@ -114,8 +114,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       if (stored === "true") {
         setCollapsed(true);
       }
-    } catch {
-      // Ignore storage errors
+    } catch (error) {
+      // localStorage unavailable (private browsing, etc.) - use default state
+      console.debug('[AppShell] localStorage unavailable:', error instanceof Error ? error.message : 'Unknown error');
     }
   }, []);
 
@@ -125,8 +126,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(COLLAPSED_KEY, String(collapsed));
-    } catch {
-      // ignore storage errors
+    } catch (error) {
+      // localStorage unavailable - state won't persist across sessions
+      console.debug('[AppShell] Failed to persist collapsed state:', error instanceof Error ? error.message : 'Unknown error');
     }
   }, [collapsed]);
 

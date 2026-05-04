@@ -331,3 +331,86 @@ export function extractErrorMessage(
 
   return defaultMessage;
 }
+
+/**
+ * Safely parse a JSON string, returning a fallback on failure.
+ *
+ * HIGH-ERROR-CATCH-01: Use this instead of empty catch blocks like:
+ *   try { data = JSON.parse(str); } catch {}
+ *
+ * This function logs parse failures for debugging while returning
+ * a typed fallback value.
+ *
+ * @param json - The JSON string to parse
+ * @param fallback - Value to return if parsing fails
+ * @param context - Optional context for logging
+ * @returns Parsed value or fallback
+ *
+ * @example
+ * ```typescript
+ * // Before: Silent failure, hard to debug
+ * let config = {};
+ * try { config = JSON.parse(str); } catch {}
+ *
+ * // After: Logged failure, typed fallback
+ * const config = safeParseJsonString(str, {}, 'loadConfig');
+ * ```
+ */
+export function safeParseJsonString<T>(
+  json: string | null | undefined,
+  fallback: T,
+  context?: string
+): T {
+  if (!json || json.trim() === '') {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    if (context) {
+      logger.warn(`[${context}] Failed to parse JSON string`, {
+        error: error instanceof Error ? error.message : 'Unknown parse error',
+        preview: json.slice(0, 100),
+      });
+    }
+    return fallback;
+  }
+}
+
+/**
+ * Get a human-readable error message from any error type.
+ *
+ * HIGH-ERROR-CATCH-01: Use this to extract messages from caught errors
+ * instead of swallowing them silently.
+ *
+ * @param error - The caught error (any type)
+ * @param defaultMessage - Fallback message if extraction fails
+ * @returns Human-readable error message
+ *
+ * @example
+ * ```typescript
+ * // Before: Silent catch
+ * try { ... } catch {}
+ *
+ * // After: Logged error with context
+ * try { ... } catch (error) {
+ *   console.warn('[myFunction]', getErrorMessage(error));
+ * }
+ * ```
+ */
+export function getErrorMessage(
+  error: unknown,
+  defaultMessage: string = 'An unexpected error occurred'
+): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return defaultMessage;
+}

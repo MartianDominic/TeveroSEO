@@ -52,7 +52,9 @@ async function handlePost(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (error) {
+      // Log parse failure for debugging - client sent malformed JSON
+      console.warn('[api/clients] JSON parse failed:', error instanceof Error ? error.message : 'Unknown error');
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 

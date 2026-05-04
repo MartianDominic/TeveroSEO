@@ -44,7 +44,12 @@ async function request<T>(
   let parsed: unknown = null;
   try {
     parsed = text ? JSON.parse(text) : null;
-  } catch {
+  } catch (error) {
+    // JSON parse failed - use raw text as fallback
+    // This is expected for non-JSON responses (plain text, HTML errors)
+    logger.debug(`[api-client] JSON parse failed for ${method} ${path}, using raw text`, {
+      error: error instanceof Error ? error.message : 'Unknown parse error',
+    });
     parsed = text;
   }
   if (!res.ok) {
