@@ -56,6 +56,8 @@ interface ClientState {
   isStale: boolean;
   /** FIX-03: Track last validation timestamp */
   lastValidatedAt: number | null;
+  /** HIGH-UX-01: Track client switching state for loading overlay */
+  isSwitching: boolean;
 }
 
 interface ClientActions {
@@ -74,6 +76,8 @@ interface ClientActions {
   validateActiveClient: () => Promise<boolean>;
   /** FIX-03: Handle client deletion event */
   handleClientDeleted: (clientId: string) => void;
+  /** HIGH-UX-01: Set switching state for loading overlay */
+  setIsSwitching: (switching: boolean) => void;
 }
 
 export type ClientStore = ClientState & ClientActions;
@@ -89,6 +93,7 @@ export const useClientStore = create<ClientStore>()(
       lastFetchedAt: null,
       isStale: false,
       lastValidatedAt: null,
+      isSwitching: false,
 
       fetchClients: async () => {
         set({ isLoading: true, error: null });
@@ -252,6 +257,11 @@ export const useClientStore = create<ClientStore>()(
         } else {
           set({ clients: updatedClients });
         }
+      },
+
+      // HIGH-UX-01: Set switching state for loading overlay
+      setIsSwitching: (switching: boolean) => {
+        set({ isSwitching: switching });
       },
     }),
     {

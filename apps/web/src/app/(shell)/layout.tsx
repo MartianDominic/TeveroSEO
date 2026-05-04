@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/shell/AppShell";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ClientSwitchOverlay } from "@/components/ui/client-switch-overlay";
 
 export default function ShelledLayout({
   children,
@@ -14,6 +15,8 @@ export default function ShelledLayout({
           {children}
         </ErrorBoundary>
       </AppShell>
+      {/* HIGH-UX-01: Loading overlay during client switch */}
+      <ClientSwitchOverlay />
     </ThemeProvider>
   );
 }

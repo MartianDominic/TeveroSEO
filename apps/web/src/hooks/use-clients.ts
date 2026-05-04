@@ -134,11 +134,23 @@ export function useActiveClient(): Client | null {
  * </button>
  * ```
  */
+/**
+ * Minimum overlay duration to prevent jarring flash.
+ * Users perceive instant switches as glitchy - a brief overlay feels intentional.
+ */
+const MIN_OVERLAY_DURATION_MS = 300;
+
 export function useSetActiveClient() {
   const queryClient = useQueryClient();
   const setActiveClient = useClientStore((state) => state.setActiveClient);
+  const setIsSwitching = useClientStore((state) => state.setIsSwitching);
 
-  return (clientId: string) => {
+  return async (clientId: string) => {
+    const startTime = Date.now();
+
+    // HIGH-UX-01: Show loading overlay during client switch
+    setIsSwitching(true);
+
     // Update store (includes abort of previous client's requests)
     setActiveClient(clientId);
 
@@ -146,9 +158,20 @@ export function useSetActiveClient() {
     broadcastSync.broadcastClientChange(clientId);
 
     // Invalidate client-specific queries so they refetch with new context
-    queryClient.invalidateQueries({ queryKey: queryKeys.audits.byClient(clientId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.goals.byClient(clientId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.analytics.client(clientId) });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.audits.byClient(clientId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.byClient(clientId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.client(clientId) }),
+    ]);
+
+    // Ensure minimum overlay duration to prevent jarring flash
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_OVERLAY_DURATION_MS) {
+      await new Promise((resolve) => setTimeout(resolve, MIN_OVERLAY_DURATION_MS - elapsed));
+    }
+
+    // Hide loading overlay
+    setIsSwitching(false);
   };
 }
 
