@@ -4,12 +4,17 @@
  * Provides endpoints to list, replay, and manage DLQ jobs for manual
  * inspection and recovery of failed analytics sync jobs.
  *
- * SECURITY: Protected by X-Internal-Api-Key header.
+ * SECURITY: Protected by X-Internal-Api-Key header + rate limiting.
  * These endpoints are NOT exposed to public - internal network only.
+ * Phase 72-03: Added 10 req/min rate limit per user.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "@/server/lib/logger";
+import {
+  adminRateLimiter,
+  rateLimitExceededResponse,
+} from "@/server/middleware";
 import {
   analyticsQueue,
   type AnalyticsDLQJobData,
@@ -103,6 +108,7 @@ export const Route = createFileRoute("/api/admin/dlq")({
        *
        * Returns a list of all dead-letter queue jobs for inspection.
        * Jobs are identified by the "dlq:" prefix in their name.
+       * Rate limited: 10 req/min per user (72-03).
        */
       GET: async ({ request }: { request: Request }) => {
         if (!verifyInternalApiKey(request)) {
@@ -110,6 +116,13 @@ export const Route = createFileRoute("/api/admin/dlq")({
             { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
             { status: 401, headers: { "Content-Type": "application/json" } },
           );
+        }
+
+        // Rate limit by user ID or IP (72-03)
+        const userId = request.headers.get("X-User-Id") ?? request.headers.get("X-Forwarded-For")?.split(",")[0] ?? "anonymous";
+        const rateLimitResult = await adminRateLimiter(userId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
         }
 
         try {
@@ -161,6 +174,7 @@ export const Route = createFileRoute("/api/admin/dlq")({
        *
        * Replays up to 10 DLQ jobs at a time to prevent overwhelming the system.
        * Each replayed job is removed from the DLQ after being re-queued.
+       * Rate limited: 10 req/min per user (72-03).
        */
       POST: async ({ request }: { request: Request }) => {
         if (!verifyInternalApiKey(request)) {
@@ -168,6 +182,13 @@ export const Route = createFileRoute("/api/admin/dlq")({
             { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
             { status: 401, headers: { "Content-Type": "application/json" } },
           );
+        }
+
+        // Rate limit by user ID or IP (72-03)
+        const userId = request.headers.get("X-User-Id") ?? request.headers.get("X-Forwarded-For")?.split(",")[0] ?? "anonymous";
+        const rateLimitResult = await adminRateLimiter(userId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
         }
 
         try {
@@ -241,6 +262,7 @@ export const Route = createFileRoute("/api/admin/dlq")({
        *
        * Removes all jobs from the DLQ without replaying them.
        * Use with caution - this action cannot be undone.
+       * Rate limited: 10 req/min per user (72-03).
        */
       DELETE: async ({ request }: { request: Request }) => {
         if (!verifyInternalApiKey(request)) {
@@ -248,6 +270,13 @@ export const Route = createFileRoute("/api/admin/dlq")({
             { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
             { status: 401, headers: { "Content-Type": "application/json" } },
           );
+        }
+
+        // Rate limit by user ID or IP (72-03)
+        const userId = request.headers.get("X-User-Id") ?? request.headers.get("X-Forwarded-For")?.split(",")[0] ?? "anonymous";
+        const rateLimitResult = await adminRateLimiter(userId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
         }
 
         try {

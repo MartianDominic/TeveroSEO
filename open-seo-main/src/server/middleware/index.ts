@@ -105,6 +105,9 @@ export {
   keywordEnrichRateLimiter,
   serpAnalyzeRateLimiter,
 
+  // Admin rate limiter (72-03)
+  adminRateLimiter,
+
   // Testing utilities
   resetRateLimit,
   getRateLimitStatus,

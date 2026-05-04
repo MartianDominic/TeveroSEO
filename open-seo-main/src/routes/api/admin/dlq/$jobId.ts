@@ -3,12 +3,17 @@
  *
  * Provides endpoints to replay or remove a specific DLQ job.
  *
- * SECURITY: Protected by X-Internal-Api-Key header.
+ * SECURITY: Protected by X-Internal-Api-Key header + rate limiting.
  * These endpoints are NOT exposed to public - internal network only.
+ * Phase 72-03: Added 10 req/min rate limit per user.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
 import { createLogger } from "@/server/lib/logger";
+import {
+  adminRateLimiter,
+  rateLimitExceededResponse,
+} from "@/server/middleware";
 import {
   analyticsQueue,
   type AnalyticsDLQJobData,
@@ -78,6 +83,7 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        * Creates a new job with the original data and removes the DLQ job.
        * Note: TanStack Start routes the POST to this handler, and we check
        * for /replay suffix in the URL to differentiate from other POST actions.
+       * Rate limited: 10 req/min per user (72-03).
        */
       POST: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
         if (!verifyInternalApiKey(request)) {
@@ -85,6 +91,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
             { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
             { status: 401, headers: { "Content-Type": "application/json" } },
           );
+        }
+
+        // Rate limit by user ID or IP (72-03)
+        const userId = request.headers.get("X-User-Id") ?? request.headers.get("X-Forwarded-For")?.split(",")[0] ?? "anonymous";
+        const rateLimitResult = await adminRateLimiter(userId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
         }
 
         const { jobId } = params;
@@ -150,6 +163,7 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        *
        * Permanently removes the job from the DLQ.
        * Use when a job should not be retried (e.g., invalid data, obsolete).
+       * Rate limited: 10 req/min per user (72-03).
        */
       DELETE: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
         if (!verifyInternalApiKey(request)) {
@@ -157,6 +171,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
             { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
             { status: 401, headers: { "Content-Type": "application/json" } },
           );
+        }
+
+        // Rate limit by user ID or IP (72-03)
+        const userId = request.headers.get("X-User-Id") ?? request.headers.get("X-Forwarded-For")?.split(",")[0] ?? "anonymous";
+        const rateLimitResult = await adminRateLimiter(userId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
         }
 
         const { jobId } = params;

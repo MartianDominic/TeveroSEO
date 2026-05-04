@@ -141,6 +141,12 @@ export const RATE_LIMITS = {
     window: 60,
     keyPrefix: "ratelimit:serp:analyze:",
   },
+  /** Admin endpoints - strict limits to prevent abuse */
+  ADMIN: {
+    limit: 10,
+    window: 60,
+    keyPrefix: "ratelimit:admin:",
+  },
 } as const;
 
 // --- Redis Key Helpers ---
@@ -572,6 +578,13 @@ export const keywordEnrichRateLimiter = createEndpointRateLimiter(
 export const serpAnalyzeRateLimiter = createEndpointRateLimiter(
   RATE_LIMITS.SERP_ANALYZE
 );
+
+/**
+ * Rate limiter for admin endpoints.
+ * 10 requests per minute per user.
+ * Phase 72-03: SaaS Readiness - Admin endpoint protection.
+ */
+export const adminRateLimiter = createEndpointRateLimiter(RATE_LIMITS.ADMIN);
 
 // --- Testing Utilities ---
 
