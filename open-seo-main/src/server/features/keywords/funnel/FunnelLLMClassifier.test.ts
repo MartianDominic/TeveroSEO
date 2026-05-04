@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { FunnelLLMClassifier, CircuitOpenError } from "./FunnelLLMClassifier";
+import OpenAI from "openai";
 
 // Mock OpenAI client
+const mockCreate = vi.fn();
 vi.mock("openai", () => {
   return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
+    default: class MockOpenAI {
+      constructor() {}
+      chat = {
         completions: {
-          create: vi.fn(),
+          create: mockCreate,
         },
-      },
-    })),
+      };
+    },
   };
 });
 
@@ -32,21 +35,9 @@ const mockValidResponse = {
 };
 
 describe("FunnelLLMClassifier", () => {
-  let mockCreate: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     process.env.XAI_API_KEY = "test-xai-key";
-
-    const OpenAI = vi.mocked((await import("openai")).default);
-    mockCreate = vi.fn();
-    OpenAI.mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: mockCreate,
-        },
-      },
-    }) as unknown as InstanceType<typeof OpenAI>);
   });
 
   afterEach(() => {
