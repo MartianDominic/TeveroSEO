@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-04T18:26:51.952Z"
+last_updated: "2026-05-04T20:39:55.360Z"
 last_activity: 2026-05-04 -- Completed 73-02 Template-aware Delta Hash (33 tests, Cheerio-based L2 detection)
 progress:
   total_phases: 14
@@ -197,6 +197,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - 53-04: Use organization.id as workspaceId for template scoping; crypto.randomUUID() for IDs; v6 tokens without var() syntax
 - 54-01: AES-256-GCM encryption with PAYMENT_ENCRYPTION_KEY; Factory pattern with provider caching per workspace; Stripe env var fallback for backwards compatibility
 - 73-02: Cheerio for DOM manipulation (already in deps); Full 64-char SHA256 hash for collision resistance; 30 dynamic selectors + 16 SEO selectors per research prescription
+- Lithuanian diacritic normalization for product matching (ą→a, č→c, etc.)
+- Priority thresholds: high >=0.7, medium >=0.5, low <0.5
+- DiscoveryResult as unified output aggregating all discovery data
 
 ## v5.0 Phases Summary
 
