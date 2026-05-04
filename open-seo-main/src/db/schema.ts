@@ -109,6 +109,9 @@ export * from "./pixel-schema";
 // API costs tracking schema (Phase 63)
 export * from "./api-costs-schema";
 
+// System secrets schema (superadmin credentials management)
+export * from "./system-secrets-schema";
+
 // Command Center schemas (Phase 62)
 // Re-export from schema/ subdirectory with renamed types to avoid collisions
 export {

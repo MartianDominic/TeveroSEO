@@ -17,3 +17,5 @@ export {
   RelevanceOutputSchema,
   DEFAULT_RELEVANCE_CONFIG,
 } from './types';
+
+export { RelevanceScorer, createRelevanceScorer } from './RelevanceScorer';
