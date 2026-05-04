@@ -105,8 +105,8 @@ export function SuccessScreen({
       origin: { y: 0.6 },
     });
 
-    // Side bursts
-    setTimeout(() => {
+    // Side bursts with cleanup
+    const timer1 = setTimeout(() => {
       confetti({
         particleCount: 50,
         angle: 60,
@@ -115,7 +115,7 @@ export function SuccessScreen({
       });
     }, 250);
 
-    setTimeout(() => {
+    const timer2 = setTimeout(() => {
       confetti({
         particleCount: 50,
         angle: 120,
@@ -123,6 +123,12 @@ export function SuccessScreen({
         origin: { x: 1 },
       });
     }, 400);
+
+    // Cleanup: clear timeouts on unmount to prevent memory leaks
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [showConfetti]);
 
   return (
