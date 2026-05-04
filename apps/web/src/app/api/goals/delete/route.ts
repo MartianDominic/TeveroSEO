@@ -12,9 +12,13 @@ import { deleteFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { validateCsrf } from "@/lib/api/security";
 import {
+  badRequest,
+  validationError,
+  internalError,
+} from "@/lib/api/responses";
+import {
   deleteGoalSchema,
   safeParseJson,
-  formatValidationErrors,
 } from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
@@ -29,19 +33,13 @@ async function handlePost(req: NextRequest) {
     // Safe JSON parsing
     const jsonResult = await safeParseJson(req);
     if (!jsonResult.success) {
-      return NextResponse.json(
-        { error: jsonResult.error },
-        { status: 400 }
-      );
+      return badRequest(jsonResult.error);
     }
 
-    // Validate with Zod schema
+    // Validate with Zod schema (422 for validation errors)
     const parsed = deleteGoalSchema.safeParse(jsonResult.data);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
-        { status: 400 }
-      );
+      return validationError(parsed.error);
     }
 
     const body = parsed.data;
@@ -69,7 +67,7 @@ async function handlePost(req: NextRequest) {
     if (err instanceof FastApiError) {
       return NextResponse.json(err.sanitizedBody, { status: err.status });
     }
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return internalError();
   }
 }
 

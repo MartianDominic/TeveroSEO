@@ -2,7 +2,7 @@
  * Data access layer for keyword_page_mapping table.
  * Handles CRUD operations and bulk upserts for mapping data.
  */
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   keywordPageMapping,
@@ -52,11 +52,13 @@ async function bulkUpsertMappings(
 
 /**
  * Get all mappings for a project.
+ * Phase 69-03: Added default limit (500) to prevent unbounded queries.
  */
 async function getMappingsByProject(
   projectId: string,
-  opts?: { action?: string },
+  opts?: { action?: string; limit?: number; offset?: number },
 ): Promise<KeywordPageMappingSelect[]> {
+  const { limit = 500, offset = 0 } = opts ?? {};
   const conditions = [eq(keywordPageMapping.projectId, projectId)];
 
   if (opts?.action) {
@@ -67,7 +69,9 @@ async function getMappingsByProject(
     .select()
     .from(keywordPageMapping)
     .where(and(...conditions))
-    .orderBy(desc(keywordPageMapping.updatedAt));
+    .orderBy(desc(keywordPageMapping.updatedAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 /**
@@ -87,11 +91,14 @@ async function getMappingByKeyword(
 
 /**
  * Get mappings by target URL (find all keywords mapped to a page).
+ * Phase 69-03: Added default limit (100) to prevent unbounded queries.
  */
 async function getMappingsByTargetUrl(
   projectId: string,
   targetUrl: string,
+  opts?: { limit?: number; offset?: number },
 ): Promise<KeywordPageMappingSelect[]> {
+  const { limit = 100, offset = 0 } = opts ?? {};
   return db
     .select()
     .from(keywordPageMapping)
@@ -100,7 +107,9 @@ async function getMappingsByTargetUrl(
         eq(keywordPageMapping.projectId, projectId),
         eq(keywordPageMapping.targetUrl, targetUrl),
       ),
-    );
+    )
+    .limit(limit)
+    .offset(offset);
 }
 
 /**
@@ -157,6 +166,7 @@ async function deleteAllMappings(projectId: string): Promise<void> {
 
 /**
  * Count mappings by action type.
+ * Phase 69-03: Fixed to use SQL COUNT instead of fetching all rows.
  */
 async function countMappingsByAction(projectId: string): Promise<{
   optimize: number;
@@ -164,14 +174,28 @@ async function countMappingsByAction(projectId: string): Promise<{
   total: number;
 }> {
   const rows = await db
-    .select()
+    .select({
+      action: keywordPageMapping.action,
+      count: sql<number>`count(*)::int`,
+    })
     .from(keywordPageMapping)
-    .where(eq(keywordPageMapping.projectId, projectId));
+    .where(eq(keywordPageMapping.projectId, projectId))
+    .groupBy(keywordPageMapping.action);
 
-  const optimize = rows.filter((r) => r.action === "optimize").length;
-  const create = rows.filter((r) => r.action === "create").length;
+  let optimize = 0;
+  let create = 0;
+  let total = 0;
 
-  return { optimize, create, total: rows.length };
+  for (const row of rows) {
+    total += row.count;
+    if (row.action === "optimize") {
+      optimize = row.count;
+    } else if (row.action === "create") {
+      create = row.count;
+    }
+  }
+
+  return { optimize, create, total };
 }
 
 export const MappingRepository = {

@@ -17,11 +17,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   WORKFLOW_QUEUE_NAME,
-  workflowQueue,
   initWorkflowQueue,
-  type WorkflowDLQJobData,
   type WorkflowJobData,
 } from "@/server/queues/workflowQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "workflow-worker" });
 
@@ -35,17 +34,17 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./workflow-processor.js", import.meta.url),
 );
 
-let worker: Worker<WorkflowJobData | WorkflowDLQJobData> | null = null;
+let worker: Worker<WorkflowJobData> | null = null;
 
 export async function startWorkflowWorker(): Promise<
-  Worker<WorkflowJobData | WorkflowDLQJobData>
+  Worker<WorkflowJobData>
 > {
   if (worker) return worker;
 
   // Initialize the repeatable jobs (weekly touch reset)
   await initWorkflowQueue();
 
-  worker = new Worker<WorkflowJobData | WorkflowDLQJobData>(
+  worker = new Worker<WorkflowJobData>(
     WORKFLOW_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -67,7 +66,7 @@ export async function startWorkflowWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<WorkflowJobData | WorkflowDLQJobData> | undefined,
+      job: Job<WorkflowJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -83,29 +82,25 @@ export async function startWorkflowWorker(): Promise<
       jobLogger.error("Job failed", err, {
         attempt: job.attemptsMade,
         maxAttempts,
-        type: (job.data as WorkflowJobData).type,
+        type: job.data.type,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: WorkflowDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as WorkflowJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: WORKFLOW_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await workflowQueue.add("dlq:workflow", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days
-            removeOnFail: { age: 604800 },
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", {
+          await dlqQueue.add(`dlq:${WORKFLOW_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", {
             attemptsMade: job.attemptsMade,
-            type: (job.data as WorkflowJobData).type,
+            type: job.data.type,
           });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
@@ -124,7 +119,7 @@ export async function startWorkflowWorker(): Promise<
         job.finishedOn && job.processedOn
           ? job.finishedOn - job.processedOn
           : undefined,
-      type: (job.data as WorkflowJobData).type,
+      type: job.data.type,
     });
   });
 

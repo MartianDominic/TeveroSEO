@@ -8,8 +8,7 @@
  * when a step after client creation fails.
  */
 
-import { json } from "@tanstack/start";
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/db";
 import { clients } from "@/db/client-schema";
 import { eq } from "drizzle-orm";
@@ -30,65 +29,75 @@ const RollbackRequestSchema = z.object({
  * Roll back a client creation by marking it as deleted.
  * This is called during saga compensation.
  */
-export const APIRoute = createAPIFileRoute("/api/clients/$clientId/rollback")({
-  DELETE: async ({ request, params }) => {
-    const { clientId } = params;
+export const Route = createFileRoute("/api/clients/$clientId/rollback")({
+  server: {
+    handlers: {
+      DELETE: async ({
+        request,
+        params,
+      }: {
+        request: Request;
+        params: { clientId: string };
+      }) => {
+        const { clientId } = params;
 
-    // Validate internal webhook secret
-    const expectedSecret = process.env.INTERNAL_WEBHOOK_SECRET;
-    if (expectedSecret) {
-      const providedSecret = request.headers.get("X-Webhook-Secret");
-      if (providedSecret !== expectedSecret) {
-        log.warn("Invalid webhook secret for rollback request");
-        return json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
+        // Validate internal webhook secret
+        const expectedSecret = process.env.INTERNAL_WEBHOOK_SECRET;
+        if (expectedSecret) {
+          const providedSecret = request.headers.get("X-Webhook-Secret");
+          if (providedSecret !== expectedSecret) {
+            log.warn("Invalid webhook secret for rollback request");
+            return Response.json({ error: "Unauthorized" }, { status: 401 });
+          }
+        }
 
-    // Parse optional body
-    let reason = "saga_rollback";
-    let sagaId: string | undefined;
-    try {
-      const body = await request.json();
-      const parsed = RollbackRequestSchema.safeParse(body);
-      if (parsed.success) {
-        reason = parsed.data.reason ?? reason;
-        sagaId = parsed.data.sagaId;
-      }
-    } catch {
-      // Body is optional for DELETE
-    }
+        // Parse optional body
+        let reason = "saga_rollback";
+        let sagaId: string | undefined;
+        try {
+          const body = await request.json();
+          const parsed = RollbackRequestSchema.safeParse(body);
+          if (parsed.success) {
+            reason = parsed.data.reason ?? reason;
+            sagaId = parsed.data.sagaId;
+          }
+        } catch {
+          // Body is optional for DELETE
+        }
 
-    log.info("Processing client rollback", { clientId, reason, sagaId });
+        log.info("Processing client rollback", { clientId, reason, sagaId });
 
-    try {
-      // Soft delete the client
-      const result = await db
-        .update(clients)
-        .set({
-          isDeleted: true,
-          deletedAt: new Date(),
-          status: "churned",
-          updatedAt: new Date(),
-        })
-        .where(eq(clients.id, clientId))
-        .returning({ id: clients.id });
+        try {
+          // Soft delete the client
+          const result = await db
+            .update(clients)
+            .set({
+              isDeleted: true,
+              deletedAt: new Date(),
+              status: "churned",
+              updatedAt: new Date(),
+            })
+            .where(eq(clients.id, clientId))
+            .returning({ id: clients.id });
 
-      if (result.length === 0) {
-        // Client didn't exist locally - that's fine for rollback
-        log.debug("Client not found for rollback (may not have been synced)", { clientId });
-        return json({ success: true, found: false });
-      }
+          if (result.length === 0) {
+            // Client didn't exist locally - that's fine for rollback
+            log.debug("Client not found for rollback (may not have been synced)", { clientId });
+            return Response.json({ success: true, found: false });
+          }
 
-      log.info("Client rollback completed", { clientId, reason });
-      return json({ success: true, found: true });
-    } catch (error) {
-      log.error(
-        "Client rollback failed",
-        error instanceof Error ? error : new Error(String(error)),
-        { clientId }
-      );
+          log.info("Client rollback completed", { clientId, reason });
+          return Response.json({ success: true, found: true });
+        } catch (error) {
+          log.error(
+            "Client rollback failed",
+            error instanceof Error ? error : new Error(String(error)),
+            { clientId }
+          );
 
-      return json({ error: "Rollback failed" }, { status: 500 });
-    }
+          return Response.json({ error: "Rollback failed" }, { status: 500 });
+        }
+      },
+    },
   },
 });

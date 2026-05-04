@@ -135,10 +135,15 @@ export async function toggleActive(
 }
 
 /**
- * Delete a rule.
+ * Delete a rule with workspace scope.
+ * Phase 69-03: Added workspaceId parameter for tenant-safe deletion.
  */
-export async function deleteRule(id: string): Promise<void> {
-  await db.delete(followUpRules).where(eq(followUpRules.id, id));
+export async function deleteRule(id: string, workspaceId: string): Promise<boolean> {
+  const result = await db
+    .delete(followUpRules)
+    .where(and(eq(followUpRules.id, id), eq(followUpRules.workspaceId, workspaceId)))
+    .returning({ id: followUpRules.id });
+  return result.length > 0;
 }
 
 export const FollowUpRulesRepository = {

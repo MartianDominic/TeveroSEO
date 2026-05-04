@@ -70,8 +70,9 @@ const DEFAULT_JOB_OPTIONS: JobsOptions = {
 /**
  * Workflow queue.
  * Uses shared BullMQ connection for Redis.
+ * H-BULL-01: DLQ jobs now route to centralized dead-letter-queue
  */
-export const workflowQueue = new Queue<WorkflowJobData | WorkflowDLQJobData>(
+export const workflowQueue = new Queue<WorkflowJobData>(
   WORKFLOW_QUEUE_NAME,
   {
     connection: getSharedBullMQConnection("queue:workflow"),

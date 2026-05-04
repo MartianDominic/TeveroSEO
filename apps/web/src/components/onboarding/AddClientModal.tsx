@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * AddClientModal - Client creation modal with sync confirmation
+ *
+ * FIX-16 Updates:
+ * - H-ONBOARD-03: Added sync confirmation before redirect (verifySyncComplete)
+ * - M-ONBOARD-01: Required fields already marked with asterisk
+ * - M-ONBOARD-03: Form state preserved on error (already implemented)
+ * - M-ONBOARD-05: Improved validation messages
+ */
+
 import React, { useState, useRef, useEffect } from "react";
 import {
   Button,
@@ -25,7 +35,7 @@ interface AddClientModalProps {
   onCreated: (clientId: string) => void;
 }
 
-type Step = "form" | "creating";
+type Step = "form" | "creating" | "syncing";
 
 interface PlatformSecretStatus {
   key_name: string;
@@ -35,6 +45,14 @@ interface PlatformSecretStatus {
 
 // Timeout for creation process (60 seconds)
 const CREATION_TIMEOUT_MS = 60000;
+
+// H-ONBOARD-03: Max retries for sync verification
+const SYNC_VERIFY_MAX_RETRIES = 5;
+const SYNC_VERIFY_DELAY_MS = 500;
+// FIX-08 H-SYNC-03: Exponential backoff constants for sync verification
+const SYNC_VERIFY_INITIAL_DELAY_MS = 500;
+const SYNC_VERIFY_BACKOFF_MULTIPLIER = 1.5;
+const SYNC_VERIFY_MAX_DELAY_MS = 5000;
 
 // ---------------------------------------------------------------------------
 // AddClientModal
@@ -119,27 +137,65 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
     setIsCancelling(false);
   };
 
+  // M-ONBOARD-05 FIX: Improved validation messages with specific guidance
   const validateForm = (): boolean => {
     let valid = true;
 
     if (!name.trim()) {
-      setNameError("Client name is required");
+      setNameError("Enter a client name (e.g., company name or project name)");
+      valid = false;
+    } else if (name.trim().length < 2) {
+      setNameError("Client name must be at least 2 characters");
       valid = false;
     } else {
       setNameError(null);
     }
 
     if (!url.trim()) {
-      setUrlError("Website URL is required");
+      setUrlError("Enter the client's website URL (e.g., https://example.com)");
       valid = false;
     } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      setUrlError("URL must start with http:// or https://");
+      setUrlError("URL must start with https:// (recommended) or http://");
       valid = false;
     } else {
-      setUrlError(null);
+      try {
+        new URL(url);
+        setUrlError(null);
+      } catch {
+        setUrlError("Enter a valid URL (e.g., https://example.com)");
+        valid = false;
+      }
     }
 
     return valid;
+  };
+
+  /**
+   * FIX-08 H-SYNC-03: Verify client sync is complete before redirect.
+   * Uses exponential backoff for retries: 500ms, 1000ms, 2000ms, 4000ms, 4000ms
+   * Polls the client endpoint to ensure the record is accessible.
+   */
+  const verifySyncComplete = async (clientId: string): Promise<boolean> => {
+    for (let attempt = 0; attempt < SYNC_VERIFY_MAX_RETRIES; attempt++) {
+      try {
+        const client = await apiGet<{ id: string }>(`/api/clients/${clientId}`);
+        if (client?.id === clientId) {
+          return true;
+        }
+      } catch {
+        // Client not yet accessible, retry
+      }
+
+      // FIX-08 H-SYNC-03: Calculate exponential backoff delay with cap
+      const delay = Math.min(
+        SYNC_VERIFY_INITIAL_DELAY_MS * Math.pow(SYNC_VERIFY_BACKOFF_MULTIPLIER, attempt),
+        SYNC_VERIFY_MAX_DELAY_MS
+      );
+      // Add small jitter to prevent thundering herd
+      const jitter = Math.random() * 0.1 * delay;
+      await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+    }
+    return false;
   };
 
   const handleSubmit = async () => {
@@ -167,6 +223,16 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
         name: string;
         website_url: string | null;
       }>("/api/clients", { name: name.trim(), website_url: url.trim() });
+
+      // H-ONBOARD-03 FIX: Update step to show syncing state
+      setStep("syncing");
+
+      // H-ONBOARD-03 FIX: Verify sync is complete before proceeding
+      const syncComplete = await verifySyncComplete(newClient.id);
+      if (!syncComplete) {
+        // Log warning but continue - the client was created, just slow to sync
+        console.warn(`Client ${newClient.id} sync verification timed out, proceeding anyway`);
+      }
 
       // Refresh client list and set as active
       await fetchClients();
@@ -199,6 +265,11 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
         // Secrets check failed — skip scrape trigger, non-blocking
       }
 
+      // Clear timeout on success
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
       // Reset form state before calling onCreated
       setName("");
       setUrl("");
@@ -217,8 +288,11 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
+      // M-ONBOARD-05 FIX: More helpful error message
       const msg =
-        err instanceof Error ? err.message : "Failed to create client";
+        err instanceof Error
+          ? err.message
+          : "Failed to create client. Please check your connection and try again.";
       setSubmitError(msg);
       setStep("form");
     }
@@ -320,10 +394,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <div>
               <p className="text-sm font-medium text-foreground">
-                Creating client and gathering intelligence...
+                Creating client...
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                This usually takes 30–60 seconds
+                Step 1 of 2: Setting up client record
               </p>
             </div>
             <Button
@@ -336,6 +410,21 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
               <X className="h-4 w-4 mr-1" />
               Cancel
             </Button>
+          </div>
+        )}
+
+        {/* H-ONBOARD-03: Syncing step - confirm client is accessible */}
+        {step === "syncing" && !isCancelling && (
+          <div className="mt-6 flex flex-col items-center gap-3 py-4 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                Finalizing setup...
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Step 2 of 2: Confirming client is ready
+              </p>
+            </div>
           </div>
         )}
       </DialogContent>

@@ -24,7 +24,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { computationMethods } from "./goal-computations";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { GOAL_QUEUE_NAME, goalQueue, initGoalProcessingScheduler, type GoalProcessorJobData, type GoalDLQJobData } from "@/server/queues/goalQueue";
+import { GOAL_QUEUE_NAME, initGoalProcessingScheduler, type GoalProcessorJobData } from "@/server/queues/goalQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const log = createLogger({ module: "goal-processor" });
 
@@ -253,24 +254,20 @@ export async function startGoalWorker(): Promise<void> {
       jobId: job.id,
     });
 
-    // HIGH-52 fix: Use inline DLQ pattern (same as other workers)
-    if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    if (job.attemptsMade >= maxAttempts) {
       try {
-        const dlqData: GoalDLQJobData = {
-          originalJobId: job.id,
-          originalJobName: job.name,
-          data: job.data as GoalProcessorJobData,
+        const dlqQueue = getDLQQueue();
+        const dlqData: DLQJobData = {
+          originalQueue: GOAL_QUEUE_NAME,
+          jobId: job.id,
+          jobData: job.data,
           error: error.message,
           stack: error.stack,
           failedAt: new Date().toISOString(),
-          attemptsMade: job.attemptsMade,
         };
-        await goalQueue.add("dlq:goal-processor", dlqData, {
-          removeOnComplete: { age: 604800 }, // 7 days
-          removeOnFail: { age: 604800 },
-          attempts: 1,
-        });
-        jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+        await dlqQueue.add(`dlq:${GOAL_QUEUE_NAME}:${job.id}`, dlqData);
+        jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
       } catch (dlqErr) {
         jobLogger.error("Failed to move job to DLQ", dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
       }

@@ -14,11 +14,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   INSTALLMENT_REMINDER_QUEUE_NAME,
-  installmentReminderQueue,
   initInstallmentReminderQueue,
   type InstallmentReminderJobData,
-  type InstallmentReminderDLQJobData,
 } from "@/server/queues/installmentReminderQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "installment-reminder-worker" });
 
@@ -31,19 +30,17 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./installment-reminder-processor.js", import.meta.url)
 );
 
-let worker: Worker<
-  InstallmentReminderJobData | InstallmentReminderDLQJobData
-> | null = null;
+let worker: Worker<InstallmentReminderJobData> | null = null;
 
 export async function startInstallmentReminderWorker(): Promise<
-  Worker<InstallmentReminderJobData | InstallmentReminderDLQJobData>
+  Worker<InstallmentReminderJobData>
 > {
   if (worker) return worker;
 
   // Initialize the repeatable job
   await initInstallmentReminderQueue();
 
-  worker = new Worker<InstallmentReminderJobData | InstallmentReminderDLQJobData>(
+  worker = new Worker<InstallmentReminderJobData>(
     INSTALLMENT_REMINDER_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -65,7 +62,7 @@ export async function startInstallmentReminderWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<InstallmentReminderJobData | InstallmentReminderDLQJobData> | undefined,
+      job: Job<InstallmentReminderJobData> | undefined,
       err: Error
     ) => {
       if (!job) {
@@ -83,24 +80,20 @@ export async function startInstallmentReminderWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: InstallmentReminderDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as InstallmentReminderJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: INSTALLMENT_REMINDER_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await installmentReminderQueue.add("dlq:installment-reminders", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days
-            removeOnFail: { age: 604800 },
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${INSTALLMENT_REMINDER_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

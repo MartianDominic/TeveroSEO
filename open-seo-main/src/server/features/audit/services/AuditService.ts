@@ -209,21 +209,139 @@ async function getCrawlProgress(auditId: string, projectId: string) {
   return AuditProgressKV.getCrawledUrls(auditId);
 }
 
+/**
+ * Cancel a running audit by removing the BullMQ job and marking as cancelled.
+ * H-AUDIT-01: Provides user-visible cancellation for stuck audits.
+ * H-AUDIT-03: Ensures job is cancelled before any cleanup.
+ */
+async function cancelAudit(auditId: string, projectId: string) {
+  const audit = await AuditRepository.getAuditForProject(auditId, projectId);
+  if (!audit) {
+    throw new AppError("NOT_FOUND");
+  }
+
+  if (audit.status !== "running") {
+    throw new AppError("VALIDATION_ERROR", "Audit is not running");
+  }
+
+  if (!audit.workflowInstanceId) {
+    throw new AppError("INTERNAL_ERROR", "Audit has no workflow instance");
+  }
+
+  const workflowInstanceId = audit.workflowInstanceId;
+
+  // Cancel the BullMQ job first (H-AUDIT-03)
+  const job = await auditQueue.getJob(auditId);
+  if (job) {
+    try {
+      // Try to remove the job. If active, moveToFailed is called in catch.
+      await job.remove();
+    } catch {
+      // Job is active or already completed/failed - try to mark as failed
+      try {
+        await job.moveToFailed(new Error("Cancelled by user"), auditId);
+      } catch {
+        // Job may already be in a terminal state
+      }
+    }
+  }
+
+  // Mark audit as cancelled in database
+  await AuditRepository.cancelAudit(auditId, workflowInstanceId);
+
+  return { success: true };
+}
+
+/**
+ * Retry a failed audit by re-enqueueing the job.
+ * M-AUDIT-02: Provides retry UI for failed audits.
+ */
+async function retryAudit(
+  auditId: string,
+  projectId: string,
+  billingCustomer: {
+    organizationId: string;
+    userEmail: string;
+    userId: string;
+  },
+) {
+  const audit = await AuditRepository.getAuditForProject(auditId, projectId);
+  if (!audit) {
+    throw new AppError("NOT_FOUND");
+  }
+
+  if (audit.status !== "failed" && audit.status !== "cancelled") {
+    throw new AppError("VALIDATION_ERROR", "Only failed or cancelled audits can be retried");
+  }
+
+  // For retries, workflowInstanceId may be null if the original audit failed before workflow started
+  // In that case, we generate a new one in resetAuditForRetry
+  const workflowInstanceId = audit.workflowInstanceId ?? auditId;
+
+  const parsedConfig = parseAuditConfig(audit.config);
+  if (!parsedConfig) {
+    throw new AppError("INTERNAL_ERROR", "Invalid audit configuration");
+  }
+
+  // Reset audit to running state
+  await AuditRepository.resetAuditForRetry(auditId, workflowInstanceId);
+
+  const jobData: AuditJobData = {
+    auditId,
+    projectId,
+    startUrl: audit.startUrl,
+    config: parsedConfig,
+    billingCustomer,
+    step: AUDIT_STEP.DISCOVER,
+  };
+
+  try {
+    await addJobWithBackpressure(
+      auditQueue,
+      `audit-${auditId}-retry-${Date.now()}`,
+      jobData,
+      { jobId: `${auditId}-retry-${Date.now()}` },
+      { maxQueueSize: 5000, allowDegradedMode: true },
+    );
+  } catch (err) {
+    // Rollback status change - use the same workflowInstanceId we used for reset
+    await AuditRepository.failAudit(auditId, workflowInstanceId);
+
+    if (err instanceof QueueBackpressureError) {
+      throw new AppError(
+        "SERVICE_UNAVAILABLE",
+        "Audit system is at capacity. Please try again in a few minutes.",
+      );
+    }
+
+    throw new AppError(
+      "INTERNAL_ERROR",
+      `Failed to retry audit: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  return { auditId };
+}
+
 async function remove(auditId: string, projectId: string) {
   const audit = await AuditRepository.getAuditForProject(auditId, projectId);
   if (!audit) {
     throw new AppError("NOT_FOUND");
   }
 
+  // H-AUDIT-03: Cancel job before delete to prevent orphan data
   if (audit.status === "running") {
-    // Cancel the running BullMQ job so the Worker stops before we delete the row.
     const job = await auditQueue.getJob(auditId);
     if (job) {
       try {
         await job.remove();
       } catch {
-        // Job may already be active; best-effort cancellation. The Worker will
-        // write to a deleted audit row and fail gracefully on the final DB step.
+        // Job is active or already completed/failed - try to mark as failed
+        try {
+          await job.moveToFailed(new Error("Audit deleted"), auditId);
+        } catch {
+          // Job may already be in a terminal state
+        }
       }
     }
   }
@@ -237,5 +355,7 @@ export const AuditService = {
   getCrawlProgress,
   getResults,
   getHistory,
+  cancelAudit,
+  retryAudit,
   remove,
 } as const;

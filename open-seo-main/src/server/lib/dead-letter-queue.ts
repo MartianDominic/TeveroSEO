@@ -182,9 +182,8 @@ export async function replayFromDeadLetter(
 
     return true;
   } catch (err) {
-    log.error("Failed to replay job from DLQ", {
+    log.error("Failed to replay job from DLQ", err instanceof Error ? err : undefined, {
       dlqId,
-      error: err instanceof Error ? err.message : String(err),
     });
     throw err;
   }

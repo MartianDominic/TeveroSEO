@@ -188,10 +188,21 @@ async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
  * Discover all page URLs from robots.txt + sitemaps for an origin.
  * Also tries the default /sitemap.xml if not listed in robots.txt.
  */
+/**
+ * Sitemap fetch statistics for audit reporting.
+ */
+export interface SitemapFetchResult {
+  fetched: number;
+  failed: number;
+  timedOut: number;
+  discoveredUrls: number;
+  success: boolean;
+}
+
 export async function discoverUrls(
   origin: string,
   maxPages = 50,
-): Promise<{ urls: string[]; robots: RobotsResult; sitemapUrls: Set<string> }> {
+): Promise<{ urls: string[]; robots: RobotsResult; sitemapUrls: Set<string>; sitemapFetchResult: SitemapFetchResult }> {
   const robots = await fetchRobotsTxt(origin);
 
   // Collect sitemap URLs: from robots.txt + default location

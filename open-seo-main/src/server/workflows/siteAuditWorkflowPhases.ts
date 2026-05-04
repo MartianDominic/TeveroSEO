@@ -8,6 +8,7 @@ import {
 import { getOrigin } from "@/server/lib/audit/url-utils";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { AuditProgressKV } from "@/server/lib/audit/progress-kv";
+import { HtmlTempStorage } from "@/server/lib/audit/html-temp-storage";
 import type {
   AuditConfig,
   LighthouseResult,
@@ -207,6 +208,8 @@ async function runDiscoveryPhase(
  * Tier 2 includes: reading level, keyword density, word count analysis,
  * schema completeness, anchor analysis, freshness signals, and mobile checks.
  * Runs in <500ms per page per threat model requirements.
+ *
+ * H-AUDIT-02: Fetches HTML from Redis in batches to minimize memory usage.
  */
 async function runTier2ChecksPhase(
   step: WorkflowStep,
@@ -221,31 +224,59 @@ async function runTier2ChecksPhase(
       currentPhase: "analyzing",
     });
 
-    // Run Tier 2 checks for each crawled page
-    // Tier 2 requires more computation but still no external APIs
-    for (const page of allPages) {
-      const html = htmlByPageId.get(page.id);
+    // H-AUDIT-02: Process pages in batches to limit memory usage
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+      const batch = allPages.slice(i, i + BATCH_SIZE);
+      const pageIds = batch.map((p) => p.id);
 
-      // Skip pages without HTML (non-HTML content types, failed fetches)
-      if (!html || page.statusCode !== 200) {
-        continue;
+      // H-AUDIT-02: Fetch HTML from Redis for this batch
+      // First check in-memory map, then fall back to Redis
+      const htmlMap = new Map<string, string | null>();
+      const idsToFetch: string[] = [];
+
+      for (const pageId of pageIds) {
+        const inMemoryHtml = htmlByPageId.get(pageId);
+        if (inMemoryHtml) {
+          htmlMap.set(pageId, inMemoryHtml);
+        } else {
+          idsToFetch.push(pageId);
+        }
       }
 
-      try {
-        // Run Tier 2 checks - light calculations
-        const results = await runTier2Checks(html, page.url);
-
-        // Persist findings to database
-        if (results.length > 0) {
-          await FindingsRepository.insertFindings(auditId, page.id, results);
+      // Fetch missing HTML from Redis
+      if (idsToFetch.length > 0) {
+        const redisHtml = await HtmlTempStorage.getPageHtmlBatch(auditId, idsToFetch);
+        for (const [pageId, html] of redisHtml) {
+          htmlMap.set(pageId, html);
         }
-      } catch (error) {
-        // Log but don't fail the audit - checks are non-blocking
-        log.warn("Tier 2 checks failed for page", {
-          pageId: page.id,
-          url: page.url,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      }
+
+      // Run Tier 2 checks for each page in batch
+      for (const page of batch) {
+        const html = htmlMap.get(page.id);
+
+        // Skip pages without HTML (non-HTML content types, failed fetches)
+        if (!html || page.statusCode !== 200) {
+          continue;
+        }
+
+        try {
+          // Run Tier 2 checks - light calculations
+          const results = await runTier2Checks(html, page.url);
+
+          // Persist findings to database
+          if (results.length > 0) {
+            await FindingsRepository.insertFindings(auditId, page.id, results);
+          }
+        } catch (error) {
+          // Log but don't fail the audit - checks are non-blocking
+          log.warn("Tier 2 checks failed for page", {
+            pageId: page.id,
+            url: page.url,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
   });
@@ -256,6 +287,8 @@ async function runTier2ChecksPhase(
  * Tier 3 includes: CrUX Core Web Vitals, entity/NLP analysis,
  * backlink metrics, and engagement proxies (CTR, scroll depth, bounce rate).
  * These checks gracefully skip when API data is unavailable.
+ *
+ * H-AUDIT-02: Fetches HTML from Redis in batches to minimize memory usage.
  */
 async function runTier3ChecksPhase(
   step: WorkflowStep,
@@ -265,31 +298,57 @@ async function runTier3ChecksPhase(
   htmlByPageId: Map<string, string>,
 ): Promise<void> {
   return step.do("run-tier3-checks", async () => {
-    // Tier 3 checks use external APIs (CrUX, GSC, GA4)
-    // They gracefully skip when API credentials not configured
-    for (const page of allPages) {
-      const html = htmlByPageId.get(page.id);
+    // H-AUDIT-02: Process pages in batches to limit memory usage
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+      const batch = allPages.slice(i, i + BATCH_SIZE);
+      const pageIds = batch.map((p) => p.id);
 
-      // Skip pages without HTML
-      if (!html || page.statusCode !== 200) {
-        continue;
+      // H-AUDIT-02: Fetch HTML from Redis for this batch
+      const htmlMap = new Map<string, string | null>();
+      const idsToFetch: string[] = [];
+
+      for (const pageId of pageIds) {
+        const inMemoryHtml = htmlByPageId.get(pageId);
+        if (inMemoryHtml) {
+          htmlMap.set(pageId, inMemoryHtml);
+        } else {
+          idsToFetch.push(pageId);
+        }
       }
 
-      try {
-        // Run Tier 3 checks - API-based (CrUX, GSC, GA4)
-        const results = await runTier3Checks(html, page.url);
-
-        // Persist findings to database
-        if (results.length > 0) {
-          await FindingsRepository.insertFindings(auditId, page.id, results);
+      if (idsToFetch.length > 0) {
+        const redisHtml = await HtmlTempStorage.getPageHtmlBatch(auditId, idsToFetch);
+        for (const [pageId, html] of redisHtml) {
+          htmlMap.set(pageId, html);
         }
-      } catch (error) {
-        // Log but don't fail the audit - checks are non-blocking
-        log.warn("Tier 3 checks failed for page", {
-          pageId: page.id,
-          url: page.url,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      }
+
+      // Run Tier 3 checks for each page in batch
+      for (const page of batch) {
+        const html = htmlMap.get(page.id);
+
+        // Skip pages without HTML
+        if (!html || page.statusCode !== 200) {
+          continue;
+        }
+
+        try {
+          // Run Tier 3 checks - API-based (CrUX, GSC, GA4)
+          const results = await runTier3Checks(html, page.url);
+
+          // Persist findings to database
+          if (results.length > 0) {
+            await FindingsRepository.insertFindings(auditId, page.id, results);
+          }
+        } catch (error) {
+          // Log but don't fail the audit - checks are non-blocking
+          log.warn("Tier 3 checks failed for page", {
+            pageId: page.id,
+            url: page.url,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
   });
@@ -300,6 +359,8 @@ async function runTier3ChecksPhase(
  * Tier 4 includes: site architecture (click depth, orphan pages, hub-spoke),
  * and content differentiation (unique content ratio, scaled content detection).
  * Requires site-wide context from crawl data.
+ *
+ * H-AUDIT-02: Fetches HTML from Redis in batches to minimize memory usage.
  */
 async function runTier4ChecksPhase(
   step: WorkflowStep,
@@ -312,30 +373,57 @@ async function runTier4ChecksPhase(
     // Build site-wide context for Tier 4 checks
     const siteContext = buildSiteContext(allPages);
 
-    // Tier 4 checks analyze site architecture and content uniqueness
-    for (const page of allPages) {
-      const html = htmlByPageId.get(page.id);
+    // H-AUDIT-02: Process pages in batches to limit memory usage
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+      const batch = allPages.slice(i, i + BATCH_SIZE);
+      const pageIds = batch.map((p) => p.id);
 
-      // Skip pages without HTML
-      if (!html || page.statusCode !== 200) {
-        continue;
+      // H-AUDIT-02: Fetch HTML from Redis for this batch
+      const htmlMap = new Map<string, string | null>();
+      const idsToFetch: string[] = [];
+
+      for (const pageId of pageIds) {
+        const inMemoryHtml = htmlByPageId.get(pageId);
+        if (inMemoryHtml) {
+          htmlMap.set(pageId, inMemoryHtml);
+        } else {
+          idsToFetch.push(pageId);
+        }
       }
 
-      try {
-        // Run Tier 4 checks - crawl-based with site context
-        const results = await runTier4Checks(html, page.url, siteContext);
-
-        // Persist findings to database
-        if (results.length > 0) {
-          await FindingsRepository.insertFindings(auditId, page.id, results);
+      if (idsToFetch.length > 0) {
+        const redisHtml = await HtmlTempStorage.getPageHtmlBatch(auditId, idsToFetch);
+        for (const [pageId, html] of redisHtml) {
+          htmlMap.set(pageId, html);
         }
-      } catch (error) {
-        // Log but don't fail the audit - checks are non-blocking
-        log.warn("Tier 4 checks failed for page", {
-          pageId: page.id,
-          url: page.url,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      }
+
+      // Run Tier 4 checks for each page in batch
+      for (const page of batch) {
+        const html = htmlMap.get(page.id);
+
+        // Skip pages without HTML
+        if (!html || page.statusCode !== 200) {
+          continue;
+        }
+
+        try {
+          // Run Tier 4 checks - crawl-based with site context
+          const results = await runTier4Checks(html, page.url, siteContext);
+
+          // Persist findings to database
+          if (results.length > 0) {
+            await FindingsRepository.insertFindings(auditId, page.id, results);
+          }
+        } catch (error) {
+          // Log but don't fail the audit - checks are non-blocking
+          log.warn("Tier 4 checks failed for page", {
+            pageId: page.id,
+            url: page.url,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
   });
@@ -528,5 +616,7 @@ async function finalizeAudit(args: {
       },
     });
     await AuditProgressKV.clear(auditId);
+    // H-AUDIT-02: Clean up HTML from Redis storage
+    await HtmlTempStorage.clearAuditHtml(auditId);
   });
 }

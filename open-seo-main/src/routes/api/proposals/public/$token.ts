@@ -6,8 +6,10 @@
  * Fetches proposal by public access token (no auth required).
  * Tracks view with GDPR-compliant IP hashing.
  *
- * SECURITY: No authentication required - token provides access.
- * Uses 32-char nanoid tokens (~10^57 entropy) to prevent enumeration.
+ * SECURITY:
+ * - No authentication required - token provides access.
+ * - Uses 32-char nanoid tokens (~10^57 entropy) to prevent enumeration.
+ * - H-TSK-01 FIX: Rate limited to prevent enumeration attacks and DoS.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
@@ -17,8 +19,33 @@ import {
 } from "@/server/features/proposals/tracking/ViewTrackingService";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/proposals/public" });
+
+/**
+ * H-TSK-01 FIX: Rate limit config for public proposal fetch: 30 requests per minute per IP.
+ * Generous limit for legitimate viewing but prevents enumeration attacks.
+ */
+const PROPOSAL_PUBLIC_RATE_LIMIT = {
+  limit: 30,
+  window: 60, // 1 minute in seconds
+};
+
+/**
+ * Extract client IP for rate limiting.
+ */
+function getClientIP(request: Request): string {
+  const forwarded = request.headers.get("X-Forwarded-For");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = request.headers.get("X-Real-IP");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
 
 export const Route = createFileRoute("/api/proposals/public/$token")({
   server: {
@@ -38,6 +65,21 @@ export const Route = createFileRoute("/api/proposals/public/$token")({
               { success: false, error: "Token is required" },
               { status: 400 }
             );
+          }
+
+          // H-TSK-01 FIX: Rate limiting to prevent enumeration and DoS
+          const clientIP = getClientIP(request);
+          const rateLimitResult = await rateLimit({
+            key: `proposal-public:${clientIP}`,
+            ...PROPOSAL_PUBLIC_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            log.warn("Rate limit exceeded for public proposal fetch", {
+              token: token.slice(0, 8) + "...", // Log partial token only
+              clientIP,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
           }
 
           // Fetch proposal by token (throws if expired per D-06)

@@ -24,6 +24,8 @@ import { reportDeliveryTemplate } from "@/server/lib/email-templates";
 import { redis } from "@/server/lib/redis";
 import CronParser from "cron-parser";
 
+const log = createLogger({ module: "schedule-processor" });
+
 /** Redis key for storing checkpoint state */
 const CHECKPOINT_KEY = "schedule-processor:checkpoint";
 
@@ -73,7 +75,12 @@ async function loadCheckpoint(jobId: string): Promise<ScheduleCheckpoint | null>
       return checkpoint;
     }
     return null;
-  } catch {
+  } catch (error) {
+    // Log checkpoint load errors for debugging - return null to start fresh
+    log.debug("Failed to load checkpoint", {
+      jobId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
@@ -84,8 +91,11 @@ async function loadCheckpoint(jobId: string): Promise<ScheduleCheckpoint | null>
 async function clearCheckpoint(): Promise<void> {
   try {
     await redis.del(CHECKPOINT_KEY);
-  } catch {
-    // Ignore - TTL will handle cleanup
+  } catch (error) {
+    // Log at debug level - TTL will handle cleanup anyway
+    log.debug("Failed to clear checkpoint", {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -361,6 +371,27 @@ async function sendCompletedReportEmails(
         continue;
       }
 
+      // H-CONC-03 FIX: Atomic check-and-mark to prevent duplicate emails
+      // Only one process can succeed - others will get 0 rows updated
+      const claimResult = await db
+        .update(reports)
+        .set({ emailSentAt: new Date() })
+        .where(
+          and(
+            eq(reports.id, report.id),
+            isNull(reports.emailSentAt) // Only if not already claimed
+          )
+        )
+        .returning({ id: reports.id });
+
+      // If no rows returned, another process already claimed this report
+      if (claimResult.length === 0) {
+        reportLogger.debug("Report email already claimed by another process", {
+          reportId: report.id,
+        });
+        continue;
+      }
+
       const downloadUrl = `${process.env.APP_URL ?? "https://app.tevero.io"}/api/reports/${report.id}/download`;
 
       const { subject, html } = reportDeliveryTemplate({
@@ -379,12 +410,6 @@ async function sendCompletedReportEmails(
         downloadUrl,
       });
 
-      // Mark as emailed
-      await db
-        .update(reports)
-        .set({ emailSentAt: new Date() })
-        .where(eq(reports.id, report.id));
-
       reportLogger.info("Report email sent", {
         recipients: schedule.recipients.length,
       });
@@ -394,6 +419,8 @@ async function sendCompletedReportEmails(
         "Failed to send report email",
         err instanceof Error ? err : new Error(String(err)),
       );
+      // Note: emailSentAt is already set, so we don't retry sending
+      // The email failure should be handled via a separate retry mechanism
       failCount++;
       // Continue with next report - don't fail the entire job
     }

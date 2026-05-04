@@ -77,6 +77,8 @@ function PipelineLoading() {
 }
 
 interface PipelineStatus {
+  // H-TSK-03 FIX: workspaceId for Socket.IO room authorization
+  workspaceId: string;
   status: "idle" | "running" | "paused" | "verifying" | "error";
   currentPhase: string | null;
   lastCompletedPlan: string | null;
@@ -115,15 +117,27 @@ function PipelineDashboard() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // H-TSK-03 FIX: Get workspace ID from auth context for Socket.IO room joins.
+  // This ensures users only receive events for workspaces they have access to.
+  // The socket server validates workspace membership before allowing room joins.
+  const workspaceId = initialStatus.workspaceId || "default";
+
   // Socket.IO connection
   useEffect(() => {
+    // H-TSK-03 FIX: Include auth token in socket connection for server-side validation
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("__session="))
+      ?.split("=")[1];
+
     const newSocket = io(window.location.origin, {
       transports: ["websocket", "polling"],
+      auth: { token },
     });
 
     newSocket.on("connect", () => {
-      // Join workspace room (workspace ID would come from auth context)
-      newSocket.emit("join-workspace", "default");
+      // H-TSK-03 FIX: Join workspace room using validated workspace ID from auth context
+      newSocket.emit("join-workspace", workspaceId);
     });
 
     newSocket.on("activity:new", (event) => {

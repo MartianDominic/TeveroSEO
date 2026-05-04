@@ -16,6 +16,7 @@ import {
   type SignerStatus,
   type SignerSignatureData,
 } from "@/db/schema/agreement-signers-schema";
+import { generatedAgreements } from "@/db/agreement-template-schema";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "SignerRepository" });
@@ -27,7 +28,10 @@ const TOKEN_EXPIRY_DAYS = 14;
 
 export const SignerRepository = {
   /**
-   * Find a signer by ID.
+   * Find a signer by ID (internal use only).
+   *
+   * WARNING: This method does NOT filter by workspace.
+   * Use findByIdScoped() for tenant-safe access.
    */
   async findById(id: string): Promise<SignerSelect | null> {
     const [signer] = await db
@@ -36,6 +40,48 @@ export const SignerRepository = {
       .where(eq(agreementSigners.id, id))
       .limit(1);
     return signer ?? null;
+  },
+
+  /**
+   * Find a signer by ID with agreement ownership verification.
+   * Returns null if signer doesn't exist OR belongs to different agreement.
+   *
+   * SECURITY: Use this for tenant-safe data access.
+   */
+  async findByIdScoped(id: string, agreementId: string): Promise<SignerSelect | null> {
+    const [signer] = await db
+      .select()
+      .from(agreementSigners)
+      .where(
+        and(
+          eq(agreementSigners.id, id),
+          eq(agreementSigners.agreementId, agreementId)
+        )
+      )
+      .limit(1);
+    return signer ?? null;
+  },
+
+  /**
+   * Find a signer by ID with workspace ownership verification.
+   * Joins with agreements to verify workspace ownership.
+   * Returns null if signer doesn't exist OR belongs to different workspace.
+   *
+   * SECURITY: Use this for tenant-safe data access at workspace level.
+   */
+  async findByIdWithWorkspace(id: string, workspaceId: string): Promise<SignerSelect | null> {
+    const result = await db
+      .select({ signer: agreementSigners })
+      .from(agreementSigners)
+      .innerJoin(generatedAgreements, eq(agreementSigners.agreementId, generatedAgreements.id))
+      .where(
+        and(
+          eq(agreementSigners.id, id),
+          eq(generatedAgreements.workspaceId, workspaceId)
+        )
+      )
+      .limit(1);
+    return result[0]?.signer ?? null;
   },
 
   /**

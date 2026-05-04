@@ -127,3 +127,47 @@ export const clientsRelations = relations(clients, ({ one, many }) => ({
 // Inferred types for database operations
 export type ClientSelect = typeof clients.$inferSelect;
 export type ClientInsert = typeof clients.$inferInsert;
+
+/**
+ * Client Sync Log - FIX-08: M-SYNC-01
+ *
+ * Tracks cross-service sync operations for idempotency.
+ * Prevents duplicate syncs when retrying failed operations.
+ */
+export const clientSyncLog = pgTable(
+  "client_sync_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    // Idempotency key from the sync request
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+
+    // Client that was synced
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+
+    // Workspace context
+    workspaceId: text("workspace_id").notNull(),
+
+    // When the sync was completed
+    syncedAt: timestamp("synced_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+
+    // Sync source (for debugging)
+    source: text("source").default("ai-writer"),
+
+    // TTL for cleanup - sync records older than 7 days can be deleted
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .default(sql`NOW() + INTERVAL '7 days'`),
+  },
+  (table) => [
+    index("ix_client_sync_log_client").on(table.clientId),
+    index("ix_client_sync_log_expires").on(table.expiresAt),
+  ]
+);
+
+export type ClientSyncLogSelect = typeof clientSyncLog.$inferSelect;
+export type ClientSyncLogInsert = typeof clientSyncLog.$inferInsert;

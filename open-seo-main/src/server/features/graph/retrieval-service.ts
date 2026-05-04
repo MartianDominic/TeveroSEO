@@ -214,7 +214,12 @@ export class RetrievalService {
     try {
       const health = await this.lightrag.healthCheck(tenantId);
       return health.tenantInitialized ?? false;
-    } catch {
+    } catch (error) {
+      // Log at debug level - tenant may not exist yet
+      log.debug("hasTenantData check failed", {
+        tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }

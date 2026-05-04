@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
 import { logger } from '@/lib/logger';
+
 // SECURITY: Never expose raw error messages to users in production
 const USER_FRIENDLY_MESSAGE = "Something went wrong. Please try again.";
+const isDev = process.env.NODE_ENV === "development";
 
 export default function ShellError({
   error,
@@ -16,13 +19,24 @@ export default function ShellError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error details for debugging/monitoring
-    // In production, send to error tracking service (Sentry, etc.)
-    logger.error("[shell-error]", {
-      digest: error.digest,
-      message: error.message,
-      timestamp: new Date().toISOString(),
+    // Send to Sentry for production error tracking
+    Sentry.captureException(error, {
+      extra: {
+        digest: error.digest,
+      },
+      tags: {
+        errorType: "shell-error",
+      },
     });
+
+    // Log locally for development debugging only
+    if (isDev) {
+      logger.error("[shell-error]", {
+        digest: error.digest,
+        message: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }, [error]);
 
   return (
@@ -39,7 +53,7 @@ export default function ShellError({
               Error ID: {error.digest}
             </p>
           )}
-          {process.env.NODE_ENV === "development" && (
+          {isDev && (
             <pre className="text-xs text-muted-foreground mt-2 overflow-auto p-2 bg-muted rounded text-left">
               {error.message}
             </pre>

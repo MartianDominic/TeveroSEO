@@ -231,10 +231,15 @@ export async function update(
 }
 
 /**
- * Delete a follow-up.
+ * Delete a follow-up with workspace scope.
+ * Phase 69-03: Added workspaceId parameter for tenant-safe deletion.
  */
-export async function deleteFollowUp(id: string): Promise<void> {
-  await db.delete(followUps).where(eq(followUps.id, id));
+export async function deleteFollowUp(id: string, workspaceId: string): Promise<boolean> {
+  const result = await db
+    .delete(followUps)
+    .where(and(eq(followUps.id, id), eq(followUps.workspaceId, workspaceId)))
+    .returning({ id: followUps.id });
+  return result.length > 0;
 }
 
 /**

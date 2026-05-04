@@ -251,7 +251,18 @@ export async function getEventsSince(
       return [];
     }
 
-    const parsed = events.map((e) => JSON.parse(e) as ActivityEvent);
+    // H-VAL-03 FIX: Guard JSON.parse to handle malformed cached data
+    const parsed: ActivityEvent[] = [];
+    for (const e of events) {
+      try {
+        parsed.push(JSON.parse(e) as ActivityEvent);
+      } catch {
+        log.warn("Failed to parse cached event, skipping", {
+          workspaceId,
+          preview: e.substring(0, 100),
+        });
+      }
+    }
 
     // If no lastEventId, return all buffered events
     if (!lastEventId) {

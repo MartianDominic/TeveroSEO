@@ -206,9 +206,15 @@ export function getChecksByCategory(category: CheckCategory): CheckDefinition[] 
 
 /**
  * Get tier from check ID
+ * H-VAL-02 FIX: Added NaN handling for parseInt
  */
 export function getTierFromCheckId(checkId: string): CheckTier {
-  const tier = parseInt(checkId.split("-")[0].replace("T", ""));
+  const tierStr = checkId.split("-")[0].replace("T", "");
+  const tier = parseInt(tierStr, 10);
+  // Default to tier 1 if parsing fails or results in invalid tier
+  if (Number.isNaN(tier) || tier < 1 || tier > 4) {
+    return 1 as CheckTier;
+  }
   return tier as CheckTier;
 }
 

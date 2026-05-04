@@ -24,6 +24,12 @@ export async function listProjects(organizationId: string) {
   return rows.map(mapProject);
 }
 
+/**
+ * Create a new SEO project.
+ *
+ * H-ONBOARD-01 FIX: Added idempotencyKey support to prevent duplicate
+ * projects when users retry after network errors.
+ */
 export async function createProject(
   organizationId: string,
   input: CreateProjectInput,
@@ -32,6 +38,7 @@ export async function createProject(
     organizationId,
     input.name,
     input.domain,
+    input.idempotencyKey, // H-ONBOARD-01: Pass through for deduplication
   );
   return { id };
 }

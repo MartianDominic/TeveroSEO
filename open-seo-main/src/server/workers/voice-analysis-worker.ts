@@ -8,10 +8,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   VOICE_ANALYSIS_QUEUE_NAME,
-  voiceAnalysisQueue,
   releaseVoiceAnalysisLock,
 } from "@/server/queues/voiceAnalysisQueue";
-import type { VoiceAnalysisJobData, VoiceAnalysisDLQJobData } from "@/server/features/voice/types";
+import type { VoiceAnalysisJobData } from "@/server/features/voice/types";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "voice-analysis-worker" });
 
@@ -24,14 +24,14 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./voice-analysis-processor.js", import.meta.url),
 );
 
-let worker: Worker<VoiceAnalysisJobData | VoiceAnalysisDLQJobData> | null = null;
+let worker: Worker<VoiceAnalysisJobData> | null = null;
 
 export async function startVoiceAnalysisWorker(): Promise<
-  Worker<VoiceAnalysisJobData | VoiceAnalysisDLQJobData>
+  Worker<VoiceAnalysisJobData>
 > {
   if (worker) return worker;
 
-  worker = new Worker<VoiceAnalysisJobData | VoiceAnalysisDLQJobData>(
+  worker = new Worker<VoiceAnalysisJobData>(
     VOICE_ANALYSIS_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -53,7 +53,7 @@ export async function startVoiceAnalysisWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<VoiceAnalysisJobData | VoiceAnalysisDLQJobData> | undefined,
+      job: Job<VoiceAnalysisJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -62,7 +62,7 @@ export async function startVoiceAnalysisWorker(): Promise<
       }
 
       const maxAttempts = job.opts.attempts ?? 1;
-      const clientId = (job.data as VoiceAnalysisJobData).clientId;
+      const clientId = job.data.clientId;
       const jobLogger = createLogger({
         module: "voice-analysis-worker",
         jobId: job.id,
@@ -75,7 +75,7 @@ export async function startVoiceAnalysisWorker(): Promise<
 
       // Always release the lock on failure (not just after max retries)
       // This allows the client to retry immediately if needed
-      if (clientId && !job.name.startsWith("dlq:")) {
+      if (clientId) {
         try {
           await releaseVoiceAnalysisLock(clientId);
           jobLogger.debug("Lock released after failure", { attempt: job.attemptsMade });
@@ -84,25 +84,20 @@ export async function startVoiceAnalysisWorker(): Promise<
         }
       }
 
-      // Move to DLQ after max retries
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: VoiceAnalysisDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as VoiceAnalysisJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: VOICE_ANALYSIS_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await voiceAnalysisQueue.add("dlq:voice-analysis", dlqData, {
-            // TTL: auto-remove completed DLQ jobs after 7 days
-            removeOnComplete: { age: 604800 },
-            removeOnFail: { age: 604800 },
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${VOICE_ANALYSIS_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }
@@ -111,7 +106,7 @@ export async function startVoiceAnalysisWorker(): Promise<
   );
 
   worker.on("completed", async (job) => {
-    const clientId = (job.data as VoiceAnalysisJobData).clientId;
+    const clientId = job.data.clientId;
     const jobLogger = createLogger({
       module: "voice-analysis-worker",
       jobId: job.id,
@@ -119,7 +114,7 @@ export async function startVoiceAnalysisWorker(): Promise<
     });
 
     // Release the lock on successful completion
-    if (clientId && !job.name.startsWith("dlq:")) {
+    if (clientId) {
       await releaseVoiceAnalysisLock(clientId);
     }
 

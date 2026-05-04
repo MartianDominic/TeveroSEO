@@ -164,13 +164,40 @@ export const ProspectService = {
   },
 
   /**
-   * Find prospect by ID with its analyses.
+   * Find prospect by ID with its analyses (internal use only).
+   *
+   * WARNING: This method does NOT filter by workspace.
+   * Use findByIdScoped() for tenant-safe access.
    */
   async findById(id: string): Promise<ProspectWithAnalyses | null> {
     const [prospect] = await db
       .select()
       .from(prospects)
       .where(eq(prospects.id, id))
+      .limit(1);
+
+    if (!prospect) return null;
+
+    const analyses = await db
+      .select()
+      .from(prospectAnalyses)
+      .where(eq(prospectAnalyses.prospectId, id))
+      .orderBy(desc(prospectAnalyses.createdAt));
+
+    return { ...prospect, analyses };
+  },
+
+  /**
+   * Find prospect by ID with its analyses, scoped to workspace.
+   * Returns null if prospect doesn't exist OR belongs to different workspace.
+   *
+   * SECURITY: Use this for tenant-safe data access.
+   */
+  async findByIdScoped(id: string, workspaceId: string): Promise<ProspectWithAnalyses | null> {
+    const [prospect] = await db
+      .select()
+      .from(prospects)
+      .where(and(eq(prospects.id, id), eq(prospects.workspaceId, workspaceId)))
       .limit(1);
 
     if (!prospect) return null;

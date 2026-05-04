@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
-import { Button } from "@tevero/ui";
+import { PageErrorBoundary } from "@/components/page-error-boundary";
 
-export default function Error({
+export default function ConnectError({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("[connect-error]", error);
-  }, [error]);
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-      <h2 className="text-lg font-semibold">Something went wrong</h2>
-      {error.digest && (
-        <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
-      )}
-      <Button onClick={() => reset()}>Try again</Button>
-    </div>
+    <PageErrorBoundary
+      error={error}
+      reset={reset}
+      pageTitle="Connect"
+      pageRoute="connect"
+      backHref="/"
+      backLabel="Back to home"
+    />
   );
 }

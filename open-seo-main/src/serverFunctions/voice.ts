@@ -25,6 +25,8 @@ import {
   TEMPLATE_IDS,
 } from "@/server/features/voice/templates/industryTemplates";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
+// M-TSK-06 FIX: Use shared client access verification
+import { verifyClientAccess } from "@/serverFunctions/client-access";
 import { AppError } from "@/server/lib/errors";
 import { logger } from "@/server/lib/logger";
 
@@ -110,25 +112,7 @@ const ruleIdSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-/**
- * Verify user has access to the client.
- */
-async function verifyClientAccess(
-  clientId: string,
-  workspaceId: string
-): Promise<void> {
-  const client = await db.query.clients.findFirst({
-    where: eq(clients.id, clientId),
-  });
-
-  if (!client) {
-    throw new AppError("NOT_FOUND", "Client not found");
-  }
-
-  if (client.workspaceId !== workspaceId) {
-    throw new AppError("FORBIDDEN", "Access denied to this client");
-  }
-}
+// M-TSK-06 FIX: verifyClientAccess moved to shared module @/serverFunctions/client-access
 
 /**
  * Verify user has access to the profile via its client.

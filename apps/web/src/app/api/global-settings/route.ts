@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getFastApi, patchFastApi, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf } from "@/lib/api/security";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { badRequest, validationError } from "@/lib/api/responses";
 
 /**
  * Schema for global settings updates.
@@ -57,20 +58,18 @@ async function handlePatch(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Parse JSON body (400 for malformed JSON)
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Invalid JSON body");
   }
 
-  // Validate request body against schema
+  // Validate request body against schema (422 for validation errors - M-API-01 fix)
   const parseResult = updateSettingsSchema.safeParse(body);
   if (!parseResult.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parseResult.error.flatten().fieldErrors },
-      { status: 400 }
-    );
+    return validationError(parseResult.error);
   }
 
   try {

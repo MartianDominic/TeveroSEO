@@ -258,13 +258,52 @@ export const ProposalService = {
   },
 
   /**
-   * Find proposal by ID with related views, signatures, and payments.
+   * Find proposal by ID with related views, signatures, and payments (internal use).
+   *
+   * WARNING: This method does NOT filter by workspace.
+   * Use findByIdScoped() for tenant-safe access.
    */
   async findById(id: string): Promise<ProposalWithRelations | null> {
     const [proposal] = await db
       .select()
       .from(proposals)
       .where(eq(proposals.id, id))
+      .limit(1);
+
+    if (!proposal) return null;
+
+    const [views, signatures, payments] = await Promise.all([
+      db
+        .select()
+        .from(proposalViews)
+        .where(eq(proposalViews.proposalId, id))
+        .orderBy(desc(proposalViews.viewedAt)),
+      db
+        .select()
+        .from(proposalSignatures)
+        .where(eq(proposalSignatures.proposalId, id))
+        .orderBy(desc(proposalSignatures.createdAt)),
+      db
+        .select()
+        .from(proposalPayments)
+        .where(eq(proposalPayments.proposalId, id))
+        .orderBy(desc(proposalPayments.createdAt)),
+    ]);
+
+    return { ...proposal, views, signatures, payments };
+  },
+
+  /**
+   * Find proposal by ID with related views, signatures, and payments.
+   * Returns null if proposal doesn't exist OR belongs to different workspace.
+   *
+   * SECURITY: Use this for tenant-safe data access.
+   */
+  async findByIdScoped(id: string, workspaceId: string): Promise<ProposalWithRelations | null> {
+    const [proposal] = await db
+      .select()
+      .from(proposals)
+      .where(and(eq(proposals.id, id), eq(proposals.workspaceId, workspaceId)))
       .limit(1);
 
     if (!proposal) return null;

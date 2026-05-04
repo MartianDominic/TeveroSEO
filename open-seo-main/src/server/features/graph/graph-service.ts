@@ -83,7 +83,12 @@ export class GraphService {
         "MATCH (n) RETURN count(n) AS count LIMIT 1"
       );
       return (result.data?.[0]?.count ?? 0) > 0;
-    } catch {
+    } catch (error) {
+      // Log error but return false - graph may not exist yet
+      log.debug("hasTenantData check failed", {
+        tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }

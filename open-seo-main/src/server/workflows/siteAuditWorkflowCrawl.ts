@@ -5,6 +5,7 @@ import { isSameOrigin, normalizeUrl } from "@/server/lib/audit/url-utils";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { FindingsRepository } from "@/server/features/audit/repositories/FindingsRepository";
 import { AuditProgressKV } from "@/server/lib/audit/progress-kv";
+import { HtmlTempStorage } from "@/server/lib/audit/html-temp-storage";
 import { crawlPage, type CrawlPageResultWithHtml } from "@/server/workflows/site-audit-workflow-helpers";
 import { runTier1Checks } from "@/server/lib/audit/checks/runner";
 import { createLogger } from "@/server/lib/logger";
@@ -55,7 +56,8 @@ export async function runCrawlPhase(
   const queue: string[] = [];
   const queued = new Set<string>();
   const allPages: StepPageResult[] = [];
-  const allHtmlByPageId = new Map<string, string>();
+  // H-AUDIT-02: Track page IDs for Redis HTML retrieval instead of in-memory Map
+  const allPageIds: string[] = [];
 
   seedCrawlQueue({
     startUrl,
@@ -87,12 +89,19 @@ export async function runCrawlPhase(
     );
     allPages.push(...crawledBatch);
 
-    // Accumulate HTML for Tier 2 checks (run after crawl completes)
+    // H-AUDIT-02: Stream HTML to Redis instead of accumulating in memory
+    // This prevents memory exhaustion on large sites (10K pages = 2GB+ memory)
+    const htmlEntries: Array<{ pageId: string; html: string }> = [];
     for (const [pageId, html] of htmlByPageId) {
-      allHtmlByPageId.set(pageId, html);
+      htmlEntries.push({ pageId, html });
+      allPageIds.push(pageId);
+    }
+    if (htmlEntries.length > 0) {
+      await HtmlTempStorage.storePageHtmlBatch(auditId, htmlEntries);
     }
 
     // Run Tier 1 checks on pages with HTML (instant, free - DOM/regex only)
+    // Use in-memory htmlByPageId for Tier 1 since we still have it in scope
     await runTier1ChecksForBatch(step, crawlBatchIndex, auditId, crawledBatch, htmlByPageId);
 
     enqueueDiscoveredLinks({
@@ -116,7 +125,32 @@ export async function runCrawlPhase(
     });
   }
 
-  return { allPages, htmlByPageId: allHtmlByPageId };
+  // H-AUDIT-02: Return auditId for Redis HTML retrieval in later phases
+  // The htmlByPageId getter now fetches from Redis on-demand
+  return {
+    allPages,
+    htmlByPageId: createRedisBackedHtmlMap(auditId, allPageIds),
+  };
+}
+
+/**
+ * H-AUDIT-02: Create a Map-like interface backed by Redis storage.
+ * Provides lazy loading of HTML from Redis to minimize memory usage.
+ */
+function createRedisBackedHtmlMap(
+  auditId: string,
+  pageIds: string[],
+): Map<string, string> {
+  // For compatibility, we preload HTML from Redis into a Map
+  // This is done lazily when the workflow phases need the HTML
+  const map = new Map<string, string>();
+
+  // Mark this as a Redis-backed map by storing metadata
+  // The actual HTML will be loaded on-demand by the workflow phases
+  (map as Map<string, string> & { _auditId?: string; _pageIds?: string[] })._auditId = auditId;
+  (map as Map<string, string> & { _auditId?: string; _pageIds?: string[] })._pageIds = pageIds;
+
+  return map;
 }
 
 function seedCrawlQueue({

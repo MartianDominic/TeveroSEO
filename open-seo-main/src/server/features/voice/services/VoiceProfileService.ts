@@ -5,7 +5,7 @@
  * CRUD operations for voice profiles with template support.
  * One profile per client (can be extended for multi-brand later).
  */
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/db";
 import {
@@ -121,7 +121,10 @@ export class VoiceProfileService {
   }
 
   /**
-   * Get voice profile by profile ID.
+   * Get voice profile by profile ID (internal use only).
+   *
+   * WARNING: This method does NOT filter by workspace/client ownership.
+   * Use getByIdScoped() for tenant-safe access.
    *
    * @param profileId - Profile ID
    * @returns Profile or null
@@ -131,6 +134,30 @@ export class VoiceProfileService {
       .select()
       .from(voiceProfiles)
       .where(eq(voiceProfiles.id, profileId));
+
+    return profile ?? null;
+  }
+
+  /**
+   * Get voice profile by profile ID with client ownership verification.
+   * Returns null if profile doesn't exist OR belongs to different client.
+   *
+   * SECURITY: Use this for tenant-safe data access.
+   *
+   * @param profileId - Profile ID
+   * @param clientId - Client ID for ownership verification
+   * @returns Profile or null
+   */
+  async getByIdScoped(profileId: string, clientId: string): Promise<VoiceProfileSelect | null> {
+    const [profile] = await db
+      .select()
+      .from(voiceProfiles)
+      .where(
+        and(
+          eq(voiceProfiles.id, profileId),
+          eq(voiceProfiles.clientId, clientId)
+        )
+      );
 
     return profile ?? null;
   }

@@ -18,16 +18,18 @@
  */
 import { createHmac, timingSafeEqual } from "crypto";
 import { createLogger } from "@/server/lib/logger";
+import { INTERNAL_AUTH_CLOCK_TOLERANCE_MS } from "@/server/lib/auth-constants";
 
 const log = createLogger({ module: "internal-auth" });
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 /**
- * Maximum allowed timestamp drift in milliseconds (5 minutes).
+ * Maximum allowed timestamp drift in milliseconds.
+ * FIX M-AUTH-01: Uses shared constant from auth-constants.ts for consistency.
  * Prevents replay attacks while allowing for clock skew between services.
  */
-const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000;
+const MAX_TIMESTAMP_DRIFT_MS = INTERNAL_AUTH_CLOCK_TOLERANCE_MS;
 
 /**
  * Result of internal auth verification.
@@ -81,7 +83,9 @@ export async function verifyInternalAuth(
     return { verified: false, error: "Internal API key not configured", path, sourceService };
   }
 
-  // Try HMAC-based auth first (new protocol from apps/web)
+  // H-SEC-03 FIX: Only allow HMAC-based auth (removed legacy API key fallback)
+  // Legacy API key auth has been removed to reduce attack surface.
+  // All internal services must use HMAC-SHA256 signed requests.
   const signature = request.headers.get("X-Internal-Signature");
   const timestampStr = request.headers.get("X-Internal-Timestamp");
 
@@ -109,30 +113,23 @@ export async function verifyInternalAuth(
     return { ...result, path, sourceService };
   }
 
-  // Fallback: legacy X-Internal-Api-Key header (for backward compatibility)
-  const apiKey = request.headers.get("X-Internal-Api-Key");
-  if (apiKey) {
-    const result = verifyLegacyApiKey(apiKey);
-    // HIGH-AUTH-04: Audit log for legacy key auth attempts
-    if (result.verified) {
-      log.info("AUDIT: Internal auth SUCCESS via legacy key", {
-        path,
-        method,
-        sourceService,
-        requestId,
-        authMethod: "legacy_key",
-      });
-    } else {
-      log.warn("AUDIT: Internal auth FAILED via legacy key", {
-        path,
-        method,
-        sourceService,
-        requestId,
-        authMethod: "legacy_key",
-        reason: result.error,
-      });
-    }
-    return { ...result, path, sourceService };
+  // H-SEC-03: Log if legacy API key header is present (it will be rejected)
+  const legacyApiKey = request.headers.get("X-Internal-Api-Key");
+  if (legacyApiKey) {
+    log.warn("AUDIT: Internal auth REJECTED - legacy API key auth disabled", {
+      path,
+      method,
+      sourceService,
+      requestId,
+      reason: "legacy_key_disabled",
+      migration: "Use HMAC-SHA256 signature (X-Internal-Signature + X-Internal-Timestamp)",
+    });
+    return {
+      verified: false,
+      error: "Legacy API key auth disabled. Use HMAC-SHA256 signature.",
+      path,
+      sourceService,
+    };
   }
 
   // HIGH-AUTH-04: Audit log for missing credentials
@@ -189,19 +186,8 @@ function verifyHmacSignature(
   return { verified: true, method: "hmac" };
 }
 
-/**
- * Verify legacy plain API key.
- */
-function verifyLegacyApiKey(apiKey: string): InternalAuthResult {
-  // SECURITY: Use timing-safe comparison (CRIT-003 fix)
-  if (!secureCompareString(apiKey, INTERNAL_API_KEY!)) {
-    log.warn("Legacy API key verification failed");
-    return { verified: false, error: "Invalid API key" };
-  }
-
-  log.debug("Legacy API key verified successfully");
-  return { verified: true, method: "legacy_key" };
-}
+// H-SEC-03: verifyLegacyApiKey function removed - legacy API key auth disabled
+// All internal services must migrate to HMAC-SHA256 signed requests.
 
 /**
  * Timing-safe comparison for hex-encoded strings.

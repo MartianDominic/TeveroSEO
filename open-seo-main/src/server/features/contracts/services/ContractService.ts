@@ -200,6 +200,7 @@ async function sendForSigning(
   // Transition contract state to "sent"
   const updatedContract = await ContractRepository.transitionContractState(
     contractId,
+    workspaceId,
     "draft",
     "sent",
     {
@@ -275,6 +276,7 @@ async function handleSigningComplete(
   // Transition to signed
   const updatedContract = await ContractRepository.transitionContractState(
     contract.id,
+    contract.workspaceId,
     "sent",
     "signed",
     {

@@ -6,8 +6,10 @@
  * Rejects a proposal with optional reason, transitioning status to declined.
  * Logs activity with actor_type='client' per D-10.
  *
- * SECURITY: No authentication required - called by proposal recipient.
- * State machine enforces valid transitions (from sent, viewed, or accepted).
+ * SECURITY:
+ * - No authentication required - called by proposal recipient.
+ * - H-TSK-01 FIX: Rate limited to prevent DoS attacks on proposal state.
+ * - State machine enforces valid transitions (from sent, viewed, or accepted).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -21,8 +23,33 @@ import {
 import { ActivityRepository } from "@/server/features/contracts/repositories/ActivityRepository";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/proposals/reject" });
+
+/**
+ * H-TSK-01 FIX: Rate limit config for proposal reject: 10 requests per minute per IP.
+ * Prevents DoS attacks while allowing legitimate use.
+ */
+const PROPOSAL_REJECT_RATE_LIMIT = {
+  limit: 10,
+  window: 60, // 1 minute in seconds
+};
+
+/**
+ * Extract client IP for rate limiting.
+ */
+function getClientIP(request: Request): string {
+  const forwarded = request.headers.get("X-Forwarded-For");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = request.headers.get("X-Real-IP");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
 
 /**
  * Request body schema for rejecting a proposal.
@@ -51,6 +78,21 @@ export const Route = createFileRoute("/api/proposals/id/reject")({
               { success: false, error: "Proposal ID is required" },
               { status: 400 }
             );
+          }
+
+          // H-TSK-01 FIX: Rate limiting to prevent DoS on proposal state
+          const clientIP = getClientIP(request);
+          const rateLimitResult = await rateLimit({
+            key: `proposal-reject:${clientIP}`,
+            ...PROPOSAL_REJECT_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            log.warn("Rate limit exceeded for proposal reject", {
+              proposalId,
+              clientIP,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
           }
 
           // Parse optional request body

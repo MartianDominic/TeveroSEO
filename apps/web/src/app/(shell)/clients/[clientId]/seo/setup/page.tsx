@@ -9,9 +9,17 @@
  * 3. Initial audit configuration and launch
  *
  * Phase 65: CRIT-01 fix - Creates missing SEO setup page
+ *
+ * FIX-16 Updates:
+ * - H-ONBOARD-01: Added idempotency key to prevent duplicate projects on retry
+ * - M-ONBOARD-01: Required fields now marked with asterisk
+ * - M-ONBOARD-02: Progress indicator shows "Step X of Y"
+ * - M-ONBOARD-03: Form state preserved on error (already implemented)
+ * - M-ONBOARD-04: Clear next step indication via button labels
+ * - M-ONBOARD-05: Improved validation messages with specific guidance
  */
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Globe,
@@ -38,6 +46,13 @@ import {
 } from "@tevero/ui";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { useClientStore } from "@/stores/clientStore";
+
+// H-ONBOARD-01 FIX: Generate idempotency key for project creation
+function generateIdempotencyKey(clientId: string, domain: string): string {
+  // Create a stable key based on client + domain + timestamp window (5 min)
+  const timestamp = Math.floor(Date.now() / (5 * 60 * 1000)); // 5-minute window
+  return `seo-project:${clientId}:${domain.toLowerCase().replace(/[^a-z0-9]/g, "")}:${timestamp}`;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -171,7 +186,8 @@ export default function SeoSetupPage() {
     setDomainError(null);
 
     if (!domain.trim()) {
-      setDomainError("Domain is required");
+      // M-ONBOARD-05 FIX: More specific validation message
+      setDomainError("Domain is required. Enter your website address without https://");
       return;
     }
 
@@ -180,7 +196,8 @@ export default function SeoSetupPage() {
     const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
     if (!domainRegex.test(cleanDomain)) {
-      setDomainError("Please enter a valid domain (e.g., example.com)");
+      // M-ONBOARD-05 FIX: More specific validation message with examples
+      setDomainError("Enter a valid domain like example.com or shop.example.com (without https://)");
       return;
     }
 
@@ -226,7 +243,8 @@ export default function SeoSetupPage() {
     const sitemapUrl = manualSitemap.trim() || selectedSitemap;
 
     if (!sitemapUrl) {
-      setSitemapError("Please select or enter a sitemap URL");
+      // M-ONBOARD-05 FIX: More helpful validation message
+      setSitemapError("Select a detected sitemap above or enter a URL manually (e.g., https://example.com/sitemap.xml)");
       return;
     }
 
@@ -250,6 +268,9 @@ export default function SeoSetupPage() {
           ? domain
           : `https://${domain}`;
 
+        // H-ONBOARD-01 FIX: Generate idempotency key to prevent duplicate projects on retry
+        const idempotencyKey = generateIdempotencyKey(clientId, domain);
+
         const project = await apiPost<ProjectCreateResponse>(
           "/api/seo/projects",
           {
@@ -257,14 +278,17 @@ export default function SeoSetupPage() {
             name: `${domain} SEO`,
             domain: normalizedDomain,
             sitemap_url: manualSitemap.trim() || selectedSitemap || undefined,
+            idempotency_key: idempotencyKey, // H-ONBOARD-01: Prevent duplicates
           }
         );
 
         setProjectId(project.id);
 
-        // Start the initial audit
+        // Start the initial audit (also with idempotency)
+        const auditIdempotencyKey = `audit:${project.id}:initial`;
         await apiPost(`/api/seo/projects/${project.id}/audits`, {
           scope: "full",
+          idempotency_key: auditIdempotencyKey,
         });
 
         setAuditStarted(true);
@@ -276,8 +300,11 @@ export default function SeoSetupPage() {
           );
         }, 2000);
       } catch (err) {
+        // M-ONBOARD-05 FIX: More helpful error messages
         const message =
-          err instanceof Error ? err.message : "Failed to create project";
+          err instanceof Error
+            ? err.message
+            : "Failed to create project. Please check your connection and try again.";
         setAuditError(message);
       }
     });
@@ -321,7 +348,10 @@ export default function SeoSetupPage() {
             </p>
 
             <div className="space-y-2">
-              <Label htmlFor="domain">Website Domain</Label>
+              {/* M-ONBOARD-01 FIX: Mark required field with asterisk */}
+              <Label htmlFor="domain">
+                Website Domain <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="domain"
                 placeholder="example.com"

@@ -98,11 +98,15 @@ export function useAnalysisProgress({
 
     eventSource.addEventListener("error", (event) => {
       let errorMessage = "Connection lost";
+      // H-VAL-03 FIX: Properly guard JSON.parse with type checking
       try {
-        const data = JSON.parse((event as MessageEvent).data);
-        errorMessage = data.message || errorMessage;
+        const messageEvent = event as MessageEvent;
+        if (messageEvent.data && typeof messageEvent.data === 'string') {
+          const data = JSON.parse(messageEvent.data) as { message?: string };
+          errorMessage = data.message || errorMessage;
+        }
       } catch {
-        // Use default message
+        // Use default message - parse failure is expected for non-JSON error events
       }
       // HIGH-41 FIX: Close EventSource and null out ref on error event
       eventSource.close();

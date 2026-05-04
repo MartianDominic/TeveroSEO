@@ -35,7 +35,7 @@ function DomainOverviewRoute() {
       projectId={projectId}
       onShowRecentSearches={() => {
         void navigate({
-          search: (prev) => ({
+          search: (prev: Record<string, unknown>) => ({
             ...prev,
             domain: undefined,
             subdomains: undefined,

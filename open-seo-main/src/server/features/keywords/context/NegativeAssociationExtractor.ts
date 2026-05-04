@@ -149,10 +149,11 @@ ${context.targetAudience ? `Target: ${context.targetAudience}` : ""}
 
       return parsed;
     } catch (error) {
-      logger.error("Negative association extraction failed", {
-        error: error instanceof Error ? error.message : String(error),
-        businessName: context.businessName,
-      });
+      logger.error(
+        "Negative association extraction failed",
+        error instanceof Error ? error : new Error(String(error)),
+        { businessName: context.businessName }
+      );
       return this.emptyResult();
     }
   }

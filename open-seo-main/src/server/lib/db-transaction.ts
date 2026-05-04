@@ -255,14 +255,33 @@ async function getQueueRegistry(): Promise<Map<string, (job: PostCommitJob) => P
 }
 
 /**
+ * Result of post-commit job enqueuing.
+ * M-CONC-03: Provides detailed failure tracking for monitoring and retry.
+ */
+export interface EnqueueResult {
+  /** Number of jobs successfully enqueued */
+  enqueued: number;
+  /** Number of jobs that failed to enqueue */
+  failed: number;
+  /** Details of failed jobs for retry/monitoring */
+  failures: Array<{
+    job: PostCommitJob;
+    error: string;
+  }>;
+}
+
+/**
  * Enqueue all collected post-commit jobs.
  * Call this AFTER transaction commits successfully.
  *
  * Jobs are enqueued in order but processing is async.
  * Failures are logged but don't throw - DB commit already succeeded.
  *
+ * M-CONC-03 FIX: Now returns detailed failure info for retry/monitoring.
+ * Failed jobs can be retried via the returned failures array.
+ *
  * @param jobs - Jobs collected via TransactionContext
- * @returns Number of jobs successfully enqueued
+ * @returns EnqueueResult with success count and failure details
  *
  * @example
  * ```typescript
@@ -274,37 +293,66 @@ async function getQueueRegistry(): Promise<Map<string, (job: PostCommitJob) => P
  * });
  *
  * // Enqueue after commit
- * await enqueuePostCommitJobs(txContext.getPostCommitJobs());
+ * const result = await enqueuePostCommitJobs(txContext.getPostCommitJobs());
+ * if (result.failed > 0) {
+ *   // Log to dead letter queue or monitoring system
+ *   await logFailedJobs(result.failures);
+ * }
  * ```
  */
-export async function enqueuePostCommitJobs(jobs: PostCommitJob[]): Promise<number> {
+export async function enqueuePostCommitJobs(jobs: PostCommitJob[]): Promise<EnqueueResult> {
+  const result: EnqueueResult = {
+    enqueued: 0,
+    failed: 0,
+    failures: [],
+  };
+
   if (jobs.length === 0) {
-    return 0;
+    return result;
   }
 
   const registry = await getQueueRegistry();
-  let enqueued = 0;
 
   for (const job of jobs) {
     const enqueuer = registry.get(job.queue);
 
     if (!enqueuer) {
-      console.warn(`[enqueuePostCommitJobs] Unknown queue: ${job.queue}, skipping job ${job.jobName}`);
+      const errorMsg = `Unknown queue: ${job.queue}`;
+      console.warn(`[enqueuePostCommitJobs] ${errorMsg}, skipping job ${job.jobName}`);
+      result.failed++;
+      result.failures.push({ job, error: errorMsg });
       continue;
     }
 
     try {
       await enqueuer(job);
-      enqueued++;
+      result.enqueued++;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       // Log but don't throw - the transaction already committed
-      // The job can be retried via manual intervention or monitoring
+      // The job can be retried via the failures array or monitoring
       console.error(
         `[enqueuePostCommitJobs] Failed to enqueue ${job.jobName} to ${job.queue}:`,
         error
       );
+      result.failed++;
+      result.failures.push({ job, error: errorMsg });
     }
   }
 
-  return enqueued;
+  return result;
+}
+
+/**
+ * Retry failed post-commit jobs.
+ * M-CONC-03: Helper to retry jobs that failed during initial enqueue.
+ *
+ * @param failures - Failed jobs from previous enqueuePostCommitJobs call
+ * @returns EnqueueResult for the retry attempt
+ */
+export async function retryFailedJobs(
+  failures: EnqueueResult["failures"]
+): Promise<EnqueueResult> {
+  const jobs = failures.map((f) => f.job);
+  return enqueuePostCommitJobs(jobs);
 }

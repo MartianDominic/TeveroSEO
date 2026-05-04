@@ -14,8 +14,7 @@
  * - client.deleted: Hard delete local client data (if enabled)
  */
 
-import { json } from "@tanstack/start";
-import { createAPIFileRoute } from "@tanstack/start/api";
+import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/db";
 import { clients } from "@/db/client-schema";
 import { eq } from "drizzle-orm";
@@ -39,7 +38,7 @@ const ClientEventSchema = z.object({
   client_id: z.string().uuid(),
   workspace_id: z.string().uuid().nullable().optional(),
   timestamp: z.string(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
   correlation_id: z.string().uuid().optional(),
 });
 
@@ -208,81 +207,85 @@ async function handleClientDeleted(event: ClientEvent): Promise<void> {
  * Note: We don't require user authentication because this is a
  * service-to-service webhook, not a user-initiated request.
  */
-export const APIRoute = createAPIFileRoute("/api/clients/events")({
-  POST: async ({ request }) => {
-    // Optional: Validate shared secret
-    const expectedSecret = process.env.INTERNAL_WEBHOOK_SECRET;
-    if (expectedSecret) {
-      const providedSecret = request.headers.get("X-Webhook-Secret");
-      if (providedSecret !== expectedSecret) {
-        log.warn("Invalid webhook secret");
-        return json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
+export const Route = createFileRoute("/api/clients/events")({
+  server: {
+    handlers: {
+      POST: async ({ request }: { request: Request }) => {
+        // Optional: Validate shared secret
+        const expectedSecret = process.env.INTERNAL_WEBHOOK_SECRET;
+        if (expectedSecret) {
+          const providedSecret = request.headers.get("X-Webhook-Secret");
+          if (providedSecret !== expectedSecret) {
+            log.warn("Invalid webhook secret");
+            return Response.json({ error: "Unauthorized" }, { status: 401 });
+          }
+        }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Invalid JSON body" }, { status: 400 });
-    }
+        let body: unknown;
+        try {
+          body = await request.json();
+        } catch {
+          return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+        }
 
-    // Validate event schema
-    const parseResult = ClientEventSchema.safeParse(body);
-    if (!parseResult.success) {
-      log.warn("Invalid event payload", { issues: parseResult.error.issues });
-      return json(
-        { error: "Invalid event payload", details: parseResult.error.issues },
-        { status: 400 }
-      );
-    }
+        // Validate event schema
+        const parseResult = ClientEventSchema.safeParse(body);
+        if (!parseResult.success) {
+          log.warn("Invalid event payload", { issues: parseResult.error.issues });
+          return Response.json(
+            { error: "Invalid event payload", details: parseResult.error.issues },
+            { status: 400 }
+          );
+        }
 
-    const event = parseResult.data;
+        const event = parseResult.data;
 
-    log.info("Received client event", {
-      eventType: event.event_type,
-      clientId: event.client_id,
-      correlationId: event.correlation_id,
-    });
+        log.info("Received client event", {
+          eventType: event.event_type,
+          clientId: event.client_id,
+          correlationId: event.correlation_id,
+        });
 
-    try {
-      switch (event.event_type) {
-        case "client.created":
-          await handleClientCreated(event);
-          break;
-        case "client.updated":
-          await handleClientUpdated(event);
-          break;
-        case "client.archived":
-          await handleClientArchived(event);
-          break;
-        case "client.restored":
-          await handleClientRestored(event);
-          break;
-        case "client.deleted":
-          await handleClientDeleted(event);
-          break;
-        default:
-          log.warn("Unknown event type", { eventType: event.event_type });
-      }
+        try {
+          switch (event.event_type) {
+            case "client.created":
+              await handleClientCreated(event);
+              break;
+            case "client.updated":
+              await handleClientUpdated(event);
+              break;
+            case "client.archived":
+              await handleClientArchived(event);
+              break;
+            case "client.restored":
+              await handleClientRestored(event);
+              break;
+            case "client.deleted":
+              await handleClientDeleted(event);
+              break;
+            default:
+              log.warn("Unknown event type", { eventType: event.event_type });
+          }
 
-      return json({
-        success: true,
-        eventType: event.event_type,
-        clientId: event.client_id,
-        correlationId: event.correlation_id,
-      });
-    } catch (error) {
-      log.error(
-        "Failed to process event",
-        error instanceof Error ? error : new Error(String(error)),
-        { eventType: event.event_type, clientId: event.client_id }
-      );
+          return Response.json({
+            success: true,
+            eventType: event.event_type,
+            clientId: event.client_id,
+            correlationId: event.correlation_id,
+          });
+        } catch (error) {
+          log.error(
+            "Failed to process event",
+            error instanceof Error ? error : new Error(String(error)),
+            { eventType: event.event_type, clientId: event.client_id }
+          );
 
-      return json(
-        { error: "Event processing failed", eventType: event.event_type },
-        { status: 500 }
-      );
-    }
+          return Response.json(
+            { error: "Event processing failed", eventType: event.event_type },
+            { status: 500 }
+          );
+        }
+      },
+    },
   },
 });

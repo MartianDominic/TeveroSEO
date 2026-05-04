@@ -200,6 +200,9 @@ export const auditFindings = pgTable(
     index("ix_findings_page").on(table.pageId),
     index("ix_findings_check").on(table.checkId),
     index("ix_findings_severity_passed").on(table.severity, table.passed),
+    // FIX-04 (C8): Index for cursor-based pagination using ID ordering
+    index("ix_findings_audit_id").on(table.auditId, table.id),
+    index("ix_findings_page_id").on(table.pageId, table.id),
   ]
 );
 

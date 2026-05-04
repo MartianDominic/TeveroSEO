@@ -56,9 +56,10 @@ export default async function SigningSuccessPage({ params }: Props) {
 
   const { signer, agreement } = result;
 
-  // Format signed date for display
-  const formattedSignedAt = signer.status === "signed"
-    ? new Date().toLocaleDateString(
+  // Format signed date for display - use signer.signedAt from database to avoid hydration mismatch
+  // FIX-06 C12: Using database timestamp instead of new Date() prevents server/client time differences
+  const formattedSignedAt = signer.status === "signed" && signer.signedAt
+    ? new Date(signer.signedAt).toLocaleDateString(
         locale === "lt" ? "lt-LT" : "en-US",
         {
           year: "numeric",

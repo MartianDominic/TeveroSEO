@@ -233,7 +233,7 @@ export class RedisCircuitBreaker {
 
     if (failures >= this.failureThreshold) {
       await this.open();
-      log.error("Circuit breaker opened - threshold reached", {
+      log.error("Circuit breaker opened - threshold reached", undefined, {
         name: this.name,
         failures,
         threshold: this.failureThreshold,

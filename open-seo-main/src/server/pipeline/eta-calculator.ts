@@ -104,7 +104,19 @@ async function getVelocityHistory(workspaceId: string): Promise<VelocityMetric[]
   const key = `${VELOCITY_KEY_PREFIX}${workspaceId}`;
   const items = await redis.lrange(key, 0, MAX_HISTORY - 1);
 
-  return items.map((item) => JSON.parse(item) as VelocityMetric);
+  // H-VAL-03 FIX: Guard JSON.parse to handle malformed cached data
+  const metrics: VelocityMetric[] = [];
+  for (const item of items) {
+    try {
+      metrics.push(JSON.parse(item) as VelocityMetric);
+    } catch {
+      log.warn("Failed to parse velocity metric, skipping", {
+        workspaceId,
+        preview: item.substring(0, 100),
+      });
+    }
+  }
+  return metrics;
 }
 
 /**

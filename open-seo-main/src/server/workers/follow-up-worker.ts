@@ -15,11 +15,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   FOLLOW_UP_QUEUE_NAME,
-  followUpQueue,
   scheduleFollowUpProcessing,
   type FollowUpJobData,
-  type FollowUpDLQJobData,
 } from "@/server/queues/followUpQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "follow-up-worker" });
 
@@ -33,20 +32,20 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./follow-up-processor.js", import.meta.url)
 );
 
-let worker: Worker<FollowUpJobData | FollowUpDLQJobData> | null = null;
+let worker: Worker<FollowUpJobData> | null = null;
 
 /**
  * Start the follow-up worker.
  */
 export async function startFollowUpWorker(): Promise<
-  Worker<FollowUpJobData | FollowUpDLQJobData>
+  Worker<FollowUpJobData>
 > {
   if (worker) return worker;
 
   // Initialize the recurring job
   await scheduleFollowUpProcessing();
 
-  worker = new Worker<FollowUpJobData | FollowUpDLQJobData>(
+  worker = new Worker<FollowUpJobData>(
     FOLLOW_UP_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -68,7 +67,7 @@ export async function startFollowUpWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<FollowUpJobData | FollowUpDLQJobData> | undefined,
+      job: Job<FollowUpJobData> | undefined,
       err: Error
     ) => {
       if (!job) {
@@ -86,24 +85,20 @@ export async function startFollowUpWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: FollowUpDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as FollowUpJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: FOLLOW_UP_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await followUpQueue.add("dlq:follow-up", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days
-            removeOnFail: { age: 604800 },
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${FOLLOW_UP_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

@@ -11,11 +11,10 @@ import { createLogger } from "@/server/lib/logger";
 import {
   DASHBOARD_METRICS_QUEUE_NAME,
   initDashboardMetricsScheduler,
-  dashboardMetricsQueue,
   closeDashboardMetricsQueue,
   type DashboardMetricsJobData,
-  type DashboardMetricsDLQJobData,
 } from "@/server/queues/dashboardMetricsQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 import { processDashboardMetrics } from "./dashboard-metrics-processor";
 
 const workerLogger = createLogger({ module: "dashboard-metrics-worker" });
@@ -24,24 +23,20 @@ const LOCK_DURATION_MS = 300_000; // 5 minutes (must complete before next run)
 const MAX_STALLED_COUNT = 2;
 const SHUTDOWN_TIMEOUT_MS = 25_000;
 
-let worker: Worker<DashboardMetricsJobData | DashboardMetricsDLQJobData> | null = null;
+let worker: Worker<DashboardMetricsJobData> | null = null;
 
 export async function startDashboardMetricsWorker(): Promise<
-  Worker<DashboardMetricsJobData | DashboardMetricsDLQJobData>
+  Worker<DashboardMetricsJobData>
 > {
   if (worker) return worker;
 
   // Initialize the scheduler
   await initDashboardMetricsScheduler();
 
-  worker = new Worker<DashboardMetricsJobData | DashboardMetricsDLQJobData>(
+  worker = new Worker<DashboardMetricsJobData>(
     DASHBOARD_METRICS_QUEUE_NAME,
     async (job) => {
-      if (job.name === "dlq:dashboard-metrics") {
-        workerLogger.warn("DLQ job received", { jobId: job.id, data: job.data });
-        return;
-      }
-      await processDashboardMetrics(job as Job<DashboardMetricsJobData>);
+      await processDashboardMetrics(job);
     },
     {
       connection: getSharedBullMQConnection("worker:dashboard-metrics"),
@@ -62,7 +57,7 @@ export async function startDashboardMetricsWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<DashboardMetricsJobData | DashboardMetricsDLQJobData> | undefined,
+      job: Job<DashboardMetricsJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -80,24 +75,20 @@ export async function startDashboardMetricsWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: DashboardMetricsDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as DashboardMetricsJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: DASHBOARD_METRICS_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await dashboardMetricsQueue.add("dlq:dashboard-metrics", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
-            removeOnFail: { age: 604800 }, // 7 days
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${DASHBOARD_METRICS_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

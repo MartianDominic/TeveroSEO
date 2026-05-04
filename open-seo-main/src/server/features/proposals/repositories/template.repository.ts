@@ -65,8 +65,11 @@ export async function findAllTemplates(
 }
 
 /**
- * Get a template by ID with its sections.
+ * Get a template by ID with its sections (internal use only).
  * Uses Promise.all for parallel query execution (fixes MEDIUM-DB-005).
+ *
+ * WARNING: This method does NOT filter by workspace.
+ * Use findTemplateByIdScoped() for tenant-safe access.
  */
 export async function findTemplateById(
   templateId: string
@@ -80,6 +83,50 @@ export async function findTemplateById(
       .select()
       .from(proposalTemplates)
       .where(eq(proposalTemplates.id, templateId))
+      .limit(1),
+    db
+      .select()
+      .from(templateSections)
+      .where(eq(templateSections.templateId, templateId))
+      .orderBy(asc(templateSections.position)),
+  ]);
+
+  const template = templateResult[0];
+  if (!template) {
+    return undefined;
+  }
+
+  return { ...template, sections };
+}
+
+/**
+ * Get a template by ID with its sections, scoped to workspace.
+ * Includes system templates (workspaceId = null) and workspace-specific templates.
+ * Returns undefined if template doesn't exist OR doesn't belong to workspace/system.
+ *
+ * SECURITY: Use this for tenant-safe data access.
+ */
+export async function findTemplateByIdScoped(
+  templateId: string,
+  workspaceId: string
+): Promise<
+  | (ProposalTemplateSelect & { sections: TemplateSectionSelect[] })
+  | undefined
+> {
+  // Execute both queries in parallel since they are independent
+  const [templateResult, sections] = await Promise.all([
+    db
+      .select()
+      .from(proposalTemplates)
+      .where(
+        and(
+          eq(proposalTemplates.id, templateId),
+          or(
+            eq(proposalTemplates.workspaceId, workspaceId),
+            isNull(proposalTemplates.workspaceId)
+          )
+        )
+      )
       .limit(1),
     db
       .select()
@@ -480,6 +527,7 @@ export async function getSectionsByTemplateId(
 export const TemplateRepository = {
   findAllTemplates,
   findTemplateById,
+  findTemplateByIdScoped,
   findDefaultTemplate,
   createTemplate,
   updateTemplate,

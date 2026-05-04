@@ -91,15 +91,21 @@ export async function getContractsByWorkspace(
 
 /**
  * Get contracts for a specific client.
+ *
+ * SECURITY: Requires workspaceId to prevent cross-tenant access (IDOR).
  */
 export async function getContractsByClient(
   clientId: string,
+  workspaceId: string,
   options?: {
     status?: ContractStatus;
     limit?: number;
   },
 ): Promise<ContractSelect[]> {
-  const conditions = [eq(contracts.clientId, clientId)];
+  const conditions = [
+    eq(contracts.clientId, clientId),
+    eq(contracts.workspaceId, workspaceId),
+  ];
 
   if (options?.status) {
     conditions.push(eq(contracts.status, options.status));
@@ -116,9 +122,12 @@ export async function getContractsByClient(
 /**
  * Transition contract state with optimistic locking.
  * Returns undefined if current state doesn't match fromState (concurrent modification).
+ *
+ * SECURITY: Requires workspaceId to prevent cross-tenant access (IDOR).
  */
 export async function transitionContractState(
   contractId: string,
+  workspaceId: string,
   fromState: ContractStatus,
   toState: ContractStatus,
   additionalFields?: Partial<
@@ -140,16 +149,25 @@ export async function transitionContractState(
       updatedAt: new Date(),
       ...additionalFields,
     })
-    .where(and(eq(contracts.id, contractId), eq(contracts.status, fromState)))
+    .where(
+      and(
+        eq(contracts.id, contractId),
+        eq(contracts.workspaceId, workspaceId),
+        eq(contracts.status, fromState)
+      )
+    )
     .returning();
   return updated;
 }
 
 /**
  * Update contract content (for draft contracts only).
+ *
+ * SECURITY: Requires workspaceId to prevent cross-tenant access (IDOR).
  */
 export async function updateContract(
   contractId: string,
+  workspaceId: string,
   updates: Partial<Pick<ContractSelect, "title" | "content" | "expiresAt">>,
 ): Promise<ContractSelect | undefined> {
   const [updated] = await db
@@ -158,16 +176,28 @@ export async function updateContract(
       ...updates,
       updatedAt: new Date(),
     })
-    .where(eq(contracts.id, contractId))
+    .where(
+      and(
+        eq(contracts.id, contractId),
+        eq(contracts.workspaceId, workspaceId)
+      )
+    )
     .returning();
   return updated;
 }
 
 /**
  * Delete a contract (hard delete).
+ *
+ * SECURITY: Requires workspaceId to prevent cross-tenant access (IDOR).
  */
-export async function deleteContract(contractId: string): Promise<void> {
-  await db.delete(contracts).where(eq(contracts.id, contractId));
+export async function deleteContract(contractId: string, workspaceId: string): Promise<void> {
+  await db.delete(contracts).where(
+    and(
+      eq(contracts.id, contractId),
+      eq(contracts.workspaceId, workspaceId)
+    )
+  );
 }
 
 export const ContractRepository = {

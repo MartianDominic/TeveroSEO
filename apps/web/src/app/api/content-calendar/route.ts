@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf } from "@/lib/api/security";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { badRequest, validationError } from "@/lib/api/responses";
 
 /**
  * Schema for creating a new calendar event/article.
@@ -59,20 +60,18 @@ async function handlePost(req: NextRequest) {
   const csrfError = validateCsrf(req);
   if (csrfError) return csrfError;
 
+  // Parse JSON body (400 for malformed JSON)
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return badRequest("Invalid JSON body");
   }
 
-  // Validate request body against schema
+  // Validate request body against schema (422 for validation errors - M-API-01 fix)
   const parseResult = createEventSchema.safeParse(body);
   if (!parseResult.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parseResult.error.flatten().fieldErrors },
-      { status: 400 }
-    );
+    return validationError(parseResult.error);
   }
 
   try {

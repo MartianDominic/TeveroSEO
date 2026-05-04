@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, Loader2, RefreshCw, XCircle, Clock } from "lucide-react";
 import { Button } from "@/client/components/ui/button";
 import { Badge } from "@/client/components/ui/badge";
 import { Card, CardContent } from "@/client/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  cancelAudit,
   getAuditResults,
   getAuditStatus,
   getCrawlProgress,
+  retryAudit,
 } from "@/serverFunctions/audit";
 import { auditSearchSchema } from "@/types/schemas/audit";
 import { LaunchView } from "@/client/features/audit/launch/LaunchView";
@@ -21,6 +23,7 @@ import {
   StatusBadge,
   SUPPORT_URL,
 } from "@/client/features/audit/shared";
+import { toast } from "sonner";
 
 export const Route = createFileRoute<"/_project/p/$projectId/audit/">(
   "/_project/p/$projectId/audit/",
@@ -37,7 +40,7 @@ function SiteAuditPage() {
   const setSearchParams = useCallback(
     (updates: Record<string, string | undefined>) => {
       void navigate({
-        search: (prev) => ({ ...prev, ...updates }),
+        search: (prev: Record<string, unknown>) => ({ ...prev, ...updates }),
         replace: true,
       });
     },
@@ -77,6 +80,8 @@ function AuditDetail({
   setSearchParams: (updates: Record<string, string | undefined>) => void;
   onBack: () => void;
 }) {
+  const queryClient = useQueryClient();
+
   const statusQuery = useQuery({
     queryKey: ["audit-status", projectId, auditId],
     queryFn: () => getAuditStatus({ data: { projectId, auditId } }),
@@ -86,8 +91,37 @@ function AuditDetail({
     },
   });
 
+  // H-AUDIT-01: Cancel mutation
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelAudit({ data: { projectId, auditId } }),
+    onSuccess: () => {
+      toast.success("Audit cancelled");
+      void queryClient.invalidateQueries({ queryKey: ["audit-status", projectId, auditId] });
+    },
+    onError: (error) => {
+      toast.error("Failed to cancel audit", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
+  });
+
+  // M-AUDIT-02: Retry mutation
+  const retryMutation = useMutation({
+    mutationFn: () => retryAudit({ data: { projectId, auditId } }),
+    onSuccess: () => {
+      toast.success("Audit restarted");
+      void queryClient.invalidateQueries({ queryKey: ["audit-status", projectId, auditId] });
+    },
+    onError: (error) => {
+      toast.error("Failed to retry audit", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
+  });
+
   const isComplete = statusQuery.data?.status === "completed";
   const isFailed = statusQuery.data?.status === "failed";
+  const isCancelled = statusQuery.data?.status === "cancelled";
   const isRunning = statusQuery.data?.status === "running";
 
   const resultsQuery = useQuery({
@@ -123,6 +157,7 @@ function AuditDetail({
   const status = statusQuery.data;
   const showSupportCta =
     isFailed || (isComplete && status && status.pagesCrawled <= 1);
+  const canRetry = isFailed || isCancelled;
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
@@ -133,9 +168,27 @@ function AuditDetail({
           </Button>
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold">Site Audit</h1>
-            {status?.status !== "running" && status && (
-              <StatusBadge status={status.status} />
-            )}
+            <div className="flex items-center gap-2">
+              {status?.status !== "running" && status && (
+                <StatusBadge status={status.status} />
+              )}
+              {/* M-AUDIT-02: Retry button for failed/cancelled audits */}
+              {canRetry && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => retryMutation.mutate()}
+                  disabled={retryMutation.isPending}
+                >
+                  {retryMutation.isPending ? (
+                    <Loader2 className="size-3 animate-spin mr-1" />
+                  ) : (
+                    <RefreshCw className="size-3 mr-1" />
+                  )}
+                  Retry
+                </Button>
+              )}
+            </div>
           </div>
           {status && (
             <p className="text-sm text-foreground/70">
@@ -150,6 +203,9 @@ function AuditDetail({
             projectId={projectId}
             auditId={auditId}
             status={status}
+            startedAt={status.startedAt}
+            onCancel={() => cancelMutation.mutate()}
+            isCancelling={cancelMutation.isPending}
           />
         )}
 
@@ -179,6 +235,17 @@ function AuditDetail({
           </div>
         )}
 
+        {/* Show cancelled state message */}
+        {isCancelled && (
+          <div className="alert alert-info">
+            <AlertCircle className="size-5" />
+            <div className="space-y-1">
+              <p className="font-medium">Audit was cancelled</p>
+              <p>You can retry this audit using the button above.</p>
+            </div>
+          </div>
+        )}
+
         {isComplete && resultsQuery.data && (
           <ResultsView
             projectId={projectId}
@@ -192,10 +259,45 @@ function AuditDetail({
   );
 }
 
+/**
+ * H-AUDIT-01: Audit timeout configuration
+ * Max duration is 30 minutes, warning shown at 80% (24 minutes)
+ */
+const MAX_AUDIT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const TIMEOUT_WARNING_THRESHOLD = 0.8; // 80%
+
+/**
+ * Estimate remaining time based on progress and elapsed time.
+ * M-AUDIT-01: Granular progress with estimated time remaining.
+ */
+function estimateRemainingTime(
+  progress: number,
+  startedAt: Date | string | null,
+): string | null {
+  if (!startedAt || progress <= 0 || progress >= 100) return null;
+
+  const elapsed = Date.now() - new Date(startedAt).getTime();
+  const estimatedTotal = (elapsed / progress) * 100;
+  const remaining = estimatedTotal - elapsed;
+
+  if (remaining < 0 || remaining > MAX_AUDIT_DURATION_MS) return null;
+
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+
+  if (minutes > 0) {
+    return `~${minutes}m ${seconds}s remaining`;
+  }
+  return `~${seconds}s remaining`;
+}
+
 function ProgressCard({
   projectId,
   auditId,
   status,
+  startedAt,
+  onCancel,
+  isCancelling,
 }: {
   projectId: string;
   auditId: string;
@@ -207,7 +309,12 @@ function ProgressCard({
     lighthouseFailed: number;
     currentPhase: string | null;
   };
+  startedAt: Date | string | null;
+  onCancel: () => void;
+  isCancelling: boolean;
 }) {
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+
   const crawlProgress =
     status.pagesTotal > 0
       ? Math.round((status.pagesCrawled / status.pagesTotal) * 100)
@@ -230,6 +337,31 @@ function ProgressCard({
             : (status.currentPhase ?? "Running");
   const progress = isLighthousePhase ? lighthouseProgress : crawlProgress;
 
+  // H-AUDIT-01: Calculate estimated remaining time
+  const estimatedTime = estimateRemainingTime(progress, startedAt);
+
+  // H-AUDIT-01: Show timeout warning at 80% of max duration
+  useEffect(() => {
+    if (!startedAt) return;
+
+    const checkTimeout = () => {
+      const elapsed = Date.now() - new Date(startedAt).getTime();
+      const threshold = MAX_AUDIT_DURATION_MS * TIMEOUT_WARNING_THRESHOLD;
+
+      if (elapsed >= threshold && !showTimeoutWarning) {
+        setShowTimeoutWarning(true);
+        toast.warning("Audit is taking longer than expected", {
+          description: "The audit may timeout soon. Consider cancelling and trying with fewer pages.",
+          duration: 10000,
+        });
+      }
+    };
+
+    checkTimeout();
+    const interval = setInterval(checkTimeout, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [startedAt, showTimeoutWarning]);
+
   const crawlProgressQuery = useQuery({
     queryKey: ["audit-crawl-progress", projectId, auditId],
     queryFn: () => getCrawlProgress({ data: { projectId, auditId } }),
@@ -240,6 +372,17 @@ function ProgressCard({
 
   return (
     <div className="space-y-3">
+      {/* H-AUDIT-01: Timeout warning banner */}
+      {showTimeoutWarning && (
+        <div className="alert alert-warning">
+          <Clock className="size-5" />
+          <div>
+            <p className="font-medium">Audit is taking longer than expected</p>
+            <p className="text-sm">Consider cancelling and retrying with fewer pages.</p>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="gap-3 pt-6">
           <div className="flex items-center justify-between">
@@ -249,7 +392,24 @@ function ProgressCard({
                 ? "Running Lighthouse checks"
                 : "Crawling pages"}
             </h2>
-            <Badge variant="secondary">{phaseLabel}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{phaseLabel}</Badge>
+              {/* H-AUDIT-01: Cancel button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCancel}
+                disabled={isCancelling}
+                className="text-destructive hover:text-destructive"
+              >
+                {isCancelling ? (
+                  <Loader2 className="size-3 animate-spin mr-1" />
+                ) : (
+                  <XCircle className="size-3 mr-1" />
+                )}
+                Cancel
+              </Button>
+            </div>
           </div>
 
           <progress
@@ -271,7 +431,16 @@ function ProgressCard({
                 {status.pagesCrawled} / {status.pagesTotal} pages
               </span>
             )}
-            <span className="text-muted-foreground">{progress}%</span>
+            <div className="flex items-center gap-3">
+              {/* H-AUDIT-01: Estimated time remaining */}
+              {estimatedTime && (
+                <span className="text-muted-foreground text-xs flex items-center gap-1">
+                  <Clock className="size-3" />
+                  {estimatedTime}
+                </span>
+              )}
+              <span className="text-muted-foreground">{progress}%</span>
+            </div>
           </div>
         </CardContent>
       </Card>

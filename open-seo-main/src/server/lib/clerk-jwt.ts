@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { AppError } from "./errors";
+import { JWT_CLOCK_TOLERANCE_SECONDS } from "./auth-constants";
 
 export interface ClerkJWTPayload {
   userId: string;
@@ -77,7 +78,7 @@ export async function verifyClerkJWT(token: string): Promise<ClerkJWTPayload> {
       algorithms: ["RS256"],
       issuer, // Validate token issuer
       maxTokenAge: "24h", // Explicit maximum token age
-      clockTolerance: 30, // AUTH-HIGH-02 FIX: 30 seconds clock skew tolerance (reduced from default 60)
+      clockTolerance: JWT_CLOCK_TOLERANCE_SECONDS, // FIX M-AUTH-01: Uses shared constant for consistency
     });
 
     // Clerk JWT claims: sub = user ID, email, name (optional)

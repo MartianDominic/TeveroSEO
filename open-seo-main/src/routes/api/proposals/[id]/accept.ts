@@ -7,17 +7,44 @@
  * Logs activity with actor_type='client' per D-10.
  *
  * SECURITY:
- * - No authentication required - called by proposal recipient via unique link.
+ * - FIX H-AUTH-04: Token validation required - prevents unauthorized state changes.
  * - Rate limited to prevent DoS attacks on proposal state.
  * - Origin validation (CSRF) to prevent malicious auto-accept links.
  * - State machine enforces valid transitions (only from "viewed" status).
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { ProposalService } from "@/server/features/proposals/services/ProposalService";
 import { ActivityRepository } from "@/server/features/contracts/repositories/ActivityRepository";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
+import { timingSafeEqual } from "crypto";
+
+/**
+ * FIX H-AUTH-04: Request body schema with required token.
+ */
+const acceptRequestSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+});
+
+/**
+ * FIX H-AUTH-04: Timing-safe token comparison.
+ */
+function secureTokenCompare(a: string, b: string): boolean {
+  try {
+    const aBuffer = Buffer.from(a, "utf8");
+    const bBuffer = Buffer.from(b, "utf8");
+    if (aBuffer.length !== bBuffer.length) {
+      // Perform dummy comparison to maintain constant time
+      timingSafeEqual(bBuffer, bBuffer);
+      return false;
+    }
+    return timingSafeEqual(aBuffer, bBuffer);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Rate limit config for proposal accept: 10 requests per minute per IP.
@@ -137,12 +164,48 @@ export const Route = createFileRoute("/api/proposals/id/accept")({
             return rateLimitExceededResponse(rateLimitResult);
           }
 
+          // FIX H-AUTH-04: Parse and validate request body with token
+          let requestToken: string;
+          try {
+            const body = await request.json();
+            const parsed = acceptRequestSchema.safeParse(body);
+            if (!parsed.success) {
+              log.warn("Invalid accept request body", {
+                proposalId,
+                errors: parsed.error.issues,
+              });
+              return Response.json(
+                { success: false, error: "Token is required for proposal acceptance" },
+                { status: 400 }
+              );
+            }
+            requestToken = parsed.data.token;
+          } catch {
+            return Response.json(
+              { success: false, error: "Invalid request body" },
+              { status: 400 }
+            );
+          }
+
           // Get current proposal to capture previous status
           const proposal = await ProposalService.findById(proposalId);
           if (!proposal) {
             return Response.json(
               { success: false, error: "Proposal not found" },
               { status: 404 }
+            );
+          }
+
+          // FIX H-AUTH-04: Validate token matches proposal's token
+          // Uses timing-safe comparison to prevent timing attacks
+          if (!secureTokenCompare(requestToken, proposal.token)) {
+            log.warn("Invalid token for proposal accept", {
+              proposalId,
+              clientIP,
+            });
+            return Response.json(
+              { success: false, error: "Invalid or expired token" },
+              { status: 403 }
             );
           }
 

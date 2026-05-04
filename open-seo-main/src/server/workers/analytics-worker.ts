@@ -17,12 +17,11 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   ANALYTICS_QUEUE_NAME,
-  analyticsQueue,
   initAnalyticsScheduler,
-  type AnalyticsDLQJobData,
   type AnalyticsSyncJobData,
   type SyncAllClientsJobData,
 } from "@/server/queues/analyticsQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 // Module-level logger for worker lifecycle events
 const workerLogger = createLogger({ module: "analytics-worker" });
@@ -114,17 +113,17 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./analytics-processor.js", import.meta.url),
 );
 
-let worker: Worker<AnalyticsSyncJobData | SyncAllClientsJobData | AnalyticsDLQJobData> | null = null;
+let worker: Worker<AnalyticsSyncJobData | SyncAllClientsJobData> | null = null;
 
 export async function startAnalyticsWorker(): Promise<
-  Worker<AnalyticsSyncJobData | SyncAllClientsJobData | AnalyticsDLQJobData>
+  Worker<AnalyticsSyncJobData | SyncAllClientsJobData>
 > {
   if (worker) return worker;
 
   // Initialize the nightly scheduler first
   await initAnalyticsScheduler();
 
-  worker = new Worker<AnalyticsSyncJobData | SyncAllClientsJobData | AnalyticsDLQJobData>(
+  worker = new Worker<AnalyticsSyncJobData | SyncAllClientsJobData>(
     ANALYTICS_QUEUE_NAME,
     PROCESSOR_PATH, // Sandboxed processor
     {
@@ -151,7 +150,7 @@ export async function startAnalyticsWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<AnalyticsSyncJobData | SyncAllClientsJobData | AnalyticsDLQJobData> | undefined,
+      job: Job<AnalyticsSyncJobData | SyncAllClientsJobData> | undefined,
       err: Error,
     ) => {
       metrics.failed++;
@@ -172,31 +171,20 @@ export async function startAnalyticsWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to dead-letter queue after max retries exhausted
-      // Skip DLQ jobs themselves to avoid infinite loops
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: AnalyticsDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as AnalyticsSyncJobData | SyncAllClientsJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: ANALYTICS_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await analyticsQueue.add("dlq:analytics-sync", dlqData, {
-            removeOnComplete: {
-              age: 7 * 24 * 3600, // Keep completed DLQ jobs for 7 days
-              count: 1000, // But no more than 1000 completed jobs
-            },
-            removeOnFail: {
-              age: 7 * 24 * 3600, // Keep failed DLQ jobs for 7 days
-              count: 1000, // But no more than 1000 failed jobs
-            },
-            attempts: 1, // DLQ jobs should not retry
-          });
-          jobLogger.info("Job moved to DLQ", {
+          await dlqQueue.add(`dlq:${ANALYTICS_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", {
             attemptsMade: job.attemptsMade,
           });
         } catch (dlqErr) {

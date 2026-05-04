@@ -74,6 +74,7 @@ import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onbo
 import { Route as ApiMetricsCrawlRouteImport } from './routes/api/metrics/crawl'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
+import { Route as ApiInternalSessionInvalidationRouteImport } from './routes/api/internal/session-invalidation'
 import { Route as ApiGraphragStatusRouteImport } from './routes/api/graphrag/status'
 import { Route as ApiGraphragQueryRouteImport } from './routes/api/graphrag/query'
 import { Route as ApiGraphragIngestRouteImport } from './routes/api/graphrag/ingest'
@@ -83,6 +84,8 @@ import { Route as ApiConnectVerifyRouteImport } from './routes/api/connect/verif
 import { Route as ApiConnectHandoffRouteImport } from './routes/api/connect/handoff'
 import { Route as ApiConnectDetectRouteImport } from './routes/api/connect/detect'
 import { Route as ApiCommandCenterMetricsRouteImport } from './routes/api/command-center/metrics'
+import { Route as ApiClientsSyncRouteImport } from './routes/api/clients/sync'
+import { Route as ApiClientsEventsRouteImport } from './routes/api/clients/events'
 import { Route as ApiClerkWebhookRouteImport } from './routes/api/clerk/webhook'
 import { Route as ApiChangesChangeIdRouteImport } from './routes/api/changes/$changeId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
@@ -139,6 +142,7 @@ import { Route as ApiCommandCenterActionsSnoozeRouteImport } from './routes/api/
 import { Route as ApiCommandCenterActionsSendReminderRouteImport } from './routes/api/command-center/actions/send-reminder'
 import { Route as ApiCommandCenterActionsMarkLostRouteImport } from './routes/api/command-center/actions/mark-lost'
 import { Route as ApiCommandCenterActionsAddNoteRouteImport } from './routes/api/command-center/actions/add-note'
+import { Route as ApiClientsClientIdRollbackRouteImport } from './routes/api/clients/$clientId.rollback'
 import { Route as ApiClientsClientIdReportsRouteImport } from './routes/api/clients/$clientId.reports'
 import { Route as ApiClientsClientIdDropEventsRouteImport } from './routes/api/clients/$clientId.drop-events'
 import { Route as ApiClientsClientIdAlertsRouteImport } from './routes/api/clients/$clientId.alerts'
@@ -526,6 +530,12 @@ const ApiKeywordsCompetitorSpyRoute =
     path: '/api/keywords/competitor-spy',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalSessionInvalidationRoute =
+  ApiInternalSessionInvalidationRouteImport.update({
+    id: '/api/internal/session-invalidation',
+    path: '/api/internal/session-invalidation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGraphragStatusRoute = ApiGraphragStatusRouteImport.update({
   id: '/api/graphrag/status',
   path: '/api/graphrag/status',
@@ -569,6 +579,16 @@ const ApiConnectDetectRoute = ApiConnectDetectRouteImport.update({
 const ApiCommandCenterMetricsRoute = ApiCommandCenterMetricsRouteImport.update({
   id: '/api/command-center/metrics',
   path: '/api/command-center/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClientsSyncRoute = ApiClientsSyncRouteImport.update({
+  id: '/api/clients/sync',
+  path: '/api/clients/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClientsEventsRoute = ApiClientsEventsRouteImport.update({
+  id: '/api/clients/events',
+  path: '/api/clients/events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiClerkWebhookRoute = ApiClerkWebhookRouteImport.update({
@@ -883,6 +903,12 @@ const ApiCommandCenterActionsAddNoteRoute =
   ApiCommandCenterActionsAddNoteRouteImport.update({
     id: '/api/command-center/actions/add-note',
     path: '/api/command-center/actions/add-note',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiClientsClientIdRollbackRoute =
+  ApiClientsClientIdRollbackRouteImport.update({
+    id: '/api/clients/$clientId/rollback',
+    path: '/api/clients/$clientId/rollback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiClientsClientIdReportsRoute =
@@ -1258,6 +1284,8 @@ export interface FileRoutesByFullPath {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
+  '/api/clients/events': typeof ApiClientsEventsRoute
+  '/api/clients/sync': typeof ApiClientsSyncRoute
   '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
   '/api/connect/detect': typeof ApiConnectDetectRoute
   '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
@@ -1267,6 +1295,7 @@ export interface FileRoutesByFullPath {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1334,6 +1363,7 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
+  '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
   '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
   '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
@@ -1446,6 +1476,8 @@ export interface FileRoutesByTo {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
+  '/api/clients/events': typeof ApiClientsEventsRoute
+  '/api/clients/sync': typeof ApiClientsSyncRoute
   '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
   '/api/connect/detect': typeof ApiConnectDetectRoute
   '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
@@ -1455,6 +1487,7 @@ export interface FileRoutesByTo {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1520,6 +1553,7 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
+  '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
   '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
   '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
@@ -1637,6 +1671,8 @@ export interface FileRoutesById {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/changes/$changeId': typeof ApiChangesChangeIdRoute
   '/api/clerk/webhook': typeof ApiClerkWebhookRoute
+  '/api/clients/events': typeof ApiClientsEventsRoute
+  '/api/clients/sync': typeof ApiClientsSyncRoute
   '/api/command-center/metrics': typeof ApiCommandCenterMetricsRoute
   '/api/connect/detect': typeof ApiConnectDetectRoute
   '/api/connect/handoff': typeof ApiConnectHandoffRouteWithChildren
@@ -1646,6 +1682,7 @@ export interface FileRoutesById {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1713,6 +1750,7 @@ export interface FileRoutesById {
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
+  '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
   '/api/command-center/actions/mark-lost': typeof ApiCommandCenterActionsMarkLostRoute
   '/api/command-center/actions/send-reminder': typeof ApiCommandCenterActionsSendReminderRoute
@@ -1828,6 +1866,8 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
+    | '/api/clients/events'
+    | '/api/clients/sync'
     | '/api/command-center/metrics'
     | '/api/connect/detect'
     | '/api/connect/handoff'
@@ -1837,6 +1877,7 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -1904,6 +1945,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
+    | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
     | '/api/command-center/actions/mark-lost'
     | '/api/command-center/actions/send-reminder'
@@ -2016,6 +2058,8 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
+    | '/api/clients/events'
+    | '/api/clients/sync'
     | '/api/command-center/metrics'
     | '/api/connect/detect'
     | '/api/connect/handoff'
@@ -2025,6 +2069,7 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -2090,6 +2135,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
+    | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
     | '/api/command-center/actions/mark-lost'
     | '/api/command-center/actions/send-reminder'
@@ -2206,6 +2252,8 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/changes/$changeId'
     | '/api/clerk/webhook'
+    | '/api/clients/events'
+    | '/api/clients/sync'
     | '/api/command-center/metrics'
     | '/api/connect/detect'
     | '/api/connect/handoff'
@@ -2215,6 +2263,7 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -2282,6 +2331,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
     | '/api/clients/$clientId/reports'
+    | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
     | '/api/command-center/actions/mark-lost'
     | '/api/command-center/actions/send-reminder'
@@ -2392,6 +2442,8 @@ export interface RootRouteChildren {
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiChangesChangeIdRoute: typeof ApiChangesChangeIdRoute
   ApiClerkWebhookRoute: typeof ApiClerkWebhookRoute
+  ApiClientsEventsRoute: typeof ApiClientsEventsRoute
+  ApiClientsSyncRoute: typeof ApiClientsSyncRoute
   ApiCommandCenterMetricsRoute: typeof ApiCommandCenterMetricsRoute
   ApiConnectDetectRoute: typeof ApiConnectDetectRoute
   ApiConnectHandoffRoute: typeof ApiConnectHandoffRouteWithChildren
@@ -2401,6 +2453,7 @@ export interface RootRouteChildren {
   ApiGraphragIngestRoute: typeof ApiGraphragIngestRoute
   ApiGraphragQueryRoute: typeof ApiGraphragQueryRoute
   ApiGraphragStatusRoute: typeof ApiGraphragStatusRoute
+  ApiInternalSessionInvalidationRoute: typeof ApiInternalSessionInvalidationRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
   ApiMetricsCrawlRoute: typeof ApiMetricsCrawlRoute
@@ -2452,6 +2505,7 @@ export interface RootRouteChildren {
   ApiClientsClientIdAlertsRoute: typeof ApiClientsClientIdAlertsRoute
   ApiClientsClientIdDropEventsRoute: typeof ApiClientsClientIdDropEventsRoute
   ApiClientsClientIdReportsRoute: typeof ApiClientsClientIdReportsRoute
+  ApiClientsClientIdRollbackRoute: typeof ApiClientsClientIdRollbackRoute
   ApiCommandCenterActionsAddNoteRoute: typeof ApiCommandCenterActionsAddNoteRoute
   ApiCommandCenterActionsMarkLostRoute: typeof ApiCommandCenterActionsMarkLostRoute
   ApiCommandCenterActionsSendReminderRoute: typeof ApiCommandCenterActionsSendReminderRoute
@@ -2969,6 +3023,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKeywordsCompetitorSpyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/session-invalidation': {
+      id: '/api/internal/session-invalidation'
+      path: '/api/internal/session-invalidation'
+      fullPath: '/api/internal/session-invalidation'
+      preLoaderRoute: typeof ApiInternalSessionInvalidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/graphrag/status': {
       id: '/api/graphrag/status'
       path: '/api/graphrag/status'
@@ -3030,6 +3091,20 @@ declare module '@tanstack/react-router' {
       path: '/api/command-center/metrics'
       fullPath: '/api/command-center/metrics'
       preLoaderRoute: typeof ApiCommandCenterMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/sync': {
+      id: '/api/clients/sync'
+      path: '/api/clients/sync'
+      fullPath: '/api/clients/sync'
+      preLoaderRoute: typeof ApiClientsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/events': {
+      id: '/api/clients/events'
+      path: '/api/clients/events'
+      fullPath: '/api/clients/events'
+      preLoaderRoute: typeof ApiClientsEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clerk/webhook': {
@@ -3422,6 +3497,13 @@ declare module '@tanstack/react-router' {
       path: '/api/command-center/actions/add-note'
       fullPath: '/api/command-center/actions/add-note'
       preLoaderRoute: typeof ApiCommandCenterActionsAddNoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/$clientId/rollback': {
+      id: '/api/clients/$clientId/rollback'
+      path: '/api/clients/$clientId/rollback'
+      fullPath: '/api/clients/$clientId/rollback'
+      preLoaderRoute: typeof ApiClientsClientIdRollbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clients/$clientId/reports': {
@@ -4261,6 +4343,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiChangesChangeIdRoute: ApiChangesChangeIdRoute,
   ApiClerkWebhookRoute: ApiClerkWebhookRoute,
+  ApiClientsEventsRoute: ApiClientsEventsRoute,
+  ApiClientsSyncRoute: ApiClientsSyncRoute,
   ApiCommandCenterMetricsRoute: ApiCommandCenterMetricsRoute,
   ApiConnectDetectRoute: ApiConnectDetectRoute,
   ApiConnectHandoffRoute: ApiConnectHandoffRouteWithChildren,
@@ -4270,6 +4354,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGraphragIngestRoute: ApiGraphragIngestRoute,
   ApiGraphragQueryRoute: ApiGraphragQueryRoute,
   ApiGraphragStatusRoute: ApiGraphragStatusRoute,
+  ApiInternalSessionInvalidationRoute: ApiInternalSessionInvalidationRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
   ApiMetricsCrawlRoute: ApiMetricsCrawlRoute,
@@ -4322,6 +4407,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClientsClientIdAlertsRoute: ApiClientsClientIdAlertsRoute,
   ApiClientsClientIdDropEventsRoute: ApiClientsClientIdDropEventsRoute,
   ApiClientsClientIdReportsRoute: ApiClientsClientIdReportsRoute,
+  ApiClientsClientIdRollbackRoute: ApiClientsClientIdRollbackRoute,
   ApiCommandCenterActionsAddNoteRoute: ApiCommandCenterActionsAddNoteRoute,
   ApiCommandCenterActionsMarkLostRoute: ApiCommandCenterActionsMarkLostRoute,
   ApiCommandCenterActionsSendReminderRoute:
@@ -4405,13 +4491,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

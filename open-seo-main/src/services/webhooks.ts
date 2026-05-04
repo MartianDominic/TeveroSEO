@@ -297,6 +297,10 @@ export async function getWebhookDeliveries(
 /**
  * Create a delivery record with idempotency check.
  * Returns null if a delivery with the same idempotency key already exists.
+ *
+ * M-CONC-01 FIX: Uses atomic upsert instead of check-then-insert to prevent
+ * TOCTOU race conditions. The unique index on (webhookId, idempotencyKey)
+ * ensures only one delivery is created even with concurrent requests.
  */
 export async function createDeliveryRecord(params: {
   webhookId: string;
@@ -305,26 +309,9 @@ export async function createDeliveryRecord(params: {
   payload: Record<string, unknown>;
   idempotencyKey?: string;
 }): Promise<string | null> {
-  // If idempotency key provided, check for existing delivery
-  if (params.idempotencyKey) {
-    const existing = await db
-      .select({ id: webhookDeliveries.id })
-      .from(webhookDeliveries)
-      .where(
-        and(
-          eq(webhookDeliveries.webhookId, params.webhookId),
-          eq(webhookDeliveries.idempotencyKey, params.idempotencyKey)
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
-      // Already processed - skip duplicate delivery
-      return null;
-    }
-  }
-
-  // Create new delivery record with ON CONFLICT DO NOTHING for extra safety
+  // M-CONC-01 FIX: Atomic insert with ON CONFLICT DO NOTHING
+  // No separate SELECT - the unique index on (webhookId, idempotencyKey) handles deduplication
+  // This eliminates the TOCTOU window between check and insert
   const result = await db
     .insert(webhookDeliveries)
     .values({
@@ -338,8 +325,14 @@ export async function createDeliveryRecord(params: {
     .onConflictDoNothing()
     .returning({ id: webhookDeliveries.id });
 
-  // If no rows returned, concurrent insert won the race
+  // If no rows returned, either:
+  // 1. A concurrent insert won the race (idempotency key conflict)
+  // 2. The record already existed (duplicate delivery)
   if (result.length === 0) {
+    logger.debug("Webhook delivery skipped - duplicate or concurrent insert", {
+      webhookId: params.webhookId,
+      idempotencyKey: params.idempotencyKey,
+    });
     return null;
   }
 

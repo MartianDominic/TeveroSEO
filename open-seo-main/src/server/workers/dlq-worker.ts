@@ -20,9 +20,22 @@ import { createLogger } from "@/server/lib/logger";
 import { DLQ_QUEUE_NAME, type DLQJobData, getDLQQueue } from "@/server/queues/dlq";
 
 // QUEUE-H01: Optional Sentry integration for external alerting
-let Sentry: typeof import("@sentry/node") | null = null;
+// Type uses a minimal interface to avoid requiring @sentry/node as a dependency
+interface SentryLike {
+  captureMessage(
+    message: string,
+    options?: {
+      level?: "warning" | "error" | "info" | "debug";
+      tags?: Record<string, string>;
+      extra?: Record<string, unknown>;
+    }
+  ): string | undefined;
+}
+
+let Sentry: SentryLike | null = null;
 try {
-  Sentry = require("@sentry/node");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Sentry = require("@sentry/node") as SentryLike;
 } catch {
   // Sentry not available - alerts will use webhook/logging only
 }

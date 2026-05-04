@@ -255,24 +255,31 @@ export async function updateInstallmentStatus(
 /**
  * Get upcoming installments for reminders.
  *
+ * SECURITY: Requires workspaceId for per-tenant isolation.
+ *
  * @param daysAhead - Number of days to look ahead
+ * @param workspaceId - Workspace ID for tenant isolation
  * @returns List of upcoming installments
  */
 export async function getUpcomingInstallments(
-  daysAhead: number
+  daysAhead: number,
+  workspaceId: string
 ): Promise<PaymentInstallmentSelect[]> {
-  return PaymentScheduleRepository.getUpcomingInstallments(daysAhead);
+  return PaymentScheduleRepository.getUpcomingInstallments(daysAhead, workspaceId);
 }
 
 /**
  * Get overdue installments.
  *
+ * SECURITY: Requires workspaceId for per-tenant isolation.
+ *
+ * @param workspaceId - Workspace ID for tenant isolation
  * @returns List of overdue installments
  */
-export async function getOverdueInstallments(): Promise<
-  PaymentInstallmentSelect[]
-> {
-  return PaymentScheduleRepository.getOverdueInstallments();
+export async function getOverdueInstallments(
+  workspaceId: string
+): Promise<PaymentInstallmentSelect[]> {
+  return PaymentScheduleRepository.getOverdueInstallments(workspaceId);
 }
 
 export const PaymentScheduleService = {

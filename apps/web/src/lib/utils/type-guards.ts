@@ -329,6 +329,60 @@ export function safeJsonParseWithFallback<T>(
 }
 
 /**
+ * H-VAL-02 FIX: Safe parseInt with NaN handling.
+ * Returns fallback value if parsing fails or results in NaN.
+ *
+ * @param value - String value to parse
+ * @param fallback - Value to return if parsing fails (default: 0)
+ * @param radix - Radix for parseInt (default: 10)
+ * @returns Parsed integer or fallback
+ *
+ * @example
+ * ```ts
+ * // Before: parseInt can return NaN silently
+ * const page = parseInt(params.page, 10); // NaN if invalid
+ *
+ * // After: Safe with fallback
+ * const page = safeParseInt(params.page, 1); // 1 if invalid
+ * ```
+ */
+export function safeParseInt(
+  value: string | null | undefined,
+  fallback: number = 0,
+  radix: number = 10
+): number {
+  if (value === null || value === undefined || value.trim() === '') {
+    return fallback;
+  }
+  const parsed = parseInt(value, radix);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+/**
+ * H-VAL-02 FIX: Safe parseFloat with NaN handling.
+ * Returns fallback value if parsing fails or results in NaN.
+ *
+ * @param value - String value to parse
+ * @param fallback - Value to return if parsing fails (default: 0)
+ * @returns Parsed float or fallback
+ *
+ * @example
+ * ```ts
+ * const price = safeParseFloat(priceString, 0); // 0 if invalid
+ * ```
+ */
+export function safeParseFloat(
+  value: string | null | undefined,
+  fallback: number = 0
+): number {
+  if (value === null || value === undefined || value.trim() === '') {
+    return fallback;
+  }
+  const parsed = parseFloat(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+/**
  * Type-safe object keys.
  * Returns array of keys with proper typing.
  *

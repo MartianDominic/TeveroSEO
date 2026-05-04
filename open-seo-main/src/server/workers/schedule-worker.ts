@@ -16,11 +16,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   SCHEDULE_QUEUE_NAME,
-  scheduleQueue,
   initScheduleQueue,
-  type ScheduleDLQJobData,
   type ScheduleJobData,
 } from "@/server/queues/scheduleQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "schedule-worker" });
 
@@ -33,17 +32,17 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./schedule-processor.js", import.meta.url),
 );
 
-let worker: Worker<ScheduleJobData | ScheduleDLQJobData> | null = null;
+let worker: Worker<ScheduleJobData> | null = null;
 
 export async function startScheduleWorker(): Promise<
-  Worker<ScheduleJobData | ScheduleDLQJobData>
+  Worker<ScheduleJobData>
 > {
   if (worker) return worker;
 
   // Initialize the repeatable job
   await initScheduleQueue();
 
-  worker = new Worker<ScheduleJobData | ScheduleDLQJobData>(
+  worker = new Worker<ScheduleJobData>(
     SCHEDULE_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -65,7 +64,7 @@ export async function startScheduleWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<ScheduleJobData | ScheduleDLQJobData> | undefined,
+      job: Job<ScheduleJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -83,24 +82,20 @@ export async function startScheduleWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: ScheduleDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as ScheduleJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: SCHEDULE_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await scheduleQueue.add("dlq:report-scheduler", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
-            removeOnFail: { age: 604800 }, // 7 days
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${SCHEDULE_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

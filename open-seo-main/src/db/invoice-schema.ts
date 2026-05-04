@@ -20,6 +20,7 @@ import {
   jsonb,
   index,
   check,
+  serial,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
@@ -109,6 +110,9 @@ export const invoices = pgTable(
 
     // Status with CHECK constraint (T-45-04)
     status: text("status").notNull().default("draft"),
+
+    // Optimistic locking version (H-CONC-01: Race condition fix)
+    version: integer("version").notNull().default(1),
 
     // Lifecycle timestamps
     sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),

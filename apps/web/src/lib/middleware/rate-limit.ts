@@ -442,14 +442,24 @@ export function getClientIpFromRequest(req: NextRequest): string {
 // --- API Route Wrapper ---
 
 /**
+ * Route handler type that supports both simple and parameterized routes.
+ * Next.js 15 passes { params: Promise<...> } as the second argument.
+ */
+type RouteHandler<T = unknown> = (
+  req: NextRequest,
+  context?: { params: Promise<T> }
+) => Promise<NextResponse>;
+
+/**
  * Wrap an API route handler with rate limiting.
  *
- * @param handler - The API route handler
+ * @param handler - The API route handler (supports both simple and parameterized routes)
  * @param options - Rate limit configuration
  * @returns Wrapped handler that enforces rate limits
  *
  * @example
  * ```ts
+ * // Simple route
  * export const POST = withRateLimit(
  *   async (req) => {
  *     const data = await req.json();
@@ -457,15 +467,22 @@ export function getClientIpFromRequest(req: NextRequest): string {
  *   },
  *   { limit: 10, windowMs: 60000 }
  * );
+ *
+ * // Route with params (Next.js 15)
+ * async function handleGet(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+ *   const { id } = await params;
+ *   return NextResponse.json({ id });
+ * }
+ * export const GET = withRateLimit(handleGet, RATE_LIMITS.API);
  * ```
  */
-export function withRateLimit(
-  handler: (req: NextRequest) => Promise<NextResponse>,
+export function withRateLimit<T = unknown>(
+  handler: RouteHandler<T>,
   options: RateLimitOptions = { limit: 100, windowMs: 60000 }
-): (req: NextRequest) => Promise<NextResponse> {
+): RouteHandler<T> {
   const { limit, windowMs } = options;
 
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest, context?: { params: Promise<T> }): Promise<NextResponse> => {
     const ip = getClientIpFromRequest(req);
     const identifier = `${ip}:${req.nextUrl.pathname}`;
 
@@ -492,8 +509,8 @@ export function withRateLimit(
       );
     }
 
-    // Execute handler
-    const response = await handler(req);
+    // Execute handler with context (params) if provided
+    const response = await handler(req, context);
 
     // Add rate limit headers to successful response
     const newHeaders = new Headers(response.headers);
@@ -581,9 +598,9 @@ export const RATE_LIMITS = {
  * Rate limit wrapper specifically for authentication endpoints.
  * Uses stricter limits (10 requests per minute).
  */
-export function withAuthRateLimit(
-  handler: (req: NextRequest) => Promise<NextResponse>
-): (req: NextRequest) => Promise<NextResponse> {
+export function withAuthRateLimit<T = unknown>(
+  handler: RouteHandler<T>
+): RouteHandler<T> {
   return withRateLimit(handler, RATE_LIMITS.AUTH);
 }
 
@@ -591,9 +608,9 @@ export function withAuthRateLimit(
  * Rate limit wrapper for resource-intensive endpoints.
  * Uses moderate limits (20 requests per minute).
  */
-export function withHeavyRateLimit(
-  handler: (req: NextRequest) => Promise<NextResponse>
-): (req: NextRequest) => Promise<NextResponse> {
+export function withHeavyRateLimit<T = unknown>(
+  handler: RouteHandler<T>
+): RouteHandler<T> {
   return withRateLimit(handler, RATE_LIMITS.HEAVY);
 }
 

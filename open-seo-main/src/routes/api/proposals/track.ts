@@ -5,8 +5,10 @@
  * POST /api/proposals/track
  * Receives tracking data from beacon and records view.
  *
- * SECURITY: No authentication required - called by beacon endpoint.
- * Uses ViewTrackingService which provides 5-minute session deduplication.
+ * SECURITY:
+ * - No authentication required - called by beacon endpoint.
+ * - Uses ViewTrackingService which provides 5-minute session deduplication.
+ * - H-TSK-01 FIX: Rate limited to prevent tracking spam and DoS.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -16,8 +18,33 @@ import {
   detectDeviceType,
 } from "@/server/features/proposals/tracking/ViewTrackingService";
 import { createLogger } from "@/server/lib/logger";
+import { rateLimit, rateLimitExceededResponse } from "@/server/middleware/rate-limit";
 
 const log = createLogger({ module: "api/proposals/track" });
+
+/**
+ * H-TSK-01 FIX: Rate limit config for tracking: 60 requests per minute per IP.
+ * Higher limit since beacon may send multiple heartbeats, but still prevents spam.
+ */
+const PROPOSAL_TRACK_RATE_LIMIT = {
+  limit: 60,
+  window: 60, // 1 minute in seconds
+};
+
+/**
+ * Extract client IP for rate limiting.
+ */
+function getClientIP(request: Request): string {
+  const forwarded = request.headers.get("X-Forwarded-For");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = request.headers.get("X-Real-IP");
+  if (realIp) {
+    return realIp;
+  }
+  return "unknown";
+}
 
 /**
  * Request body schema for tracking.
@@ -33,6 +60,20 @@ export const Route = createFileRoute("/api/proposals/track")({
     handlers: {
       POST: async ({ request }: { request: Request }) => {
         try {
+          // H-TSK-01 FIX: Rate limiting to prevent tracking spam
+          const clientIP = getClientIP(request);
+          const rateLimitResult = await rateLimit({
+            key: `proposal-track:${clientIP}`,
+            ...PROPOSAL_TRACK_RATE_LIMIT,
+          });
+          if (!rateLimitResult.allowed) {
+            log.warn("Rate limit exceeded for proposal tracking", {
+              clientIP,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           const body = await request.json().catch(() => ({}));
           const parseResult = TrackSchema.safeParse(body);
 

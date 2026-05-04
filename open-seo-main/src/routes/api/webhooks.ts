@@ -34,7 +34,7 @@ const createWebhookSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name too long"),
   url: z.string().url("Invalid webhook URL"),
   events: z.array(z.string()).min(1, "At least one event required"),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   enabled: z.boolean().default(true),
 });
 
@@ -42,7 +42,7 @@ const updateWebhookSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   url: z.string().url("Invalid webhook URL").optional(),
   events: z.array(z.string()).min(1, "At least one event required").optional(),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
   enabled: z.boolean().optional(),
   expectedVersion: z.number().int().positive().optional(),
 });

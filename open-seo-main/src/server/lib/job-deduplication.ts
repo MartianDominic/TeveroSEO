@@ -339,7 +339,7 @@ export async function withJobLock<T>(
       heartbeatInterval = setInterval(async () => {
         const extended = await extendJobLock(jobKey, lockId, ttlSeconds);
         if (!extended) {
-          log.error("Lost lock ownership during heartbeat", { jobKey, lockId });
+          log.error("Lost lock ownership during heartbeat", undefined, { jobKey, lockId });
           if (heartbeatInterval) {
             clearInterval(heartbeatInterval);
           }

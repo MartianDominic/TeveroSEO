@@ -1,9 +1,12 @@
 /**
  * FindingsPanel component for displaying SEO check findings.
  * Phase 32: 107 SEO Checks Implementation
+ * M-AUDIT-05: Added pagination support for large findings lists.
  */
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/client/lib/utils";
+import { Button } from "@/client/components/ui/button";
 import type { CheckSeverity } from "@/server/lib/audit/checks/types";
 
 interface Finding {
@@ -20,7 +23,23 @@ interface Finding {
 interface FindingsPanelProps {
   findings: Finding[];
   className?: string;
+  /** M-AUDIT-05: Optional pagination info from server */
+  pagination?: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+  /** M-AUDIT-05: Callback to load more findings */
+  onLoadMore?: () => void;
+  /** M-AUDIT-05: Callback to load previous page */
+  onLoadPrevious?: () => void;
+  /** Loading state for pagination */
+  isLoadingMore?: boolean;
 }
+
+/** M-AUDIT-05: Items per page for client-side pagination */
+const ITEMS_PER_PAGE = 25;
 
 const SEVERITY_COLORS: Record<CheckSeverity, string> = {
   critical: "bg-red-100 text-red-800 border-red-200",
@@ -59,11 +78,20 @@ type FilterSeverity = CheckSeverity | "all";
 type FilterStatus = "all" | "passed" | "failed";
 type FilterTier = 0 | 1 | 2 | 3 | 4;
 
-export function FindingsPanel({ findings, className }: FindingsPanelProps) {
+export function FindingsPanel({
+  findings,
+  className,
+  pagination,
+  onLoadMore,
+  onLoadPrevious,
+  isLoadingMore,
+}: FindingsPanelProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [severityFilter, setSeverityFilter] = useState<FilterSeverity>("all");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [tierFilter, setTierFilter] = useState<FilterTier>(0);
+  // M-AUDIT-05: Client-side pagination for filtered results
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Apply filters
   const filtered = findings.filter((f) => {
@@ -74,8 +102,15 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
     return true;
   });
 
-  // Group by category
-  const grouped = filtered.reduce(
+  // M-AUDIT-05: Apply client-side pagination to filtered results
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedFiltered = filtered.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
+  );
+
+  // Group by category (using paginated results)
+  const grouped = paginatedFiltered.reduce(
     (acc, finding) => {
       const cat = finding.category;
       if (!acc[cat]) acc[cat] = [];
@@ -97,9 +132,15 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
     });
   };
 
-  // Summary counts
+  // Summary counts (from all findings, not just current page)
   const totalPassed = findings.filter((f) => f.passed).length;
   const totalFailed = findings.filter((f) => !f.passed).length;
+
+  // M-AUDIT-05: Reset to first page when filters change
+  const handleFilterChange = <T,>(setter: (value: T) => void, value: T) => {
+    setter(value);
+    setCurrentPage(0);
+  };
 
   return (
     <div className={cn("rounded-lg border bg-white", className)}>
@@ -118,7 +159,7 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           <select
             value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value as FilterSeverity)}
+            onChange={(e) => handleFilterChange(setSeverityFilter, e.target.value as FilterSeverity)}
             className="rounded border px-2 py-1 text-sm"
           >
             <option value="all">All Severities</option>
@@ -131,7 +172,7 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
+            onChange={(e) => handleFilterChange(setStatusFilter, e.target.value as FilterStatus)}
             className="rounded border px-2 py-1 text-sm"
           >
             <option value="all">All Status</option>
@@ -141,7 +182,7 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
 
           <select
             value={tierFilter}
-            onChange={(e) => setTierFilter(Number(e.target.value) as FilterTier)}
+            onChange={(e) => handleFilterChange(setTierFilter, Number(e.target.value) as FilterTier)}
             className="rounded border px-2 py-1 text-sm"
           >
             <option value={0}>All Tiers</option>
@@ -232,6 +273,76 @@ export function FindingsPanel({ findings, className }: FindingsPanelProps) {
 
       {Object.keys(grouped).length === 0 && (
         <div className="p-8 text-center text-gray-500">No findings match the selected filters.</div>
+      )}
+
+      {/* M-AUDIT-05: Pagination controls */}
+      {(totalPages > 1 || pagination) && (
+        <div className="border-t p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              {pagination ? (
+                <>
+                  Showing {pagination.offset + 1}-{Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
+                </>
+              ) : (
+                <>
+                  Showing {currentPage * ITEMS_PER_PAGE + 1}-{Math.min((currentPage + 1) * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} filtered
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Server-side pagination controls */}
+              {pagination && onLoadPrevious && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onLoadPrevious}
+                  disabled={pagination.offset === 0 || isLoadingMore}
+                >
+                  <ChevronLeft className="size-4" />
+                  Previous
+                </Button>
+              )}
+              {pagination && onLoadMore && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onLoadMore}
+                  disabled={!pagination.hasMore || isLoadingMore}
+                >
+                  Next
+                  <ChevronRight className="size-4" />
+                </Button>
+              )}
+              {/* Client-side pagination controls */}
+              {!pagination && totalPages > 1 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                  >
+                    <ChevronLeft className="size-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage + 1} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                  >
+                    Next
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

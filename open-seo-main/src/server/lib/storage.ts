@@ -4,9 +4,13 @@
  *
  * Handles logo file upload, validation, and storage at /data/branding/{clientId}/
  * Also provides shared constants for report storage paths.
+ *
+ * SECURITY (C5 FIX): Implements magic byte validation to verify actual file content
+ * rather than trusting client-provided MIME types.
  */
 import { mkdir, writeFile, unlink, stat, rename, readdir } from "node:fs/promises";
 import path from "node:path";
+import { fileTypeFromBuffer, type FileTypeResult } from "file-type";
 import { createLogger } from "./logger";
 
 const log = createLogger({ module: "storage" });
@@ -86,8 +90,15 @@ const MAX_LOGO_SIZE = 2 * 1024 * 1024;
 
 /**
  * Allowed MIME types for logo uploads.
+ * Note: SVG is text-based and cannot be validated with magic bytes,
+ * so it requires separate validation.
  */
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+
+/**
+ * MIME types that can be validated with magic bytes.
+ */
+const MAGIC_BYTE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 /**
  * Maps MIME types to file extensions.
@@ -96,7 +107,78 @@ const EXTENSION_MAP: Record<string, string> = {
   "image/png": ".png",
   "image/jpeg": ".jpg",
   "image/svg+xml": ".svg",
+  "image/webp": ".webp",
 };
+
+/**
+ * C5 FIX: Validates file content matches claimed MIME type using magic bytes.
+ * This prevents attacks where malicious files are disguised with fake extensions/MIME types.
+ *
+ * @param buffer - File content buffer
+ * @param claimedMimeType - Client-provided MIME type
+ * @returns Object with validated MIME type and extension, or null if invalid
+ */
+async function validateFileMagicBytes(
+  buffer: Buffer,
+  claimedMimeType: string,
+): Promise<{ mimeType: string; extension: string } | null> {
+  // SVG is text-based and cannot be validated with magic bytes
+  // Validate it using XML/SVG header patterns instead
+  if (claimedMimeType === "image/svg+xml") {
+    const content = buffer.toString("utf-8", 0, Math.min(buffer.length, 1024));
+    const trimmed = content.trim();
+    // SVG must start with XML declaration or <svg tag
+    const isSvg =
+      trimmed.startsWith("<?xml") ||
+      trimmed.startsWith("<svg") ||
+      trimmed.startsWith("<!DOCTYPE svg");
+    if (!isSvg) {
+      log.warn("SVG validation failed: content does not appear to be valid SVG", {
+        preview: trimmed.substring(0, 100),
+      });
+      return null;
+    }
+    // Additional security: check for script tags or event handlers
+    const hasScript = /<script/i.test(content) || /on\w+\s*=/i.test(content);
+    if (hasScript) {
+      log.warn("SVG validation failed: contains potentially malicious script content");
+      return null;
+    }
+    return { mimeType: "image/svg+xml", extension: ".svg" };
+  }
+
+  // For binary image formats, use file-type library for magic byte validation
+  const detectedType: FileTypeResult | undefined = await fileTypeFromBuffer(buffer);
+
+  if (!detectedType) {
+    log.warn("Magic byte validation failed: could not detect file type", {
+      claimedMimeType,
+      bufferSize: buffer.length,
+    });
+    return null;
+  }
+
+  // Check if detected type matches claimed type
+  if (!MAGIC_BYTE_TYPES.includes(detectedType.mime)) {
+    log.warn("Magic byte validation failed: unsupported file type detected", {
+      claimedMimeType,
+      detectedMimeType: detectedType.mime,
+    });
+    return null;
+  }
+
+  // Map detected MIME to extension
+  const extensionMap: Record<string, string> = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+  };
+
+  return {
+    mimeType: detectedType.mime,
+    extension: extensionMap[detectedType.mime] || `.${detectedType.ext}`,
+  };
+}
 
 /**
  * Result of saving a branding logo.
@@ -144,10 +226,21 @@ export async function saveBrandingLogo(
     );
   }
 
+  // C5 FIX: Validate actual file content matches claimed MIME type using magic bytes
+  // This prevents attacks where malicious files are disguised with fake extensions
+  const validated = await validateFileMagicBytes(file, mimeType);
+  if (!validated) {
+    throw new Error(
+      `Invalid file content: file does not match claimed type ${mimeType}. ` +
+      `Ensure you are uploading a valid PNG, JPG, or SVG image.`,
+    );
+  }
+
   // T-16-18: Path traversal mitigation - use shared sanitization
   const safeClientId = sanitizePathComponent(clientId);
 
-  const ext = EXTENSION_MAP[mimeType];
+  // Use the validated extension from magic byte detection
+  const ext = validated.extension;
 
   // Ensure base branding directory exists on first use
   await ensureBrandingDir();

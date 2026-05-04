@@ -54,6 +54,15 @@ export function StatusBadge({ status }: { status: string }) {
     );
   }
 
+  // H-AUDIT-01: Support cancelled status
+  if (status === "cancelled") {
+    return (
+      <Badge variant="secondary" className="text-xs gap-1">
+        <AlertCircle className="size-3" /> Cancelled
+      </Badge>
+    );
+  }
+
   return (
     <Badge variant="destructive" className="text-xs gap-1">
       <AlertCircle className="size-3" /> Failed

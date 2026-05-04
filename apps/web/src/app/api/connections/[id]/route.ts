@@ -6,19 +6,42 @@
  * DELETE /api/connections/:id - Remove connection
  *
  * SECURITY (HIGH-26, HIGH-27): Added rate limiting and CSRF protection.
+ * FIX H-API-02: Use server-fetch instead of direct fetch for proper timeouts,
+ *               retries, circuit breaker protection, and consistent error handling.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { validateCsrf } from "@/lib/api/security";
 import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-
+import { getOpenSeo, deleteOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
 import { logger } from '@/lib/logger';
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+interface PlatformConnection {
+  id: string;
+  workspaceId: string;
+  platform: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ConnectionResponse {
+  connection: PlatformConnection;
+}
+
+/**
+ * GET /api/connections/:id
+ * Rate limit: 100 requests per minute (standard API limit)
+ */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  // SECURITY (HIGH-26): Rate limit authenticated endpoint
+  // Rate limit check
   const ip = getClientIpFromRequest(request);
   const rateLimitResult = await checkRateLimit(
     `${ip}:${request.nextUrl.pathname}`,
@@ -38,36 +61,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params;
-  // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
-  const backendUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+  const reqContext = extractRequestContextFromRequest(request);
 
   try {
-    const response = await fetch(
-      `${backendUrl}/api/platform-connections/${id}`,
-      {
-        headers: {
-          "x-user-id": userId,
-          "x-workspace-id": orgId,
-        },
-      }
+    // FIX H-API-02: Use server-fetch for proper timeout, retries, and circuit breaker
+    const data = await getOpenSeo<ConnectionResponse | PlatformConnection>(
+      `/api/platform-connections/${id}`,
+      { requestContext: reqContext }
     );
 
-    if (response.status === 404) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error("Backend error", { error: errorText });
-      return NextResponse.json(
-        { error: "Failed to fetch connection" },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json({ connection: data.connection ?? data });
+    // Normalize response format
+    const connection = 'connection' in data ? data.connection : data;
+    return NextResponse.json({ connection });
   } catch (error) {
+    if (error instanceof FastApiError) {
+      if (error.status === 404) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      logger.error("Backend error", { status: error.status, body: error.body });
+      return NextResponse.json(error.toJSON(), { status: error.status });
+    }
     logger.error("Failed to fetch connection", error instanceof Error ? error : { error: String(error) });
     return NextResponse.json(
       { error: "Failed to fetch connection" },
@@ -76,8 +89,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+/**
+ * DELETE /api/connections/:id
+ * Rate limit: 20 requests per minute (heavy operation)
+ */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  // SECURITY (HIGH-26): Rate limit authenticated endpoint (stricter for mutations)
+  // Rate limit check (stricter for mutations)
   const ip = getClientIpFromRequest(request);
   const rateLimitResult = await checkRateLimit(
     `${ip}:${request.nextUrl.pathname}`,
@@ -101,36 +118,24 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params;
-  // CFG-CRIT-01 FIX: Standardized to OPEN_SEO_URL
-  const backendUrl = process.env.OPEN_SEO_URL || "http://localhost:3001";
+  const reqContext = extractRequestContextFromRequest(request);
 
   try {
-    const response = await fetch(
-      `${backendUrl}/api/platform-connections/${id}`,
-      {
-        method: "DELETE",
-        headers: {
-          "x-user-id": userId,
-          "x-workspace-id": orgId,
-        },
-      }
+    // FIX H-API-02: Use server-fetch for proper timeout, retries, and circuit breaker
+    await deleteOpenSeo<{ success: boolean }>(
+      `/api/platform-connections/${id}`,
+      { requestContext: reqContext }
     );
-
-    if (response.status === 404) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error("Backend error", { error: errorText });
-      return NextResponse.json(
-        { error: "Failed to delete connection" },
-        { status: response.status }
-      );
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof FastApiError) {
+      if (error.status === 404) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      logger.error("Backend error", { status: error.status, body: error.body });
+      return NextResponse.json(error.toJSON(), { status: error.status });
+    }
     logger.error("Failed to delete connection", error instanceof Error ? error : { error: String(error) });
     return NextResponse.json(
       { error: "Failed to delete connection" },

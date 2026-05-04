@@ -1,39 +1,20 @@
 /**
  * Audit page detail view with SEO score and findings.
  * Phase 32: 107 SEO Checks Implementation
+ *
+ * FIX C13: Replaced direct unauthenticated fetch() with authenticated
+ * server function to ensure proper auth during SSR.
  */
 import { createFileRoute, Link, useLoaderData } from "@tanstack/react-router";
 import { ScoreCard } from "./-components/ScoreCard";
 import { FindingsPanel } from "./-components/FindingsPanel";
-
-interface Finding {
-  id: string;
-  checkId: string;
-  tier: number;
-  category: string;
-  passed: boolean;
-  severity: "critical" | "high" | "medium" | "low";
-  message: string;
-  details?: Record<string, unknown>;
-  autoEditable: boolean;
-  editRecipe?: Record<string, unknown>;
-}
-
-interface FindingsResponse {
-  score: number | null;
-  breakdown: { base: number; tier1: number; tier2: number; tier3: number } | null;
-  gates: string[];
-  findings: Finding[];
-  message?: string;
-}
+import { getPageFindings, type FindingsResponse } from "@/serverFunctions/audit";
 
 export const Route = createFileRoute("/_project/p/$projectId/audit/$pageId/")({
-  loader: async ({ params }) => {
-    const response = await fetch(`/api/audit/pages/${params.pageId}/findings`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch findings");
-    }
-    return response.json() as Promise<FindingsResponse>;
+  loader: async ({ params }): Promise<FindingsResponse> => {
+    // FIX C13: Use authenticated server function instead of direct fetch
+    // This ensures proper auth headers are sent during SSR
+    return getPageFindings({ data: { pageId: params.pageId } });
   },
   component: AuditPageDetail,
 });

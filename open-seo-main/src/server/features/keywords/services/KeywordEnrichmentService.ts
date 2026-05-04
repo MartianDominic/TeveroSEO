@@ -247,7 +247,13 @@ export class KeywordEnrichmentService {
         }
 
         result.totalCostCents += batch.length * COST_PER_KEYWORD_CENTS;
-      } catch {
+      } catch (error) {
+        // Log the error for debugging before marking batch as failed
+        // eslint-disable-next-line no-console
+        console.error("[KeywordEnrichmentService] Batch enrichment failed", {
+          batchSize: batch.length,
+          error: error instanceof Error ? error.message : String(error),
+        });
         // Mark entire batch as failed on error
         await db
           .update(prospectKeywords)

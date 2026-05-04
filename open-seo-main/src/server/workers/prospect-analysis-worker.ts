@@ -16,10 +16,9 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   PROSPECT_ANALYSIS_QUEUE_NAME,
-  prospectAnalysisQueue,
-  type ProspectAnalysisDLQJobData,
   type ProspectAnalysisJobData,
 } from "@/server/queues/prospectAnalysisQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "prospect-analysis-worker" });
 
@@ -32,15 +31,14 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./prospect-analysis-processor.js", import.meta.url),
 );
 
-let worker: Worker<ProspectAnalysisJobData | ProspectAnalysisDLQJobData> | null =
-  null;
+let worker: Worker<ProspectAnalysisJobData> | null = null;
 
 export async function startProspectAnalysisWorker(): Promise<
-  Worker<ProspectAnalysisJobData | ProspectAnalysisDLQJobData>
+  Worker<ProspectAnalysisJobData>
 > {
   if (worker) return worker;
 
-  worker = new Worker<ProspectAnalysisJobData | ProspectAnalysisDLQJobData>(
+  worker = new Worker<ProspectAnalysisJobData>(
     PROSPECT_ANALYSIS_QUEUE_NAME,
     PROCESSOR_PATH,
     {
@@ -62,7 +60,7 @@ export async function startProspectAnalysisWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<ProspectAnalysisJobData | ProspectAnalysisDLQJobData> | undefined,
+      job: Job<ProspectAnalysisJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -80,24 +78,20 @@ export async function startProspectAnalysisWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: ProspectAnalysisDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as ProspectAnalysisJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: PROSPECT_ANALYSIS_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await prospectAnalysisQueue.add("dlq:prospect-analysis", dlqData, {
-            removeOnComplete: false,
-            removeOnFail: false,
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${PROSPECT_ANALYSIS_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

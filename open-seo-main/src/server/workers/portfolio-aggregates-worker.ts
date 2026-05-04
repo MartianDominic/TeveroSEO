@@ -11,10 +11,9 @@ import { createLogger } from "@/server/lib/logger";
 import {
   PORTFOLIO_AGGREGATES_QUEUE_NAME,
   initPortfolioAggregatesScheduler,
-  portfolioAggregatesQueue,
   type PortfolioAggregatesJobData,
-  type PortfolioAggregatesDLQJobData,
 } from "@/server/queues/portfolioAggregatesQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 import { processPortfolioAggregates } from "./portfolio-aggregates-processor";
 
 const workerLogger = createLogger({ module: "portfolio-aggregates-worker" });
@@ -23,24 +22,20 @@ const LOCK_DURATION_MS = 300_000; // 5 minutes
 const MAX_STALLED_COUNT = 2;
 const SHUTDOWN_TIMEOUT_MS = 25_000;
 
-let worker: Worker<PortfolioAggregatesJobData | PortfolioAggregatesDLQJobData> | null = null;
+let worker: Worker<PortfolioAggregatesJobData> | null = null;
 
 export async function startPortfolioAggregatesWorker(): Promise<
-  Worker<PortfolioAggregatesJobData | PortfolioAggregatesDLQJobData>
+  Worker<PortfolioAggregatesJobData>
 > {
   if (worker) return worker;
 
   // Initialize the scheduler
   await initPortfolioAggregatesScheduler();
 
-  worker = new Worker<PortfolioAggregatesJobData | PortfolioAggregatesDLQJobData>(
+  worker = new Worker<PortfolioAggregatesJobData>(
     PORTFOLIO_AGGREGATES_QUEUE_NAME,
     async (job) => {
-      if (job.name === "dlq:portfolio-aggregates") {
-        workerLogger.warn("DLQ job received", { jobId: job.id, data: job.data });
-        return;
-      }
-      await processPortfolioAggregates(job as Job<PortfolioAggregatesJobData>);
+      await processPortfolioAggregates(job);
     },
     {
       connection: getSharedBullMQConnection("worker:portfolio-aggregates"),
@@ -61,7 +56,7 @@ export async function startPortfolioAggregatesWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<PortfolioAggregatesJobData | PortfolioAggregatesDLQJobData> | undefined,
+      job: Job<PortfolioAggregatesJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -79,24 +74,20 @@ export async function startPortfolioAggregatesWorker(): Promise<
         maxAttempts,
       });
 
-      // Move to DLQ after max retries
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: PortfolioAggregatesDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as PortfolioAggregatesJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: PORTFOLIO_AGGREGATES_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await portfolioAggregatesQueue.add("dlq:portfolio-aggregates", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
-            removeOnFail: { age: 604800 }, // 7 days
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${PORTFOLIO_AGGREGATES_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

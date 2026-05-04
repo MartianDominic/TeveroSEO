@@ -2,7 +2,7 @@
  * Data access layer for audit check findings.
  * Phase 32: 107 SEO Checks Implementation
  */
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { auditFindings, audits, auditPages } from "@/db/schema";
 import type { CheckResult, CheckCategory } from "@/server/lib/audit/checks/types";
@@ -96,12 +96,16 @@ async function insertFindings(
 
 /**
  * Pagination options for query results.
+ * FIX-04 (C8): Supports both cursor-based and offset pagination.
+ * Cursor-based pagination is preferred for large datasets (10k+ rows).
  */
 interface PaginationOptions {
   /** Maximum number of results to return */
   limit?: number;
-  /** Number of results to skip (for offset-based pagination) */
+  /** Number of results to skip (for offset-based pagination - DEPRECATED for large tables) */
   offset?: number;
+  /** Cursor for cursor-based pagination (finding ID from previous page) */
+  cursor?: string;
 }
 
 /**
@@ -109,22 +113,40 @@ interface PaginationOptions {
  * @param auditId - The audit ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation. If provided,
  *                   verifies the audit belongs to this client before returning findings.
- * @param options - Pagination options (limit defaults to 500, offset defaults to 0)
+ * @param options - Pagination options (limit defaults to 500)
+ *                  FIX-04 (C8): Uses cursor-based pagination for better performance at scale.
+ *                  Pass `cursor` (last finding ID) instead of `offset` for large datasets.
  */
 async function getFindingsByAudit(
   auditId: string,
   clientId?: string,
   options: PaginationOptions = {}
 ) {
-  const { limit = 500, offset = 0 } = options;
+  const { limit = 500, offset = 0, cursor } = options;
 
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
   }
 
+  // FIX-04 (C8): Use cursor-based pagination when cursor is provided
+  if (cursor) {
+    return db.query.auditFindings.findMany({
+      where: and(
+        eq(auditFindings.auditId, auditId),
+        // Cursor-based: fetch records after the cursor ID
+        // IDs are UUIDs, lexicographically sortable
+        gt(auditFindings.id, cursor)
+      ),
+      orderBy: auditFindings.id,
+      limit,
+    });
+  }
+
+  // Fallback to offset pagination for backwards compatibility
   return db.query.auditFindings.findMany({
     where: eq(auditFindings.auditId, auditId),
+    orderBy: auditFindings.id,
     limit,
     offset,
   });
@@ -135,22 +157,36 @@ async function getFindingsByAudit(
  * @param pageId - The page ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation. If provided,
  *                   verifies the page's audit belongs to this client before returning findings.
- * @param options - Pagination options (limit defaults to 200, offset defaults to 0)
+ * @param options - Pagination options (limit defaults to 200)
+ *                  FIX-04 (C8): Uses cursor-based pagination for better performance at scale.
  */
 async function getFindingsByPage(
   pageId: string,
   clientId?: string,
   options: PaginationOptions = {}
 ) {
-  const { limit = 200, offset = 0 } = options;
+  const { limit = 200, offset = 0, cursor } = options;
 
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyPageOwnership(pageId, clientId);
   }
 
+  // FIX-04 (C8): Use cursor-based pagination when cursor is provided
+  if (cursor) {
+    return db.query.auditFindings.findMany({
+      where: and(
+        eq(auditFindings.pageId, pageId),
+        gt(auditFindings.id, cursor)
+      ),
+      orderBy: auditFindings.id,
+      limit,
+    });
+  }
+
   return db.query.auditFindings.findMany({
     where: eq(auditFindings.pageId, pageId),
+    orderBy: auditFindings.id,
     limit,
     offset,
   });
@@ -161,7 +197,8 @@ async function getFindingsByPage(
  * @param auditId - The audit ID to fetch findings for
  * @param severity - The severity level to filter by
  * @param clientId - Optional client ID for ownership validation
- * @param options - Pagination options (limit defaults to 100, offset defaults to 0)
+ * @param options - Pagination options (limit defaults to 100)
+ *                  FIX-04 (C8): Uses cursor-based pagination for better performance at scale.
  */
 async function getFailedFindingsBySeverity(
   auditId: string,
@@ -169,11 +206,25 @@ async function getFailedFindingsBySeverity(
   clientId?: string,
   options: PaginationOptions = {}
 ) {
-  const { limit = 100, offset = 0 } = options;
+  const { limit = 100, offset = 0, cursor } = options;
 
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
+  }
+
+  // FIX-04 (C8): Use cursor-based pagination when cursor is provided
+  if (cursor) {
+    return db.query.auditFindings.findMany({
+      where: and(
+        eq(auditFindings.auditId, auditId),
+        eq(auditFindings.severity, severity),
+        eq(auditFindings.passed, false),
+        gt(auditFindings.id, cursor)
+      ),
+      orderBy: auditFindings.id,
+      limit,
+    });
   }
 
   return db.query.auditFindings.findMany({
@@ -182,6 +233,7 @@ async function getFailedFindingsBySeverity(
       eq(auditFindings.severity, severity),
       eq(auditFindings.passed, false)
     ),
+    orderBy: auditFindings.id,
     limit,
     offset,
   });
@@ -191,18 +243,32 @@ async function getFailedFindingsBySeverity(
  * Get all failed findings for an audit.
  * @param auditId - The audit ID to fetch findings for
  * @param clientId - Optional client ID for ownership validation
- * @param options - Pagination options (limit defaults to 500, offset defaults to 0)
+ * @param options - Pagination options (limit defaults to 500)
+ *                  FIX-04 (C8): Uses cursor-based pagination for better performance at scale.
  */
 async function getFailedFindingsByAudit(
   auditId: string,
   clientId?: string,
   options: PaginationOptions = {}
 ) {
-  const { limit = 500, offset = 0 } = options;
+  const { limit = 500, offset = 0, cursor } = options;
 
   // If clientId is provided, verify ownership first
   if (clientId) {
     await verifyAuditOwnership(auditId, clientId);
+  }
+
+  // FIX-04 (C8): Use cursor-based pagination when cursor is provided
+  if (cursor) {
+    return db.query.auditFindings.findMany({
+      where: and(
+        eq(auditFindings.auditId, auditId),
+        eq(auditFindings.passed, false),
+        gt(auditFindings.id, cursor)
+      ),
+      orderBy: auditFindings.id,
+      limit,
+    });
   }
 
   return db.query.auditFindings.findMany({
@@ -210,6 +276,7 @@ async function getFailedFindingsByAudit(
       eq(auditFindings.auditId, auditId),
       eq(auditFindings.passed, false)
     ),
+    orderBy: auditFindings.id,
     limit,
     offset,
   });

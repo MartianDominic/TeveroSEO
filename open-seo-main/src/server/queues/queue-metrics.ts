@@ -15,14 +15,16 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "queue-metrics" });
 
-// Queue names to monitor
+// H-BULL-03 FIX: Queue names must match actual queue constants from queue files
+// See: auditQueue.ts, rankingQueue.ts, analyticsQueue.ts, voiceAnalysisQueue.ts, pipelineQueue.ts
 const MONITORED_QUEUES = [
-  "audits",
-  "keyword-ranking",
-  "analytics",
-  "voice-analysis",
-  "pipeline-plan",
-  "pipeline-phase",
+  "audit-queue",        // AUDIT_QUEUE_NAME from auditQueue.ts
+  "keyword-ranking",    // RANKING_QUEUE_NAME from rankingQueue.ts
+  "analytics-sync",     // ANALYTICS_QUEUE_NAME from analyticsQueue.ts
+  "voice-analysis",     // VOICE_ANALYSIS_QUEUE_NAME from voiceAnalysisQueue.ts
+  "pipeline-plan",      // PLAN_QUEUE_NAME from pipelineQueue.ts
+  "pipeline-phase",     // PHASE_QUEUE_NAME from pipelineQueue.ts
+  "dead-letter-queue",  // DLQ_QUEUE_NAME from dlq.ts
 ] as const;
 
 // Store active QueueEvents instances for cleanup

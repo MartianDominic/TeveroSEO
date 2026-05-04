@@ -29,6 +29,7 @@ export interface ContractData {
     role: string;
     signingOrder: number;
     status: string;
+    signedAt: string | null;
   };
   agreement: {
     id: string;

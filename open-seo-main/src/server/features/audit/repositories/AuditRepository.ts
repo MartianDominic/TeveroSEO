@@ -1,8 +1,10 @@
 /**
  * Data access layer for site audit tables.
  * PostgreSQL operations for audits, audit_pages, and stored Lighthouse results.
+ *
+ * H-CONC-02: Added optimistic locking for concurrent phase update safety.
  */
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { audits, auditLighthouseResults, auditPages } from "@/db/schema";
 import { withTransaction, type Transaction } from "@/lib/db/transaction";
@@ -11,6 +13,17 @@ import type {
   LighthouseResult,
   StepPageResult,
 } from "@/server/lib/audit/types";
+
+/**
+ * Error thrown when optimistic lock fails due to concurrent modification.
+ * Callers should refresh data and retry.
+ */
+export class AuditOptimisticLockError extends Error {
+  constructor(auditId: string, expectedVersion: number) {
+    super(`Audit ${auditId} was modified concurrently (expected version ${expectedVersion})`);
+    this.name = "AuditOptimisticLockError";
+  }
+}
 
 const DB_BATCH_SIZE = 100;
 
@@ -69,13 +82,62 @@ async function updateAuditProgress(
 ) {
   await db
     .update(audits)
-    .set(data)
+    .set({
+      ...data,
+      version: sql`COALESCE(${audits.version}, 1) + 1`,
+    })
     .where(
       and(
         eq(audits.id, auditId),
         eq(audits.workflowInstanceId, workflowInstanceId),
       ),
     );
+}
+
+/**
+ * Update audit progress with optimistic locking.
+ * H-CONC-02: Prevents race conditions in concurrent phase updates.
+ *
+ * @param auditId - Audit ID to update
+ * @param workflowInstanceId - Workflow instance ID for additional safety
+ * @param expectedVersion - Version the caller expects (from their read)
+ * @param data - Progress data to update
+ * @returns true if update succeeded, false if version mismatch
+ * @throws AuditOptimisticLockError if version mismatch (caller can refresh and retry)
+ */
+async function updateAuditProgressWithVersion(
+  auditId: string,
+  workflowInstanceId: string,
+  expectedVersion: number,
+  data: {
+    pagesCrawled?: number;
+    pagesTotal?: number;
+    lighthouseTotal?: number;
+    lighthouseCompleted?: number;
+    lighthouseFailed?: number;
+    currentPhase?: string;
+  },
+): Promise<boolean> {
+  const result = await db
+    .update(audits)
+    .set({
+      ...data,
+      version: sql`COALESCE(${audits.version}, 1) + 1`,
+    })
+    .where(
+      and(
+        eq(audits.id, auditId),
+        eq(audits.workflowInstanceId, workflowInstanceId),
+        eq(audits.version, expectedVersion), // Optimistic lock check
+      ),
+    )
+    .returning({ id: audits.id });
+
+  if (result.length === 0) {
+    throw new AuditOptimisticLockError(auditId, expectedVersion);
+  }
+
+  return true;
 }
 
 async function completeAudit(
@@ -109,6 +171,51 @@ async function failAudit(auditId: string, workflowInstanceId: string) {
       status: "failed",
       completedAt: new Date(),
       currentPhase: "failed",
+    })
+    .where(
+      and(
+        eq(audits.id, auditId),
+        eq(audits.workflowInstanceId, workflowInstanceId),
+      ),
+    );
+}
+
+/**
+ * Cancel a running audit.
+ * H-AUDIT-01: User-visible cancellation for stuck audits.
+ */
+async function cancelAudit(auditId: string, workflowInstanceId: string) {
+  await db
+    .update(audits)
+    .set({
+      status: "cancelled",
+      completedAt: new Date(),
+      currentPhase: "cancelled",
+    })
+    .where(
+      and(
+        eq(audits.id, auditId),
+        eq(audits.workflowInstanceId, workflowInstanceId),
+      ),
+    );
+}
+
+/**
+ * Reset audit for retry.
+ * M-AUDIT-02: Retry UI for failed audits.
+ */
+async function resetAuditForRetry(auditId: string, workflowInstanceId: string) {
+  const newWorkflowInstanceId = `${auditId}-retry-${Date.now()}`;
+  await db
+    .update(audits)
+    .set({
+      status: "running",
+      completedAt: null,
+      currentPhase: "discovery",
+      pagesCrawled: 0,
+      lighthouseCompleted: 0,
+      lighthouseFailed: 0,
+      workflowInstanceId: newWorkflowInstanceId,
     })
     .where(
       and(
@@ -314,8 +421,11 @@ async function deleteAuditForProject(auditId: string, projectId: string) {
 export const AuditRepository = {
   createAudit,
   updateAuditProgress,
+  updateAuditProgressWithVersion,
   completeAudit,
   failAudit,
+  cancelAudit,
+  resetAuditForRetry,
   getAuditForWorkflow,
   batchWriteResults,
   getAuditForProject,

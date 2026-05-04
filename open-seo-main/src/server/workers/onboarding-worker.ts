@@ -13,11 +13,10 @@ import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { triggerOnboarding } from "@/server/features/proposals/onboarding/onboarding";
 import {
-  getOnboardingQueue,
   type OnboardingJobData,
   type OnboardingJobResult,
-  type OnboardingDLQJobData,
 } from "@/server/queues/onboardingQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const log = createLogger({ module: "OnboardingWorker" });
 
@@ -119,25 +118,20 @@ export function startOnboardingWorker(): Worker<
       maxAttempts: MAX_ATTEMPTS,
     });
 
-    // HIGH-52 fix: Use inline DLQ pattern (same as other workers)
-    if (job.attemptsMade >= MAX_ATTEMPTS && !job.name.startsWith("dlq:")) {
+    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    if (job.attemptsMade >= MAX_ATTEMPTS) {
       try {
-        const dlqData: OnboardingDLQJobData = {
-          originalJobId: job.id,
-          originalJobName: job.name,
-          data: job.data,
+        const dlqQueue = getDLQQueue();
+        const dlqData: DLQJobData = {
+          originalQueue: QUEUE_NAME,
+          jobId: job.id,
+          jobData: job.data,
           error: error?.message || "Unknown error",
           stack: error?.stack,
           failedAt: new Date().toISOString(),
-          attemptsMade: job.attemptsMade,
         };
-        const queue = getOnboardingQueue();
-        await queue.add("dlq:onboarding", dlqData as unknown as OnboardingJobData, {
-          removeOnComplete: { age: 604800 }, // 7 days
-          removeOnFail: { age: 604800 },
-          attempts: 1,
-        });
-        jobLogger.info("Job moved to DLQ", {
+        await dlqQueue.add(`dlq:${QUEUE_NAME}:${job.id}`, dlqData);
+        jobLogger.info("Job moved to centralized DLQ", {
           proposalId: job.data.proposalId,
           attemptsMade: job.attemptsMade,
         });

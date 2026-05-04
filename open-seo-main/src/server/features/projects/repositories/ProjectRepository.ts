@@ -48,17 +48,45 @@ async function getProjectById(projectId: string) {
   });
 }
 
+/**
+ * Create a new project.
+ *
+ * H-ONBOARD-01 FIX: Added idempotencyKey parameter to prevent duplicate
+ * projects when users retry after network errors.
+ *
+ * @param organizationId - The organization ID
+ * @param name - Project name
+ * @param domain - Optional domain URL
+ * @param idempotencyKey - Optional idempotency key for deduplication
+ * @returns Project ID (existing or new)
+ */
 async function createProject(
   organizationId: string,
   name: string,
   domain?: string,
+  idempotencyKey?: string,
 ) {
+  // H-ONBOARD-01: Check for existing project with same idempotency key
+  if (idempotencyKey) {
+    const existing = await db.query.projects.findFirst({
+      where: and(
+        eq(projects.organizationId, organizationId),
+        eq(projects.idempotencyKey, idempotencyKey),
+        eq(projects.isDeleted, false),
+      ),
+    });
+    if (existing) {
+      return existing.id;
+    }
+  }
+
   const id = crypto.randomUUID();
   await db.insert(projects).values({
     id,
     organizationId,
     name,
     domain,
+    idempotencyKey: idempotencyKey ?? null,
   });
   return id;
 }

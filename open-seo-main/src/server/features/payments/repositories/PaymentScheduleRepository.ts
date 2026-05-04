@@ -16,6 +16,7 @@ import {
   type PaymentInstallmentSelect,
   type InstallmentStatus,
 } from "@/db/payment-schedule-schema";
+import { invoices } from "@/db/invoice-schema";
 import type { PaymentProviderType } from "../types";
 
 /**
@@ -53,7 +54,10 @@ export async function insertInstallments(
 }
 
 /**
- * Get a payment schedule by ID.
+ * Get a payment schedule by ID (internal use only).
+ *
+ * WARNING: This method does NOT filter by workspace.
+ * Use getScheduleByIdScoped() for tenant-safe access.
  */
 export async function getScheduleById(
   scheduleId: string
@@ -64,6 +68,30 @@ export async function getScheduleById(
     .where(eq(paymentSchedules.id, scheduleId))
     .limit(1);
   return schedule;
+}
+
+/**
+ * Get a payment schedule by ID with workspace scope.
+ * Joins with invoices to verify workspace ownership.
+ *
+ * SECURITY: Returns undefined if schedule doesn't exist OR belongs to different workspace.
+ */
+export async function getScheduleByIdScoped(
+  scheduleId: string,
+  workspaceId: string
+): Promise<PaymentScheduleSelect | undefined> {
+  const result = await db
+    .select({ schedule: paymentSchedules })
+    .from(paymentSchedules)
+    .innerJoin(invoices, eq(paymentSchedules.invoiceId, invoices.id))
+    .where(
+      and(
+        eq(paymentSchedules.id, scheduleId),
+        eq(invoices.workspaceId, workspaceId)
+      )
+    )
+    .limit(1);
+  return result[0]?.schedule;
 }
 
 /**
@@ -78,6 +106,29 @@ export async function getScheduleByInvoiceId(
     .where(eq(paymentSchedules.invoiceId, invoiceId))
     .limit(1);
   return schedule;
+}
+
+/**
+ * Get a payment schedule by invoice ID with workspace scope.
+ *
+ * SECURITY: Returns undefined if schedule doesn't exist OR belongs to different workspace.
+ */
+export async function getScheduleByInvoiceIdScoped(
+  invoiceId: string,
+  workspaceId: string
+): Promise<PaymentScheduleSelect | undefined> {
+  const result = await db
+    .select({ schedule: paymentSchedules })
+    .from(paymentSchedules)
+    .innerJoin(invoices, eq(paymentSchedules.invoiceId, invoices.id))
+    .where(
+      and(
+        eq(paymentSchedules.invoiceId, invoiceId),
+        eq(invoices.workspaceId, workspaceId)
+      )
+    )
+    .limit(1);
+  return result[0]?.schedule;
 }
 
 /**
@@ -131,12 +182,15 @@ export async function getInstallmentsByScheduleId(
 }
 
 /**
- * Get upcoming installments due exactly N days from now.
+ * Get upcoming installments due exactly N days from now for a specific workspace.
  * Used by reminder worker (D-20).
  * P60-H05: Fixed to use exact date range instead of all pending <= futureDate.
+ *
+ * SECURITY: Requires workspaceId to ensure per-workspace isolation.
  */
 export async function getUpcomingInstallments(
-  daysAhead: number
+  daysAhead: number,
+  workspaceId: string
 ): Promise<PaymentInstallmentSelect[]> {
   const now = new Date();
 
@@ -149,37 +203,49 @@ export async function getUpcomingInstallments(
   const endOfTargetDay = new Date(startOfTargetDay);
   endOfTargetDay.setDate(endOfTargetDay.getDate() + 1);
 
-  return await db
-    .select()
+  const result = await db
+    .select({ installment: paymentInstallments })
     .from(paymentInstallments)
+    .innerJoin(paymentSchedules, eq(paymentInstallments.scheduleId, paymentSchedules.id))
+    .innerJoin(invoices, eq(paymentSchedules.invoiceId, invoices.id))
     .where(
       and(
         eq(paymentInstallments.status, "pending"),
         gte(paymentInstallments.dueAt, startOfTargetDay),
-        lt(paymentInstallments.dueAt, endOfTargetDay)
+        lt(paymentInstallments.dueAt, endOfTargetDay),
+        eq(invoices.workspaceId, workspaceId)
       )
     )
     .orderBy(paymentInstallments.dueAt);
+
+  return result.map(r => r.installment);
 }
 
 /**
- * Get overdue installments (pending with due date in the past).
+ * Get overdue installments (pending with due date in the past) for a specific workspace.
+ *
+ * SECURITY: Requires workspaceId to ensure per-workspace isolation.
  */
-export async function getOverdueInstallments(): Promise<
-  PaymentInstallmentSelect[]
-> {
+export async function getOverdueInstallments(
+  workspaceId: string
+): Promise<PaymentInstallmentSelect[]> {
   const now = new Date();
 
-  return await db
-    .select()
+  const result = await db
+    .select({ installment: paymentInstallments })
     .from(paymentInstallments)
+    .innerJoin(paymentSchedules, eq(paymentInstallments.scheduleId, paymentSchedules.id))
+    .innerJoin(invoices, eq(paymentSchedules.invoiceId, invoices.id))
     .where(
       and(
         eq(paymentInstallments.status, "pending"),
-        lt(paymentInstallments.dueAt, now)
+        lt(paymentInstallments.dueAt, now),
+        eq(invoices.workspaceId, workspaceId)
       )
     )
     .orderBy(paymentInstallments.dueAt);
+
+  return result.map(r => r.installment);
 }
 
 /**
@@ -262,24 +328,41 @@ export async function markReminderSent(
 }
 
 /**
- * Mark all overdue installments as overdue status.
- * Called by daily worker.
+ * Mark all overdue installments as overdue status for a specific workspace.
+ * Called by daily worker per-workspace.
+ *
+ * SECURITY: Requires workspaceId to ensure per-workspace isolation.
  */
-export async function markOverdueInstallments(): Promise<number> {
+export async function markOverdueInstallments(workspaceId: string): Promise<number> {
   const now = new Date();
 
+  // First get the IDs of overdue installments for this workspace
+  const overdueInstallments = await db
+    .select({ id: paymentInstallments.id })
+    .from(paymentInstallments)
+    .innerJoin(paymentSchedules, eq(paymentInstallments.scheduleId, paymentSchedules.id))
+    .innerJoin(invoices, eq(paymentSchedules.invoiceId, invoices.id))
+    .where(
+      and(
+        eq(paymentInstallments.status, "pending"),
+        lt(paymentInstallments.dueAt, now),
+        eq(invoices.workspaceId, workspaceId)
+      )
+    );
+
+  if (overdueInstallments.length === 0) {
+    return 0;
+  }
+
+  // Update only those installments
+  const ids = overdueInstallments.map(i => i.id);
   const result = await db
     .update(paymentInstallments)
     .set({
       status: "overdue",
       updatedAt: now,
     })
-    .where(
-      and(
-        eq(paymentInstallments.status, "pending"),
-        lt(paymentInstallments.dueAt, now)
-      )
-    )
+    .where(sql`${paymentInstallments.id} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`)
     .returning();
 
   return result.length;
@@ -299,7 +382,9 @@ export const PaymentScheduleRepository = {
   insertSchedule,
   insertInstallments,
   getScheduleById,
+  getScheduleByIdScoped,
   getScheduleByInvoiceId,
+  getScheduleByInvoiceIdScoped,
   getScheduleWithInstallments,
   getInstallmentById,
   getInstallmentsByScheduleId,

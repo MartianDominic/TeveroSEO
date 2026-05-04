@@ -24,6 +24,8 @@ export const getPipelineStatus = createServerFn({ method: "POST" })
     const eta = await calculateETA(workspaceId, remainingPlans);
 
     return {
+      // H-TSK-03 FIX: Include workspaceId for Socket.IO room joins
+      workspaceId,
       status: checkpoint?.status ?? "idle",
       currentPhase: checkpoint?.pipelineState?.currentPhaseSlug ?? null,
       lastCompletedPlan: checkpoint?.pipelineState?.lastCompletedPlan ?? null,

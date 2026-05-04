@@ -55,6 +55,10 @@ export const projects = pgTable(
     // Soft delete columns (migration 0038)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // H-ONBOARD-01: Idempotency key to prevent duplicate project creation on retry
+    // Format: seo-project:{client_id}:{normalized_domain}:{5min_window}
+    // Migration: 0073_projects_idempotency.sql
+    idempotencyKey: text("idempotency_key"),
   },
   (table) => [
     // Unique constraint to prevent duplicate project names per organization
@@ -62,6 +66,8 @@ export const projects = pgTable(
     uniqueIndex("uq_projects_org_name").on(table.organizationId, table.name),
     // Index for efficient soft delete filtering
     index("projects_is_deleted_idx").on(table.isDeleted),
+    // H-ONBOARD-01: Index for idempotency key lookups
+    index("idx_projects_idempotency_key").on(table.idempotencyKey),
   ],
 );
 
@@ -180,6 +186,8 @@ export const audits = pgTable(
     // Soft delete / archive columns (migration 0038)
     isArchived: boolean("is_archived").notNull().default(false),
     archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
+    // Optimistic locking version (H-CONC-02: Race condition fix for concurrent phase updates)
+    version: integer("version").notNull().default(1),
   },
   (table) => [
     index("audits_project_id_idx").on(table.projectId),

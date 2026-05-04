@@ -17,10 +17,9 @@ import {
   PLATFORM_TYPES,
 } from "@/server/features/connections";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
+// M-TSK-06 FIX: Use shared client access verification
+import { verifyClientAccess } from "@/serverFunctions/client-access";
 import { AppError } from "@/server/lib/errors";
-import { db } from "@/db";
-import { eq } from "drizzle-orm";
-import { clients } from "@/db/client-schema";
 
 // ============================================================================
 // Input Schemas
@@ -62,26 +61,7 @@ const clientIdSchema = z.object({
 // Helper Functions
 // ============================================================================
 
-/**
- * Verify that the user has access to the specified client.
- * Throws AppError if client doesn't exist or belongs to different workspace.
- */
-async function verifyClientAccess(
-  clientId: string,
-  workspaceId: string
-): Promise<void> {
-  const client = await db.query.clients.findFirst({
-    where: eq(clients.id, clientId),
-  });
-
-  if (!client) {
-    throw new AppError("NOT_FOUND", "Client not found");
-  }
-
-  if (client.workspaceId !== workspaceId) {
-    throw new AppError("FORBIDDEN", "Access denied to this client");
-  }
-}
+// M-TSK-06 FIX: verifyClientAccess moved to shared module @/serverFunctions/client-access
 
 // ============================================================================
 // Server Functions

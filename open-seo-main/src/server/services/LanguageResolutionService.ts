@@ -92,11 +92,22 @@ export class LanguageResolutionService {
    * 4. Workspace default language
    * 5. Browser Accept-Language header
    * 6. Platform default (English)
+   *
+   * FIX-04 (H-PERF-01): Batches DB lookups to reduce sequential queries from 4 to 1-2.
    */
   async resolveLanguage(context: LanguageContext): Promise<ResolvedLanguage> {
+    // FIX-04 (H-PERF-01): Batch fetch all needed data in parallel
+    // This reduces up to 4 sequential DB calls to 1-2 parallel calls
+    const [workspaceSettings, prospectLang, clientLang] = await Promise.all([
+      this.getWorkspaceLanguageSettings(context.workspaceId),
+      context.prospectId ? this.getProspectLanguage(context.prospectId) : Promise.resolve(null),
+      context.clientId ? this.getClientLanguage(context.clientId) : Promise.resolve(null),
+    ]);
+
+    const formality = workspaceSettings?.formality ?? LanguageResolutionService.DEFAULT_FORMALITY;
+
     // 1. User's explicit selection
     if (context.userSelection && this.isSupported(context.userSelection)) {
-      const formality = await this.getWorkspaceFormality(context.workspaceId);
       return {
         locale: context.userSelection,
         formality,
@@ -105,33 +116,24 @@ export class LanguageResolutionService {
     }
 
     // 2. Prospect's preferred language
-    if (context.prospectId) {
-      const prospectLang = await this.getProspectLanguage(context.prospectId);
-      if (prospectLang?.preferredLanguage && this.isSupported(prospectLang.preferredLanguage)) {
-        const formality = await this.getWorkspaceFormality(context.workspaceId);
-        return {
-          locale: prospectLang.preferredLanguage,
-          formality,
-          source: "prospect",
-        };
-      }
+    if (prospectLang?.preferredLanguage && this.isSupported(prospectLang.preferredLanguage)) {
+      return {
+        locale: prospectLang.preferredLanguage,
+        formality,
+        source: "prospect",
+      };
     }
 
     // 3. Client's preferred language
-    if (context.clientId) {
-      const clientLang = await this.getClientLanguage(context.clientId);
-      if (clientLang?.preferredLanguage && this.isSupported(clientLang.preferredLanguage)) {
-        const formality = await this.getWorkspaceFormality(context.workspaceId);
-        return {
-          locale: clientLang.preferredLanguage,
-          formality,
-          source: "client",
-        };
-      }
+    if (clientLang?.preferredLanguage && this.isSupported(clientLang.preferredLanguage)) {
+      return {
+        locale: clientLang.preferredLanguage,
+        formality,
+        source: "client",
+      };
     }
 
     // 4. Workspace default language
-    const workspaceSettings = await this.getWorkspaceLanguageSettings(context.workspaceId);
     if (workspaceSettings && this.isSupported(workspaceSettings.defaultLanguage)) {
       return {
         locale: workspaceSettings.defaultLanguage,
@@ -145,7 +147,6 @@ export class LanguageResolutionService {
       const browserLocales = this.parseAcceptLanguage(context.acceptLanguage);
       const match = browserLocales.find((lang) => this.isSupported(lang as SupportedLocale));
       if (match) {
-        const formality = workspaceSettings?.formality ?? LanguageResolutionService.DEFAULT_FORMALITY;
         return {
           locale: match as SupportedLocale,
           formality,
@@ -157,7 +158,7 @@ export class LanguageResolutionService {
     // 6. Platform default
     return {
       locale: LanguageResolutionService.DEFAULT_LOCALE,
-      formality: workspaceSettings?.formality ?? LanguageResolutionService.DEFAULT_FORMALITY,
+      formality,
       source: "default",
     };
   }

@@ -4,7 +4,13 @@ import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
-
+import {
+  badRequest,
+  validationError,
+  rateLimited,
+  internalError,
+  accepted,
+} from "@/lib/api/responses";
 import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,18 +58,7 @@ export async function POST(req: Request) {
 
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
-      return NextResponse.json(
-        { error: "Too many requests", retryAfter },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfter),
-            "X-RateLimit-Limit": String(RATE_LIMITS.HEAVY.limit),
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.reset / 1000)),
-          }
-        }
-      );
+      return rateLimited("Too many requests", retryAfter);
     }
 
     // CSRF protection for state-changing request
@@ -75,24 +70,13 @@ export async function POST(req: Request) {
     try {
       rawBody = await req.json();
     } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON body" },
-        { status: 400 },
-      );
+      return badRequest("Invalid JSON body");
     }
 
+    // 422 for validation errors (semantic distinction from 400 bad request)
     const validation = generateReportSchema.safeParse(rawBody);
     if (!validation.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid request body",
-          details: validation.error.issues.map((i) => ({
-            field: i.path.join("."),
-            message: i.message,
-          })),
-        },
-        { status: 400 },
-      );
+      return validationError(validation.error);
     }
 
     const body = validation.data;
@@ -105,7 +89,7 @@ export async function POST(req: Request) {
       body,
     );
 
-    return NextResponse.json(data, { status: 202 }); // 202 Accepted - async processing
+    return accepted(data);
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.statusCode });
@@ -116,6 +100,6 @@ export async function POST(req: Request) {
       });
     }
     logger.error("Report generation error", err instanceof Error ? err : { error: String(err) });
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return internalError();
   }
 }

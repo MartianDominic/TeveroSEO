@@ -51,13 +51,18 @@ export class SmartAlertRepository implements SmartAlertRepositoryInterface {
 
   /**
    * Get all alerts for a workspace.
+   * Phase 69-03: Added default limit (100) to prevent unbounded queries.
    * @param workspaceId - The workspace to get alerts for
    * @param activeOnly - If true, only return non-dismissed, non-resolved alerts
+   * @param options - Pagination options
    */
   async findByWorkspace(
     workspaceId: string,
-    activeOnly = false
+    activeOnly = false,
+    options?: { limit?: number; offset?: number }
   ): Promise<SmartAlertSelect[]> {
+    const { limit = 100, offset = 0 } = options ?? {};
+
     if (activeOnly) {
       return this.dbClient.query.smartAlerts.findMany({
         where: and(
@@ -66,12 +71,16 @@ export class SmartAlertRepository implements SmartAlertRepositoryInterface {
           isNull(smartAlerts.resolvedAt)
         ),
         orderBy: (alerts, { desc }) => [desc(alerts.createdAt)],
+        limit,
+        offset,
       });
     }
 
     return this.dbClient.query.smartAlerts.findMany({
       where: eq(smartAlerts.workspaceId, workspaceId),
       orderBy: (alerts, { desc }) => [desc(alerts.createdAt)],
+      limit,
+      offset,
     });
   }
 
@@ -151,18 +160,21 @@ export class SmartAlertRepository implements SmartAlertRepositoryInterface {
 
   /**
    * Resolve all alerts that have passed their expiration date.
+   * Phase 69-03: Added limit (500) to prevent processing too many at once.
    * Returns the number of alerts resolved.
    */
   async expireOld(): Promise<number> {
     const now = new Date();
 
     // Find and resolve expired alerts in one transaction
+    // Limit to 500 to prevent overwhelming the database
     const expiredAlerts = await this.dbClient.query.smartAlerts.findMany({
       where: and(
         eq(smartAlerts.isDismissed, false),
         isNull(smartAlerts.resolvedAt)
       ),
       columns: { id: true, expiresAt: true },
+      limit: 500,
     });
 
     const toResolve = expiredAlerts.filter(

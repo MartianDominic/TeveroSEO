@@ -38,25 +38,41 @@ import { INDUSTRY_TEMPLATES } from "../templates/industryTemplates";
 export const voiceTemplateService = {
   /**
    * List all templates ordered by name.
+   * Phase 69-03: Added default limit (200) to prevent unbounded queries.
    *
+   * @param options - Pagination options
    * @returns All templates sorted alphabetically
    */
-  async listAll(): Promise<VoiceTemplateSelect[]> {
-    return db.select().from(voiceTemplates).orderBy(asc(voiceTemplates.name));
+  async listAll(options?: { limit?: number; offset?: number }): Promise<VoiceTemplateSelect[]> {
+    const { limit = 200, offset = 0 } = options ?? {};
+    return db
+      .select()
+      .from(voiceTemplates)
+      .orderBy(asc(voiceTemplates.name))
+      .limit(limit)
+      .offset(offset);
   },
 
   /**
    * List templates by industry.
+   * Phase 69-03: Added default limit (100) to prevent unbounded queries.
    *
    * @param industry - Industry identifier
+   * @param options - Pagination options
    * @returns Templates for the specified industry
    */
-  async listByIndustry(industry: string): Promise<VoiceTemplateSelect[]> {
+  async listByIndustry(
+    industry: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<VoiceTemplateSelect[]> {
+    const { limit = 100, offset = 0 } = options ?? {};
     return db
       .select()
       .from(voiceTemplates)
       .where(eq(voiceTemplates.industry, industry))
-      .orderBy(asc(voiceTemplates.name));
+      .orderBy(asc(voiceTemplates.name))
+      .limit(limit)
+      .offset(offset);
   },
 
   /**

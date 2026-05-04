@@ -14,8 +14,11 @@ import { validateCsrf } from "@/lib/api/security";
 import {
   updateGoalSchema,
   safeParseJson,
-  formatValidationErrors,
 } from "@/lib/validations/api-schemas";
+import {
+  badRequest,
+  validationError,
+} from "@/lib/api/responses";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,22 +29,16 @@ async function handlePost(req: NextRequest) {
   if (csrfError) return csrfError;
 
   try {
-    // Safe JSON parsing
+    // Safe JSON parsing (400 for malformed JSON)
     const jsonResult = await safeParseJson(req);
     if (!jsonResult.success) {
-      return NextResponse.json(
-        { error: jsonResult.error },
-        { status: 400 }
-      );
+      return badRequest(jsonResult.error);
     }
 
-    // Validate with Zod schema
+    // Validate with Zod schema (422 for validation errors - M-API-01 fix)
     const parsed = updateGoalSchema.safeParse(jsonResult.data);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: formatValidationErrors(parsed.error) },
-        { status: 400 }
-      );
+      return validationError(parsed.error);
     }
 
     const body = parsed.data;

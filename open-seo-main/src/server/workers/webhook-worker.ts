@@ -5,14 +5,18 @@
 import { Worker, type Processor, type Job } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { getWebhookQueue, type WebhookDeliveryJobData } from "@/server/queues/webhookQueue";
+import { type WebhookDeliveryJobData } from "@/server/queues/webhookQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const log = createLogger({ module: "webhook-worker" });
 
 const SHUTDOWN_TIMEOUT_MS = 25_000;
 
+const WEBHOOK_QUEUE_NAME = "webhook-delivery" as const;
+
 /**
  * Sanitized job data for DLQ (secrets removed).
+ * SECURITY: Uses sanitized data - secrets are never stored in DLQ.
  */
 interface SanitizedWebhookJobData {
   deliveryId: string;
@@ -21,20 +25,6 @@ interface SanitizedWebhookJobData {
   headers: Record<string, string>;
   payload: unknown;
   attempt: number;
-}
-
-/**
- * Dead-letter queue job data for failed webhook deliveries.
- * SECURITY: Uses sanitized data - secrets are never stored in DLQ.
- */
-interface WebhookDLQJobData {
-  originalJobId: string | undefined;
-  originalJobName: string;
-  data: SanitizedWebhookJobData;
-  error: string;
-  stack: string | undefined;
-  failedAt: string;
-  attemptsMade: number;
 }
 
 let webhookWorker: Worker<WebhookDeliveryJobData> | null = null;
@@ -93,8 +83,8 @@ export async function startWebhookWorker(): Promise<void> {
       error: err.message,
     });
 
-    // Move to DLQ after max retries, skip DLQ jobs
-    if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    if (job.attemptsMade >= maxAttempts) {
       try {
         // SECURITY: Sanitize job data before storing in DLQ - remove any secrets
         const sanitizedData: SanitizedWebhookJobData = {
@@ -106,23 +96,18 @@ export async function startWebhookWorker(): Promise<void> {
           attempt: job.data.attempt,
           // Note: secret field is intentionally NOT included
         };
-        const dlqData: WebhookDLQJobData = {
-          originalJobId: job.id,
-          originalJobName: job.name,
-          data: sanitizedData,
+        const dlqQueue = getDLQQueue();
+        const dlqData: DLQJobData = {
+          originalQueue: WEBHOOK_QUEUE_NAME,
+          jobId: job.id,
+          jobData: sanitizedData, // Use sanitized data, not raw job.data
           error: err.message,
           // Only include stack in non-production to prevent info leakage
           stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
           failedAt: new Date().toISOString(),
-          attemptsMade: job.attemptsMade,
         };
-        const queue = getWebhookQueue();
-        await queue.add("dlq:webhook-delivery", dlqData as unknown as WebhookDeliveryJobData, {
-          removeOnComplete: false,
-          removeOnFail: false,
-          attempts: 1,
-        });
-        jobLogger.info("Webhook job moved to DLQ", { attemptsMade: job.attemptsMade });
+        await dlqQueue.add(`dlq:${WEBHOOK_QUEUE_NAME}:${job.id}`, dlqData);
+        jobLogger.info("Webhook job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
       } catch (dlqErr) {
         jobLogger.error("Failed to move webhook job to DLQ", dlqErr as Error);
       }

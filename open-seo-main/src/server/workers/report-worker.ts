@@ -12,14 +12,13 @@
  */
 import { Worker, type Job } from "bullmq";
 import { fileURLToPath } from "node:url";
-import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getSharedBullMQConnection, WORKER_CONCURRENCY_LIMITS } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import {
   REPORT_QUEUE_NAME,
-  reportQueue,
-  type ReportDLQJobData,
   type ReportJobData,
 } from "@/server/queues/reportQueue";
+import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
 
 const workerLogger = createLogger({ module: "report-worker" });
 
@@ -32,21 +31,22 @@ const PROCESSOR_PATH = fileURLToPath(
   new URL("./report-processor.js", import.meta.url),
 );
 
-let worker: Worker<ReportJobData | ReportDLQJobData> | null = null;
+let worker: Worker<ReportJobData> | null = null;
 
 export async function startReportWorker(): Promise<
-  Worker<ReportJobData | ReportDLQJobData>
+  Worker<ReportJobData>
 > {
   if (worker) return worker;
 
-  worker = new Worker<ReportJobData | ReportDLQJobData>(
+  worker = new Worker<ReportJobData>(
     REPORT_QUEUE_NAME,
     PROCESSOR_PATH,
     {
       connection: getSharedBullMQConnection("worker:report"),
       lockDuration: LOCK_DURATION_MS,
       maxStalledCount: MAX_STALLED_COUNT,
-      concurrency: 2, // Limit concurrent PDF renders
+      // H-BULL-02 FIX: Use centralized concurrency limits instead of hardcoded value
+      concurrency: WORKER_CONCURRENCY_LIMITS.report,
     },
   );
 
@@ -61,7 +61,7 @@ export async function startReportWorker(): Promise<
   worker.on(
     "failed",
     async (
-      job: Job<ReportJobData | ReportDLQJobData> | undefined,
+      job: Job<ReportJobData> | undefined,
       err: Error,
     ) => {
       if (!job) {
@@ -73,31 +73,27 @@ export async function startReportWorker(): Promise<
       const jobLogger = createLogger({
         module: "report-worker",
         jobId: job.id,
-        reportId: (job.data as ReportJobData).reportId,
+        reportId: job.data.reportId,
       });
       jobLogger.error("Job failed", err, {
         attempt: job.attemptsMade,
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs
-      if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
+      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqData: ReportDLQJobData = {
-            originalJobId: job.id,
-            originalJobName: job.name,
-            data: job.data as ReportJobData,
+          const dlqQueue = getDLQQueue();
+          const dlqData: DLQJobData = {
+            originalQueue: REPORT_QUEUE_NAME,
+            jobId: job.id,
+            jobData: job.data,
             error: err.message,
             stack: err.stack,
             failedAt: new Date().toISOString(),
-            attemptsMade: job.attemptsMade,
           };
-          await reportQueue.add("dlq:report-generation", dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days (HIGH-BQ-03 fix)
-            removeOnFail: { age: 604800 }, // 7 days
-            attempts: 1,
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
+          await dlqQueue.add(`dlq:${REPORT_QUEUE_NAME}:${job.id}`, dlqData);
+          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }
@@ -109,7 +105,7 @@ export async function startReportWorker(): Promise<
     const jobLogger = createLogger({
       module: "report-worker",
       jobId: job.id,
-      reportId: (job.data as ReportJobData).reportId,
+      reportId: job.data.reportId,
     });
     jobLogger.info("Job completed", {
       durationMs:
