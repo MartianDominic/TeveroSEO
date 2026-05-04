@@ -40,3 +40,30 @@ export interface CityExtraction {
   city: string;       // Normalized city name (nominative)
   variant: string;    // The actual variant found in the keyword
 }
+
+/**
+ * Side Keyword Discovery Types
+ */
+
+export interface SideKeywordExpansion {
+  source: 'problem' | 'solution' | 'related';
+  seedTerm: string;           // Original problem/solution from conversation
+  discoveredKeywords: SideKeyword[];
+  expansionMethod: string;    // "dataforseo_keyword_ideas" | "semantic_expansion"
+}
+
+export interface SideKeyword {
+  keyword: string;
+  volume: number;
+  difficulty: number;
+  relevanceScore: number;     // From Phase 78 scoring
+  passesFilters: boolean;     // From Phase 79 filtering
+  discoverySource: string;    // Which seed term found this
+}
+
+export interface SideKeywordExpanderConfig {
+  locationCode: number;       // DataForSEO location code (e.g., 2440 for Lithuania)
+  languageCode: string;       // Language code (e.g., "lt")
+  limit: number;              // Max keywords per seed term
+  relevanceThreshold: number; // Minimum relevance score (0-1)
+}
