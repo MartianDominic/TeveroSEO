@@ -7,6 +7,29 @@ on:
     - cron: '0 0 * * 1'
 
 jobs:
+  # SEC-02: Gitleaks secret scanning
+  gitleaks:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for scanning commits
+
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}  # Optional for enhanced features
+
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: gitleaks-report
+          path: results.sarif
+          retention-days: 30
+
   npm-audit:
     runs-on: ubuntu-latest
     steps:
