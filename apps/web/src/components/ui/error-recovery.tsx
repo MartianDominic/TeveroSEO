@@ -257,11 +257,14 @@ export function useErrorRecovery<T>(options: {
 /**
  * FormErrorRecovery - Preserves form input on submission errors.
  *
+ * HIGH-UX-03: Enhanced with Try Again, Save as Draft, and Get Help options.
+ *
  * @example
  * ```tsx
  * <FormErrorRecovery
  *   error={submitError}
  *   onRetry={handleSubmit}
+ *   onSaveDraft={handleSaveDraft}
  *   preservedData={formValues}
  * >
  *   <form>...</form>
@@ -273,31 +276,182 @@ export function FormErrorRecovery({
   error,
   onRetry,
   onDismiss,
+  onSaveDraft,
   isRetrying,
+  isSavingDraft,
   preservedData,
+  supportUrl = "/support",
 }: {
   children: React.ReactNode;
   error: Error | string | null;
   onRetry?: () => void;
   onDismiss?: () => void;
+  /** HIGH-UX-03: Save current form data as draft */
+  onSaveDraft?: () => void | Promise<void>;
   isRetrying?: boolean;
+  /** Whether draft save is in progress */
+  isSavingDraft?: boolean;
   preservedData?: Record<string, unknown>;
+  /** URL for help/support link */
+  supportUrl?: string;
 }) {
+  if (!error) {
+    return <>{children}</>;
+  }
+
+  const errorMessage = error instanceof Error ? error.message : error;
+
   return (
     <div className="space-y-4">
-      <InlineErrorRecovery
-        error={error}
-        onRetry={onRetry}
-        onDismiss={onDismiss}
-        isRetrying={isRetrying}
-        title="Submission failed"
-      />
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Submission failed</AlertTitle>
+        <AlertDescription>{errorMessage}</AlertDescription>
+        <div className="flex flex-wrap gap-2 mt-4">
+          {onRetry && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRetry}
+              disabled={isRetrying || isSavingDraft}
+            >
+              {isRetrying ? (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Try Again
+                </>
+              )}
+            </Button>
+          )}
+          {onSaveDraft && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSaveDraft}
+              disabled={isRetrying || isSavingDraft}
+            >
+              {isSavingDraft ? (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save as Draft"
+              )}
+            </Button>
+          )}
+          <Button size="sm" variant="link" asChild className="px-2">
+            <a href={supportUrl}>
+              <HelpCircle className="h-3 w-3 mr-1" />
+              Get Help
+            </a>
+          </Button>
+          {onDismiss && (
+            <Button size="sm" variant="ghost" onClick={onDismiss}>
+              Dismiss
+            </Button>
+          )}
+        </div>
+      </Alert>
       {children}
-      {preservedData && error && (
+      {preservedData && (
         <p className="text-sm text-muted-foreground">
-          Your input has been preserved. Please try again.
+          Your input has been preserved. Please try again or save as draft.
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * SubmissionErrorAlert - Standalone error alert for form submissions.
+ *
+ * HIGH-UX-03: Provides Try Again, Save as Draft, and Get Help actions.
+ * Use this when you need just the error alert without wrapping children.
+ *
+ * @example
+ * ```tsx
+ * {submitError && (
+ *   <SubmissionErrorAlert
+ *     error={submitError}
+ *     onRetry={handleRetry}
+ *     onSaveDraft={handleSaveDraft}
+ *   />
+ * )}
+ * ```
+ */
+export function SubmissionErrorAlert({
+  error,
+  onRetry,
+  onSaveDraft,
+  isRetrying = false,
+  isSavingDraft = false,
+  supportUrl = "/support",
+}: {
+  error: Error | string;
+  onRetry?: () => void | Promise<void>;
+  onSaveDraft?: () => void | Promise<void>;
+  isRetrying?: boolean;
+  isSavingDraft?: boolean;
+  supportUrl?: string;
+}) {
+  const errorMessage = error instanceof Error ? error.message : error;
+
+  return (
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Something went wrong</AlertTitle>
+      <AlertDescription>{errorMessage}</AlertDescription>
+      <div className="flex flex-wrap gap-2 mt-4">
+        {onRetry && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRetry}
+            disabled={isRetrying || isSavingDraft}
+          >
+            {isRetrying ? (
+              <>
+                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Try Again
+              </>
+            )}
+          </Button>
+        )}
+        {onSaveDraft && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onSaveDraft}
+            disabled={isRetrying || isSavingDraft}
+          >
+            {isSavingDraft ? (
+              <>
+                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save as Draft"
+            )}
+          </Button>
+        )}
+        <Button size="sm" variant="link" asChild className="px-2">
+          <a href={supportUrl}>
+            <HelpCircle className="h-3 w-3 mr-1" />
+            Get Help
+          </a>
+        </Button>
+      </div>
+    </Alert>
   );
 }
