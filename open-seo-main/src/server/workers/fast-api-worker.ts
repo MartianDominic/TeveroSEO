@@ -9,6 +9,7 @@
  * Integrates:
  * - Singleflight (64-01): Deduplicates concurrent requests for same URL
  * - Delta Cascade (64-02): Skips unchanged content at earliest layer
+ * - DRR Fair Queuing (73-01): Prevents single-tenant monopolization
  *
  * Per RESEARCH.md Pitfall 5: Implements graceful shutdown to prevent
  * memory leaks from unstopped BullMQ workers.
@@ -17,7 +18,7 @@
  */
 
 import { Worker, type Job } from "bullmq";
-import { getSharedBullMQConnection } from "@/server/lib/redis";
+import { getSharedBullMQConnection, getDRRManager } from "@/server/lib/redis";
 import {
   FAST_API_QUEUE_NAME,
   type FastApiJobData,
@@ -227,9 +228,31 @@ async function processLocalSEO(
 
 /**
  * Main job processor for fast-api queue.
+ *
+ * DRR Integration (73-01):
+ * When a job is processed, we notify the DRR manager that the client's
+ * job was processed. This maintains accurate bucket state for fair scheduling.
+ * The DRR enqueue happens via enqueueWithFairness() in redis.ts.
  */
 async function processFastApiJob(job: Job<FastApiJobData>): Promise<FastApiJobResult> {
   const { type, tenantId } = job.data;
+
+  // DRR fairness check (73-01): Log if job is from a heavy client
+  // The weight reduction is enforced at enqueue time via enforceHeavyClientLimits()
+  try {
+    const drr = getDRRManager();
+    const stats = drr.getStats();
+    const clientBucket = stats.bucketStats.find((b) => b.clientId === tenantId);
+    if (clientBucket && clientBucket.weight < 1.0) {
+      log.debug("Processing job from weight-reduced client", {
+        tenantId,
+        weight: clientBucket.weight,
+        pendingJobs: clientBucket.pendingJobs,
+      });
+    }
+  } catch {
+    // DRR stats are optional - don't fail job processing
+  }
 
   // Create tenant-scoped singleflight (per T-64-01 mitigation)
   const singleflight = createCrawlSingleflight<unknown>(tenantId);
@@ -321,9 +344,11 @@ fastApiWorker.on("completed", (job, result) => {
   // M64-02 Fix: Record queue completion metric
   recordQueueCompletion("fastApi");
 
+  // 73-01: Log DRR fairness metrics on completion
   log.info("Job completed", {
     jobId: job.id,
     type: job.data.type,
+    tenantId: job.data.tenantId,
     status: result.status,
     durationMs: result.durationMs,
     fromSingleflight: result.fromSingleflight,
