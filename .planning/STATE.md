@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-04T10:37:14.782Z"
-last_activity: 2026-05-04 -- Completed 70-01 React Component Fixes (memory leaks, index keys, ARIA accessibility)
+last_updated: "2026-05-04T10:46:00Z"
+last_activity: 2026-05-04 -- Completed 70-03 User Journey Fixes (loading overlay, help redirects, error recovery, breadcrumbs)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_plans: 59
+  completed_plans: 59
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 70
-Plan: 01 COMPLETE
+Plan: 03 COMPLETE
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: Executing Phase 70 - Frontend Quality
-Last activity: 2026-05-04 -- Completed 70-01 React Component Fixes (memory leaks, index keys, ARIA accessibility)
+Last activity: 2026-05-04 -- Completed 70-03 User Journey Fixes (loading overlay, help redirects, error recovery, breadcrumbs)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **70-03:** Minimum 300ms overlay duration prevents jarring flash on fast client switches; Help redirects in middleware for external URL handling; Breadcrumb uses aria-current=page for accessibility; safeParseJsonString for strings, safeParseJson for Response objects; Debug-level logging for localStorage errors (expected in private browsing)
 - **70-01:** useRef for timer cleanup on unmount (prevents memory leaks); Stable keys from content.slice(0,30).replace(/\s/g,'-') when no ID; item.href as key for nav items; aria-describedby points to hint normally, error when invalid; role=alert on error messages
 - **69-04:** Optimistic locking via version field in WHERE clause (not pessimistic FOR UPDATE); Redis SET NX EX for atomic lock acquisition; Lua scripts for ownership-safe lock release/extend; Circuit breaker state in Redis for cross-worker sharing; DLQ stores job data + metadata for replay capability
 - **69-03:** Cursor pagination uses base64url encoding for opaque cursors; Compound cursors support (sortColumn, primaryKey) row comparison; BATCH_SIZE=50 for background jobs, MAX_PAGE_SIZE=100 for list endpoints; All composite indexes use CONCURRENTLY for non-blocking creation; Partial indexes where applicable (deleted_at IS NULL, is_deleted = false)
