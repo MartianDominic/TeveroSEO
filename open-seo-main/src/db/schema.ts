@@ -58,6 +58,7 @@ export * from "./webhook-schema";
 
 // Security and audit schemas
 export * from "./security-audit-schema";
+export * from "./schema/audit-logs";
 
 // Onboarding schemas
 export * from "./onboarding-schema";
