@@ -24,6 +24,11 @@ import { ProspectService, type ProspectWithAnalyses } from "@/server/features/pr
 import { AppError } from "@/server/lib/errors";
 import { nanoid } from "nanoid";
 import { createLogger } from "@/server/lib/logger";
+import {
+  cascadeSelector,
+  DEFAULT_CASCADE,
+  type FunnelStage,
+} from "@/server/features/keywords";
 
 const log = createLogger({ module: "ProposalService" });
 
@@ -134,12 +139,29 @@ export function generateDefaultContent(
       : 2.5;
   const trafficValue = Math.round(traffic * avgCpc);
 
-  // Convert opportunity keywords to proposal format
-  const proposalOpportunities = opportunities.slice(0, 10).map((opp) => ({
+  // Prepare opportunities for cascade selection
+  const keywordsForSelection = opportunities.map((opp) => ({
     keyword: opp.keyword,
-    volume: opp.searchVolume,
-    difficulty: getDifficultyLevel(opp.difficulty),
-    potential: Math.round(opp.searchVolume * (opp.cpc ?? 2.5)),
+    funnelStage: inferFunnelStage(opp.keyword),
+    compositeScore: 0.5, // Default score, could be enhanced with relevance
+    metrics: {
+      volume: opp.searchVolume,
+      difficulty: opp.difficulty,
+    },
+  }));
+
+  // Run cascade selection with target=10 for proposals
+  const selection = cascadeSelector.select(keywordsForSelection, {
+    ...DEFAULT_CASCADE,
+    targetCount: 10,
+  });
+
+  // Map to proposal opportunities format
+  const proposalOpportunities = selection.selected.map((kw) => ({
+    keyword: kw.keyword,
+    volume: kw.metrics.volume,
+    difficulty: getDifficultyLevel(kw.metrics.difficulty),
+    potential: Math.round(kw.metrics.volume * 2.5), // Avg CPC estimate
   }));
 
   // Calculate projected gains
@@ -192,6 +214,41 @@ function getDifficultyLevel(score: number): "easy" | "medium" | "hard" {
   if (score < 30) return "easy";
   if (score < 60) return "medium";
   return "hard";
+}
+
+/**
+ * Infer funnel stage from keyword text.
+ * Uses heuristics to detect commercial intent (BOFU) vs informational (TOFU).
+ */
+function inferFunnelStage(keyword: string): FunnelStage {
+  const kw = keyword.toLowerCase();
+
+  // BOFU indicators (commercial intent)
+  if (
+    kw.includes('buy') ||
+    kw.includes('price') ||
+    kw.includes('kaina') ||
+    kw.includes('pirkti') ||
+    kw.includes('įsigyti') ||
+    kw.includes('užsakyti')
+  ) {
+    return 'bofu';
+  }
+
+  // TOFU indicators (informational)
+  if (
+    kw.includes('what') ||
+    kw.includes('how') ||
+    kw.includes('kas') ||
+    kw.includes('kaip') ||
+    kw.includes('kodėl') ||
+    kw.includes('why')
+  ) {
+    return 'tofu';
+  }
+
+  // Default to MOFU (consideration)
+  return 'mofu';
 }
 
 function generateMockChartData(
