@@ -75,9 +75,9 @@ describe("FunnelClassifier", () => {
     });
 
     it("should detect city patterns without explicit cities list", () => {
-      const result = classifier.classify("kaune aptarnavimas", {
+      const result = classifier.classify("kaune specializuota įmonė", {
         businessContext: {
-          services: ["aptarnavimas"],
+          services: ["įmonė"],
           isServiceBusiness: true,
         },
       });
