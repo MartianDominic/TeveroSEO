@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-04T11:20:21.383Z"
-last_activity: 2026-05-04 -- Completed 72-01 Multi-Tenancy Verification (assertTenantAccess helper, repository audit, E2E tests)
+last_updated: "2026-05-04T11:27:39.000Z"
+last_activity: 2026-05-04 -- Completed 72-02 SEO Checks Validation (125 tests across 4 tiers, scoring verification)
 progress:
   total_phases: 14
   completed_phases: 14
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 72
-Plan: 01 COMPLETE
+Plan: 02 COMPLETE
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
 Status: Executing Phase 72 - SaaS Readiness
-Last activity: 2026-05-04 -- Completed 72-01 Multi-Tenancy Verification (assertTenantAccess helper, repository audit, E2E tests)
+Last activity: 2026-05-04 -- Completed 72-02 SEO Checks Validation (125 tests across 4 tiers, scoring verification)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **72-02:** Tier weight documentation added to types.ts and scoring.ts for reference; Test assertions verify structure rather than specific implementation behavior; Skipped checks (severity=info, skipped=true) excluded from scoring calculations
 - **72-01:** Service-layer enforcement via assertTenantAccess chosen over repository-level enforcement; Added *Scoped() variants to repositories rather than breaking existing APIs; System templates (workspaceId=null) remain globally accessible
 - **71-03:** All 22 Alembic migrations already had downgrade() - no changes needed; Migration test script uses PID-suffixed database name for isolation; SQL migrations wrapped in BEGIN/COMMIT for atomic execution
 - **71-02:** Pre-commit regex patterns for OpenAI/Stripe/GitHub/AWS/Slack/Google secrets; Gitleaks with full history scan; CSP strict-dynamic with nonce via x-nonce header; Security deps pinned exact (no ^)

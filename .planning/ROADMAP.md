@@ -2268,8 +2268,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   5. Deployment runbook is complete
 **Estimated effort**: 48 hours (1.5 weeks)
 **Plans**: 3 plans
-  - [ ] 72-01-PLAN.md — Multi-Tenancy Verification (Wave 1)
-  - [ ] 72-02-PLAN.md — SEO Checks Validation (Wave 1)
+  - [x] 72-01-PLAN.md — Multi-Tenancy Verification (Wave 1)
+  - [x] 72-02-PLAN.md — SEO Checks Validation (Wave 1)
   - [ ] 72-03-PLAN.md — Monitoring & Observability (Wave 2)
 
 ---
