@@ -67,3 +67,33 @@ export interface SideKeywordExpanderConfig {
   limit: number;              // Max keywords per seed term
   relevanceThreshold: number; // Minimum relevance score (0-1)
 }
+
+/**
+ * Discovery Result Types
+ */
+
+export interface DiscoveryResult {
+  pseoOpportunities: PSEOCluster[];
+  sideKeywords: SideKeywordExpansion[];
+  productLinkages: any[]; // ProductLinkage from ProductLinker
+  recommendations: DiscoveryRecommendation[];
+  metadata: DiscoveryMetadata;
+}
+
+export interface DiscoveryRecommendation {
+  type: 'pseo_template' | 'content_gap' | 'product_page' | 'category_page';
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  keywords: string[];
+  estimatedImpact: {
+    volume: number;
+    pages: number;
+  };
+}
+
+export interface DiscoveryMetadata {
+  totalPSEOPages: number;    // Sum of estimatedPages
+  totalSideKeywords: number;
+  linkageRate: number;       // % of keywords with product match
+}
