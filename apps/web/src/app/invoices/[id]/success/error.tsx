@@ -11,7 +11,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[audit-error]", error);
+    console.error("[invoice-success-error]", error);
   }, [error]);
 
   return (

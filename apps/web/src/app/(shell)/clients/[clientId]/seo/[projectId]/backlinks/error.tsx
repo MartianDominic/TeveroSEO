@@ -1,53 +1,26 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@tevero/ui';
-import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
+import { useEffect } from "react";
+import { Button } from "@tevero/ui";
 
-import { logger } from '@/lib/logger';
-export default function BacklinksError({
+export default function Error({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const router = useRouter();
-  const params = useParams();
-  const clientId = params?.clientId as string | undefined;
-  const projectId = params?.projectId as string | undefined;
-
   useEffect(() => {
-    logger.error('[BacklinksError]', {
-      digest: error.digest,
-      message: error.message,
-      timestamp: new Date().toISOString(),
-    });
+    console.error("[backlinks-error]", error);
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-8">
-      <AlertTriangle className="h-12 w-12 text-destructive" />
-      <h2 className="text-xl font-semibold">Unable to load backlinks data</h2>
-      <p className="text-muted-foreground text-center max-w-md">
-        We encountered an error loading the backlinks section. Please try again.
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <h2 className="text-lg font-semibold">Something went wrong</h2>
       {error.digest && (
         <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
       )}
-      <div className="flex gap-3 mt-2">
-        {clientId && projectId && (
-          <Button variant="outline" onClick={() => router.push(`/clients/${clientId}/seo/${projectId}` as Parameters<typeof router.push>[0])}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to SEO project
-          </Button>
-        )}
-        <Button onClick={reset}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Try again
-        </Button>
-      </div>
+      <Button onClick={() => reset()}>Try again</Button>
     </div>
   );
 }
