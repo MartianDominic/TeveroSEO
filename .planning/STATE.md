@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
-status: executing
-last_updated: "2026-05-04T11:27:39.000Z"
-last_activity: 2026-05-04 -- Created Phase 73 Infrastructure Optimization (DRR, template hash, retrieval, RAG-classification)
+milestone: v8.0
+milestone_name: SaaS Hardening
+status: complete
+last_updated: "2026-05-05T00:05:00.000Z"
+last_activity: 2026-05-05 -- Completed 82-02 CopilotKit Integration (9 tests, 1550 lines, chat UI + exports + sessions)
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_phases: 16
+  completed_phases: 16
+  total_plans: 60
+  completed_plans: 60
   percent: 100
 ---
 
@@ -22,15 +22,15 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** v8.0 SaaS Hardening - Phase 82 Chat Integration
+**Current focus:** v8.0 SaaS Hardening - COMPLETE
 
 ## Current Position
 
 Phase: 82
-Plan: 01 COMPLETE
-Milestone: v8.0 SaaS Hardening (Phases 67-82)
-Status: Executing Phase 82 - Chat Integration
-Last activity: 2026-05-04 -- Completed 82-01 SSE Streaming Foundation (29 tests, 777 lines, 8-stage pipeline)
+Plan: 02 COMPLETE
+Milestone: v8.0 SaaS Hardening (Phases 67-82) - COMPLETE
+Status: v8.0 Milestone Complete
+Last activity: 2026-05-05 -- Completed 82-02 CopilotKit Integration (9 tests, 1550 lines, chat UI + exports + sessions)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **82-02:** CopilotKit handler uses generic args type with cast for type safety; Session storage uses in-memory Map for development (TODO wire to open-seo-main); useKeywordAnalysis uses fetch+ReadableStream instead of EventSource (POST not supported)
 - **82-01:** Removed drizzle-zod dependency to match existing codebase pattern; Stub implementations use realistic delays (60-100ms) for pipeline testing; SSE events use data: prefix only for simpler client parsing
 - **72-02:** Tier weight documentation added to types.ts and scoring.ts for reference; Test assertions verify structure rather than specific implementation behavior; Skipped checks (severity=info, skipped=true) excluded from scoring calculations
 - **72-01:** Service-layer enforcement via assertTenantAccess chosen over repository-level enforcement; Added *Scoped() variants to repositories rather than breaking existing APIs; System templates (workspaceId=null) remain globally accessible
