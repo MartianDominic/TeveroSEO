@@ -2340,8 +2340,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   5. Geo score correctly influences composite score
 **Estimated effort**: 5 hours
 **Plans**: 2 plans
-  - [ ] 77-01-PLAN.md — City database + extraction service (Wave 1)
-  - [ ] 77-02-PLAN.md — Filtering logic + scoring integration + tests (Wave 2)
+  - [ ] 77-01-PLAN.md — Types, city database (50+), GeoClassifier service + tests (Wave 1)
+  - [ ] 77-02-PLAN.md — Classification integration, geo-aware prioritization, module exports (Wave 2)
 
 ---
 
