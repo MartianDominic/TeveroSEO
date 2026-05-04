@@ -244,7 +244,7 @@ importers:
         version: 3.4.4(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
       '@every-app/sdk':
         specifier: ^0.1.14
-        version: 0.1.14(@tanstack/react-router@1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/react-start@1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2))(jose@6.0.12)(react@19.1.6)
+        version: 0.1.14(@tanstack/react-router@1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/react-start@1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2))(jose@6.0.12)(react@19.1.6)
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
@@ -318,11 +318,11 @@ importers:
         specifier: ^5.90.9
         version: 5.99.0(react@19.1.6)
       '@tanstack/react-router':
-        specifier: ^1.168.10
-        version: 1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+        specifier: ^1.169.1
+        version: 1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
       '@tanstack/react-router-devtools':
         specifier: ^1.166.11
-        version: 1.166.13(@tanstack/react-router@1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/router-core@1.168.15)(csstype@3.2.3)(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+        version: 1.166.13(@tanstack/react-router@1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/router-core@1.169.1)(csstype@3.2.3)(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
       '@tanstack/react-start':
         specifier: ^1.167.16
         version: 1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2)
@@ -5248,6 +5248,13 @@ packages:
       react: '>=18.0.0 || >=19.0.0'
       react-dom: '>=18.0.0 || >=19.0.0'
 
+  '@tanstack/react-router@1.169.1':
+    resolution: {integrity: sha512-MBtQKSvac3OCcsSa6oBpDrrN90IV47I6Gtv05NxhbFVh+gVjtqvs6HSU4XM9+y5sHZPgS+35eArflX4vM8GEnQ==}
+    engines: {node: '>=20.19'}
+    peerDependencies:
+      react: '>=18.0.0 || >=19.0.0'
+      react-dom: '>=18.0.0 || >=19.0.0'
+
   '@tanstack/react-start-client@1.166.40':
     resolution: {integrity: sha512-ynjRe8YjaPfcQNEaQ3nE2/zIZNCdyVGew0pHK5lCorqEy3z/YuiKlj5ZXPmel7XGw0XoKsDIH2eXnUtTbIwpjg==}
     engines: {node: '>=22.12.0'}
@@ -5307,6 +5314,11 @@ packages:
 
   '@tanstack/router-core@1.168.15':
     resolution: {integrity: sha512-Wr0424NDtD8fT/uALobMZ9DdcfsTyXtW5IPR++7zvW8/7RaIOeaqXpVDId8ywaGtqPWLWOfaUg2zUtYtukoXYA==}
+    engines: {node: '>=20.19'}
+    hasBin: true
+
+  '@tanstack/router-core@1.169.1':
+    resolution: {integrity: sha512-x+2gIGKTTE1qAn7tLieGfrB5ciOviDmmi2ox9fAWUubRV+yTU5ruGFXocoCIWF+lB+SOtnHjo2E9BLSWyYoEmA==}
     engines: {node: '>=20.19'}
     hasBin: true
 
@@ -11240,14 +11252,18 @@ packages:
     resolution: {integrity: sha512-F4LcB0UqUl1zErq+1nYEEzSHJnIwb3AF2XWB94b+afhrekOUijwooAYqFyRbjYkm2PAKBabx6oYv/xDxNi8IBw==}
     engines: {node: '>=20.0.0'}
 
-  seroval-plugins@1.5.2:
-    resolution: {integrity: sha512-qpY0Cl+fKYFn4GOf3cMiq6l72CpuVaawb6ILjubOQ+diJ54LfOWaSSPsaswN8DRPIPW4Yq+tE1k5aKd7ILyaFg==}
+  seroval-plugins@1.5.3:
+    resolution: {integrity: sha512-LhVh4KjjkKmCxOUjoaUwtqbDjyMfnA535yEmmGDuwZcIYtw8ns6tZmeszNTECeUg/3sJpnEjsz/KhQrcPXPw1Q==}
     engines: {node: '>=10'}
     peerDependencies:
       seroval: ^1.0
 
   seroval@1.5.2:
     resolution: {integrity: sha512-xcRN39BdsnO9Tf+VzsE7b3JyTJASItIV1FVFewJKCFcW4s4haIKS3e6vj8PGB9qBwC7tnuOywQMdv5N4qkzi7Q==}
+    engines: {node: '>=10'}
+
+  seroval@1.5.3:
+    resolution: {integrity: sha512-BXe0x4buEeYiIKaRUnth1WqCILQ3k4O67KP/B4pC3pVz0Mv2c96ngA9QDREUYxWY1sb2RZVRqwI9RcpVMyHCVw==}
     engines: {node: '>=10'}
 
   serve-placeholder@2.0.2:
@@ -14215,9 +14231,9 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@every-app/sdk@0.1.14(@tanstack/react-router@1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/react-start@1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2))(jose@6.0.12)(react@19.1.6)':
+  '@every-app/sdk@0.1.14(@tanstack/react-router@1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/react-start@1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2))(jose@6.0.12)(react@19.1.6)':
     dependencies:
-      '@tanstack/react-router': 1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+      '@tanstack/react-router': 1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
       '@tanstack/react-start': 1.167.42(react-dom@19.1.6(react@19.1.6))(react@19.1.6)(vite@7.3.2(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.106.2)
       jose: 6.0.12
       jsonc-parser: 3.3.1
@@ -17356,14 +17372,14 @@ snapshots:
       '@tanstack/query-core': 5.99.0
       react: 19.1.6
 
-  '@tanstack/react-router-devtools@1.166.13(@tanstack/react-router@1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/router-core@1.168.15)(csstype@3.2.3)(react-dom@19.1.6(react@19.1.6))(react@19.1.6)':
+  '@tanstack/react-router-devtools@1.166.13(@tanstack/react-router@1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6))(@tanstack/router-core@1.169.1)(csstype@3.2.3)(react-dom@19.1.6(react@19.1.6))(react@19.1.6)':
     dependencies:
-      '@tanstack/react-router': 1.168.23(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
-      '@tanstack/router-devtools-core': 1.167.3(@tanstack/router-core@1.168.15)(csstype@3.2.3)
+      '@tanstack/react-router': 1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+      '@tanstack/router-devtools-core': 1.167.3(@tanstack/router-core@1.169.1)(csstype@3.2.3)
       react: 19.1.6
       react-dom: 19.1.6(react@19.1.6)
     optionalDependencies:
-      '@tanstack/router-core': 1.168.15
+      '@tanstack/router-core': 1.169.1
     transitivePeerDependencies:
       - csstype
 
@@ -17372,6 +17388,15 @@ snapshots:
       '@tanstack/history': 1.161.6
       '@tanstack/react-store': 0.9.3(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
       '@tanstack/router-core': 1.168.15
+      isbot: 5.1.39
+      react: 19.1.6
+      react-dom: 19.1.6(react@19.1.6)
+
+  '@tanstack/react-router@1.169.1(react-dom@19.1.6(react@19.1.6))(react@19.1.6)':
+    dependencies:
+      '@tanstack/history': 1.161.6
+      '@tanstack/react-store': 0.9.3(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+      '@tanstack/router-core': 1.169.1
       isbot: 5.1.39
       react: 19.1.6
       react-dom: 19.1.6(react@19.1.6)
@@ -17462,12 +17487,19 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.161.6
       cookie-es: 3.1.1
-      seroval: 1.5.2
-      seroval-plugins: 1.5.2(seroval@1.5.2)
+      seroval: 1.5.3
+      seroval-plugins: 1.5.3(seroval@1.5.3)
 
-  '@tanstack/router-devtools-core@1.167.3(@tanstack/router-core@1.168.15)(csstype@3.2.3)':
+  '@tanstack/router-core@1.169.1':
     dependencies:
-      '@tanstack/router-core': 1.168.15
+      '@tanstack/history': 1.161.6
+      cookie-es: 3.1.1
+      seroval: 1.5.3
+      seroval-plugins: 1.5.3(seroval@1.5.3)
+
+  '@tanstack/router-devtools-core@1.167.3(@tanstack/router-core@1.169.1)(csstype@3.2.3)':
+    dependencies:
+      '@tanstack/router-core': 1.169.1
       clsx: 2.1.1
       goober: 2.1.18(csstype@3.2.3)
     optionalDependencies:
@@ -24772,11 +24804,13 @@ snapshots:
 
   serialize-javascript@7.0.5: {}
 
-  seroval-plugins@1.5.2(seroval@1.5.2):
+  seroval-plugins@1.5.3(seroval@1.5.3):
     dependencies:
-      seroval: 1.5.2
+      seroval: 1.5.3
 
   seroval@1.5.2: {}
+
+  seroval@1.5.3: {}
 
   serve-placeholder@2.0.2:
     dependencies:
@@ -25014,8 +25048,8 @@ snapshots:
   solid-js@1.9.12:
     dependencies:
       csstype: 3.2.3
-      seroval: 1.5.2
-      seroval-plugins: 1.5.2(seroval@1.5.2)
+      seroval: 1.5.3
+      seroval-plugins: 1.5.3(seroval@1.5.3)
 
   sonic-boom@4.2.1:
     dependencies:
