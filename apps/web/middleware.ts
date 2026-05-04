@@ -9,6 +9,66 @@ import {
 } from "./src/lib/rate-limit/auth-limiter";
 
 /**
+ * SEC-03: Generate a cryptographic nonce for CSP
+ * Used to allow inline scripts while maintaining CSP protection.
+ */
+function generateNonce(): string {
+  // Use crypto.getRandomValues for cryptographically secure random bytes
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  // Convert to base64 for the nonce value
+  return Buffer.from(array).toString('base64');
+}
+
+/**
+ * Build Content-Security-Policy header with nonce.
+ * This CSP allows:
+ * - Scripts only from same origin or with valid nonce
+ * - Styles from same origin, Clerk, and unsafe-inline (required for some UI libs)
+ * - Images from same origin and data URIs
+ * - Fonts from same origin
+ * - Connect to same origin, Clerk APIs, and backend services
+ */
+function buildCSPHeader(nonce: string): string {
+  const directives = [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev`,
+    `img-src 'self' data: blob: https://*.clerk.accounts.dev https://img.clerk.com`,
+    `font-src 'self'`,
+    `connect-src 'self' https://*.clerk.accounts.dev https://clerk.tevero.io wss://*.clerk.accounts.dev`,
+    `frame-src 'self' https://*.clerk.accounts.dev`,
+    `frame-ancestors 'none'`,
+    `form-action 'self'`,
+    `base-uri 'self'`,
+    `object-src 'none'`,
+  ];
+
+  return directives.join('; ');
+}
+
+/**
+ * Apply CSP headers and nonce to a response.
+ * The nonce is passed via x-nonce header for use in _document or layout.
+ */
+function applyCSPHeaders(response: NextResponse, nonce: string): NextResponse {
+  const csp = buildCSPHeader(nonce);
+
+  // Set CSP header
+  response.headers.set('Content-Security-Policy', csp);
+
+  // Pass nonce to the app via header (used in layout.tsx to inject into scripts)
+  response.headers.set('x-nonce', nonce);
+
+  // Additional security headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  return response;
+}
+
+/**
  * HIGH-UX-02: Help and support link redirects
  * Maps internal help/support paths to external documentation.
  */
@@ -146,6 +206,9 @@ const isSensitiveRoute = createRouteMatcher([
 const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
 
 export default clerkMiddleware(async (auth, req) => {
+  // SEC-03: Generate CSP nonce for this request
+  const nonce = generateNonce();
+
   // HIGH-UX-02: Handle help/support redirects before any other processing
   const helpRedirect = getHelpRedirect(req.nextUrl.pathname);
   if (helpRedirect) {
@@ -185,9 +248,17 @@ export default clerkMiddleware(async (auth, req) => {
   // This handles locale detection and URL rewriting
   const intlResponse = intlMiddleware(req);
 
-  // For public routes, just return the intl response
+  // Convert to NextResponse if needed and apply CSP headers
+  const response = intlResponse instanceof NextResponse
+    ? intlResponse
+    : NextResponse.next({ headers: intlResponse.headers });
+
+  // Apply CSP headers to all page responses
+  applyCSPHeaders(response, nonce);
+
+  // For public routes, return with CSP headers applied
   if (isPublicRoute(req)) {
-    return intlResponse;
+    return response;
   }
 
   const authObj = await auth();
@@ -215,8 +286,8 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // Return the intl response for authenticated users
-  return intlResponse;
+  // Return the response with CSP headers for authenticated users
+  return response;
 });
 
 export const config = {
