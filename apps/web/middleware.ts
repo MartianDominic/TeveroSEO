@@ -1,12 +1,51 @@
 import createIntlMiddleware from 'next-intl/middleware';
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { routing } from './src/i18n/routing';
 import {
   checkAuthRateLimit,
   getAuthOperationType,
   createRateLimitHeaders,
 } from "@/lib/rate-limit/auth-limiter";
+
+/**
+ * HIGH-UX-02: Help and support link redirects
+ * Maps internal help/support paths to external documentation.
+ */
+const HELP_REDIRECTS: Record<string, string> = {
+  '/help': 'https://docs.tevero.io',
+  '/support': 'https://docs.tevero.io/support',
+  '/help/getting-started': 'https://docs.tevero.io/getting-started',
+  '/help/api': 'https://docs.tevero.io/api',
+  '/help/faq': 'https://docs.tevero.io/faq',
+};
+
+/**
+ * Check if pathname matches a help redirect and return the destination URL.
+ */
+function getHelpRedirect(pathname: string): string | null {
+  // Exact match first
+  if (pathname in HELP_REDIRECTS) {
+    return HELP_REDIRECTS[pathname];
+  }
+
+  // Check for locale-prefixed paths (e.g., /lt/help)
+  const localeMatch = pathname.match(/^\/([a-z]{2})(\/help.*|\/support.*)$/);
+  if (localeMatch) {
+    const subpath = localeMatch[2];
+    if (subpath in HELP_REDIRECTS) {
+      return HELP_REDIRECTS[subpath];
+    }
+  }
+
+  // Wildcard: any /help/* path not explicitly mapped goes to docs root
+  if (pathname.startsWith('/help/') || pathname.match(/^\/[a-z]{2}\/help\//)) {
+    return 'https://docs.tevero.io';
+  }
+
+  return null;
+}
 
 /**
  * Merged middleware combining next-intl locale routing with Clerk authentication.
@@ -108,6 +147,12 @@ const isSensitiveRoute = createRouteMatcher([
 const MAX_SESSION_AGE_MS = 24 * 60 * 60 * 1000;
 
 export default clerkMiddleware(async (auth, req) => {
+  // HIGH-UX-02: Handle help/support redirects before any other processing
+  const helpRedirect = getHelpRedirect(req.nextUrl.pathname);
+  if (helpRedirect) {
+    return NextResponse.redirect(helpRedirect);
+  }
+
   // Rate limit authentication routes BEFORE any other processing
   if (isAuthRoute(req)) {
     const authType = getAuthOperationType(req.nextUrl.pathname);
