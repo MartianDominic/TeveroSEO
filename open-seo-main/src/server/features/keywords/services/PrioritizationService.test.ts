@@ -371,7 +371,7 @@ describe("PrioritizationService", () => {
     const service = new PrioritizationService();
 
     describe("Backward compatibility", () => {
-      it("prioritizeKeywords without geoConstraints works as before", () => {
+      it("prioritizeKeywordsList without geoConstraints works as before", () => {
         const keywords = [
           {
             keyword: "plovykla vilniuje",
@@ -389,7 +389,7 @@ describe("PrioritizationService", () => {
           },
         ];
 
-        const results = service.prioritizeKeywords(keywords);
+        const results = service.prioritizeKeywordsList(keywords);
 
         // No geo constraints = all keywords should score > 0
         expect(results.length).toBe(2);
@@ -419,7 +419,7 @@ describe("PrioritizationService", () => {
           genericAllowed: true,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         expect(results.length).toBe(1);
         expect(results[0].geoClassification?.passesGeoFilter).toBe(true);
@@ -446,7 +446,7 @@ describe("PrioritizationService", () => {
           genericAllowed: true,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         expect(results.length).toBe(1);
         expect(results[0].geoClassification?.passesGeoFilter).toBe(false);
@@ -472,7 +472,7 @@ describe("PrioritizationService", () => {
           genericAllowed: true,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         expect(results.length).toBe(1);
         expect(results[0].geoClassification?.isNearMe).toBe(true);
@@ -498,7 +498,7 @@ describe("PrioritizationService", () => {
           genericAllowed: true,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         expect(results.length).toBe(1);
         expect(results[0].geoClassification?.isGeneric).toBe(true);
@@ -538,7 +538,7 @@ describe("PrioritizationService", () => {
           genericAllowed: true,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         // Find first excluded
         const firstExcludedIdx = results.findIndex(
@@ -586,7 +586,7 @@ describe("PrioritizationService", () => {
           genericAllowed: false,
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         const passing = results.filter((r) => r.tier !== "excluded");
         expect(passing.length).toBe(2);
@@ -619,7 +619,7 @@ describe("PrioritizationService", () => {
           includeCities: ["siauliai"],
         };
 
-        const results = service.prioritizeKeywords(keywords, {}, constraints);
+        const results = service.prioritizeKeywordsList(keywords, {}, constraints);
 
         expect(results[0].geoClassification?.geoScore).toBe(1.0);
 
@@ -643,12 +643,12 @@ describe("PrioritizationService", () => {
           includeCities: ["siauliai"],
         };
 
-        const resultsDefault = service.prioritizeKeywords(
+        const resultsDefault = service.prioritizeKeywordsList(
           keywords,
           {},
           constraints
         );
-        const resultsCustom = service.prioritizeKeywords(
+        const resultsCustom = service.prioritizeKeywordsList(
           keywords,
           { geo: 0.3 },
           constraints

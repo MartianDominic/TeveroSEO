@@ -211,7 +211,7 @@ export class PrioritizationService {
    * @param geoConstraints - Geographic filtering constraints (optional)
    * @returns Array of prioritized keywords with scores and tiers
    */
-  prioritizeKeywords(
+  prioritizeKeywordsList(
     keywords: Array<{
       keyword: string;
       searchVolume: number | null;
