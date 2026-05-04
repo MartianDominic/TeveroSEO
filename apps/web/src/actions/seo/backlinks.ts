@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import {
   requireActionAuth,
   validateClientOwnership,
+  type ActionResult,
 } from "@/lib/auth/action-auth";
 import { postOpenSeo } from "@/lib/server-fetch";
 import { apiCostLimiter, checkRateLimit } from "@/lib/rate-limit";
@@ -48,7 +49,7 @@ function buildQuery(params: { projectId: string; clientId: string }): string {
 /**
  * Get backlinks overview for a target.
  */
-export async function getBacklinksOverview(params: BacklinksOverviewParams): Promise<{ success: boolean; data?: unknown; error?: string }> {
+export async function getBacklinksOverview(params: BacklinksOverviewParams): Promise<ActionResult<unknown>> {
   try {
     const validated = backlinksOverviewParamsSchema.parse(params);
     const auth = await requireActionAuth();
@@ -78,7 +79,7 @@ export async function getBacklinksOverview(params: BacklinksOverviewParams): Pro
 /**
  * Get referring domains for a target.
  */
-export async function getBacklinksReferringDomains(params: BacklinksParams): Promise<{ success: boolean; data?: unknown[]; error?: string }> {
+export async function getBacklinksReferringDomains(params: BacklinksParams): Promise<ActionResult<unknown[]>> {
   try {
     const validated = backlinksParamsSchema.parse(params);
     const auth = await requireActionAuth();
@@ -106,7 +107,7 @@ export async function getBacklinksReferringDomains(params: BacklinksParams): Pro
 /**
  * Get top pages for a target.
  */
-export async function getBacklinksTopPages(params: BacklinksParams): Promise<{ success: boolean; data?: unknown[]; error?: string }> {
+export async function getBacklinksTopPages(params: BacklinksParams): Promise<ActionResult<unknown[]>> {
   try {
     const validated = backlinksParamsSchema.parse(params);
     const auth = await requireActionAuth();
