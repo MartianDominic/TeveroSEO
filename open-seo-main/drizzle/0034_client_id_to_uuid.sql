@@ -6,6 +6,15 @@
 --
 -- This migration converts all client_id columns to native PostgreSQL UUID type
 -- Existing data is cast using ::uuid which works for valid UUID string formats
+--
+-- SAFETY: Transaction-wrapped for atomic execution
+-- If any statement fails, the entire migration rolls back to preserve data integrity
+--
+-- Pre-migration checklist:
+-- 1. pg_dump -Fc -d open_seo -f backup_pre_0034.dump
+-- 2. Verify all client_id values are valid UUIDs: SELECT client_id FROM clients WHERE client_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+
+BEGIN;
 
 -- Step 1: Convert clients.id primary key from TEXT to UUID
 -- Must drop and recreate FK constraints that reference clients.id
@@ -112,3 +121,5 @@ ALTER TABLE client_goals ADD CONSTRAINT client_goals_client_id_clients_id_fk
 
 -- Note: audits.client_id, rank_drop_events.client_id, and report_schedules.client_id
 -- intentionally do not have FK constraints due to cross-database design or backwards compatibility
+
+COMMIT;
