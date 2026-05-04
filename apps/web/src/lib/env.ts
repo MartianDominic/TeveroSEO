@@ -82,13 +82,39 @@ const serverEnvSchema = z.object({
   WIX_CLIENT_ID: z.string().optional(),
   WIX_CLIENT_SECRET: z.string().optional(),
 
-  // CFG-HIGH-03 FIX: Anthropic API key for AI features
-  ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required').optional(),
+  // CFG-HIGH-03 FIX: Anthropic API key for AI features (required in production)
+  ANTHROPIC_API_KEY: z.string().min(20, 'ANTHROPIC_API_KEY must be at least 20 characters').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.length >= 20),
+      'ANTHROPIC_API_KEY is required in production'
+    ),
 
-  // CFG-MED-01 FIX: Stripe payment configuration
-  STRIPE_SECRET_KEY: z.string().startsWith('sk_', 'STRIPE_SECRET_KEY must start with sk_').optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_', 'STRIPE_WEBHOOK_SECRET must start with whsec_').optional(),
+  // CFG-MED-01 FIX: Stripe payment configuration (required for billing in production)
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_', 'STRIPE_SECRET_KEY must start with sk_').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.startsWith('sk_')),
+      'STRIPE_SECRET_KEY is required in production'
+    ),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_', 'STRIPE_WEBHOOK_SECRET must start with whsec_').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.startsWith('whsec_')),
+      'STRIPE_WEBHOOK_SECRET is required in production'
+    ),
   STRIPE_PUBLISHABLE_KEY: z.string().startsWith('pk_', 'STRIPE_PUBLISHABLE_KEY must start with pk_').optional(),
+
+  // Email service (required for notifications in production)
+  RESEND_API_KEY: z.string().min(1, 'RESEND_API_KEY is required').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.length > 0),
+      'RESEND_API_KEY is required in production for email notifications'
+    ),
+
+  // Asset security (required for secure URL signing)
+  ASSET_SIGNING_KEY: z.string().min(32, 'ASSET_SIGNING_KEY must be at least 32 characters').optional()
+    .refine(
+      (val) => process.env.NODE_ENV !== 'production' || (val && val.length >= 32),
+      'ASSET_SIGNING_KEY is required in production'
+    ),
 
   // Health check token for monitoring systems
   HEALTH_CHECK_TOKEN: z.string().optional(),
