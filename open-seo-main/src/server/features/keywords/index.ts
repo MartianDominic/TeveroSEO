@@ -205,3 +205,22 @@ export * from './types';
 // Phase 77: Geographic Intelligence
 // =============================================================================
 export * from './geo';
+
+// =============================================================================
+// Phase 78: Relevance Scoring
+// =============================================================================
+export {
+  type RelevanceScores,
+  type RelevanceWeights,
+  type RelevanceConfig,
+  type RelevanceInput,
+  type RelevanceOutput,
+  RelevanceScoresSchema,
+  RelevanceWeightsSchema,
+  RelevanceConfigSchema,
+  RelevanceInputSchema,
+  RelevanceOutputSchema,
+  DEFAULT_RELEVANCE_CONFIG,
+  RelevanceScorer,
+  createRelevanceScorer,
+} from './relevance';
