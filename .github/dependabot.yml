@@ -1,0 +1,128 @@
+version: 2
+updates:
+  # Root monorepo
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      typescript:
+        patterns:
+          - "typescript*"
+          - "@types/*"
+      testing:
+        patterns:
+          - "vitest*"
+          - "@vitest/*"
+          - "playwright*"
+
+  # Next.js frontend (apps/web)
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      next:
+        patterns:
+          - "next*"
+          - "@next/*"
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+
+  # TanStack Start (open-seo-main)
+  - package-ecosystem: "npm"
+    directory: "/open-seo-main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      drizzle:
+        patterns:
+          - "drizzle-*"
+
+  # Shared UI package
+  - package-ecosystem: "npm"
+    directory: "/packages/ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+
+  # AI-Writer frontend (React)
+  - package-ecosystem: "npm"
+    directory: "/AI-Writer/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+
+  # AI-Writer backend (Python)
+  - package-ecosystem: "pip"
+    directory: "/AI-Writer/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      fastapi:
+        patterns:
+          - "fastapi*"
+          - "uvicorn*"
+          - "starlette*"
+      ml:
+        patterns:
+          - "openai*"
+          - "anthropic*"
+          - "sentence-transformers*"
+
+  # Docker images - apps/web
+  - package-ecosystem: "docker"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # Docker images - open-seo-main (VPS)
+  - package-ecosystem: "docker"
+    directory: "/open-seo-main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # Docker images - AI-Writer backend
+  - package-ecosystem: "docker"
+    directory: "/AI-Writer/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # Docker images - AI-Writer frontend
+  - package-ecosystem: "docker"
+    directory: "/AI-Writer/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # Docker images - Puppeteer service
+  - package-ecosystem: "docker"
+    directory: "/docker/puppeteer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+
+  # Docker images - nginx
+  - package-ecosystem: "docker"
+    directory: "/docker/nginx"
+    schedule:
+      interval: "weekly"
+      day: "monday"
