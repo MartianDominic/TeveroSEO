@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
+milestone: v8.0
+milestone_name: SaaS Hardening
 status: executing
 last_updated: "2026-05-04T09:59:08.268Z"
-last_activity: 2026-05-04 -- Completed 69-03 Query Optimization (N+1 fix, LIMIT, composite indexes, cursor pagination)
+last_activity: 2026-05-04 -- Completed 69-04 Background Job Reliability (optimistic locking, state machine, deduplication, DLQ, circuit breaker)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_plans: 59
+  completed_plans: 59
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 ## Current Position
 
 Phase: 69
-Plan: 04 (next)
+Plan: COMPLETE
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
-Status: EXECUTING
-Last activity: 2026-05-04 -- Completed 69-03 Query Optimization (N+1 fix, LIMIT, composite indexes, cursor pagination)
+Status: COMPLETE - Phase 69 finished
+Last activity: 2026-05-04 -- Completed 69-04 Background Job Reliability (optimistic locking, state machine, deduplication, DLQ, circuit breaker)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **69-04:** Optimistic locking via version field in WHERE clause (not pessimistic FOR UPDATE); Redis SET NX EX for atomic lock acquisition; Lua scripts for ownership-safe lock release/extend; Circuit breaker state in Redis for cross-worker sharing; DLQ stores job data + metadata for replay capability
 - **69-03:** Cursor pagination uses base64url encoding for opaque cursors; Compound cursors support (sortColumn, primaryKey) row comparison; BATCH_SIZE=50 for background jobs, MAX_PAGE_SIZE=100 for list endpoints; All composite indexes use CONCURRENTLY for non-blocking creation; Partial indexes where applicable (deleted_at IS NULL, is_deleted = false)
 - **69-02:** Soft delete cascades to audits (archive), contracts (cancel), reportSchedules (disable), siteConnections (disconnect); PostgreSQL ENUMs created for type safety but CHECK constraints used for flexibility; Conditional DDL pattern (IF NOT EXISTS) for idempotent migrations
 - **69-01:** INTERNAL_ERROR code for transaction failures; PostCommitJob queued but not enqueued until after commit; Row-level FOR UPDATE locking for concurrent conversion prevention; Saga compensation runs all compensations even if some fail; noOpCompensation helper for irreversible operations
