@@ -198,7 +198,7 @@ export function OAuthEnhancement({
             </div>
             <h2 className="text-xl font-semibold mb-2">All set!</h2>
             <p className="text-muted-foreground mb-6">
-              You've connected all available platforms for {domain}
+              You&apos;ve connected all available platforms for {domain}
             </p>
             <Button onClick={onDismiss}>Go to Dashboard</Button>
           </CardContent>
@@ -291,7 +291,7 @@ export function OAuthEnhancement({
           {/* Skip all link */}
           <div className="mt-8 text-center">
             <Button variant="link" onClick={onDismiss}>
-              I'll enhance later - go to dashboard
+              I&apos;ll enhance later - go to dashboard
             </Button>
           </div>
         </>

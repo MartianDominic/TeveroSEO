@@ -160,7 +160,7 @@ export function PlatformDetected({
           {/* Confidence (only show for unknown) */}
           {isUnknown && (
             <p className="text-[var(--text-3)] text-sm mt-4">
-              We couldn't identify your platform, but don't worry - you can
+              We couldn&apos;t identify your platform, but don&apos;t worry - you can
               still add the helper to any website.
             </p>
           )}

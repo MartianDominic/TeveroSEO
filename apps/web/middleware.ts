@@ -1,13 +1,12 @@
 import createIntlMiddleware from 'next-intl/middleware';
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { routing } from './src/i18n/routing';
 import {
   checkAuthRateLimit,
   getAuthOperationType,
   createRateLimitHeaders,
-} from "@/lib/rate-limit/auth-limiter";
+} from "./src/lib/rate-limit/auth-limiter";
 
 /**
  * HIGH-UX-02: Help and support link redirects

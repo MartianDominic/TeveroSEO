@@ -105,7 +105,7 @@ export function ManualCheck({
 
       {result === "pending" && (
         <div className="text-sm text-muted-foreground">
-          Not detected yet. Make sure you've added the code and visited your
+          Not detected yet. Make sure you&apos;ve added the code and visited your
           website.
         </div>
       )}

@@ -189,7 +189,7 @@ function EmptyState() {
           No change history
         </h3>
         <p className="text-sm text-muted-foreground">
-          DOM changes will appear here once they're created.
+          DOM changes will appear here once they&apos;re created.
         </p>
       </CardContent>
     </Card>

@@ -54,7 +54,7 @@ export function UrlInput({
     <div className={cn("flex flex-col items-center px-4", className)}>
       {/* Heading */}
       <h1 className="text-2xl font-semibold text-[var(--text-1)] mb-8 text-center">
-        Let's connect your website
+        Let&apos;s connect your website
       </h1>
 
       {/* Form */}

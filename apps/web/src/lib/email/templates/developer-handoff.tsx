@@ -159,11 +159,11 @@ export function DeveloperHandoffEmail({
             {/* Main message */}
             <p>
               <strong>{senderName}</strong> has asked you to add TeveroSEO
-              tracking to <strong>{domain}</strong>. Here's all you need:
+              tracking to <strong>{domain}</strong>. Here&apos;s all you need:
             </p>
 
             {/* Custom message if provided */}
-            {message && <div className="message">"{message}"</div>}
+            {message && <div className="message">&ldquo;{message}&rdquo;</div>}
 
             {/* Instructions */}
             <p>
@@ -184,7 +184,7 @@ export function DeveloperHandoffEmail({
             </p>
 
             {/* Closing */}
-            <p>That's it! Questions? Reply to this email.</p>
+            <p>That&apos;s it! Questions? Reply to this email.</p>
 
             {/* Reassurance */}
             <div className="reassurance">

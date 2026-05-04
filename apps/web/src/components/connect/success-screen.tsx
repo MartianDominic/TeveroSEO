@@ -136,7 +136,7 @@ export function SuccessScreen({
       <SuccessCheckmark />
 
       <h2 className="text-2xl font-semibold text-foreground mb-2">
-        You're connected!
+        You&apos;re connected!
       </h2>
 
       {location?.city && location?.country ? (

@@ -10,6 +10,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink } from "lucide-react";
 import { Button, Card, CardContent, cn } from "@tevero/ui";
 import type { GuideStep } from "@/lib/api/connect";
@@ -154,12 +155,12 @@ export function PlatformGuide({
                 Watch Video
                 <ExternalLink className="w-3 h-3" />
               </a>
-              <a
-                href="/help/chat"
+              <Link
+                href={"/help/chat" as any}
                 className="text-[var(--accent)] hover:underline"
               >
                 Chat with us
-              </a>
+              </Link>
             </div>
           )}
         </CardContent>

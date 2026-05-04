@@ -204,7 +204,7 @@ export function VerificationScreen({
         <SuccessCheckmark />
 
         <h2 className="text-2xl font-semibold text-foreground mb-2">
-          You're connected!
+          You&apos;re connected!
         </h2>
 
         {location?.city && location?.country ? (
@@ -246,9 +246,9 @@ export function VerificationScreen({
       <PulsingDots />
 
       <p className="text-muted-foreground mb-6">
-        When you've added the code, visit your website in a new tab.
+        When you&apos;ve added the code, visit your website in a new tab.
         <br />
-        We'll detect it automatically.
+        We&apos;ll detect it automatically.
       </p>
 
       <Button variant="outline" asChild className="gap-2">

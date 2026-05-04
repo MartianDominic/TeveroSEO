@@ -9,6 +9,7 @@
 
 import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { OAuthEnhancement, type EnhancementPlatform } from "@/components/connect/oauth-enhancement";
 import { Loader2 } from "lucide-react";
 
@@ -197,12 +198,12 @@ function NoSiteState() {
       <p className="text-muted-foreground mb-4">
         Please connect a website first before adding enhancements.
       </p>
-      <a
-        href="/connect"
+      <Link
+        href={"/connect" as any}
         className="text-primary hover:underline"
       >
         Connect a website
-      </a>
+      </Link>
     </div>
   );
 }
