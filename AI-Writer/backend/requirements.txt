@@ -116,7 +116,7 @@ mdurl==0.1.2
 moviepy>=2.2.1
 multidict==6.7.1
 nltk==3.9.4
-numpy==2.2.6
+numpy==2.4.4
 # oauthlib - version constraint in security section above
 openai==1.109.1
 packaging==26.0
