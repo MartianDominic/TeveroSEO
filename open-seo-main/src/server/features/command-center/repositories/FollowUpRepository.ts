@@ -28,12 +28,34 @@ export interface FollowUpFilters {
 
 /**
  * Find a follow-up by ID.
+ *
+ * SECURITY: This method does NOT filter by workspace.
+ * Use findByIdScoped() for tenant-safe access, or
+ * call assertTenantAccess() at service layer after retrieval.
  */
 export async function findById(id: string): Promise<FollowUpSelect | null> {
   const [result] = await db
     .select()
     .from(followUps)
     .where(eq(followUps.id, id))
+    .limit(1);
+
+  return result ?? null;
+}
+
+/**
+ * Find a follow-up by ID with workspace scope.
+ * Returns null if follow-up doesn't exist OR belongs to different workspace.
+ * Use this for tenant-safe data access.
+ */
+export async function findByIdScoped(
+  id: string,
+  workspaceId: string
+): Promise<FollowUpSelect | null> {
+  const [result] = await db
+    .select()
+    .from(followUps)
+    .where(and(eq(followUps.id, id), eq(followUps.workspaceId, workspaceId)))
     .limit(1);
 
   return result ?? null;
@@ -314,6 +336,7 @@ export async function batchUnsnooze(ids: string[]): Promise<number> {
 
 export const FollowUpRepository = {
   findById,
+  findByIdScoped,
   findByWorkspace,
   findByEntity,
   findUpcoming,

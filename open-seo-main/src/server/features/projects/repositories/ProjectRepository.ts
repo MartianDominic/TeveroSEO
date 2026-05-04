@@ -32,6 +32,13 @@ async function getProjectForOrganization(
   });
 }
 
+/**
+ * Get a project by ID.
+ *
+ * SECURITY: This method does NOT filter by organization.
+ * Use getProjectForOrganization() for tenant-safe access, or
+ * call assertTenantAccess() at service layer after retrieval.
+ */
 async function getProjectById(projectId: string) {
   return db.query.projects.findFirst({
     where: and(

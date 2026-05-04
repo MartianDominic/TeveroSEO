@@ -25,6 +25,10 @@ export async function insertContract(
 
 /**
  * Get a contract by ID.
+ *
+ * SECURITY: This method does NOT filter by workspace.
+ * Use getContractByIdScoped() for tenant-safe access, or
+ * call assertTenantAccess() at service layer after retrieval.
  */
 export async function getContractById(
   contractId: string,
@@ -33,6 +37,23 @@ export async function getContractById(
     .select()
     .from(contracts)
     .where(eq(contracts.id, contractId))
+    .limit(1);
+  return contract;
+}
+
+/**
+ * Get a contract by ID with workspace scope.
+ * Returns undefined if contract doesn't exist OR belongs to different workspace.
+ * Use this for tenant-safe data access.
+ */
+export async function getContractByIdScoped(
+  contractId: string,
+  workspaceId: string,
+): Promise<ContractSelect | undefined> {
+  const [contract] = await db
+    .select()
+    .from(contracts)
+    .where(and(eq(contracts.id, contractId), eq(contracts.workspaceId, workspaceId)))
     .limit(1);
   return contract;
 }
@@ -152,6 +173,7 @@ export async function deleteContract(contractId: string): Promise<void> {
 export const ContractRepository = {
   insertContract,
   getContractById,
+  getContractByIdScoped,
   getContractsByWorkspace,
   getContractsByClient,
   transitionContractState,

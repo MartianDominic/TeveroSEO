@@ -31,10 +31,32 @@ export class WorkflowRepository {
 
   /**
    * Find workflow instance by ID.
+   *
+   * SECURITY: This method does NOT filter by workspace.
+   * Use findByIdScoped() for tenant-safe access, or
+   * call assertTenantAccess() at service layer after retrieval.
    */
   async findById(id: string): Promise<WorkflowInstanceSelect | null> {
     const result = await this.db.query.workflowInstances.findFirst({
       where: eq(workflowInstances.id, id),
+    });
+    return result ?? null;
+  }
+
+  /**
+   * Find workflow instance by ID with workspace scope.
+   * Returns null if instance doesn't exist OR belongs to different workspace.
+   * Use this for tenant-safe data access.
+   */
+  async findByIdScoped(
+    id: string,
+    workspaceId: string
+  ): Promise<WorkflowInstanceSelect | null> {
+    const result = await this.db.query.workflowInstances.findFirst({
+      where: and(
+        eq(workflowInstances.id, id),
+        eq(workflowInstances.workspaceId, workspaceId)
+      ),
     });
     return result ?? null;
   }
@@ -188,10 +210,35 @@ export class WorkflowRepository {
 
   /**
    * Get a template by ID.
+   *
+   * SECURITY: This method does NOT filter by workspace.
+   * Use getTemplateByIdScoped() for tenant-safe access, or
+   * call assertTenantAccess() at service layer after retrieval.
    */
   async getTemplateById(id: string): Promise<WorkflowTemplateSelect | null> {
     const result = await this.db.query.workflowTemplates.findFirst({
       where: eq(workflowTemplates.id, id),
+    });
+    return result ?? null;
+  }
+
+  /**
+   * Get a template by ID with workspace scope.
+   * Includes system templates (workspaceId = null) as they are shared.
+   * Returns null if template doesn't exist OR belongs to different workspace.
+   */
+  async getTemplateByIdScoped(
+    id: string,
+    workspaceId: string
+  ): Promise<WorkflowTemplateSelect | null> {
+    const result = await this.db.query.workflowTemplates.findFirst({
+      where: and(
+        eq(workflowTemplates.id, id),
+        or(
+          eq(workflowTemplates.workspaceId, workspaceId),
+          isNull(workflowTemplates.workspaceId) // System templates are shared
+        )
+      ),
     });
     return result ?? null;
   }

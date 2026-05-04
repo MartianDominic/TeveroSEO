@@ -56,12 +56,34 @@ export async function findByEntityType(
 
 /**
  * Find a rule by ID.
+ *
+ * SECURITY: This method does NOT filter by workspace.
+ * Use findByIdScoped() for tenant-safe access, or
+ * call assertTenantAccess() at service layer after retrieval.
  */
 export async function findById(id: string): Promise<FollowUpRuleSelect | null> {
   const [result] = await db
     .select()
     .from(followUpRules)
     .where(eq(followUpRules.id, id))
+    .limit(1);
+
+  return result ?? null;
+}
+
+/**
+ * Find a rule by ID with workspace scope.
+ * Returns null if rule doesn't exist OR belongs to different workspace.
+ * Use this for tenant-safe data access.
+ */
+export async function findByIdScoped(
+  id: string,
+  workspaceId: string
+): Promise<FollowUpRuleSelect | null> {
+  const [result] = await db
+    .select()
+    .from(followUpRules)
+    .where(and(eq(followUpRules.id, id), eq(followUpRules.workspaceId, workspaceId)))
     .limit(1);
 
   return result ?? null;
@@ -123,6 +145,7 @@ export const FollowUpRulesRepository = {
   findByWorkspace,
   findByEntityType,
   findById,
+  findByIdScoped,
   create,
   update,
   toggleActive,

@@ -25,6 +25,10 @@ export async function insertInvoice(
 
 /**
  * Get an invoice by ID.
+ *
+ * SECURITY: This method does NOT filter by workspace.
+ * Use getInvoiceByIdScoped() for tenant-safe access, or
+ * call assertTenantAccess() at service layer after retrieval.
  */
 export async function getInvoiceById(
   invoiceId: string,
@@ -33,6 +37,23 @@ export async function getInvoiceById(
     .select()
     .from(invoices)
     .where(eq(invoices.id, invoiceId))
+    .limit(1);
+  return invoice;
+}
+
+/**
+ * Get an invoice by ID with workspace scope.
+ * Returns undefined if invoice doesn't exist OR belongs to different workspace.
+ * Use this for tenant-safe data access.
+ */
+export async function getInvoiceByIdScoped(
+  invoiceId: string,
+  workspaceId: string,
+): Promise<InvoiceSelect | undefined> {
+  const [invoice] = await db
+    .select()
+    .from(invoices)
+    .where(and(eq(invoices.id, invoiceId), eq(invoices.workspaceId, workspaceId)))
     .limit(1);
   return invoice;
 }
@@ -218,6 +239,7 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 export const InvoiceRepository = {
   insertInvoice,
   getInvoiceById,
+  getInvoiceByIdScoped,
   getInvoiceByStripeId,
   getInvoiceByRevolutOrderId,
   getInvoicesByWorkspace,
