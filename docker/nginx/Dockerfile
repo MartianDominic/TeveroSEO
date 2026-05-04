@@ -1,4 +1,4 @@
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 
 # curl needed for compose healthcheck (nginx:alpine doesn't ship it)
 RUN apk add --no-cache curl
