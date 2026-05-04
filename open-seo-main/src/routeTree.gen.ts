@@ -28,6 +28,7 @@ import { Route as ApiSchedulesIndexRouteImport } from './routes/api/schedules/in
 import { Route as ApiReportsIndexRouteImport } from './routes/api/reports/index'
 import { Route as ApiReportTemplatesIndexRouteImport } from './routes/api/report-templates/index'
 import { Route as ApiPlatformConnectionsIndexRouteImport } from './routes/api/platform-connections/index'
+import { Route as ApiHealthIndexRouteImport } from './routes/api/health/index'
 import { Route as ApiGoalTemplatesIndexRouteImport } from './routes/api/goal-templates/index'
 import { Route as ApiConnectionsIndexRouteImport } from './routes/api/connections/index'
 import { Route as ApiChangesIndexRouteImport } from './routes/api/changes/index'
@@ -75,6 +76,8 @@ import { Route as ApiMetricsCrawlRouteImport } from './routes/api/metrics/crawl'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
 import { Route as ApiInternalSessionInvalidationRouteImport } from './routes/api/internal/session-invalidation'
+import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
+import { Route as ApiHealthDbRouteImport } from './routes/api/health/db'
 import { Route as ApiGraphragStatusRouteImport } from './routes/api/graphrag/status'
 import { Route as ApiGraphragQueryRouteImport } from './routes/api/graphrag/query'
 import { Route as ApiGraphragIngestRouteImport } from './routes/api/graphrag/ingest'
@@ -297,6 +300,11 @@ const ApiPlatformConnectionsIndexRoute =
     path: '/api/platform-connections/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiHealthIndexRoute = ApiHealthIndexRouteImport.update({
+  id: '/api/health/',
+  path: '/api/health/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoalTemplatesIndexRoute = ApiGoalTemplatesIndexRouteImport.update({
   id: '/api/goal-templates/',
   path: '/api/goal-templates/',
@@ -536,6 +544,16 @@ const ApiInternalSessionInvalidationRoute =
     path: '/api/internal/session-invalidation',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiHealthRedisRoute = ApiHealthRedisRouteImport.update({
+  id: '/api/health/redis',
+  path: '/api/health/redis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthDbRoute = ApiHealthDbRouteImport.update({
+  id: '/api/health/db',
+  path: '/api/health/db',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGraphragStatusRoute = ApiGraphragStatusRouteImport.update({
   id: '/api/graphrag/status',
   path: '/api/graphrag/status',
@@ -1295,6 +1313,8 @@ export interface FileRoutesByFullPath {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/health/db': typeof ApiHealthDbRoute
+  '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
@@ -1342,6 +1362,7 @@ export interface FileRoutesByFullPath {
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/platform-connections/': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
@@ -1487,6 +1508,8 @@ export interface FileRoutesByTo {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/health/db': typeof ApiHealthDbRoute
+  '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
@@ -1534,6 +1557,7 @@ export interface FileRoutesByTo {
   '/api/changes': typeof ApiChangesIndexRoute
   '/api/connections': typeof ApiConnectionsIndexRoute
   '/api/goal-templates': typeof ApiGoalTemplatesIndexRoute
+  '/api/health': typeof ApiHealthIndexRoute
   '/api/platform-connections': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates': typeof ApiReportTemplatesIndexRoute
   '/api/reports': typeof ApiReportsIndexRoute
@@ -1682,6 +1706,8 @@ export interface FileRoutesById {
   '/api/graphrag/ingest': typeof ApiGraphragIngestRoute
   '/api/graphrag/query': typeof ApiGraphragQueryRoute
   '/api/graphrag/status': typeof ApiGraphragStatusRoute
+  '/api/health/db': typeof ApiHealthDbRoute
+  '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
@@ -1729,6 +1755,7 @@ export interface FileRoutesById {
   '/api/changes/': typeof ApiChangesIndexRoute
   '/api/connections/': typeof ApiConnectionsIndexRoute
   '/api/goal-templates/': typeof ApiGoalTemplatesIndexRoute
+  '/api/health/': typeof ApiHealthIndexRoute
   '/api/platform-connections/': typeof ApiPlatformConnectionsIndexRoute
   '/api/report-templates/': typeof ApiReportTemplatesIndexRoute
   '/api/reports/': typeof ApiReportsIndexRoute
@@ -1877,6 +1904,8 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/health/db'
+    | '/api/health/redis'
     | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
@@ -1924,6 +1953,7 @@ export interface FileRouteTypes {
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
+    | '/api/health/'
     | '/api/platform-connections/'
     | '/api/report-templates/'
     | '/api/reports/'
@@ -2069,6 +2099,8 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/health/db'
+    | '/api/health/redis'
     | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
@@ -2116,6 +2148,7 @@ export interface FileRouteTypes {
     | '/api/changes'
     | '/api/connections'
     | '/api/goal-templates'
+    | '/api/health'
     | '/api/platform-connections'
     | '/api/report-templates'
     | '/api/reports'
@@ -2263,6 +2296,8 @@ export interface FileRouteTypes {
     | '/api/graphrag/ingest'
     | '/api/graphrag/query'
     | '/api/graphrag/status'
+    | '/api/health/db'
+    | '/api/health/redis'
     | '/api/internal/session-invalidation'
     | '/api/keywords/competitor-spy'
     | '/api/keywords/quick-check'
@@ -2310,6 +2345,7 @@ export interface FileRouteTypes {
     | '/api/changes/'
     | '/api/connections/'
     | '/api/goal-templates/'
+    | '/api/health/'
     | '/api/platform-connections/'
     | '/api/report-templates/'
     | '/api/reports/'
@@ -2453,6 +2489,8 @@ export interface RootRouteChildren {
   ApiGraphragIngestRoute: typeof ApiGraphragIngestRoute
   ApiGraphragQueryRoute: typeof ApiGraphragQueryRoute
   ApiGraphragStatusRoute: typeof ApiGraphragStatusRoute
+  ApiHealthDbRoute: typeof ApiHealthDbRoute
+  ApiHealthRedisRoute: typeof ApiHealthRedisRoute
   ApiInternalSessionInvalidationRoute: typeof ApiInternalSessionInvalidationRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
@@ -2494,6 +2532,7 @@ export interface RootRouteChildren {
   ApiChangesIndexRoute: typeof ApiChangesIndexRoute
   ApiConnectionsIndexRoute: typeof ApiConnectionsIndexRoute
   ApiGoalTemplatesIndexRoute: typeof ApiGoalTemplatesIndexRoute
+  ApiHealthIndexRoute: typeof ApiHealthIndexRoute
   ApiPlatformConnectionsIndexRoute: typeof ApiPlatformConnectionsIndexRoute
   ApiReportTemplatesIndexRoute: typeof ApiReportTemplatesIndexRoute
   ApiReportsIndexRoute: typeof ApiReportsIndexRoute
@@ -2699,6 +2738,13 @@ declare module '@tanstack/react-router' {
       path: '/api/platform-connections'
       fullPath: '/api/platform-connections/'
       preLoaderRoute: typeof ApiPlatformConnectionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/': {
+      id: '/api/health/'
+      path: '/api/health'
+      fullPath: '/api/health/'
+      preLoaderRoute: typeof ApiHealthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/goal-templates/': {
@@ -3028,6 +3074,20 @@ declare module '@tanstack/react-router' {
       path: '/api/internal/session-invalidation'
       fullPath: '/api/internal/session-invalidation'
       preLoaderRoute: typeof ApiInternalSessionInvalidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/redis': {
+      id: '/api/health/redis'
+      path: '/api/health/redis'
+      fullPath: '/api/health/redis'
+      preLoaderRoute: typeof ApiHealthRedisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health/db': {
+      id: '/api/health/db'
+      path: '/api/health/db'
+      fullPath: '/api/health/db'
+      preLoaderRoute: typeof ApiHealthDbRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/graphrag/status': {
@@ -4354,6 +4414,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGraphragIngestRoute: ApiGraphragIngestRoute,
   ApiGraphragQueryRoute: ApiGraphragQueryRoute,
   ApiGraphragStatusRoute: ApiGraphragStatusRoute,
+  ApiHealthDbRoute: ApiHealthDbRoute,
+  ApiHealthRedisRoute: ApiHealthRedisRoute,
   ApiInternalSessionInvalidationRoute: ApiInternalSessionInvalidationRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
@@ -4395,6 +4457,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChangesIndexRoute: ApiChangesIndexRoute,
   ApiConnectionsIndexRoute: ApiConnectionsIndexRoute,
   ApiGoalTemplatesIndexRoute: ApiGoalTemplatesIndexRoute,
+  ApiHealthIndexRoute: ApiHealthIndexRoute,
   ApiPlatformConnectionsIndexRoute: ApiPlatformConnectionsIndexRoute,
   ApiReportTemplatesIndexRoute: ApiReportTemplatesIndexRoute,
   ApiReportsIndexRoute: ApiReportsIndexRoute,
