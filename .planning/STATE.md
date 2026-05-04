@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-04T10:46:00Z"
-last_activity: 2026-05-04 -- Completed 70-03 User Journey Fixes (loading overlay, help redirects, error recovery, breadcrumbs)
+last_updated: "2026-05-04T11:03:00Z"
+last_activity: 2026-05-04 -- Completed 71-01 Configuration Consolidation (env var standardization, startup validation, documentation)
 progress:
   total_phases: 14
   completed_phases: 14
-  total_plans: 59
-  completed_plans: 59
+  total_plans: 60
+  completed_plans: 60
   percent: 100
 ---
 
@@ -22,15 +22,15 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** v8.0 SaaS Hardening - Phase 70 Frontend Quality
+**Current focus:** v8.0 SaaS Hardening - Phase 71 Security & Configuration
 
 ## Current Position
 
-Phase: 70
-Plan: 03 COMPLETE
+Phase: 71
+Plan: 01 COMPLETE
 Milestone: v8.0 SaaS Hardening (Phases 67-72)
-Status: Executing Phase 70 - Frontend Quality
-Last activity: 2026-05-04 -- Completed 70-03 User Journey Fixes (loading overlay, help redirects, error recovery, breadcrumbs)
+Status: Executing Phase 71 - Security & Configuration
+Last activity: 2026-05-04 -- Completed 71-01 Configuration Consolidation (env var standardization, startup validation, documentation)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **71-01:** BACKEND_URL -> OPEN_SEO_URL, AIWRITER_INTERNAL_URL -> AI_WRITER_URL for consistent naming; Zod refine() for production-only required validation; Legacy fallbacks removed to enforce standardized naming
 - **70-03:** Minimum 300ms overlay duration prevents jarring flash on fast client switches; Help redirects in middleware for external URL handling; Breadcrumb uses aria-current=page for accessibility; safeParseJsonString for strings, safeParseJson for Response objects; Debug-level logging for localStorage errors (expected in private browsing)
 - **70-01:** useRef for timer cleanup on unmount (prevents memory leaks); Stable keys from content.slice(0,30).replace(/\s/g,'-') when no ID; item.href as key for nav items; aria-describedby points to hint normally, error when invalid; role=alert on error messages
 - **69-04:** Optimistic locking via version field in WHERE clause (not pessimistic FOR UPDATE); Redis SET NX EX for atomic lock acquisition; Lua scripts for ownership-safe lock release/extend; Circuit breaker state in Redis for cross-worker sharing; DLQ stores job data + metadata for replay capability
