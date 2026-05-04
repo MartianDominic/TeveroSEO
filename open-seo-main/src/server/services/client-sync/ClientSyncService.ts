@@ -298,11 +298,10 @@ async function verifyClientAccessInAIWriter(
     const data = (await response.json()) as { hasAccess: boolean };
     return data.hasAccess === true;
   } catch (error) {
-    log.warn(
-      "Failed to verify client access in AI-Writer",
-      error instanceof Error ? error : new Error(String(error)),
-      { clientId }
-    );
+    log.warn("Failed to verify client access in AI-Writer", {
+      clientId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     // Fail closed - if we can't verify, don't allow access
     return false;
   }
