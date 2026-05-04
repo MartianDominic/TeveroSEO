@@ -2451,9 +2451,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   4. Previous analyses retrievable per client
   5. Full analysis completes in <60 seconds for 3000 keywords
 **Estimated effort**: 12 hours
-**Plans**: 3 plans
-  - [ ] 82-01-PLAN.md — Analysis endpoint + streaming (Wave 1)
-  - [ ] 82-02-PLAN.md — CopilotKit integration + tools (Wave 2)
-  - [ ] 82-03-PLAN.md — Export actions + conversation memory (Wave 3)
+**Plans:** 2 plans
+  - [ ] 82-01-PLAN.md — SSE streaming endpoint + analysis pipeline + session schema (Wave 1)
+  - [ ] 82-02-PLAN.md — CopilotKit tools + React UI + export actions + conversation memory (Wave 2)
 
 ---
