@@ -107,6 +107,37 @@ export {
   getDefaultParser,
 } from './services/BusinessPriorityParser';
 
+// Conversation Intelligence - Constraint extraction from conversations
+export {
+  ConstraintExtractor,
+  createConstraintExtractor,
+  getDefaultExtractor,
+  type ExtractorConfig,
+  type AnalysisConstraints,
+  type BusinessContext,
+  type GeoConstraints,
+  type AudienceConstraints,
+  type FunnelConfig,
+  type Priority,
+  type NegativeFilters,
+  type SpecialModes,
+  type ConfidenceScores,
+  type ExtractionResult,
+  AnalysisConstraintsSchema,
+  BusinessContextSchema,
+  GeoConstraintsSchema,
+  AudienceConstraintsSchema,
+  FunnelConfigSchema,
+  PrioritySchema,
+  NegativeFiltersSchema,
+  SpecialModesSchema,
+  ConfidenceScoresSchema,
+  ExtractionResultSchema,
+  isValidAnalysisConstraints,
+  CONSTRAINT_EXTRACTION_PROMPT,
+  buildExtractionPrompt,
+} from './conversation';
+
 // =============================================================================
 // Configuration
 // =============================================================================
