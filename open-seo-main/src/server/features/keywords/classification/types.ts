@@ -7,6 +7,12 @@
  */
 import { z } from "zod";
 
+// Phase 77: Geographic Intelligence integration
+import type { GeoClassification, GeoConstraints } from "../geo/types";
+
+// Re-export geo types for convenience
+export type { GeoClassification, GeoConstraints } from "../geo/types";
+
 /**
  * Keyword intent/type classification.
  * Used to categorize keywords for prioritization and content strategy.
@@ -84,6 +90,8 @@ export interface ClassifiedKeyword extends ClassificationItem {
   pass: 1 | 2;
   /** Whether RAG context was used for this classification */
   ragContextUsed?: boolean;
+  /** Geographic classification (Phase 77) */
+  geoClassification?: GeoClassification;
 }
 
 /**
