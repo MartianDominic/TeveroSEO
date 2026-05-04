@@ -197,8 +197,8 @@ export function ProposalPreview({
               </CardHeader>
               <CardContent>
                 <ul className="list-disc list-inside space-y-2">
-                  {content.problemStatements.map((statement, index) => (
-                    <li key={index} className="text-muted-foreground">{statement}</li>
+                  {content.problemStatements.map((statement) => (
+                    <li key={`problem-${statement.slice(0, 30).replace(/\s/g, '-')}`} className="text-muted-foreground">{statement}</li>
                   ))}
                 </ul>
               </CardContent>
@@ -212,8 +212,8 @@ export function ProposalPreview({
                 <CardTitle>{t("sections.solutions", { fallback: "Our Solutions" })}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {content.solutions.map((solution, index) => (
-                  <div key={index} className="border-b last:border-0 pb-4 last:pb-0">
+                {content.solutions.map((solution) => (
+                  <div key={`solution-${solution.title.slice(0, 30).replace(/\s/g, '-')}`} className="border-b last:border-0 pb-4 last:pb-0">
                     <h4 className="font-medium">{solution.title}</h4>
                     <p className="text-sm text-muted-foreground mt-1">{solution.description}</p>
                   </div>
@@ -234,8 +234,8 @@ export function ProposalPreview({
                 )}
                 {content.investment.items && content.investment.items.length > 0 && (
                   <div className="space-y-2">
-                    {content.investment.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-start border-b pb-2">
+                    {content.investment.items.map((item) => (
+                      <div key={`investment-${item.name.slice(0, 30).replace(/\s/g, '-')}`} className="flex justify-between items-start border-b pb-2">
                         <div>
                           <span className="font-medium">{item.name}</span>
                           {item.description && (
@@ -263,8 +263,8 @@ export function ProposalPreview({
               </CardHeader>
               <CardContent>
                 <ol className="list-decimal list-inside space-y-2">
-                  {content.nextSteps.map((step, index) => (
-                    <li key={index} className="text-muted-foreground">{step}</li>
+                  {content.nextSteps.map((step) => (
+                    <li key={`step-${step.slice(0, 30).replace(/\s/g, '-')}`} className="text-muted-foreground">{step}</li>
                   ))}
                 </ol>
               </CardContent>

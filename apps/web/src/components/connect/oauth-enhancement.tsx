@@ -240,9 +240,9 @@ export function OAuthEnhancement({
 
                         {/* Benefits list */}
                         <ul className="mt-2 space-y-1">
-                          {enhancement.benefits.map((benefit, idx) => (
+                          {enhancement.benefits.map((benefit) => (
                             <li
-                              key={idx}
+                              key={`${enhancement.platform}-benefit-${benefit.slice(0, 20).replace(/\s/g, '-')}`}
                               className="flex items-center gap-2 text-sm text-muted-foreground"
                             >
                               <CheckCircle2 className="h-4 w-4 text-success shrink-0" />

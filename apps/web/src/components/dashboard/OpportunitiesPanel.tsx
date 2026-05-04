@@ -142,8 +142,8 @@ function OpportunitiesSkeleton() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="border rounded-lg p-3 animate-pulse">
+        {["opportunity-skeleton-1", "opportunity-skeleton-2", "opportunity-skeleton-3"].map((id) => (
+          <div key={id} className="border rounded-lg p-3 animate-pulse">
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 bg-muted rounded mt-0.5" />
               <div className="flex-1 space-y-2">

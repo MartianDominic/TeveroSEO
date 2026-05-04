@@ -171,8 +171,8 @@ function AlertsPanelSkeleton() {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+        {["alert-skeleton-1", "alert-skeleton-2", "alert-skeleton-3"].map((id) => (
+          <div key={id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
             <Skeleton className="h-4 w-4 shrink-0" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-32" />

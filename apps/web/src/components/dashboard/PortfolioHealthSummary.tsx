@@ -66,8 +66,8 @@ export function PortfolioHealthSummary({ summary, workspaceId }: PortfolioHealth
   if (isLoading && workspaceId) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
+        {["clients", "goals", "traffic", "keywords"].map((metric) => (
+          <Card key={`skeleton-${metric}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div className="h-4 w-20 bg-muted animate-pulse rounded" />
               <div className="h-4 w-4 bg-muted animate-pulse rounded" />

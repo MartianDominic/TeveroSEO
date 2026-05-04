@@ -29,7 +29,6 @@ export interface NavItem {
 
 export interface AppShellNavItemProps {
   item: NavItem;
-  index: number;
   collapsed: boolean;
   activeClientId: string | null;
   isActive: (href: string) => boolean;
@@ -43,7 +42,6 @@ export interface AppShellNavItemProps {
 
 export const AppShellNavItem: React.FC<AppShellNavItemProps> = ({
   item,
-  index,
   collapsed,
   activeClientId,
   isActive,
@@ -71,7 +69,6 @@ export const AppShellNavItem: React.FC<AppShellNavItemProps> = ({
 
   const button = (
     <button
-      key={index}
       disabled={disabled}
       onClick={() => {
         if (!disabled && href !== "#") {

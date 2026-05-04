@@ -278,7 +278,7 @@ function PatternsPanelSkeleton() {
       </CardHeader>
       <CardContent className="space-y-3">
         {[1, 2].map((i) => (
-          <div key={i} className="border rounded-lg p-3 animate-pulse">
+          <div key={`skeleton-pattern-${i}`} className="border rounded-lg p-3 animate-pulse">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 bg-muted rounded" />
               <div className="flex-1 space-y-2">

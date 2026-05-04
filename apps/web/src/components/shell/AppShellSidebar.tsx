@@ -49,11 +49,10 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
   clientNav,
   globalNav,
 }) => {
-  const renderNavItem = (item: NavItem, index: number) => (
+  const renderNavItem = (item: NavItem) => (
     <AppShellNavItem
-      key={index}
+      key={item.href("__key__")}
       item={item}
-      index={index}
       collapsed={collapsed}
       activeClientId={activeClientId}
       isActive={isActive}
@@ -98,7 +97,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
       {/* Client nav */}
       <nav className="flex-1 overflow-y-auto p-3">
         {/* Agency Dashboard - global, not client-scoped */}
-        <div className="mb-2">{renderNavItem(dashboardNav, -1)}</div>
+        <div className="mb-2">{renderNavItem(dashboardNav)}</div>
 
         {!collapsed && (
           <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
@@ -106,7 +105,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
           </p>
         )}
         <div className="space-y-0.5">
-          {clientNav.map((item, i) => renderNavItem(item, i))}
+          {clientNav.map((item) => renderNavItem(item))}
         </div>
 
         {!collapsed && (
@@ -116,7 +115,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         )}
         {collapsed && <div className="mt-2" />}
         <div className="space-y-0.5">
-          {globalNav.map((item, i) => renderNavItem(item, i + clientNav.length))}
+          {globalNav.map((item) => renderNavItem(item))}
         </div>
       </nav>
 

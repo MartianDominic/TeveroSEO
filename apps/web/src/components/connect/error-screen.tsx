@@ -99,7 +99,7 @@ function TroubleshootingChecklist() {
         </p>
         <ul className="space-y-2">
           {items.map((item, index) => (
-            <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+            <li key={`checklist-${item.slice(0, 20).replace(/\s/g, '-')}`} className="flex items-start gap-2 text-sm text-muted-foreground">
               <span className="flex-shrink-0 h-5 w-5 rounded border border-muted-foreground/30 flex items-center justify-center text-xs">
                 {index + 1}
               </span>

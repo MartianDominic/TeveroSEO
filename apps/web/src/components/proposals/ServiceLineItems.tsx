@@ -86,9 +86,9 @@ export function ServiceLineItems({
                 service.inclusions &&
                 service.inclusions.length > 0 && (
                   <ul className="mt-2 space-y-1">
-                    {service.inclusions.map((item, idx) => (
+                    {service.inclusions.map((item) => (
                       <li
-                        key={idx}
+                        key={`${service.id}-inclusion-${item}`}
                         className="flex items-center gap-2 text-sm text-muted-foreground"
                       >
                         <Check className="h-3 w-3 text-green-500" />
