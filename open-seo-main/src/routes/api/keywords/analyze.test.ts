@@ -4,13 +4,6 @@
  */
 import { describe, it, expect } from 'vitest';
 
-// Mock request helper
-function createMockRequest(body: unknown): Request {
-  return {
-    json: async () => body,
-  } as Request;
-}
-
 describe('POST /api/keywords/analyze', () => {
   const validKeywords = [
     {
@@ -38,9 +31,15 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should return selection with breakdown for valid keywords', async () => {
     const { Route } = await import('./analyze');
-    const request = createMockRequest({ keywords: validKeywords });
+    const handler = Route.options.server?.handlers?.POST;
 
-    const response = await Route.methods.POST({ request } as any);
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords: validKeywords }),
+    });
+
+    const response = await handler!({ request });
     const data = await response.json();
 
     expect(data).toHaveProperty('selection');
@@ -60,12 +59,18 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should use SERVICE_CASCADE when cascadePreset=service', async () => {
     const { Route } = await import('./analyze');
-    const request = createMockRequest({
-      keywords: validKeywords,
-      config: { cascadePreset: 'service' },
+    const handler = Route.options.server?.handlers?.POST;
+
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keywords: validKeywords,
+        config: { cascadePreset: 'service' },
+      }),
     });
 
-    const response = await Route.methods.POST({ request } as any);
+    const response = await handler!({ request });
     const data = await response.json();
 
     // SERVICE_CASCADE has higher BOFU minimums
@@ -74,12 +79,18 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should allow targetCount override', async () => {
     const { Route } = await import('./analyze');
-    const request = createMockRequest({
-      keywords: validKeywords,
-      config: { targetCount: 5 },
+    const handler = Route.options.server?.handlers?.POST;
+
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keywords: validKeywords,
+        config: { targetCount: 5 },
+      }),
     });
 
-    const response = await Route.methods.POST({ request } as any);
+    const response = await handler!({ request });
     const data = await response.json();
 
     expect(data.config.targetCount).toBe(5);
@@ -87,9 +98,15 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should return 400 for empty keywords array', async () => {
     const { Route } = await import('./analyze');
-    const request = createMockRequest({ keywords: [] });
+    const handler = Route.options.server?.handlers?.POST;
 
-    const response = await Route.methods.POST({ request } as any);
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords: [] }),
+    });
+
+    const response = await handler!({ request });
     expect(response.status).toBe(400);
 
     const data = await response.json();
@@ -98,12 +115,18 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should return 400 for invalid cascadePreset', async () => {
     const { Route } = await import('./analyze');
-    const request = createMockRequest({
-      keywords: validKeywords,
-      config: { cascadePreset: 'invalid' },
+    const handler = Route.options.server?.handlers?.POST;
+
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keywords: validKeywords,
+        config: { cascadePreset: 'invalid' },
+      }),
     });
 
-    const response = await Route.methods.POST({ request } as any);
+    const response = await handler!({ request });
     expect(response.status).toBe(400);
 
     const data = await response.json();
@@ -112,15 +135,21 @@ describe('POST /api/keywords/analyze', () => {
 
   it('should return 400 for >10000 keywords (DoS protection)', async () => {
     const { Route } = await import('./analyze');
+    const handler = Route.options.server?.handlers?.POST;
+
     const manyKeywords = Array.from({ length: 10001 }, (_, i) => ({
       keyword: `keyword-${i}`,
       volume: 100,
       difficulty: 50,
     }));
 
-    const request = createMockRequest({ keywords: manyKeywords });
+    const request = new Request('http://localhost/api/keywords/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords: manyKeywords }),
+    });
 
-    const response = await Route.methods.POST({ request } as any);
+    const response = await handler!({ request });
     expect(response.status).toBe(400);
 
     const data = await response.json();
