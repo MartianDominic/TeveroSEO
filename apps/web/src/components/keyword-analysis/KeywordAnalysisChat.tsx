@@ -2,16 +2,29 @@
 
 /**
  * KeywordAnalysisChat Component
- * Phase 82: Chat Integration
+ * Phase 82: Chat Integration + Phase 84: KeywordGenerator Integration
  *
  * Main chat interface for conversational keyword analysis.
  * Integrates CopilotKit tool, SSE progress, and results display.
+ *
+ * Phase 84 additions:
+ * - Business description detection (vs keyword paste)
+ * - KeywordGenerator integration for seed keyword generation
+ * - Progress indicator during generation
+ * - Keyword counts by category display
  */
 
 import { useState, useCallback } from "react";
 import { useCopilotAction } from "@copilotkit/react-core";
-import { Button, Card, Textarea } from "@tevero/ui";
-import { Upload, MessageSquare, History, Loader2 } from "lucide-react";
+import { Button, Card, Textarea, Badge } from "@tevero/ui";
+import {
+  Upload,
+  MessageSquare,
+  History,
+  Loader2,
+  Sparkles,
+  CheckCircle,
+} from "lucide-react";
 import { useKeywordAnalysis } from "@/hooks/useKeywordAnalysis";
 import { AnalysisProgress } from "./AnalysisProgress";
 import { AnalysisResults } from "./AnalysisResults";
@@ -32,6 +45,83 @@ interface KeywordAnalysisChatProps {
   workspaceId: string;
 }
 
+// Types for keyword generation
+interface GeneratedKeywordsByCategory {
+  product: string[];
+  brand: string[];
+  service: string[];
+  commercial: string[];
+  informational: string[];
+}
+
+interface KeywordCounts {
+  total: number;
+  product: number;
+  brand: number;
+  service: number;
+  commercial: number;
+  informational: number;
+}
+
+interface GenerateKeywordsResponse {
+  success: boolean;
+  keywords?: GeneratedKeywordsByCategory;
+  counts?: KeywordCounts;
+  clarificationNeeded?: Array<{
+    field: string;
+    question: string;
+    options?: string[];
+  }>;
+  error?: string;
+}
+
+/**
+ * Detect if input looks like a business description vs keywords.
+ * Business descriptions typically have sentences and context.
+ * Keywords are typically short, comma/newline separated.
+ */
+function isBusinessDescription(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  // If it has multiple lines with short entries, it's keywords
+  const lines = trimmed.split(/[\n,]/).filter((l) => l.trim());
+  if (lines.length > 5 && lines.every((l) => l.trim().split(/\s+/).length <= 4)) {
+    return false;
+  }
+
+  // If it has sentence-like patterns (ending with period, question mark)
+  const hasSentences = /[.!?]/.test(trimmed);
+
+  // If it mentions business-related words
+  const businessWords = [
+    "we",
+    "our",
+    "sell",
+    "provide",
+    "offer",
+    "business",
+    "company",
+    "service",
+    "product",
+    "client",
+    "customer",
+    "located",
+    "based in",
+    "serve",
+    "target",
+    "focus",
+  ];
+  const hasBusinessWords = businessWords.some((word) =>
+    trimmed.toLowerCase().includes(word)
+  );
+
+  // If it's long and prose-like
+  const isLongProse = trimmed.length > 100 && trimmed.split(/\s+/).length > 15;
+
+  return hasSentences || hasBusinessWords || isLongProse;
+}
+
 export function KeywordAnalysisChat({
   clientId,
   workspaceId,
@@ -42,6 +132,13 @@ export function KeywordAnalysisChat({
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Keyword generation state (Phase 84)
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedKeywords, setGeneratedKeywords] =
+    useState<GeneratedKeywordsByCategory | null>(null);
+  const [keywordCounts, setKeywordCounts] = useState<KeywordCounts | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Analysis state from hook
   const {
@@ -81,6 +178,71 @@ export function KeywordAnalysisChat({
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
   }, []);
+
+  // Generate keywords from business description (Phase 84)
+  const handleGenerateKeywords = useCallback(async () => {
+    if (!conversation.trim()) {
+      setGenerationError("Please describe your business first");
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+    setGeneratedKeywords(null);
+    setKeywordCounts(null);
+
+    try {
+      const response = await fetch("/api/keywords/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessDescription: conversation,
+          language: "en", // TODO: Get from workspace settings
+        }),
+      });
+
+      const data: GenerateKeywordsResponse = await response.json();
+
+      if (!data.success) {
+        setGenerationError(data.error || "Failed to generate keywords");
+        return;
+      }
+
+      if (data.clarificationNeeded && data.clarificationNeeded.length > 0) {
+        // TODO: Wire to ClarifyingQuestionLoop (Task 2)
+        setGenerationError(
+          "Need more information. Please add details about: " +
+            data.clarificationNeeded.map((c) => c.question).join(", ")
+        );
+        return;
+      }
+
+      if (data.keywords && data.counts) {
+        setGeneratedKeywords(data.keywords);
+        setKeywordCounts(data.counts);
+
+        // Auto-populate keywords text for analysis
+        const allKeywords = [
+          ...data.keywords.product,
+          ...data.keywords.brand,
+          ...data.keywords.service,
+          ...data.keywords.commercial,
+          ...data.keywords.informational,
+        ];
+        setKeywordsText(allKeywords.join("\n"));
+      }
+    } catch (err) {
+      setGenerationError(
+        err instanceof Error ? err.message : "Failed to generate keywords"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [conversation]);
+
+  // Check if we should show generate button
+  const showGenerateButton =
+    isBusinessDescription(conversation) && !keywordsText.trim();
 
   // Start analysis
   const handleAnalyze = useCallback(async () => {
@@ -159,15 +321,127 @@ export function KeywordAnalysisChat({
             />
           </div>
 
+          {/* Keyword generation section (Phase 84) */}
+          {showGenerateButton && !isGenerating && !generatedKeywords && (
+            <Card className="p-3 bg-[var(--surface-1)] border-[var(--accent)]/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    <Sparkles className="inline h-4 w-4 mr-1 text-[var(--accent)]" />
+                    Generate keywords from your business description
+                  </p>
+                  <p className="text-xs text-[var(--text-3)] mt-1">
+                    We detected a business description. Would you like us to generate
+                    relevant keywords?
+                  </p>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleGenerateKeywords}
+                >
+                  Generate Keywords
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Generation progress */}
+          {isGenerating && (
+            <Card className="p-4 bg-[var(--surface-1)]">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--accent)]" />
+                <div>
+                  <p className="text-sm font-medium">
+                    Generating keywords based on your business...
+                  </p>
+                  <p className="text-xs text-[var(--text-3)]">
+                    Analyzing description and creating keyword suggestions
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Generation error */}
+          {generationError && (
+            <Card className="p-3 border-[var(--error)] bg-[var(--error)]/10">
+              <p className="text-sm text-[var(--error)]">{generationError}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGenerationError(null)}
+                className="mt-2"
+              >
+                Dismiss
+              </Button>
+            </Card>
+          )}
+
+          {/* Generated keywords summary */}
+          {generatedKeywords && keywordCounts && (
+            <Card className="p-4 bg-[var(--surface-1)] border-[var(--success)]/30">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-[var(--success)]" />
+                  <span className="font-medium">
+                    Generated {keywordCounts.total} keywords
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setGeneratedKeywords(null);
+                    setKeywordCounts(null);
+                    setKeywordsText("");
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {keywordCounts.product > 0 && (
+                  <Badge variant="secondary">
+                    {keywordCounts.product} product
+                  </Badge>
+                )}
+                {keywordCounts.brand > 0 && (
+                  <Badge variant="secondary">{keywordCounts.brand} brand</Badge>
+                )}
+                {keywordCounts.service > 0 && (
+                  <Badge variant="secondary">
+                    {keywordCounts.service} service
+                  </Badge>
+                )}
+                {keywordCounts.commercial > 0 && (
+                  <Badge variant="secondary">
+                    {keywordCounts.commercial} commercial
+                  </Badge>
+                )}
+                {keywordCounts.informational > 0 && (
+                  <Badge variant="secondary">
+                    {keywordCounts.informational} informational
+                  </Badge>
+                )}
+              </div>
+            </Card>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2">
               <Upload className="inline h-4 w-4 mr-1" />
               Keywords ({keywordCount})
+              {generatedKeywords && (
+                <span className="text-[var(--text-3)] font-normal ml-2">
+                  - Auto-populated from generation
+                </span>
+              )}
             </label>
             <Textarea
               value={keywordsText}
               onChange={(e) => setKeywordsText(e.target.value)}
-              placeholder="Paste keywords here (one per line or comma-separated)..."
+              placeholder="Paste keywords here (one per line or comma-separated), or describe your business above to generate keywords..."
               rows={6}
               className="w-full font-mono text-sm"
             />
