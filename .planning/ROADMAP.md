@@ -2593,3 +2593,31 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 89-06-PLAN.md — Progress tracking UI
 
 ---
+
+### Phase 90: World-Class Client Portal
+**Goal**: Build a client-facing portal that answers "Is my SEO working?" in 5 seconds with every number traceable to Google's own data.
+**Depends on**: Phase 87 (Agency Business), Phase 89 (Keyword Lock-in), Phase 61 (GSC Integration)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Context**: [90-CONTEXT.md](.planning/phases/90-client-portal/90-CONTEXT.md)
+**Research**: [90-RESEARCH.md](.planning/phases/90-client-portal/90-RESEARCH.md)
+**PRD**: [CLIENT-PORTAL-PRD.md](.planning/phases/CLIENT-PORTAL-PRD.md)
+**Status**: Planning Complete
+**Key Features**:
+  - Dashboard with verified GSC metrics (clicks, impressions, position, top10)
+  - Keywords table with sorting, filtering, trust indicators
+  - Activity feed showing work grouped by date
+  - Notification system (email via Resend, BullMQ async)
+  - PWA support (manifest, service worker, offline)
+**Trust Hierarchy (Critical)**:
+  - Verified: GSC data (always show)
+  - Calculated: Growth %, deltas (derived from GSC)
+  - Estimated: Volume/CPC (asterisk indicator, per D-02)
+  - Client-owned: Conversion rate, AOV (their input)
+  - Integrated: GA4 revenue (if connected)
+  - NEVER: Industry averages, made-up conversion rates
+**Plans**: 3 plans
+  - [ ] 90-01-PLAN.md — Backend services (DashboardService, ActivityService, NotificationService + BullMQ)
+  - [ ] 90-02-PLAN.md — API routes (dashboard, keywords, activity, notifications)
+  - [ ] 90-03-PLAN.md — Frontend UI (V6 design system) + PWA foundation
+
+---
