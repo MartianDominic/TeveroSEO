@@ -38,7 +38,7 @@ export interface ActivityEvent {
 /**
  * Socket.IO server URL from environment.
  */
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:13001";
 
 /**
  * Maximum number of activities to keep in memory.

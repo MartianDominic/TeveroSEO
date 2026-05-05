@@ -19,7 +19,7 @@ import type {
 
 // Base URL for API calls - points to open-seo-main backend
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:13001";
 
 /**
  * Helper to build URL with query params

@@ -14,7 +14,7 @@ import type {
 } from "@/components/pipeline/PipelineKanban";
 
 // CFG-CRIT-01 FIX: Use standardized env var name (NEXT_PUBLIC_OPEN_SEO_URL)
-const OPEN_SEO_API_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:3001";
+const OPEN_SEO_API_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:13001";
 
 /**
  * Get pipeline configuration for the current workspace.

@@ -6,7 +6,7 @@
  */
 
 // CFG-CRIT-01 FIX: Standardized to NEXT_PUBLIC_OPEN_SEO_URL
-const BACKEND_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_OPEN_SEO_URL || "http://localhost:13001";
 
 export interface ChecklistItem {
   id: string;

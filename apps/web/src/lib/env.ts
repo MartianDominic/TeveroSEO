@@ -57,7 +57,7 @@ const serverEnvSchema = z.object({
   // CFG-CRIT-01 FIX: Canonical name is OPEN_SEO_URL (not OPEN_SEO_API_URL)
   // SECURITY: In production, localhost URLs will cause startup failure
   OPEN_SEO_URL: z.string().url('OPEN_SEO_URL must be a valid URL')
-    .default('http://localhost:3001')
+    .default('http://localhost:13001')
     .refine(
       (val) => process.env.NODE_ENV !== 'production' || !val.includes('localhost'),
       { message: 'OPEN_SEO_URL cannot be localhost in production' }

@@ -8,7 +8,7 @@ import { devtools } from "@tanstack/devtools-vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const port = env.PORT ? Number(env.PORT) : 3001;
+  const port = env.PORT ? Number(env.PORT) : 13001;
   const showDevtools = env.VITE_SHOW_DEVTOOLS !== "false";
   const allowedHosts = env.ALLOWED_HOST ? [env.ALLOWED_HOST] : undefined;
 

@@ -204,7 +204,7 @@ async function handleUserDeleted(data: WebhookEvent['data']) {
  * continued access if tokens are cached in Redis or memory.
  */
 async function propagateSessionInvalidation(userId: string): Promise<void> {
-  const openSeoUrl = process.env.OPEN_SEO_URL || 'http://localhost:3001';
+  const openSeoUrl = process.env.OPEN_SEO_URL || 'http://localhost:13001';
   const aiWriterUrl = process.env.AI_WRITER_URL || 'http://localhost:8000';
   const internalApiKey = process.env.INTERNAL_API_KEY;
 
