@@ -1,24 +1,36 @@
 /**
  * Embedding configuration for the Keyword Intelligence System.
  *
+ * Phase 83: Upgraded to jina-embeddings-v5-nano for 12x faster embeddings
  * Phase 65: Upgraded to 768-dim for GraphRAG
  * (Previously Phase 42-03: Unified Embedding Service)
  *
  * This module defines configuration constants and types for the embedding service.
- * Uses jina-embeddings-v3 as primary model (best Lithuanian quality per ADR-002)
- * with Matryoshka truncation to 768-dim for optimal quality in GraphRAG.
+ * Uses jina-embeddings-v5-nano as primary model (12x faster, 98.3% recall)
+ * with 768-dim output for optimal quality in GraphRAG.
  *
  * Reference:
  * - .planning/keyword-intelligence/ARCHITECTURE-DECISIONS.md (ADR-002)
- * - .planning/phases/65-graphrag-foundation/65-RESEARCH.md
+ * - .planning/phases/83-foundation-reliability/83-01-PLAN.md
+ * - AI-Writer/benchmark/results/REPORT.md (v5-nano benchmark)
  */
+
+import {
+  EmbeddingModel,
+  EMBEDDING_MODEL_CONFIGS,
+} from "../../features/keywords/types/embeddings";
 
 /**
  * Supported embedding models.
+ * - jina-embeddings-v5-text-nano: Primary model (12x faster, 98.3% recall)
  * - jina-embeddings-v3: Best Lithuanian quality (Cohen's kappa 0.62, AUC-ROC 0.887)
  * - multilingual-e5-base: Proven fallback with good multilingual support
  */
-export type EmbeddingModel = "jina-embeddings-v3" | "multilingual-e5-base";
+export type EmbeddingModelType = "jina-embeddings-v5-text-nano" | "jina-embeddings-v3" | "multilingual-e5-base";
+
+/** Default model for new embeddings */
+const DEFAULT_MODEL = EmbeddingModel.JINA_V5_NANO;
+const DEFAULT_MODEL_CONFIG = EMBEDDING_MODEL_CONFIGS[DEFAULT_MODEL];
 
 /**
  * Input for embedding generation.
@@ -76,24 +88,25 @@ export interface JinaEmbeddingResponse {
 /**
  * Unified embedding configuration.
  *
- * Key decisions (per ADR-002, updated Phase 65):
- * - Model: jina-v3 for best Lithuanian quality
- * - Dimensions: 768 storage (upgraded from 384 for better GraphRAG quality)
+ * Key decisions (per ADR-002, updated Phase 83):
+ * - Model: jina-v5-nano for 12x faster embeddings (98.3% recall)
+ * - Dimensions: 768 storage (optimal for GraphRAG quality)
  * - Cache: 30-day TTL for embeddings
- * - Batch: 32 texts per API call
+ * - Batch: 64 texts per API call (v5 supports larger batches)
+ * - Cache prefix bumped to v3 to invalidate old v3-model embeddings
  */
 export const EMBEDDING_CONFIG = {
-  /** Primary embedding model - best Lithuanian quality */
-  model: "jina-embeddings-v3" as const,
+  /** Primary embedding model - v5-nano for speed (12x faster than v3) */
+  model: DEFAULT_MODEL_CONFIG.model,
 
   /** Fallback model if primary fails */
-  modelFallback: "multilingual-e5-base" as const,
+  modelFallback: EmbeddingModel.JINA_V3,
 
-  /** Native output dimension of jina-v3 */
-  nativeDim: 1024,
+  /** Native output dimension of v5-nano */
+  nativeDim: 768,
 
-  /** Storage dimension after Matryoshka truncation - UPGRADED from 384 for better Lithuanian quality */
-  storageDim: 768,
+  /** Storage dimension - v5-nano natively outputs 768-dim */
+  storageDim: DEFAULT_MODEL_CONFIG.dimensions,
 
   /** Prefix for query embeddings (required by jina/e5 models) */
   queryPrefix: "query: ",
@@ -104,8 +117,8 @@ export const EMBEDDING_CONFIG = {
   /** Jina AI API endpoint */
   jinaApiUrl: "https://api.jina.ai/v1/embeddings",
 
-  /** Maximum texts per batch API call */
-  batchSize: 32,
+  /** Maximum texts per batch API call - v5 supports 64 */
+  batchSize: DEFAULT_MODEL_CONFIG.maxBatchSize,
 
   /** Maximum retry attempts for API calls */
   maxRetries: 3,
@@ -116,8 +129,26 @@ export const EMBEDDING_CONFIG = {
   /** Cache TTL for embeddings (30 days in seconds) */
   cacheTtlSeconds: 30 * 24 * 60 * 60,
 
-  /** Redis key prefix for embedding cache - v2 to invalidate old 384-dim cache */
-  cacheKeyPrefix: "emb:v2:",
+  /** Redis key prefix for embedding cache - v3 to invalidate old v3-model embeddings */
+  cacheKeyPrefix: "emb:v3:",
+
+  /** Timeout for API calls in milliseconds */
+  timeoutMs: 30000,
+
+  /** Number of retries for API calls */
+  retries: 2,
+
+  /**
+   * Generate API payload for v5 models.
+   * v5 uses task and prompt_name parameters for asymmetric retrieval.
+   */
+  getApiPayload: (texts: string[], isDocument: boolean = false) => ({
+    model: DEFAULT_MODEL_CONFIG.model,
+    input: texts,
+    task: DEFAULT_MODEL_CONFIG.apiTask,
+    prompt_name: isDocument ? "document" : "query",
+    dimensions: DEFAULT_MODEL_CONFIG.dimensions,
+  }),
 } as const;
 
 /**
