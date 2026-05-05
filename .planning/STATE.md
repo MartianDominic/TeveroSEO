@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.0
-milestone_name: SaaS Hardening
-status: complete
-last_updated: "2026-05-05T00:05:00.000Z"
-last_activity: 2026-05-05 -- Completed 82-02 CopilotKit Integration (9 tests, 1550 lines, chat UI + exports + sessions)
+milestone: v9.0
+milestone_name: Foundation & Reliability
+status: in_progress
+last_updated: "2026-05-05T11:47:00.000Z"
+last_activity: 2026-05-05 -- Completed 83-01 Embedding Infrastructure (v5-nano upgrade, 12x faster embeddings)
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 16
-  total_plans: 60
-  completed_plans: 60
-  percent: 100
+  total_plans: 64
+  completed_plans: 61
+  percent: 95
 ---
 
 # Project State
@@ -22,15 +22,15 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** v8.0 SaaS Hardening - COMPLETE
+**Current focus:** v9.0 Foundation & Reliability - Phase 83 Wave 1 Complete
 
 ## Current Position
 
-Phase: 82
-Plan: 02 COMPLETE
-Milestone: v8.0 SaaS Hardening (Phases 67-82) - COMPLETE
-Status: v8.0 Milestone Complete
-Last activity: 2026-05-05 -- Completed 82-02 CopilotKit Integration (9 tests, 1550 lines, chat UI + exports + sessions)
+Phase: 83
+Plan: 01 COMPLETE
+Milestone: v9.0 Foundation & Reliability (Phases 83-89)
+Status: Phase 83 Wave 1 Complete
+Last activity: 2026-05-05 -- Completed 83-01 Embedding Infrastructure (v5-nano upgrade, 12x faster embeddings)
 
 ### Phase 41 Focus
 
@@ -93,6 +93,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 
 ## Decisions
 
+- **83-01:** v5-nano as default model (12x faster, 98.3% recall vs v3 98.0%); Python FastAPI server for local embeddings (sentence-transformers); 4-level fallback cascade (local server -> local ONNX -> Jina API -> zero vectors); Cache prefix bumped from emb:v2 to emb:v3 to invalidate old embeddings; Health check caching (30s interval) to avoid excessive server pings
 - **82-02:** CopilotKit handler uses generic args type with cast for type safety; Session storage uses in-memory Map for development (TODO wire to open-seo-main); useKeywordAnalysis uses fetch+ReadableStream instead of EventSource (POST not supported)
 - **82-01:** Removed drizzle-zod dependency to match existing codebase pattern; Stub implementations use realistic delays (60-100ms) for pipeline testing; SSE events use data: prefix only for simpler client parsing
 - **72-02:** Tier weight documentation added to types.ts and scoring.ts for reference; Test assertions verify structure rather than specific implementation behavior; Skipped checks (severity=info, skipped=true) excluded from scoring calculations
