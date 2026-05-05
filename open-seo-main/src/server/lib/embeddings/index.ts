@@ -13,12 +13,15 @@ export {
   JINA_API_KEY_ENV,
   getEmbeddingCacheKey,
   validateEmbeddingEnv,
-  type EmbeddingModel,
+  type EmbeddingModelType,
   type EmbeddingInput,
   type EmbeddingOutput,
   type BatchEmbeddingOutput,
   type JinaEmbeddingResponse,
 } from "./embedding-config";
+
+// Re-export from types for convenience
+export { EmbeddingModel, EMBEDDING_MODEL_CONFIGS } from "../../features/keywords/types/embeddings";
 
 // Service
 export {
