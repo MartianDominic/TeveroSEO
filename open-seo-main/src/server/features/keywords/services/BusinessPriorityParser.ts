@@ -11,10 +11,14 @@
  */
 
 import { readFile } from 'fs/promises';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { withRetry } from '@/server/lib/retry';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 import {
   FocusDirective,
