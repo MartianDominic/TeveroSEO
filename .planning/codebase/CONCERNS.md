@@ -1,259 +1,188 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-04-22
+**Analysis Date:** 2026-05-05
 
 ## Tech Debt
 
-**Mock Data in Production Code:**
-- Issue: Pattern detection uses mock/placeholder data instead of real API calls
-- Files: `apps/web/src/actions/analytics/detect-patterns.ts`
-- Impact: Pattern detection feature shows fake data, not real client analytics
-- Fix approach: Replace `generateMockTrafficData()` and `generateMockRankingData()` with actual API calls to fetch workspace traffic/ranking data
+**Zustand Stores for Server State:**
+- Issue: Four Zustand stores manage server state instead of using TanStack Query
+- Files: `apps/web/src/stores/intelligenceStore.ts`, `apps/web/src/stores/contentCalendarStore.ts`, `apps/web/src/stores/articleLibraryStore.ts`, `apps/web/src/stores/analyticsStore.ts`
+- Impact: Missing automatic caching, background refetching, stale-while-revalidate patterns, and request deduplication
+- Fix approach: Migrate to TanStack Query hooks as documented in the TODO [HIGH-42] comments in each file
 
-**Incomplete Database Operations:**
-- Issue: `dismissPattern()` and `resolvePattern()` functions have no implementation
-- Files: `apps/web/src/actions/analytics/detect-patterns.ts` (lines 180-196)
-- Impact: Users cannot dismiss or resolve detected patterns; actions have no effect
-- Fix approach: Implement database updates via API calls as indicated in TODO comments
+**Autonomous Integration Pipeline Not Wired:**
+- Issue: Phase 38 integration service has all steps stubbed with TODO comments
+- Files: `open-seo-main/src/server/pipeline/autonomous-integration.ts`
+- Impact: 107 SEO checks, link graph building, auto-fixes, and link suggestions are not integrated post-audit
+- Fix approach: Wire runChecks(), buildLinkGraph(), detectOpportunities(), applyChange(), and LinkApplyService as documented in the file
 
-**AI-Writer Integration Stubs:**
-- Issue: Multiple placeholders for AI-Writer database integration
-- Files:
-  - `open-seo-main/src/server/workers/report-processor.ts` (lines 283-286, 290-294)
-  - `open-seo-main/src/routes/api/clients/$clientId.reports.ts` (line 44)
-  - `open-seo-main/src/routes/api/reports/$id.ts` (line 46)
-- Impact: Report generation uses placeholder "Client" name instead of actual client names
-- Fix approach: Query AI-Writer's clients table via `ALWRITY_DATABASE_URL` as noted in TODOs
+**Fast API Worker Placeholder Implementations:**
+- Issue: Multiple analysis functions return placeholder data instead of real implementations
+- Files: `open-seo-main/src/server/workers/fast-api-worker.ts`
+- Impact: Competitor snapshots, keyword gap analysis, backlink profile, content gap analysis, and local SEO analysis return mock data
+- Fix approach: Implement actual analysis logic by integrating with DataForSEO, Semrush, or other SEO data providers
 
-**Missing Position Delta Computation:**
-- Issue: Keyword position changes not computed from previous period
-- Files: `open-seo-main/src/server/workers/report-processor.ts` (line 170)
-- Impact: Reports show `position_delta: 0` for all keywords instead of actual movement
-- Fix approach: Implement historical comparison query to compute position changes
+**AI-Writer Content Gap Analyzer Stubs:**
+- Issue: Multiple analyzer services have TODO comments with placeholder implementations
+- Files: `AI-Writer/backend/services/content_gap_analyzer/website_analyzer.py`, `AI-Writer/backend/services/content_gap_analyzer/keyword_researcher.py`, `AI-Writer/backend/services/content_gap_analyzer/competitor_analyzer.py`
+- Impact: Content analysis, structure analysis, performance analysis, SEO analysis all return placeholder data
+- Fix approach: Integrate with actual analysis services or implement the analysis logic
 
-**Alert System Incomplete:**
-- Issue: Email notification stub for alerts; SMS/Slack channels not implemented
-- Files: `open-seo-main/src/server/workers/alert-processor.ts` (lines 164, 198, 203)
-- Impact: Alert notifications partially functional; some channels silently fail
-- Fix approach: Implement remaining notification channels (SMS via Twilio, Slack via webhook)
+**Keyword Chat Pipeline Unconnected:**
+- Issue: Analysis pipeline has multiple TODO items for wiring to Phase 75-81 services
+- Files: `apps/web/src/lib/keyword-chat/analysis-pipeline.ts`
+- Impact: ConversationIntelligence, FunnelClassifier, GeoClassifier, ConstraintFilter, CascadeSelector, PSEODetector, SideKeywordExpander not connected
+- Fix approach: Wire each service as documented in the TODO comments (lines 173-292)
 
-**Priority Score Placeholders:**
-- Issue: Client priority scoring uses dummy values for touch and renewal data
-- Files: `open-seo-main/src/server/workers/priority-score.ts` (lines 94-95)
-- Impact: Priority calculations inaccurate without actual touch/renewal tracking
-- Fix approach: Implement `client_touches` and `client_contracts` tables
+**Goals System Backend Not Complete:**
+- Issue: Frontend goal components disable fields waiting for backend support
+- Files: `apps/web/src/components/goals/GoalSetupWizard.tsx`, `apps/web/src/components/goals/GoalConfigForm.tsx`, `apps/web/src/components/goals/GoalCard.tsx`, `apps/web/src/types/goals.ts`, `apps/web/src/lib/api/goals.ts`
+- Impact: Denominator, visibility options, and trend direction/value fields commented out with "TODO: Phase 40+"
+- Fix approach: Implement backend support for these goal fields and re-enable frontend
 
-**Deprecated Authentication Code:**
-- Issue: Multiple deprecated auth functions still in codebase
-- Files:
-  - `open-seo-main/src/lib/auth-client.ts` (lines 4, 27, 43)
-  - `open-seo-main/src/lib/auth-mode.ts` (lines 4, 23)
-  - `open-seo-main/src/lib/auth-session.ts` (lines 4, 20)
-- Impact: Confusion between old patterns and new Clerk-based auth
-- Fix approach: Remove deprecated exports and migrate all consumers to Clerk SDK hooks
+**Hardcoded Company Names:**
+- Issue: "TeveroSEO" and related strings hardcoded instead of using workspace settings
+- Files: `open-seo-main/src/server/features/contracts/services/ContractService.ts` (lines 119, 187, 480), `open-seo-main/src/server/features/agreements/services/SignerNotificationService.ts`, `open-seo-main/src/server/services/prospect-report/prospect-report-renderer.ts`
+- Impact: Multi-tenant white-labeling not possible, all contracts/emails show "TeveroSEO"
+- Fix approach: Fetch company name from workspace settings table
 
-**Deprecated Redis Connection Factory:**
-- Issue: `createRedisConnection()` marked deprecated but still exported
-- Files: `open-seo-main/src/server/lib/redis.ts` (line 48)
-- Impact: Risk of connection leaks if consumers use deprecated function
-- Fix approach: Remove export or add runtime warning; ensure all callers use `getSharedBullMQConnection()`
+**Email Service Not Integrated:**
+- Issue: EmailService has TODO comment for actual email provider integration
+- Files: `open-seo-main/src/server/services/email/EmailService.ts` (line 220)
+- Impact: Email sending may be stubbed or incomplete
+- Fix approach: Integrate with Resend, SendGrid, or other email provider
+
+**Deprecated Code Still in Use:**
+- Issue: Multiple deprecated interfaces, methods, and modules remain in codebase
+- Files: `apps/web/src/lib/server-fetch.ts` (SanitizedError), `apps/web/src/lib/redis/cache.ts` (cacheGetUnsafe), `open-seo-main/src/lib/auth-client.ts` (entire module), `open-seo-main/src/lib/auth-mode.ts`, `open-seo-main/src/db/analytics-schema.ts` (type aliases)
+- Impact: Technical debt accumulation, potential confusion for developers
+- Fix approach: Migrate callers to new APIs and remove deprecated code
 
 ## Known Bugs
 
-**Proposal Signing Redirect Missing:**
-- Symptoms: After signing, user may see incomplete flow
-- Files: `open-seo-main/src/routes/p/$token.tsx` (line 81)
-- Trigger: Complete proposal signing flow
-- Workaround: None documented; TODO for Phase 30-05
-
-**Silent Error Swallowing:**
-- Symptoms: Some operations fail silently without user feedback
-- Files:
-  - `apps/web/src/actions/analytics/get-opportunities.ts` (line 98-100) - returns 0 on error
-  - `apps/web/src/app/(shell)/dashboard/actions.ts` (multiple empty catch blocks)
-  - `apps/web/src/app/(shell)/clients/[clientId]/page.tsx` (lines 128, 136)
-- Trigger: Network failures or backend errors during data fetching
-- Workaround: Check console for errors; user sees stale/empty data
-
-**Voice Templates Fetch Failure Silent:**
-- Symptoms: Voice template dropdown empty without error message
-- Files: `apps/web/src/app/(shell)/clients/[clientId]/settings/page.tsx` (lines 188-190)
-- Trigger: Backend voice templates endpoint failure
-- Workaround: Refresh page; no user-visible error
+**OAuth State Missing in Routes:**
+- Symptoms: Some OAuth routes access process.env directly without env validation
+- Files: `apps/web/src/app/api/oauth/wix/authorize/route.ts`, `apps/web/src/app/api/oauth/wix/callback/route.ts`, `apps/web/src/app/api/oauth/shopify/callback/route.ts`, `apps/web/src/app/api/oauth/google/callback/route.ts`
+- Trigger: OAuth flow when env variables not properly set
+- Workaround: Env validated at startup via `apps/web/src/lib/env.ts` catches most issues
 
 ## Security Considerations
 
-**XSS Risk in Report Footer:**
-- Risk: HTML content rendered directly in report footer from user input
-- Files: `apps/web/src/components/reports/ReportFooter.tsx` (line 53)
-- Current mitigation: Comment claims DOMPurify sanitization in API layer
-- Recommendations: Verify sanitization is actually applied in branding API; add CSP headers for reports
+**Direct process.env Access:**
+- Risk: Some files access process.env directly instead of using validated env module
+- Files: See grep results - approximately 40 direct process.env accesses in `apps/web/src/`
+- Current mitigation: Central env validation at startup catches missing/invalid vars
+- Recommendations: Refactor all direct process.env access to use `import { env } from '@/lib/env'`
 
-**XSS Risk in Article Content:**
-- Risk: Article HTML rendered directly from AI-generated content
-- Files:
-  - `apps/web/src/app/(shell)/clients/[clientId]/articles/new/page.tsx` (line 90)
-  - `apps/web/src/app/(shell)/clients/[clientId]/articles/[articleId]/page.tsx` (line 119)
-- Current mitigation: Comments indicate content is sanitized
-- Recommendations: Verify sanitization implementation; consider iframe sandboxing for untrusted content
+**Raw SQL in AI-Writer:**
+- Risk: Some raw SQL queries in AI-Writer backend could be vulnerable to injection
+- Files: `AI-Writer/backend/services/dual_write.py`, `AI-Writer/backend/services/subscription/limit_validation.py`, `AI-Writer/backend/services/intelligence/agents/agent_usage_tracking.py`, `AI-Writer/backend/services/integrations/wordpress_oauth.py`
+- Current mitigation: Most use parameterized queries via SQLAlchemy text() or ? placeholders
+- Recommendations: Audit all raw SQL for proper parameterization
 
-**TypeScript Type Safety Bypasses:**
-- Risk: `any` types and eslint-disable comments reduce compile-time safety
-- Files:
-  - `apps/web/src/lib/active-client.ts` (line 6) - `type AnyRoute = any`
-  - `apps/web/src/app/page.tsx` (line 3) - same pattern
-  - `open-seo-main/src/routes/api/reports/$id.ts` (line 17)
-  - `open-seo-main/src/routes/api/branding/index.ts` (line 66)
-- Current mitigation: None
-- Recommendations: Replace `any` with proper types; investigate why typed routes don't work
+**Pixel API Authentication TODO:**
+- Risk: Pixel analytics endpoints have TODO comments for authentication checks
+- Files: `open-seo-main/src/routes/api/pixel/[siteId]/changes.pending.ts` (line 39), `open-seo-main/src/routes/api/pixel/[siteId]/changes.history.ts` (line 58), `open-seo-main/src/routes/api/pixel/[siteId]/analytics.ts` (line 114), `open-seo-main/src/routes/api/pixel/changes/[changeId].ts` (lines 116, 209)
+- Current mitigation: None visible - these may be exposed without auth
+- Recommendations: Implement authentication checks per T-66-20
 
-**Missing Rate Limiting on Public Endpoints:**
-- Risk: API abuse possible on endpoints without rate limits
-- Files: Most `apps/web/src/app/api/` route handlers
-- Current mitigation: Some internal rate limiting exists (`prospect-analysis`, `admin/dlq`)
-- Recommendations: Add middleware-level rate limiting for all public API routes
-
-**Hardcoded Fallback URLs:**
-- Risk: Development URLs exposed in production builds
-- Files:
-  - `apps/web/src/lib/server-fetch.ts` - `http://ai-writer-backend:8000`
-  - `apps/web/src/lib/websocket/socket-client.ts` - `http://localhost:3002`
-  - `apps/web/src/app/(shell)/clients/[clientId]/connections/page.tsx` - `http://localhost:8000`
-- Current mitigation: Environment variables override when set
-- Recommendations: Throw error if env vars missing in production; remove localhost defaults
+**Environment Files:**
+- Risk: `.env.dev` file present at monorepo root, `AI-Writer/.env` present
+- Files: `/home/dominic/Documents/TeveroSEO/.env.dev`, `/home/dominic/Documents/TeveroSEO/AI-Writer/.env`
+- Current mitigation: `.gitignore` properly excludes `.env` patterns
+- Recommendations: Ensure `.env.dev` is not committed (it appears untracked in git status)
 
 ## Performance Bottlenecks
 
-**Large React Component Files:**
-- Problem: Several page components exceed 800+ lines
-- Files:
-  - `apps/web/src/app/(shell)/clients/[clientId]/settings/page.tsx` (1365 lines)
-  - `apps/web/src/app/(shell)/settings/page.tsx` (980 lines)
-  - `apps/web/src/app/(shell)/clients/[clientId]/intelligence/page.tsx` (885 lines)
-  - `apps/web/src/app/(shell)/clients/[clientId]/articles/page.tsx` (862 lines)
-  - `apps/web/src/app/(shell)/clients/[clientId]/calendar/page.tsx` (800 lines)
-- Cause: Multiple concerns combined in single components
-- Improvement path: Extract sub-components; use composition; split by feature tabs
+**Large Page Components:**
+- Problem: Several page components exceed 800 lines
+- Files: `apps/web/src/app/(shell)/clients/[clientId]/settings/page.tsx` (1425 lines), `apps/web/src/app/(shell)/clients/[clientId]/intelligence/page.tsx` (1015 lines), `apps/web/src/app/(shell)/clients/[clientId]/seo/[projectId]/audit/page.tsx` (1008 lines), `apps/web/src/app/(shell)/clients/[clientId]/articles/page.tsx` (958 lines)
+- Cause: Too much logic in single files, likely causing slow re-renders
+- Improvement path: Extract sub-components, move data fetching to server actions, use React.memo for expensive renders
 
-**Polling Without Debounce:**
-- Problem: Multiple setInterval polling without cleanup optimization
-- Files:
-  - `apps/web/src/components/reports/ReportPreview.tsx` (line 20)
-  - `apps/web/src/components/alerts/AlertDrawer.tsx` (line 45)
-  - `apps/web/src/app/(shell)/clients/[clientId]/page.tsx` (line 119)
-- Cause: Intervals may overlap or continue after unmount
-- Improvement path: Use React Query or SWR for polling; verify cleanup in useEffect
-
-**Toast Timeout Accumulation:**
-- Problem: Multiple setTimeout calls for toast notifications without cleanup
-- Files:
-  - `apps/web/src/app/(shell)/clients/[clientId]/settings/page.tsx` (line 145)
-  - `apps/web/src/app/(shell)/settings/page.tsx` (line 509)
-  - `apps/web/src/components/settings/BrandingForm.tsx` (line 74)
-- Cause: Timeouts not cleared on component unmount
-- Improvement path: Use useRef to track timeout IDs; clear in cleanup function
+**Large Service Files in AI-Writer:**
+- Problem: Multiple Python service files exceed 1000 lines
+- Files: `AI-Writer/backend/services/content_gap_analyzer/keyword_researcher.py` (1513 lines), `AI-Writer/backend/services/intelligence/sif_integration.py` (1479 lines), `AI-Writer/backend/services/seo_tools/sitemap_service.py` (1260 lines), `AI-Writer/backend/services/ai_service_manager.py` (1223 lines)
+- Cause: Services have grown organically without refactoring
+- Improvement path: Split by responsibility into smaller modules
 
 ## Fragile Areas
 
-**Client Settings Page:**
-- Files: `apps/web/src/app/(shell)/clients/[clientId]/settings/page.tsx`
-- Why fragile: 1365 lines with 30+ state variables; multiple useEffect dependencies
-- Safe modification: Extract individual settings sections into separate components
-- Test coverage: No unit tests found for this component
+**Keyword Filtering System:**
+- Files: `open-seo-main/src/server/features/keywords/filtering/ConstraintFilter.ts`, `open-seo-main/src/server/features/keywords/filtering/types.ts`, `open-seo-main/src/server/features/keywords/filtering/scoring.ts`
+- Why fragile: Recently modified (appears in git status as modified), new feature under development
+- Safe modification: Ensure all test files pass before committing
+- Test coverage: Has test files but coverage unknown
 
-**Pattern Detection System:**
-- Files: `apps/web/src/actions/analytics/detect-patterns.ts`, `apps/web/src/lib/analytics/pattern-detection.ts`
-- Why fragile: Uses mock data; cache invalidation may cause stale patterns
-- Safe modification: Implement real API integration before modifying detection logic
-- Test coverage: No tests for pattern detection actions
-
-**Report Generation Pipeline:**
-- Files: `open-seo-main/src/server/workers/report-processor.ts`
-- Why fragile: 10-step pipeline with multiple external dependencies (Puppeteer, email, file system)
-- Safe modification: Add step-level error handling; implement retry for transient failures
-- Test coverage: Limited; relies on integration with BullMQ
-
-**React Hooks Dependencies:**
-- Files: Multiple components with `eslint-disable-next-line react-hooks/exhaustive-deps`
-- Why fragile: Stale closure bugs possible; updates may not trigger re-renders
-- Safe modification: Audit each disabled rule; fix or document why exception is needed
-- Locations:
-  - `apps/web/src/app/(shell)/clients/[clientId]/analytics/page.tsx` (line 43)
-  - `apps/web/src/app/(shell)/clients/[clientId]/articles/page.tsx` (line 366)
-  - `apps/web/src/app/(shell)/clients/page.tsx` (line 44)
-  - `apps/web/src/components/editor/ImageGenerationPanel.tsx` (line 106)
-  - `apps/web/src/components/ClientSwitcher/ClientSwitcher.tsx` (line 59)
+**Client Sync Service:**
+- Files: `open-seo-main/src/server/services/client-sync/ClientSyncService.ts`
+- Why fragile: Many `return null` paths (12 occurrences), complex URL parsing with fallbacks
+- Safe modification: Test with various URL formats and edge cases
+- Test coverage: No test file visible
 
 ## Scaling Limits
 
-**Redis Connection Per Key:**
-- Current capacity: One connection per BullMQ key (queue/worker pair)
-- Limit: ioredis default connection limit; Redis server `maxclients`
-- Scaling path: Connection pooling if many queues added; monitor with `INFO clients`
+**Zustand Store Memory:**
+- Current capacity: Client-side state limited by browser memory
+- Limit: Large datasets in stores (intelligence, articles, calendar) could cause memory issues
+- Scaling path: Migrate to TanStack Query with pagination and virtualization
 
-**Report PDF Generation:**
-- Current capacity: Single Puppeteer instance via WebSocket endpoint
-- Limit: Concurrent PDF generation limited by Puppeteer instance memory
-- Scaling path: Multiple Puppeteer workers; queue-based throttling already in place
-
-**File System Report Storage:**
-- Current capacity: Local filesystem at `REPORTS_DIR`
-- Limit: Disk space; no cleanup strategy visible
-- Scaling path: Implement retention policy; consider object storage (S3/R2) for large scale
+**Timer-Based Polling:**
+- Current capacity: Multiple setInterval/setTimeout for UI state
+- Limit: Too many concurrent timers degrade performance
+- Scaling path: Use refs properly to clean up timers (already done in some places like `api-integrations-tab.tsx`)
 
 ## Dependencies at Risk
 
-**Deprecated Auth Libraries:**
-- Risk: Deprecated `better-auth` patterns replaced by Clerk
-- Impact: Authentication could break if deprecated code paths exercised
-- Migration plan: Complete removal of deprecated auth modules after Clerk migration verified
+**Deprecated Auth System:**
+- Risk: `open-seo-main/src/lib/auth-client.ts`, `open-seo-main/src/lib/auth-mode.ts`, `open-seo-main/src/lib/auth-session.ts` are all marked deprecated
+- Impact: Auth is now handled by Clerk via Next.js app, but these modules still exist
+- Migration plan: Remove deprecated modules once all consumers migrated
 
-**Console Logging in Production:**
-- Risk: `console.log` statements in production code
-- Impact: Performance overhead; log noise; potential info leakage
-- Migration plan: Replace with structured logging via `createLogger()`
+**Invoice Repository Deprecated Methods:**
+- Risk: `updateInvoiceStatus` and related methods deprecated in favor of version-checking alternatives
+- Impact: Using deprecated methods could cause race conditions in concurrent updates
+- Migration plan: All callers should use `updateInvoiceStatusWithVersion` and `updateInvoiceStatusWithProviderAndVersion`
 
 ## Missing Critical Features
 
-**Localization System Incomplete:**
-- Problem: Report labels hardcoded; i18n system mentioned but not implemented
-- Files: `open-seo-main/src/server/workers/report-processor.ts` (lines 290-294)
-- Blocks: Multi-language report generation
+**Email Service Integration:**
+- Problem: Email service has TODO for actual provider integration
+- Blocks: Automated notifications, alerts, reports via email
 
-**Workspace ID Not From Auth:**
-- Problem: Dashboard hardcodes workspace ID extraction
-- Files: `apps/web/src/app/(shell)/dashboard/page.tsx` (line 44)
-- Blocks: Multi-tenant workspace support
+**Alert Notification System:**
+- Problem: TODO comments in `open-seo-main/src/server/workers/failed-audits-worker.ts` for notification and Slack alerting
+- Blocks: Critical failure alerts, audit failure notifications
+
+**User Notification on Token Refresh:**
+- Problem: TODO in `open-seo-main/src/server/workers/token-refresh-worker.ts` for user notification
+- Blocks: Users not informed when OAuth tokens need attention
 
 ## Test Coverage Gaps
 
-**Web App Severely Undertested:**
-- What's not tested: 680 source files, only 1 test file
-- Files: `apps/web/src/` (entire directory)
-- Risk: Regressions undetected; refactoring unsafe
-- Priority: High
+**apps/web (Next.js Frontend):**
+- What's not tested: 884 source files, only 33 test files (~3.7% file coverage)
+- Files: Most components, actions, and hooks lack tests
+- Risk: UI regressions, action failures go unnoticed
+- Priority: High - this is the main user-facing app
 
-**Server Actions Not Tested:**
-- What's not tested: All `apps/web/src/actions/` server actions
-- Files:
-  - `apps/web/src/actions/analytics/detect-patterns.ts`
-  - `apps/web/src/actions/analytics/get-predictions.ts`
-  - `apps/web/src/actions/dashboard/get-portfolio-aggregates.ts`
-  - `apps/web/src/actions/webhooks.ts`
-- Risk: Business logic changes could break silently
-- Priority: High
+**AI-Writer Backend:**
+- What's not tested: 985 Python files, only 22 test files (~2.2% file coverage)
+- Files: Most services, routers, and API endpoints lack tests
+- Risk: Content generation bugs, API failures
+- Priority: High - critical for content pipeline
 
-**API Routes Not Tested:**
-- What's not tested: All `apps/web/src/app/api/` routes
-- Files: 30+ route handlers in `apps/web/src/app/api/`
-- Risk: HTTP layer bugs; authentication bypasses possible
-- Priority: Medium
+**open-seo-main (Better Coverage):**
+- What's not tested: 1424 source files, 283 test files (~20% file coverage)
+- Files: Better coverage but still gaps in newer features
+- Risk: SEO check regressions, audit failures
+- Priority: Medium - has better coverage than other projects
 
-**open-seo-main Has Good Coverage:**
-- Coverage: 85 test files for backend services
-- Tested areas: Proposals, payments, onboarding, analytics, workers
-- Notable: Comprehensive test coverage in `open-seo-main/src/server/features/`
+**Integration Tests:**
+- What's not tested: Cross-service communication between apps/web, open-seo-main, and AI-Writer
+- Risk: Service integration failures in production
+- Priority: High - critical for monorepo architecture
 
 ---
 
-*Concerns audit: 2026-04-22*
+*Concerns audit: 2026-05-05*

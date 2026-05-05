@@ -1,220 +1,258 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-22
+**Analysis Date:** 2026-05-05
 
 ## APIs & External Services
 
-**SEO Data:**
-- DataForSEO - Keyword research, SERP data, backlinks analysis
-  - SDK/Client: `dataforseo-client` ^2.0.19
-  - Auth: `DATAFORSEO_API_KEY`
-  - Used in: `open-seo-main`
-
-**AI/LLM:**
-- Anthropic Claude - Content generation, keyword opportunities
-  - SDK/Client: `@anthropic-ai/sdk` ^0.90.0
-  - Auth: API key (env var in open-seo)
-  - Used in: `open-seo-main/src/server/lib/opportunity/`
-
-- Google Gemini - Proposal generation, content analysis
-  - SDK/Client: `@google/generative-ai` ^0.24.1
-  - Auth: `GOOGLE_API_KEY`
-  - Used in: `open-seo-main/src/server/lib/proposals/gemini.ts`
-
-- OpenAI - Content generation (AI-Writer)
-  - SDK/Client: `openai` 1.109.1 (Python)
-  - Auth: OpenAI API key
-  - Used in: `AI-Writer/backend`
-
-**Google APIs:**
-- Google Search Console (GSC) - Search performance data
-  - SDK/Client: `googleapis` ^171.4.0
-  - Auth: OAuth2 (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
-  - Client: `open-seo-main/src/server/services/analytics/gsc-client.ts`
-
-- Google Analytics 4 (GA4) - Website analytics
-  - SDK/Client: `googleapis` analyticsdata v1beta
-  - Auth: OAuth2 (same as GSC)
-  - Client: `open-seo-main/src/server/services/analytics/ga4-client.ts`
-
 **Authentication:**
 - Clerk - User authentication and session management
-  - SDK/Client: `@clerk/nextjs` ^6.39.2
-  - Auth: `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-  - Middleware: `apps/web/src/middleware.ts`
-  - Provider: `apps/web/src/app/layout.tsx`
+  - SDK: `@clerk/nextjs` (apps/web), `@clerk/backend` (open-seo-main), `fastapi_clerk_auth` (AI-Writer)
+  - Env vars: `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`
+  - Webhooks: `/api/webhooks/clerk` (user sync)
+  - Uses Svix for webhook signature verification
+
+**AI Providers:**
+- Anthropic Claude - Content generation, voice analysis, proposal generation
+  - SDK: `@anthropic-ai/sdk` (TS), via API (Python)
+  - Env var: `ANTHROPIC_API_KEY`
+  - Usage: `open-seo-main/src/server/features/proposals/`, `open-seo-main/src/server/features/keywords/`
+
+- OpenAI - AI features, embeddings
+  - SDK: `openai` (both TS and Python)
+  - Env var: `OPENAI_API_KEY`
+  - Usage: Keyword intelligence, content generation
+
+- Google Gemini - Classification, translation
+  - SDK: `@google/generative-ai` (TS), `google-genai` (Python)
+  - Env var: `GEMINI_API_KEY`
+  - Usage: `open-seo-main/src/server/features/keywords/classification/`
+
+**SEO Data:**
+- DataForSEO - SERP data, keyword research, backlink analysis
+  - SDK: `dataforseo-client`
+  - Env var: `DATAFORSEO_API_KEY`
+  - Usage: `open-seo-main/src/server/lib/dataforseo*.ts`, `open-seo-main/src/server/features/briefs/`
+
+**Payments & Billing:**
+- Stripe - Payment processing, subscriptions
+  - SDK: `stripe` (TS and Python)
+  - Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+  - Webhooks: `/api/webhooks/stripe`, `/api/stripe/webhook`
+  - Usage: `open-seo-main/src/server/features/payments/`, `open-seo-main/src/server/features/invoices/`
+
+- Autumn.js - Usage-based billing, feature access
+  - SDK: `autumn-js`
+  - Usage: `open-seo-main/src/server/billing/`, subscription management
+
+**Email:**
+- Resend - Transactional emails (alerts, reports, invitations)
+  - SDK: `resend`
+  - Env var: `RESEND_API_KEY`
+  - Usage: `open-seo-main/src/services/alert-notifications.ts`, `open-seo-main/src/server/features/agreements/`
+
+**Analytics & Monitoring:**
+- Sentry - Error tracking, performance monitoring
+  - SDK: `@sentry/nextjs` (apps/web), `sentry-sdk[fastapi]` (AI-Writer)
+  - Env var: `SENTRY_DSN`
+  - Config: `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+
+- PostHog - Product analytics, event tracking
+  - SDK: `posthog-node`, `posthog-js`
+  - Env var: `POSTHOG_API_KEY`
+  - Usage: `open-seo-main/src/server/lib/posthog.ts`, audit events
+
+**Web Research:**
+- Exa.ai - AI-powered web search
+  - SDK: `exa-py`
+  - Env var: `EXA_API_KEY`
+  - Usage: AI-Writer research features
+
+## Google Platform Integrations
+
+**Google Search Console (GSC):**
+- OAuth scope: `https://www.googleapis.com/auth/webmasters.readonly`
+- SDK: `googleapis`, `google-auth-library`
+- Usage: `open-seo-main/src/server/services/analytics/gsc-client.ts`
+- Stores: OAuth tokens in `platform_connections` table
+
+**Google Analytics 4 (GA4):**
+- OAuth scope: `https://www.googleapis.com/auth/analytics.readonly`
+- API: `analyticsdata.googleapis.com/v1beta`
+- Usage: `open-seo-main/src/server/services/analytics/ga4-client.ts`
+
+**Google Business Profile:**
+- OAuth scope: `https://www.googleapis.com/auth/business.manage`
+- APIs: `mybusinessbusinessinformation.googleapis.com`, `mybusiness.googleapis.com`
+- Usage: `open-seo-main/src/server/features/platform-oauth/services/GoogleBusinessProfileService.ts`
+
+**OAuth Configuration:**
+- Env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- Provider: `open-seo-main/src/server/features/platform-oauth/providers/GoogleOAuthProvider.ts`
 
 ## Data Storage
 
 **Databases:**
-- PostgreSQL 16-alpine (shared instance)
-  - Databases: `open_seo`, `alwrity`
-  - Connection: `DATABASE_URL` env var
-  - ORM: Drizzle ORM (open-seo), SQLAlchemy (AI-Writer)
-  - Migrations: drizzle-kit (open-seo), Alembic (AI-Writer)
-
-**File Storage:**
-- Local filesystem via Docker volumes
-  - `reports_data:/data/reports` - Generated PDF reports
-  - `branding_data:/data/branding` - Client branding assets (logos)
-  - `ai_writer_workspace:/app/workspace` - AI-Writer working files
+- PostgreSQL 16
+  - `open_seo` database - SEO platform data
+    - Connection: `DATABASE_URL` env var
+    - ORM: Drizzle (`open-seo-main/src/db/`)
+  - `alwrity` database - Content platform data
+    - Connection: `DATABASE_URL` (AI-Writer), `ALWRITY_DATABASE_URL` (cross-service)
+    - ORM: SQLAlchemy
 
 **Caching:**
-- Redis 7-alpine
-  - Connection: `REDIS_URL` (default: `redis://redis:6379`)
-  - Client: `ioredis` 5.10.1
-  - Implementation: `apps/web/src/lib/cache/redis-cache.ts`
-  - Features: Tag-based invalidation, 5-minute default TTL
+- Redis 7
+  - Connection: `REDIS_URL`
+  - Clients: `ioredis` (TS), `redis` (Python)
+  - Usage: BullMQ job queues, session cache, rate limiting
 
-**Queue/Background Jobs:**
-- BullMQ 5.74.1 (via Redis)
-  - Queues location: `open-seo-main/src/server/queues/`
-  - Queues defined:
-    - `alertQueue` - Alert notifications
-    - `analyticsQueue` - GA4/GSC sync jobs
-    - `auditQueue` - Site audits
-    - `dashboardMetricsQueue` - Dashboard metric calculations
-    - `goalQueue` - Goal tracking updates
-    - `portfolioAggregatesQueue` - Portfolio rollups
-    - `prospectAnalysisQueue` - Prospect website analysis
-    - `rankingQueue` - Keyword ranking checks
-    - `reportQueue` - PDF report generation
-    - `scheduleQueue` - Scheduled job orchestration
-    - `webhookQueue` - Outbound webhook delivery
+**Graph Database:**
+- FalkorDB - Knowledge graph storage
+  - SDK: `falkordb`
+  - Usage: `open-seo-main/src/server/lib/graph/`, keyword relationships
+  - Fallback: PostgreSQL AGE extension
 
-## Authentication & Identity
+**File Storage:**
+- Local filesystem (containerized volumes)
+  - Reports: `/data/reports` (Docker volume: `reports_data`)
+  - Branding assets: `/data/branding` (Docker volume: `branding_data`)
+  - AI-Writer workspace: `/app/workspace` (Docker volume: `ai_writer_workspace`)
 
-**Auth Provider:**
-- Clerk (hosted)
-  - Sign-in: `/sign-in` (`apps/web/src/app/sign-in/[[...sign-in]]/page.tsx`)
-  - Sign-up: `/sign-up` (`apps/web/src/app/sign-up/[[...sign-up]]/page.tsx`)
-  - Middleware protection: `apps/web/src/middleware.ts`
-  - Public routes: `/sign-in`, `/sign-up`, `/connect/*`, `/api/health`
+## Job Queues
 
-**OAuth for Client Data Access:**
-- Google OAuth2 - Client-granted access to GSC/GA4
-  - Flow: Magic link invite → Google OAuth → Token storage
-  - Implementation: `apps/web/src/lib/clientOAuth.ts`
-  - Auth service: `open-seo-main/src/server/services/analytics/google-auth.ts`
+**BullMQ (open-seo-main):**
+- Redis-backed job queues
+- Queues: audit, analytics, follow-up, pipeline, onboarding, portfolio-aggregates, dashboard-metrics
+- Workers: `open-seo-main/src/server/workers/`
+- DLQ: Dead letter queue for failed jobs
 
-## Monitoring & Observability
+**APScheduler (AI-Writer):**
+- In-process task scheduling
+- Usage: Periodic data refresh, semantic health monitoring
 
-**Error Tracking:**
-- None detected (consider adding Sentry)
+## CMS Integrations
 
-**Analytics:**
-- PostHog - Product analytics (open-seo-main)
-  - SDK: `posthog-js` ^1.363.5, `posthog-node` ^5.28.5
-  - Used in: `open-seo-main`
+**WordPress:**
+- REST API integration
+- Validation: `/api/connections/wordpress/validate`
+- OAuth: Per-client credentials
 
-**Logs:**
-- Console logging with structured format
-- Docker logs aggregation
-- Worker metrics tracking (in-memory)
+**Shopify:**
+- OAuth flow: `/api/oauth/shopify/authorize`
+- Usage: Content publishing
 
-## CI/CD & Deployment
+**Wix:**
+- API integration (optional)
+- Env var: `WIX_API_KEY`
 
-**Hosting:**
-- Self-hosted VPS
-- Docker Compose orchestration
-- Nginx reverse proxy with Let's Encrypt SSL
+**Generic Webhooks:**
+- Custom webhook endpoints for third-party CMS
 
-**CI Pipeline:**
-- GitHub Actions
-  - `deploy-vps.yml` - Main deployment (open-seo, workers)
-  - `deploy-web.yml` - Tevero web app deployment
-  - `deploy-ai-writer.yml` - AI-Writer deployment
-  - Triggers: Push to `main` branch with path filters
-  - Deploy flow: git pull → migrations → docker compose up
+## Real-time Communication
 
-**Container Registry:**
-- Local builds on VPS (no external registry)
-- Images: `teveroseo/open-seo`, `teveroseo/tevero-web`, `teveroseo/puppeteer-pdf`
+**WebSockets:**
+- Socket.io server (open-seo-main)
+  - Port: `WS_PORT` (3003 in production)
+  - Client: `socket.io-client`
+  - Usage: Real-time audit progress, notifications
+
+## PDF Generation
+
+**Puppeteer:**
+- Containerized Chromium browser
+  - Container: `puppeteer-pdf`
+  - Connection: `PUPPETEER_WS_ENDPOINT` (WebSocket)
+  - Shared memory: 1GB
+- Usage: Report PDF generation, chart snapshots
+- Files: `open-seo-main/src/server/services/report/pdf-generator.ts`
+
+## Security
+
+**Encryption:**
+- Asset signing: `ASSET_SIGNING_KEY`
+- Site encryption: `SITE_ENCRYPTION_KEY`
+- Fernet encryption: `FERNET_KEY` (AI-Writer credentials at rest)
+- IP hashing: `IP_SALT`
+- Personal code: `PERSONAL_CODE_SALT`
+
+**Rate Limiting:**
+- Middleware-based (AI-Writer)
+- IP-based with Redis storage
+
+## Webhooks (Incoming)
+
+**Clerk User Events:**
+- Endpoint: `/api/webhooks/clerk`
+- Events: `user.created`, `user.updated`, `user.deleted`
+- Verification: Svix signature
+
+**Stripe Payment Events:**
+- Endpoints: `/api/webhooks/stripe`, `/api/stripe/webhook`
+- Events: Payment success, subscription updates
+- Verification: Stripe signature
+
+## Internal Service Communication
+
+**Cross-Service APIs:**
+- `INTERNAL_API_KEY` - Service-to-service authentication
+- `AI_WRITER_URL` - AI-Writer backend URL
+- `OPEN_SEO_URL` - open-seo-main URL
+- Routes: `/internal/*` endpoints
+
+**Service URLs (Production):**
+- `http://ai-writer-backend:8000` (internal)
+- `http://open-seo:3001` (internal)
+- `http://tevero-web:3002` (internal)
 
 ## Environment Configuration
 
 **Required env vars (production):**
+```
+# Authentication
+CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+CLERK_WEBHOOK_SECRET
 
-*Clerk Auth:*
-- `CLERK_SECRET_KEY`
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+# Database
+DATABASE_URL (PostgreSQL)
+REDIS_URL
 
-*Database:*
-- `POSTGRES_PASSWORD`
-- `OPEN_SEO_DB_PASSWORD`
-- `ALWRITY_DB_PASSWORD`
-- `DATABASE_URL` (constructed from above)
+# AI Providers
+ANTHROPIC_API_KEY
+GEMINI_API_KEY
+OPENAI_API_KEY (optional)
 
-*Redis:*
-- `REDIS_URL`
+# SEO Data
+DATAFORSEO_API_KEY
 
-*External APIs:*
-- `DATAFORSEO_API_KEY`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_API_KEY` (for Gemini)
+# Payments
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
 
-*Internal Services:*
-- `INTERNAL_API_KEY` - Service-to-service auth
-- `AI_WRITER_BACKEND_URL`
-- `OPEN_SEO_URL`
+# Email
+RESEND_API_KEY
 
-**Secrets location:**
-- `.env.vps` on VPS (not committed, in `.gitignore`)
-- GitHub Actions secrets for CI/CD
-- Example template: `.env.vps.example`
+# Security
+INTERNAL_API_KEY
+ASSET_SIGNING_KEY
+SITE_ENCRYPTION_KEY
+FERNET_KEY
+IP_SALT
 
-## Webhooks & Callbacks
+# Google OAuth
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
 
-**Incoming:**
-- OAuth callback endpoints (Google OAuth flow)
-- Health check endpoints (`/api/health`, `/healthz`)
+# Monitoring (optional)
+SENTRY_DSN
+POSTHOG_API_KEY
+```
 
-**Outgoing:**
-- Webhook delivery queue (`webhookQueue`)
-- Custom webhook notifications to client-configured endpoints
-
-## Real-time Communication
-
-**WebSocket:**
-- Socket.IO for activity feed
-  - Server: open-seo (implied)
-  - Client: `apps/web/src/lib/websocket/socket-client.ts`
-  - Events: `activity:new`, workspace join/leave
-  - URL: `NEXT_PUBLIC_WS_URL`
-
-## Browser Automation
-
-**Puppeteer Service:**
-- Dedicated container: `puppeteer-pdf`
-  - Image: `teveroseo/puppeteer-pdf`
-  - Purpose: PDF report generation
-  - Connection: `PUPPETEER_WS_ENDPOINT` (`ws://puppeteer-pdf:9222`)
-  - Shared memory: 1GB (`shm_size`)
-
-**Playwright (AI-Writer):**
-- Python Playwright for web scraping
-- Used in AI-Writer backend
-
-## Internal Service Communication
-
-**apps/web → open-seo:**
-- HTTP REST API
-- Base URL: `OPEN_SEO_URL` (default: `http://open-seo:3001`)
-- Client: `apps/web/src/lib/server-fetch.ts` (`getOpenSeo`, `postOpenSeo`, etc.)
-- Auth: Bearer token from Clerk
-
-**apps/web → AI-Writer:**
-- HTTP REST API
-- Base URL: `AI_WRITER_BACKEND_URL` (default: `http://ai-writer-backend:8000`)
-- Client: `apps/web/src/lib/server-fetch.ts` (`getFastApi`, `postFastApi`, etc.)
-- Auth: Bearer token from Clerk
-
-**open-seo → AI-Writer:**
-- Internal HTTP API
-- URL: `AIWRITER_INTERNAL_URL` (`http://ai-writer-backend:8000`)
-- Auth: `INTERNAL_API_KEY` header
+**Service Discovery (Docker):**
+- All services on `teveroseo-net` bridge network
+- DNS: container names resolve to internal IPs
+- nginx handles external routing
 
 ---
 
-*Integration audit: 2026-04-22*
+*Integration audit: 2026-05-05*

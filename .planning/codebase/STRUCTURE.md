@@ -1,248 +1,268 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-04-22
+**Analysis Date:** 2026-05-05
 
 ## Directory Layout
 
 ```
 TeveroSEO/
 ├── apps/
-│   └── web/                    # Next.js 15 frontend application
-├── packages/
-│   ├── types/                  # Shared TypeScript interfaces (@tevero/types)
-│   └── ui/                     # Shared design system (@tevero/ui)
-├── docker/                     # Docker configuration files
+│   └── web/                    # Next.js 15 unified frontend shell
+├── open-seo-main/              # TanStack Start SEO platform
+├── AI-Writer/                  # FastAPI content generation backend
+│   ├── backend/                # Python FastAPI server
+│   └── frontend/               # React frontend (DEPRECATED)
+├── packages/                   # Shared monorepo packages
+│   ├── types/                  # @tevero/types - shared TypeScript types
+│   ├── ui/                     # @tevero/ui - shadcn/ui component library
+│   ├── utils/                  # @tevero/utils - shared utilities
+│   └── sync/                   # @tevero/sync - client sync utilities
+├── docker/                     # Docker configurations
+│   ├── postgres/               # PostgreSQL init scripts
+│   ├── redis/                  # Redis configuration
 │   ├── nginx/                  # Nginx reverse proxy config
-│   ├── postgres/               # PostgreSQL initialization
-│   ├── puppeteer/              # Puppeteer/Chrome for scraping
-│   └── redis/                  # Redis configuration
-├── .planning/                  # Planning documents
-│   ├── codebase/               # Codebase analysis documents
-│   ├── design/                 # Design documents
-│   └── phases/                 # Phase-based implementation plans
-├── AI-Writer/                  # External: Python FastAPI backend (submodule)
-├── open-seo-main/              # External: Open-SEO backend service (submodule)
-├── docs/                       # Project documentation
-├── .github/workflows/          # CI/CD workflows
-├── package.json                # Root workspace package.json
-├── pnpm-workspace.yaml         # pnpm workspace configuration
-├── pnpm-lock.yaml              # Lock file
-└── docker-compose.vps.yml      # VPS deployment compose file
+│   └── dev/                    # Development container configs
+├── scripts/                    # Build and deployment scripts
+├── docs/                       # Documentation and runbooks
+├── e2e/                        # Root-level E2E tests (Playwright)
+└── .planning/                  # Planning documents and roadmap
 ```
 
 ## Directory Purposes
 
-**`apps/web/`:**
-- Purpose: Main Next.js frontend application
-- Contains: React components, pages, API routes, server actions
-- Key files: `package.json`, `next.config.ts`, `tsconfig.json`
+**apps/web/ (Next.js Frontend):**
+- Purpose: Unified shell for all TeveroSEO features
+- Contains: App Router pages, Server Actions, React components
+- Key files: `src/app/layout.tsx`, `src/app/(shell)/layout.tsx`
+- Build: `pnpm --filter @tevero/web build`
 
-**`apps/web/src/app/`:**
+**apps/web/src/app/:**
 - Purpose: Next.js App Router pages and API routes
-- Contains: Page components, layouts, route handlers
-- Key files: `layout.tsx`, `page.tsx`, route group folders
+- Contains: Route groups, layouts, pages, API handlers
+- Key patterns: `(shell)/` for authenticated routes, `api/` for REST endpoints
 
-**`apps/web/src/app/(shell)/`:**
-- Purpose: Authenticated application routes within AppShell
-- Contains: Dashboard, clients, prospects, settings pages
-- Key files: `layout.tsx` (wraps with AppShell)
+**apps/web/src/actions/:**
+- Purpose: Server Actions for data mutations
+- Contains: "use server" functions calling backend APIs
+- Key files: `alerts.ts`, `changes.ts`, `webhooks.ts`, `voice.ts`
 
-**`apps/web/src/app/api/`:**
-- Purpose: BFF API endpoints proxying to backend services
-- Contains: REST route handlers (`route.ts`)
-- Key files: `clients/route.ts`, `dashboard/*/route.ts`
+**apps/web/src/components/:**
+- Purpose: React UI components organized by feature
+- Contains: Feature-specific components, shared UI elements
+- Key directories: `dashboard/`, `seo/`, `pipeline/`, `shell/`, `ui/`
 
-**`apps/web/src/components/`:**
-- Purpose: Reusable React components by feature domain
-- Contains: Feature-specific components
-- Key files: Component `.tsx` files organized by folder
+**apps/web/src/lib/:**
+- Purpose: Shared utilities, API clients, business logic
+- Contains: Server fetch wrappers, auth helpers, caching, validation
+- Key files: `server-fetch.ts`, `env.ts`, `query-keys.ts`, `dedup.ts`
 
-**`apps/web/src/actions/`:**
-- Purpose: Server Actions for SSR data fetching
-- Contains: `"use server"` functions
-- Key files: `analytics/*.ts`, `dashboard/*.ts`, `seo/*.ts`
+**apps/web/src/stores/:**
+- Purpose: Zustand state stores
+- Contains: Client-side state management with persistence
+- Key files: `clientStore.ts`, `proposalStore.ts`, `intelligenceStore.ts`
 
-**`apps/web/src/lib/`:**
-- Purpose: Shared utilities and business logic
-- Contains: API clients, caching, WebSocket, helpers
-- Key files: `server-fetch.ts`, `api-client.ts`, `cache/`, `websocket/`
+**open-seo-main/src/:**
+- Purpose: TanStack Start full-stack application source
+- Contains: Routes, server code, client components, database layer
 
-**`apps/web/src/stores/`:**
-- Purpose: Zustand state management stores
-- Contains: Client-side global state
-- Key files: `clientStore.ts`, `analyticsStore.ts`, `index.ts`
+**open-seo-main/src/routes/:**
+- Purpose: TanStack Start file-based routing
+- Contains: Page routes, API handlers, layouts
+- Key files: `__root.tsx`, `_authenticated.tsx`, `api/` directory
 
-**`apps/web/src/hooks/`:**
-- Purpose: Custom React hooks
-- Contains: Data fetching, UI behavior hooks
-- Key files: `usePaginatedClients.ts`, `useGoalMutations.ts`
+**open-seo-main/src/server/:**
+- Purpose: Server-side business logic
+- Contains: Features, services, workers, queues, lib utilities
 
-**`apps/web/src/types/`:**
-- Purpose: App-specific TypeScript interfaces
-- Contains: Types not shared with other packages
-- Key files: `pagination.ts`, `goals.ts`, `patterns.ts`
+**open-seo-main/src/server/features/:**
+- Purpose: Domain-driven feature modules
+- Contains: 30+ feature directories (keywords, audit, linking, proposals, etc.)
+- Pattern: Each feature has services, repositories, API handlers
 
-**`packages/types/`:**
-- Purpose: Shared TypeScript interfaces across packages
-- Contains: Domain entity types
-- Key files: `src/client.ts`, `src/oauth.ts`, `src/reports.ts`
+**open-seo-main/src/server/queues/:**
+- Purpose: BullMQ queue definitions
+- Contains: Queue configs for async jobs
+- Key files: `auditQueue.ts`, `analyticsQueue.ts`, `rankingQueue.ts`
 
-**`packages/ui/`:**
-- Purpose: Shared design system components
-- Contains: Radix-based UI primitives
-- Key files: `src/components/*.tsx`, `src/index.ts` (barrel export)
+**open-seo-main/src/server/workers/:**
+- Purpose: BullMQ worker implementations
+- Contains: Worker + Processor pairs for job execution
+- Key files: `audit-worker.ts`, `analytics-worker.ts`, `dlq-worker.ts`
+
+**open-seo-main/src/db/:**
+- Purpose: Drizzle ORM database layer
+- Contains: 50+ schema files, migrations, seeds
+- Key files: `index.ts`, `schema.ts`, `*-schema.ts` files
+
+**open-seo-main/src/client/:**
+- Purpose: Client-side React code for TanStack Start
+- Contains: Components, hooks, utilities, navigation
+- Used when: Accessing open-seo-main directly (not via apps/web shell)
+
+**AI-Writer/backend/:**
+- Purpose: FastAPI Python backend for content generation
+- Contains: Routers, services, models, middleware
+
+**AI-Writer/backend/routers/:**
+- Purpose: FastAPI route handlers
+- Contains: Domain-specific API endpoints
+- Key files: `seo_tools.py`, `image_studio.py`, `campaign_creator.py`
+
+**AI-Writer/backend/services/:**
+- Purpose: Business logic services
+- Contains: 50+ service modules
+- Key directories: `analytics/`, `cache/`, `llm_providers/`, `quality/`
+
+**AI-Writer/backend/models/:**
+- Purpose: SQLAlchemy ORM models and Pydantic schemas
+- Contains: Database models, request/response schemas
+
+**packages/types/src/:**
+- Purpose: Shared TypeScript type definitions
+- Contains: API types, entity types, event types
+- Key files: `api.ts`, `client.ts`, `audit.ts`, `error.ts`
+
+**packages/ui/src/:**
+- Purpose: Shared shadcn/ui component library
+- Contains: 60+ reusable UI components
+- Key files: `components/*.tsx`, `index.ts` (barrel export)
 
 ## Key File Locations
 
 **Entry Points:**
-- `apps/web/src/app/layout.tsx`: Root layout with ClerkProvider
+- `apps/web/src/app/layout.tsx`: Next.js root layout
 - `apps/web/src/app/(shell)/layout.tsx`: Authenticated shell layout
-- `apps/web/src/app/page.tsx`: Landing/redirect page
+- `open-seo-main/src/routes/__root.tsx`: TanStack Start root
+- `AI-Writer/backend/main.py`: FastAPI application entry
 
 **Configuration:**
-- `apps/web/package.json`: Web app dependencies
-- `apps/web/tsconfig.json`: TypeScript configuration with `@/*` path alias
+- `package.json`: Root monorepo config (pnpm workspaces)
+- `pnpm-workspace.yaml`: Workspace package definitions
 - `apps/web/next.config.ts`: Next.js configuration
-- `apps/web/vitest.config.ts`: Test configuration
+- `open-seo-main/drizzle.config.ts`: Drizzle ORM config
+- `AI-Writer/backend/config/`: Python service configs
 
-**Core Logic:**
-- `apps/web/src/lib/server-fetch.ts`: Backend API communication
-- `apps/web/src/lib/cache/redis-cache.ts`: Redis caching utilities
-- `apps/web/src/stores/clientStore.ts`: Active client state management
+**Database:**
+- `open-seo-main/src/db/index.ts`: Database connection and exports
+- `open-seo-main/src/db/schema.ts`: Main schema barrel export
+- `open-seo-main/src/db/*-schema.ts`: Individual entity schemas
+- `AI-Writer/backend/database/`: SQLAlchemy setup
 
-**Shell/Navigation:**
-- `apps/web/src/components/shell/AppShell.tsx`: Main application shell (636 lines)
-- `apps/web/src/components/shell/TopBar.tsx`: Header navigation
-- `apps/web/src/components/shell/CommandPalette.tsx`: Cmd+K search
+**Authentication:**
+- `apps/web/src/lib/auth/`: Clerk auth utilities
+- `open-seo-main/src/server/lib/clerk-jwt.ts`: JWT verification
+- `open-seo-main/src/server/lib/client-context.ts`: Client resolution
+- `AI-Writer/backend/auth/`: FastAPI auth middleware
 
-**Dashboard:**
-- `apps/web/src/app/(shell)/dashboard/page.tsx`: Agency command center
-- `apps/web/src/app/(shell)/dashboard/actions.ts`: Dashboard server actions
-- `apps/web/src/lib/dashboard/types.ts`: Dashboard type definitions
+**API Communication:**
+- `apps/web/src/lib/server-fetch.ts`: Backend API client with retry/circuit breaker
+- `apps/web/src/lib/api-client.ts`: Client-side API utilities
+- `apps/web/src/lib/internal-api/`: Internal service-to-service calls
+
+**State Management:**
+- `apps/web/src/stores/clientStore.ts`: Active client state
+- `apps/web/src/lib/query-keys.ts`: TanStack Query key definitions
+- `apps/web/src/hooks/`: Custom React hooks
 
 **Testing:**
-- `apps/web/src/components/reports/__tests__/`: Report component tests
-- `apps/web/vitest.setup.ts`: Test setup file
+- `apps/web/src/test-utils/`: Test utilities for Next.js
+- `open-seo-main/src/tests/`: Server-side test files
+- `e2e/`: Root-level Playwright E2E tests
 
 ## Naming Conventions
 
 **Files:**
-- Components: PascalCase (`ClientPortfolioTable.tsx`)
-- Hooks: camelCase with `use` prefix (`useGoalMutations.ts`)
-- Server Actions: kebab-case (`get-clients-paginated.ts`)
-- Types: camelCase (`pagination.ts`)
-- Stores: camelCase with `Store` suffix (`clientStore.ts`)
+- React components: `PascalCase.tsx` (e.g., `ClientList.tsx`)
+- TypeScript modules: `kebab-case.ts` (e.g., `client-context.ts`)
+- Test files: `*.test.ts` or `*.test.tsx`
+- Schema files: `*-schema.ts` (e.g., `client-schema.ts`)
+- Worker files: `*-worker.ts`, `*-processor.ts`
 
 **Directories:**
-- Feature folders: lowercase (`dashboard/`, `analytics/`)
-- Route groups: parentheses (`(shell)/`)
-- Dynamic routes: brackets (`[clientId]/`, `[...slug]/`)
+- Feature modules: `kebab-case` (e.g., `command-center/`)
+- Route groups: `(groupName)` for layouts, `_prefix` for special routes
+- API routes: `api/` subdirectory
 
-**Exports:**
-- Components: Named exports (`export const Button`)
-- Hooks: Named exports (`export function useClientStore`)
-- Types: Type exports (`export type { Client }`)
+**Components:**
+- Feature components: `src/components/{feature}/`
+- Shared UI: `packages/ui/src/components/`
+
+**Imports:**
+- Path aliases: `@/` maps to `src/` in each app
+- Package imports: `@tevero/types`, `@tevero/ui`, `@tevero/utils`
 
 ## Where to Add New Code
 
-**New Feature:**
-- Primary code: `apps/web/src/components/{feature}/`
+**New Feature (apps/web):**
+- Primary code: `apps/web/src/app/(shell)/{feature}/`
+- Components: `apps/web/src/components/{feature}/`
 - Server Actions: `apps/web/src/actions/{feature}/`
-- API Routes: `apps/web/src/app/api/{feature}/route.ts`
-- Tests: `apps/web/src/components/{feature}/__tests__/`
+- Tests: Co-located `*.test.ts` files
 
-**New Page/Route:**
-- Page: `apps/web/src/app/(shell)/{route}/page.tsx`
-- Layout (if needed): `apps/web/src/app/(shell)/{route}/layout.tsx`
-- Actions: `apps/web/src/app/(shell)/{route}/actions.ts`
+**New Feature (open-seo-main):**
+- Implementation: `open-seo-main/src/server/features/{feature}/`
+- API routes: `open-seo-main/src/routes/api/{feature}/`
+- Database schema: `open-seo-main/src/db/{feature}-schema.ts`
+- Queue/Worker: `open-seo-main/src/server/queues/`, `open-seo-main/src/server/workers/`
 
-**New Component:**
-- Feature-specific: `apps/web/src/components/{feature}/{ComponentName}.tsx`
-- Shared UI primitive: `packages/ui/src/components/{component}.tsx`
-- Add to barrel: Update `packages/ui/src/index.ts`
+**New API Endpoint (AI-Writer):**
+- Router: `AI-Writer/backend/routers/{feature}.py`
+- Service: `AI-Writer/backend/services/{feature}.py`
+- Models: `AI-Writer/backend/models/{feature}.py`
 
-**New Hook:**
-- App-level: `apps/web/src/hooks/use{HookName}.ts`
-- Feature-specific: `apps/web/src/lib/hooks/use{HookName}.ts`
+**New Shared Component:**
+- Component: `packages/ui/src/components/{component}.tsx`
+- Export: Add to `packages/ui/src/index.ts`
+- Story: `packages/ui/src/stories/{component}.stories.tsx`
 
 **New Shared Type:**
-- Cross-package: `packages/types/src/{domain}.ts` + export in `index.ts`
-- App-only: `apps/web/src/types/{domain}.ts`
+- Type definition: `packages/types/src/{domain}.ts`
+- Export: Add to `packages/types/src/index.ts`
 
 **Utilities:**
-- Shared helpers: `apps/web/src/lib/{utility}.ts`
-- Feature helpers: `apps/web/src/lib/{feature}/{utility}.ts`
+- Shared helpers (apps/web): `apps/web/src/lib/utils/`
+- Shared helpers (open-seo-main): `open-seo-main/src/server/lib/`
+- Shared across apps: `packages/utils/src/`
 
 ## Special Directories
 
-**`apps/web/.next/`:**
-- Purpose: Next.js build output
-- Generated: Yes
-- Committed: No
-
-**`node_modules/`:**
-- Purpose: Dependencies
-- Generated: Yes (pnpm)
-- Committed: No
-
 **`.planning/`:**
-- Purpose: Implementation planning and codebase analysis
+- Purpose: Planning documents, roadmap, phase plans
 - Generated: No (manually maintained)
 - Committed: Yes
 
-**`AI-Writer/` and `open-seo-main/`:**
-- Purpose: External backend services (likely git submodules)
-- Generated: No
-- Committed: As submodule references
+**`.claude/`, `.claire/`:**
+- Purpose: AI assistant worktrees and configs
+- Generated: Yes (by AI tools)
+- Committed: Partially (config yes, worktrees no)
 
-**`apps/web/src/i18n/messages/`:**
-- Purpose: Internationalization message files
+**`node_modules/`:**
+- Purpose: npm dependencies
+- Generated: Yes (by pnpm)
+- Committed: No
+
+**`.next/`, `.vinxi/`, `.output/`:**
+- Purpose: Build output directories
+- Generated: Yes (by build tools)
+- Committed: No
+
+**`docker/`:**
+- Purpose: Docker configurations for deployment
 - Generated: No
 - Committed: Yes
+- Key files: `postgres/init.sql`, `redis/redis.conf`, `nginx/` configs
 
-## Component Organization by Feature
+**`drizzle/`:**
+- Purpose: Database migrations
+- Generated: Yes (by drizzle-kit)
+- Committed: Yes
+- Location: `open-seo-main/drizzle/`
 
-```
-components/
-├── alerts/           # Alert display and management
-├── analytics/        # GA4/GSC charts and tables
-├── App/              # App-level wrappers
-├── brand/            # Brand assets (logos)
-├── ClientSwitcher/   # Client selection dropdown
-├── dashboard/        # Agency dashboard widgets
-├── editor/           # Article/content editor
-├── goals/            # Goal setting and tracking
-├── keywords/         # Keyword research UI
-├── onboarding/       # First-run experience
-├── prospects/        # Lead/prospect management
-├── reports/          # Report generation and preview
-├── seo/              # SEO audit components
-│   └── audit/        # Detailed audit views
-├── settings/         # Settings forms
-├── shell/            # App shell (sidebar, topbar)
-├── team/             # Team management
-└── webhooks/         # Webhook configuration
-```
-
-## API Route Organization
-
-```
-app/api/
-├── analytics/[clientId]/           # Analytics data per client
-├── articles/[articleId]/           # Article CRUD
-├── client-intelligence/[clientId]/ # AI-powered insights
-├── client-settings/[clientId]/     # Per-client settings
-├── clients/[clientId]/             # Client CRUD
-├── content-calendar/[eventId]/     # Calendar events
-├── dashboard/                      # Dashboard aggregates
-├── global-settings/                # Platform settings
-├── health/                         # Health check
-├── platform-secrets/status/        # API key status
-├── reports/[id]/                   # Report CRUD
-├── sparkline/[clientId]/           # Trend data
-└── voice-templates/                # Content voice config
-```
+**`graphify-out/`:**
+- Purpose: Knowledge graph output cache
+- Generated: Yes (by graphify skill)
+- Committed: No
 
 ---
 
-*Structure analysis: 2026-04-22*
+*Structure analysis: 2026-05-05*

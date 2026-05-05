@@ -1,278 +1,305 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-04-22
+**Analysis Date:** 2026-05-05
 
 ## Naming Patterns
 
 **Files:**
-- Components: PascalCase (`AnimatedCounter.tsx`, `StickyCtaButton.tsx`, `AddProspectDialog.tsx`)
-- Hooks: camelCase with `use` prefix (`useScrollSection.ts`, `useRoiCalculator.ts`, `usePaginatedClients.ts`)
-- Utilities: camelCase (`server-fetch.ts`, `error-messages.ts`, `clientOAuth.ts`)
-- Stores: camelCase with `Store` suffix (`clientStore.ts`, `contentCalendarStore.ts`)
-- Schemas: kebab-case with `-schema` suffix (`ranking-schema.ts`, `prospect-schema.ts`)
-- Tests: Same name as source file with `.test.ts` or `.test.tsx` suffix
+- TypeScript: kebab-case for files (`constraint-filter.ts`, `voice-schema.ts`)
+- React components: kebab-case files, PascalCase exports (`step-indicator.tsx` exports `ConnectionStepIndicator`)
+- Tests: `*.test.ts`, `*.test.tsx`, `*.spec.ts` co-located with source
+- Python: snake_case (`voice_constraint_service.py`, `test_internal_link_inserter.py`)
 
 **Functions:**
-- camelCase for all functions (`fetchClients`, `setActiveClient`, `getProspects`)
-- Async functions: often prefixed with action verb (`fetchKeywordIdeasRaw`, `createDataforseoClient`)
-- Event handlers: `handle` prefix not required, but common in React components
+- TypeScript: camelCase (`sanitizeHtml`, `checkGeoFilter`, `runWithRequestId`)
+- Python: snake_case (`fetch_voice_constraints`, `_build_fallback_constraints`)
 
 **Variables:**
-- camelCase for regular variables (`activeClientId`, `remainingAnalyses`)
-- SCREAMING_SNAKE_CASE for constants (`RANKING_QUEUE_NAME`, `AUTUMN_SEO_DATA_BALANCE_FEATURE_ID`)
+- TypeScript: camelCase for variables, SCREAMING_SNAKE_CASE for constants
+- Python: snake_case, SCREAMING_SNAKE_CASE for constants
 
-**Types:**
-- PascalCase for interfaces and types (`Prospect`, `ClientStore`, `KeywordRankingSelect`)
-- Type suffixes: `Select` for DB select types, `Insert` for DB insert types
-- Schema exports: `z.infer<typeof schema>` pattern for Zod-derived types
+**Types/Interfaces:**
+- TypeScript: PascalCase (`FilterConstraints`, `WizardState`, `VoiceConstraintResult`)
+- Prefix interfaces with purpose, not `I` (`FilterResult`, not `IFilterResult`)
+- Python: PascalCase for classes, dataclasses for structured data
+
+**Enums:**
+- TypeScript: Zod schemas with `z.enum()` preferred over TypeScript enums
+- Python: `Enum` class with `value` attribute (`VoiceConstraintStatus.SUCCESS.value == "success"`)
 
 ## Code Style
 
 **Formatting:**
-- Tool: Prettier (open-seo-main)
-- ESLint: `next/core-web-vitals` (apps/web)
-- Linting: oxlint with `--type-aware` (open-seo-main)
+- TypeScript: Prettier
+- open-seo-main: `prettier --check .` / `prettier . --write`
+- apps/web: ESLint + Prettier integration
+- Python: No explicit formatter config (likely Black/Ruff by convention)
 
-**Key settings:**
-- Double quotes for strings
-- Semicolons at end of statements
-- 2-space indentation
-- Trailing commas in multi-line structures
+**Linting:**
+- open-seo-main: OxLint with type-aware rules (`oxlint . --type-aware`)
+- apps/web: ESLint with `next/core-web-vitals` + import ordering rules
+- Python: No explicit config (likely Ruff/Flake8)
+
+**Key Rules:**
+- `no-console` in apps/web (warn level, `console.error` allowed)
+- Strict import ordering enforced via `eslint-plugin-import`
 
 ## Import Organization
 
-**Order:**
-1. External packages (React, Next.js, libraries)
-2. Internal aliases (`@/`, `@tevero/types`, `@tevero/ui`)
-3. Relative imports (same directory or child)
+**Order (apps/web .eslintrc.json enforced):**
+1. Built-in modules (`react`, `next/*`)
+2. External packages (npm dependencies)
+3. Internal aliases (`@/*`, `@tevero/*`)
+4. Parent/sibling imports
+5. Index imports
+6. Type imports (last)
+
+**Example:**
+```typescript
+import { useState, useCallback } from "react";
+
+import { z } from "zod";
+
+import { connectApi } from "@/lib/api/connect";
+import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
+
+import type { DetectionResult } from "./types";
+```
 
 **Path Aliases:**
-- `@/*` - Maps to `./src/*` in both apps/web and open-seo-main
-- `@tevero/types` - Shared types package (`packages/types/src`)
-- `@tevero/ui` - Shared UI components (`packages/ui/src`)
-
-**Import examples:**
-```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import { PageHeader } from "@tevero/ui";
-import { getProspects, getRemainingAnalyses } from "./actions";
-```
+- open-seo-main: `@/` -> `src/`, `@/db` -> `src/db/`, `@/server` -> `src/server/`
+- apps/web: `@/` -> `src/`, `@tevero/types`, `@tevero/ui`, `@tevero/utils`
 
 ## Error Handling
 
 **Patterns:**
-- Centralized error codes in `@/shared/error-codes.ts` with Zod schema validation
-- `AppError` class wraps error codes for typed error handling
-- `toClientError()` sanitizes internal errors for client-facing responses
-- Server actions return typed results or throw `AppError`
 
-**Error code pattern:**
+TypeScript - Zod validation at boundaries:
 ```typescript
-const ERROR_CODES = [
+const schema = z.object({
+  clientId: z.string().min(1, "Client ID is required"),
+  platform: z.enum(["wordpress", "shopify", "wix"]),
+  siteUrl: z.string().url("Invalid site URL"),
+});
+const result = schema.safeParse(input);
+if (!result.success) {
+  throw new Error(result.error.message);
+}
+```
+
+TypeScript - Error codes with `errorCodeSchema`:
+```typescript
+// src/shared/error-codes.ts
+export const errorCodeSchema = z.enum([
   "UNAUTHENTICATED",
-  "PAYMENT_REQUIRED",
+  "VALIDATION_ERROR",
   "NOT_FOUND",
   "INTERNAL_ERROR",
   // ...
-] as const;
-
-export type ErrorCode = z.infer<typeof errorCodeSchema>;
+]);
 ```
 
-**Server-side error handling:**
+Python - Result objects with status enums:
+```python
+@dataclass
+class VoiceConstraintResult:
+    status: VoiceConstraintStatus
+    constraints: Optional[str]
+    error_message: Optional[str] = None
+    
+    @property
+    def is_success(self) -> bool:
+        return self.status == VoiceConstraintStatus.SUCCESS
+    
+    @property
+    def is_error(self) -> bool:
+        return self.status in (VoiceConstraintStatus.API_ERROR, ...)
+```
+
+**API Error Classes:**
 ```typescript
-export class AppError extends Error {
-  constructor(
-    public readonly code: ErrorCode,
-    message?: string,
-  ) {
-    super(message ?? code);
-    this.name = "AppError";
+// apps/web - Custom error class
+export class ConnectApiError extends Error {
+  status: number;
+  code?: string;
+  
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ConnectApiError";
+    this.status = status;
+    this.code = code;
   }
 }
 ```
 
 ## Logging
 
-**Framework:** No centralized logging framework detected in apps/web. open-seo-main uses `createLogger()` pattern.
+**Framework:**
+- open-seo-main: Custom structured logger (`@/server/lib/logger.ts`)
+- AI-Writer: Loguru
+- apps/web: Sentry for errors, console.error allowed
 
 **Patterns:**
-- Use `createLogger()` factory for module-specific loggers
-- Log levels: `info`, `error`, `warn`
-- Avoid `console.log` in production code
+
+```typescript
+// open-seo-main - createLogger with module context
+import { createLogger } from "@/server/lib/logger";
+const log = createLogger({ module: "server" });
+log.info("Processing request");
+log.error("Migration failed", err);
+```
+
+```python
+# AI-Writer - Loguru
+from loguru import logger
+logger.info("Fetching voice constraints")
+logger.error(f"API error: {e}")
+```
+
+**Features:**
+- Correlation IDs via AsyncLocalStorage (`runWithRequestId()`)
+- Environment-aware formatting (JSON in prod, colorized in dev)
+- Log level filtering via `LOG_LEVEL` env var
 
 ## Comments
 
 **When to Comment:**
-- File header docblocks for modules (`/** ... */`)
-- Phase references in test files (`Phase 30: Interactive Proposal Page`)
-- TDD markers in test files (`TDD: Tests written FIRST before implementation`)
-- Complex logic explanations when intent is non-obvious
+- Phase references in headers: `Phase 66-04: Connection Wizard UI`
+- Security notes: `SECURITY: This configuration...`
+- TODO with phase: `// TODO(P40): Implement topic cluster detection`
+- Fix references: `HIGH-V-01 FIX: Makes TypeScript VoiceConstraintBuilder...`
 
 **JSDoc/TSDoc:**
-- Used for exported functions and types
-- Drizzle schema tables have description comments
-- Test files include docblocks explaining test purpose
-
-**Example:**
 ```typescript
 /**
- * Daily rank position snapshots for saved keywords.
- * One row per keyword per day, storing position and SERP features.
+ * Sanitize HTML content using DOMPurify with strict configuration.
+ *
+ * CRITICAL: Always use this function instead of regex-based sanitization.
+ *
+ * @param html - The HTML string to sanitize
+ * @returns Sanitized HTML string safe for rendering
+ *
+ * @example
+ * const clean = sanitizeHtml(untrustedContent);
  */
-export const keywordRankings = pgTable("keyword_rankings", { ... });
+export function sanitizeHtml(html: string): string { ... }
+```
+
+**Python docstrings:**
+```python
+"""
+Voice Constraint Service
+
+Fetches voice constraints from the TypeScript open-seo-main API.
+
+Phase 37-05: Voice integration for AI-Writer
+
+HIGH-V-01 FIX: Makes TypeScript VoiceConstraintBuilder the single source of truth.
+"""
 ```
 
 ## Function Design
 
-**Size:** Keep functions focused; extract helpers for complex logic
+**Size:** Functions typically 20-50 lines, max ~100 lines
 
-**Parameters:** 
-- Use object destructuring for multiple parameters
-- Configuration objects for hooks and factories
+**Parameters:**
+- Use options objects for >3 parameters
+- Destructure in function signature when appropriate
+```typescript
+export interface ConstraintFilterOptions {
+  constraints?: FilterConstraints;
+  priorities?: CategoryPriorityInput[];
+}
+
+constructor(options: ConstraintFilterOptions = {}) { ... }
+```
 
 **Return Values:**
-- Explicit return types on public functions
-- Async functions return `Promise<T>`
-- Hooks return object with state and actions
-
-**Hook pattern:**
-```typescript
-export const useClientStore = create<ClientStore>()(
-  persist(
-    (set, get) => ({
-      // State
-      clients: [],
-      activeClientId: null,
-      // Actions
-      fetchClients: async () => { ... },
-      setActiveClient: (id: string) => { ... },
-    }),
-    { ... }
-  )
-);
-```
+- Use result objects for operations that can fail
+- Include status, data, and error information
+- Use `null` for optional values, not `undefined`
 
 ## Module Design
 
 **Exports:**
 - Named exports preferred over default exports
-- Barrel files (`index.ts`) for package entry points
-- Type exports alongside value exports
+- Re-export from index files for clean imports
+- Barrel files in `packages/types/src/index.ts`
 
-**Barrel Files:**
-- `packages/ui/src/index.ts` - Exports all UI components
-- `src/db/schema.ts` - Re-exports all schema modules
-- Keep barrel files alphabetically sorted
-
-**Example barrel:**
+**Example barrel file:**
 ```typescript
-export { cn } from "./lib/utils";
-export { Badge, badgeVariants } from "./components/badge";
-export type { BadgeProps } from "./components/badge";
-export { Button, buttonVariants } from "./components/button";
+export type { Client } from "./client";
+export type { Project } from "./project";
+export * from "./events";
+export {
+  QUALITY_THRESHOLDS,
+  getScoreColorFromThreshold,
+  passesQualityGate,
+} from "./scoring";
 ```
 
-## React Component Patterns
-
-**Component structure:**
+**Class Design:**
 ```typescript
-"use client"; // Client directive when needed
+export class ConstraintFilter {
+  private constraints: FilterConstraints;
+  private scorer: CompositeScorer;
+  private stats: FilterStats;
 
-import * as React from "react";
-import { cn } from "@tevero/ui";
+  constructor(options: ConstraintFilterOptions = {}) { ... }
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "destructive";
-}
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, ...props }, ref) => {
-    return (
-      <button
-        className={cn(buttonVariants({ variant, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = "Button";
-
-export { Button };
-```
-
-**Styling:**
-- Tailwind CSS for all styling
-- `cn()` utility for conditional class merging
-- `cva` (class-variance-authority) for component variants
-
-## Server Actions (Next.js)
-
-**Pattern:**
-```typescript
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
-
-export async function getProspects(params: { pageSize: number }) {
-  return getOpenSeo<ProspectResponse>(`/prospects?pageSize=${params.pageSize}`);
+  filter(input: ClassifiedKeywordInput): FilterResult { ... }
 }
 ```
 
-## Database Schema (Drizzle ORM)
+## Security Patterns
 
-**Pattern:**
+**Input Sanitization:**
+- DOMPurify with allowlist config for HTML (`sanitizeHtml`, `sanitizeMinimalHtml`, `stripHtml`)
+- Zod schemas at API boundaries
+- URL validation before use
+
+**Environment Validation:**
 ```typescript
-import { pgTable, text, integer, timestamp, jsonb, index } from "drizzle-orm/pg-core";
-
-export const tableName = pgTable(
-  "table_name",
-  {
-    id: text("id").primaryKey(),
-    fieldName: text("field_name").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("ix_table_field").on(table.fieldName),
-  ],
-);
-
-export type TableSelect = typeof tableName.$inferSelect;
-export type TableInsert = typeof tableName.$inferInsert;
+// Fail fast on missing required environment variables
+validateEnv(requiredEnvVars);
 ```
 
-## State Management
+```python
+# SECURITY: Environment validation MUST run before any other imports
+from config.env_validator import validate_env
+validate_env()
+```
 
-**Zustand stores:**
-- Separate state interface from actions interface
-- Use `persist` middleware for client-side persistence
-- Cookie storage for cross-tab sync when needed
+**Secrets:**
+- Never hardcode secrets
+- Validate env vars at startup
+- Use encryption for stored credentials
 
-**React Query:**
-- TanStack Query for server state
-- Queries in custom hooks or direct usage
-- Mutations with optimistic updates where appropriate
+## Immutability
 
-## Validation
-
-**Zod schemas:**
-- Define schemas alongside types
-- Use `z.infer<typeof schema>` for type derivation
-- Schema-based validation at API boundaries
-
+**Spread for updates (not mutation):**
 ```typescript
-import { z } from "zod";
+// Correct
+this.stats = {
+  total: 0,
+  passed: 0,
+  excludedByGeo: 0,
+  // ...
+};
 
-const ERROR_CODES = ["UNAUTHENTICATED", "PAYMENT_REQUIRED"] as const;
-export const errorCodeSchema = z.enum(ERROR_CODES);
-export type ErrorCode = z.infer<typeof errorCodeSchema>;
+// For updates, create new object
+const newStats = { ...this.stats, total: this.stats.total + 1 };
+```
+
+**Python dataclasses:**
+```python
+@dataclass
+class VoiceConstraintResult:
+    status: VoiceConstraintStatus
+    constraints: Optional[str]
+    # Immutable by default
 ```
 
 ---
 
-*Convention analysis: 2026-04-22*
+*Convention analysis: 2026-05-05*
