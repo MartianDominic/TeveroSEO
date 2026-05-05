@@ -22,15 +22,40 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase 83 Complete. v9.0 milestone paused pending Phase 84-89 planning.
+**Current focus:** Phases 84-89 planning complete. Ready for execution.
 
 ## Current Position
 
-Phase: 83
-Plan: ALL COMPLETE
+Phase: 84-input-client-intelligence
+Plan: 01 COMPLETE
 Milestone: v9.0 Foundation & Reliability (Phases 83-89)
-Status: Phase 83 COMPLETE (4 waves verified)
-Last activity: 2026-05-05 -- Completed Phase 83 Foundation & Reliability (v5-nano embeddings, error recovery, 2-tier cache, model routing)
+Status: Phase 84 Plan 01 COMPLETE
+Last activity: 2026-05-05 -- Completed 84-01 (KeywordGenerator, clarifying questions, GSC bridge, CSV import)
+
+### Phase 84-89 Planning Summary
+
+| Phase | Focus | Context | Status |
+|-------|-------|---------|--------|
+| 84 | Export & Integration | - | Ready |
+| 85 | Analysis Experience | - | Ready |
+| 86 | Semantic Intelligence | 86-CONTEXT.md | Ready |
+| 87 | Agency Business (Portal) | 87-CONTEXT.md | Ready |
+| 88 | Learning & Collaboration | 88-CONTEXT.md | Ready |
+| 89 | Keyword Lock-in | 89-CONTEXT.md | Ready |
+
+**Key Documents Created:**
+- `.planning/phases/CLIENT-PORTAL-SPEC.md` — Comprehensive spec for Phases 87-89 (1500+ lines)
+- `.planning/phases/87-agency-business/87-CONTEXT.md` — Content Calendar + Client Portal
+- `.planning/phases/88-learning-collaboration/88-CONTEXT.md` — Outcome Tracking + Learning
+- `.planning/phases/89-client-acquisition/89-CONTEXT.md` — Keyword Lock-in
+
+**Key Decisions:**
+- All portal/notification features optional, OFF by default
+- Communication style presets (High-Touch/Hybrid/Self-Service) instead of feature toggles
+- Portal authentication: 3 levels (token-only, email-verify, full-login)
+- Keyword Lock-in ON by default (infrastructure) but strict enforcement optional
+- Value math: delivered ÷ contracted target × 100 (no ranges)
+- Multi-client conflict detection for overlapping keywords
 
 ### Phase 41 Focus
 

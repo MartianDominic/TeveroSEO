@@ -2456,3 +2456,140 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 82-02-PLAN.md — CopilotKit tools + React UI + export actions + conversation memory (Wave 2)
 
 ---
+
+### Phase 83: Foundation & Reliability
+**Goal**: Harden embedding infrastructure with local models, error recovery, caching, and model routing.
+**Depends on**: Phase 78 (embeddings)
+**Working directory**: `open-seo-main/`, `AI-Writer/`
+**Status**: ✓ Complete
+**Key Deliverables**:
+  - v5-nano as default model (12x faster, 98.3% recall)
+  - Python FastAPI server for local embeddings
+  - 4-level fallback cascade (local server → local ONNX → Jina API → zero vectors)
+  - 2-tier cache (in-memory + Redis)
+  - Health check caching (30s interval)
+**Plans**: 4 plans (all complete)
+
+---
+
+### Phase 84: Input & Client Intelligence
+**Goal**: Wire conversation intelligence services into keyword analysis pipeline.
+**Depends on**: Phase 75-01 (ConstraintExtractor), Phase 82-02 (CopilotKit)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Status**: In Progress
+**Key Features**:
+  - KeywordGenerator wired into chat flow
+  - Clarifying question conversational loop (max 3 rounds)
+  - GSC bridge for client path ranking data
+  - CSV import dialog with format detection
+**Estimated effort**: 2 days
+**Plans**: 1 plan
+  - [x] 84-01-PLAN.md — Wire intelligence services, GSC bridge, CSV import (Wave 1) - COMPLETE
+
+---
+
+### Phase 85: Analysis Experience
+**Goal**: Enhance keyword analysis UX with "Why this keyword?" explanations.
+**Depends on**: Phase 79-80 (scoring/filtering)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Status**: Pending
+**Key Features**:
+  - Score breakdown popover showing factor contributions
+  - Human-readable Lithuanian explanations
+  - Hover/click on any keyword row
+**Estimated effort**: 4 hours
+**Plans**: 1 plan
+  - [ ] 85-01-PLAN.md — ScoreExplanation popover component (Wave 1)
+
+---
+
+### Phase 86: Semantic Intelligence Pipeline
+**Goal**: Transform flat keyword lists into clustered "growth areas" with HDBSCAN clustering.
+**Depends on**: Phase 78 (embeddings), Phase 79-80 (filtering/selection)
+**Working directory**: `open-seo-main/`, `AI-Writer/`, `apps/web/`
+**Context**: [86-CONTEXT.md](.planning/phases/86-semantic-intelligence/86-CONTEXT.md)
+**Status**: DEFERRED — Complex clustering deferred to later milestone
+**Key Features**:
+  - Semantic deduplication (cosine > 0.92 → merge)
+  - HDBSCAN clustering (Python microservice)
+  - Intent-aware splitting (BOFU/MOFU/TOFU)
+  - Topic labeling (LT/EN)
+  - Hierarchy building (pillar/subtopic/longtail)
+  - Proposal editing with CopilotKit
+**Estimated effort**: 11.5 days (10 sub-phases)
+**Plans**: 10 plans
+  - [ ] 86-01-PLAN.md — Semantic deduplication + HDBSCAN clustering (Wave 1)
+  - [ ] 86-02 through 86-10 — See 86-CONTEXT.md for full breakdown
+
+---
+
+### Phase 87: Agency Business
+**Goal**: Content calendar enhancement + client portal for agency-client communication.
+**Depends on**: Phase 45 (Data Foundation)
+**Working directory**: `open-seo-main/`, `apps/web/`, `AI-Writer/`
+**Context**: [87-CONTEXT.md](.planning/phases/87-agency-business/87-CONTEXT.md)
+**Spec**: [CLIENT-PORTAL-SPEC.md](.planning/phases/CLIENT-PORTAL-SPEC.md)
+**Status**: Planning Complete
+**Key Features**:
+  - Content calendar drag-drop scheduling (80% already built)
+  - Client portal with 3 auth levels (token/email/login)
+  - Communication style presets (High-Touch/Hybrid/Self-Service)
+  - All features optional by design, OFF by default
+  - Progressive disclosure onboarding UX
+**Estimated effort**: 3-4 days
+**Plans**: 6 plans
+  - [ ] 87-01-PLAN.md — Content calendar drag-drop (@dnd-kit)
+  - [ ] 87-02-PLAN.md — Portal token schema + security
+  - [ ] 87-03-PLAN.md — Portal auth levels
+  - [ ] 87-04-PLAN.md — Portal UI layout
+  - [ ] 87-05-PLAN.md — Notification system
+  - [ ] 87-06-PLAN.md — Communication style config + onboarding
+
+---
+
+### Phase 88: Learning & Collaboration
+**Goal**: Outcome tracking and cross-client learning to improve recommendations over time.
+**Depends on**: Phase 87 (Client Portal), Phase 89 (Keyword Lock-in)
+**Working directory**: `open-seo-main/`
+**Context**: [88-CONTEXT.md](.planning/phases/88-learning-collaboration/88-CONTEXT.md)
+**Spec**: [CLIENT-PORTAL-SPEC.md](.planning/phases/CLIENT-PORTAL-SPEC.md)
+**Status**: DEFERRED — Learning loop deferred to later milestone
+**Key Features**:
+  - Keyword outcome tracking (selection → publish → rank)
+  - GSC position ingestion at 30/90 day windows
+  - Score threshold analysis (what predicts top 10?)
+  - Industry benchmark aggregation (privacy-first)
+  - Recommendation weight tuning from learnings
+**Estimated effort**: 2-3 days
+**Plans**: 5 plans
+  - [ ] 88-01-PLAN.md — Outcome tracking schema
+  - [ ] 88-02-PLAN.md — GSC position ingestion worker
+  - [ ] 88-03-PLAN.md — Learning queries
+  - [ ] 88-04-PLAN.md — Benchmark aggregation
+  - [ ] 88-05-PLAN.md — Recommendation enhancement
+
+---
+
+### Phase 89: Client Acquisition (Keyword Lock-in)
+**Goal**: Contract-to-delivery bridge that proves ROI and prevents scope creep.
+**Depends on**: Phase 45 (Data Foundation), Phase 87 (Client Portal)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Context**: [89-CONTEXT.md](.planning/phases/89-client-acquisition/89-CONTEXT.md)
+**Spec**: [CLIENT-PORTAL-SPEC.md](.planning/phases/CLIENT-PORTAL-SPEC.md)
+**Status**: Planning Complete
+**Key Features**:
+  - Keyword lock at contract signing with baseline snapshot
+  - Goal tracking (delivered ÷ target × 100 = achievement %)
+  - Out-of-scope request flagging + change orders
+  - Multi-client conflict detection (same keyword to competitors)
+  - Progress view in client portal
+**Estimated effort**: 2-3 days
+**Plans**: 6 plans
+  - [ ] 89-01-PLAN.md — Contracted keywords schema
+  - [ ] 89-02-PLAN.md — Contract goals schema
+  - [ ] 89-03-PLAN.md — Lock event flow + signing UI
+  - [ ] 89-04-PLAN.md — Out-of-scope detection
+  - [ ] 89-05-PLAN.md — Conflict detection
+  - [ ] 89-06-PLAN.md — Progress tracking UI
+
+---
