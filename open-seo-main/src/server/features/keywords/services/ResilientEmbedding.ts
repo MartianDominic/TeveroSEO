@@ -1,20 +1,23 @@
 /**
- * ResilientEmbedding: Embedding service with fallback cascade.
+ * ResilientEmbedding: Embedding service with FAIL-FAST architecture.
  *
- * Phase 83: Updated to support v5-nano with local embedding server
+ * Phase 83: Fail-fast, not fail-silently
  *
- * Cascade order:
- * 1. Local embedding server (primary - Python FastAPI with v5-nano ONNX)
- * 2. Jina API (fallback - higher quality when local fails)
- * 3. Zero vectors (last resort - never throws)
+ * Cascade order (quality-preserving only):
+ * 1. Redis Cache (80%+ hit rate after warmup)
+ * 2. Local embedding server (v5-nano via Python FastAPI)
+ * 3. Jina API (v5-nano model for consistency)
+ * 4. THROW EmbeddingUnavailableError (job goes to DLQ)
+ *
+ * REMOVED (were breaking clustering silently):
+ * - LocalONNXEmbedding (hash-based stub - semantically meaningless)
+ * - Zero vector fallback (complete semantic collapse)
  *
  * Features:
- * - Local embedding server support (v5-nano via sentence-transformers)
- * - Cache layer integration to avoid redundant computations
- * - Circuit breaker for external API
- * - Never throws - always returns vectors
- * - Tracks which backend produced each embedding
- * - v5 API support with task/prompt_name parameters
+ * - Same model family (v5-nano) for consistency
+ * - Retry with exponential backoff before fallback
+ * - Circuit breakers for external services
+ * - Throws on complete failure (better than garbage clusters)
  */
 
 import { CircuitBreaker } from "./CircuitBreaker";
@@ -25,28 +28,39 @@ import { EMBEDDING_CONFIG } from "@/server/lib/embeddings/embedding-config";
 const log = createLogger({ module: "ResilientEmbedding" });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Error Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Thrown when all embedding backends are unavailable.
+ * Job should be moved to DLQ for retry later.
+ */
+export class EmbeddingUnavailableError extends Error {
+  readonly code = "EMBEDDING_UNAVAILABLE";
+  readonly retryable = true;
+
+  constructor(message: string, public readonly details?: Record<string, unknown>) {
+    super(message);
+    this.name = "EmbeddingUnavailableError";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type EmbeddingBackend = "local" | "onnx" | "jina" | "zero";
+export type EmbeddingBackend = "cache" | "local" | "jina";
 
 export interface EmbeddingResult {
-  /** The text that was embedded */
   text: string;
-  /** The embedding vector */
   vector: number[];
-  /** Vector dimension */
   dimension: number;
-  /** Which backend produced this embedding */
   source: EmbeddingBackend;
-  /** Whether this was a fallback/degraded result */
   isFallback: boolean;
 }
 
 export interface BatchEmbeddingResult {
-  /** All embeddings in order */
   embeddings: EmbeddingResult[];
-  /** Summary of backends used */
   summary: {
     total: number;
     bySource: Record<EmbeddingBackend, number>;
@@ -55,21 +69,20 @@ export interface BatchEmbeddingResult {
 }
 
 export interface EmbeddingConfig {
-  /** Embedding dimension (default: 384 for Matryoshka truncation) */
   dimension: number;
-  /** Jina API key (optional - for API fallback) */
   jinaApiKey?: string;
-  /** Cache implementation (optional) */
   cache?: EmbeddingCache;
-  /** Circuit breaker config for Jina API */
   jinaCircuit?: { failureThreshold?: number; resetTimeout?: number };
-  /** Local model path (optional - uses default if not provided) */
-  localModelPath?: string;
+  retryConfig?: RetryConfig;
 }
 
-/**
- * Cache interface for embedding vectors.
- */
+export interface RetryConfig {
+  maxAttempts: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+  backoffMultiplier: number;
+}
+
 export interface EmbeddingCache {
   get(text: string): Promise<number[] | null>;
   set(text: string, vector: number[]): Promise<void>;
@@ -77,34 +90,58 @@ export interface EmbeddingCache {
   setMany(texts: string[], vectors: number[][]): Promise<void>;
 }
 
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 8000,
+  backoffMultiplier: 2,
+};
+
 const DEFAULT_CONFIG: EmbeddingConfig = {
   dimension: EMBEDDING_CONFIG.storageDim,
+  retryConfig: DEFAULT_RETRY_CONFIG,
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Retry Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RETRYABLE_ERRORS = ["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "503", "429", "500", "502", "504"];
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof TimeoutError) return true;
+  if (error instanceof HttpError) {
+    return error.status >= 500 || error.status === 429;
+  }
+  if (error instanceof Error) {
+    return RETRYABLE_ERRORS.some((code) => error.message.includes(code));
+  }
+  return false;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getBackoffDelay(attempt: number, config: RetryConfig): number {
+  const delay = config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt - 1);
+  return Math.min(delay, config.maxDelayMs);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local Embedding Server Client (Python FastAPI with v5-nano)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Client for the local Python embedding server.
- * Server runs sentence-transformers with v5-nano model for fast CPU inference.
- */
 class LocalEmbeddingClient {
   private readonly serverUrl: string;
   private isHealthy: boolean = false;
   private lastHealthCheck: number = 0;
-  private readonly healthCheckInterval: number = 30000; // 30 seconds
+  private readonly healthCheckInterval: number = 30000;
 
   constructor(serverUrl: string = process.env.EMBEDDING_SERVER_URL || "http://localhost:8001") {
     this.serverUrl = serverUrl;
   }
 
-  /**
-   * Embed texts using the local embedding server.
-   * @param texts - Texts to embed
-   * @param isDocument - Whether texts are documents (vs queries)
-   * @returns Array of embedding vectors
-   */
   async embed(texts: string[], isDocument: boolean = false): Promise<number[][]> {
     const response = await fetch(`${this.serverUrl}/embed`, {
       method: "POST",
@@ -114,6 +151,7 @@ class LocalEmbeddingClient {
         batch_size: EMBEDDING_CONFIG.batchSize,
         is_document: isDocument,
       }),
+      signal: AbortSignal.timeout(EMBEDDING_CONFIG.timeoutMs),
     });
 
     if (!response.ok) {
@@ -124,10 +162,6 @@ class LocalEmbeddingClient {
     return data.embeddings;
   }
 
-  /**
-   * Check if the local embedding server is healthy.
-   * Caches result for healthCheckInterval to avoid excessive requests.
-   */
   async healthCheck(): Promise<boolean> {
     const now = Date.now();
     if (now - this.lastHealthCheck < this.healthCheckInterval) {
@@ -136,7 +170,7 @@ class LocalEmbeddingClient {
 
     try {
       const response = await fetch(`${this.serverUrl}/health`, {
-        signal: AbortSignal.timeout(5000), // 5 second timeout for health check
+        signal: AbortSignal.timeout(5000),
       });
       this.isHealthy = response.ok;
     } catch {
@@ -147,9 +181,6 @@ class LocalEmbeddingClient {
     return this.isHealthy;
   }
 
-  /**
-   * Reset health check cache (for testing).
-   */
   resetHealthCheck(): void {
     this.lastHealthCheck = 0;
     this.isHealthy = false;
@@ -157,142 +188,43 @@ class LocalEmbeddingClient {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Local ONNX Embedding (simulated for now - would use transformers.js or similar)
+// Jina API Embedding (v5-nano model for consistency)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Local ONNX embedding implementation.
- *
- * In production, this would use:
- * - @xenova/transformers for browser/Node.js ONNX inference
- * - sentence-transformers via Python subprocess
- * - Pre-loaded model weights
- *
- * For this implementation, we use a deterministic hash-based approach
- * that produces consistent vectors for the same input text.
- */
-class LocalONNXEmbedding {
-  private readonly dimension: number;
-  private initialized = false;
-
-  constructor(dimension: number) {
-    this.dimension = dimension;
-  }
-
-  async initialize(): Promise<void> {
-    // In production: Load ONNX model weights
-    // For now: Just mark as initialized
-    this.initialized = true;
-    log.debug("Local ONNX embedding initialized", { dimension: this.dimension });
-  }
-
-  /**
-   * Generate embeddings for texts.
-   * Uses deterministic hashing to produce consistent vectors.
-   */
-  async encode(texts: string[]): Promise<number[][]> {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-
-    return texts.map((text) => this.hashToVector(text));
-  }
-
-  /**
-   * Convert text to a deterministic vector via hashing.
-   * This is a placeholder - real implementation would use actual model.
-   */
-  private hashToVector(text: string): number[] {
-    const vector = new Array<number>(this.dimension);
-    const normalized = text.toLowerCase().trim();
-
-    // Use multiple hash seeds for different dimensions
-    for (let i = 0; i < this.dimension; i++) {
-      // Simple hash function (djb2 variant)
-      let hash = 5381 + i * 33;
-      for (let j = 0; j < normalized.length; j++) {
-        hash = ((hash << 5) + hash) ^ normalized.charCodeAt(j);
-      }
-      // Normalize to [-1, 1] range
-      vector[i] = (((hash >>> 0) % 20000) - 10000) / 10000;
-    }
-
-    // L2 normalize the vector
-    const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
-    if (norm > 0) {
-      for (let i = 0; i < this.dimension; i++) {
-        vector[i] /= norm;
-      }
-    }
-
-    return vector;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Jina API Embedding
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Jina Embeddings API client.
- * Updated for v5 API with task/prompt_name parameters.
- * Falls back from local server when needed.
- */
 class JinaEmbeddingAPI {
   private readonly apiKey: string;
 
-  constructor(apiKey: string, _dimension: number) {
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
-    // dimension handled by EMBEDDING_CONFIG.getApiPayload()
   }
 
-  /**
-   * Embed texts using Jina API.
-   * @param texts - Texts to embed
-   * @param isDocument - Whether texts are documents (affects prompt_name for v5)
-   */
   async embed(texts: string[], isDocument: boolean = false): Promise<number[][]> {
-    try {
-      // Use getApiPayload for v5 API parameters
-      const payload = EMBEDDING_CONFIG.getApiPayload(texts, isDocument);
+    const payload = EMBEDDING_CONFIG.getApiPayload(texts, isDocument);
 
-      const data = await jinaClient.post<{
-        data: Array<{ embedding: number[] }>;
-      }>(
-        "/v1/embeddings",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-          },
-          timeout: EMBEDDING_CONFIG.timeoutMs,
-          retries: EMBEDDING_CONFIG.retries,
-        },
-      );
+    const data = await jinaClient.post<{
+      data: Array<{ embedding: number[] }>;
+    }>("/v1/embeddings", payload, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      timeout: EMBEDDING_CONFIG.timeoutMs,
+      retries: 0, // We handle retries ourselves
+    });
 
-      return data.data.map((d) => d.embedding);
-    } catch (error) {
-      if (error instanceof HttpError) {
-        throw new Error(`Jina API error: ${error.status} - ${error.body.slice(0, 200)}`);
-      }
-      if (error instanceof TimeoutError) {
-        throw new Error(`Jina API timeout after ${error.timeoutMs}ms`);
-      }
-      throw error;
-    }
+    return data.data.map((d) => d.embedding);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ResilientEmbedding
+// ResilientEmbedding (Fail-Fast Architecture)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class ResilientEmbedding {
   private readonly localServer: LocalEmbeddingClient;
-  private readonly localOnnx: LocalONNXEmbedding;
   private readonly jina: JinaEmbeddingAPI | null;
   private readonly cache: EmbeddingCache | null;
   private readonly dimension: number;
+  private readonly retryConfig: RetryConfig;
 
   private readonly jinaCircuit: CircuitBreaker;
   private readonly localServerCircuit: CircuitBreaker;
@@ -300,57 +232,36 @@ export class ResilientEmbedding {
   constructor(config: Partial<EmbeddingConfig> = {}) {
     const fullConfig = { ...DEFAULT_CONFIG, ...config };
     this.dimension = fullConfig.dimension;
+    this.retryConfig = fullConfig.retryConfig ?? DEFAULT_RETRY_CONFIG;
 
-    // Local embedding server (v5-nano via Python FastAPI) - primary
     this.localServer = new LocalEmbeddingClient();
-
-    // Local ONNX fallback (hash-based stub for now)
-    this.localOnnx = new LocalONNXEmbedding(this.dimension);
-
-    // Jina API is optional (requires API key)
-    this.jina = fullConfig.jinaApiKey ? new JinaEmbeddingAPI(fullConfig.jinaApiKey, this.dimension) : null;
-
-    // Cache is optional
+    this.jina = fullConfig.jinaApiKey ? new JinaEmbeddingAPI(fullConfig.jinaApiKey) : null;
     this.cache = fullConfig.cache || null;
 
-    // Circuit breakers for external services
+    // Circuit breaker: 5 failures in sliding window, 60s reset
     this.jinaCircuit = new CircuitBreaker({
       name: "jina-embedding",
-      failureThreshold: fullConfig.jinaCircuit?.failureThreshold ?? 3,
+      failureThreshold: fullConfig.jinaCircuit?.failureThreshold ?? 5,
       resetTimeout: fullConfig.jinaCircuit?.resetTimeout ?? 60000,
     });
 
     this.localServerCircuit = new CircuitBreaker({
       name: "local-embedding-server",
-      failureThreshold: 3,
-      resetTimeout: 30000, // Reset faster for local server
+      failureThreshold: 5,
+      resetTimeout: 30000,
     });
   }
 
-  /**
-   * Generate embedding for a single text.
-   * Never throws - returns zero vector as last resort.
-   *
-   * @param text - Text to embed
-   * @returns Embedding result with source indicator
-   */
   async embed(text: string): Promise<EmbeddingResult> {
     const results = await this.embedBatch([text]);
     return results.embeddings[0];
   }
 
-  /**
-   * Generate embeddings for multiple texts.
-   * Never throws - returns zero vectors for failed items.
-   *
-   * @param texts - Texts to embed
-   * @returns Batch embedding result with summary
-   */
   async embedBatch(texts: string[]): Promise<BatchEmbeddingResult> {
     const results: EmbeddingResult[] = [];
     const summary = {
       total: texts.length,
-      bySource: { local: 0, onnx: 0, jina: 0, zero: 0 } as Record<EmbeddingBackend, number>,
+      bySource: { cache: 0, local: 0, jina: 0 } as Record<EmbeddingBackend, number>,
       cacheHits: 0,
     };
 
@@ -360,6 +271,7 @@ export class ResilientEmbedding {
       try {
         cachedVectors = await this.cache.getMany(texts);
         summary.cacheHits = cachedVectors.filter((v) => v !== null).length;
+        summary.bySource.cache = summary.cacheHits;
       } catch (error) {
         log.warn("Cache lookup failed", {
           error: error instanceof Error ? error.message : String(error),
@@ -370,7 +282,7 @@ export class ResilientEmbedding {
       cachedVectors = texts.map(() => null);
     }
 
-    // Separate cached and uncached texts
+    // Separate cached and uncached
     const uncachedIndices: number[] = [];
     const uncachedTexts: string[] = [];
 
@@ -380,24 +292,21 @@ export class ResilientEmbedding {
           text: texts[i],
           vector: cachedVectors[i]!,
           dimension: this.dimension,
-          source: "onnx", // Assume cached vectors came from primary source
+          source: "cache",
           isFallback: false,
         };
-        summary.bySource.onnx++;
       } else {
         uncachedIndices.push(i);
         uncachedTexts.push(texts[i]);
       }
     }
 
-    // Process uncached texts
+    // Generate embeddings for uncached texts (FAIL-FAST)
     if (uncachedTexts.length > 0) {
       const newEmbeddings = await this.generateEmbeddings(uncachedTexts, summary);
 
-      // Map back to original indices
       for (let j = 0; j < uncachedIndices.length; j++) {
-        const originalIndex = uncachedIndices[j];
-        results[originalIndex] = newEmbeddings[j];
+        results[uncachedIndices[j]] = newEmbeddings[j];
       }
 
       // Cache new embeddings
@@ -419,19 +328,23 @@ export class ResilientEmbedding {
   }
 
   /**
-   * Generate embeddings using fallback cascade.
-   * Local Server (v5-nano) -> Local ONNX -> Jina API -> Zero vectors
+   * Generate embeddings using fail-fast cascade.
+   * Local Server (v5-nano) -> Jina API (v5-nano) -> THROW
+   *
+   * NEVER returns garbage vectors. Throws instead.
    */
   private async generateEmbeddings(
     texts: string[],
     summary: { bySource: Record<EmbeddingBackend, number> },
   ): Promise<EmbeddingResult[]> {
-    // Try local embedding server first (v5-nano via Python - fastest, no rate limits)
+    const errors: Error[] = [];
+
+    // Try 1: Local embedding server with retry
     if (this.localServerCircuit.allowsRequest) {
       const isHealthy = await this.localServer.healthCheck();
       if (isHealthy) {
         try {
-          const vectors = await this.localServer.embed(texts);
+          const vectors = await this.embedWithRetry(texts, "local");
           this.localServerCircuit.recordSuccess();
           summary.bySource.local += texts.length;
 
@@ -447,46 +360,28 @@ export class ResilientEmbedding {
             source: "local" as EmbeddingBackend,
             isFallback: false,
           }));
-        } catch (localServerError) {
+        } catch (error) {
           this.localServerCircuit.recordFailure();
-          log.warn("Local embedding server failed, trying ONNX fallback", {
-            error: localServerError instanceof Error ? localServerError.message : String(localServerError),
+          errors.push(error instanceof Error ? error : new Error(String(error)));
+          log.warn("Local embedding server failed after retries", {
+            error: error instanceof Error ? error.message : String(error),
           });
         }
+      } else {
+        log.debug("Local server unhealthy, skipping to Jina API");
       }
+    } else {
+      log.debug("Local server circuit open, skipping to Jina API");
     }
 
-    // Try local ONNX fallback (hash-based stub)
-    try {
-      const vectors = await this.localOnnx.encode(texts);
-      summary.bySource.onnx += texts.length;
-
-      log.debug("Local ONNX embedding succeeded", {
-        count: texts.length,
-        dimension: this.dimension,
-      });
-
-      return texts.map((text, i) => ({
-        text,
-        vector: vectors[i],
-        dimension: this.dimension,
-        source: "onnx" as EmbeddingBackend,
-        isFallback: true,
-      }));
-    } catch (localError) {
-      log.warn("Local ONNX embedding failed, trying Jina API", {
-        error: localError instanceof Error ? localError.message : String(localError),
-      });
-    }
-
-    // Fallback to Jina API
+    // Try 2: Jina API with retry (same v5-nano model for consistency)
     if (this.jina && this.jinaCircuit.allowsRequest) {
       try {
-        const vectors = await this.jina.embed(texts);
+        const vectors = await this.embedWithRetry(texts, "jina");
         this.jinaCircuit.recordSuccess();
         summary.bySource.jina += texts.length;
 
-        log.info("Jina API fallback succeeded", {
+        log.info("Jina API succeeded", {
           count: texts.length,
           dimension: this.dimension,
         });
@@ -498,54 +393,76 @@ export class ResilientEmbedding {
           source: "jina" as EmbeddingBackend,
           isFallback: true,
         }));
-      } catch (jinaError) {
+      } catch (error) {
         this.jinaCircuit.recordFailure();
-        log.warn("Jina API embedding failed, using zero vectors", {
-          error: jinaError instanceof Error ? jinaError.message : String(jinaError),
+        errors.push(error instanceof Error ? error : new Error(String(error)));
+        log.warn("Jina API failed after retries", {
+          error: error instanceof Error ? error.message : String(error),
           circuitState: this.jinaCircuit.currentState,
         });
       }
-    } else if (this.jina && !this.jinaCircuit.allowsRequest) {
-      log.debug("Jina circuit open, skipping to zero vectors", {
-        circuitState: this.jinaCircuit.currentState,
-      });
+    } else if (!this.jina) {
+      errors.push(new Error("No Jina API key configured"));
+    } else {
+      errors.push(new Error("Jina circuit breaker open"));
     }
 
-    // Last resort: zero vectors
-    log.warn("All embedding backends failed, returning zero vectors", {
-      count: texts.length,
-      dimension: this.dimension,
-    });
-
-    summary.bySource.zero += texts.length;
-
-    return texts.map((text) => ({
-      text,
-      vector: new Array(this.dimension).fill(0),
-      dimension: this.dimension,
-      source: "zero" as EmbeddingBackend,
-      isFallback: true,
-    }));
+    // FAIL-FAST: Throw instead of returning garbage
+    throw new EmbeddingUnavailableError(
+      "All embedding backends unavailable. Job will be retried.",
+      {
+        textCount: texts.length,
+        localCircuitState: this.localServerCircuit.currentState,
+        jinaCircuitState: this.jinaCircuit.currentState,
+        errors: errors.map((e) => e.message),
+      },
+    );
   }
 
   /**
-   * Get current circuit breaker state for monitoring.
+   * Embed with exponential backoff retry.
    */
-  getCircuitState(): string {
-    return this.jinaCircuit.currentState;
+  private async embedWithRetry(texts: string[], backend: "local" | "jina"): Promise<number[][]> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
+      try {
+        if (backend === "local") {
+          return await this.localServer.embed(texts);
+        } else {
+          return await this.jina!.embed(texts);
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!isRetryable(error) || attempt === this.retryConfig.maxAttempts) {
+          throw lastError;
+        }
+
+        const delay = getBackoffDelay(attempt, this.retryConfig);
+        log.debug(`${backend} embed retry ${attempt}/${this.retryConfig.maxAttempts} after ${delay}ms`, {
+          error: lastError.message,
+        });
+        await sleep(delay);
+      }
+    }
+
+    throw lastError ?? new Error("Retry exhausted");
   }
 
-  /**
-   * Reset circuit breaker (for testing/recovery).
-   */
-  resetCircuit(): void {
+  getCircuitState(): { local: string; jina: string } {
+    return {
+      local: this.localServerCircuit.currentState,
+      jina: this.jinaCircuit.currentState,
+    };
+  }
+
+  resetCircuits(): void {
     this.jinaCircuit.reset();
-    log.info("Jina embedding circuit reset");
+    this.localServerCircuit.reset();
+    log.info("Embedding circuits reset");
   }
 
-  /**
-   * Get embedding dimension.
-   */
   getDimension(): number {
     return this.dimension;
   }
@@ -555,13 +472,7 @@ export class ResilientEmbedding {
 // In-memory cache implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Simple in-memory cache for embeddings using LRU eviction.
- * Uses Map insertion order for O(1) eviction instead of O(n) timestamp search.
- * For production, use Redis or similar.
- */
 export class InMemoryEmbeddingCache implements EmbeddingCache {
-  // Map maintains insertion order in JS, enabling O(1) LRU eviction
   private readonly cache = new Map<string, { vector: number[]; timestamp: number }>();
   private readonly maxSize: number;
   private readonly ttlMs: number;
@@ -572,7 +483,6 @@ export class InMemoryEmbeddingCache implements EmbeddingCache {
   }
 
   private getCacheKey(text: string): string {
-    // Simple hash of normalized text
     const normalized = text.toLowerCase().trim();
     let hash = 0;
     for (let i = 0; i < normalized.length; i++) {
@@ -595,7 +505,7 @@ export class InMemoryEmbeddingCache implements EmbeddingCache {
       return null;
     }
 
-    // Move to end (most recently used) - O(1) operation
+    // Move to end (most recently used)
     this.cache.delete(key);
     this.cache.set(key, entry);
 
@@ -604,11 +514,8 @@ export class InMemoryEmbeddingCache implements EmbeddingCache {
 
   async set(text: string, vector: number[]): Promise<void> {
     const key = this.getCacheKey(text);
-
-    // Delete first to update position if key exists
     this.cache.delete(key);
 
-    // Evict oldest (first entry in Map) if at capacity - O(1) operation
     if (this.cache.size >= this.maxSize) {
       const oldestKey = this.cache.keys().next().value;
       if (oldestKey !== undefined) {
@@ -629,9 +536,6 @@ export class InMemoryEmbeddingCache implements EmbeddingCache {
     }
   }
 
-  /**
-   * Get cache statistics.
-   */
   getStats(): { size: number; maxSize: number } {
     return { size: this.cache.size, maxSize: this.maxSize };
   }
@@ -641,10 +545,6 @@ export class InMemoryEmbeddingCache implements EmbeddingCache {
 // Factory function
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Create a ResilientEmbedding with environment-based configuration.
- * Uses EMBEDDING_CONFIG for dimension (768 for v5-nano).
- */
 export function createResilientEmbedding(cache?: EmbeddingCache): ResilientEmbedding {
   return new ResilientEmbedding({
     dimension: EMBEDDING_CONFIG.storageDim,
