@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
+    "@sentry/node": "^8.53.0",
     "@clerk/backend": "^3.4.4",
     "@every-app/sdk": "^0.1.14",
     "@google/generative-ai": "^0.24.1",

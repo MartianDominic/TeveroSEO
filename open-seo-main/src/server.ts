@@ -1,3 +1,9 @@
+// IMPORTANT: Initialize Sentry FIRST before other imports for proper instrumentation
+import { initSentry, captureException, flushSentry } from "@/server/lib/sentry";
+
+// Initialize Sentry early - only activates if SENTRY_DSN is set
+initSentry();
+
 import { createStartHandler, defaultStreamHandler } from "@tanstack/react-start/server";
 import { withSecurityHeaders } from "@/server/middleware/security-headers";
 import { validateEnv, REQUIRED_ENV_CORE, REQUIRED_ENV_SECURITY } from "@/server/lib/runtime-env";
@@ -112,6 +118,12 @@ async function shutdown(signal: string): Promise<void> {
   } catch (err) {
     log.error("wsServer.close failed", err instanceof Error ? err : new Error(String(err)));
   }
+  // Flush Sentry events before exit to ensure all errors are sent
+  try {
+    await flushSentry(2000);
+  } catch (err) {
+    log.error("flushSentry failed", err instanceof Error ? err : new Error(String(err)));
+  }
   log.info("Shutdown complete");
   process.exit(0);
 }
@@ -141,10 +153,17 @@ process.on("unhandledRejection", (reason, promise) => {
 
   unhandledRejectionCount++;
 
-  log.error("Unhandled Rejection", reason instanceof Error ? reason : new Error(String(reason)), {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  log.error("Unhandled Rejection", error, {
     promise: String(promise),
     rejectionCount: unhandledRejectionCount,
     threshold: UNHANDLED_REJECTION_THRESHOLD,
+  });
+
+  // Report to Sentry
+  captureException(error, {
+    type: "unhandledRejection",
+    rejectionCount: unhandledRejectionCount,
   });
 
   // Exit if too many unhandled rejections in the window - process may be in corrupted state
@@ -159,6 +178,8 @@ process.on("unhandledRejection", (reason, promise) => {
 
 process.on("uncaughtException", (error) => {
   log.error("Uncaught Exception", error);
+  // Report to Sentry
+  captureException(error, { type: "uncaughtException" });
   // Attempt graceful shutdown on uncaught exception
   void shutdown("uncaughtException").finally(() => process.exit(1));
 });
