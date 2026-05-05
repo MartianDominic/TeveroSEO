@@ -2616,8 +2616,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - Integrated: GA4 revenue (if connected)
   - NEVER: Industry averages, made-up conversion rates
 **Plans**: 3 plans
-  - [ ] 90-01-PLAN.md — Backend services (DashboardService, ActivityService, NotificationService + BullMQ)
-  - [ ] 90-02-PLAN.md — API routes (dashboard, keywords, activity, notifications)
-  - [ ] 90-03-PLAN.md — Frontend UI (V6 design system) + PWA foundation
+  - [x] 90-01-PLAN.md — Backend services (DashboardService, ActivityService, NotificationService + BullMQ)
+  - [x] 90-02-PLAN.md — API routes (dashboard, keywords, activity, notifications)
+  - [x] 90-03-PLAN.md — Frontend UI (V6 design system) + PWA foundation
 
 ---
