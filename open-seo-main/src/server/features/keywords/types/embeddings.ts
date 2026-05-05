@@ -19,14 +19,67 @@
 
 /**
  * Supported embedding models.
- * Primary model is jina-v3, fallback is multilingual-e5-base.
+ * Primary model is jina-v5-nano (12x faster, 98.3% recall).
+ * V3 kept for backwards compatibility.
  */
 export enum EmbeddingModel {
   /** Primary model - best Lithuanian quality (Cohen's kappa 0.62) */
   JINA_V3 = 'jinaai/jina-embeddings-v3',
+  /** v5-nano: 12x faster, 98.3% recall, 300MB model */
+  JINA_V5_NANO = 'jinaai/jina-embeddings-v5-text-nano',
+  /** v5-small: Higher quality, larger model */
+  JINA_V5_SMALL = 'jinaai/jina-embeddings-v5-text-small',
   /** Fallback model - good multilingual support */
   E5_BASE = 'intfloat/multilingual-e5-base',
 }
+
+/**
+ * Configuration for a specific embedding model.
+ * v5 models use task/prompt_name parameters for asymmetric retrieval.
+ */
+export interface EmbeddingModelConfig {
+  /** Model identifier */
+  model: EmbeddingModel;
+  /** Output dimension */
+  dimensions: number;
+  /** v5-only: Task type for embedding (retrieval, classification, etc.) */
+  apiTask?: string;
+  /** v5-only: Prompt name for asymmetric retrieval (query or document) */
+  promptName?: string;
+  /** Maximum batch size for API calls */
+  maxBatchSize: number;
+}
+
+/**
+ * Model-specific configurations.
+ * v5 models support larger batches and use task/prompt_name for asymmetric retrieval.
+ */
+export const EMBEDDING_MODEL_CONFIGS: Record<EmbeddingModel, EmbeddingModelConfig> = {
+  [EmbeddingModel.JINA_V3]: {
+    model: EmbeddingModel.JINA_V3,
+    dimensions: 768,
+    maxBatchSize: 32,
+  },
+  [EmbeddingModel.JINA_V5_NANO]: {
+    model: EmbeddingModel.JINA_V5_NANO,
+    dimensions: 768,
+    apiTask: 'retrieval',
+    promptName: 'query',
+    maxBatchSize: 64,
+  },
+  [EmbeddingModel.JINA_V5_SMALL]: {
+    model: EmbeddingModel.JINA_V5_SMALL,
+    dimensions: 768,
+    apiTask: 'retrieval',
+    promptName: 'query',
+    maxBatchSize: 64,
+  },
+  [EmbeddingModel.E5_BASE]: {
+    model: EmbeddingModel.E5_BASE,
+    dimensions: 768,
+    maxBatchSize: 32,
+  },
+};
 
 /**
  * Type of text being embedded.
