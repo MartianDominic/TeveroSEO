@@ -39,6 +39,10 @@ import {
   getClientSessions,
   type SessionSummary,
 } from "@/lib/keyword-chat/session-service";
+import {
+  ClarifyingQuestionLoop,
+  type ClarificationQuestion,
+} from "./ClarifyingQuestionLoop";
 
 interface KeywordAnalysisChatProps {
   clientId: string;
@@ -140,6 +144,14 @@ export function KeywordAnalysisChat({
   const [keywordCounts, setKeywordCounts] = useState<KeywordCounts | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
+  // Clarifying questions state (Phase 84 Task 2)
+  const [clarificationQuestions, setClarificationQuestions] = useState<
+    ClarificationQuestion[]
+  >([]);
+  const [clarificationAnswers, setClarificationAnswers] = useState<
+    Record<string, string>
+  >({});
+
   // Analysis state from hook
   const {
     stage,
@@ -209,11 +221,8 @@ export function KeywordAnalysisChat({
       }
 
       if (data.clarificationNeeded && data.clarificationNeeded.length > 0) {
-        // TODO: Wire to ClarifyingQuestionLoop (Task 2)
-        setGenerationError(
-          "Need more information. Please add details about: " +
-            data.clarificationNeeded.map((c) => c.question).join(", ")
-        );
+        // Show clarifying questions loop (Phase 84 Task 2)
+        setClarificationQuestions(data.clarificationNeeded);
         return;
       }
 
@@ -243,6 +252,78 @@ export function KeywordAnalysisChat({
   // Check if we should show generate button
   const showGenerateButton =
     isBusinessDescription(conversation) && !keywordsText.trim();
+
+  // Handle clarifying question answer (Phase 84 Task 2)
+  const handleClarificationAnswer = useCallback(
+    (field: string, answer: string) => {
+      setClarificationAnswers((prev) => ({
+        ...prev,
+        [field]: answer,
+      }));
+    },
+    []
+  );
+
+  // Handle clarification completion - re-run generation with enriched context
+  const handleClarificationComplete = useCallback(
+    async (answers: Record<string, string>) => {
+      setClarificationQuestions([]);
+
+      // Build enriched context from answers
+      const enrichedContext = Object.entries(answers)
+        .map(([field, answer]) => `${field}: ${answer}`)
+        .join(". ");
+
+      setIsGenerating(true);
+      setGenerationError(null);
+
+      try {
+        const response = await fetch("/api/keywords/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessDescription: conversation,
+            language: "en",
+            enrichedContext,
+          }),
+        });
+
+        const data: GenerateKeywordsResponse = await response.json();
+
+        if (!data.success) {
+          setGenerationError(data.error || "Failed to generate keywords");
+          return;
+        }
+
+        // If still need clarification (round 2 or 3)
+        if (data.clarificationNeeded && data.clarificationNeeded.length > 0) {
+          setClarificationQuestions(data.clarificationNeeded);
+          return;
+        }
+
+        if (data.keywords && data.counts) {
+          setGeneratedKeywords(data.keywords);
+          setKeywordCounts(data.counts);
+
+          const allKeywords = [
+            ...data.keywords.product,
+            ...data.keywords.brand,
+            ...data.keywords.service,
+            ...data.keywords.commercial,
+            ...data.keywords.informational,
+          ];
+          setKeywordsText(allKeywords.join("\n"));
+        }
+      } catch (err) {
+        setGenerationError(
+          err instanceof Error ? err.message : "Failed to generate keywords"
+        );
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [conversation]
+  );
 
   // Start analysis
   const handleAnalyze = useCallback(async () => {
@@ -361,6 +442,15 @@ export function KeywordAnalysisChat({
                 </div>
               </div>
             </Card>
+          )}
+
+          {/* Clarifying questions loop (Phase 84 Task 2) */}
+          {clarificationQuestions.length > 0 && (
+            <ClarifyingQuestionLoop
+              clarifications={clarificationQuestions}
+              onAnswer={handleClarificationAnswer}
+              onComplete={handleClarificationComplete}
+            />
           )}
 
           {/* Generation error */}
