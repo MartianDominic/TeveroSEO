@@ -240,11 +240,10 @@ class LocalONNXEmbedding {
  */
 class JinaEmbeddingAPI {
   private readonly apiKey: string;
-  private readonly dimension: number;
 
-  constructor(apiKey: string, dimension: number) {
+  constructor(apiKey: string, _dimension: number) {
     this.apiKey = apiKey;
-    this.dimension = dimension;
+    // dimension handled by EMBEDDING_CONFIG.getApiPayload()
   }
 
   /**
