@@ -3,6 +3,7 @@
 /**
  * AnalysisResults Component
  * Phase 82: Chat Integration
+ * Phase 85-01: Score explanation popover integration
  *
  * Displays complete analysis results with stats, breakdowns, and export actions.
  */
@@ -10,14 +11,42 @@
 import { Card, Badge } from "@tevero/ui";
 import { Clock, Target, Filter, Layers, Sparkles } from "lucide-react";
 import { ExportActions } from "./ExportActions";
-import type { AnalysisResult } from "@/lib/keyword-chat/types";
+import { ScoreExplanation, type ScoreBreakdown } from "./ScoreExplanation";
+import type { AnalysisResult, SelectedKeyword } from "@/lib/keyword-chat/types";
 
 interface AnalysisResultsProps {
   result: AnalysisResult;
+  locale?: "en" | "lt";
   onRefine?: (refinement: string) => void;
 }
 
-export function AnalysisResults({ result, onRefine }: AnalysisResultsProps) {
+/**
+ * Build score breakdown from available keyword data.
+ * Some fields are estimated from available data when detailed breakdown isn't provided.
+ */
+function buildScoreBreakdown(kw: SelectedKeyword): ScoreBreakdown {
+  // Use available data, estimate missing values from composite score
+  const baseScore = kw.compositeScore > 1 ? kw.compositeScore / 1.5 : kw.compositeScore;
+
+  return {
+    // Estimated component scores (will be replaced when API provides detailed breakdown)
+    relevance: 0.7, // Placeholder - keywords passed filtering so relevance is decent
+    funnelConfidence: kw.funnelStage === "BOFU" ? 0.9 : kw.funnelStage === "MOFU" ? 0.6 : 0.3,
+    funnelStage: kw.funnelStage,
+    geoScore: 0.8, // Placeholder - passed geo filter
+    geoMatch: "", // Not available in current API
+    volumeNormalized: Math.min(1, Math.log10(Math.max(1, kw.metrics.volume)) / 4),
+    volume: kw.metrics.volume,
+    baseScore: Math.min(1, baseScore),
+    priorityMultiplier: kw.compositeScore > 1 ? 1.5 : 1.0, // Infer from high scores
+    priorityCategory: kw.compositeScore > 1 ? "priority" : undefined,
+    quickWinBonus: 0, // Not available in current API
+    position: undefined, // Not available in current API
+    finalScore: kw.compositeScore,
+  };
+}
+
+export function AnalysisResults({ result, locale = "en", onRefine }: AnalysisResultsProps) {
   const {
     stats,
     constraints,
@@ -211,7 +240,17 @@ export function AnalysisResults({ result, onRefine }: AnalysisResultsProps) {
                   {kw.funnelStage}
                 </Badge>
                 <span>{kw.metrics.volume} vol</span>
-                <span>{kw.compositeScore.toFixed(2)}</span>
+                <ScoreExplanation
+                  breakdown={buildScoreBreakdown(kw)}
+                  locale={locale}
+                >
+                  <button
+                    className="cursor-pointer hover:underline hover:text-[var(--accent)] transition-colors font-mono"
+                    aria-label={`Score ${kw.compositeScore.toFixed(2)}, click for breakdown`}
+                  >
+                    {kw.compositeScore.toFixed(2)}
+                  </button>
+                </ScoreExplanation>
               </div>
             </div>
           ))}
