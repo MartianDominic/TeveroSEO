@@ -75,48 +75,55 @@
 
 ---
 
-## Phase 84: Input & Client Intelligence (MERGED: 84 + part of 85)
+## Phase 84: Conversational Input Integration (REVISED — Mostly Built)
 
-**Goal:** Meet agencies where their data lives + understand client context
-**Why Second:** Can't improve analysis without proper input and client awareness
-**Source Sections:** §12 Data Sources, §5 Client Segmentation, §2 Chat Memory
-**Duration:** 3 weeks
+**Goal:** Wire existing conversation intelligence into the keyword analysis pipeline
+**Why Second:** Core services exist, need integration + UI polish
+**Source Sections:** §2 Chat Memory, §5 Client Segmentation, §12 Data Sources
+**Duration:** 1 week (reduced from 3 weeks — most already built)
 
-### Wave 1: Import Infrastructure
-| Item | Source | Impact | Files |
-|------|--------|--------|-------|
-| CSV import UI with column mapping | §12.1 | 10/10 | NEW: `CsvImportDialog.tsx` |
-| Ahrefs/SEMrush format auto-detection | §12.2 | 9/10 | `CsvImportService.ts` |
-| Bulk paste improvements (10K keywords) | §12.3 | 8/10 | `KeywordAnalysisChat.tsx` |
+> **STATUS CHECK (2026-05-05):** Investigation found most Phase 84 components already exist:
+> - ConstraintExtractor.ts — ✅ Complete (Claude Sonnet, 7 constraint categories, confidence scoring)
+> - KeywordGenerator — ✅ EXISTS in `/lib/opportunity/keywordGenerator.ts` (Phase 29)
+> - CsvImportService — ✅ Complete (csv-parse, preview mode, BOM cleanup)
+> - ColumnDetector — ✅ Complete (Ahrefs, SEMrush, Moz auto-detection)
+> - NegativeAssociationExtractor — ✅ Complete
+> - GSC Service — ✅ Complete in AI-Writer
+>
+> **PROSPECT vs CLIENT:** These are separate paths (`/prospects/:id` vs `/clients/:id`), not a "mode" to detect.
 
-### Wave 2: External Integrations & Enrichment
-| Item | Source | Impact | Files |
-|------|--------|--------|-------|
-| Google Sheets sync (read/write) | §12.4 | 8/10 | NEW: `sheets-integration.ts` |
-| Competitor keyword import | §12.8 | 7/10 | `CompetitorSpyService.ts` |
-| Auto-enrichment trigger | §12.3 | 7/10 | `analysis-pipeline.ts` |
-| 12-month trend data (sparklines) | §12 DS-05 | 9/10 | `DataForSEOService.ts` |
-| SERP features data (icons + scoring) | §12 DS-06 | 9/10 | `DataForSEOService.ts` |
-| SERP feature opportunity scoring | §10 CD-03 | 8/10 | NEW: `serp-opportunity.ts` |
-| Trend direction classification | §10 CD-05 | 8/10 | NEW: `trend-classifier.ts` |
+### Wave 1: Integration & Wiring (Actual Gaps)
+| Item | Source | Impact | Status | Files |
+|------|--------|--------|--------|-------|
+| Wire KeywordGenerator into chat flow | §2.1 | 10/10 | GAP | `KeywordAnalysisChat.tsx` calls `/lib/opportunity/keywordGenerator.ts` |
+| Clarifying question handler | §2.4 | 9/10 | GAP | Use `clarificationNeeded[]` from ConstraintExtractor in conversational loop |
+| GSC data bridge for clients | §12.7 | 8/10 | GAP | Bridge open-seo-main ↔ AI-Writer GSC service |
+| Frontend import dialog | §12.1 | 7/10 | GAP | UI for existing CsvImportService (API exists, no UI) |
 
-### Wave 3: Client Context Detection
-| Item | Source | Impact | Files |
-|------|--------|--------|-------|
-| Client website detection | §5.1 | 9/10 | `ConstraintExtractor.ts` |
-| Client profile auto-injection | §2.2 | 8/10 | NEW: `client-context.ts` |
-| Industry vertical detection | §5.2 | 7/10 | `ConstraintExtractor.ts` |
-| GSC data overlay | §12.7 | 7/10 | `gsc_service.py` |
+### Wave 2: Polish & Enhancement (Lower Priority)
+| Item | Source | Impact | Status | Files |
+|------|--------|--------|--------|-------|
+| Google Sheets sync | §12.4 | 6/10 | NOT BUILT | NEW: `sheets-integration.ts` |
+| Constraint undo/redo | §2.3 | 5/10 | NOT BUILT | NEW: `constraint-history.ts` |
+| Smart follow-up suggestions | §2.4 | 5/10 | NOT BUILT | NEW: `FollowUpSuggestions.tsx` |
 
-### Wave 4: Session Memory & Refinement
-| Item | Source | Impact | Files |
-|------|--------|--------|-------|
-| Multi-turn constraint refinement | §2.1 | 9/10 | `KeywordAnalysisChat.tsx` |
-| Constraint undo/redo stack | §2.3 | 8/10 | NEW: `constraint-history.ts` |
-| Greenfield client mode | §5.3 | 8/10 | `ConstraintExtractor.ts` |
-| Smart follow-up suggestions | §2.4 | 7/10 | NEW: `FollowUpSuggestions.tsx` |
+### Already Complete (No Work Needed)
+| Item | Location | Status |
+|------|----------|--------|
+| ConstraintExtractor | `conversation/ConstraintExtractor.ts` | ✅ Production-ready |
+| Constraint schemas | `conversation/types.ts` | ✅ Complete Zod schemas |
+| Extraction prompts | `conversation/prompts.ts` | ✅ Lithuanian examples |
+| KeywordGenerator | `lib/opportunity/keywordGenerator.ts` | ✅ Claude generates 50-100 keywords |
+| CsvImportService | `services/CsvImportService.ts` | ✅ Full CSV parsing |
+| ColumnDetector | `services/ColumnDetector.ts` | ✅ Ahrefs/SEMrush/Moz |
+| NegativeAssociationExtractor | `context/NegativeAssociationExtractor.ts` | ✅ Competitors, wrong intents |
+| Client schemas | `db/client-schema.ts` | ✅ GSC credentials |
+| GSC Service | `AI-Writer/backend/services/gsc_service.py` | ✅ Full OAuth + analytics |
 
-**Verification:** Import 1000 keywords from Ahrefs CSV in <5s, Sheets sync works, client context auto-loads
+**Verification:** 
+- PROSPECT: Describe business → KeywordGenerator produces 50+ keywords → full pipeline runs
+- CLIENT: GSC data loads → shows ranking gaps alongside generated keywords
+- Import: CsvImportDialog visible in UI, auto-detects Ahrefs/SEMrush format
 
 ---
 
@@ -361,7 +368,7 @@
 | Old Phase | Old Name | New Phase | New Name | Notes |
 |-----------|----------|-----------|----------|-------|
 | 83 | Foundation & Reliability | 83 | Foundation & Reliability | Unchanged - prerequisite |
-| 84 | Input & Data Sources | 84 | Input & Client Intelligence | Merged with client context from 85 |
+| 84 | Input & Data Sources | 84 | Conversational Input & Adaptive Context | Conversation-first + PROSPECT/CLIENT modes |
 | 85 | Analysis Controls & UX | 85 | Analysis Experience | Merged with 86 + 87 |
 | 86 | Output & Visualization | 85 | Analysis Experience | Wave 3-4 of new 85 |
 | 87 | Explainability & Trust | 85 | Analysis Experience | Wave 5 of new 85 |
@@ -379,7 +386,7 @@
 | Phase | Name | Waves | Duration | Key Deliverable |
 |-------|------|-------|----------|-----------------|
 | 83 | Foundation & Reliability | 3 | 2 weeks | Bulletproof SSE + caching |
-| 84 | Input & Client Intelligence | 4 | 3 weeks | CSV/Sheets import, client detection, session memory |
+| 84 | Conversational Input Integration | 2 | 1 week | Wire existing KeywordGenerator + GSC bridge + import UI (mostly built) |
 | 85 | Analysis Experience | 5 | 4 weeks | Controls + dual-mode + export + explainability |
 | 86 | Semantic Intelligence | 3 | 3 weeks | HDBSCAN clustering, cross-language |
 | 87 | Agency Business | 5 | 4 weeks | Proposals + pricing + ROI + handoff |
@@ -397,7 +404,7 @@
 Phase 83 (Foundation)
     |
     v
-Phase 84 (Input + Client Intelligence)
+Phase 84 (Conversational Input + Adaptive Context)
     |
     +------------------+
     |                  |
@@ -477,7 +484,7 @@ Each wave follows GSD execute-plan workflow:
 | Phase | Primary Metric | Target |
 |-------|---------------|--------|
 | 83 | Error recovery rate | 99%+ |
-| 84 | Import success + client detection | 95%+ |
+| 84 | KeywordGenerator wired + GSC bridge + import UI | 95%+ |
 | 85 | Time to first analysis + export quality | <30s, Excel works |
 | 86 | Cluster quality (silhouette score) | >0.5 |
 | 87 | Proposal generation + ROI adoption | 80%+ |
