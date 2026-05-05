@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ConstraintFilter, createConstraintFilter } from './ConstraintFilter';
-import type { FilterConstraints, ClassifiedKeywordInput, FilterResult } from './types';
+import type {
+  FilterConstraints,
+  ClassifiedKeywordInput,
+  FilterResult,
+  CategoryPriorityInput,
+} from './types';
 
 describe('ConstraintFilter', () => {
   describe('Pipeline Orchestration', () => {
@@ -24,7 +29,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const input: ClassifiedKeywordInput = {
         keyword: 'plovykla įmonėms šiauliuose',
         geoClassification: {
@@ -58,7 +63,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const input: ClassifiedKeywordInput = {
         keyword: 'plovykla kaune',
         geoClassification: {
@@ -94,7 +99,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const input: ClassifiedKeywordInput = {
         keyword: 'savitarnos plovykla šiauliuose',
         geoClassification: {
@@ -127,7 +132,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const input: ClassifiedKeywordInput = {
         keyword: 'plovykla šeimai šiauliuose',
         geoClassification: {
@@ -156,7 +161,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const input: ClassifiedKeywordInput = {
         keyword: 'plovykla šiauliuose',
         geoClassification: {
@@ -187,7 +192,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const inputs: ClassifiedKeywordInput[] = [
         {
           keyword: 'plovykla šiauliuose',
@@ -237,7 +242,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const inputs: ClassifiedKeywordInput[] = [
         {
           keyword: 'plovykla įmonėms šiauliuose',
@@ -289,7 +294,7 @@ describe('ConstraintFilter', () => {
         relevanceThreshold: 0.4,
       };
 
-      const filter = new ConstraintFilter(constraints);
+      const filter = new ConstraintFilter({ constraints });
       const inputs: ClassifiedKeywordInput[] = [
         {
           keyword: 'plovykla šiauliuose',
@@ -330,11 +335,13 @@ describe('ConstraintFilter', () => {
 
     it('should create filter with custom constraints', () => {
       const filter = createConstraintFilter({
-        relevanceThreshold: 0.6,
-        geoConstraints: {
-          includeCities: ['vilnius'],
-          excludeCities: [],
-          genericAllowed: true,
+        constraints: {
+          relevanceThreshold: 0.6,
+          geoConstraints: {
+            includeCities: ['vilnius'],
+            excludeCities: [],
+            genericAllowed: true,
+          },
         },
       });
 
@@ -347,6 +354,230 @@ describe('ConstraintFilter', () => {
       const result = filter.filter(input);
       expect(result.passed).toBe(false);
       expect(result.exclusionStage).toBe('relevance');
+    });
+  });
+
+  describe('Composite Scoring Integration', () => {
+    it('should add compositeScore to passed keywords', () => {
+      const constraints: FilterConstraints = {
+        geoConstraints: {
+          includeCities: ['šiauliai'],
+          excludeCities: [],
+          genericAllowed: false,
+        },
+        relevanceThreshold: 0.4,
+      };
+
+      const filter = new ConstraintFilter({ constraints });
+      const input: ClassifiedKeywordInput = {
+        keyword: 'plovykla šiauliuose',
+        geoClassification: {
+          passesGeoFilter: true,
+          city: 'šiauliai',
+          geoScore: 1.0,
+        },
+        relevanceScores: { combinedScore: 0.75 },
+        funnelStage: 'bofu',
+        funnelConfidence: 0.9,
+        volume: 320,
+        position: 15,
+      };
+
+      const result = filter.filter(input);
+
+      expect(result.passed).toBe(true);
+      expect(result.compositeScore).toBeDefined();
+      expect(result.compositeScore?.baseScore).toBeGreaterThan(0);
+      expect(result.compositeScore?.priorityMultiplier).toBe(1.0); // No priorities
+      expect(result.compositeScore?.quickWinBonus).toBe(0.2); // Position 15, volume >= 100
+      expect(result.compositeScore?.finalScore).toBeGreaterThan(0);
+    });
+
+    it('should include classification details for passed keywords', () => {
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+      });
+      const input: ClassifiedKeywordInput = {
+        keyword: 'detailing šiauliuose',
+        geoClassification: {
+          passesGeoFilter: true,
+          city: 'šiauliai',
+          geoScore: 1.0,
+        },
+        relevanceScores: { combinedScore: 0.8 },
+        funnelStage: 'bofu',
+        volume: 500,
+      };
+
+      const result = filter.filter(input);
+
+      expect(result.classification).toBeDefined();
+      expect(result.classification?.funnelStage).toBe('bofu');
+      expect(result.classification?.geoCity).toBe('šiauliai');
+      expect(result.classification?.relevanceScore).toBe(0.8);
+    });
+
+    it('should apply priority multiplier when priorities provided', () => {
+      const priorities: CategoryPriorityInput[] = [
+        { category: 'detailing', weightMultiplier: 1.5 },
+      ];
+
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+        priorities,
+      });
+
+      const input: ClassifiedKeywordInput = {
+        keyword: 'detailing paslaugos šiauliuose',
+        geoClassification: {
+          passesGeoFilter: true,
+          city: 'šiauliai',
+          geoScore: 1.0,
+        },
+        relevanceScores: { combinedScore: 0.75 },
+        funnelConfidence: 0.9,
+        volume: 320,
+        position: 15,
+      };
+
+      const result = filter.filter(input);
+
+      expect(result.compositeScore?.priorityMultiplier).toBe(1.5);
+      expect(result.compositeScore?.finalScore).toBeGreaterThan(1.0); // Boosted by priority
+    });
+
+    it('should match CONTEXT.md full example', () => {
+      const priorities: CategoryPriorityInput[] = [
+        { category: 'detailing', weightMultiplier: 1.5 },
+      ];
+
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+        priorities,
+      });
+
+      const input: ClassifiedKeywordInput = {
+        keyword: 'detailing paslaugos šiauliuose',
+        geoClassification: {
+          passesGeoFilter: true,
+          city: 'šiauliai',
+          geoScore: 1.0,
+        },
+        relevanceScores: { combinedScore: 0.75 },
+        funnelStage: 'bofu',
+        funnelConfidence: 0.9,
+        volume: 320,
+        position: 15,
+      };
+
+      const result = filter.filter(input);
+
+      expect(result.passed).toBe(true);
+      expect(result.compositeScore?.baseScore).toBeCloseTo(0.833, 1);
+      expect(result.compositeScore?.priorityMultiplier).toBe(1.5);
+      expect(result.compositeScore?.quickWinBonus).toBe(0.2);
+      expect(result.compositeScore?.finalScore).toBeCloseTo(1.45, 1);
+    });
+
+    it('should not add compositeScore to excluded keywords', () => {
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+      });
+
+      const input: ClassifiedKeywordInput = {
+        keyword: 'plovykla',
+        relevanceScores: { combinedScore: 0.3 }, // Below threshold
+      };
+
+      const result = filter.filter(input);
+
+      expect(result.passed).toBe(false);
+      expect(result.compositeScore).toBeUndefined();
+      expect(result.classification).toBeUndefined();
+    });
+  });
+
+  describe('sortByScore', () => {
+    it('should sort passed keywords by finalScore descending', () => {
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+      });
+
+      const inputs: ClassifiedKeywordInput[] = [
+        {
+          keyword: 'low score',
+          relevanceScores: { combinedScore: 0.5 },
+          volume: 100,
+        },
+        {
+          keyword: 'high score',
+          relevanceScores: { combinedScore: 0.9 },
+          volume: 1000,
+        },
+        {
+          keyword: 'medium score',
+          relevanceScores: { combinedScore: 0.7 },
+          volume: 500,
+        },
+      ];
+
+      const results = filter.filterBatch(inputs);
+      const sorted = filter.sortByScore(results);
+
+      expect(sorted).toHaveLength(3);
+      expect(sorted[0].keyword).toBe('high score');
+      expect(sorted[2].keyword).toBe('low score');
+      expect(sorted[0].compositeScore?.finalScore).toBeGreaterThan(
+        sorted[1].compositeScore?.finalScore ?? 0
+      );
+      expect(sorted[1].compositeScore?.finalScore).toBeGreaterThan(
+        sorted[2].compositeScore?.finalScore ?? 0
+      );
+    });
+
+    it('should filter out excluded keywords', () => {
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+      });
+
+      const inputs: ClassifiedKeywordInput[] = [
+        {
+          keyword: 'passed',
+          relevanceScores: { combinedScore: 0.8 },
+        },
+        {
+          keyword: 'excluded',
+          relevanceScores: { combinedScore: 0.3 }, // Below threshold
+        },
+      ];
+
+      const results = filter.filterBatch(inputs);
+      const sorted = filter.sortByScore(results);
+
+      expect(sorted).toHaveLength(1);
+      expect(sorted[0].keyword).toBe('passed');
+    });
+
+    it('should return empty array when no passed keywords', () => {
+      const filter = new ConstraintFilter({
+        constraints: { relevanceThreshold: 0.4 },
+      });
+
+      const inputs: ClassifiedKeywordInput[] = [
+        {
+          keyword: 'excluded1',
+          relevanceScores: { combinedScore: 0.3 },
+        },
+        {
+          keyword: 'excluded2',
+          relevanceScores: { combinedScore: 0.2 },
+        },
+      ];
+
+      const results = filter.filterBatch(inputs);
+      const sorted = filter.sortByScore(results);
+
+      expect(sorted).toHaveLength(0);
     });
   });
 });

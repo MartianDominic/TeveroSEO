@@ -115,6 +115,99 @@ export type ExclusionReason =
   | `relevance:below_threshold:${string}`;
 
 // ============================================================================
+// Composite Scoring Types
+// ============================================================================
+
+/**
+ * Composite score combining base score, priority multiplier, and quick win bonus.
+ */
+export interface CompositeScore {
+  /**
+   * Base score (0-1) from weighted combination of relevance, funnel, geo, volume.
+   */
+  baseScore: number;
+
+  /**
+   * Priority multiplier (1.0 - 2.0) from category priorities.
+   */
+  priorityMultiplier: number;
+
+  /**
+   * Quick win bonus (0.0 - 0.2) from position opportunity.
+   */
+  quickWinBonus: number;
+
+  /**
+   * Final score = baseScore * priorityMultiplier + quickWinBonus.
+   */
+  finalScore: number;
+}
+
+/**
+ * Scoring weights for base score calculation.
+ * Must sum to 1.0.
+ */
+export const SCORING_WEIGHTS = {
+  relevance: 0.4,
+  funnelConfidence: 0.3,
+  geoScore: 0.2,
+  volumeNormalized: 0.1,
+} as const;
+
+/**
+ * Category priority input for priority multiplier calculation.
+ */
+export interface CategoryPriorityInput {
+  /**
+   * Category name (e.g., "detailing").
+   */
+  category: string;
+
+  /**
+   * Lithuanian variant of category name (optional).
+   */
+  categoryLt?: string;
+
+  /**
+   * Weight multiplier (1.0 - 2.0).
+   */
+  weightMultiplier: number;
+}
+
+/**
+ * Quick win detection configuration.
+ */
+export interface QuickWinConfig {
+  /**
+   * Striking distance: position 11-20.
+   */
+  strikingDistance: {
+    minPos: 11;
+    maxPos: 20;
+    minVolume: 100;
+    bonus: 0.2;
+  };
+
+  /**
+   * Opportunity: position 21-50.
+   */
+  opportunity: {
+    minPos: 21;
+    maxPos: 50;
+    minVolume: 200;
+    bonus: 0.15;
+  };
+
+  /**
+   * Default bonus for any position with decent volume.
+   */
+  defaultBonus: {
+    minVolume: 50;
+    bonus: 0.1;
+  };
+}
+
+// ============================================================================
 // Filter Result Types
 // ============================================================================
 
@@ -128,6 +221,20 @@ export interface FilterResult {
    * Whether the keyword passed all filters.
    */
   passed: boolean;
+
+  /**
+   * If passed, the composite score (baseScore * priority + quickWin).
+   */
+  compositeScore?: CompositeScore;
+
+  /**
+   * If passed, classification details for the keyword.
+   */
+  classification?: {
+    funnelStage: 'bofu' | 'mofu' | 'tofu';
+    geoCity: string | null;
+    relevanceScore: number;
+  };
 
   /**
    * If excluded, the structured reason.
@@ -202,6 +309,11 @@ export interface ClassifiedKeywordInput {
    * Funnel stage from Phase 76.
    */
   funnelStage?: 'bofu' | 'mofu' | 'tofu';
+
+  /**
+   * Funnel confidence score (0.0 - 1.0) from Phase 76.
+   */
+  funnelConfidence?: number;
 
   /**
    * Search volume (optional).

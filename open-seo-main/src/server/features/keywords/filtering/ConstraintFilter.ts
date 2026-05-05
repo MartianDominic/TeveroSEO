@@ -17,13 +17,24 @@ import {
   checkRelevanceFilter,
 } from './filters';
 import { humanReadableReason } from './types';
+import { CompositeScorer } from './scoring';
 import type {
   FilterConstraints,
   ClassifiedKeywordInput,
   FilterResult,
   ExclusionExport,
   ExclusionReason,
+  CategoryPriorityInput,
 } from './types';
+
+// ============================================================================
+// Options Interface
+// ============================================================================
+
+export interface ConstraintFilterOptions {
+  constraints?: FilterConstraints;
+  priorities?: CategoryPriorityInput[];
+}
 
 // ============================================================================
 // Statistics Interface
@@ -44,13 +55,15 @@ export interface FilterStats {
 
 export class ConstraintFilter {
   private constraints: FilterConstraints;
+  private scorer: CompositeScorer;
   private stats: FilterStats;
 
-  constructor(constraints: FilterConstraints) {
+  constructor(options: ConstraintFilterOptions = {}) {
     this.constraints = {
       relevanceThreshold: 0.4,
-      ...constraints,
+      ...options.constraints,
     };
+    this.scorer = new CompositeScorer(options.priorities ?? []);
     this.stats = {
       total: 0,
       passed: 0,
@@ -133,11 +146,19 @@ export class ConstraintFilter {
       };
     }
 
-    // All filters passed
+    // All filters passed - compute composite score
+    const compositeScore = this.scorer.score(input);
+
     this.stats.passed++;
     return {
       keyword: input.keyword,
       passed: true,
+      compositeScore,
+      classification: {
+        funnelStage: input.funnelStage ?? 'tofu',
+        geoCity: input.geoClassification?.city ?? null,
+        relevanceScore: input.relevanceScores?.combinedScore ?? 0,
+      },
       processingTimeMs: performance.now() - start,
     };
   }
@@ -155,6 +176,18 @@ export class ConstraintFilter {
    */
   getStats(): FilterStats {
     return { ...this.stats };
+  }
+
+  /**
+   * Sort passed keywords by composite score (descending).
+   *
+   * @param results - Filter results array
+   * @returns Sorted array of passed keywords with scores
+   */
+  sortByScore(results: FilterResult[]): FilterResult[] {
+    return [...results]
+      .filter(r => r.passed && r.compositeScore)
+      .sort((a, b) => (b.compositeScore?.finalScore ?? 0) - (a.compositeScore?.finalScore ?? 0));
   }
 
   /**
@@ -227,10 +260,7 @@ export class ConstraintFilter {
  * Create a ConstraintFilter with default or custom constraints.
  */
 export function createConstraintFilter(
-  constraints?: Partial<FilterConstraints>
+  options?: ConstraintFilterOptions
 ): ConstraintFilter {
-  return new ConstraintFilter({
-    relevanceThreshold: 0.4,
-    ...constraints,
-  } as FilterConstraints);
+  return new ConstraintFilter(options);
 }

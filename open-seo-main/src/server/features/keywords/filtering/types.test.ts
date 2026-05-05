@@ -8,8 +8,11 @@ import type {
   FilterResult,
   ExclusionExport,
   ClassifiedKeywordInput,
+  CompositeScore,
+  CategoryPriorityInput,
+  QuickWinConfig,
 } from './types';
-import { humanReadableReason } from './types';
+import { humanReadableReason, SCORING_WEIGHTS } from './types';
 
 describe('Filtering Types', () => {
   describe('Type Compilation', () => {
@@ -190,6 +193,171 @@ describe('Filtering Types', () => {
       };
       expect(exportItem.keyword).toBe('plovykla kaune');
       expect(exportItem.stage).toBe('geo');
+    });
+  });
+
+  describe('CompositeScore Type', () => {
+    it('should have all required fields', () => {
+      const score: CompositeScore = {
+        baseScore: 0.75,
+        priorityMultiplier: 1.5,
+        quickWinBonus: 0.2,
+        finalScore: 1.325,
+      };
+
+      expect(score.baseScore).toBe(0.75);
+      expect(score.priorityMultiplier).toBe(1.5);
+      expect(score.quickWinBonus).toBe(0.2);
+      expect(score.finalScore).toBe(1.325);
+    });
+  });
+
+  describe('SCORING_WEIGHTS', () => {
+    it('should have all 4 weight components', () => {
+      expect(SCORING_WEIGHTS).toHaveProperty('relevance');
+      expect(SCORING_WEIGHTS).toHaveProperty('funnelConfidence');
+      expect(SCORING_WEIGHTS).toHaveProperty('geoScore');
+      expect(SCORING_WEIGHTS).toHaveProperty('volumeNormalized');
+    });
+
+    it('should have weights that sum to 1.0', () => {
+      const sum =
+        SCORING_WEIGHTS.relevance +
+        SCORING_WEIGHTS.funnelConfidence +
+        SCORING_WEIGHTS.geoScore +
+        SCORING_WEIGHTS.volumeNormalized;
+
+      expect(sum).toBeCloseTo(1.0, 10);
+    });
+
+    it('should have correct individual weights per CONTEXT.md', () => {
+      expect(SCORING_WEIGHTS.relevance).toBe(0.4);
+      expect(SCORING_WEIGHTS.funnelConfidence).toBe(0.3);
+      expect(SCORING_WEIGHTS.geoScore).toBe(0.2);
+      expect(SCORING_WEIGHTS.volumeNormalized).toBe(0.1);
+    });
+  });
+
+  describe('CategoryPriorityInput Type', () => {
+    it('should accept valid priority configuration', () => {
+      const priority: CategoryPriorityInput = {
+        category: 'detailing',
+        categoryLt: 'detalės',
+        weightMultiplier: 1.5,
+      };
+
+      expect(priority.category).toBe('detailing');
+      expect(priority.categoryLt).toBe('detalės');
+      expect(priority.weightMultiplier).toBe(1.5);
+    });
+
+    it('should allow optional categoryLt', () => {
+      const priority: CategoryPriorityInput = {
+        category: 'detailing',
+        weightMultiplier: 1.5,
+      };
+
+      expect(priority.category).toBe('detailing');
+      expect(priority.categoryLt).toBeUndefined();
+    });
+  });
+
+  describe('QuickWinConfig Type', () => {
+    it('should have striking distance configuration', () => {
+      const config: QuickWinConfig = {
+        strikingDistance: { minPos: 11, maxPos: 20, minVolume: 100, bonus: 0.2 },
+        opportunity: { minPos: 21, maxPos: 50, minVolume: 200, bonus: 0.15 },
+        defaultBonus: { minVolume: 50, bonus: 0.1 },
+      };
+
+      expect(config.strikingDistance.minPos).toBe(11);
+      expect(config.strikingDistance.maxPos).toBe(20);
+      expect(config.strikingDistance.minVolume).toBe(100);
+      expect(config.strikingDistance.bonus).toBe(0.2);
+    });
+
+    it('should have opportunity configuration', () => {
+      const config: QuickWinConfig = {
+        strikingDistance: { minPos: 11, maxPos: 20, minVolume: 100, bonus: 0.2 },
+        opportunity: { minPos: 21, maxPos: 50, minVolume: 200, bonus: 0.15 },
+        defaultBonus: { minVolume: 50, bonus: 0.1 },
+      };
+
+      expect(config.opportunity.minPos).toBe(21);
+      expect(config.opportunity.maxPos).toBe(50);
+      expect(config.opportunity.minVolume).toBe(200);
+      expect(config.opportunity.bonus).toBe(0.15);
+    });
+
+    it('should have default bonus configuration', () => {
+      const config: QuickWinConfig = {
+        strikingDistance: { minPos: 11, maxPos: 20, minVolume: 100, bonus: 0.2 },
+        opportunity: { minPos: 21, maxPos: 50, minVolume: 200, bonus: 0.15 },
+        defaultBonus: { minVolume: 50, bonus: 0.1 },
+      };
+
+      expect(config.defaultBonus.minVolume).toBe(50);
+      expect(config.defaultBonus.bonus).toBe(0.1);
+    });
+  });
+
+  describe('FilterResult with compositeScore', () => {
+    it('should allow compositeScore field in FilterResult', () => {
+      const result: FilterResult = {
+        keyword: 'detailing paslaugos',
+        passed: true,
+        compositeScore: {
+          baseScore: 0.75,
+          priorityMultiplier: 1.5,
+          quickWinBonus: 0.2,
+          finalScore: 1.325,
+        },
+        classification: {
+          funnelStage: 'bofu',
+          geoCity: 'šiauliai',
+          relevanceScore: 0.8,
+        },
+        processingTimeMs: 1.2,
+      };
+
+      expect(result.compositeScore).toBeDefined();
+      expect(result.compositeScore?.finalScore).toBe(1.325);
+      expect(result.classification?.funnelStage).toBe('bofu');
+    });
+
+    it('should allow FilterResult without compositeScore (excluded keyword)', () => {
+      const result: FilterResult = {
+        keyword: 'plovykla kaune',
+        passed: false,
+        exclusionReason: 'geo:wrong_city:kaunas',
+        exclusionStage: 'geo',
+        processingTimeMs: 0.5,
+      };
+
+      expect(result.compositeScore).toBeUndefined();
+      expect(result.exclusionReason).toBe('geo:wrong_city:kaunas');
+    });
+  });
+
+  describe('ClassifiedKeywordInput with funnelConfidence', () => {
+    it('should accept funnelConfidence field', () => {
+      const input: ClassifiedKeywordInput = {
+        keyword: 'detailing šiauliuose',
+        geoClassification: {
+          passesGeoFilter: true,
+          city: 'šiauliai',
+          geoScore: 1.0,
+        },
+        relevanceScores: {
+          combinedScore: 0.75,
+        },
+        funnelStage: 'bofu',
+        funnelConfidence: 0.9,
+        volume: 320,
+        position: 15,
+      };
+
+      expect(input.funnelConfidence).toBe(0.9);
     });
   });
 });
