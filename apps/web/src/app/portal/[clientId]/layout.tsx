@@ -5,6 +5,7 @@
  *
  * Shell layout for client portal with navigation sidebar, header, and data source footer.
  * Wraps children with QueryClientProvider for data fetching.
+ * Includes PWA manifest link and service worker registration.
  */
 
 import * as React from "react";
@@ -20,6 +21,28 @@ import {
   Bell,
   LogOut,
 } from "lucide-react";
+
+/**
+ * Register service worker on mount
+ */
+function useServiceWorker() {
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          // Check for updates periodically
+          setInterval(() => {
+            registration.update();
+          }, 60 * 60 * 1000); // Every hour
+        })
+        .catch((error) => {
+          // Non-fatal: service worker registration failed
+          // This is expected in development or when SW is not supported
+        });
+    }
+  }, []);
+}
 
 // Create a stable QueryClient instance
 const queryClient = new QueryClient({
@@ -46,6 +69,9 @@ export default function PortalLayout({
   const pathname = usePathname();
   const params = useParams();
   const clientId = params.clientId as string;
+
+  // Register service worker for PWA support
+  useServiceWorker();
 
   const navItems: NavItem[] = [
     {
