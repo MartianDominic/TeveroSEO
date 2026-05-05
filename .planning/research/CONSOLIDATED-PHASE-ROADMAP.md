@@ -2,8 +2,9 @@
 
 > **Source:** WORLD-CLASS-KEYWORD-ANALYSIS.md (8,695 lines, 18 sections)
 > **Original:** 10 phases x 3 waves = 30 waves
-> **Consolidated:** 7 phases x 4-5 waves = 30 waves
+> **Consolidated:** 8 phases x 3-5 waves = 33 waves (bulletproof coverage)
 > **Methodology:** Merge by technical cohesion, user value delivery, and skill requirements
+> **Verified:** 140+ items across all 18 sections mapped to phases
 
 ---
 
@@ -44,6 +45,10 @@
 | Checkpoint/resume system (IndexedDB) | §8.1 | 10/10 | NEW: `checkpoint-manager.ts` |
 | Graceful degradation (skip optional stages) | §8.4 | 7/10 | `analysis-pipeline.ts` |
 | Error message templates | §8.3 | 6/10 | NEW: `error-handler.ts` |
+| Database offline queue + local storage | §8 EC-04 | 8/10 | NEW: `offline-queue.ts` |
+| Rate limit backoff + batch splitting | §8 EC-06 | 8/10 | `EmbeddingService.ts` |
+| DataForSEO timeout fallback | §8 EC-08 | 7/10 | `DataForSEOService.ts` |
+| Input validation (encoding, dupes) | §8 EC-09/11 | 6/10 | NEW: `input-validator.ts` |
 
 ### Wave 2: Performance & Caching
 | Item | Source | Impact | Files |
@@ -52,6 +57,12 @@
 | Parallel pipeline execution | §7.1 | 9/10 | `analysis-pipeline.ts` |
 | Embedding cache (3-tier) | §6.2 | 8/10 | `EmbeddingService.ts` |
 | LLM classification cache | §6.3 | 7/10 | `GrokClassifier.ts`, `FunnelLLMClassifier.ts` |
+| Optimistic first result (0ms perceived) | §7 PERF-04 | 10/10 | `analysis-pipeline.ts` |
+| Progressive result streaming | §7 PERF-10 | 9/10 | `useKeywordAnalysis.ts` |
+| Worker thread pool (CPU stages) | §7 PERF-05 | 8/10 | NEW: `worker-pool.ts` |
+| Memory pressure monitoring (50k+) | §8 EC-05 | 8/10 | NEW: `memory-monitor.ts` |
+| Client-side RAF buffering | §7 PERF-14 | 7/10 | `useKeywordAnalysis.ts` |
+| Stale-while-revalidate pattern | §7 PERF-09 | 7/10 | `cache-utils.ts` |
 
 ### Wave 3: Cost Controls
 | Item | Source | Impact | Files |
@@ -78,12 +89,16 @@
 | Ahrefs/SEMrush format auto-detection | §12.2 | 9/10 | `CsvImportService.ts` |
 | Bulk paste improvements (10K keywords) | §12.3 | 8/10 | `KeywordAnalysisChat.tsx` |
 
-### Wave 2: External Integrations
+### Wave 2: External Integrations & Enrichment
 | Item | Source | Impact | Files |
 |------|--------|--------|-------|
 | Google Sheets sync (read/write) | §12.4 | 8/10 | NEW: `sheets-integration.ts` |
 | Competitor keyword import | §12.8 | 7/10 | `CompetitorSpyService.ts` |
 | Auto-enrichment trigger | §12.3 | 7/10 | `analysis-pipeline.ts` |
+| 12-month trend data (sparklines) | §12 DS-05 | 9/10 | `DataForSEOService.ts` |
+| SERP features data (icons + scoring) | §12 DS-06 | 9/10 | `DataForSEOService.ts` |
+| SERP feature opportunity scoring | §10 CD-03 | 8/10 | NEW: `serp-opportunity.ts` |
+| Trend direction classification | §10 CD-05 | 8/10 | NEW: `trend-classifier.ts` |
 
 ### Wave 3: Client Context Detection
 | Item | Source | Impact | Files |
