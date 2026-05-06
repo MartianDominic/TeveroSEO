@@ -54,8 +54,8 @@ Last activity: 2026-05-06 -- Plan 94-02 complete (Primitives: Card, Button, Badg
 |------|------|--------|--------|
 | 92-01 | Database Schema + VerticalClassifier | Complete | b6b537f4f, 970767176 |
 | 92-02 | Text Processing Utilities | Complete | aab978b10, f51aae5bb |
-| 92-03 | RuleEngineService (41-point scorecard) | Pending | - |
-| 92-04 | QualityGateService (Tier 5 checks) | Pending | - |
+| 92-03 | QualityGateService (Tier 5 checks) | Complete | 03a9ae0 |
+| 92-04 | RuleEngineService (41-point scorecard) | Pending | - |
 | 92-05 | SchemaGenerator | Complete | 13d638f |
 | 92-06 | InternalLinkGraph PageRank | Complete | df99c15, a5b6cf8 |
 | 92-07 | Topical Authority system | Pending | - |
