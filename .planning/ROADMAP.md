@@ -2676,18 +2676,23 @@ Transform the platform into a complete agency CRM with v6 design system complian
 
 ---
 
+
 ### Phase 93: Keyword Coverage Intelligence
 **Goal**: Transform keyword research from "fetch everything" to "fetch what's missing" with coverage tracking, research modes, and deduplication.
 **Depends on**: Phase 86 (Semantic Intelligence), Phase 91 (Cost Optimization)
+**Requirements**: COV-01, COV-02, COV-03, COV-04
 **Working directory**: `open-seo-main/`
-**Status**: Not planned
-**Key Features**:
-  - Coverage dashboard showing keywords per service line
-  - Research modes: EXPAND, DEEP-DIVE, COMPETITOR, REFRESH VOLUMES
-  - Deduplication against existing corpus
-  - Cheaper volume-only refresh endpoint
-  - "Last researched" visibility before allowing re-research
-**Plans**: TBD
-  - [ ] Run /gsd-discuss-phase 93 to gather context
+**Success Criteria** (what must be TRUE):
+  1. Coverage dashboard shows keyword count per service line/tier
+  2. EXPAND mode only fetches NEW keywords (deduplication working)
+  3. Volume refresh uses same endpoint but metadata-only updates (no re-clustering)
+  4. Cost tracking shows duplicate count and cost_saved in research response
+**Plans**: 6 plans
+  - [ ] 93-01-PLAN.md — Foundation: research_sessions table, types, ResearchSessionService (Wave 1)
+  - [ ] 93-02-PLAN.md — Deduplication: extend KeywordDeduplicator with deduplicateBeforeResearch (Wave 1)
+  - [ ] 93-03-PLAN.md — Coverage: CoverageCalculator service with tier aggregation (Wave 1)
+  - [ ] 93-04-PLAN.md — Volume Refresh: BullMQ worker for monthly batch refresh (Wave 2)
+  - [ ] 93-05-PLAN.md — API Routes: coverage endpoint, research with modes (Wave 2)
+  - [ ] 93-06-PLAN.md — Coverage Dashboard UI (Wave 3, checkpoint)
 
 ---
