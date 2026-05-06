@@ -86,3 +86,12 @@ export {
   type TierThresholds,
   type PrioritizationResult,
 } from "./PrioritizationService";
+
+// Coverage Calculator (Phase 93-03)
+export {
+  CoverageCalculator,
+  coverageCalculator,
+  type CoverageSummary,
+  type TierCoverage,
+  type CoverageLevel,
+} from "./CoverageCalculator";
