@@ -2503,12 +2503,12 @@ Transform the platform into a complete agency CRM with v6 design system complian
 
 ---
 
-### Phase 86: Semantic Intelligence Pipeline
+### Phase 86: Semantic Intelligence Pipeline ✅
 **Goal**: Transform flat keyword lists into clustered "growth areas" with HDBSCAN clustering.
 **Depends on**: Phase 78 (embeddings), Phase 79-80 (filtering/selection)
 **Working directory**: `open-seo-main/`, `AI-Writer/`, `apps/web/`
 **Context**: [86-CONTEXT.md](.planning/phases/86-semantic-intelligence/86-CONTEXT.md)
-**Status**: In Progress
+**Status**: Complete (2026-05-06)
 **Key Features**:
   - Semantic deduplication (cosine > 0.92 → merge)
   - HDBSCAN clustering (Python microservice)
@@ -2516,10 +2516,19 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - Topic labeling (LT/EN)
   - Hierarchy building (pillar/subtopic/longtail)
   - Proposal editing with CopilotKit
+  - Backfill pool (200 keywords) + preference learning
 **Estimated effort**: 11.5 days (10 sub-phases)
 **Plans**: 10 plans
-  - [ ] 86-01-PLAN.md — Semantic deduplication + HDBSCAN clustering (Wave 1)
-  - [ ] 86-02 through 86-10 — See 86-CONTEXT.md for full breakdown
+  - [x] 86-01-PLAN.md — Semantic deduplication (Union-Find, cosine > 0.92)
+  - [x] 86-02-PLAN.md — HDBSCAN clustering via Python microservice
+  - [x] 86-03-PLAN.md — Intent splitting (funnel variance > 20%)
+  - [x] 86-04-PLAN.md — Topic labeling (centroid-nearest + Grok fallback)
+  - [x] 86-05-PLAN.md — Hierarchy building (pillar/subtopic/longtail)
+  - [x] 86-06-PLAN.md — Cluster selection (100 + 200 backfill)
+  - [x] 86-07-PLAN.md — Proposal editing operations
+  - [x] 86-08-PLAN.md — Halfvec quantization (50% storage savings)
+  - [x] 86-09-PLAN.md — Backfill pool + preference learning
+  - [x] 86-10-PLAN.md — Portal cluster view + E2E integration
 
 ---
 
