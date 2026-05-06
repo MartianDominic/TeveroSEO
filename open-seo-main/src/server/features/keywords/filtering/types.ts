@@ -250,6 +250,33 @@ export interface FilterResult {
    * Time taken to process this keyword (milliseconds).
    */
   processingTimeMs: number;
+
+  // ============================================================================
+  // PHASE 86: Semantic Clustering Support
+  // ============================================================================
+
+  /**
+   * Embedding vector from Phase 78 (RelevanceScorer).
+   * 768-dim jina-v5-text-nano, normalized, REUSED for clustering in Phase 86.
+   *
+   * IMPORTANT: This field enables embedding passthrough from Phase 78 to Phase 86.
+   * If missing, the keyword will be skipped during semantic deduplication.
+   *
+   * @see 86-RESEARCH.md Integration Point 1: Embedding Flow
+   */
+  embedding?: number[];
+
+  /**
+   * Search volume from GSC data.
+   * Used for canonical selection (highest volume) and cluster aggregation.
+   */
+  volume?: number;
+
+  /**
+   * Keyword difficulty score (0-100).
+   * Used for difficulty averaging in merged keywords.
+   */
+  difficulty?: number;
 }
 
 export interface ExclusionExport {
@@ -324,6 +351,17 @@ export interface ClassifiedKeywordInput {
    * Current ranking position (optional, null if not ranking).
    */
   position?: number | null;
+
+  /**
+   * Embedding vector from Phase 78 (RelevanceScorer).
+   * 768-dim jina-v5-text-nano, passed through to FilterResult.
+   */
+  embedding?: number[];
+
+  /**
+   * Keyword difficulty score (0-100).
+   */
+  difficulty?: number;
 }
 
 // ============================================================================
