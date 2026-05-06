@@ -61,6 +61,12 @@ export interface KeywordData {
   impressions: number;
   volume: number | null;
   isEstimated: boolean;
+  /** Keyword difficulty score (0-100) */
+  difficulty?: number;
+  /** Whether this keyword is marked as priority */
+  isPriority?: boolean;
+  /** Whether this keyword is in the content queue */
+  isQueued?: boolean;
 }
 
 export interface KeywordsPagination {
