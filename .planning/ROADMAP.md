@@ -2508,7 +2508,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
 **Depends on**: Phase 78 (embeddings), Phase 79-80 (filtering/selection)
 **Working directory**: `open-seo-main/`, `AI-Writer/`, `apps/web/`
 **Context**: [86-CONTEXT.md](.planning/phases/86-semantic-intelligence/86-CONTEXT.md)
-**Status**: DEFERRED — Complex clustering deferred to later milestone
+**Status**: In Progress
 **Key Features**:
   - Semantic deduplication (cosine > 0.92 → merge)
   - HDBSCAN clustering (Python microservice)
