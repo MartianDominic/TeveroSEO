@@ -161,7 +161,7 @@ export class HDBSCANClusterer {
     const clusters: KeywordCluster[] = [];
     let centroidIndex = 0;
 
-    for (const [clusterId, keywords] of clusterGroups) {
+    for (const [clusterId, keywords] of Array.from(clusterGroups.entries())) {
       const cluster = this.buildCluster(
         clusterId,
         keywords,

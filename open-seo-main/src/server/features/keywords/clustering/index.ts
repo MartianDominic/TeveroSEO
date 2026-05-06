@@ -66,3 +66,4 @@ export {
 
 // Services
 export { SemanticDeduplicator, deduplicate } from './SemanticDeduplicator';
+export { HDBSCANClusterer, clusterKeywords } from './HDBSCANClusterer';
