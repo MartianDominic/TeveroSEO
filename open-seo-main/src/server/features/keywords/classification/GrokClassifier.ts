@@ -84,6 +84,30 @@ export class GrokClassifier {
         temperature: GROK_CONFIG.temperature,
       });
 
+      // Phase 91: Log xAI prompt caching metrics (auto-caching verification)
+      const usage = response.usage;
+      if (usage) {
+        const promptTokensDetails = usage.prompt_tokens_details as
+          | { cached_tokens?: number }
+          | undefined;
+        const cachedTokens = promptTokensDetails?.cached_tokens ?? 0;
+        const totalPromptTokens = usage.prompt_tokens;
+
+        if (cachedTokens > 0) {
+          log.info("Grok cache hit", {
+            cachedTokens,
+            totalPromptTokens,
+            savingsPercent: Math.round((cachedTokens / totalPromptTokens) * 100),
+            keywordCount: keywords.length,
+          });
+        } else {
+          log.debug("Grok cache miss", {
+            totalPromptTokens,
+            keywordCount: keywords.length,
+          });
+        }
+      }
+
       const text = response.choices[0]?.message?.content || "";
 
       let jsonData: unknown;
