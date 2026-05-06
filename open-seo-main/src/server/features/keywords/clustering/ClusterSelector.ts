@@ -229,8 +229,10 @@ export class ClusterSelector {
   private sortKeywordsInCluster(keywords: ClusteringInput[]): ClusteringInput[] {
     return [...keywords].sort((a, b) => {
       // Prioritize quick-wins (position 11-50)
-      const aIsQuickWin = a.position !== null && a.position >= 11 && a.position <= 50;
-      const bIsQuickWin = b.position !== null && b.position >= 11 && b.position <= 50;
+      const aPos = a.position ?? null;
+      const bPos = b.position ?? null;
+      const aIsQuickWin = aPos !== null && aPos >= 11 && aPos <= 50;
+      const bIsQuickWin = bPos !== null && bPos >= 11 && bPos <= 50;
 
       if (aIsQuickWin && !bIsQuickWin) return -1;
       if (!aIsQuickWin && bIsQuickWin) return 1;
