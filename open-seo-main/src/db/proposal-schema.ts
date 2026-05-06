@@ -44,6 +44,9 @@ export type ProposalTemplate = (typeof PROPOSAL_TEMPLATES)[number];
 // Opportunity difficulty levels
 export type OpportunityDifficulty = "easy" | "medium" | "hard";
 
+// Proposal edit types (Phase 86-07)
+export type ProposalEditType = 'remove_cluster' | 'add_keyword' | 'remove_keyword' | 'change_distribution';
+
 /**
  * ProposalContent JSONB type - the main content of the proposal.
  * This is the data that populates the proposal template.
@@ -260,6 +263,43 @@ export const proposalPayments = pgTable(
   ],
 );
 
+/**
+ * Proposal edits table - immutable edit history for undo/redo.
+ * Phase 86-07: Each edit stores a full state snapshot for instant restore.
+ */
+export const proposalEdits = pgTable(
+  "proposal_edits",
+  {
+    id: text("id").primaryKey(),
+    proposalId: text("proposal_id")
+      .notNull()
+      .references(() => proposals.id, { onDelete: "cascade" }),
+
+    // Version tracking
+    version: integer("version").notNull(),
+    previousVersion: integer("previous_version"),
+
+    // Edit details
+    editType: text("edit_type").$type<ProposalEditType>().notNull(),
+    editData: jsonb("edit_data").notNull(),
+
+    // AI summary for UI
+    aiSummary: text("ai_summary").notNull(),
+
+    // Full state snapshot for undo
+    stateSnapshot: jsonb("state_snapshot").notNull(),
+
+    // Timestamp
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("ix_proposal_edits_proposal_version").on(table.proposalId, table.version),
+    index("ix_proposal_edits_proposal").on(table.proposalId),
+  ],
+);
+
 // Relations
 export const proposalsRelations = relations(proposals, ({ one, many }) => ({
   prospect: one(prospects, {
@@ -273,6 +313,7 @@ export const proposalsRelations = relations(proposals, ({ one, many }) => ({
   views: many(proposalViews),
   signatures: many(proposalSignatures),
   payments: many(proposalPayments),
+  edits: many(proposalEdits),
 }));
 
 export const proposalViewsRelations = relations(proposalViews, ({ one }) => ({
@@ -302,6 +343,13 @@ export const proposalPaymentsRelations = relations(
   }),
 );
 
+export const proposalEditsRelations = relations(proposalEdits, ({ one }) => ({
+  proposal: one(proposals, {
+    fields: [proposalEdits.proposalId],
+    references: [proposals.id],
+  }),
+}));
+
 // Inferred types for database operations
 export type ProposalSelect = typeof proposals.$inferSelect;
 export type ProposalInsert = typeof proposals.$inferInsert;
@@ -311,3 +359,5 @@ export type ProposalSignatureSelect = typeof proposalSignatures.$inferSelect;
 export type ProposalSignatureInsert = typeof proposalSignatures.$inferInsert;
 export type ProposalPaymentSelect = typeof proposalPayments.$inferSelect;
 export type ProposalPaymentInsert = typeof proposalPayments.$inferInsert;
+export type ProposalEditSelect = typeof proposalEdits.$inferSelect;
+export type ProposalEditInsert = typeof proposalEdits.$inferInsert;
