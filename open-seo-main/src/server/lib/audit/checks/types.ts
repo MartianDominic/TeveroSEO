@@ -1,9 +1,11 @@
 /**
  * Type definitions for SEO check system.
  * Phase 32: 107 SEO Checks Implementation
+ * Phase 92: Tier 5 Content Quality Intelligence
  */
 import type { CheerioAPI } from "cheerio";
 import type { PageAnalysis } from "../types";
+import type { Vertical } from "@/server/features/onpage-mastery/types";
 
 /** Severity levels for check results */
 export type CheckSeverity = "critical" | "high" | "medium" | "low" | "info";
@@ -14,8 +16,9 @@ export type CheckSeverity = "critical" | "high" | "medium" | "low" | "info";
  * - Tier 2: Calculation checks (21 total, 0.5 pts each, max 10 pts)
  * - Tier 3: API-based checks (13 total, 0.8 pts each, max 6 pts)
  * - Tier 4: Crawl-based checks (7 total, 0.4 pts each, max 4 pts)
+ * - Tier 5: Content Quality Intelligence (13 total, opt-in, blocking capable)
  */
-export type CheckTier = 1 | 2 | 3 | 4;
+export type CheckTier = 1 | 2 | 3 | 4 | 5;
 
 /** Categories for organizing checks */
 export type CheckCategory =
@@ -40,7 +43,11 @@ export type CheckCategory =
   | "backlinks"
   | "engagement"
   | "architecture"
-  | "differentiation";
+  | "differentiation"
+  // Tier 5 categories (Phase 92)
+  | "quality-gates"
+  | "writing-quality"
+  | "voice-tone";
 
 /**
  * Extended page analysis data for Tier 2+ checks.
@@ -80,6 +87,13 @@ export interface CheckContext {
   siteContext?: SiteContext;
   /** HTTP response headers (optional, for X-Robots-Tag check) - FIX-13 */
   responseHeaders?: Record<string, string>;
+  // Tier 5 fields (Phase 92)
+  /** Vertical classification for Tier 5 quality checks */
+  vertical?: Vertical;
+  /** SERP competitor content for information gain checks */
+  serpContent?: string[];
+  /** Client ID for voice consistency checks */
+  clientId?: string;
 }
 
 /**
@@ -112,6 +126,8 @@ export interface CheckResult {
   autoEditable: boolean;
   /** Recipe/instructions for auto-fix (if autoEditable) */
   editRecipe?: string;
+  /** Tier 5: If true and check failed, blocks publication */
+  blocking?: boolean;
 }
 
 /**
@@ -122,7 +138,7 @@ export interface CheckDefinition {
   id: string;
   /** Human-readable name */
   name: string;
-  /** Tier: 1=DOM, 2=calc, 3=API, 4=crawl */
+  /** Tier: 1=DOM, 2=calc, 3=API, 4=crawl, 5=quality */
   tier: CheckTier;
   /** Category for grouping */
   category: CheckCategory;
@@ -132,6 +148,8 @@ export interface CheckDefinition {
   autoEditable: boolean;
   /** Recipe/instructions for auto-fix (if autoEditable) */
   editRecipe?: string;
+  /** Tier 5: If true and check failed, blocks publication */
+  blocking?: boolean;
   /** The check function */
   run: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
 }
