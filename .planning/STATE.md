@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-06T11:24:11.591Z"
+last_updated: "2026-05-06T11:33:01.645Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 14
@@ -265,6 +265,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - 54-01: AES-256-GCM encryption with PAYMENT_ENCRYPTION_KEY; Factory pattern with provider caching per workspace; Stripe env var fallback for backwards compatibility
 - QUANT-01: halfvec(768) with HNSW indexes for 50% storage reduction
 - QUANT-02: Validation at application layer to prevent pgvector crashes from NaN/Inf values
+- Use immutable state pattern: all edit operations return NEW state objects
+- Grok 4.1 Fast for CopilotKit chat (per LLM-ARCHITECTURE.md)
+- Full state snapshots in proposal_edits table for instant undo/redo
 
 ## v5.0 Phases Summary
 
