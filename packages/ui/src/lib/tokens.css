@@ -85,29 +85,35 @@
   --radius-pill: 999px;
 
   /* ===== Shadow Tokens ===== */
-  /* Ghost-edge shadows - replaces 1px borders on cards */
+  /* Ghost-edge shadows with inset highlights - the "glass-edge" effect (v6) */
   --shadow-card:
-    0 1px 2px rgba(20, 20, 26, 0.04),
-    0 2px 4px rgba(20, 20, 26, 0.02),
-    0 0 0 1px var(--hairline-3);
+    0 0 0 1px rgba(20, 20, 26, 0.045),
+    0 1px 2px rgba(20, 20, 26, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
   --shadow-lift:
-    0 2px 8px rgba(20, 20, 26, 0.08),
-    0 4px 16px rgba(20, 20, 26, 0.04),
-    0 0 0 1px var(--hairline-2);
+    0 0 0 1px rgba(20, 20, 26, 0.06),
+    0 6px 16px -4px rgba(20, 20, 26, 0.06),
+    0 16px 40px -16px rgba(20, 20, 26, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 
   --shadow-pop:
-    0 4px 12px rgba(20, 20, 26, 0.12),
-    0 8px 24px rgba(20, 20, 26, 0.08);
+    0 0 0 1px rgba(20, 20, 26, 0.05),
+    0 2px 4px rgba(20, 20, 26, 0.04),
+    0 12px 28px -8px rgba(20, 20, 26, 0.08);
 
-  /* CTA shadows with accent glow */
+  /* CTA shadows with accent color and inset highlight */
   --shadow-cta:
-    0 1px 2px rgba(15, 79, 61, 0.24),
-    0 2px 4px rgba(15, 79, 61, 0.12);
+    inset 0 0 0 1px rgba(15, 79, 61, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1px 2px rgba(15, 79, 61, 0.18),
+    0 4px 12px -2px rgba(15, 79, 61, 0.20);
 
   --shadow-cta-hover:
-    0 2px 8px rgba(15, 79, 61, 0.32),
-    0 4px 12px rgba(15, 79, 61, 0.16);
+    inset 0 0 0 1px rgba(15, 79, 61, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 2px 6px rgba(15, 79, 61, 0.25),
+    0 8px 18px -4px rgba(15, 79, 61, 0.28);
 
   /* ===== Motion Tokens ===== */
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
@@ -122,8 +128,128 @@
   --shell-utility-h: 56px;
 }
 
+}
+
+/* ===== Type Role Classes ===== */
+
+/* Page title - Newsreader serif, large, tight tracking */
+.t-page-title {
+  font-family: var(--font-display);
+  font-size: var(--type-h1);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.024em;
+  color: var(--text-1);
+}
+
+/* Eyebrow - tiny uppercase with wide tracking */
+.t-eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--type-tiny);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Small caps - OpenType small caps, NOT uppercase */
+.t-smallcaps {
+  font-family: var(--font-display);
+  font-size: var(--type-tiny);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  font-variant-caps: all-small-caps;
+}
+
+/* Monospace - for data, URLs, timestamps */
+.t-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Tabular nums only - for aligned data columns */
+.t-tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ===== Display Numeral Classes ===== */
+
+/* Mega numeral - the "editorial moment" (goal hero) */
+.num-mega {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--num-mega);
+  line-height: 0.95;
+  letter-spacing: -0.034em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+
+/* Hero numeral - large KPI */
+.num-hero {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--num-hero);
+  line-height: 1;
+  letter-spacing: -0.026em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+
+/* Card numeral - KPI cards */
+.num-card {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--num-card);
+  line-height: 1;
+  letter-spacing: -0.024em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+
+/* Row numeral - tables, distribution buckets */
+.num-row {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--num-row);
+  line-height: 1;
+  letter-spacing: -0.018em;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+}
+
+/* Goal line - editorial sentence */
+.t-goal-line {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 1.95vw, 30px);
+  line-height: 1.25;
+  letter-spacing: -0.018em;
+  color: var(--text-1);
+  font-optical-sizing: auto;
+}
+.t-goal-line em {
+  font-style: italic;
+  color: var(--text-1);
+}
+
+/* Kbd chip - keyboard shortcuts */
+.kbd {
+  font-family: var(--font-mono);
+  font-size: var(--type-tiny);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
 /* ===== Dark Mode (Future) ===== */
-/* @media (prefers-color-scheme: dark) { :root { ... } } */
+/* @media (prefers-color-scheme: dark) { :root { ... } }
 
 /* ===== Reduced Motion ===== */
 @media (prefers-reduced-motion: reduce) {
