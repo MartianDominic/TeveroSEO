@@ -4,7 +4,8 @@
  * KeywordTable Component
  *
  * Sortable, filterable keyword rankings table with pagination.
- * V6 design: CSS Grid layout, hover states, Geist Mono for positions.
+ * V6 design: CSS Grid layout, sliding underline tabs, Newsreader serif volume,
+ * semantic difficulty badges, hover-reveal queue button.
  */
 
 import * as React from "react";
@@ -25,6 +26,17 @@ import type {
   SortOrder,
   KeywordsSummary,
 } from "@/lib/portal/types";
+
+/**
+ * Get difficulty configuration based on KD value
+ * Uses semantic colors from v6 design system
+ */
+function getDifficultyConfig(kd: number) {
+  if (kd <= 30) return { bg: "bg-success-soft", text: "text-success", label: "Easy" };
+  if (kd <= 50) return { bg: "bg-surface-2", text: "text-text-2", label: "Medium" };
+  if (kd <= 70) return { bg: "bg-warning-soft", text: "text-warning", label: "Hard" };
+  return { bg: "bg-error-soft", text: "text-error", label: "Very Hard" };
+}
 
 export interface KeywordTableProps {
   /** Keywords data to display */
@@ -52,6 +64,8 @@ export interface KeywordTableProps {
   onPageChange?: (offset: number) => void;
   /** Loading state */
   isLoading?: boolean;
+  /** Queue button click handler */
+  onQueueClick?: (keyword: KeywordData) => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -63,13 +77,15 @@ const filters: { value: KeywordFilter; label: string }[] = [
   { value: "declining", label: "Declining" },
 ];
 
-const columns: { key: KeywordSort | "keyword" | "volume"; label: string; sortable: boolean }[] = [
+const columns: { key: KeywordSort | "keyword" | "volume" | "difficulty" | "queue"; label: string; sortable: boolean }[] = [
   { key: "keyword", label: "Keyword", sortable: false },
   { key: "position", label: "Position", sortable: true },
+  { key: "volume", label: "Volume", sortable: false },
+  { key: "difficulty", label: "KD", sortable: false },
   { key: "change", label: "Change", sortable: true },
   { key: "clicks", label: "Clicks", sortable: true },
   { key: "impressions", label: "Impr.", sortable: true },
-  { key: "volume", label: "Volume", sortable: false },
+  { key: "queue", label: "", sortable: false },
 ];
 
 export function KeywordTable({
@@ -83,9 +99,15 @@ export function KeywordTable({
   pagination,
   onPageChange,
   isLoading,
+  onQueueClick,
   className,
 }: KeywordTableProps) {
   const hasEstimatedData = keywords.some((kw) => kw.isEstimated);
+
+  // Calculate max volume for relative bar scaling
+  const maxVolume = React.useMemo(() => {
+    return Math.max(...keywords.map(kw => kw.volume ?? 0), 1);
+  }, [keywords]);
 
   const handleSort = (column: string) => {
     if (column === "keyword" || column === "volume") return;
@@ -112,51 +134,60 @@ export function KeywordTable({
         className
       )}
     >
-      {/* Header with filters */}
-      <div className="flex items-center justify-between gap-4 p-5 border-b border-hairline-2">
+      {/* Header with title */}
+      <div className="px-5 py-4 border-b border-hairline-2">
         <h3 className="font-sans font-medium text-[15px] text-text-1">
           Keyword Rankings
         </h3>
+      </div>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-1.5">
-          {filters.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => onFilterChange(f.value)}
-              className={cn(
-                "px-3 py-1.5 rounded-[--radius-button] text-[13px] font-medium",
-                "transition-colors duration-150",
-                filter === f.value
-                  ? "bg-accent-soft text-accent-ink"
-                  : "bg-transparent text-text-2 hover:bg-surface-2"
-              )}
-            >
-              {f.label}
-              {summary && f.value !== "all" && (
-                <span
-                  className={cn(
-                    "ml-1.5 px-1.5 py-0.5 rounded-[--radius-pill] text-[11px]",
-                    filter === f.value
-                      ? "bg-accent/10 text-accent"
-                      : "bg-surface-2 text-text-3"
-                  )}
-                >
-                  {f.value === "top10" && summary.top10}
-                  {f.value === "improving" && summary.improving}
-                  {f.value === "declining" && summary.declining}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* Tab navigation with sliding underline */}
+      <div className="relative flex items-center border-b border-hairline-2">
+        {filters.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => onFilterChange(f.value)}
+            className={cn(
+              "relative px-4 py-3 text-[14px] font-medium",
+              "transition-colors duration-[160ms]",
+              filter === f.value
+                ? "text-text-1"
+                : "text-text-3 hover:text-text-2"
+            )}
+          >
+            {f.label}
+            {summary && f.value !== "all" && (
+              <span
+                className={cn(
+                  "ml-1.5 px-1.5 py-0.5 rounded-[--radius-pill] text-[12px]",
+                  filter === f.value
+                    ? "bg-accent-soft text-accent"
+                    : "bg-surface-2 text-text-3"
+                )}
+              >
+                {f.value === "top10" && summary.top10}
+                {f.value === "improving" && summary.improving}
+                {f.value === "declining" && summary.declining}
+              </span>
+            )}
+            {/* Sliding underline indicator */}
+            {filter === f.value && (
+              <span
+                className="absolute left-4 right-4 bottom-[-1px] h-[2px] bg-accent rounded-t-sm"
+                style={{
+                  transition: "all 280ms cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              />
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Table header */}
       <div
         className="grid gap-4 px-5 py-3 text-[12px] font-medium text-text-3 uppercase tracking-[0.08em] border-b border-hairline-3"
         style={{
-          gridTemplateColumns: "2.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr",
+          gridTemplateColumns: "minmax(260px, 2.4fr) 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.6fr 0.6fr",
         }}
       >
         {columns.map((col) => (
@@ -185,9 +216,11 @@ export function KeywordTable({
               key={i}
               className="grid gap-4 px-5 py-4"
               style={{
-                gridTemplateColumns: "2.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr",
+                gridTemplateColumns: "minmax(260px, 2.4fr) 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.6fr 0.6fr",
               }}
             >
+              <div className="h-5 bg-surface-3 rounded skeleton" />
+              <div className="h-5 bg-surface-3 rounded skeleton" />
               <div className="h-5 bg-surface-3 rounded skeleton" />
               <div className="h-5 bg-surface-3 rounded skeleton" />
               <div className="h-5 bg-surface-3 rounded skeleton" />
@@ -201,71 +234,126 @@ export function KeywordTable({
             No keywords found
           </div>
         ) : (
-          keywords.map((kw, idx) => (
-            <div
-              key={kw.keyword}
-              className={cn(
-                "grid gap-4 px-5 py-3.5 transition-colors duration-150",
-                "hover:bg-surface-2 cursor-pointer group"
-              )}
-              style={{
-                gridTemplateColumns: "2.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr",
-              }}
-            >
-              {/* Keyword */}
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[14px] text-text-1 font-medium truncate">
-                  {kw.keyword}
-                </span>
-              </div>
+          keywords.map((kw) => {
+            const difficultyConfig = kw.difficulty !== undefined
+              ? getDifficultyConfig(kw.difficulty)
+              : null;
 
-              {/* Position */}
-              <div className="flex items-center">
-                <span className="font-mono text-[14px] text-text-1 tabular-nums">
-                  {kw.position}
-                </span>
-              </div>
-
-              {/* Change */}
-              <div className="flex items-center">
-                {kw.change !== 0 ? (
-                  <DeltaBadge value={-kw.change} inverted size="sm" />
-                ) : (
-                  <span className="text-[13px] text-text-3">-</span>
+            return (
+              <div
+                key={kw.keyword}
+                className={cn(
+                  "relative grid gap-4 px-5 py-3.5 group",
+                  "hover:bg-surface-2 cursor-pointer",
+                  "transition-colors duration-[160ms]",
+                  // Priority indicator: 2px accent left border
+                  kw.isPriority && "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-accent"
                 )}
-              </div>
+                style={{
+                  gridTemplateColumns: "minmax(260px, 2.4fr) 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.6fr 0.6fr",
+                }}
+              >
+                {/* Keyword */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[14px] text-text-1 font-medium truncate">
+                    {kw.keyword}
+                  </span>
+                </div>
 
-              {/* Clicks */}
-              <div className="flex items-center">
-                <span className="font-mono text-[14px] text-text-2 tabular-nums">
-                  {kw.clicks.toLocaleString()}
-                </span>
-              </div>
+                {/* Position */}
+                <div className="flex items-center">
+                  <span className="font-mono text-[14px] text-text-1 tabular-nums">
+                    {kw.position}
+                  </span>
+                </div>
 
-              {/* Impressions */}
-              <div className="flex items-center">
-                <span className="font-mono text-[14px] text-text-2 tabular-nums">
-                  {kw.impressions.toLocaleString()}
-                </span>
-              </div>
+                {/* Volume with Newsreader serif + relative bar */}
+                <div className="flex flex-col gap-1">
+                  {kw.volume !== null ? (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <span className="font-display text-[18px] text-text-1 tabular-nums">
+                          {kw.volume.toLocaleString()}
+                        </span>
+                        {kw.isEstimated && (
+                          <TrustIndicator level="estimated" showLabel={false} />
+                        )}
+                      </div>
+                      {maxVolume > 0 && (
+                        <div className="h-[3px] bg-surface-3 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-accent-tint rounded-full"
+                            style={{ width: `${(kw.volume / maxVolume) * 100}%` }}
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-[13px] text-text-4">-</span>
+                  )}
+                </div>
 
-              {/* Volume */}
-              <div className="flex items-center gap-1">
-                {kw.volume !== null ? (
-                  <>
-                    <span className="font-mono text-[14px] text-text-2 tabular-nums">
-                      {kw.volume.toLocaleString()}
+                {/* Difficulty with semantic colors */}
+                <div className="flex items-center">
+                  {difficultyConfig ? (
+                    <span
+                      className={cn(
+                        "px-2 py-1 rounded-md text-[14px] font-medium tabular-nums",
+                        difficultyConfig.bg,
+                        difficultyConfig.text
+                      )}
+                    >
+                      {kw.difficulty}
                     </span>
-                    {kw.isEstimated && (
-                      <TrustIndicator level="estimated" showLabel={false} />
+                  ) : (
+                    <span className="text-[13px] text-text-4">-</span>
+                  )}
+                </div>
+
+                {/* Change */}
+                <div className="flex items-center">
+                  {kw.change !== 0 ? (
+                    <DeltaBadge value={-kw.change} inverted size="sm" />
+                  ) : (
+                    <span className="text-[13px] text-text-3">-</span>
+                  )}
+                </div>
+
+                {/* Clicks */}
+                <div className="flex items-center">
+                  <span className="font-mono text-[14px] text-text-2 tabular-nums">
+                    {kw.clicks.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Impressions */}
+                <div className="flex items-center">
+                  <span className="font-mono text-[14px] text-text-2 tabular-nums">
+                    {kw.impressions.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Queue button - hover-reveal pattern */}
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onQueueClick?.(kw);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-[--radius-button] text-[13px] font-medium",
+                      "transition-all duration-[240ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      kw.isQueued
+                        ? "bg-accent text-white opacity-100"
+                        : "bg-surface-2 text-text-2 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
                     )}
-                  </>
-                ) : (
-                  <span className="text-[13px] text-text-4">-</span>
-                )}
+                  >
+                    {kw.isQueued ? "Queued" : "Queue"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
