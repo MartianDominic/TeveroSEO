@@ -30,6 +30,10 @@ export {
   CardDescription,
   CardContent,
 } from "./components/card";
+export type { CardProps } from "./components/card";
+
+export { ProgressBlock } from "./components/progress-block";
+export type { ProgressBlockProps } from "./components/progress-block";
 
 export {
   ChartContainer,
