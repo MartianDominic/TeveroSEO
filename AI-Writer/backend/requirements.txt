@@ -195,3 +195,9 @@ psycopg2-binary>=2.9.0
 alembic>=1.13.0
 playwright
 sentence-transformers>=3.0.0  # BGE reranker (Phase 73-03: cross-encoder reranking)
+
+# ============================================================================
+# CLUSTERING DEPENDENCIES (Phase 86)
+# ============================================================================
+fast-hdbscan==0.3.1       # Memory-optimized HDBSCAN for VPS (6-7x faster than standard hdbscan)
+umap-learn==0.5.6         # Dimensionality reduction for clustering (768D -> 15D)
