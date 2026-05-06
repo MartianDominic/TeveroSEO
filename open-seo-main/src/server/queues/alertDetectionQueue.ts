@@ -51,31 +51,25 @@ export const alertDetectionQueue = new Queue<AlertDetectionJobData>(
 });
 
 /**
- * Initialize the alert detection queue with scheduled jobs.
- * - Detect alerts for all workspaces every 5 minutes
+ * Initialize the alert detection queue.
+ *
+ * Phase 91: DISABLED automatic 5-minute polling.
+ * Reason: Polling every 5 minutes wastes resources — metrics don't change that often.
+ *
+ * Alert detection is now ON-DEMAND only:
+ * - Call enqueueWorkspaceAlertDetection() after metrics update completes
+ * - Chain from metrics refresh workers/endpoints
  */
 export async function initAlertDetectionQueue(): Promise<void> {
-  // Add scheduled detection every 5 minutes
-  await alertDetectionQueue.add(
-    "detect-all",
-    { type: "detect_all" },
-    {
-      repeat: {
-        every: 5 * 60 * 1000, // 5 minutes
-      },
-      jobId: "alert-detection-global",
-    }
-  );
-
-  // Clean up old repeatable jobs
+  // Phase 91: Remove any existing repeatable jobs (cleanup from previous versions)
   const repeatableJobs = await alertDetectionQueue.getRepeatableJobs();
   for (const job of repeatableJobs) {
-    if (job.id !== "alert-detection-global") {
-      await alertDetectionQueue.removeRepeatableByKey(job.key);
-    }
+    await alertDetectionQueue.removeRepeatableByKey(job.key).catch((err) => {
+      log.warn("Failed to remove old repeatable job", { key: job.key, error: err.message });
+    });
   }
 
-  log.info("Alert detection queue initialized with 5-minute schedule");
+  log.info("Alert detection queue initialized (on-demand only, no automatic polling)");
 }
 
 /**

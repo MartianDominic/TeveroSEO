@@ -89,15 +89,19 @@ export const DATAFORSEO_PRICING = {
 /**
  * Cache TTL per data source (seconds).
  *
+ * Phase 91: Extended LABS TTL from 7 days to 30 days.
+ * Rationale: Google Ads Keyword Planner updates volume data monthly.
+ * Competitor keywords don't change faster than that.
+ *
  * - CRAWL: 7 days (client site changes infrequently)
- * - DATAFORSEO_LABS: 7 days (competitor keywords stable)
+ * - DATAFORSEO_LABS: 30 days (keyword volumes update monthly)
  * - DATAFORSEO_SERP: 24 hours (SERPs change daily)
  * - DATAFORSEO_BACKLINKS: 7 days (backlinks stable)
  * - CACHE: N/A (already cached)
  */
 export const CACHE_TTL_PER_SOURCE: CacheTTLTable = {
   [DataSource.CRAWL]: 7 * 24 * 60 * 60, // 7 days
-  [DataSource.DATAFORSEO_LABS]: 7 * 24 * 60 * 60, // 7 days
+  [DataSource.DATAFORSEO_LABS]: 30 * 24 * 60 * 60, // 30 days (Phase 91)
   [DataSource.DATAFORSEO_SERP]: 24 * 60 * 60, // 24 hours
   [DataSource.DATAFORSEO_BACKLINKS]: 7 * 24 * 60 * 60, // 7 days
   [DataSource.CACHE]: 0, // N/A

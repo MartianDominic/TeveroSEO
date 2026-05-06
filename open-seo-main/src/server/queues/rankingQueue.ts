@@ -78,49 +78,24 @@ export const rankingQueue = new Queue<RankingJobData | RankingDLQJobData>(
 );
 
 /**
- * Initialize the ranking queue with a repeatable job.
- * Runs daily at 03:00 UTC to check keyword rankings.
+ * Initialize the ranking queue.
  *
- * Uses atomic operation pattern:
- * 1. First add the new repeatable job (guarantees it exists)
- * 2. Then remove old repeatable jobs (safe - new job already exists)
+ * Phase 91: DISABLED automatic daily scheduling.
+ * Reason: $100-300/month wasted checking ALL keywords daily when users don't look at rankings daily.
  *
- * This prevents job loss if a crash occurs between remove and add operations.
+ * Rankings are now ON-DEMAND only via triggerRankingCheck().
+ * Add a "Refresh Rankings" button in UI to call this.
  */
 export async function initRankingScheduler(): Promise<void> {
-  // Use a unique job ID that includes a version/timestamp for atomic updates
-  const jobId = "ranking-scheduler";
-
-  // First, add the new repeatable job (atomic - guarantees job exists)
-  await rankingQueue.add(
-    "check-keyword-rankings",
-    { triggeredAt: new Date().toISOString() },
-    {
-      repeat: {
-        pattern: "0 3 * * *", // 03:00 UTC daily
-      },
-      jobId,
-    },
-  );
-
-  log.info("Ranking scheduler job added");
-
-  // Now safe to remove any old/duplicate repeatable jobs
-  // The new job is guaranteed to exist at this point
+  // Phase 91: Remove any existing repeatable jobs (cleanup from previous versions)
   const repeatableJobs = await rankingQueue.getRepeatableJobs();
   for (const job of repeatableJobs) {
-    // Skip the job we just added (match by pattern and jobId)
-    if (job.id === jobId && job.pattern === "0 3 * * *") {
-      continue;
-    }
-    // Remove old/stale repeatable jobs
     await rankingQueue.removeRepeatableByKey(job.key).catch((err) => {
-      // Ignore errors removing old jobs - they may have been removed already
       log.warn("Failed to remove old repeatable job", { key: job.key, error: err.message });
     });
   }
 
-  log.info("Ranking queue initialized with daily repeatable job at 03:00 UTC");
+  log.info("Ranking queue initialized (on-demand only, no automatic scheduling)");
 }
 
 /**

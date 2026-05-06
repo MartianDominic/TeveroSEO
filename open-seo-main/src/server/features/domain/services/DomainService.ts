@@ -9,8 +9,8 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "DomainService" });
 
-/** Domain overview data is refreshed every 12 hours. */
-const DOMAIN_OVERVIEW_TTL_SECONDS = 12 * 60 * 60;
+/** Phase 91: Extended from 12h to 7 days — domain metrics change weekly/monthly */
+const DOMAIN_OVERVIEW_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 type DomainOverviewResult = {
   domain: string;

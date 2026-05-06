@@ -25,8 +25,9 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "backlinks/serviceData" });
 
-const BACKLINKS_OVERVIEW_TTL_SECONDS = 6 * 60 * 60;
-const BACKLINKS_TAB_TTL_SECONDS = 6 * 60 * 60;
+/** Phase 91: Extended from 6h to 24h — backlinks change weekly/monthly, not hourly */
+const BACKLINKS_OVERVIEW_TTL_SECONDS = 24 * 60 * 60;
+const BACKLINKS_TAB_TTL_SECONDS = 24 * 60 * 60;
 
 export type BacklinksCache = {
   get(key: string): Promise<unknown>;

@@ -22,8 +22,8 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "gsc-bridge-service" });
 
-// Cache TTL: 1 hour
-const CACHE_TTL_SECONDS = 3600;
+// Phase 91: Extended from 1h to 6h — GSC data has 2-3 day processing latency anyway
+const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 // Rate limit: 100 calls per day per client
 const RATE_LIMIT_PER_DAY = 100;
