@@ -191,7 +191,7 @@ watchfiles==1.1.1
 websockets==16.0
 yarl==1.23.0
 zope.interface==8.3
-psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9.12
 alembic>=1.13.0
 playwright
 sentence-transformers>=3.0.0  # BGE reranker (Phase 73-03: cross-encoder reranking)
