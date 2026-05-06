@@ -9,3 +9,17 @@ export {
   resetVerticalClassifierService,
   CircuitOpenError,
 } from "./VerticalClassifier";
+
+export {
+  QualityGateService,
+  getQualityGateService,
+  resetQualityGateService,
+  type QualityGateConfig,
+} from "./QualityGateService";
+
+export {
+  RuleEngineService,
+  getRuleEngineService,
+  resetRuleEngineService,
+  type ScorecardResult,
+} from "./RuleEngineService";
