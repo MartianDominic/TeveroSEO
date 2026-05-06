@@ -11,6 +11,7 @@
 - ✅ **v7.0 Onboarding Excellence** — Phases 56–62 (complete 2026-05-01)
 - ✅ **v7.1 Platform Intelligence** — Phases 63–66 (complete 2026-05-03)
 - 🔄 **v8.0 World-Class Keyword Intelligence** — Phases 75–82 (in progress)
+- 📋 **v9.0 On-Page Excellence** — Phase 92 (planned)
 
 ## Phases
 
@@ -2628,5 +2629,27 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [x] 90-01-PLAN.md — Backend services (DashboardService, ActivityService, NotificationService + BullMQ)
   - [x] 90-02-PLAN.md — API routes (dashboard, keywords, activity, notifications)
   - [x] 90-03-PLAN.md — Frontend UI (V6 design system) + PWA foundation
+
+---
+
+## v9.0 On-Page Excellence
+
+> **Milestone goal**: Every page optimized using research-backed on-page SEO rules. No guesswork, no outdated tactics — only what actually ranks.
+
+---
+
+### Phase 92: On-Page SEO Mastery
+**Goal**: Apply all correct, research-backed on-page SEO rules to rank every page — no guesswork, no outdated tactics.
+**Depends on**: Phase 90 (Client Portal complete)
+**Working directory**: `open-seo-main/`, `apps/web/`
+**Status**: Not planned
+**Key Features**:
+  - Research-backed ranking factors (Kyle Roof, Surfer, Clearscope insights)
+  - Per-page optimization scoring with actionable fixes
+  - Title, meta, H1, content structure, internal linking rules
+  - NLP/entity optimization guidance
+  - Real-time optimization feedback
+**Plans**: TBD
+  - [ ] Run /gsd-discuss-phase 92 to gather context
 
 ---
