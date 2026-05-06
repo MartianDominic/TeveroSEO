@@ -488,6 +488,12 @@ export interface HierarchyThresholds {
   subtopicMinVolume: number;
 
   /**
+   * Minimum centroid similarity for parent-child linking.
+   * Default: 0.7
+   */
+  parentSimilarityThreshold: number;
+
+  /**
    * Longtail is anything below subtopic threshold.
    */
 }
@@ -496,6 +502,7 @@ export const DEFAULT_HIERARCHY_THRESHOLDS: HierarchyThresholds = {
   pillarMinVolume: 10000,
   pillarMinKeywords: 15,
   subtopicMinVolume: 2000,
+  parentSimilarityThreshold: 0.7,
 };
 
 /**
@@ -548,6 +555,16 @@ export interface HierarchyStats {
 // ============================================================================
 // Cluster Selection Types (86-06)
 // ============================================================================
+
+/**
+ * Funnel distribution targets for proposal generation.
+ * Defines the desired mix of keywords by funnel stage.
+ */
+export interface FunnelDistribution {
+  bofu: number;  // Bottom-of-funnel percentage (0-1)
+  mofu: number;  // Middle-of-funnel percentage (0-1)
+  tofu: number;  // Top-of-funnel percentage (0-1)
+}
 
 /**
  * Configuration for cluster-based keyword selection.

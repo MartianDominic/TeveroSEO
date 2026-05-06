@@ -14,9 +14,10 @@ import {
   index,
   boolean,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { prospects } from "./prospect-schema";
+import type { ScoredCluster, ClusteringInput, FunnelDistribution } from '../server/features/keywords/clustering/types';
 
 // Proposal status enum values - follows a state machine flow
 export const PROPOSAL_STATUS = [
@@ -146,6 +147,15 @@ export const proposals = pgTable(
     // Soft delete columns (migration 0067)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+
+    // Phase 86: Semantic clustering columns
+    clusters: jsonb("clusters").$type<ScoredCluster[]>(),
+    backfillPool: jsonb("backfill_pool").$type<ClusteringInput[]>(),
+    blacklist: jsonb("blacklist").$type<string[]>().default(sql`'[]'`),
+    distribution: jsonb("distribution").$type<FunnelDistribution>(),
+
+    // Version tracking for undo/redo (86-07 requirement)
+    version: integer("version").default(1),
   },
   (table) => [
     index("ix_proposals_workspace").on(table.workspaceId),
