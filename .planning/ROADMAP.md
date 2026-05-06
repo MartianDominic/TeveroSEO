@@ -2711,8 +2711,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
   6. Article pipeline shows expandable "under the hood" details
   7. Quality score card shows expandable check details
   8. Warm-shifted grays (#14141A, #54545A, #93939A, #C4C3BB) replace Tailwind slate
-**Plans**: 5 plans
-  - [ ] 94-01-PLAN.md — Foundation: Tokens + Fonts (Wave 1)
+**Plans**: 5 plans (1/5 complete)
+  - [x] 94-01-PLAN.md — Foundation: Tokens + Fonts (Wave 1) [Complete 2026-05-06]
   - [ ] 94-02-PLAN.md — Primitives: Card + Button + Badge + ProgressBlock (Wave 2)
   - [ ] 94-03-PLAN.md — Pipeline & Quality: Article Pipeline + Quality Score (Wave 3)
   - [ ] 94-04-PLAN.md — Data Views: Keywords + Calendar (Wave 3)
