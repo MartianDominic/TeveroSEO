@@ -229,3 +229,6 @@ export * from "./client-settings-schema";
 
 // Keyword lock-in schema (Phase 89-01, 89-02)
 export * from "./keyword-lockin-schema";
+
+// Research session schema (Phase 93-01)
+export * from "./research-session-schema";
