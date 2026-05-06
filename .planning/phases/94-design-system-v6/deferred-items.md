@@ -1,0 +1,1 @@
+- apps/web/src/components/connections/ConnectionCard.tsx: Badge variant 'zinc' not in v6 Badge component (needs update to valid variant)
