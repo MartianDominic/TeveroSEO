@@ -40,13 +40,13 @@ const PLATFORM_NAMES: Record<string, string> = {
   hubspot: "HubSpot",
 };
 
-const STATUS_VARIANTS: Record<string, "default" | "destructive" | "outline" | "secondary" | "zinc"> = {
-  active: "secondary",
-  error: "destructive",
-  expired: "outline",
-  pending: "default",
-  connecting: "default",
-  revoked: "destructive",
+const STATUS_VARIANTS: Record<string, "default" | "success" | "warning" | "error" | "info" | "muted" | "destructive" | "outline" | "secondary"> = {
+  active: "success",
+  error: "error",
+  expired: "warning",
+  pending: "muted",
+  connecting: "muted",
+  revoked: "error",
 };
 
 const STATUS_LABELS: Record<string, string> = {
