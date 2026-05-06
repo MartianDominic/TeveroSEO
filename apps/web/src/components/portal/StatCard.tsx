@@ -2,13 +2,15 @@
 
 /**
  * StatCard Component
+ * Phase 94: Design System v6 Migration
  *
  * Hero metric display with delta indicator and trust source.
- * Follows V6 design system: Newsreader for value, ghost-edge shadows, hover lift.
+ * Uses v6 design system: Newsreader for value, ghost-edge shadows, hover lift.
  */
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Card } from "@tevero/ui";
 import { DeltaBadge } from "./DeltaBadge";
 import { TrustIndicator } from "./TrustIndicator";
 import type { TrustLevel } from "@/lib/portal/types";
@@ -56,29 +58,19 @@ export function StatCard({
     typeof value === "number" ? formatValue(value) : value;
 
   return (
-    <div
+    <Card
       className={cn(
-        // Base card styles with V6 ghost-edge shadow
-        "bg-surface rounded-[--radius-card] transition-all duration-[280ms]",
-        // Ghost-edge shadow system
-        "shadow-[0_0_0_1px_rgba(20,20,26,0.045),0_1px_2px_rgba(20,20,26,0.03),inset_0_1px_0_rgba(255,255,255,0.5)]",
-        // Hover lift effect
-        "hover:shadow-[0_0_0_1px_rgba(20,20,26,0.06),0_6px_16px_-4px_rgba(20,20,26,0.06),0_16px_40px_-16px_rgba(20,20,26,0.10),inset_0_1px_0_rgba(255,255,255,0.55)]",
-        "hover:-translate-y-px",
-        // Padding
+        // Padding - hero gets more
         hero ? "p-8" : "p-6",
         className
       )}
-      style={
-        {
-          "--ease-smooth": "cubic-bezier(0.16, 1, 0.3, 1)",
-        } as React.CSSProperties
-      }
     >
       {/* Header row: icon + label + source */}
       <div className="flex items-center gap-2 mb-3">
         {icon && (
-          <span className="text-text-3 flex-shrink-0">{icon}</span>
+          <div className="w-8 h-8 rounded-lg bg-accent-soft flex items-center justify-center text-accent flex-shrink-0">
+            {icon}
+          </div>
         )}
         <span
           className={cn(
@@ -119,6 +111,8 @@ export function StatCard({
           {deltaLabel}
         </p>
       )}
-    </div>
+    </Card>
   );
 }
+
+StatCard.displayName = "StatCard";
