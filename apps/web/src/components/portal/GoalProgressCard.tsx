@@ -1,23 +1,32 @@
-/**
- * Goal Progress Card
- * Phase 89-06: Progress Tracking UI
- *
- * Displays contract goal with achievement percentage.
- */
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+/**
+ * GoalProgressCard
+ * Phase 94: Design System v6 Migration
+ *
+ * Displays contract goal with achievement percentage using v6 editorial numerals.
+ */
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, Badge, ProgressBlock } from "@tevero/ui";
+import { CheckCircle2, Clock, AlertCircle, TrendingUp } from "lucide-react";
+import { formatDistanceToNow, isPast } from "date-fns";
 
 export interface GoalProgressCardProps {
+  /** Goal ID for tracking */
   id?: string;
+  /** Metric type (e.g., "keywords_in_top_10") */
   metric: string;
+  /** Target value to achieve */
   targetValue: number;
+  /** Current value achieved */
   currentValue: number;
+  /** Achievement percentage (0-100+) */
   achievementPercent: string | number;
+  /** Target deadline */
   targetDeadline: string | Date;
+  /** Goal status */
   status: "in_progress" | "achieved" | "missed";
 }
 
@@ -27,10 +36,14 @@ const METRIC_LABELS: Record<string, string> = {
   ranking_improvement: "Ranking Improvement",
 };
 
-const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle2; variant: "default" | "secondary" | "destructive"; label: string }> = {
-  in_progress: { icon: Clock, variant: "secondary", label: "In Progress" },
-  achieved: { icon: CheckCircle2, variant: "default", label: "Achieved" },
-  missed: { icon: AlertCircle, variant: "destructive", label: "Missed" },
+const STATUS_CONFIG: Record<string, {
+  icon: typeof CheckCircle2;
+  variant: "success" | "default" | "error";
+  label: string;
+}> = {
+  in_progress: { icon: Clock, variant: "default", label: "In Progress" },
+  achieved: { icon: CheckCircle2, variant: "success", label: "Achieved" },
+  missed: { icon: AlertCircle, variant: "error", label: "Missed" },
 };
 
 export function GoalProgressCard({
@@ -45,67 +58,88 @@ export function GoalProgressCard({
     ? parseFloat(achievementPercent)
     : achievementPercent;
 
-  const statusConfig = STATUS_CONFIG[status] ?? STATUS_CONFIG.in_progress;
-  const StatusIcon = statusConfig.icon;
-
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.in_progress;
+  const StatusIcon = config.icon;
   const deadline = new Date(targetDeadline);
+  const isOverdue = isPast(deadline) && status === "in_progress";
+
+  // Format deadline
   const formattedDeadline = deadline.toLocaleDateString("en-US", {
-    month: "long",
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
 
-  // Cap progress bar at 100% visually, but show actual percent in text
-  const progressValue = Math.min(percent, 100);
+  // Calculate ETA text
+  const etaText = isPast(deadline)
+    ? `${formatDistanceToNow(deadline)} ago`
+    : `in ${formatDistanceToNow(deadline)}`;
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-medium">
+      {/* Header with title and status */}
+      <div className="px-7 py-5 flex items-center justify-between border-b border-hairline-2">
+        <div className="flex items-center gap-3">
+          {/* Semantic icon */}
+          <div
+            className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center",
+              status === "achieved" && "bg-success-soft text-success",
+              status === "in_progress" && "bg-accent-soft text-accent",
+              status === "missed" && "bg-error-soft text-error"
+            )}
+          >
+            <StatusIcon className="w-4 h-4" />
+          </div>
+
+          {/* Title */}
+          <h3 className="font-sans text-[15px] font-medium text-text-1">
             {METRIC_LABELS[metric] ?? metric}
-          </CardTitle>
-          <Badge variant={statusConfig.variant} className="flex items-center gap-1">
-            <StatusIcon className="h-3 w-3" />
-            {statusConfig.label}
-          </Badge>
+          </h3>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Progress indicator */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-semibold">
-                {percent >= 100 ? (
-                  <span className="text-green-600">{percent.toFixed(0)}%</span>
-                ) : (
-                  `${percent.toFixed(0)}%`
-                )}
-              </span>
-            </div>
-            <Progress value={progressValue} className="h-2" />
+
+        {/* Status badge */}
+        <Badge variant={config.variant} dot>
+          {config.label}
+        </Badge>
+      </div>
+
+      <CardContent className="space-y-6">
+        {/* Progress block - the editorial moment */}
+        <ProgressBlock
+          current={currentValue}
+          target={targetValue}
+          unit="keywords"
+          size="card"
+          showBar
+          secondaryMetric={{
+            value: `${percent.toFixed(0)}%`,
+            label: "complete",
+          }}
+        />
+
+        {/* ETA and deadline row */}
+        <div className="flex items-center justify-between pt-2 border-t border-hairline-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className={cn(
+              "w-4 h-4",
+              isOverdue ? "text-error" : "text-accent"
+            )} />
+            <span className={cn(
+              "text-[13px]",
+              isOverdue ? "text-error" : "text-text-2"
+            )}>
+              {isOverdue ? "Overdue" : "On track"} - {etaText}
+            </span>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Current</p>
-              <p className="text-2xl font-bold">{currentValue}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Target</p>
-              <p className="text-2xl font-bold">{targetValue}</p>
-            </div>
-          </div>
-
-          {/* Deadline */}
-          <div className="text-sm text-muted-foreground">
-            Target deadline: {formattedDeadline}
-          </div>
+          <span className="text-[13px] text-text-3">
+            Target: <span className="text-text-2 font-medium">{formattedDeadline}</span>
+          </span>
         </div>
       </CardContent>
     </Card>
   );
 }
+
+GoalProgressCard.displayName = "GoalProgressCard";
