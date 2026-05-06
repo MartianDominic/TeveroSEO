@@ -379,6 +379,16 @@ interface AutoLinkRule {
 
 ## Files Created by Research
 
+### Core Phase Documents
+
+| File | Purpose |
+|------|---------|
+| `92-CONTEXT.md` | Architecture decisions, services, checks, implementation phases |
+| `92-EXTRACTED-RULES.md` | Writing rules extraction from seobuild-onpage.md for content generation prompts |
+| `92-COST-CONTROL.md` | Cost control architecture for large sites (sampling, caching, plan tiers) |
+
+### Research Outputs (tool-results)
+
 Large outputs saved to:
 - `/tool-results/toolu_0182muAwfvvXmPoEMFyrEDxA.json` - Article generation prompts
 - `/tool-results/toolu_01QBg7Wv2R71dZcyazWRxL3T.json` - SEAT signals design

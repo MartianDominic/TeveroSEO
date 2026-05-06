@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
-status: executing
-last_updated: "2026-05-06T11:41:23.204Z"
-last_activity: 2026-05-06
+status: planning
+last_updated: "2026-05-06T19:16:56.488Z"
+last_activity: 2026-05-06 -- Phase --phase execution started
 progress:
   total_phases: 14
   completed_phases: 14
@@ -22,15 +22,36 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 **Core value:** Fully autonomous SEO platform. Client connects → system optimizes → rankings improve. Zero human oversight required for routine optimization.
 
-**Current focus:** Phase 86 — Semantic Intelligence
+**Current focus:** Phase --phase — 91
 
 ## Current Position
 
-Phase: 86
-Plan: 86-01 (complete)
-Milestone: v5.0 Autonomous SEO Pipeline
-Status: In progress
-Last activity: 2026-05-06
+Phase: --phase (91) — EXECUTING
+Plan: 1 of --name
+Milestone: v9.0 Client Portal
+Status: Executing Phase --phase
+Last activity: 2026-05-06 -- Phase --phase execution started
+
+### Phase 86 Semantic Intelligence Summary (2026-05-06)
+
+**All 10 plans complete:**
+
+| Plan | Focus | Completed |
+|------|-------|-----------|
+| 86-01 | Embedding Service + Config | 10:28 |
+| 86-02 | Classification Pipeline | 10:42 |
+| 86-03 | HDBSCAN Clustering | 13:47 |
+| 86-04 | Funnel Distribution | 13:57 |
+| 86-05 | Cascade Selection | 11:05 |
+| 86-06 | Proposal Integration | 11:17 |
+| 86-07 | Proposal Editing UI | 11:31 |
+| 86-08 | BERT Embeddings | 11:22 |
+| 86-09 | Backfill + Learning | 14:48 |
+| 86-10 | Dashboard UI | 14:38 |
+
+**Key Documentation:**
+
+- `.planning/SEMANTIC-INTELLIGENCE-MASTER.md` — Unified LLM architecture, cost optimization, semantic understanding
 
 ### Phase 90 Client Portal Overview
 
@@ -512,3 +533,39 @@ Key deliverables:
 - 17 tests across both modules
 
 **Next:** Wave 2 (64-03, 64-04) - Queue lane separation and metrics dashboard
+
+## v10.0 Phases Summary (On-Page SEO Mastery)
+
+| Phase | Title | Status |
+|-------|-------|--------|
+| 92 | On-Page SEO Mastery | Research Complete |
+
+### Phase 92 Progress (2026-05-06)
+
+**Status:** Research Complete — Ready for Planning
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| 92-CONTEXT.md | Architecture decisions, 29 new checks, 4 services | ✓ Complete |
+| 92-EXTRACTED-RULES.md | Writing rules from seobuild-onpage.md | ✓ Complete |
+| 92-COST-CONTROL.md | Cost control for large sites | ✓ Complete |
+| 92-PLAN.md | Detailed task breakdown | Pending |
+
+**Key Findings:**
+
+- 41-point SEO-AGI scorecard (78% already covered by 109 checks)
+- Tier 5 Content Quality Intelligence (opt-in, 13 new checks)
+- 7 Quality Gates: Reddit Test, Information Gain, Prove-It, etc.
+- Vertical classification: 12 industries + YMYL detection
+- Cost reduction: 55-73% via sampling + caching ($0.011 → $0.003-0.005/page)
+- Plan tiers: Free (500), Starter ($49/2k), Pro ($149/10k), Agency ($399/50k)
+
+**Source Documents:**
+
+- `.planning/phases/92-on-page-seo-mastery/92-CONTEXT.md`
+- `.planning/phases/92-on-page-seo-mastery/92-EXTRACTED-RULES.md`
+- `.planning/phases/92-on-page-seo-mastery/92-COST-CONTROL.md`
+
+**Next:** Create 92-PLAN.md with detailed task breakdown
+
+**Planned Phase:** 92 (On-Page SEO Mastery) — 10 plans — 2026-05-06T19:16:56.483Z
