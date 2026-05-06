@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: executing
-last_updated: "2026-05-06T10:58:23.069Z"
+last_updated: "2026-05-06T11:24:11.591Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 14
@@ -263,6 +263,8 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - MAX_EMAILS_PER_RUN = 50 per 5-minute cycle for rate limiting (T-53-09)
 - 53-04: Use organization.id as workspaceId for template scoping; crypto.randomUUID() for IDs; v6 tokens without var() syntax
 - 54-01: AES-256-GCM encryption with PAYMENT_ENCRYPTION_KEY; Factory pattern with provider caching per workspace; Stripe env var fallback for backwards compatibility
+- QUANT-01: halfvec(768) with HNSW indexes for 50% storage reduction
+- QUANT-02: Validation at application layer to prevent pgvector crashes from NaN/Inf values
 
 ## v5.0 Phases Summary
 
