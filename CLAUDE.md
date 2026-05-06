@@ -36,6 +36,12 @@ One platform. Switch to any client, generate content in their voice AND run SEO 
 - `docs/infra-research/cpu-only-rag-graph.md` — RAG + Graph stack for $50/mo VPS
 - `docs/infra-research/crawling-10-5000-tasks-day.md` — Crawling infrastructure scaling
 
+**Agency Features (Phases 84-89):**
+- `.planning/phases/PHASE-85-89-DEEP-DIVE.md` — Technical deep-dive on upcoming phases
+- `.planning/phases/CLIENT-PORTAL-SPEC.md` — **Keyword Lock-in + Client Portal spec** (design-system-v6 compliant)
+- `.planning/design/design-system-v6.md` — Design system (Newsreader + Geist, ghost-edge shadows, 12px floor)
+- `.planning/design/v8-agency-pipeline.md` — Agency CRM/Pipeline architecture
+
 **Current Milestone:** v5.0 Autonomous SEO Pipeline
 
 **Current Work:** Phase 40 (Gap Closure) — Closing implementation gaps across P32, P35, P36, P37, P39
@@ -79,6 +85,27 @@ Use these entry points:
 - `/gsd-execute-phase` for planned phase work
 
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+
+## LLM Architecture (May 2026)
+
+**Two-model architecture — Grok 4.1 + Gemini 3.1 Pro:**
+
+| Model | Use For | Cost |
+|-------|---------|------|
+| **grok-4.1-fast** | Bulk classification, structured extraction, CopilotKit chat | $0.20/1M |
+| **grok-4.1-thinking** | Strategic reasoning, proposal narratives, complex analysis | $2.00/1M |
+| **gemini-3.1-pro** | Article generation, voice analysis, quality content, translations | $1.25/1M |
+| **gemini-3.1-flash-image-preview** | All image generation | ~$0.02/image |
+| **claude-sonnet-4-6** | Voice extraction only (if Gemini insufficient) | $3.00/1M |
+
+**Key Rules:**
+- **Grok 4.1** handles ALL analysis/classification tasks
+- **Gemini 3.1 Pro** handles ALL content generation (articles, voice, translations)
+- **NO GPT-4, NO Claude Haiku, NO old Gemini versions** — these are deprecated
+- **NO FALLBACKS** to cheaper models — quality must remain constant
+
+**Model Reference:** `.planning/phases/86-semantic-intelligence/MODEL-REFERENCE.md`
+**Cost Control:** `.planning/phases/86-semantic-intelligence/COST-CONTROL-MASTER.md`
 
 ## Key Constraints
 

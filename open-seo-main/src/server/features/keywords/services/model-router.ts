@@ -1,18 +1,21 @@
 /**
  * ModelRouter: Progressive model selection for cost optimization.
  * Phase 83 Wave 4: Cost Controls
+ * Phase 86: Multi-backend support (direct, Azure AI, OpenRouter)
  *
  * Routes tasks to the cheapest model that can handle them.
+ * Supports multiple provider backends per model family.
  */
 
 import { CircuitBreaker } from "./CircuitBreaker";
+import { resolveProvider, type ProviderConfig } from "./provider-config";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "ModelRouter" });
 
 export interface ModelConfig {
   id: string;
-  provider: "groq" | "grok" | "openai";
+  provider: "groq" | "grok" | "openai" | "gemini" | "claude";
   costPerMToken: { input: number; output: number };
   capabilities: Set<string>;
   maxBatchSize: number;
@@ -134,117 +137,51 @@ export class ModelRouter {
     model: ModelConfig,
     messages: Message[]
   ): Promise<{ content: string; usage: TokenUsage }> {
-    // Provider-specific implementation
-    switch (model.provider) {
-      case "groq":
-        return this.callGroq(model.id, messages);
-      case "grok":
-        return this.callGrok(model.id, messages);
-      case "openai":
-        return this.callOpenAI(model.id, messages);
-      default:
-        throw new Error(`Unknown provider: ${model.provider}`);
-    }
+    // Resolve provider backend (direct, azure, or openrouter)
+    const providerConfig = resolveProvider(model.id);
+    return this.callWithConfig(providerConfig, messages);
   }
 
-  private async callGroq(
-    modelId: string,
+  /**
+   * Unified call method using provider configuration.
+   * Supports direct APIs, Azure AI, and OpenRouter.
+   */
+  private async callWithConfig(
+    config: ProviderConfig,
     messages: Message[]
   ): Promise<{ content: string; usage: TokenUsage }> {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error("GROQ_API_KEY not configured");
+    const { endpoint } = config;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...endpoint.headers,
+    };
+
+    // Azure uses api-key header, others use Bearer token
+    if (config.backend === "azure") {
+      headers["api-key"] = endpoint.apiKey;
+    } else {
+      headers["Authorization"] = `Bearer ${endpoint.apiKey}`;
+    }
+
+    const response = await fetch(`${endpoint.baseURL}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
-        model: modelId,
+        model: endpoint.modelName,
         messages,
         temperature: 0,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
-      usage: { prompt_tokens: number; completion_tokens: number };
-    };
-
-    return {
-      content: data.choices[0]?.message?.content ?? "",
-      usage: {
-        input: data.usage.prompt_tokens,
-        output: data.usage.completion_tokens,
-      },
-    };
-  }
-
-  private async callGrok(
-    modelId: string,
-    messages: Message[]
-  ): Promise<{ content: string; usage: TokenUsage }> {
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) throw new Error("XAI_API_KEY not configured");
-
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages,
-        temperature: 0,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Grok API error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
-      usage: { prompt_tokens: number; completion_tokens: number };
-    };
-
-    return {
-      content: data.choices[0]?.message?.content ?? "",
-      usage: {
-        input: data.usage.prompt_tokens,
-        output: data.usage.completion_tokens,
-      },
-    };
-  }
-
-  private async callOpenAI(
-    modelId: string,
-    messages: Message[]
-  ): Promise<{ content: string; usage: TokenUsage }> {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages,
-        temperature: 0,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text().catch(() => "");
+      log.error(
+        `Provider API error: ${config.backend} ${endpoint.modelName} status=${response.status}`
+      );
+      throw new Error(
+        `${config.backend} API error: ${response.status} - ${errorText.slice(0, 100)}`
+      );
     }
 
     const data = (await response.json()) as {

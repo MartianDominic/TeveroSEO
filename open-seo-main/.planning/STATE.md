@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 37-05 Voice Settings UI (pending checkpoint)
-last_updated: "2026-04-23T16:10:26.894Z"
-last_activity: 2026-04-23
+stopped_at: Completed 86-05-PLAN.md
+last_updated: "2026-05-06T11:07:10.009Z"
+last_activity: 2026-05-06
 progress:
-  total_phases: 11
-  completed_phases: 3
-  total_plans: 25
-  completed_plans: 17
-  percent: 68
+  total_phases: 14
+  completed_phases: 5
+  total_plans: 26
+  completed_plans: 19
+  percent: 73
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 Phase: 31 of 31 (Site Connection)
 Plan: 4 of 4 in current phase (31-01, 31-02 complete)
 Status: Phase complete — ready for verification
-Last activity: 2026-04-23
+Last activity: 2026-05-06
 
-Progress: [███████░░░] 68%
+Progress: [███████░░░] 73%
 
 ## Phase 30 Summary
 
@@ -71,6 +71,8 @@ Tests: 170 passing (10 test files)
 | Phase 30.5 P01 | 8 | 3 tasks | 7 files |
 | Phase 30.5 P05 | 8 | 5 tasks | 9 files |
 | Phase 32 P03 | 12 | 3 tasks | 14 files |
+| Phase 86 P03 | 171 | 3 tasks | 3 files |
+| Phase 86 P05 | 6 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +93,11 @@ Recent decisions affecting current work:
 - ExtendedPageAnalysis type for optional Tier 2 fields
 - 5 compliance dimensions with configurable weights (tone 25%, vocab 20%, structure 15%, personality 25%, rules 15%)
 - Escape special characters in prompts for T-37-09 injection prevention
+- Use >= comparison for dominance threshold (80% exactly should NOT split)
+- Recalculate centroid as mean of embeddings for split clusters
+- Use totalVolume > 10K (not keyword count) for pillar classification - Pillar tier based on search demand, not cluster size
+- Centroid similarity threshold 0.7 for parent-child linking - Balances precision (avoids false links) with recall (creates useful hierarchy)
+- Promote orphan subtopics to pillars - Ensures all meaningful clusters have place in hierarchy
 
 ### Pending Todos
 
@@ -104,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-23T16:10:26.890Z
-Stopped at: Completed 37-05 Voice Settings UI (pending checkpoint)
+Last session: 2026-05-06T11:07:10.001Z
+Stopped at: Completed 86-05-PLAN.md
 Resume file: None

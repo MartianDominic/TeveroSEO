@@ -222,3 +222,10 @@ export * from "./oauth-state-schema";
 
 // Dead letter queue schema (Phase 69-04)
 export * from "./dead-letter-queue-schema";
+
+// Portal schemas (Phase 87-01)
+export * from "./portal-schema";
+export * from "./client-settings-schema";
+
+// Keyword lock-in schema (Phase 89-01, 89-02)
+export * from "./keyword-lockin-schema";

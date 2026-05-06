@@ -1,0 +1,29 @@
+# Dockerfile.open-seo — Development mode with hot-reload
+FROM node:22-alpine
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV NODE_ENV=development
+
+# Dev dependencies
+RUN apk add --no-cache libc6-compat python3 make g++ \
+    && corepack enable
+
+WORKDIR /app
+
+# Copy package files first for caching
+COPY package.json pnpm-lock.yaml ./
+
+# Install ALL dependencies (including dev)
+# Note: Not using --frozen-lockfile in dev since we mount volumes for hot-reload
+RUN pnpm install
+
+# Copy source (will be overridden by volume mounts for hot-reload)
+COPY . .
+
+# Run database migrations on startup, then start dev server
+# The entrypoint script handles migration + dev server
+EXPOSE 3001 3003
+
+# Use a shell script to run migrations then start dev
+CMD ["sh", "-c", "pnpm db:migrate:local 2>/dev/null || true; pnpm dev"]

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as ProjectRouteRouteImport } from './routes/_project/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as PortalTokenRouteImport } from './routes/portal/$token'
 import { Route as PipelineDashboardRouteImport } from './routes/pipeline/dashboard'
 import { Route as PTokenRouteImport } from './routes/p/$token'
 import { Route as ApiWebhooksRouteImport } from './routes/api/webhooks'
@@ -65,6 +66,7 @@ import { Route as ApiProspectsConfirmRouteImport } from './routes/api/prospects/
 import { Route as ApiProposalsTrackRouteImport } from './routes/api/proposals/track'
 import { Route as ApiProposalsStageRouteImport } from './routes/api/proposals/stage'
 import { Route as ApiProposalsAnalyticsRouteImport } from './routes/api/proposals/analytics'
+import { Route as ApiPortalTokensRouteImport } from './routes/api/portal/tokens'
 import { Route as ApiPlatformConnectionsIdRouteImport } from './routes/api/platform-connections/$id'
 import { Route as ApiPixelCollectRouteImport } from './routes/api/pixel/collect'
 import { Route as ApiPaymentsStatsRouteImport } from './routes/api/payments/stats'
@@ -74,7 +76,9 @@ import { Route as ApiOnboardingMagicLinkRouteImport } from './routes/api/onboard
 import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onboarding/complete-item'
 import { Route as ApiMetricsCrawlRouteImport } from './routes/api/metrics/crawl'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
+import { Route as ApiKeywordsGenerateRouteImport } from './routes/api/keywords/generate'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
+import { Route as ApiKeywordsAnalyzeRouteImport } from './routes/api/keywords/analyze'
 import { Route as ApiInternalSessionInvalidationRouteImport } from './routes/api/internal/session-invalidation'
 import { Route as ApiHealthRedisRouteImport } from './routes/api/health/redis'
 import { Route as ApiHealthDbRouteImport } from './routes/api/health/db'
@@ -124,6 +128,13 @@ import { Route as ApiProposalsChar91idChar93GenerateRouteImport } from './routes
 import { Route as ApiProposalsChar91idChar93DuplicateRouteImport } from './routes/api/proposals/[id]/duplicate'
 import { Route as ApiProposalsChar91idChar93AcceptRouteImport } from './routes/api/proposals/[id]/accept'
 import { Route as ApiProposalsProposalIdDeclineRouteImport } from './routes/api/proposals/$proposalId.decline'
+import { Route as ApiPortalTokensClientIdRouteImport } from './routes/api/portal/tokens.$clientId'
+import { Route as ApiPortalScopeContractIdRouteImport } from './routes/api/portal/scope.$contractId'
+import { Route as ApiPortalRevokeTokenRouteImport } from './routes/api/portal/revoke.$token'
+import { Route as ApiPortalNotificationsClientIdRouteImport } from './routes/api/portal/notifications.$clientId'
+import { Route as ApiPortalKeywordsClientIdRouteImport } from './routes/api/portal/keywords.$clientId'
+import { Route as ApiPortalDashboardClientIdRouteImport } from './routes/api/portal/dashboard.$clientId'
+import { Route as ApiPortalActivityClientIdRouteImport } from './routes/api/portal/activity.$clientId'
 import { Route as ApiPlatformConnectionsIdSyncRouteImport } from './routes/api/platform-connections/$id.sync'
 import { Route as ApiPixelTJsRouteImport } from './routes/api/pixel/t.js'
 import { Route as ApiPixelChar91siteIdChar93ScriptRouteImport } from './routes/api/pixel/[siteId]/script'
@@ -147,6 +158,7 @@ import { Route as ApiCommandCenterActionsMarkLostRouteImport } from './routes/ap
 import { Route as ApiCommandCenterActionsAddNoteRouteImport } from './routes/api/command-center/actions/add-note'
 import { Route as ApiClientsClientIdRollbackRouteImport } from './routes/api/clients/$clientId.rollback'
 import { Route as ApiClientsClientIdReportsRouteImport } from './routes/api/clients/$clientId.reports'
+import { Route as ApiClientsClientIdGscRouteImport } from './routes/api/clients/$clientId/gsc'
 import { Route as ApiClientsClientIdDropEventsRouteImport } from './routes/api/clients/$clientId.drop-events'
 import { Route as ApiClientsClientIdAlertsRouteImport } from './routes/api/clients/$clientId.alerts'
 import { Route as ApiClientsClientIdAlertRulesRouteImport } from './routes/api/clients/$clientId.alert-rules'
@@ -186,6 +198,7 @@ import { Route as ApiProspectsIdKeywordsPrioritizeRouteImport } from './routes/a
 import { Route as ApiProspectsIdKeywordsImportRouteImport } from './routes/api/prospects/$id/keywords/import'
 import { Route as ApiProposalsChar91idChar93ServicesResolvedRouteImport } from './routes/api/proposals/[id]/services/resolved'
 import { Route as ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport } from './routes/api/proposals/[id]/sections/[sid]'
+import { Route as ApiPortalNotificationsSettingsClientIdRouteImport } from './routes/api/portal/notifications.settings.$clientId'
 import { Route as ApiPixelChar91siteIdChar93ChangesPendingRouteImport } from './routes/api/pixel/[siteId]/changes.pending'
 import { Route as ApiPixelChar91siteIdChar93ChangesHistoryRouteImport } from './routes/api/pixel/[siteId]/changes.history'
 import { Route as ApiPixelChar91siteIdChar93AnalyticsPagesRouteImport } from './routes/api/pixel/[siteId]/analytics.pages'
@@ -228,6 +241,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const PortalTokenRoute = PortalTokenRouteImport.update({
+  id: '/portal/$token',
+  path: '/portal/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineDashboardRoute = PipelineDashboardRouteImport.update({
   id: '/pipeline/dashboard',
@@ -485,6 +503,11 @@ const ApiProposalsAnalyticsRoute = ApiProposalsAnalyticsRouteImport.update({
   path: '/api/proposals/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPortalTokensRoute = ApiPortalTokensRouteImport.update({
+  id: '/api/portal/tokens',
+  path: '/api/portal/tokens',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlatformConnectionsIdRoute =
   ApiPlatformConnectionsIdRouteImport.update({
     id: '/api/platform-connections/$id',
@@ -532,12 +555,22 @@ const ApiKeywordsQuickCheckRoute = ApiKeywordsQuickCheckRouteImport.update({
   path: '/api/keywords/quick-check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKeywordsGenerateRoute = ApiKeywordsGenerateRouteImport.update({
+  id: '/api/keywords/generate',
+  path: '/api/keywords/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiKeywordsCompetitorSpyRoute =
   ApiKeywordsCompetitorSpyRouteImport.update({
     id: '/api/keywords/competitor-spy',
     path: '/api/keywords/competitor-spy',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiKeywordsAnalyzeRoute = ApiKeywordsAnalyzeRouteImport.update({
+  id: '/api/keywords/analyze',
+  path: '/api/keywords/analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInternalSessionInvalidationRoute =
   ApiInternalSessionInvalidationRouteImport.update({
     id: '/api/internal/session-invalidation',
@@ -803,6 +836,46 @@ const ApiProposalsProposalIdDeclineRoute =
     path: '/api/proposals/$proposalId/decline',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPortalTokensClientIdRoute = ApiPortalTokensClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ApiPortalTokensRoute,
+} as any)
+const ApiPortalScopeContractIdRoute =
+  ApiPortalScopeContractIdRouteImport.update({
+    id: '/api/portal/scope/$contractId',
+    path: '/api/portal/scope/$contractId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPortalRevokeTokenRoute = ApiPortalRevokeTokenRouteImport.update({
+  id: '/api/portal/revoke/$token',
+  path: '/api/portal/revoke/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPortalNotificationsClientIdRoute =
+  ApiPortalNotificationsClientIdRouteImport.update({
+    id: '/api/portal/notifications/$clientId',
+    path: '/api/portal/notifications/$clientId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPortalKeywordsClientIdRoute =
+  ApiPortalKeywordsClientIdRouteImport.update({
+    id: '/api/portal/keywords/$clientId',
+    path: '/api/portal/keywords/$clientId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPortalDashboardClientIdRoute =
+  ApiPortalDashboardClientIdRouteImport.update({
+    id: '/api/portal/dashboard/$clientId',
+    path: '/api/portal/dashboard/$clientId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPortalActivityClientIdRoute =
+  ApiPortalActivityClientIdRouteImport.update({
+    id: '/api/portal/activity/$clientId',
+    path: '/api/portal/activity/$clientId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlatformConnectionsIdSyncRoute =
   ApiPlatformConnectionsIdSyncRouteImport.update({
     id: '/sync',
@@ -935,6 +1008,11 @@ const ApiClientsClientIdReportsRoute =
     path: '/api/clients/$clientId/reports',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiClientsClientIdGscRoute = ApiClientsClientIdGscRouteImport.update({
+  id: '/api/clients/$clientId/gsc',
+  path: '/api/clients/$clientId/gsc',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiClientsClientIdDropEventsRoute =
   ApiClientsClientIdDropEventsRouteImport.update({
     id: '/api/clients/$clientId/drop-events',
@@ -1162,6 +1240,12 @@ const ApiProposalsChar91idChar93SectionsChar91sidChar93Route =
     path: '/api/proposals/id/sections/sid',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPortalNotificationsSettingsClientIdRoute =
+  ApiPortalNotificationsSettingsClientIdRouteImport.update({
+    id: '/api/portal/notifications/settings/$clientId',
+    path: '/api/portal/notifications/settings/$clientId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPixelChar91siteIdChar93ChangesPendingRoute =
   ApiPixelChar91siteIdChar93ChangesPendingRouteImport.update({
     id: '/pending',
@@ -1194,9 +1278,9 @@ const ApiCommandCenterAlertsAlertIdDismissRoute =
   } as any)
 const ApiClientsClientIdGscDailyRoute =
   ApiClientsClientIdGscDailyRouteImport.update({
-    id: '/api/clients/$clientId/gsc/daily',
-    path: '/api/clients/$clientId/gsc/daily',
-    getParentRoute: () => rootRouteImport,
+    id: '/daily',
+    path: '/daily',
+    getParentRoute: () => ApiClientsClientIdGscRoute,
   } as any)
 const ApiClientsClientIdGoalsGoalIdRoute =
   ApiClientsClientIdGoalsGoalIdRouteImport.update({
@@ -1294,6 +1378,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/prospects/$prospectId': typeof AppProspectsProspectIdRouteWithChildren
@@ -1316,7 +1401,9 @@ export interface FileRoutesByFullPath {
   '/api/health/db': typeof ApiHealthDbRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
+  '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
@@ -1326,6 +1413,7 @@ export interface FileRoutesByFullPath {
   '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/pixel/collect': typeof ApiPixelCollectRoute
   '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
+  '/api/portal/tokens': typeof ApiPortalTokensRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1383,6 +1471,7 @@ export interface FileRoutesByFullPath {
   '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
+  '/api/clients/$clientId/gsc': typeof ApiClientsClientIdGscRouteWithChildren
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
@@ -1406,6 +1495,13 @@ export interface FileRoutesByFullPath {
   '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
   '/api/pixel/t/js': typeof ApiPixelTJsRoute
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
+  '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
+  '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
+  '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
+  '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
+  '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1445,6 +1541,7 @@ export interface FileRoutesByFullPath {
   '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
   '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
   '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
+  '/api/portal/notifications/settings/$clientId': typeof ApiPortalNotificationsSettingsClientIdRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
@@ -1490,6 +1587,7 @@ export interface FileRoutesByTo {
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/prospects/$prospectId': typeof AppProspectsProspectIdRouteWithChildren
   '/api/admin/dlq': typeof ApiAdminDlqRouteWithChildren
@@ -1511,7 +1609,9 @@ export interface FileRoutesByTo {
   '/api/health/db': typeof ApiHealthDbRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
+  '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
@@ -1521,6 +1621,7 @@ export interface FileRoutesByTo {
   '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/pixel/collect': typeof ApiPixelCollectRoute
   '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
+  '/api/portal/tokens': typeof ApiPortalTokensRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1576,6 +1677,7 @@ export interface FileRoutesByTo {
   '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
+  '/api/clients/$clientId/gsc': typeof ApiClientsClientIdGscRouteWithChildren
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
@@ -1599,6 +1701,13 @@ export interface FileRoutesByTo {
   '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
   '/api/pixel/t/js': typeof ApiPixelTJsRoute
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
+  '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
+  '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
+  '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
+  '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
+  '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1638,6 +1747,7 @@ export interface FileRoutesByTo {
   '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
   '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
   '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
+  '/api/portal/notifications/settings/$clientId': typeof ApiPortalNotificationsSettingsClientIdRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
@@ -1686,6 +1796,7 @@ export interface FileRoutesById {
   '/api/webhooks': typeof ApiWebhooksRouteWithChildren
   '/p/$token': typeof PTokenRouteWithChildren
   '/pipeline/dashboard': typeof PipelineDashboardRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_project/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
@@ -1709,7 +1820,9 @@ export interface FileRoutesById {
   '/api/health/db': typeof ApiHealthDbRoute
   '/api/health/redis': typeof ApiHealthRedisRoute
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
+  '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
   '/api/onboarding/complete-item': typeof ApiOnboardingCompleteItemRoute
@@ -1719,6 +1832,7 @@ export interface FileRoutesById {
   '/api/payments/stats': typeof ApiPaymentsStatsRoute
   '/api/pixel/collect': typeof ApiPixelCollectRoute
   '/api/platform-connections/$id': typeof ApiPlatformConnectionsIdRouteWithChildren
+  '/api/portal/tokens': typeof ApiPortalTokensRouteWithChildren
   '/api/proposals/analytics': typeof ApiProposalsAnalyticsRoute
   '/api/proposals/stage': typeof ApiProposalsStageRoute
   '/api/proposals/track': typeof ApiProposalsTrackRoute
@@ -1776,6 +1890,7 @@ export interface FileRoutesById {
   '/api/clients/$clientId/alert-rules': typeof ApiClientsClientIdAlertRulesRouteWithChildren
   '/api/clients/$clientId/alerts': typeof ApiClientsClientIdAlertsRoute
   '/api/clients/$clientId/drop-events': typeof ApiClientsClientIdDropEventsRoute
+  '/api/clients/$clientId/gsc': typeof ApiClientsClientIdGscRouteWithChildren
   '/api/clients/$clientId/reports': typeof ApiClientsClientIdReportsRoute
   '/api/clients/$clientId/rollback': typeof ApiClientsClientIdRollbackRoute
   '/api/command-center/actions/add-note': typeof ApiCommandCenterActionsAddNoteRoute
@@ -1799,6 +1914,13 @@ export interface FileRoutesById {
   '/api/pixel/siteId/script': typeof ApiPixelChar91siteIdChar93ScriptRoute
   '/api/pixel/t/js': typeof ApiPixelTJsRoute
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
+  '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
+  '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
+  '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
+  '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
+  '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
   '/api/proposals/id/duplicate': typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -1838,6 +1960,7 @@ export interface FileRoutesById {
   '/api/pixel/siteId/analytics/pages': typeof ApiPixelChar91siteIdChar93AnalyticsPagesRoute
   '/api/pixel/siteId/changes/history': typeof ApiPixelChar91siteIdChar93ChangesHistoryRoute
   '/api/pixel/siteId/changes/pending': typeof ApiPixelChar91siteIdChar93ChangesPendingRoute
+  '/api/portal/notifications/settings/$clientId': typeof ApiPortalNotificationsSettingsClientIdRoute
   '/api/proposals/id/sections/sid': typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   '/api/proposals/id/services/resolved': typeof ApiProposalsChar91idChar93ServicesResolvedRoute
   '/api/prospects/$id/keywords/import': typeof ApiProspectsIdKeywordsImportRoute
@@ -1885,6 +2008,7 @@ export interface FileRouteTypes {
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
+    | '/portal/$token'
     | '/p/$projectId'
     | '/help/dataforseo-api-key'
     | '/prospects/$prospectId'
@@ -1907,7 +2031,9 @@ export interface FileRouteTypes {
     | '/api/health/db'
     | '/api/health/redis'
     | '/api/internal/session-invalidation'
+    | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
@@ -1917,6 +2043,7 @@ export interface FileRouteTypes {
     | '/api/payments/stats'
     | '/api/pixel/collect'
     | '/api/platform-connections/$id'
+    | '/api/portal/tokens'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -1974,6 +2101,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules'
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
+    | '/api/clients/$clientId/gsc'
     | '/api/clients/$clientId/reports'
     | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
@@ -1997,6 +2125,13 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/script'
     | '/api/pixel/t/js'
     | '/api/platform-connections/$id/sync'
+    | '/api/portal/activity/$clientId'
+    | '/api/portal/dashboard/$clientId'
+    | '/api/portal/keywords/$clientId'
+    | '/api/portal/notifications/$clientId'
+    | '/api/portal/revoke/$token'
+    | '/api/portal/scope/$contractId'
+    | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -2036,6 +2171,7 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/analytics/pages'
     | '/api/pixel/siteId/changes/history'
     | '/api/pixel/siteId/changes/pending'
+    | '/api/portal/notifications/settings/$clientId'
     | '/api/proposals/id/sections/sid'
     | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
@@ -2081,6 +2217,7 @@ export interface FileRouteTypes {
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
+    | '/portal/$token'
     | '/help/dataforseo-api-key'
     | '/prospects/$prospectId'
     | '/api/admin/dlq'
@@ -2102,7 +2239,9 @@ export interface FileRouteTypes {
     | '/api/health/db'
     | '/api/health/redis'
     | '/api/internal/session-invalidation'
+    | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
@@ -2112,6 +2251,7 @@ export interface FileRouteTypes {
     | '/api/payments/stats'
     | '/api/pixel/collect'
     | '/api/platform-connections/$id'
+    | '/api/portal/tokens'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -2167,6 +2307,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules'
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
+    | '/api/clients/$clientId/gsc'
     | '/api/clients/$clientId/reports'
     | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
@@ -2190,6 +2331,13 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/script'
     | '/api/pixel/t/js'
     | '/api/platform-connections/$id/sync'
+    | '/api/portal/activity/$clientId'
+    | '/api/portal/dashboard/$clientId'
+    | '/api/portal/keywords/$clientId'
+    | '/api/portal/notifications/$clientId'
+    | '/api/portal/revoke/$token'
+    | '/api/portal/scope/$contractId'
+    | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -2229,6 +2377,7 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/analytics/pages'
     | '/api/pixel/siteId/changes/history'
     | '/api/pixel/siteId/changes/pending'
+    | '/api/portal/notifications/settings/$clientId'
     | '/api/proposals/id/sections/sid'
     | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
@@ -2276,6 +2425,7 @@ export interface FileRouteTypes {
     | '/api/webhooks'
     | '/p/$token'
     | '/pipeline/dashboard'
+    | '/portal/$token'
     | '/_app/'
     | '/_project/p/$projectId'
     | '/_app/help/dataforseo-api-key'
@@ -2299,7 +2449,9 @@ export interface FileRouteTypes {
     | '/api/health/db'
     | '/api/health/redis'
     | '/api/internal/session-invalidation'
+    | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
     | '/api/onboarding/complete-item'
@@ -2309,6 +2461,7 @@ export interface FileRouteTypes {
     | '/api/payments/stats'
     | '/api/pixel/collect'
     | '/api/platform-connections/$id'
+    | '/api/portal/tokens'
     | '/api/proposals/analytics'
     | '/api/proposals/stage'
     | '/api/proposals/track'
@@ -2366,6 +2519,7 @@ export interface FileRouteTypes {
     | '/api/clients/$clientId/alert-rules'
     | '/api/clients/$clientId/alerts'
     | '/api/clients/$clientId/drop-events'
+    | '/api/clients/$clientId/gsc'
     | '/api/clients/$clientId/reports'
     | '/api/clients/$clientId/rollback'
     | '/api/command-center/actions/add-note'
@@ -2389,6 +2543,13 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/script'
     | '/api/pixel/t/js'
     | '/api/platform-connections/$id/sync'
+    | '/api/portal/activity/$clientId'
+    | '/api/portal/dashboard/$clientId'
+    | '/api/portal/keywords/$clientId'
+    | '/api/portal/notifications/$clientId'
+    | '/api/portal/revoke/$token'
+    | '/api/portal/scope/$contractId'
+    | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
     | '/api/proposals/id/duplicate'
@@ -2428,6 +2589,7 @@ export interface FileRouteTypes {
     | '/api/pixel/siteId/analytics/pages'
     | '/api/pixel/siteId/changes/history'
     | '/api/pixel/siteId/changes/pending'
+    | '/api/portal/notifications/settings/$clientId'
     | '/api/proposals/id/sections/sid'
     | '/api/proposals/id/services/resolved'
     | '/api/prospects/$id/keywords/import'
@@ -2473,6 +2635,7 @@ export interface RootRouteChildren {
   ApiWebhooksRoute: typeof ApiWebhooksRouteWithChildren
   PTokenRoute: typeof PTokenRouteWithChildren
   PipelineDashboardRoute: typeof PipelineDashboardRoute
+  PortalTokenRoute: typeof PortalTokenRoute
   ApiAdminDlqRoute: typeof ApiAdminDlqRouteWithChildren
   ApiAuditRunChecksRoute: typeof ApiAuditRunChecksRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
@@ -2492,7 +2655,9 @@ export interface RootRouteChildren {
   ApiHealthDbRoute: typeof ApiHealthDbRoute
   ApiHealthRedisRoute: typeof ApiHealthRedisRoute
   ApiInternalSessionInvalidationRoute: typeof ApiInternalSessionInvalidationRoute
+  ApiKeywordsAnalyzeRoute: typeof ApiKeywordsAnalyzeRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
+  ApiKeywordsGenerateRoute: typeof ApiKeywordsGenerateRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
   ApiMetricsCrawlRoute: typeof ApiMetricsCrawlRoute
   ApiOnboardingCompleteItemRoute: typeof ApiOnboardingCompleteItemRoute
@@ -2502,6 +2667,7 @@ export interface RootRouteChildren {
   ApiPaymentsStatsRoute: typeof ApiPaymentsStatsRoute
   ApiPixelCollectRoute: typeof ApiPixelCollectRoute
   ApiPlatformConnectionsIdRoute: typeof ApiPlatformConnectionsIdRouteWithChildren
+  ApiPortalTokensRoute: typeof ApiPortalTokensRouteWithChildren
   ApiProposalsAnalyticsRoute: typeof ApiProposalsAnalyticsRoute
   ApiProposalsStageRoute: typeof ApiProposalsStageRoute
   ApiProposalsTrackRoute: typeof ApiProposalsTrackRoute
@@ -2543,6 +2709,7 @@ export interface RootRouteChildren {
   ApiClientsClientIdAlertRulesRoute: typeof ApiClientsClientIdAlertRulesRouteWithChildren
   ApiClientsClientIdAlertsRoute: typeof ApiClientsClientIdAlertsRoute
   ApiClientsClientIdDropEventsRoute: typeof ApiClientsClientIdDropEventsRoute
+  ApiClientsClientIdGscRoute: typeof ApiClientsClientIdGscRouteWithChildren
   ApiClientsClientIdReportsRoute: typeof ApiClientsClientIdReportsRoute
   ApiClientsClientIdRollbackRoute: typeof ApiClientsClientIdRollbackRoute
   ApiCommandCenterActionsAddNoteRoute: typeof ApiCommandCenterActionsAddNoteRoute
@@ -2563,6 +2730,12 @@ export interface RootRouteChildren {
   ApiPixelChar91siteIdChar93ChangesRoute: typeof ApiPixelChar91siteIdChar93ChangesRouteWithChildren
   ApiPixelChar91siteIdChar93ScriptRoute: typeof ApiPixelChar91siteIdChar93ScriptRoute
   ApiPixelTJsRoute: typeof ApiPixelTJsRoute
+  ApiPortalActivityClientIdRoute: typeof ApiPortalActivityClientIdRoute
+  ApiPortalDashboardClientIdRoute: typeof ApiPortalDashboardClientIdRoute
+  ApiPortalKeywordsClientIdRoute: typeof ApiPortalKeywordsClientIdRoute
+  ApiPortalNotificationsClientIdRoute: typeof ApiPortalNotificationsClientIdRoute
+  ApiPortalRevokeTokenRoute: typeof ApiPortalRevokeTokenRoute
+  ApiPortalScopeContractIdRoute: typeof ApiPortalScopeContractIdRoute
   ApiProposalsProposalIdDeclineRoute: typeof ApiProposalsProposalIdDeclineRoute
   ApiProposalsChar91idChar93AcceptRoute: typeof ApiProposalsChar91idChar93AcceptRoute
   ApiProposalsChar91idChar93DuplicateRoute: typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -2587,8 +2760,8 @@ export interface RootRouteChildren {
   ApiTemplatesProposalsIndexRoute: typeof ApiTemplatesProposalsIndexRoute
   ApiAuditPagesPageIdFindingsRoute: typeof ApiAuditPagesPageIdFindingsRoute
   ApiClientsClientIdGoalsGoalIdRoute: typeof ApiClientsClientIdGoalsGoalIdRoute
-  ApiClientsClientIdGscDailyRoute: typeof ApiClientsClientIdGscDailyRoute
   ApiCommandCenterAlertsAlertIdDismissRoute: typeof ApiCommandCenterAlertsAlertIdDismissRoute
+  ApiPortalNotificationsSettingsClientIdRoute: typeof ApiPortalNotificationsSettingsClientIdRoute
   ApiProposalsChar91idChar93SectionsChar91sidChar93Route: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93Route
   ApiProspectsIdKeywordsImportRoute: typeof ApiProspectsIdKeywordsImportRoute
   ApiProspectsIdKeywordsPrioritizeRoute: typeof ApiProspectsIdKeywordsPrioritizeRoute
@@ -2641,6 +2814,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/portal/$token': {
+      id: '/portal/$token'
+      path: '/portal/$token'
+      fullPath: '/portal/$token'
+      preLoaderRoute: typeof PortalTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/pipeline/dashboard': {
       id: '/pipeline/dashboard'
@@ -2999,6 +3179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/portal/tokens': {
+      id: '/api/portal/tokens'
+      path: '/api/portal/tokens'
+      fullPath: '/api/portal/tokens'
+      preLoaderRoute: typeof ApiPortalTokensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/platform-connections/$id': {
       id: '/api/platform-connections/$id'
       path: '/api/platform-connections/$id'
@@ -3062,11 +3249,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKeywordsQuickCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/keywords/generate': {
+      id: '/api/keywords/generate'
+      path: '/api/keywords/generate'
+      fullPath: '/api/keywords/generate'
+      preLoaderRoute: typeof ApiKeywordsGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/keywords/competitor-spy': {
       id: '/api/keywords/competitor-spy'
       path: '/api/keywords/competitor-spy'
       fullPath: '/api/keywords/competitor-spy'
       preLoaderRoute: typeof ApiKeywordsCompetitorSpyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/keywords/analyze': {
+      id: '/api/keywords/analyze'
+      path: '/api/keywords/analyze'
+      fullPath: '/api/keywords/analyze'
+      preLoaderRoute: typeof ApiKeywordsAnalyzeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/session-invalidation': {
@@ -3412,6 +3613,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsProposalIdDeclineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/portal/tokens/$clientId': {
+      id: '/api/portal/tokens/$clientId'
+      path: '/$clientId'
+      fullPath: '/api/portal/tokens/$clientId'
+      preLoaderRoute: typeof ApiPortalTokensClientIdRouteImport
+      parentRoute: typeof ApiPortalTokensRoute
+    }
+    '/api/portal/scope/$contractId': {
+      id: '/api/portal/scope/$contractId'
+      path: '/api/portal/scope/$contractId'
+      fullPath: '/api/portal/scope/$contractId'
+      preLoaderRoute: typeof ApiPortalScopeContractIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/revoke/$token': {
+      id: '/api/portal/revoke/$token'
+      path: '/api/portal/revoke/$token'
+      fullPath: '/api/portal/revoke/$token'
+      preLoaderRoute: typeof ApiPortalRevokeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/notifications/$clientId': {
+      id: '/api/portal/notifications/$clientId'
+      path: '/api/portal/notifications/$clientId'
+      fullPath: '/api/portal/notifications/$clientId'
+      preLoaderRoute: typeof ApiPortalNotificationsClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/keywords/$clientId': {
+      id: '/api/portal/keywords/$clientId'
+      path: '/api/portal/keywords/$clientId'
+      fullPath: '/api/portal/keywords/$clientId'
+      preLoaderRoute: typeof ApiPortalKeywordsClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/dashboard/$clientId': {
+      id: '/api/portal/dashboard/$clientId'
+      path: '/api/portal/dashboard/$clientId'
+      fullPath: '/api/portal/dashboard/$clientId'
+      preLoaderRoute: typeof ApiPortalDashboardClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/activity/$clientId': {
+      id: '/api/portal/activity/$clientId'
+      path: '/api/portal/activity/$clientId'
+      fullPath: '/api/portal/activity/$clientId'
+      preLoaderRoute: typeof ApiPortalActivityClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/platform-connections/$id/sync': {
       id: '/api/platform-connections/$id/sync'
       path: '/sync'
@@ -3571,6 +3821,13 @@ declare module '@tanstack/react-router' {
       path: '/api/clients/$clientId/reports'
       fullPath: '/api/clients/$clientId/reports'
       preLoaderRoute: typeof ApiClientsClientIdReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/clients/$clientId/gsc': {
+      id: '/api/clients/$clientId/gsc'
+      path: '/api/clients/$clientId/gsc'
+      fullPath: '/api/clients/$clientId/gsc'
+      preLoaderRoute: typeof ApiClientsClientIdGscRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/clients/$clientId/drop-events': {
@@ -3846,6 +4103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProposalsChar91idChar93SectionsChar91sidChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/portal/notifications/settings/$clientId': {
+      id: '/api/portal/notifications/settings/$clientId'
+      path: '/api/portal/notifications/settings/$clientId'
+      fullPath: '/api/portal/notifications/settings/$clientId'
+      preLoaderRoute: typeof ApiPortalNotificationsSettingsClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/pixel/siteId/changes/pending': {
       id: '/api/pixel/siteId/changes/pending'
       path: '/pending'
@@ -3883,10 +4147,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/clients/$clientId/gsc/daily': {
       id: '/api/clients/$clientId/gsc/daily'
-      path: '/api/clients/$clientId/gsc/daily'
+      path: '/daily'
       fullPath: '/api/clients/$clientId/gsc/daily'
       preLoaderRoute: typeof ApiClientsClientIdGscDailyRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ApiClientsClientIdGscRoute
     }
     '/api/clients/$clientId/goals/$goalId': {
       id: '/api/clients/$clientId/goals/$goalId'
@@ -4205,6 +4469,18 @@ const ApiPlatformConnectionsIdRouteWithChildren =
     ApiPlatformConnectionsIdRouteChildren,
   )
 
+interface ApiPortalTokensRouteChildren {
+  ApiPortalTokensClientIdRoute: typeof ApiPortalTokensClientIdRoute
+}
+
+const ApiPortalTokensRouteChildren: ApiPortalTokensRouteChildren = {
+  ApiPortalTokensClientIdRoute: ApiPortalTokensClientIdRoute,
+}
+
+const ApiPortalTokensRouteWithChildren = ApiPortalTokensRoute._addFileChildren(
+  ApiPortalTokensRouteChildren,
+)
+
 interface ApiReportsIdRouteChildren {
   ApiReportsIdDownloadRoute: typeof ApiReportsIdDownloadRoute
 }
@@ -4269,6 +4545,19 @@ const ApiClientsClientIdAlertRulesRouteChildren: ApiClientsClientIdAlertRulesRou
 const ApiClientsClientIdAlertRulesRouteWithChildren =
   ApiClientsClientIdAlertRulesRoute._addFileChildren(
     ApiClientsClientIdAlertRulesRouteChildren,
+  )
+
+interface ApiClientsClientIdGscRouteChildren {
+  ApiClientsClientIdGscDailyRoute: typeof ApiClientsClientIdGscDailyRoute
+}
+
+const ApiClientsClientIdGscRouteChildren: ApiClientsClientIdGscRouteChildren = {
+  ApiClientsClientIdGscDailyRoute: ApiClientsClientIdGscDailyRoute,
+}
+
+const ApiClientsClientIdGscRouteWithChildren =
+  ApiClientsClientIdGscRoute._addFileChildren(
+    ApiClientsClientIdGscRouteChildren,
   )
 
 interface ApiPixelChar91siteIdChar93AnalyticsRouteChildren {
@@ -4398,6 +4687,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWebhooksRoute: ApiWebhooksRouteWithChildren,
   PTokenRoute: PTokenRouteWithChildren,
   PipelineDashboardRoute: PipelineDashboardRoute,
+  PortalTokenRoute: PortalTokenRoute,
   ApiAdminDlqRoute: ApiAdminDlqRouteWithChildren,
   ApiAuditRunChecksRoute: ApiAuditRunChecksRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
@@ -4417,7 +4707,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthDbRoute: ApiHealthDbRoute,
   ApiHealthRedisRoute: ApiHealthRedisRoute,
   ApiInternalSessionInvalidationRoute: ApiInternalSessionInvalidationRoute,
+  ApiKeywordsAnalyzeRoute: ApiKeywordsAnalyzeRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
+  ApiKeywordsGenerateRoute: ApiKeywordsGenerateRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
   ApiMetricsCrawlRoute: ApiMetricsCrawlRoute,
   ApiOnboardingCompleteItemRoute: ApiOnboardingCompleteItemRoute,
@@ -4427,6 +4719,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaymentsStatsRoute: ApiPaymentsStatsRoute,
   ApiPixelCollectRoute: ApiPixelCollectRoute,
   ApiPlatformConnectionsIdRoute: ApiPlatformConnectionsIdRouteWithChildren,
+  ApiPortalTokensRoute: ApiPortalTokensRouteWithChildren,
   ApiProposalsAnalyticsRoute: ApiProposalsAnalyticsRoute,
   ApiProposalsStageRoute: ApiProposalsStageRoute,
   ApiProposalsTrackRoute: ApiProposalsTrackRoute,
@@ -4469,6 +4762,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiClientsClientIdAlertRulesRouteWithChildren,
   ApiClientsClientIdAlertsRoute: ApiClientsClientIdAlertsRoute,
   ApiClientsClientIdDropEventsRoute: ApiClientsClientIdDropEventsRoute,
+  ApiClientsClientIdGscRoute: ApiClientsClientIdGscRouteWithChildren,
   ApiClientsClientIdReportsRoute: ApiClientsClientIdReportsRoute,
   ApiClientsClientIdRollbackRoute: ApiClientsClientIdRollbackRoute,
   ApiCommandCenterActionsAddNoteRoute: ApiCommandCenterActionsAddNoteRoute,
@@ -4494,6 +4788,12 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPixelChar91siteIdChar93ChangesRouteWithChildren,
   ApiPixelChar91siteIdChar93ScriptRoute: ApiPixelChar91siteIdChar93ScriptRoute,
   ApiPixelTJsRoute: ApiPixelTJsRoute,
+  ApiPortalActivityClientIdRoute: ApiPortalActivityClientIdRoute,
+  ApiPortalDashboardClientIdRoute: ApiPortalDashboardClientIdRoute,
+  ApiPortalKeywordsClientIdRoute: ApiPortalKeywordsClientIdRoute,
+  ApiPortalNotificationsClientIdRoute: ApiPortalNotificationsClientIdRoute,
+  ApiPortalRevokeTokenRoute: ApiPortalRevokeTokenRoute,
+  ApiPortalScopeContractIdRoute: ApiPortalScopeContractIdRoute,
   ApiProposalsProposalIdDeclineRoute: ApiProposalsProposalIdDeclineRoute,
   ApiProposalsChar91idChar93AcceptRoute: ApiProposalsChar91idChar93AcceptRoute,
   ApiProposalsChar91idChar93DuplicateRoute:
@@ -4528,9 +4828,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTemplatesProposalsIndexRoute: ApiTemplatesProposalsIndexRoute,
   ApiAuditPagesPageIdFindingsRoute: ApiAuditPagesPageIdFindingsRoute,
   ApiClientsClientIdGoalsGoalIdRoute: ApiClientsClientIdGoalsGoalIdRoute,
-  ApiClientsClientIdGscDailyRoute: ApiClientsClientIdGscDailyRoute,
   ApiCommandCenterAlertsAlertIdDismissRoute:
     ApiCommandCenterAlertsAlertIdDismissRoute,
+  ApiPortalNotificationsSettingsClientIdRoute:
+    ApiPortalNotificationsSettingsClientIdRoute,
   ApiProposalsChar91idChar93SectionsChar91sidChar93Route:
     ApiProposalsChar91idChar93SectionsChar91sidChar93Route,
   ApiProspectsIdKeywordsImportRoute: ApiProspectsIdKeywordsImportRoute,
