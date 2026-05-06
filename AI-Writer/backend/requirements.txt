@@ -33,7 +33,7 @@ pygments>=2.20.0          # 1 CVE
 pytest>=9.0.3             # 1 CVE (dev dependency)
 python-dotenv>=1.2.2      # 1 CVE
 cbor2>=5.9.0              # 1 CVE
-zipp>=3.19.1              # 1 CVE
+zipp>=3.23.1              # 1 CVE
 
 # Other security constraints
 oauthlib>=3.2.2           # CVE-2022-36087 OAuth security fixes
