@@ -2687,12 +2687,12 @@ Transform the platform into a complete agency CRM with v6 design system complian
   2. EXPAND mode only fetches NEW keywords (deduplication working)
   3. Volume refresh uses same endpoint but metadata-only updates (no re-clustering)
   4. Cost tracking shows duplicate count and cost_saved in research response
-**Plans**: 6 plans (1 complete)
+**Plans**: 6 plans (5 complete)
   - [x] 93-01-PLAN.md — Foundation: research_sessions table, types, ResearchSessionService (Wave 1) — **COMPLETE** (59583aaea, 9444b9093, 7091b6301)
-  - [ ] 93-02-PLAN.md — Deduplication: extend KeywordDeduplicator with deduplicateBeforeResearch (Wave 1)
-  - [ ] 93-03-PLAN.md — Coverage: CoverageCalculator service with tier aggregation (Wave 1)
-  - [ ] 93-04-PLAN.md — Volume Refresh: BullMQ worker for monthly batch refresh (Wave 2)
-  - [ ] 93-05-PLAN.md — API Routes: coverage endpoint, research with modes (Wave 2)
+  - [x] 93-02-PLAN.md — Deduplication: extend KeywordDeduplicator with deduplicateBeforeResearch (Wave 1) — **COMPLETE** (cd25a84, 5892334)
+  - [x] 93-03-PLAN.md — Coverage: CoverageCalculator service with tier aggregation (Wave 1) — **COMPLETE** (see 93-03-SUMMARY.md)
+  - [x] 93-04-PLAN.md — Volume Refresh: BullMQ worker for monthly batch refresh (Wave 2) — **COMPLETE** (see 93-04-SUMMARY.md)
+  - [x] 93-05-PLAN.md — API Routes: coverage endpoint, research with modes (Wave 2) — **COMPLETE** (6c46f08, 04ec0cf)
   - [ ] 93-06-PLAN.md — Coverage Dashboard UI (Wave 3, checkpoint)
 
 ---
