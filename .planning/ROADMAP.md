@@ -2696,3 +2696,26 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 93-06-PLAN.md — Coverage Dashboard UI (Wave 3, checkpoint)
 
 ---
+
+### Phase 94: Design System v6 Migration
+**Goal**: Transform agency UI from "functional SaaS" to "$100M-software polish" by implementing design-system-v6 across all components.
+**Depends on**: None (can run parallel with other phases)
+**Requirements**: DS6-TOKENS, DS6-FONTS, DS6-CARD, DS6-BUTTON, DS6-BADGE, DS6-PROGRESS, DS6-PIPELINE, DS6-QUALITY, DS6-KEYWORDS, DS6-CALENDAR, DS6-PORTAL
+**Working directory**: `apps/web/`, `packages/ui/`
+**Success Criteria** (what must be TRUE):
+  1. All cards use `--shadow-card` ghost-edge shadows (no `border: 1px solid`)
+  2. Typography uses Newsreader (display numerals) + Geist (UI) + Geist Mono (data)
+  3. All KPI numbers use progress block pattern with serif mega numerals
+  4. Hover-to-reveal pattern implemented for secondary actions
+  5. Status pills use small-caps with semantic colors
+  6. Article pipeline shows expandable "under the hood" details
+  7. Quality score card shows expandable check details
+  8. Warm-shifted grays (#14141A, #54545A, #93939A, #C4C3BB) replace Tailwind slate
+**Plans**: 5 plans
+  - [ ] 94-01-PLAN.md — Foundation: Tokens + Fonts (Wave 1)
+  - [ ] 94-02-PLAN.md — Primitives: Card + Button + Badge + ProgressBlock (Wave 2)
+  - [ ] 94-03-PLAN.md — Pipeline & Quality: Article Pipeline + Quality Score (Wave 3)
+  - [ ] 94-04-PLAN.md — Data Views: Keywords + Calendar (Wave 3)
+  - [ ] 94-05-PLAN.md — Portal Polish: GoalProgressCard + ClusterCard + StatCard (Wave 4)
+
+---
