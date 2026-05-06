@@ -405,12 +405,25 @@ export interface LabelingConfig {
    * - 'centroid_nearest': Label from nearest keyword to centroid (fast, free)
    * - 'ngram': Most frequent n-gram in cluster (fast, free)
    * - 'llm': LLM summarization (best quality, ~$0.03/analysis)
+   * - 'auto': Try centroid_nearest first, fall back to LLM if confidence < threshold
    */
-  method: 'centroid_nearest' | 'ngram' | 'llm';
+  method: 'centroid_nearest' | 'ngram' | 'llm' | 'auto';
+  /**
+   * LLM fallback threshold for 'auto' mode.
+   * Use LLM if confidence < this value.
+   * Default: 0.6
+   */
+  llmFallbackThreshold?: number;
+  /**
+   * Grok API key for LLM labeling.
+   * Required if method is 'llm' or 'auto'.
+   */
+  grokApiKey?: string;
 }
 
 export const DEFAULT_LABELING_CONFIG: LabelingConfig = {
-  method: 'centroid_nearest',
+  method: 'auto',  // centroid_nearest primary, LLM fallback
+  llmFallbackThreshold: 0.6,
 };
 
 /**
@@ -436,6 +449,11 @@ export interface LabeledCluster extends KeywordCluster {
    * Labeling confidence (0-1).
    */
   labelConfidence: number;
+
+  /**
+   * Method used to generate the label.
+   */
+  labelMethod: 'centroid_nearest' | 'ngram' | 'llm';
 }
 
 // ============================================================================

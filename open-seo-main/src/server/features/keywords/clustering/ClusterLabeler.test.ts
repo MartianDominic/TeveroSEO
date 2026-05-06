@@ -230,15 +230,21 @@ describe('ClusterLabeler', () => {
         grokApiKey: 'test-key',
       });
 
-      // Low similarity - create orthogonal embeddings
+      // Create normalized embeddings
+      const normalize = (vec: number[]) => {
+        const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+        return vec.map(v => v / norm);
+      };
+
+      // Keyword with one embedding
       const keyword1 = createKeyword('keyword1');
-      keyword1.embedding = Array(768).fill(0).map((_, i) => i % 2 === 0 ? 1 : 0);
+      keyword1.embedding = normalize(Array(768).fill(1));
 
-      const keyword2 = createKeyword('keyword2');
-      keyword2.embedding = Array(768).fill(0).map((_, i) => i % 2 === 1 ? 1 : 0);
+      // Create centroid that's very different (will have low cosine similarity)
+      // Use a vector that's orthogonal-ish to the keyword embeddings
+      const centroid = normalize(Array(768).fill(0).map((_, i) => i % 2 === 0 ? 1 : -1));
 
-      // Centroid will be average, low similarity to both
-      const cluster = createCluster(0, [keyword1, keyword2]);
+      const cluster = createCluster(0, [keyword1], centroid);
 
       const result = await labeler.labelCluster(cluster);
 
@@ -299,7 +305,8 @@ describe('ClusterLabeler', () => {
 
       const result = labeler.labelClusterSync(cluster);
 
-      expect(result.labelLt).toBe('Same Keyword');
+      // Lithuanian label preserves original case (first letter capitalized by cleanLabel)
+      expect(result.labelLt).toBe('Same keyword');
     });
   });
 });
