@@ -67,3 +67,6 @@ export {
 // Services
 export { SemanticDeduplicator, deduplicate } from './SemanticDeduplicator';
 export { HDBSCANClusterer, clusterKeywords } from './HDBSCANClusterer';
+export { IntentSplitter, splitByIntent } from './IntentSplitter';
+export type { IntentSplitResult, IntentSplitStats } from './IntentSplitter';
+export { ClusterLabeler, labelClusters, transliterateLithuanian } from './ClusterLabeler';
