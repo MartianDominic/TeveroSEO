@@ -21,7 +21,6 @@ import type {
 } from './types';
 import {
   DEFAULT_DEDUP_CONFIG,
-  EMBEDDING_DIMENSION,
   validateEmbedding,
 } from './types';
 
