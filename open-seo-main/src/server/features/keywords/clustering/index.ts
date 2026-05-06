@@ -70,3 +70,11 @@ export { HDBSCANClusterer, clusterKeywords } from './HDBSCANClusterer';
 export { IntentSplitter, splitByIntent } from './IntentSplitter';
 export type { IntentSplitResult, IntentSplitStats } from './IntentSplitter';
 export { ClusterLabeler, labelClusters, transliterateLithuanian } from './ClusterLabeler';
+export { HierarchyBuilder, buildHierarchy } from './HierarchyBuilder';
+export { ClusterSelector, selectFromClusters } from './ClusterSelector';
+export { SerpEnricher, enrichWithSerp } from './SerpEnricher';
+export type {
+  SerpEnrichmentConfig,
+  EnrichedKeyword,
+  SerpEnrichmentResult,
+} from './SerpEnricher';
