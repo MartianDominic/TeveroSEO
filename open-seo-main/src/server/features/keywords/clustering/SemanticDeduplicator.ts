@@ -11,7 +11,7 @@
  * per 86-RESEARCH.md Pitfall 1: Embedding Dimension Mismatch
  */
 
-import { cosineSimilarity } from '@/server/features/keywords/services/EmbeddingService';
+import { cosineSimilarity } from '../services/EmbeddingService';
 import type {
   ClusteringInput,
   DeduplicationConfig,
@@ -82,7 +82,7 @@ class UnionFind {
   getGroups(): Map<string, string[]> {
     const groups = new Map<string, string[]>();
 
-    for (const key of this.parent.keys()) {
+    for (const key of Array.from(this.parent.keys())) {
       const root = this.find(key);
       if (!groups.has(root)) {
         groups.set(root, []);
@@ -219,7 +219,7 @@ export class SemanticDeduplicator {
     const merged: MergedKeyword[] = [];
     const mergeMap = new Map<string, string>();
 
-    for (const [_root, members] of groups) {
+    for (const [_root, members] of Array.from(groups.entries())) {
       const groupInputs = members.map(k => keywordMap.get(k)!);
 
       // Select canonical based on strategy

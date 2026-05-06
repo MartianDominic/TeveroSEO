@@ -14,7 +14,7 @@ import type { ClusteringInput, DeduplicationConfig } from './types';
 import { EMBEDDING_DIMENSION } from './types';
 
 // Mock embedding service
-vi.mock('@/server/features/keywords/services/EmbeddingService', () => ({
+vi.mock('../services/EmbeddingService', () => ({
   cosineSimilarity: vi.fn((a: Float32Array, b: Float32Array) => {
     // Simple mock: same arrays return 1.0, otherwise calculate based on first element
     if (a === b) return 1.0;
