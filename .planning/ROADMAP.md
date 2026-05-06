@@ -13,6 +13,8 @@
 - 🔄 **v8.0 World-Class Keyword Intelligence** — Phases 75–82 (in progress)
 - ✅ **v8.1 Cost Optimization** — Phase 91 (complete 2026-05-06)
 - 📋 **v9.0 On-Page Excellence** — Phase 92 (planned)
+- 📋 **v9.1 Keyword Coverage Intelligence** — Phase 93 (planned)
+- 📋 **v9.2 Premium Agency Experience** — Phase 94 (planned)
 
 ## Phases
 
@@ -2640,17 +2642,52 @@ Transform the platform into a complete agency CRM with v6 design system complian
 ---
 
 ### Phase 92: On-Page SEO Mastery
-**Goal**: Apply all correct, research-backed on-page SEO rules to rank every page — no guesswork, no outdated tactics.
+### Phase 92: On-Page SEO Mastery
+**Goal**: Integrate 41-point SEO-AGI quality scorecard into TeveroSEO's audit system with Tier 5 AI checks, vertical classification, and topical authority measurement.
 **Depends on**: Phase 90 (Client Portal complete)
 **Working directory**: `open-seo-main/`, `apps/web/`
+**Status**: Planned
+**Requirements**: [OPM-01, OPM-02, OPM-03, OPM-04, OPM-05, OPM-06, OPM-07, OPM-08, OPM-09, OPM-10, OPM-11, OPM-12, OPM-13, OPM-14, OPM-15, OPM-16, OPM-17, OPM-18, OPM-19, OPM-20]
+**Key Features**:
+  - Tier 5 Content Quality Intelligence (opt-in, 13 AI-powered checks)
+  - 16 new Tier 1 checks for page structure (T1-70 to T1-85)
+  - VerticalClassifier with 12 industry-specific rule packs + YMYL detection
+  - QualityGateService with 7 gates (Reddit Test, Information Gain, Prove-It Details, etc.)
+  - RuleEngineService with 41-point scorecard and rule hierarchy
+  - 500-token semantic chunking with tiktoken cl100k_base encoding
+  - InternalLinkGraph with PageRank-based link recommendations
+  - SchemaGenerator with type-safe JSON-LD generation
+**Plans**: 10 plans in 5 waves
+  - [x] 92-01-PLAN.md - Database schema + VerticalClassifier (Wave 1)
+  - [x] 92-02-PLAN.md - ChunkExtractor, ReadabilityScorer, EntityExtractor (Wave 1)
+  - [ ] 92-03-PLAN.md - QualityGateService with 7 quality gates (Wave 2)
+  - [ ] 92-04-PLAN.md - RuleEngineService with 41-point scorecard (Wave 2)
+  - [ ] 92-05-PLAN.md - SchemaGenerator with schema-dts (Wave 2)
+  - [ ] 92-06-PLAN.md - InternalLinkGraph with ngraph.pagerank (Wave 2)
+  - [ ] 92-07-PLAN.md - 16 Tier 1 checks T1-70 to T1-85 (Wave 3)
+  - [ ] 92-08-PLAN.md - 13 Tier 5 checks T5-01 to T5-13 (Wave 3)
+  - [ ] 92-09-PLAN.md - API routes + UI components (Wave 4, checkpoint)
+  - [ ] 92-10-PLAN.md - Integration tests with 80% coverage (Wave 5)
+
+
+## v9.1 Keyword Coverage Intelligence
+
+> **Milestone goal**: Stop wasting API credits on redundant research. Show users what's covered, what's missing, and only fetch what adds value.
+
+---
+
+### Phase 93: Keyword Coverage Intelligence
+**Goal**: Transform keyword research from "fetch everything" to "fetch what's missing" with coverage tracking, research modes, and deduplication.
+**Depends on**: Phase 86 (Semantic Intelligence), Phase 91 (Cost Optimization)
+**Working directory**: `open-seo-main/`
 **Status**: Not planned
 **Key Features**:
-  - Research-backed ranking factors (Kyle Roof, Surfer, Clearscope insights)
-  - Per-page optimization scoring with actionable fixes
-  - Title, meta, H1, content structure, internal linking rules
-  - NLP/entity optimization guidance
-  - Real-time optimization feedback
+  - Coverage dashboard showing keywords per service line
+  - Research modes: EXPAND, DEEP-DIVE, COMPETITOR, REFRESH VOLUMES
+  - Deduplication against existing corpus
+  - Cheaper volume-only refresh endpoint
+  - "Last researched" visibility before allowing re-research
 **Plans**: TBD
-  - [ ] Run /gsd-discuss-phase 92 to gather context
+  - [ ] Run /gsd-discuss-phase 93 to gather context
 
 ---
