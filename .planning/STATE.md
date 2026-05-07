@@ -617,17 +617,28 @@ Key deliverables:
 
 ### Phase 95 Unified Scraping Infrastructure (2026-05-07)
 
-**Status:** In Progress (Plan 01 Complete)
+**Status:** In Progress (Plans 01-03 Complete)
 **Estimated Effort:** 5-6 weeks
 **Cost Impact:** 96-98% reduction in scraping costs ($0.02/page → $0.0002/page)
 
 | Plan | Focus | Duration | Status |
 |------|-------|----------|--------|
 | 95-01 | TieredFetcher + Domain Learning | 1.5 weeks | ✓ Complete |
-| 95-02 | Multi-Level Caching (L1-L4) | 1 week | Planned |
-| 95-03 | Queue & Rate Limiting | 1 week | Planned |
-| 95-04 | DataForSEO Optimization | 0.5 week | Planned |
+| 95-02 | Multi-Level Caching (L1-L4) | 1 week | In Progress |
+| 95-03 | Queue & Rate Limiting | 1 week | ✓ Complete |
+| 95-04 | DataForSEO Optimization | 0.5 week | In Progress |
 | 95-05 | Migration & Monitoring | 1 week | Planned |
+
+**95-03 Key Deliverables:**
+- Redis sliding window rate limiting (2 req/sec per domain) with Lua scripts
+- Domain normalization groups subdomains (www.example.com → example.com)
+- Adaptive backoff: doubles on 429/503 (max 16x), halves on success
+- Distributed semaphore (200 concurrent) using Redis sorted sets
+- Three BullMQ queues: priority (50 concurrent), standard (100), background (50)
+- Priority assignment based on source (UI/API/scheduler) and feature context
+- Queue orchestrator pauses background when priority >50% utilized
+- Prometheus-compatible metrics with queue depth, processing rate, blocked domains
+- 99 unit tests passing
 
 **95-01 Key Deliverables:**
 - 7-tier escalation: direct → webshare → geonode → camoufox → dfs_basic → dfs_js → dfs_browser

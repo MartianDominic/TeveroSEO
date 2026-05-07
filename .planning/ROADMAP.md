@@ -2719,3 +2719,24 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [x] 94-05-PLAN.md — Portal Polish: GoalProgressCard + ClusterCard + StatCard (Wave 4) [Complete 2026-05-06]
 
 ---
+
+### Phase 95: Unified Scraping Infrastructure
+**Goal**: 96-98% cost reduction through tiered proxy escalation, intelligent caching, and polite rate limiting.
+**Depends on**: Phase 92 (On-Page SEO Mastery)
+**Requirements**: SCRAPE-01, SCRAPE-02, SCRAPE-03, SCRAPE-04, SCRAPE-05
+**Working directory**: `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. TieredFetcher escalates Direct → Webshare → Geonode → Camoufox → DataForSEO
+  2. Per-domain learning remembers which tier works (Redis L1 + PostgreSQL persistence)
+  3. Multi-level caching: L1 (memory) → L2 (Redis) → L3 (PostgreSQL) → L4 (R2)
+  4. Per-domain rate limiting at 2 req/sec with adaptive backoff on 429/503
+  5. Global concurrency limit at 200 concurrent requests
+  6. All 6 features use unified ScrapingService
+**Plans**: 5 plans (3/5 complete)
+  - [x] 95-01-PLAN.md — TieredFetcher + Domain Learning (Wave 1) [Complete 2026-05-07]
+  - [x] 95-02-PLAN.md — Multi-Level Caching L1-L4 (Wave 1) [In Progress]
+  - [x] 95-03-PLAN.md — Queue & Rate Limiting (Wave 2) [Complete 2026-05-07]
+  - [x] 95-04-PLAN.md — DataForSEO Optimization (Wave 2) [In Progress]
+  - [ ] 95-05-PLAN.md — Migration & Monitoring (Wave 3)
+
+---
