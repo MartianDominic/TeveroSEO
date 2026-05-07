@@ -26,6 +26,8 @@ import {
   type ScrapingMigrationFlags,
   type ScrapingFeature,
 } from "./config";
+import type { CwvService } from "./cwv/CwvService";
+import type { CwvMetrics } from "./cwv/types";
 
 // =============================================================================
 // Types
@@ -43,6 +45,12 @@ export interface ScrapeOptions extends FetchOptions {
 
   /** Include full HTML in result (default: true) */
   includeHtml?: boolean;
+
+  /** Include Core Web Vitals data (default: false) */
+  includeCwv?: boolean;
+
+  /** CWV strategy: 'crux-only' skips PSI fallback, 'full' uses all sources */
+  cwvStrategy?: 'crux-only' | 'full';
 }
 
 /**
@@ -51,6 +59,9 @@ export interface ScrapeOptions extends FetchOptions {
 export interface ScrapeResult extends FetchResult {
   /** Pre-parsed page data (if requested and available) */
   parsedData?: ParsedPageData;
+
+  /** Core Web Vitals data (if requested and available) */
+  cwv?: CwvMetrics;
 }
 
 /**
@@ -177,6 +188,7 @@ export class ScrapingService {
   private domainLearning: DomainLearningService;
   private cacheManager: CacheManager | null = null;
   private queueManager: QueueManager | null = null;
+  private cwvService: CwvService | null = null;
 
   // Metrics tracking
   private shadowMismatches = 0;
@@ -196,6 +208,7 @@ export class ScrapingService {
   initialize(deps: {
     redis: Redis;
     db: PostgresJsDatabase;
+    cwvService?: CwvService;
   }): void {
     // Create cache manager
     this.cacheManager = createCacheManager({
@@ -208,6 +221,11 @@ export class ScrapingService {
 
     // Get queue manager singleton
     this.queueManager = getQueueManager();
+
+    // Set CWV service if provided
+    if (deps.cwvService) {
+      this.cwvService = deps.cwvService;
+    }
   }
 
   /**
@@ -231,7 +249,16 @@ export class ScrapingService {
       ...options,
     };
 
-    const result = await this.tieredFetcher.fetch(url, fetchOptions);
+    // Parallel fetch: HTML + CWV
+    const [result, cwvMetrics] = await Promise.all([
+      this.tieredFetcher.fetch(url, fetchOptions),
+      options.includeCwv && this.cwvService
+        ? this.cwvService.getCwvData(url).catch((error) => {
+            console.warn('CWV fetch failed:', error);
+            return undefined;
+          })
+        : Promise.resolve(undefined),
+    ]);
 
     // Track cost
     this.trackCost(options.feature, result.estimatedCostUsd);
@@ -247,6 +274,7 @@ export class ScrapingService {
       ...result,
       html: options.includeHtml === false ? undefined : result.html,
       parsedData,
+      cwv: cwvMetrics,
     };
 
     return scrapeResult;
