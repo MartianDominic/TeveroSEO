@@ -13,7 +13,22 @@ import "./backlinks"; // T3-08 to T3-10
 import "./engagement"; // T3-11 to T3-13
 
 // Re-export check IDs for documentation
-export { cwvCheckIds, clearCruxCache } from "./cwv";
+export {
+  cwvCheckIds,
+  clearCruxCache,
+  setCruxClientContext,
+  // Individual check functions
+  checkLCP,
+  checkINP,
+  checkCLS,
+  // Aggregate runner
+  runCwvChecks,
+  type CwvCheckResults,
+  // Adapter exports
+  getCwvCheckAdapter,
+  resetCwvCheckAdapter,
+  type CwvCheckResult,
+} from "./cwv";
 export { entityNlpCheckIds } from "./entity-nlp";
 export { backlinksCheckIds } from "./backlinks";
 export { engagementCheckIds } from "./engagement";
