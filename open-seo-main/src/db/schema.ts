@@ -235,3 +235,6 @@ export * from "./research-session-schema";
 
 // Domain scrape learning schema (Phase 92 - Tiered Scraping)
 export * from "./domain-scrape-learning-schema";
+
+// GSC query analytics schema (Phase 96-01)
+export * from "./gsc-analytics-schema";
