@@ -1,13 +1,6 @@
 // @ts-expect-error - express may not be installed yet
 import { Router, type Request, type Response } from 'express';
-import type { ScrapingService } from '../ScrapingService';
-
-export interface HealthCheckResult {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  timestamp: string;
-  components?: Array<{ name: string; status: string; latency_ms?: number }>;
-  error?: string;
-}
+import type { ScrapingService, HealthCheckResult } from '../ScrapingService';
 
 export interface StatusResult {
   health: HealthCheckResult;
@@ -17,7 +10,7 @@ export interface StatusResult {
     cacheHitRate: number;
     p95Latency: number;
   };
-  circuits: any;
+  circuits: Record<string, string>;
   queue: {
     waiting: number;
     active: number;
@@ -30,17 +23,63 @@ export interface StatusResult {
 export function createHealthRoutes(scrapingService: ScrapingService): Router {
   const router = Router();
 
-  // Basic health check (for load balancers)
+  // Liveness probe (is the process running?)
+  // Always returns 200 if the server can respond
+  router.get('/health/live', (req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'alive',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // Readiness probe (is the service ready to handle requests?)
+  // Returns 503 if any critical component is unhealthy
+  router.get('/health/ready', async (req: Request, res: Response) => {
+    try {
+      const health = await scrapingService.healthCheck();
+
+      if (health.healthy) {
+        res.status(200).json({
+          status: 'ready',
+          timestamp: health.timestamp,
+          latencyMs: health.latencyMs,
+        });
+      } else {
+        const unhealthyComponents = Object.entries(health.components)
+          .filter(([_, v]) => !v.healthy)
+          .map(([k]) => k);
+
+        res.status(503).json({
+          status: 'not_ready',
+          timestamp: health.timestamp,
+          unhealthyComponents,
+        });
+      }
+    } catch (error) {
+      res.status(503).json({
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Basic health check (for load balancers) - legacy endpoint
   router.get('/health', async (req: Request, res: Response) => {
     try {
       const health = await scrapingService.healthCheck();
 
-      const status =
-        health.components && health.components.every((c) => c.status === 'up')
-          ? 'healthy'
-          : health.components && health.components.some((c) => c.status === 'up')
-            ? 'degraded'
-            : 'unhealthy';
+      // Determine overall status
+      const criticalComponents = ['redis', 'postgres'];
+      const criticalHealthy = criticalComponents.every(
+        (c) => health.components[c as keyof typeof health.components]?.healthy
+      );
+
+      const status = health.healthy
+        ? 'healthy'
+        : criticalHealthy
+          ? 'degraded'
+          : 'unhealthy';
 
       res.status(status === 'unhealthy' ? 503 : 200).json({
         status,
@@ -55,19 +94,28 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
+  // Detailed health check (for debugging)
+  router.get('/health/detailed', async (req: Request, res: Response) => {
+    try {
+      const health = await scrapingService.healthCheck();
+      res.status(health.healthy ? 200 : 503).json(health);
+    } catch (error) {
+      res.status(500).json({
+        healthy: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // Detailed status (for debugging)
   router.get('/status', async (req: Request, res: Response) => {
     try {
       const [health, metrics, circuits, queue] = await Promise.all([
         scrapingService.healthCheck(),
         scrapingService.getMetrics(),
-        scrapingService.getCircuitStates?.() || {},
-        scrapingService.getQueueStats?.() || {
-          waiting: 0,
-          active: 0,
-          completed: 0,
-          failed: 0,
-        },
+        Promise.resolve(scrapingService.getCircuitStates()),
+        scrapingService.getQueueStats(),
       ]);
 
       res.json({
@@ -98,11 +146,11 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Prometheus metrics
   router.get('/metrics', async (req: Request, res: Response) => {
     try {
-      const metrics = await scrapingService.getPrometheusMetrics?.();
-      res.set('Content-Type', 'text/plain');
-      res.send(metrics || '# No metrics available\n');
+      const metrics = await scrapingService.getPrometheusMetrics();
+      res.set('Content-Type', scrapingService.getMetricsContentType());
+      res.send(metrics);
     } catch (error) {
-      res.status(500).send('# Error generating metrics\n');
+      res.status(500).send(`# Error generating metrics: ${error instanceof Error ? error.message : 'Unknown'}\n`);
     }
   });
 
@@ -123,10 +171,48 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Circuit breaker status
+  router.get('/health/circuits', async (req: Request, res: Response) => {
+    try {
+      const states = scrapingService.getCircuitStates();
+      const openCircuits = Object.entries(states)
+        .filter(([_, state]) => state === 'open')
+        .map(([tier]) => tier);
+
+      res.status(openCircuits.length > 3 ? 503 : 200).json({
+        states,
+        openCircuits,
+        openCount: openCircuits.length,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Legacy circuits endpoint
   router.get('/circuits', async (req: Request, res: Response) => {
     try {
-      const circuits = await scrapingService.getCircuitStates?.();
-      res.json(circuits || {});
+      const states = scrapingService.getCircuitStates();
+      res.json(states);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Reset circuit breaker (admin only)
+  router.post('/health/circuits/:tier/reset', async (req: Request, res: Response) => {
+    const { tier } = req.params;
+
+    try {
+      scrapingService.forceCloseCircuit(tier);
+      res.status(200).json({
+        message: `Circuit ${tier} reset`,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
@@ -137,7 +223,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Manual circuit control (protected by requireAdmin middleware)
   router.post('/circuits/:tier/close', async (req: Request, res: Response) => {
     try {
-      await scrapingService.forceCloseCircuit?.(req.params.tier);
+      scrapingService.forceCloseCircuit(req.params.tier);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({
@@ -149,7 +235,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   router.post('/circuits/:tier/open', async (req: Request, res: Response) => {
     try {
-      await scrapingService.forceOpenCircuit?.(req.params.tier);
+      scrapingService.forceOpenCircuit(req.params.tier);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({
@@ -159,11 +245,29 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
+  // Queue health endpoint
+  router.get('/health/queues', async (req: Request, res: Response) => {
+    try {
+      const stats = await scrapingService.getQueueStats();
+      const healthy = stats.failed < 100 && stats.waiting < 1000;
+
+      res.status(healthy ? 200 : 503).json({
+        ...stats,
+        healthy,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
   // Queue management
   router.get('/queue/stats', async (req: Request, res: Response) => {
     try {
-      const stats = await scrapingService.getQueueStats?.();
-      res.json(stats || { waiting: 0, active: 0, completed: 0, failed: 0 });
+      const stats = await scrapingService.getQueueStats();
+      res.json(stats);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
@@ -174,10 +278,10 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   router.post('/queue/drain', async (req: Request, res: Response) => {
     try {
       const { older_than } = req.query;
-      const count = await scrapingService.drainQueue?.(
+      const count = await scrapingService.drainQueue(
         older_than ? parseInt(older_than as string) : undefined
       );
-      res.json({ drained: count || 0 });
+      res.json({ drained: count });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
@@ -188,8 +292,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Cache management
   router.get('/cache/stats', async (req: Request, res: Response) => {
     try {
-      const stats = await scrapingService.getCacheStats?.();
-      res.json(stats || {});
+      const stats = scrapingService.getCacheStats();
+      res.json(stats);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
@@ -199,9 +303,13 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   router.post('/cache/warm', async (req: Request, res: Response) => {
     try {
-      const { domains } = req.body;
-      await scrapingService.warmCache?.(domains);
-      res.json({ success: true });
+      const { urls } = req.body;
+      if (!Array.isArray(urls)) {
+        res.status(400).json({ error: 'urls must be an array' });
+        return;
+      }
+      const result = await scrapingService.warmCache(urls);
+      res.json({ success: true, ...result });
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -213,7 +321,11 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   router.post('/cache/invalidate', async (req: Request, res: Response) => {
     try {
       const { pattern } = req.body;
-      const count = (await scrapingService.invalidateCache?.(pattern)) ?? 0;
+      if (!pattern || typeof pattern !== 'string') {
+        res.status(400).json({ error: 'pattern must be a string' });
+        return;
+      }
+      const count = await scrapingService.invalidateCache(pattern);
       res.json({ invalidated: count });
     } catch (error) {
       res.status(500).json({
@@ -225,7 +337,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Emergency controls
   router.post('/emergency-stop', async (req: Request, res: Response) => {
     try {
-      await scrapingService.emergencyStop?.();
+      await scrapingService.emergencyStop();
       res.json({ success: true, message: 'All scraping stopped' });
     } catch (error) {
       res.status(500).json({
@@ -237,7 +349,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   router.post('/resume', async (req: Request, res: Response) => {
     try {
-      await scrapingService.resume?.();
+      await scrapingService.resume();
       res.json({ success: true, message: 'Scraping resumed' });
     } catch (error) {
       res.status(500).json({
