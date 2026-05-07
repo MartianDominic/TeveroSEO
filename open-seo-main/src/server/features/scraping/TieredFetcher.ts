@@ -28,6 +28,8 @@ import type {
 } from "./types";
 import type { CacheManager, CacheLevel, CachedPage, ContentType } from "./cache";
 import { getContentHash, detectContentType } from "./cache";
+import { CircuitBreaker, type CircuitState, CircuitOpenError } from "./resilience/CircuitBreaker";
+import type { AlertManager } from "./monitoring/AlertManager";
 
 // =============================================================================
 // Types
@@ -116,11 +118,101 @@ export interface FetchResult {
 }
 
 // =============================================================================
+// Circuit Breaker Configuration per Tier
+// =============================================================================
+
+/**
+ * Failure thresholds per tier - higher tiers (more expensive) have lower thresholds.
+ */
+const TIER_FAILURE_THRESHOLDS: Record<ScrapeTier, number> = {
+  direct: 10,      // Allow more failures (free)
+  webshare: 10,    // Allow more failures (free)
+  geonode: 5,      // Moderate threshold
+  camoufox: 5,     // Moderate threshold
+  dfs_basic: 3,    // Lower threshold (paid)
+  dfs_js: 3,       // Lower threshold (paid)
+  dfs_browser: 2,  // Lowest threshold (expensive)
+};
+
+/**
+ * Reset timeout per tier - DataForSEO tiers have longer cooldown.
+ */
+const TIER_RESET_TIMEOUTS: Record<ScrapeTier, number> = {
+  direct: 30_000,      // 30 seconds
+  webshare: 30_000,    // 30 seconds
+  geonode: 60_000,     // 1 minute
+  camoufox: 60_000,    // 1 minute
+  dfs_basic: 120_000,  // 2 minutes
+  dfs_js: 120_000,     // 2 minutes
+  dfs_browser: 300_000, // 5 minutes
+};
+
+/**
+ * Tier escalation order for when a circuit opens.
+ */
+const TIER_ORDER: ScrapeTier[] = [
+  'direct',
+  'webshare',
+  'geonode',
+  'camoufox',
+  'dfs_basic',
+  'dfs_js',
+  'dfs_browser',
+];
+
+// =============================================================================
 // TieredFetcher
 // =============================================================================
 
 export class TieredFetcher {
   private cacheManager: CacheManager | null = null;
+  private circuitBreakers: Map<ScrapeTier, CircuitBreaker> = new Map();
+  private alertManager: AlertManager | null = null;
+
+  constructor() {
+    this.initializeCircuitBreakers();
+  }
+
+  /**
+   * Initialize circuit breakers for each tier.
+   */
+  private initializeCircuitBreakers(): void {
+    for (const tier of TIER_ORDER) {
+      const breaker = new CircuitBreaker({
+        name: `tier-${tier}`,
+        failureThreshold: TIER_FAILURE_THRESHOLDS[tier],
+        successThreshold: 2,
+        timeout: TIER_RESET_TIMEOUTS[tier],
+        volumeThreshold: 5,
+        errorFilter: (error) => {
+          // Don't count 4xx client errors as failures (except 429 rate limit)
+          if (error.message.includes('429')) return true;
+          if (error.message.includes('4')) return false;
+          return true;
+        },
+      });
+
+      // Set up state change listener
+      breaker.onStateChange((oldState, newState) => {
+        console.warn(`[TieredFetcher] Circuit ${tier}: ${oldState} -> ${newState}`);
+        if (newState === 'open' && this.alertManager) {
+          // Fire alert when circuit opens
+          this.alertManager.evaluate({
+            'circuit.open_count': this.getOpenCircuitCount(),
+          });
+        }
+      });
+
+      this.circuitBreakers.set(tier, breaker);
+    }
+  }
+
+  /**
+   * Set the alert manager for circuit breaker alerts.
+   */
+  setAlertManager(alertManager: AlertManager): void {
+    this.alertManager = alertManager;
+  }
 
   /**
    * Set the cache manager for this fetcher.
@@ -131,8 +223,22 @@ export class TieredFetcher {
   }
 
   /**
+   * Get the number of circuits currently in open state.
+   */
+  private getOpenCircuitCount(): number {
+    let count = 0;
+    for (const [_, breaker] of this.circuitBreakers) {
+      if (breaker.getState() === 'open') {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
    * Fetch a URL using the optimal tier for its domain.
    * Checks cache first (unless skipCache is set).
+   * Uses circuit breakers to prevent cascade failures.
    */
   async fetch(url: string, options: FetchOptions = {}): Promise<FetchResult> {
     const startTime = Date.now();
@@ -152,41 +258,167 @@ export class TieredFetcher {
       }
     }
 
+    // Determine starting tier
+    let tier: ScrapeTier = options.startTier ?? 'direct';
+
     // Force tier mode - skip all learning
     if (options.forceTier) {
-      const result = await this.fetchWithTier(url, options.forceTier, options, startTime);
-      await this.storeToCacheIfSuccessful(url, result);
-      return result;
-    }
-
-    // Check if we know the optimal tier
-    if (!options.skipLearning) {
+      tier = options.forceTier;
+    } else if (!options.skipLearning) {
+      // Check if we know the optimal tier
       const config = await domainLearningService.getConfig(domain);
       if (config && config.isValidated) {
-        // Use known optimal tier
-        const result = await this.fetchWithTier(
-          url,
-          config.optimalTier,
-          options,
-          startTime
-        );
-
-        // If it fails, trigger re-discovery
-        if (!result.success && !options.skipLearning) {
-          const discoveryResult = await this.discoverAndFetch(url, options, startTime);
-          await this.storeToCacheIfSuccessful(url, discoveryResult);
-          return discoveryResult;
-        }
-
-        await this.storeToCacheIfSuccessful(url, result);
-        return result;
+        tier = config.optimalTier;
       }
     }
 
-    // New domain or skip learning - run discovery
-    const result = await this.discoverAndFetch(url, options, startTime);
+    // Execute fetch with circuit breaker protection
+    const result = await this.fetchWithCircuitBreaker(url, tier, options, startTime);
     await this.storeToCacheIfSuccessful(url, result);
     return result;
+  }
+
+  /**
+   * Execute fetch through circuit breaker with automatic escalation.
+   */
+  private async fetchWithCircuitBreaker(
+    url: string,
+    tier: ScrapeTier,
+    options: FetchOptions,
+    startTime: number
+  ): Promise<FetchResult> {
+    const breaker = this.circuitBreakers.get(tier);
+
+    // If no breaker (shouldn't happen) or circuit is open, escalate
+    if (!breaker) {
+      return this.fetchWithTier(url, tier, options, startTime);
+    }
+
+    // Check if circuit is open - escalate immediately
+    if (breaker.getState() === 'open') {
+      console.debug(`[TieredFetcher] Circuit open for ${tier}, escalating`);
+      return this.escalateToNextTier(url, tier, options, startTime);
+    }
+
+    try {
+      // Execute through circuit breaker
+      const result = await breaker.execute(async () => {
+        return this.fetchWithTier(url, tier, options, startTime);
+      });
+
+      // If fetch failed but circuit didn't trip, check if we should escalate
+      if (!result.success && options.maxTier !== tier) {
+        // Check if the circuit just tripped from this failure
+        if (breaker.getState() === 'open') {
+          return this.escalateToNextTier(url, tier, options, startTime);
+        }
+      }
+
+      return result;
+    } catch (error) {
+      // Circuit breaker threw (circuit open or execution error)
+      if (error instanceof CircuitOpenError) {
+        return this.escalateToNextTier(url, tier, options, startTime);
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
+  /**
+   * Escalate to the next tier when current tier's circuit is open.
+   */
+  private async escalateToNextTier(
+    url: string,
+    currentTier: ScrapeTier,
+    options: FetchOptions,
+    startTime: number
+  ): Promise<FetchResult> {
+    const nextTier = this.getNextTier(currentTier, options.maxTier);
+
+    if (!nextTier) {
+      // All tiers exhausted
+      return {
+        url,
+        success: false,
+        statusCode: 503,
+        tierUsed: currentTier,
+        fromCache: false,
+        responseTimeMs: Date.now() - startTime,
+        responseSizeBytes: 0,
+        estimatedCostUsd: 0,
+        error: `All tiers exhausted (circuits open). Last tier: ${currentTier}`,
+      };
+    }
+
+    console.info(`[TieredFetcher] Escalating ${url} from ${currentTier} to ${nextTier}`);
+    return this.fetchWithCircuitBreaker(url, nextTier, { ...options, startTier: nextTier }, startTime);
+  }
+
+  /**
+   * Get the next tier in the escalation order.
+   */
+  private getNextTier(currentTier: ScrapeTier, maxTier?: ScrapeTier): ScrapeTier | null {
+    const currentIndex = TIER_ORDER.indexOf(currentTier);
+    const maxIndex = maxTier ? TIER_ORDER.indexOf(maxTier) : TIER_ORDER.length - 1;
+
+    // Find next available tier that isn't circuit-broken
+    for (let i = currentIndex + 1; i <= maxIndex; i++) {
+      const nextTier = TIER_ORDER[i];
+      const breaker = this.circuitBreakers.get(nextTier);
+
+      // If no breaker or circuit is not open, use this tier
+      if (!breaker || breaker.getState() !== 'open') {
+        return nextTier;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get current circuit breaker states for all tiers.
+   */
+  getCircuitStates(): Record<ScrapeTier, CircuitState> {
+    const states: Partial<Record<ScrapeTier, CircuitState>> = {};
+    for (const [tier, breaker] of this.circuitBreakers) {
+      states[tier] = breaker.getState();
+    }
+    return states as Record<ScrapeTier, CircuitState>;
+  }
+
+  /**
+   * Get detailed circuit breaker statistics.
+   */
+  getCircuitStats(): Record<ScrapeTier, ReturnType<CircuitBreaker['getStats']>> {
+    const stats: Partial<Record<ScrapeTier, ReturnType<CircuitBreaker['getStats']>>> = {};
+    for (const [tier, breaker] of this.circuitBreakers) {
+      stats[tier] = breaker.getStats();
+    }
+    return stats as Record<ScrapeTier, ReturnType<CircuitBreaker['getStats']>>;
+  }
+
+  /**
+   * Manually reset a circuit breaker (for recovery).
+   */
+  resetCircuit(tier: ScrapeTier): void {
+    const breaker = this.circuitBreakers.get(tier);
+    if (breaker) {
+      breaker.forceClose();
+      console.info(`[TieredFetcher] Circuit ${tier} manually reset`);
+    }
+  }
+
+  /**
+   * Manually force open a circuit breaker (for emergency).
+   */
+  forceOpenCircuit(tier: ScrapeTier): void {
+    const breaker = this.circuitBreakers.get(tier);
+    if (breaker) {
+      breaker.forceOpen();
+      console.warn(`[TieredFetcher] Circuit ${tier} manually opened`);
+    }
   }
 
   /**
@@ -473,3 +705,6 @@ export const tieredFetcher = new TieredFetcher();
 export function createTieredFetcher(): TieredFetcher {
   return new TieredFetcher();
 }
+
+// Re-export CircuitState for external use
+export type { CircuitState } from "./resilience/CircuitBreaker";
