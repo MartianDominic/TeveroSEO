@@ -17,6 +17,7 @@ import {
 import { scrapingService, type ScrapeOptions, type ScrapeResult } from "../ScrapingService";
 import { runShadow, runShadowAsync } from "./shadow-runner";
 import { compareSingleScrape } from "./comparators";
+import type { ConsumerAdapter } from "./adapters/types";
 
 // =============================================================================
 // Types
@@ -61,6 +62,44 @@ export interface RouteOptions<TLegacyResult> {
 // =============================================================================
 
 /**
+ * Route a request using a ConsumerAdapter.
+ * Simplified API that wraps the adapter's methods into the RouteOptions format.
+ */
+export async function routeRequest<TInput, TOutput>(params: {
+  feature: ScrapingFeature;
+  input: TInput;
+  legacyFn: () => Promise<TOutput>;
+  adapter: ConsumerAdapter<TInput, TOutput>;
+}): Promise<TOutput> {
+  const { feature, input, legacyFn, adapter } = params;
+  const scrapeOptions = adapter.toScrapeOptions(input);
+
+  // Convert ConsumerAdapter to RouteOptions format
+  const routeOptions: RouteOptions<TOutput> = {
+    feature,
+    url: scrapeOptions.url,
+    legacyFn,
+    scrapeOptions,
+    transformer: {
+      legacyToNew: () => {
+        // Not used in this flow - adapter handles conversion
+        throw new Error("legacyToNew not implemented for ConsumerAdapter");
+      },
+      newToLegacy: (result: ScrapeResult) => adapter.toConsumerOutput(result, input),
+    },
+    compareFn: (legacy: TOutput, adapted: TOutput) => {
+      const comparison = adapter.compareOutputs(legacy, adapted);
+      return {
+        match: comparison.match,
+        differences: comparison.differences.map(d => `${d.field}: ${d.legacy} vs ${d.new}`),
+      };
+    },
+  };
+
+  return routeRequestInternal(routeOptions);
+}
+
+/**
  * Route a scraping request through the migration system.
  *
  * @param options Routing options
@@ -68,7 +107,7 @@ export interface RouteOptions<TLegacyResult> {
  *
  * @example
  * ```typescript
- * const result = await routeRequest({
+ * const result = await routeRequestInternal({
  *   feature: 'prospectAnalysis',
  *   url: 'https://example.com',
  *   legacyFn: () => scrapeWithDataForSEO(url),
@@ -81,7 +120,7 @@ export interface RouteOptions<TLegacyResult> {
  * });
  * ```
  */
-export async function routeRequest<TLegacyResult>(
+export async function routeRequestInternal<TLegacyResult>(
   options: RouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
   const flags = loadMigrationFlagsCached();
