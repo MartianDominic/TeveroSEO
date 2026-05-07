@@ -95,3 +95,49 @@ export interface DashboardAggregates {
     comparisonPeriod: DateRange | null;
   };
 }
+
+/**
+ * Phase 96-03: Trend Detection Types
+ */
+
+export interface TrendAnalysis {
+  pageUrl: string;
+  pageTitle?: string;
+  currentClicks: number;
+  previousClicks: number;
+  currentImpressions: number;
+  previousImpressions: number;
+  currentPosition: number;
+  previousPosition: number;
+  changePercent: number;
+  trend: 'growing' | 'decaying' | 'stable';
+  confidence: 'high' | 'medium' | 'low';
+  topQueries: string[];
+}
+
+export interface QueryFilter {
+  include?: string[];   // AND terms
+  exclude?: string[];   // NOT terms
+  pattern?: string;     // Regex pattern
+  mode?: 'and' | 'or';  // Combine include terms with AND or OR
+}
+
+export interface TrendFilters {
+  periodDays?: number;      // default 21 (3 weeks)
+  threshold?: number;       // default 0.10 (10%)
+  minImpressions?: number;  // default 100
+  trend?: 'growing' | 'decaying' | 'all';
+  queryFilter?: QueryFilter;
+}
+
+export interface TrendResult {
+  pages: TrendAnalysis[];
+  meta: {
+    totalAnalyzed: number;
+    growingCount: number;
+    decayingCount: number;
+    stableCount: number;
+    periodDays: number;
+    threshold: number;
+  };
+}
