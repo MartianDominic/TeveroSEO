@@ -628,6 +628,17 @@ Key deliverables:
 | 95-03 | Queue & Rate Limiting | 1 week | ✓ Complete |
 | 95-04 | DataForSEO Optimization | 0.5 week | ✓ Complete |
 | 95-05 | Migration & Monitoring | 1 week | ✓ Complete |
+| 95-10 | Consumer Integration Completion | 0.5 day | ✓ Complete |
+
+**95-10 Key Deliverables:**
+
+- SerpContentAnalyzer wired through MigrationRouter with batch transformation
+- CompetitorSpyService page fetching routed through MigrationRouter
+- TaskRouter CRAWL source integrated with ScrapingService
+- Volume Refresh processor integrated with DfsCostTracker for cost attribution
+- Crawl Workflow migrated to ScrapingService with automatic legacy fallback
+- 2 new migration flags: volumeRefresh, crawlWorkflow (all default to legacy)
+- 6 commits, all TypeScript compilation passing
 
 **95-05 Key Deliverables:**
 
