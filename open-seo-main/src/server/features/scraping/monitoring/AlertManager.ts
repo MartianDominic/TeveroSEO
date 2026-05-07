@@ -1,5 +1,6 @@
 import type { Redis } from 'ioredis';
-import EventEmitter from 'events';
+import { SlackAlertChannel } from './SlackAlertChannel';
+import { PagerDutyAlertChannel } from './PagerDutyAlertChannel';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
 export type AlertChannel = 'slack' | 'pagerduty' | 'email' | 'webhook';
@@ -42,22 +43,99 @@ export interface AlertChannelHandler {
   send(alert: Alert): Promise<void>;
 }
 
+/**
+ * Alert thresholds for threshold-based alert methods.
+ */
+export interface AlertThresholds {
+  /** Alert if N circuits open */
+  circuitOpenCount: number;
+  /** Warn if queue > N */
+  queueDepthWarning: number;
+  /** Critical if queue > N */
+  queueDepthCritical: number;
+  /** Warn if error rate > N% */
+  errorRateWarning: number;
+  /** Critical if error rate > N% */
+  errorRateCritical: number;
+  /** Warn if daily cost > $N */
+  costDailyWarning: number;
+  /** Critical if daily cost > $N */
+  costDailyCritical: number;
+}
+
+/**
+ * Default alert thresholds.
+ */
+export const DEFAULT_THRESHOLDS: AlertThresholds = {
+  circuitOpenCount: 2,
+  queueDepthWarning: 500,
+  queueDepthCritical: 1000,
+  errorRateWarning: 5,
+  errorRateCritical: 15,
+  costDailyWarning: 40,
+  costDailyCritical: 80,
+};
+
 export interface AlertManagerConfig {
   redis?: Redis;
   runbookBaseUrl?: string;
+  /** Slack webhook URL (or use SLACK_WEBHOOK_URL env var) */
+  slackWebhookUrl?: string;
+  /** Slack channel (or use SLACK_CHANNEL env var) */
+  slackChannel?: string;
+  /** PagerDuty routing key (or use PAGERDUTY_ROUTING_KEY env var) */
+  pagerDutyRoutingKey?: string;
+  /** Environment name (or use ALERT_ENVIRONMENT env var) */
+  environment?: string;
+  /** Custom thresholds */
+  thresholds?: Partial<AlertThresholds>;
 }
 
-export class AlertManager extends EventEmitter {
+export class AlertManager {
   private alerts: Map<string, Alert> = new Map();
   private cooldowns: Map<string, number> = new Map();
   private channels: Map<AlertChannel, AlertChannelHandler> = new Map();
   private alertConfigs: Map<string, AlertConfig> = new Map();
   private runbookBaseUrl: string;
+  private thresholds: AlertThresholds;
+  private environment: string;
+  private readonly dedupeWindowMs = 5 * 60 * 1000; // 5 minutes
 
   constructor(config: AlertManagerConfig = {}) {
-    super();
     this.runbookBaseUrl = config.runbookBaseUrl || '';
+    this.environment = config.environment || process.env.ALERT_ENVIRONMENT || process.env.NODE_ENV || 'development';
+    this.thresholds = { ...DEFAULT_THRESHOLDS, ...config.thresholds };
+
+    this.initializeChannels(config);
     this.registerDefaultAlerts();
+  }
+
+  /**
+   * Initialize alert channels from config or environment variables.
+   */
+  private initializeChannels(config: AlertManagerConfig): void {
+    // Slack channel
+    const slackWebhookUrl = config.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL;
+    if (slackWebhookUrl) {
+      this.channels.set('slack', new SlackAlertChannel({
+        webhookUrl: slackWebhookUrl,
+      }));
+      console.info('[AlertManager] Slack channel configured');
+    }
+
+    // PagerDuty channel (for critical alerts only)
+    const pagerDutyRoutingKey = config.pagerDutyRoutingKey || process.env.PAGERDUTY_ROUTING_KEY;
+    if (pagerDutyRoutingKey) {
+      this.channels.set('pagerduty', new PagerDutyAlertChannel({
+        routingKey: pagerDutyRoutingKey,
+        runbookBaseUrl: this.runbookBaseUrl,
+      }));
+      console.info('[AlertManager] PagerDuty channel configured');
+    }
+
+    if (this.channels.size === 0) {
+      console.warn('[AlertManager] No alert channels configured. Set SLACK_WEBHOOK_URL or PAGERDUTY_ROUTING_KEY');
+    }
   }
 
   registerChannel(channel: AlertChannel, handler: AlertChannelHandler): void {
@@ -268,7 +346,8 @@ export class AlertManager extends EventEmitter {
     this.alerts.set(alert.id, alert);
     this.cooldowns.set(alert.name, Date.now());
 
-    this.emit('alert:fired', alert);
+    // Log alert for observability
+    console.info(`[AlertManager] Alert fired: ${alert.severity} - ${alert.name}`);
   }
 
   getActiveAlerts(): Alert[] {
@@ -281,7 +360,89 @@ export class AlertManager extends EventEmitter {
     const alert = this.alerts.get(id);
     if (alert) {
       alert.resolved = new Date();
-      this.emit('alert:resolved', alert);
     }
+  }
+
+  // ===========================================================================
+  // Threshold-based Alert Methods
+  // ===========================================================================
+
+  /**
+   * Check circuit breaker open count and alert if threshold exceeded.
+   */
+  async checkCircuits(openCircuits: string[]): Promise<void> {
+    if (openCircuits.length >= this.thresholds.circuitOpenCount) {
+      await this.evaluate({
+        'circuit.open_count': openCircuits.length,
+      });
+    }
+  }
+
+  /**
+   * Check queue depth and alert if thresholds exceeded.
+   */
+  async checkQueueDepth(waiting: number): Promise<void> {
+    if (waiting >= this.thresholds.queueDepthWarning) {
+      await this.evaluate({
+        'queue.waiting': waiting,
+      });
+    }
+  }
+
+  /**
+   * Check error rate and alert if thresholds exceeded.
+   */
+  async checkErrorRate(errorRate: number): Promise<void> {
+    if (errorRate >= this.thresholds.errorRateWarning) {
+      await this.evaluate({
+        'scraping.error_rate': errorRate / 100, // Convert to 0-1 range
+      });
+    }
+  }
+
+  /**
+   * Check daily cost and alert if thresholds exceeded.
+   */
+  async checkDailyCost(costUsd: number): Promise<void> {
+    if (costUsd >= this.thresholds.costDailyWarning) {
+      await this.evaluate({
+        'cost.daily': costUsd,
+      });
+    }
+  }
+
+  /**
+   * Get current thresholds.
+   */
+  getThresholds(): AlertThresholds {
+    return { ...this.thresholds };
+  }
+
+  /**
+   * Update thresholds at runtime.
+   */
+  updateThresholds(updates: Partial<AlertThresholds>): void {
+    this.thresholds = { ...this.thresholds, ...updates };
+  }
+
+  /**
+   * Get configured channel names.
+   */
+  getConfiguredChannels(): AlertChannel[] {
+    return Array.from(this.channels.keys());
+  }
+
+  /**
+   * Check if a specific channel is configured.
+   */
+  hasChannel(channel: AlertChannel): boolean {
+    return this.channels.has(channel);
+  }
+
+  /**
+   * Get environment name.
+   */
+  getEnvironment(): string {
+    return this.environment;
   }
 }
