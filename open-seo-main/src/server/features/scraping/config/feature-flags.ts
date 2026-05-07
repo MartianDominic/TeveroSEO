@@ -48,6 +48,12 @@ export interface ScrapingMigrationFlags {
 
   /** Enable unified scraping for site audits (up to 10K pages) */
   siteAudits: MigrationState;
+
+  /** Enable unified scraping for volume refresh worker (keyword metrics) */
+  volumeRefresh: MigrationState;
+
+  /** Enable unified scraping for crawl workflow (site audit crawl phase) */
+  crawlWorkflow: MigrationState;
 }
 
 /**
@@ -63,8 +69,10 @@ export const MIGRATION_ORDER: ScrapingFeature[] = [
   "contentBriefs", // Day 2-3: 5 pages/op, low risk
   "serpContent", // Day 3: 5 pages/op, low risk
   "competitorSpy", // Day 3-4: variable, medium risk
+  "volumeRefresh", // Day 4: keyword metrics, medium risk
   "hybridCrawler", // Day 4-5: 10K pages, high risk
-  "siteAudits", // Day 5-7: 10K pages, highest risk
+  "crawlWorkflow", // Day 5-6: site audit crawl, high risk
+  "siteAudits", // Day 6-7: 10K pages, highest risk
 ];
 
 /**
@@ -77,6 +85,8 @@ export const FLAG_ENV_VARS: Record<ScrapingFeature, string> = {
   competitorSpy: "SCRAPING_COMPETITOR_SPY",
   hybridCrawler: "SCRAPING_HYBRID_CRAWLER",
   siteAudits: "SCRAPING_SITE_AUDITS",
+  volumeRefresh: "SCRAPING_VOLUME_REFRESH",
+  crawlWorkflow: "SCRAPING_CRAWL_WORKFLOW",
 };
 
 // =============================================================================
@@ -93,6 +103,8 @@ export const DEFAULT_FLAGS: Readonly<ScrapingMigrationFlags> = {
   competitorSpy: "legacy",
   hybridCrawler: "legacy",
   siteAudits: "legacy",
+  volumeRefresh: "legacy",
+  crawlWorkflow: "legacy",
 };
 
 /**

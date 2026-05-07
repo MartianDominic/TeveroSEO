@@ -59,6 +59,14 @@ export function loadMigrationFlags(): ScrapingMigrationFlags {
       DEFAULT_FLAGS.hybridCrawler
     ),
     siteAudits: getEnvFlag(FLAG_ENV_VARS.siteAudits, DEFAULT_FLAGS.siteAudits),
+    volumeRefresh: getEnvFlag(
+      FLAG_ENV_VARS.volumeRefresh,
+      DEFAULT_FLAGS.volumeRefresh
+    ),
+    crawlWorkflow: getEnvFlag(
+      FLAG_ENV_VARS.crawlWorkflow,
+      DEFAULT_FLAGS.crawlWorkflow
+    ),
   };
 }
 
