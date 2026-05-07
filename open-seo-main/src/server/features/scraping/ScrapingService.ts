@@ -16,7 +16,7 @@
 
 import type { Redis } from "ioredis";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { TieredFetcher, type FetchOptions, type FetchResult } from "./TieredFetcher";
+import { TieredFetcher, type FetchOptions, type FetchResult, type CircuitState } from "./TieredFetcher";
 import { DomainLearningService } from "./DomainLearningService";
 import { CacheManager, createCacheManager, type CacheStats } from "./cache";
 import { QueueManager, getQueueManager, type EnqueueResult } from "./queue";
@@ -28,6 +28,7 @@ import {
 } from "./config";
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
+import { AlertManager } from "./monitoring/AlertManager";
 
 // =============================================================================
 // Types
@@ -181,6 +182,32 @@ export interface CostReport {
 // =============================================================================
 
 /**
+ * Health check component result.
+ */
+export interface ComponentHealth {
+  healthy: boolean;
+  latencyMs: number;
+  details?: Record<string, unknown>;
+  error?: string;
+}
+
+/**
+ * Full health check result.
+ */
+export interface HealthCheckResult {
+  healthy: boolean;
+  timestamp: string;
+  components: {
+    redis: ComponentHealth;
+    postgres: ComponentHealth;
+    queue: ComponentHealth;
+    circuits: ComponentHealth;
+    cache: ComponentHealth;
+  };
+  latencyMs: number;
+}
+
+/**
  * Unified scraping service that orchestrates all scraping components.
  */
 export class ScrapingService {
@@ -189,6 +216,9 @@ export class ScrapingService {
   private cacheManager: CacheManager | null = null;
   private queueManager: QueueManager | null = null;
   private cwvService: CwvService | null = null;
+  private alertManager: AlertManager | null = null;
+  private redis: Redis | null = null;
+  private db: PostgresJsDatabase | null = null;
 
   // Metrics tracking
   private shadowMismatches = 0;
@@ -199,6 +229,10 @@ export class ScrapingService {
   constructor() {
     this.tieredFetcher = new TieredFetcher();
     this.domainLearning = new DomainLearningService();
+    this.alertManager = new AlertManager();
+
+    // Wire alert manager to tiered fetcher
+    this.tieredFetcher.setAlertManager(this.alertManager);
   }
 
   /**
@@ -210,6 +244,10 @@ export class ScrapingService {
     db: PostgresJsDatabase;
     cwvService?: CwvService;
   }): void {
+    // Store references for health checks
+    this.redis = deps.redis;
+    this.db = deps.db;
+
     // Create cache manager
     this.cacheManager = createCacheManager({
       redis: deps.redis,
@@ -739,85 +777,403 @@ export class ScrapingService {
   // ===========================================================================
 
   /**
-   * Health check - stub implementation for routes
+   * Comprehensive health check with real component pings.
    */
-  async healthCheck(): Promise<{ components?: Array<{ name: string; status: string; latency_ms?: number }> }> {
+  async healthCheck(): Promise<HealthCheckResult> {
+    const startTime = Date.now();
+    const results: HealthCheckResult = {
+      healthy: true,
+      timestamp: new Date().toISOString(),
+      components: {
+        redis: { healthy: false, latencyMs: 0 },
+        postgres: { healthy: false, latencyMs: 0 },
+        queue: { healthy: false, latencyMs: 0 },
+        circuits: { healthy: false, latencyMs: 0 },
+        cache: { healthy: false, latencyMs: 0 },
+      },
+      latencyMs: 0,
+    };
+
+    // Check Redis
+    const redisStart = Date.now();
+    try {
+      if (this.redis) {
+        await this.redis.ping();
+        const info = await this.redis.info('memory');
+        const usedMemory = info.match(/used_memory:(\d+)/)?.[1];
+        results.components.redis = {
+          healthy: true,
+          latencyMs: Date.now() - redisStart,
+          details: {
+            connected: this.redis.status === 'ready',
+            usedMemoryBytes: usedMemory ? parseInt(usedMemory, 10) : undefined,
+          },
+        };
+      } else {
+        results.components.redis = {
+          healthy: false,
+          latencyMs: Date.now() - redisStart,
+          error: 'Redis not initialized',
+        };
+        results.healthy = false;
+      }
+    } catch (error) {
+      results.components.redis = {
+        healthy: false,
+        latencyMs: Date.now() - redisStart,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+      results.healthy = false;
+    }
+
+    // Check PostgreSQL
+    const pgStart = Date.now();
+    try {
+      if (this.db) {
+        // Execute a simple query to verify connection
+        await (this.db as any).execute('SELECT 1');
+        results.components.postgres = {
+          healthy: true,
+          latencyMs: Date.now() - pgStart,
+          details: {
+            connected: true,
+          },
+        };
+      } else {
+        results.components.postgres = {
+          healthy: false,
+          latencyMs: Date.now() - pgStart,
+          error: 'Database not initialized',
+        };
+        results.healthy = false;
+      }
+    } catch (error) {
+      results.components.postgres = {
+        healthy: false,
+        latencyMs: Date.now() - pgStart,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+      results.healthy = false;
+    }
+
+    // Check BullMQ Queue
+    const queueStart = Date.now();
+    try {
+      if (this.queueManager) {
+        const metrics = await this.queueManager.getQueueMetrics();
+        const totalWaiting = Object.values(metrics.queues).reduce(
+          (sum, q) => sum + q.waiting,
+          0
+        );
+        const totalFailed = Object.values(metrics.queues).reduce(
+          (sum, q) => sum + q.failed,
+          0
+        );
+
+        // Unhealthy if too many failed or waiting
+        const queueHealthy = totalFailed < 100 && totalWaiting < 1000;
+
+        results.components.queue = {
+          healthy: queueHealthy,
+          latencyMs: Date.now() - queueStart,
+          details: {
+            waiting: totalWaiting,
+            active: Object.values(metrics.queues).reduce((sum, q) => sum + q.active, 0),
+            completed: Object.values(metrics.queues).reduce((sum, q) => sum + q.completed, 0),
+            failed: totalFailed,
+            globalConcurrency: metrics.global.currentConcurrency,
+          },
+        };
+
+        if (!queueHealthy) {
+          results.healthy = false;
+        }
+      } else {
+        results.components.queue = {
+          healthy: true, // Queue is optional
+          latencyMs: Date.now() - queueStart,
+          details: { initialized: false },
+        };
+      }
+    } catch (error) {
+      results.components.queue = {
+        healthy: false,
+        latencyMs: Date.now() - queueStart,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+      results.healthy = false;
+    }
+
+    // Check Circuit Breakers
+    const circuitStart = Date.now();
+    try {
+      const states = this.tieredFetcher.getCircuitStates();
+      const openCircuits = Object.entries(states)
+        .filter(([_, state]) => state === 'open')
+        .map(([tier]) => tier);
+
+      results.components.circuits = {
+        healthy: openCircuits.length < 4, // Allow some circuits to be open
+        latencyMs: Date.now() - circuitStart,
+        details: {
+          states,
+          openCircuits,
+          openCount: openCircuits.length,
+        },
+      };
+      // Circuits being open is warning, not hard failure
+    } catch (error) {
+      results.components.circuits = {
+        healthy: false,
+        latencyMs: Date.now() - circuitStart,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+
+    // Check Cache Layers
+    const cacheStart = Date.now();
+    try {
+      if (this.cacheManager) {
+        const cacheStats = this.cacheManager.getStats();
+        results.components.cache = {
+          healthy: true,
+          latencyMs: Date.now() - cacheStart,
+          details: {
+            l1: {
+              hitRate: cacheStats.l1.hitRate,
+              sizeBytes: cacheStats.l1.sizeBytes,
+              itemCount: cacheStats.l1.itemCount,
+            },
+            l2: {
+              hitRate: cacheStats.l2.hitRate,
+              avgLatencyMs: cacheStats.l2.avgLatencyMs,
+            },
+            l3: {
+              hitRate: cacheStats.l3.hitRate,
+            },
+            l4: {
+              hitRate: cacheStats.l4.hitRate,
+            },
+            totalHitRate: cacheStats.totalHitRate,
+            totalRequests: cacheStats.totalRequests,
+          },
+        };
+      } else {
+        results.components.cache = {
+          healthy: true, // Cache is optional
+          latencyMs: Date.now() - cacheStart,
+          details: { initialized: false },
+        };
+      }
+    } catch (error) {
+      results.components.cache = {
+        healthy: false,
+        latencyMs: Date.now() - cacheStart,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+
+    results.latencyMs = Date.now() - startTime;
+    return results;
+  }
+
+  /**
+   * Get circuit breaker states for all tiers.
+   */
+  getCircuitStates(): Record<ScrapeTier, CircuitState> {
+    return this.tieredFetcher.getCircuitStates();
+  }
+
+  /**
+   * Get queue statistics.
+   */
+  async getQueueStats(): Promise<{
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  }> {
+    if (!this.queueManager) {
+      return { waiting: 0, active: 0, completed: 0, failed: 0 };
+    }
+
+    const metrics = await this.queueManager.getQueueMetrics();
     return {
-      components: [
-        { name: 'cache', status: 'up', latency_ms: 10 },
-        { name: 'queue', status: 'up', latency_ms: 5 },
-      ],
+      waiting: Object.values(metrics.queues).reduce((sum, q) => sum + q.waiting, 0),
+      active: Object.values(metrics.queues).reduce((sum, q) => sum + q.active, 0),
+      completed: Object.values(metrics.queues).reduce((sum, q) => sum + q.completed, 0),
+      failed: Object.values(metrics.queues).reduce((sum, q) => sum + q.failed, 0),
     };
   }
 
   /**
-   * Get circuit breaker states - stub implementation
-   */
-  async getCircuitStates(): Promise<Record<string, any>> {
-    return {};
-  }
-
-  /**
-   * Get queue statistics - stub implementation
-   */
-  async getQueueStats(): Promise<{ waiting: number; active: number; completed: number; failed: number }> {
-    return { waiting: 0, active: 0, completed: 0, failed: 0 };
-  }
-
-  /**
-   * Get Prometheus metrics - stub implementation
+   * Get Prometheus metrics in text format.
    */
   async getPrometheusMetrics(): Promise<string> {
-    return '# No metrics available\n';
+    const lines: string[] = [];
+    const health = await this.healthCheck();
+
+    // Component health gauges
+    lines.push('# HELP scraping_component_health Component health status (1=healthy, 0=unhealthy)');
+    lines.push('# TYPE scraping_component_health gauge');
+    for (const [name, component] of Object.entries(health.components)) {
+      lines.push(`scraping_component_health{component="${name}"} ${component.healthy ? 1 : 0}`);
+    }
+    lines.push('');
+
+    // Component latency
+    lines.push('# HELP scraping_component_latency_ms Component health check latency in milliseconds');
+    lines.push('# TYPE scraping_component_latency_ms gauge');
+    for (const [name, component] of Object.entries(health.components)) {
+      lines.push(`scraping_component_latency_ms{component="${name}"} ${component.latencyMs}`);
+    }
+    lines.push('');
+
+    // Circuit breaker states
+    const circuits = this.getCircuitStates();
+    lines.push('# HELP scraping_circuit_state Circuit breaker state (0=closed, 1=half-open, 2=open)');
+    lines.push('# TYPE scraping_circuit_state gauge');
+    for (const [tier, state] of Object.entries(circuits)) {
+      const stateValue = { closed: 0, 'half-open': 1, open: 2 }[state] ?? 0;
+      lines.push(`scraping_circuit_state{tier="${tier}"} ${stateValue}`);
+    }
+    lines.push('');
+
+    // Queue metrics
+    const queueStats = await this.getQueueStats();
+    lines.push('# HELP scraping_queue_jobs Queue job counts');
+    lines.push('# TYPE scraping_queue_jobs gauge');
+    lines.push(`scraping_queue_jobs{state="waiting"} ${queueStats.waiting}`);
+    lines.push(`scraping_queue_jobs{state="active"} ${queueStats.active}`);
+    lines.push(`scraping_queue_jobs{state="completed"} ${queueStats.completed}`);
+    lines.push(`scraping_queue_jobs{state="failed"} ${queueStats.failed}`);
+    lines.push('');
+
+    // Cache metrics
+    if (this.cacheManager) {
+      const cacheStats = this.cacheManager.getStats();
+      lines.push('# HELP scraping_cache_hit_rate Cache hit rate (0-1)');
+      lines.push('# TYPE scraping_cache_hit_rate gauge');
+      lines.push(`scraping_cache_hit_rate{level="l1"} ${cacheStats.l1.hitRate}`);
+      lines.push(`scraping_cache_hit_rate{level="l2"} ${cacheStats.l2.hitRate}`);
+      lines.push(`scraping_cache_hit_rate{level="l3"} ${cacheStats.l3.hitRate}`);
+      lines.push(`scraping_cache_hit_rate{level="l4"} ${cacheStats.l4.hitRate}`);
+      lines.push(`scraping_cache_hit_rate{level="total"} ${cacheStats.totalHitRate}`);
+      lines.push('');
+
+      lines.push('# HELP scraping_cache_requests_total Total cache requests');
+      lines.push('# TYPE scraping_cache_requests_total counter');
+      lines.push(`scraping_cache_requests_total ${cacheStats.totalRequests}`);
+      lines.push('');
+    }
+
+    // Migration metrics
+    lines.push('# HELP scraping_migration_shadow_mismatches Shadow mode comparison mismatches');
+    lines.push('# TYPE scraping_migration_shadow_mismatches counter');
+    lines.push(`scraping_migration_shadow_mismatches ${this.shadowMismatches}`);
+    lines.push('');
+
+    lines.push('# HELP scraping_migration_fallbacks Legacy fallbacks triggered');
+    lines.push('# TYPE scraping_migration_fallbacks counter');
+    lines.push(`scraping_migration_fallbacks ${this.fallbacksTriggered}`);
+    lines.push('');
+
+    return lines.join('\n');
   }
 
-
   /**
-   * Force close circuit breaker - stub implementation
+   * Get metrics content type for Prometheus.
    */
-  async forceCloseCircuit(tier: string): Promise<void> {
-    console.log(`Force closing circuit for tier: ${tier}`);
+  getMetricsContentType(): string {
+    return 'text/plain; version=0.0.4; charset=utf-8';
   }
 
   /**
-   * Force open circuit breaker - stub implementation
+   * Force close circuit breaker for a tier.
    */
-  async forceOpenCircuit(tier: string): Promise<void> {
-    console.log(`Force opening circuit for tier: ${tier}`);
+  forceCloseCircuit(tier: string): void {
+    this.tieredFetcher.resetCircuit(tier as ScrapeTier);
   }
 
   /**
-   * Drain queue - stub implementation
+   * Force open circuit breaker for a tier.
+   */
+  forceOpenCircuit(tier: string): void {
+    this.tieredFetcher.forceOpenCircuit(tier as ScrapeTier);
+  }
+
+  /**
+   * Get the TieredFetcher instance (for health routes).
+   */
+  getTieredFetcher(): TieredFetcher {
+    return this.tieredFetcher;
+  }
+
+  /**
+   * Get the QueueManager instance (for health routes).
+   */
+  getQueueManager(): QueueManager | null {
+    return this.queueManager;
+  }
+
+  /**
+   * Drain old jobs from the queue.
    */
   async drainQueue(olderThanMs?: number): Promise<number> {
     console.log(`Draining queue older than: ${olderThanMs}ms`);
+    // TODO: Implement actual queue drain logic
     return 0;
   }
 
   /**
-   * Get cache stats - stub implementation
+   * Get cache stats.
    */
-  async getCacheStats(): Promise<any> {
+  getCacheStats(): CacheStats {
     return this.cacheManager?.getStats() ?? this.emptyCacheStats();
   }
 
   /**
-   * Warm cache - use existing warmCache method
-   */
-  // Already exists as warmCache(urls: string[])
-
-  /**
-   * Emergency stop - stub implementation
+   * Emergency stop - pause all queues and open all circuits.
    */
   async emergencyStop(): Promise<void> {
-    console.log('Emergency stop triggered');
+    console.warn('[ScrapingService] Emergency stop triggered');
+
+    // Open all circuit breakers
+    const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
+    for (const tier of tiers) {
+      this.tieredFetcher.forceOpenCircuit(tier);
+    }
+
+    // Pause all queues
+    if (this.queueManager) {
+      await Promise.all([
+        this.queueManager.pauseQueue('scrape:priority'),
+        this.queueManager.pauseQueue('scrape:standard'),
+        this.queueManager.pauseQueue('scrape:background'),
+      ]);
+    }
   }
 
   /**
-   * Resume operations - stub implementation
+   * Resume operations - close circuits and resume queues.
    */
   async resume(): Promise<void> {
-    console.log('Resuming operations');
+    console.info('[ScrapingService] Resuming operations');
+
+    // Reset all circuit breakers
+    const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
+    for (const tier of tiers) {
+      this.tieredFetcher.resetCircuit(tier);
+    }
+
+    // Resume all queues
+    if (this.queueManager) {
+      await Promise.all([
+        this.queueManager.resumeQueue('scrape:priority'),
+        this.queueManager.resumeQueue('scrape:standard'),
+        this.queueManager.resumeQueue('scrape:background'),
+      ]);
+    }
   }
 }
 
