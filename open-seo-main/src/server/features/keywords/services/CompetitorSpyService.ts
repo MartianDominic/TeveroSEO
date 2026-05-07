@@ -1,5 +1,6 @@
 /**
  * CompetitorSpyService
+ * Phase 95-10: Consumer Integration Completion
  *
  * Extract top keywords for competitor domains with caching.
  * Enables competitive intelligence without requiring a prospect.
@@ -9,12 +10,17 @@
  * - 24-hour Redis cache to reduce API costs
  * - Traffic estimation based on position and volume
  * - Compare multiple competitors side by side
+ * - Page content fetching through MigrationRouter (Phase 95-10)
+ * - Labs API cost tracking via DfsCostTracker
  */
 
 import { fetchOrganicKeywords } from "@/server/lib/dataforseo-organic";
 import { redis } from "@/server/lib/redis";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { createLogger } from "@/server/lib/logger";
+import { routeRequest, scrapingService } from "@/server/features/scraping";
+import type { ScrapeResult } from "@/server/features/scraping";
+import type { ConsumerAdapter, ComparisonResult } from "@/server/features/scraping/migration/adapters/types";
 
 const log = createLogger({ module: "competitor-spy-service" });
 
@@ -23,6 +29,71 @@ const CACHE_PREFIX = CACHE_NS.COMPETITOR_SPY;
 const CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 const DEFAULT_LIMIT = 100;
 const COST_PER_DOMAIN_CENTS = 2; // $0.02 per domain
+const LABS_API_COST_USD = 0.001; // Labs API cost per domain
+
+// =============================================================================
+// Page Fetch Types (for MigrationRouter integration)
+// =============================================================================
+
+export interface CompetitorPageInput {
+  url: string;
+  domain: string;
+  clientId?: string;
+}
+
+export interface CompetitorPageOutput {
+  url: string;
+  html: string;
+  title?: string;
+  metaDescription?: string;
+  success: boolean;
+  fetchedAt: Date;
+}
+
+/**
+ * Adapter for CompetitorSpy page fetching through MigrationRouter.
+ */
+const competitorSpyPageAdapter: ConsumerAdapter<CompetitorPageInput, CompetitorPageOutput> = {
+  feature: "competitorSpy",
+
+  toScrapeOptions(input: CompetitorPageInput) {
+    return {
+      url: input.url,
+      feature: "competitorSpy" as const,
+      includeHtml: true,
+      includeParsedData: true,
+      clientId: input.clientId,
+    };
+  },
+
+  toConsumerOutput(result: ScrapeResult, input: CompetitorPageInput): CompetitorPageOutput {
+    return {
+      url: input.url,
+      html: result.html ?? "",
+      title: result.parsedData?.title,
+      metaDescription: result.parsedData?.metaDescription,
+      success: result.success,
+      fetchedAt: new Date(),
+    };
+  },
+
+  compareOutputs(legacy: CompetitorPageOutput, adapted: CompetitorPageOutput): ComparisonResult {
+    const differences: ComparisonResult["differences"] = [];
+
+    if (legacy.success !== adapted.success) {
+      differences.push({ field: "success", legacy: legacy.success, new: adapted.success });
+    }
+
+    // Compare HTML lengths (exact match not expected due to different fetchers)
+    const legacyLen = legacy.html?.length ?? 0;
+    const adaptedLen = adapted.html?.length ?? 0;
+    if (Math.abs(legacyLen - adaptedLen) / Math.max(legacyLen, 1) > 0.2) {
+      differences.push({ field: "htmlLength", legacy: legacyLen, new: adaptedLen });
+    }
+
+    return { match: differences.length === 0, differences };
+  },
+};
 
 export interface CompetitorKeyword {
   keyword: string;
@@ -144,6 +215,113 @@ export class CompetitorSpyService {
     const results = await Promise.all(
       domains.map((domain) => this.spyOnCompetitor(domain))
     );
+    return results;
+  }
+
+  /**
+   * Fetch a competitor page's HTML content.
+   * Routes through MigrationRouter for unified scraping infrastructure.
+   *
+   * @param url - URL to fetch
+   * @param options - Fetch options including clientId for cost tracking
+   * @returns Page content with metadata
+   */
+  async fetchCompetitorPage(
+    url: string,
+    options: { clientId?: string } = {}
+  ): Promise<CompetitorPageOutput> {
+    const domain = this.normalizeDomain(url);
+    const input: CompetitorPageInput = {
+      url,
+      domain,
+      clientId: options.clientId,
+    };
+
+    // Legacy fallback function for direct fetch
+    const legacyFn = async (): Promise<CompetitorPageOutput> => {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; TeveroSEO/1.0)",
+          },
+          signal: AbortSignal.timeout(30000),
+        });
+        const html = await response.text();
+
+        // Extract basic metadata
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const metaMatch = html.match(
+          /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i
+        );
+
+        return {
+          url,
+          html,
+          title: titleMatch?.[1]?.trim(),
+          metaDescription: metaMatch?.[1]?.trim(),
+          success: response.ok,
+          fetchedAt: new Date(),
+        };
+      } catch (error) {
+        log.error("Legacy fetch failed", error instanceof Error ? error : new Error(String(error)), { url });
+        return {
+          url,
+          html: "",
+          success: false,
+          fetchedAt: new Date(),
+        };
+      }
+    };
+
+    // Route through MigrationRouter
+    return routeRequest({
+      feature: "competitorSpy",
+      input,
+      legacyFn,
+      adapter: competitorSpyPageAdapter,
+    });
+  }
+
+  /**
+   * Fetch multiple competitor pages in batch.
+   * Uses ScrapingService.scrapeBatch for efficient parallel fetching.
+   *
+   * @param urls - URLs to fetch
+   * @param options - Fetch options
+   * @returns Map of URL to page content
+   */
+  async fetchCompetitorPages(
+    urls: string[],
+    options: { clientId?: string; concurrency?: number } = {}
+  ): Promise<Map<string, CompetitorPageOutput>> {
+    const results = new Map<string, CompetitorPageOutput>();
+
+    // Use ScrapingService batch method directly for efficiency
+    const batchResult = await scrapingService.scrapeBatch(urls, {
+      feature: "competitorSpy",
+      clientId: options.clientId,
+      concurrency: options.concurrency ?? 5,
+      includeHtml: true,
+      includeParsedData: true,
+    });
+
+    for (const result of batchResult.results) {
+      results.set(result.url, {
+        url: result.url,
+        html: result.html ?? "",
+        title: result.parsedData?.title,
+        metaDescription: result.parsedData?.metaDescription,
+        success: result.success,
+        fetchedAt: new Date(),
+      });
+    }
+
+    log.info("Batch competitor pages fetched", {
+      urlCount: urls.length,
+      successCount: batchResult.results.filter(r => r.success).length,
+      totalCostUsd: batchResult.totalCostUsd,
+    });
+
     return results;
   }
 
