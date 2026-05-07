@@ -1,15 +1,17 @@
 /**
  * SERP Content Analyzer
  * Phase 36: Content Brief Generation - T-40-02-03
+ * Phase 95-10: Consumer Integration Completion
  *
  * Fetches and analyzes competitor content to extract:
  * - Common H2 headings across top-ranking pages
  * - Word count statistics (min, max, avg)
  *
- * Uses OptimizedDataForSEOFetcher for cost-efficient batch fetching.
+ * Uses MigrationRouter for gradual rollout from legacy to unified scraping.
  */
 import * as cheerio from "cheerio";
 import { getOptimizedDataForSEOFetcher } from "@/server/features/scraping/providers/OptimizedDataForSEOFetcher";
+import { routeBatchRequest, type ScrapeResult } from "@/server/features/scraping";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "SerpContentAnalyzer" });
@@ -33,8 +35,42 @@ export interface SerpContentAnalysis {
 }
 
 /**
+ * Legacy result type from OptimizedDataForSEOFetcher.
+ */
+interface LegacyFetchResult {
+  url: string;
+  success: boolean;
+  statusCode: number;
+  html?: string;
+}
+
+/**
+ * Transformer to convert between legacy and new result formats.
+ */
+const serpContentTransformer = {
+  legacyToNew: (legacy: LegacyFetchResult): ScrapeResult => ({
+    url: legacy.url,
+    success: legacy.success,
+    statusCode: legacy.statusCode,
+    html: legacy.html,
+    tierUsed: "dfs_basic",
+    fromCache: false,
+    responseTimeMs: 0,
+    responseSizeBytes: legacy.html?.length ?? 0,
+    estimatedCostUsd: 0.002, // DFS basic cost estimate
+  }),
+  newToLegacy: (newResult: ScrapeResult): LegacyFetchResult => ({
+    url: newResult.url,
+    success: newResult.success,
+    statusCode: newResult.statusCode,
+    html: newResult.html,
+  }),
+};
+
+/**
  * Analyze SERP competitor content for H2s and word counts.
- * Fetches HTML for up to 5 URLs in a single API call.
+ * Fetches HTML for up to 5 URLs via MigrationRouter.
+ * Routes through unified ScrapingService when feature flag is active.
  *
  * @param urls - Competitor URLs from SERP results
  * @returns Analysis with common H2s and word count stats
@@ -56,15 +92,44 @@ export async function analyzeSerpContent(
   }
 
   try {
-    // Use optimized fetcher with Standard Queue for batch cost savings (70% cheaper)
-    const fetcher = getOptimizedDataForSEOFetcher();
-    const results = await fetcher.fetchBatch(urls.slice(0, 5), {
-      mode: "basic",
-      urgency: "bulk", // Uses Standard Queue automatically
-      includeRawHtml: true,
+    // Route through MigrationRouter for gradual rollout
+    const urlsToProcess = urls.slice(0, 5);
+    const resultsMap = await routeBatchRequest<LegacyFetchResult>({
+      feature: "serpContent",
+      urls: urlsToProcess,
+      legacyBatchFn: async (urlsToFetch) => {
+        // Legacy path: use OptimizedDataForSEOFetcher
+        const fetcher = getOptimizedDataForSEOFetcher();
+        const batchResults = await fetcher.fetchBatch(urlsToFetch, {
+          mode: "basic",
+          urgency: "bulk", // Uses Standard Queue automatically
+          includeRawHtml: true,
+        });
+        // Map results by URL - results are returned in same order as input
+        const resultMap = new Map<string, LegacyFetchResult>();
+        for (let i = 0; i < batchResults.length; i++) {
+          const result = batchResults[i];
+          const url = urlsToFetch[i];
+          resultMap.set(url, {
+            url,
+            success: result.success,
+            statusCode: result.statusCode ?? 0,
+            html: result.html,
+          });
+        }
+        return resultMap;
+      },
+      scrapeOptions: {
+        feature: "serpContent",
+        includeHtml: true,
+        includeParsedData: true,
+      },
+      transformer: serpContentTransformer,
+      concurrency: 5,
     });
 
-    for (const result of results) {
+    // Process results (same logic for both paths)
+    for (const result of resultsMap.values()) {
       if (!result.success || !result.html || result.statusCode !== 200) {
         continue;
       }
