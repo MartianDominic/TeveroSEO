@@ -156,3 +156,20 @@ export type {
   MetricSnapshot,
   AlertTriggered,
 } from "./metrics";
+
+// =============================================================================
+// Cache Warmer
+// =============================================================================
+
+export {
+  CacheWarmer,
+  createCacheWarmer,
+  getCacheWarmer,
+  setWarmerDependencies,
+} from "./CacheWarmer";
+
+export type {
+  WarmingConfig,
+  WarmingProgress,
+  WarmingResult,
+} from "./CacheWarmer";

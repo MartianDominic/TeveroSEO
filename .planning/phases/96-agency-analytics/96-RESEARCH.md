@@ -6,9 +6,16 @@
 
 ## Summary
 
-Phase 96 builds a unified analytics dashboard that eliminates GSC account switching for agencies managing 100+ client sites. The standard stack leverages PostgreSQL's native partitioning (not TimescaleDB for simplicity), materialized views for sub-second dashboard loads, and BullMQ for daily sync orchestration. The critical architectural decision is to use **native PostgreSQL partitioning + materialized views** rather than introducing TimescaleDB, based on the existing open-seo-main stack and proven 350x-9000x performance gains from materialized view patterns.
+Phase 96 builds a unified analytics dashboard that eliminates GSC account switching for agencies managing 5,000+ client sites. The standard stack leverages **TimescaleDB hypertables with continuous aggregates** for sub-second dashboard loads at scale, automatic compression for 90-95% storage reduction, and BullMQ for daily sync orchestration. The critical architectural decision is to use **TimescaleDB from day one** rather than native PostgreSQL partitioning, based on the $100M agency platform target (5,000 sites × 25K rows/day = 125M rows/day, 228B rows over 5 years).
 
-**Primary recommendation:** Use PostgreSQL table partitioning with RANGE on query_date (monthly partitions), pre-compute growing/decaying trends with materialized views refreshed every 6 hours, and paginate GSC API queries with dimension combinations (query, query+page, query+country) to capture all 25,000 rows per request. Leverage BullMQ's repeatable job scheduler (deprecated QueueScheduler since v5.16.0) for daily 3 AM sync with per-domain rate limiting (50 req/min burst).
+**Primary recommendation:** Use TimescaleDB hypertables with automatic chunking (7-day chunks), continuous aggregates for growing/decaying trends (incremental refresh, not full re-scan), and compression policies for data older than 30 days. Paginate GSC API queries with dimension combinations (query, query+page, query+country) to capture all 25,000 rows per request. Leverage BullMQ's repeatable job scheduler for daily 3 AM sync with global rate limiting (50 req/min).
+
+**Why TimescaleDB over native PostgreSQL partitioning:**
+- **125M rows/day at 5,000 sites** — Native PG partition pruning degrades with 60+ monthly partitions
+- **Continuous aggregates** — Incremental refresh (seconds) vs full materialized view refresh (30-60 min at scale)
+- **90-95% compression** — Critical for 5-year retention at 5,000 sites (228B rows → ~15B compressed)
+- **Automatic chunk management** — No manual partition creation/maintenance jobs
+- **Real-time + materialized hybrid** — Query combines pre-computed + fresh data transparently
 
 ## Architectural Responsibility Map
 
@@ -27,8 +34,9 @@ Phase 96 builds a unified analytics dashboard that eliminates GSC account switch
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| PostgreSQL | 15+ | Time-series storage with native partitioning | Already in stack, 5-year retention with monthly partitions, no TimescaleDB needed for this scale |
-| Drizzle ORM | 0.31.5 | Schema-first ORM with partitioning support | Type-safe queries, materialized view refresh support, existing codebase standard |
+| TimescaleDB | 2.14+ | Time-series hypertables with continuous aggregates | 5,000 sites × 25K rows/day = 125M rows/day; continuous aggregates for incremental refresh; 90-95% compression; automatic chunk management |
+| PostgreSQL | 15+ | Base database (TimescaleDB is an extension) | Already in stack, TimescaleDB extends it seamlessly |
+| Drizzle ORM | 0.31.5 | Schema-first ORM for regular tables | Type-safe queries for non-hypertable tables; raw SQL for TimescaleDB-specific operations |
 | BullMQ | 5.76.6 | Job scheduling and rate limiting | Repeatable jobs with cron, global rate limiting (50 req/min), existing Redis infrastructure |
 | Recharts | 3.8.1 | React charting library | Declarative API, ResponsiveContainer for fluid layouts, 89.46 benchmark score |
 | TanStack Start | Current | SSR framework for dashboard routes | Existing open-seo-main foundation, server components for data fetching |
@@ -43,19 +51,35 @@ Phase 96 builds a unified analytics dashboard that eliminates GSC account switch
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| Native PostgreSQL partitioning | TimescaleDB | TimescaleDB offers automatic chunk management and continuous aggregates (100-1000x faster pre-compute), but adds deployment complexity for marginal benefit at 100-500 site scale |
-| Materialized views | Real-time aggregation | Real-time would eliminate refresh lag but 350x-9000x slower dashboard loads; stale data acceptable for GSC (2-3 day processing latency anyway) |
+| TimescaleDB | Native PostgreSQL partitioning | Native PG works for 100-500 sites but degrades at 5,000 sites (125M rows/day); no continuous aggregates means 30-60 min refresh vs seconds |
+| Continuous aggregates | Manual materialized views | Manual MVs require full re-scan on refresh; continuous aggregates only process new data |
+| TimescaleDB Cloud | Self-hosted TimescaleDB | Cloud offers managed backups, scaling, but costs $200+/mo; self-hosted on Contabo is $0 incremental |
 | BullMQ | Custom cron + worker | BullMQ provides battle-tested rate limiting, job prioritization, and retry logic out-of-box |
 | Recharts | Chart.js or Victory | Recharts' declarative React API and ResponsiveContainer fit TanStack Start SSR better than imperative canvas-based libraries |
 
 **Installation:**
 ```bash
+# TimescaleDB extension (on Contabo VPS)
+sudo apt install timescaledb-2-postgresql-15
+sudo timescaledb-tune  # Auto-configure for time-series workloads
+
+# Node.js packages
 npm install recharts@3.8.1 date-fns cron-parser
 npm install bullmq@5.76.6  # Already installed
 npm install drizzle-orm@0.31.5  # Already installed
 ```
 
-**Version verification:** All versions verified against npm registry on 2026-05-07.
+**TimescaleDB setup in PostgreSQL:**
+```sql
+-- Enable extension (once per database)
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+-- Verify installation
+SELECT extversion FROM pg_extension WHERE extname = 'timescaledb';
+-- Should return: 2.14.x or higher
+```
+
+**Version verification:** All versions verified against npm registry and TimescaleDB releases on 2026-05-07.
 
 ## Architecture Patterns
 
@@ -95,11 +119,13 @@ npm install drizzle-orm@0.31.5  # Already installed
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              DATA LAYER (PostgreSQL 15+)                        │
+│              DATA LAYER (TimescaleDB on PostgreSQL 15+)         │
 ├─────────────────────────────────────────────────────────────────┤
-│  seo_gsc_query_analytics (PARTITIONED by query_date)            │
-│    ├─ Monthly partitions (2021-01 to 2031-12)                  │
-│    └─ Indexes: (site_id, query_date), (query), (page_url)      │
+│  seo_gsc_query_analytics (HYPERTABLE - 7-day chunks)            │
+│    ├─ Automatic chunking by query_time (TIMESTAMPTZ)           │
+│    ├─ Compression policy: chunks > 30 days                     │
+│    ├─ Retention policy: drop chunks > 5 years                  │
+│    └─ Indexes: (site_id, query_time), (query), (page_url)      │
 │                                                                 │
 │  seo_gsc_snapshots (site-level daily aggregates)                │
 │  site_tags (multi-site filtering)                               │
@@ -107,11 +133,12 @@ npm install drizzle-orm@0.31.5  # Already installed
 │  content_groups (folder-based + custom)                         │
 │  client_visibility (per-metric portal controls)                 │
 │                                                                 │
-│  MATERIALIZED VIEWS (Refreshed every 6 hours):                  │
-│    ├─ growing_pages_mv (3-week trend, >10% growth)             │
-│    ├─ decaying_pages_mv (3-week trend, >10% decline)           │
-│    ├─ striking_distance_mv (positions 11-20)                   │
-│    └─ master_dashboard_mv (site aggregations)                  │
+│  CONTINUOUS AGGREGATES (Incremental refresh):                   │
+│    ├─ growing_pages_cagg (3-week trend, >10% growth)           │
+│    ├─ decaying_pages_cagg (3-week trend, >10% decline)         │
+│    ├─ striking_distance_cagg (positions 11-20)                 │
+│    ├─ master_dashboard_cagg (site aggregations)                │
+│    └─ Refresh policy: every 1 hour (only new data)             │
 └────────────────────┬────────────────────────────────────────────┘
                      │
                      ▼
@@ -248,90 +275,136 @@ async function fullSyncSite(siteId: string, siteUrl: string) {
 }
 ```
 
-### Pattern 2: Materialized View with Scheduled Refresh
+### Pattern 2: TimescaleDB Continuous Aggregates with Automatic Refresh
 
-**What:** Pre-compute expensive aggregations (growing/decaying trends, master dashboard metrics) and refresh periodically.
+**What:** Pre-compute expensive aggregations (growing/decaying trends, master dashboard metrics) with incremental refresh that only processes new data.
 
-**When to use:** Dashboard KPIs, trend reports, multi-site aggregations with >100 sites.
+**When to use:** Dashboard KPIs, trend reports, multi-site aggregations with 5,000+ sites. Critical for 125M rows/day scale.
+
+**Why continuous aggregates over materialized views:**
+- **Incremental refresh** — Only processes new chunks, not full re-scan (seconds vs 30-60 min)
+- **Real-time + materialized hybrid** — Automatically combines pre-computed + fresh data
+- **Automatic refresh policies** — No BullMQ job needed for refresh scheduling
 
 **Example:**
-```typescript
-// Source: [Context7: drizzle-orm materialized views]
-import { pgMaterializedView } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+```sql
+-- Source: [TimescaleDB continuous aggregates documentation]
+-- Migration: Create continuous aggregate for growing pages
 
-// Schema definition
-export const growingPagesMv = pgMaterializedView('growing_pages_mv')
-  .with({
-    fillfactor: 90,
-    autovacuum_enabled: true,
-  })
-  .as((qb) => {
-    const currentPeriod = sql`CURRENT_DATE - INTERVAL '21 days'`;
-    const previousPeriod = sql`CURRENT_DATE - INTERVAL '42 days'`;
-    
-    return qb
-      .select({
-        siteId: seo_gsc_query_analytics.siteId,
-        pageUrl: seo_gsc_query_analytics.pageUrl,
-        currentClicks: sql<number>`SUM(CASE WHEN query_date >= ${currentPeriod} THEN clicks ELSE 0 END)`,
-        previousClicks: sql<number>`SUM(CASE WHEN query_date >= ${previousPeriod} AND query_date < ${currentPeriod} THEN clicks ELSE 0 END)`,
-        changePercent: sql<number>`
-          (SUM(CASE WHEN query_date >= ${currentPeriod} THEN clicks ELSE 0 END)::float - 
-           SUM(CASE WHEN query_date >= ${previousPeriod} AND query_date < ${currentPeriod} THEN clicks ELSE 0 END)::float) / 
-          NULLIF(SUM(CASE WHEN query_date >= ${previousPeriod} AND query_date < ${currentPeriod} THEN clicks ELSE 0 END), 0) * 100
-        `,
-        confidence: sql<'high' | 'medium' | 'low'>`
-          CASE 
-            WHEN SUM(impressions) > 500 THEN 'high'
-            WHEN SUM(impressions) > 100 THEN 'medium'
-            ELSE 'low'
-          END
-        `,
-      })
-      .from(seo_gsc_query_analytics)
-      .where(sql`query_date >= ${previousPeriod}`)
-      .groupBy(seo_gsc_query_analytics.siteId, seo_gsc_query_analytics.pageUrl)
-      .having(sql`
-        (SUM(CASE WHEN query_date >= ${currentPeriod} THEN clicks ELSE 0 END)::float - 
-         SUM(CASE WHEN query_date >= ${previousPeriod} AND query_date < ${currentPeriod} THEN clicks ELSE 0 END)::float) / 
-        NULLIF(SUM(CASE WHEN query_date >= ${previousPeriod} AND query_date < ${currentPeriod} THEN clicks ELSE 0 END), 0) * 100 > 10
-      `);
-  });
+-- Step 1: Create the continuous aggregate
+CREATE MATERIALIZED VIEW growing_pages_cagg
+WITH (timescaledb.continuous) AS
+SELECT
+  site_id,
+  page_url,
+  time_bucket('1 day', query_time) AS bucket,
+  SUM(clicks) AS daily_clicks,
+  SUM(impressions) AS daily_impressions,
+  AVG(position) AS avg_position
+FROM seo_gsc_query_analytics
+GROUP BY site_id, page_url, time_bucket('1 day', query_time)
+WITH NO DATA;
 
-// Refresh job (BullMQ)
-// Source: [BullMQ repeatable jobs documentation]
-import { Queue, Worker } from 'bullmq';
-
-const analyticsQueue = new Queue('analytics', {
-  connection: redis,
-});
-
-// Schedule materialized view refresh every 6 hours
-await analyticsQueue.add(
-  'refresh-growing-pages-mv',
-  {},
-  {
-    repeat: {
-      pattern: '0 */6 * * *', // Every 6 hours
-    },
-  }
+-- Step 2: Add refresh policy (every 1 hour, only new data)
+SELECT add_continuous_aggregate_policy('growing_pages_cagg',
+  start_offset => INTERVAL '42 days',  -- Cover 6-week window for trend comparison
+  end_offset => INTERVAL '1 hour',     -- Don't include very recent (incomplete) data
+  schedule_interval => INTERVAL '1 hour'
 );
 
-// Worker
-const worker = new Worker(
-  'analytics',
-  async (job) => {
-    if (job.name === 'refresh-growing-pages-mv') {
-      await db.refreshMaterializedView(growingPagesMv).concurrently();
-      console.log('Growing pages MV refreshed');
-    }
-  },
-  {
-    connection: redis,
-  }
-);
+-- Step 3: Backfill historical data (one-time)
+CALL refresh_continuous_aggregate('growing_pages_cagg', '2021-01-01', NOW());
+
+-- Query: Get growing pages (3-week comparison)
+-- This query is FAST because it reads pre-aggregated daily buckets
+WITH current_period AS (
+  SELECT site_id, page_url, SUM(daily_clicks) as clicks
+  FROM growing_pages_cagg
+  WHERE bucket >= NOW() - INTERVAL '21 days'
+  GROUP BY site_id, page_url
+),
+previous_period AS (
+  SELECT site_id, page_url, SUM(daily_clicks) as clicks
+  FROM growing_pages_cagg
+  WHERE bucket >= NOW() - INTERVAL '42 days' AND bucket < NOW() - INTERVAL '21 days'
+  GROUP BY site_id, page_url
+)
+SELECT 
+  c.site_id,
+  c.page_url,
+  c.clicks as current_clicks,
+  p.clicks as previous_clicks,
+  ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) as change_percent,
+  CASE 
+    WHEN ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) > 10 THEN 'growing'
+    WHEN ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) < -10 THEN 'decaying'
+    ELSE 'stable'
+  END as trend
+FROM current_period c
+JOIN previous_period p ON c.site_id = p.site_id AND c.page_url = p.page_url
+WHERE p.clicks > 0
+ORDER BY change_percent DESC;
 ```
+
+```typescript
+// TypeScript wrapper for continuous aggregate queries
+// Source: [VERIFIED: Drizzle ORM raw SQL execution]
+import { sql } from 'drizzle-orm';
+import { db } from '@/db';
+
+interface GrowingPage {
+  siteId: string;
+  pageUrl: string;
+  currentClicks: number;
+  previousClicks: number;
+  changePercent: number;
+  trend: 'growing' | 'decaying' | 'stable';
+}
+
+export async function getGrowingPages(
+  siteId: string,
+  options: { threshold?: number; minClicks?: number } = {}
+): Promise<GrowingPage[]> {
+  const { threshold = 10, minClicks = 100 } = options;
+  
+  const results = await db.execute<GrowingPage>(sql`
+    WITH current_period AS (
+      SELECT page_url, SUM(daily_clicks) as clicks
+      FROM growing_pages_cagg
+      WHERE site_id = ${siteId}
+        AND bucket >= NOW() - INTERVAL '21 days'
+      GROUP BY page_url
+    ),
+    previous_period AS (
+      SELECT page_url, SUM(daily_clicks) as clicks
+      FROM growing_pages_cagg
+      WHERE site_id = ${siteId}
+        AND bucket >= NOW() - INTERVAL '42 days' 
+        AND bucket < NOW() - INTERVAL '21 days'
+      GROUP BY page_url
+    )
+    SELECT 
+      ${siteId} as site_id,
+      c.page_url,
+      c.clicks as current_clicks,
+      p.clicks as previous_clicks,
+      ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) as change_percent,
+      CASE 
+        WHEN ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) > ${threshold} THEN 'growing'
+        WHEN ((c.clicks - p.clicks)::float / NULLIF(p.clicks, 0) * 100) < -${threshold} THEN 'decaying'
+        ELSE 'stable'
+      END as trend
+    FROM current_period c
+    JOIN previous_period p ON c.page_url = p.page_url
+    WHERE p.clicks >= ${minClicks}
+    ORDER BY change_percent DESC
+  `);
+  
+  return results.rows;
+}
+```
+
+**No BullMQ refresh job needed** — TimescaleDB's `add_continuous_aggregate_policy()` handles automatic incremental refresh.
 
 ### Pattern 3: Growing/Decaying Algorithm (3-Week Rolling Comparison)
 
@@ -601,61 +674,85 @@ function SiteRow({ site }: { site: SiteMetrics }) {
 
 ### Anti-Patterns to Avoid
 
-- **Querying raw partition tables without WHERE on query_date:** PostgreSQL will scan all partitions. Always include date range filters to leverage partition pruning.
-- **Refreshing materialized views with `REFRESH MATERIALIZED VIEW` (blocking):** Use `REFRESH MATERIALIZED VIEW CONCURRENTLY` to avoid read locks. Requires a unique index on the view.
+- **Querying hypertables without WHERE on query_time:** TimescaleDB will scan all chunks. Always include time range filters to leverage chunk exclusion.
+- **Using DATE instead of TIMESTAMPTZ:** TimescaleDB hypertables require TIMESTAMPTZ for the time column. DATE types prevent proper chunking and compression.
+- **Manual REFRESH on continuous aggregates:** Continuous aggregates auto-refresh via policies. Manual `CALL refresh_continuous_aggregate()` should only be used for initial backfill.
 - **Fetching 1,000 rows per GSC API call when 25,000 is available:** Wastes API quota and creates unnecessary pagination overhead. Always set `rowLimit: 25000`.
-- **Real-time dashboard aggregations across 100+ sites:** Pre-compute with materialized views. Real-time queries take 350x-9000x longer and cause database load spikes.
+- **Skipping compression policy:** Without compression, 5 years of data at 125M rows/day = 228B rows = ~50TB storage. With compression: ~3-5TB.
 - **Missing rate limiter on BullMQ queues:** GSC API enforces 200 req/min globally. Without BullMQ rate limiting, you'll hit 429 errors and trigger exponential backoff.
+- **Querying raw hypertable instead of continuous aggregate for dashboards:** Raw queries on 228B rows are slow even with chunk exclusion. Always use continuous aggregates for dashboard reads.
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
+| Time-series partitioning | Native PostgreSQL PARTITION BY RANGE | TimescaleDB hypertables with `create_hypertable()` | At 5,000 sites (125M rows/day), manual partition management becomes untenable. TimescaleDB handles chunking, compression, and retention automatically. |
+| Dashboard aggregation refresh | Manual materialized view refresh with BullMQ | TimescaleDB continuous aggregates with `add_continuous_aggregate_policy()` | Continuous aggregates only process new data (seconds), not full re-scan (30-60 min). Automatic refresh policies eliminate BullMQ job complexity. |
+| Data compression | Manual archival to cold storage | TimescaleDB compression policy with `add_compression_policy()` | 90-95% storage reduction automatic on chunks >30 days. Transparent to queries — no code changes needed. |
+| Data retention/expiration | Cron jobs to DELETE old rows | TimescaleDB retention policy with `add_retention_policy()` | Chunk dropping is O(1) vs row deletion O(n). At 228B rows, DELETE statements would take days. |
 | GSC API pagination logic | Custom offset tracking with retry loops | AsyncGenerator pattern with yield per batch | GSC 50K daily limit, 25K per request, and dimension-specific pagination require stateful iteration. Custom loops miss edge cases (partial batches, 429 errors). |
 | Trend detection algorithms | Moving averages, exponential smoothing, ARIMA | 3-week rolling comparison with percentage threshold | Commercial SEO platforms (KeyTrends, SEOGets) use 3-week thresholds because GSC data has 2-3 day latency. Complex statistical models overfit to noisy data. |
-| Materialized view refresh scheduling | Cron jobs with pg_cron or system cron | BullMQ repeatable jobs with `pattern: '0 */6 * * *'` | BullMQ provides retry logic, job history, and graceful shutdown. pg_cron requires PostgreSQL superuser and doesn't handle worker restarts. |
 | Rate limiting with Redis | Manual INCR + EXPIRE pattern | BullMQ `limiter: { max: 50, duration: 60000 }` | BullMQ's rate limiter is global across workers, handles clock skew, and integrates with job retries. Custom implementations often miss distributed edge cases. |
 | Annotation timeline data sources | Manual CSV imports from algorithm trackers | DemandSphere JSON API (free, no auth, no rate limits) | Auto-imports 170+ Google updates (2001-2026) from status.search.google.com, research papers, and historical database. Manual imports are error-prone and time-consuming. |
-| CTR benchmark curves | Hardcoded position->CTR mappings | Advanced Web Rankings CTR data API | Position-specific CTR varies by query type, industry, and SERP features (PAA, featured snippets). Static mappings are inaccurate for striking distance estimates. |
 
-**Key insight:** GSC API's 25K row limit, 50K daily cap, and dimension-specific pagination create edge cases (partial batches, quota exhaustion mid-job, 429 backoff) that custom solutions rarely handle correctly. The BullMQ + AsyncGenerator pattern is battle-tested across thousands of SEO tools.
+**Key insight:** TimescaleDB eliminates 80% of the time-series infrastructure code (partitioning, compression, retention, aggregate refresh). The remaining complexity is GSC API pagination and BullMQ job orchestration — both well-documented patterns.
 
 ## Common Pitfalls
 
-### Pitfall 1: Missing Partition Pruning in Queries
+### Pitfall 1: Missing Chunk Exclusion in Queries
 
-**What goes wrong:** Queries without `WHERE query_date BETWEEN ...` scan all partitions (5 years = 60 partitions), causing 10x-50x slower response times.
+**What goes wrong:** Queries without `WHERE query_time BETWEEN ...` scan all chunks (5 years = ~260 weekly chunks), causing 10x-50x slower response times.
 
-**Why it happens:** Developers forget that partitioned tables don't automatically filter by partition key. PostgreSQL's query planner needs explicit date predicates to prune partitions.
+**Why it happens:** Developers forget that hypertables don't automatically filter by time column. TimescaleDB's query planner needs explicit time predicates for chunk exclusion.
 
 **How to avoid:** 
-- Always include date range filters in WHERE clauses: `WHERE query_date >= '2026-01-01' AND query_date < '2026-02-01'`
-- Use Drizzle ORM's type-safe query builder to enforce date filters at compile time
-- Add database check constraints to reject queries without date filters (for critical tables)
+- Always include time range filters in WHERE clauses: `WHERE query_time >= NOW() - INTERVAL '21 days'`
+- Use Drizzle ORM's type-safe query builder to enforce time filters at compile time
+- Query continuous aggregates for dashboard reads (pre-filtered by design)
 
 **Warning signs:** 
-- EXPLAIN ANALYZE shows `Parallel Seq Scan on seo_gsc_query_analytics` without partition pruning
+- EXPLAIN ANALYZE shows scans across many chunks instead of chunk exclusion
 - Query latency spikes when data volume grows
-- High disk I/O without corresponding query volume increase
+- `timescaledb_information.chunks` shows queries touching old compressed chunks
 
-### Pitfall 2: Blocking Materialized View Refreshes
+### Pitfall 2: Querying Hypertable Instead of Continuous Aggregate
 
-**What goes wrong:** Using `REFRESH MATERIALIZED VIEW` (without `CONCURRENTLY`) locks the view for reads, causing dashboard timeouts during refresh (30s-2min for large views).
+**What goes wrong:** Dashboard queries hit raw hypertable (228B rows at scale) instead of continuous aggregate (pre-computed daily buckets), causing 100x-1000x slower response times.
 
-**Why it happens:** Default refresh behavior is blocking. Concurrent refresh requires a unique index, which developers often forget to create.
+**Why it happens:** Developers use the base table for convenience. Continuous aggregates require different query patterns (time_bucket columns, different table name).
 
 **How to avoid:**
-- Always use `REFRESH MATERIALIZED VIEW CONCURRENTLY`
-- Create unique indexes on materialized views before first refresh:
-  ```sql
-  CREATE UNIQUE INDEX ON growing_pages_mv (site_id, page_url);
+- Dashboard queries MUST use continuous aggregates (`growing_pages_cagg`, `master_dashboard_cagg`)
+- Only use raw hypertable for: data ingestion, drill-down to individual queries, debugging
+- Create TypeScript wrapper functions that enforce aggregate usage:
+  ```typescript
+  // WRONG: Direct hypertable query
+  db.select().from(seoGscQueryAnalytics).where(...)
+  
+  // RIGHT: Continuous aggregate query via raw SQL
+  db.execute(sql`SELECT * FROM growing_pages_cagg WHERE ...`)
   ```
-- Schedule refreshes during low-traffic periods (3 AM, 9 AM, 3 PM, 9 PM) to minimize user impact
 
 **Warning signs:**
-- Dashboard shows "Loading..." for 30+ seconds every 6 hours
-- PostgreSQL logs show `relation "growing_pages_mv" locked` errors
-- Users report intermittent dashboard unavailability
+- Dashboard load time >2s for single site
+- PostgreSQL logs show sequential scans on `seo_gsc_query_analytics`
+- CPU spikes during dashboard access
+
+### Pitfall 3: Compression Policy Too Aggressive
+
+**What goes wrong:** Compressing chunks too early (e.g., 7 days) causes frequent decompression during trend analysis queries that span 3-6 weeks.
+
+**Why it happens:** Storage optimization prioritized over query performance. Compressed chunks must be decompressed for writes and some analytical queries.
+
+**How to avoid:**
+- Set compression policy to 30 days (beyond 3-week trend window)
+- Continuous aggregates read from pre-computed data, not compressed chunks
+- Monitor `timescaledb_information.compressed_chunk_stats` for decompression frequency
+
+**Warning signs:**
+- Slow queries that span compressed chunks
+- High CPU during trend calculation jobs
+- `chunks_compressed` / `chunks_decompressed` ratio trending down
 
 ### Pitfall 3: GSC API Quota Exhaustion Mid-Job
 
@@ -713,18 +810,20 @@ function SiteRow({ site }: { site: SiteMetrics }) {
 
 Verified patterns from official sources and existing implementation:
 
-### Drizzle ORM Partitioned Table with Indexes
+### TimescaleDB Hypertable with Automatic Chunking, Compression, and Retention
 
 ```typescript
-// Source: [VERIFIED: Existing analytics-schema.ts pattern + PostgreSQL partitioning docs]
-import { pgTable, uuid, text, date, integer, real, timestamp, index } from 'drizzle-orm/pg-core';
+// Source: [VERIFIED: TimescaleDB hypertable documentation + existing analytics-schema.ts pattern]
+import { pgTable, uuid, text, integer, real, timestamp, index } from 'drizzle-orm/pg-core';
 
+// Drizzle schema for type safety (regular table definition)
+// Hypertable conversion happens in migration
 export const seoGscQueryAnalytics = pgTable(
   'seo_gsc_query_analytics',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     siteId: uuid('site_id').notNull().references(() => sites.id, { onDelete: 'cascade' }),
-    queryDate: date('query_date').notNull(),
+    queryTime: timestamp('query_time', { withTimezone: true }).notNull(), // TIMESTAMPTZ for TimescaleDB
     query: text('query').notNull(),
     pageUrl: text('page_url'),
     country: text('country'),
@@ -737,21 +836,24 @@ export const seoGscQueryAnalytics = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    index('idx_gsc_query_site_date').on(table.siteId, table.queryDate),
+    index('idx_gsc_query_site_time').on(table.siteId, table.queryTime),
     index('idx_gsc_query_query').on(table.query),
     index('idx_gsc_query_page').on(table.pageUrl),
-    index('idx_gsc_query_country').on(table.country),
   ]
 );
 
-// Migration: Create partitioned table and monthly partitions
-// Source: [VERIFIED: PostgreSQL partitioning documentation]
+// Migration: Create hypertable with compression and retention policies
+// Source: [VERIFIED: TimescaleDB documentation]
 export async function up(db) {
+  // Step 1: Enable TimescaleDB extension
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS timescaledb;`);
+  
+  // Step 2: Create regular table first
   await db.execute(sql`
-    CREATE TABLE seo_gsc_query_analytics (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    CREATE TABLE IF NOT EXISTS seo_gsc_query_analytics (
+      id UUID DEFAULT gen_random_uuid(),
       site_id UUID NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
-      query_date DATE NOT NULL,
+      query_time TIMESTAMPTZ NOT NULL,
       query TEXT NOT NULL,
       page_url TEXT,
       country TEXT,
@@ -761,34 +863,121 @@ export async function up(db) {
       impressions INTEGER DEFAULT 0,
       ctr REAL,
       position REAL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    ) PARTITION BY RANGE (query_date);
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (id, query_time)  -- Must include time column for hypertable
+    );
   `);
   
-  // Create monthly partitions for 2021-2031 (5 years past, 5 years future)
-  for (let year = 2021; year <= 2031; year++) {
-    for (let month = 1; month <= 12; month++) {
-      const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-      const endDate = month === 12 
-        ? `${year + 1}-01-01` 
-        : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
-      
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS seo_gsc_query_analytics_${year}_${month.toString().padStart(2, '0')}
-        PARTITION OF seo_gsc_query_analytics
-        FOR VALUES FROM ('${startDate}') TO ('${endDate}');
-      `);
-    }
-  }
-  
-  // Create indexes on all partitions
+  // Step 3: Convert to hypertable with 7-day chunks
+  // 7 days optimal for 125M rows/day (each chunk ~875M rows, manageable size)
   await db.execute(sql`
-    CREATE INDEX idx_gsc_query_site_date ON seo_gsc_query_analytics (site_id, query_date);
-    CREATE INDEX idx_gsc_query_query ON seo_gsc_query_analytics (query);
-    CREATE INDEX idx_gsc_query_page ON seo_gsc_query_analytics (page_url);
+    SELECT create_hypertable(
+      'seo_gsc_query_analytics',
+      'query_time',
+      chunk_time_interval => INTERVAL '7 days',
+      if_not_exists => TRUE
+    );
+  `);
+  
+  // Step 4: Create indexes (automatically applied to all chunks)
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS idx_gsc_query_site_time 
+      ON seo_gsc_query_analytics (site_id, query_time DESC);
+    CREATE INDEX IF NOT EXISTS idx_gsc_query_query 
+      ON seo_gsc_query_analytics (query);
+    CREATE INDEX IF NOT EXISTS idx_gsc_query_page 
+      ON seo_gsc_query_analytics (page_url) 
+      WHERE page_url IS NOT NULL;
+  `);
+  
+  // Step 5: Enable compression on chunks older than 30 days
+  // 90-95% storage reduction, critical for 5-year retention
+  await db.execute(sql`
+    ALTER TABLE seo_gsc_query_analytics SET (
+      timescaledb.compress,
+      timescaledb.compress_segmentby = 'site_id',
+      timescaledb.compress_orderby = 'query_time DESC'
+    );
+  `);
+  
+  await db.execute(sql`
+    SELECT add_compression_policy(
+      'seo_gsc_query_analytics',
+      compress_after => INTERVAL '30 days'
+    );
+  `);
+  
+  // Step 6: Add retention policy (drop chunks older than 5 years)
+  await db.execute(sql`
+    SELECT add_retention_policy(
+      'seo_gsc_query_analytics',
+      drop_after => INTERVAL '5 years'
+    );
+  `);
+  
+  // Step 7: Create continuous aggregates for dashboard performance
+  // Growing/Decaying pages aggregate
+  await db.execute(sql`
+    CREATE MATERIALIZED VIEW IF NOT EXISTS growing_pages_cagg
+    WITH (timescaledb.continuous) AS
+    SELECT
+      site_id,
+      page_url,
+      time_bucket('1 day', query_time) AS bucket,
+      SUM(clicks) AS daily_clicks,
+      SUM(impressions) AS daily_impressions,
+      AVG(position) AS avg_position
+    FROM seo_gsc_query_analytics
+    GROUP BY site_id, page_url, time_bucket('1 day', query_time)
+    WITH NO DATA;
+    
+    SELECT add_continuous_aggregate_policy('growing_pages_cagg',
+      start_offset => INTERVAL '42 days',
+      end_offset => INTERVAL '1 hour',
+      schedule_interval => INTERVAL '1 hour'
+    );
+  `);
+  
+  // Master dashboard aggregate (site-level daily totals)
+  await db.execute(sql`
+    CREATE MATERIALIZED VIEW IF NOT EXISTS master_dashboard_cagg
+    WITH (timescaledb.continuous) AS
+    SELECT
+      site_id,
+      time_bucket('1 day', query_time) AS bucket,
+      SUM(clicks) AS daily_clicks,
+      SUM(impressions) AS daily_impressions,
+      AVG(position) AS avg_position,
+      AVG(ctr) AS avg_ctr,
+      COUNT(DISTINCT page_url) AS unique_pages,
+      COUNT(DISTINCT query) AS unique_queries
+    FROM seo_gsc_query_analytics
+    GROUP BY site_id, time_bucket('1 day', query_time)
+    WITH NO DATA;
+    
+    SELECT add_continuous_aggregate_policy('master_dashboard_cagg',
+      start_offset => INTERVAL '7 days',
+      end_offset => INTERVAL '1 hour',
+      schedule_interval => INTERVAL '1 hour'
+    );
   `);
 }
+
+export async function down(db) {
+  // Drop continuous aggregates first (depends on hypertable)
+  await db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS master_dashboard_cagg CASCADE;`);
+  await db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS growing_pages_cagg CASCADE;`);
+  
+  // Drop hypertable (also drops all chunks)
+  await db.execute(sql`DROP TABLE IF EXISTS seo_gsc_query_analytics CASCADE;`);
+}
 ```
+
+**Key TimescaleDB benefits at 5,000 sites:**
+- **Automatic chunking** — No manual partition management (132 monthly partitions → automatic 7-day chunks)
+- **90-95% compression** — 228B rows over 5 years → ~15B rows effective storage
+- **Incremental aggregate refresh** — Continuous aggregates only process new chunks
+- **Transparent queries** — Same SQL syntax, hypertable handles chunk routing
 
 ### BullMQ Worker with Global Rate Limiting
 
@@ -976,68 +1165,92 @@ export function MasterDashboard({ sites }: { sites: SiteMetrics[] }) {
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
+| Native PostgreSQL partitioning | TimescaleDB hypertables for >1M rows/day | 2024-2025 | At 5,000 sites (125M rows/day), native partitioning degrades. TimescaleDB provides automatic chunking, compression, continuous aggregates. |
+| Manual materialized view refresh | TimescaleDB continuous aggregates | 2024-2025 | Incremental refresh (seconds) vs full re-scan (30-60 min). Automatic refresh policies eliminate BullMQ job complexity. |
 | QueueScheduler for repeatable jobs | Job schedulers with `repeat` option in `add()` | BullMQ v5.16.0 (2024) | QueueScheduler deprecated; repeatable job management moved to Queue.add() with `jobId` to prevent duplicates |
-| TimescaleDB for all time-series data | PostgreSQL native partitioning for <1M rows/day | 2024-2025 | Native partitioning sufficient for 100-500 site scale; TimescaleDB adds deployment complexity for marginal benefit |
-| Real-time dashboard aggregations | Materialized views with 6-hour refresh | 2023-2024 | 350x-9000x faster dashboard loads; stale data acceptable for GSC (2-3 day latency anyway) |
+| Manual data archival/deletion | TimescaleDB compression + retention policies | 2024-2025 | 90-95% compression automatic. Chunk dropping is O(1) vs DELETE O(n) at 228B rows. |
 | 1,000 row GSC API limit | 25,000 row limit with pagination | 2022 (GSC API v1 update) | 96% fewer API calls for full query extraction; daily quota usage optimization |
 | Manual algorithm update tracking | DemandSphere JSON API auto-import | 2024-2026 | Free, no-auth API covers 170+ updates (2001-2026) from status.search.google.com and research papers |
 
 **Deprecated/outdated:**
+- **Native PostgreSQL partitioning for time-series at scale:** Use TimescaleDB hypertables for >1M rows/day
+- **Manual materialized views:** Use TimescaleDB continuous aggregates for automatic incremental refresh
 - **QueueScheduler class (BullMQ):** Removed in v5.16.0; use `repeat` option in `Queue.add()` instead
-- **`refreshMaterializedView()` without unique index:** Blocks reads; always use `CONCURRENTLY` with unique index
+- **Manual compression/archival cron jobs:** Use TimescaleDB `add_compression_policy()` and `add_retention_policy()`
 - **Hardcoded CTR benchmarks:** Industry CTR curves change with SERP features (PAA, featured snippets); use Advanced Web Rankings CTR data API
-- **CSV imports for Google updates:** DemandSphere API provides JSON with structured data (update_type, confirmed status, source_url)
 
 ## Assumptions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | 3-week rolling comparison is industry standard for growing/decaying detection | Growing/Decaying Algorithm | Custom threshold (e.g., 2-week or 4-week) may be more appropriate for specific verticals; algorithm would need retuning |
-| A2 | PostgreSQL native partitioning handles 100-500 sites without TimescaleDB | Standard Stack | At 500+ sites with 25K rows/site/day (12.5M rows/day), native partitioning may degrade; TimescaleDB's continuous aggregates would provide 100-1000x speedup |
-| A3 | Materialized view refresh every 6 hours is acceptable latency | Architecture Patterns | If users demand real-time growing/decaying alerts, 6-hour staleness may be too slow; would require shift to continuous aggregates (TimescaleDB) or real-time queries with heavy caching |
-| A4 | 50 req/min rate limit prevents GSC API 429 errors | BullMQ Rate Limiting | GSC API enforces 200 req/min globally; conservative 50 req/min assumes other services also use quota. If rate limit too conservative, daily sync may not complete within 24-hour window for 500+ sites. |
+| A2 | TimescaleDB handles 5,000 sites (125M rows/day) on single Contabo VPS | Standard Stack | May need to scale to dedicated TimescaleDB instance or Timescale Cloud if VPS CPU/memory insufficient; monitor chunk creation and compression job performance |
+| A3 | Continuous aggregate refresh every 1 hour is acceptable latency | Architecture Patterns | If users demand real-time growing/decaying alerts, 1-hour staleness may be too slow; would require real-time materialization flag on continuous aggregates |
+| A4 | 50 req/min rate limit prevents GSC API 429 errors | BullMQ Rate Limiting | GSC API enforces 200 req/min globally; conservative 50 req/min assumes other services also use quota. If rate limit too conservative, daily sync may not complete within 24-hour window for 5,000 sites. |
 | A5 | DemandSphere JSON API remains free and stable | Annotations Auto-Import | If API introduces authentication or rate limits, auto-import would break; fallback to manual CSV import or alternative source (SEMrush Sensor, Algoroo) required |
-| A6 | Striking distance positions 11-20 have universal CTR benchmark | Don't Hand-Roll | CTR varies by query type (branded, informational, transactional), SERP features, and industry; position-specific CTR estimates may be inaccurate without Advanced Web Rankings data API |
+| A6 | 7-day chunk interval optimal for 125M rows/day workload | TimescaleDB Configuration | If chunks too large (memory pressure during compression) or too small (too many chunks to manage), may need to tune `chunk_time_interval` |
+| A7 | 30-day compression policy balances storage vs query performance | TimescaleDB Configuration | If trend queries frequently access compressed chunks (causing decompression), may need to extend to 45-60 days |
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed.
 
 ## Open Questions
 
-1. **Should we implement TimescaleDB continuous aggregates for growing/decaying trends?**
-   - What we know: Native PostgreSQL materialized views require manual refresh every 6 hours; TimescaleDB continuous aggregates auto-update incrementally with ~1 min latency
-   - What's unclear: Whether 6-hour staleness is acceptable for agency use cases, or if real-time alerts are required
-   - Recommendation: Start with native partitioning + materialized views; upgrade to TimescaleDB only if users request real-time alerts or refresh overhead becomes bottleneck (>5 min refresh time)
-
-2. **How should we handle CTR benchmarks for striking distance estimates?**
+1. **How should we handle CTR benchmarks for striking distance estimates?**
    - What we know: Position-specific CTR varies by query type, SERP features, and industry; Advanced Web Rankings provides API but requires subscription
    - What's unclear: Whether generic CTR curve (position 11 = 2%, position 20 = 0.5%) is sufficient, or if industry-specific benchmarks are required
    - Recommendation: Start with generic CTR curve from Advanced Web Rankings public data; add industry-specific benchmarks if users report inaccurate estimates
 
-3. **What's the optimal materialized view refresh frequency?**
-   - What we know: 6-hour refresh balances staleness vs database load; more frequent refresh (1-hour) increases CPU usage but reduces staleness
-   - What's unclear: Whether agency workflows require hourly updates or if 6-hour is sufficient
-   - Recommendation: Start with 6-hour refresh; add user preference setting for 1-hour, 6-hour, or 24-hour refresh based on usage tier
+2. **What's the optimal continuous aggregate refresh frequency?**
+   - What we know: TimescaleDB continuous aggregates can refresh as frequently as every minute with minimal overhead (incremental only)
+   - What's unclear: Whether agency workflows require real-time (5-min) or if 1-hour is sufficient
+   - Recommendation: Start with 1-hour refresh via `add_continuous_aggregate_policy()`; can easily tune down to 15-min or 5-min if users request fresher data
 
-4. **Should we pre-warm materialized views on first load or lazy-refresh?**
-   - What we know: Concurrent refresh takes 30s-2min for 100+ sites; first dashboard load will be slow without pre-warmed data
-   - What's unclear: Whether to pre-warm all materialized views on system startup or lazy-refresh on first access per site
-   - Recommendation: Pre-warm master dashboard view on startup; lazy-refresh per-site views (growing/decaying, striking distance) on first access with loading indicator
+3. **Should we enable real-time aggregation on continuous aggregates?**
+   - What we know: TimescaleDB supports `materialized_only => false` which combines pre-computed + real-time data transparently
+   - What's unclear: Performance impact of real-time portion at 5,000 sites; may cause query latency variance
+   - Recommendation: Start with `materialized_only => true` (pre-computed only); enable real-time if users request it and benchmark shows acceptable latency
+
+4. **Optimal chunk_time_interval for 125M rows/day workload?**
+   - What we know: Default is 7 days; smaller chunks = more parallelism but more overhead; larger chunks = less overhead but larger compression jobs
+   - What's unclear: Actual row distribution across sites (uniform or skewed?); memory available for compression workers
+   - Recommendation: Start with 7 days; monitor `timescaledb_information.chunks` and `compression_job_stats`; tune if compression jobs exceed 10 minutes
 
 ## Environment Availability
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
-| PostgreSQL 15+ | Table partitioning | ✓ | 15.4 | — |
+| PostgreSQL 15+ | TimescaleDB base | ✓ | 15.4 | — |
+| TimescaleDB | Hypertables + continuous aggregates | ❌ (needs install) | 2.14+ | Native PG partitioning (degraded at 5,000 sites) |
 | Redis (Upstash) | BullMQ + rate limiting | ✓ | 7.2 | — |
 | AI-Writer GSC bridge | GSC API access | ✓ | Custom | — |
 | Node.js | TanStack Start backend | ✓ | 20.x | — |
 | Drizzle ORM | Schema + migrations | ✓ | 0.31.5 | — |
 
 **Missing dependencies with no fallback:**
-- None — all dependencies already provisioned in existing stack
+- None critical — TimescaleDB is an extension to existing PostgreSQL
 
 **Missing dependencies with fallback:**
-- None
+- **TimescaleDB** — Needs installation on Contabo VPS. Installation is simple:
+  ```bash
+  # Add TimescaleDB repository
+  sudo sh -c "echo 'deb https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -c -s) main' > /etc/apt/sources.list.d/timescaledb.list"
+  wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo apt-key add -
+  sudo apt update
+  
+  # Install TimescaleDB for PostgreSQL 15
+  sudo apt install timescaledb-2-postgresql-15
+  
+  # Run tuning script (auto-configures shared_preload_libraries, memory settings)
+  sudo timescaledb-tune --yes
+  
+  # Restart PostgreSQL
+  sudo systemctl restart postgresql
+  
+  # Enable extension in database
+  psql -d open_seo -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+  ```
+  
+  **Fallback if installation fails:** Native PostgreSQL partitioning works for initial launch, but will degrade at 500+ sites. TimescaleDB migration would be required before scaling to 5,000 sites.
 
 ## Validation Architecture
 

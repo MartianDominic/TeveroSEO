@@ -48,6 +48,8 @@ describe("SerpContentAdapter", () => {
       serpContent: "shadow", // Enable shadow for this test
       competitorSpy: "legacy",
       contentBriefs: "legacy",
+      volumeRefresh: "legacy",
+      crawlWorkflow: "legacy",
     });
   });
 
@@ -84,6 +86,8 @@ describe("SerpContentAdapter", () => {
       serpContent: "legacy",
       competitorSpy: "legacy",
       contentBriefs: "legacy",
+      volumeRefresh: "legacy",
+      crawlWorkflow: "legacy",
     });
 
     const legacyFn = vi.fn().mockResolvedValue({

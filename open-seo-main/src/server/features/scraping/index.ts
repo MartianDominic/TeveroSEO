@@ -353,6 +353,16 @@ export {
   type ResultTransformer,
   type RouteOptions,
   type BatchRouteOptions,
+  // Migration rollout (Plan 95-13)
+  MigrationRollout,
+  getMigrationRollout,
+  createMigrationRollout,
+  type RolloutCriteria,
+  type RolloutMetrics,
+  type RolloutReadinessCheck,
+  type AdvanceResult,
+  type RollbackResult,
+  type RolloutStatus,
 } from "./migration";
 
 // =============================================================================
@@ -400,3 +410,33 @@ export {
   type DomainLearningResponse,
   type MigrationStatusResponse,
 } from "./monitoring";
+
+// =============================================================================
+// Domain Feedback Service (Plan 95-13)
+// =============================================================================
+
+export {
+  DomainFeedbackService,
+  getDomainFeedbackService,
+  setFeedbackServiceDependencies,
+  createDomainFeedbackService,
+  createCheckRunnerIntegration,
+  type CheckFeedback,
+  type DomainFeedbackOptions,
+  type CheckCompleteHandler,
+} from "./DomainFeedback";
+
+// =============================================================================
+// Admin Routes (Plan 95-13)
+// =============================================================================
+
+export {
+  createAdminRoutes,
+  getAdminRoutes,
+  initAdminRoutes,
+  type AdminRouteDependencies,
+  type MigrationStatusResponse as AdminMigrationStatusResponse,
+  type ReadinessResponse,
+  type CacheWarmRequest,
+  type FeedbackStatusResponse,
+} from "./routes/admin";

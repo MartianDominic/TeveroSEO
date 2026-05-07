@@ -83,3 +83,19 @@ export {
   type RouteOptions,
   type BatchRouteOptions,
 } from "./MigrationRouter";
+
+// =============================================================================
+// Migration Rollout (Plan 95-13)
+// =============================================================================
+
+export {
+  MigrationRollout,
+  getMigrationRollout,
+  createMigrationRollout,
+  type RolloutCriteria,
+  type RolloutMetrics,
+  type RolloutReadinessCheck,
+  type AdvanceResult,
+  type RollbackResult,
+  type RolloutStatus,
+} from "./MigrationRollout";

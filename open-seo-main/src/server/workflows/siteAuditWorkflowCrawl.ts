@@ -1,3 +1,10 @@
+/**
+ * Site Audit Workflow - Crawl Phase
+ * Phase 95-10: Consumer Integration Completion
+ *
+ * Crawls pages for site audits, now integrated with MigrationRouter
+ * for unified scraping infrastructure.
+ */
 import type { WorkflowStep } from "@/server/workflows/workflow-types";
 import type { RobotsResult } from "@/server/lib/audit/discovery";
 import type { StepPageResult } from "@/server/lib/audit/types";
@@ -9,6 +16,12 @@ import { HtmlTempStorage } from "@/server/lib/audit/html-temp-storage";
 import { crawlPage, type CrawlPageResultWithHtml } from "@/server/workflows/site-audit-workflow-helpers";
 import { runTier1Checks } from "@/server/lib/audit/checks/runner";
 import { createLogger } from "@/server/lib/logger";
+import {
+  loadMigrationFlagsCached,
+  shouldUseUnified,
+  scrapingService,
+} from "@/server/features/scraping";
+import { analyzeHtml } from "@/server/lib/audit/page-analyzer";
 
 const log = createLogger({ module: "crawl-phase" });
 
@@ -230,6 +243,15 @@ async function runCrawlBatch(
   origin: string,
 ): Promise<CrawlBatchResult> {
   return step.do(`crawl-batch-${crawlBatchIndex}`, async () => {
+    // Phase 95-10: Check migration flag for unified scraping
+    const flags = loadMigrationFlagsCached();
+
+    if (shouldUseUnified(flags.crawlWorkflow)) {
+      // Use unified ScrapingService for crawl workflow
+      return runCrawlBatchUnified(urlsToCrawl, origin);
+    }
+
+    // Legacy path: direct fetch
     const settled = await Promise.allSettled(
       urlsToCrawl.map((url) => crawlPage(url, origin)),
     );
@@ -248,6 +270,179 @@ async function runCrawlBatch(
 
     return { pages, htmlByPageId };
   });
+}
+
+/**
+ * Phase 95-10: Unified crawl batch using ScrapingService.
+ * Routes through TieredFetcher with caching and cost tracking.
+ */
+async function runCrawlBatchUnified(
+  urlsToCrawl: string[],
+  origin: string,
+): Promise<CrawlBatchResult> {
+  const pages: StepPageResult[] = [];
+  const htmlByPageId = new Map<string, string>();
+
+  try {
+    const batchResult = await scrapingService.scrapeBatch(urlsToCrawl, {
+      feature: "crawlWorkflow",
+      includeHtml: true,
+      concurrency: CRAWL_CONCURRENCY,
+    });
+
+    for (let i = 0; i < batchResult.results.length; i++) {
+      const result = batchResult.results[i];
+      const url = urlsToCrawl[i];
+
+      // Skip if not same origin after redirects
+      if (result.url && !isSameOrigin(result.url, origin)) {
+        continue;
+      }
+
+      const finalUrl = normalizeUrl(result.url ?? url) ?? url;
+      const html = result.html;
+      const statusCode = result.statusCode;
+
+      // Check content type from response
+      const contentType = (result as { contentType?: string }).contentType ?? "text/html";
+      if (!contentType.includes("text/html")) {
+        // Non-HTML content - create minimal page result
+        pages.push(createMinimalPageResult(finalUrl, statusCode, null, result.responseTimeMs));
+        continue;
+      }
+
+      if (html) {
+        // Analyze HTML to extract page data
+        const analysis = analyzeHtml(
+          html,
+          finalUrl,
+          statusCode,
+          result.responseTimeMs,
+          result.url !== url ? result.url ?? null : null, // redirectUrl
+        );
+
+        const page = createPageResultFromAnalysis(finalUrl, statusCode, result, analysis);
+        pages.push(page);
+        htmlByPageId.set(page.id, html);
+      } else {
+        // No HTML - create minimal result
+        pages.push(createMinimalPageResult(finalUrl, statusCode, null, result.responseTimeMs));
+      }
+    }
+
+    log.info("Unified crawl batch complete", {
+      urlCount: urlsToCrawl.length,
+      pagesReturned: pages.length,
+      cacheHits: batchResult.cacheHits,
+      totalCost: batchResult.totalCostUsd,
+    });
+  } catch (error) {
+    log.error("Unified crawl batch failed, falling back to legacy", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    // Fallback to legacy on error
+    const settled = await Promise.allSettled(
+      urlsToCrawl.map((url) => crawlPage(url, origin)),
+    );
+
+    for (const result of settled) {
+      if (result.status === "fulfilled" && result.value) {
+        const { page, html } = result.value;
+        pages.push(page);
+        if (html) {
+          htmlByPageId.set(page.id, html);
+        }
+      }
+    }
+  }
+
+  return { pages, htmlByPageId };
+}
+
+/**
+ * Create a StepPageResult from HTML analysis.
+ */
+function createPageResultFromAnalysis(
+  url: string,
+  statusCode: number,
+  result: { responseTimeMs: number; url?: string },
+  analysis: ReturnType<typeof analyzeHtml>,
+): StepPageResult {
+  const isIndexable = !(analysis.robotsMeta?.toLowerCase().includes("noindex") ?? false);
+  const redirectUrl = result.url !== url ? result.url ?? null : null;
+
+  return {
+    id: crypto.randomUUID(),
+    url,
+    statusCode,
+    redirectUrl,
+    title: analysis.title,
+    metaDescription: analysis.metaDescription,
+    canonicalUrl: analysis.canonical,
+    robotsMeta: analysis.robotsMeta,
+    ogTitle: analysis.ogTitle,
+    ogDescription: analysis.ogDescription,
+    ogImage: analysis.ogImage,
+    h1Count: analysis.h1s.length,
+    h2Count: analysis.headingOrder.filter((h) => h === 2).length,
+    h3Count: analysis.headingOrder.filter((h) => h === 3).length,
+    h4Count: analysis.headingOrder.filter((h) => h === 4).length,
+    h5Count: analysis.headingOrder.filter((h) => h === 5).length,
+    h6Count: analysis.headingOrder.filter((h) => h === 6).length,
+    headingOrder: analysis.headingOrder,
+    wordCount: analysis.wordCount,
+    imagesTotal: analysis.images.length,
+    imagesMissingAlt: analysis.images.filter((img) => !img.alt || img.alt === "").length,
+    images: analysis.images,
+    internalLinks: analysis.internalLinks,
+    externalLinks: analysis.externalLinks,
+    hasStructuredData: analysis.hasStructuredData,
+    hreflangTags: analysis.hreflangTags,
+    isIndexable,
+    responseTimeMs: result.responseTimeMs,
+  };
+}
+
+/**
+ * Create a minimal page result for non-HTML or failed fetches.
+ */
+function createMinimalPageResult(
+  url: string,
+  statusCode: number,
+  redirectUrl: string | null,
+  responseTimeMs: number,
+): StepPageResult {
+  return {
+    id: crypto.randomUUID(),
+    url,
+    statusCode,
+    redirectUrl,
+    title: "",
+    metaDescription: "",
+    canonicalUrl: null,
+    robotsMeta: null,
+    ogTitle: null,
+    ogDescription: null,
+    ogImage: null,
+    h1Count: 0,
+    h2Count: 0,
+    h3Count: 0,
+    h4Count: 0,
+    h5Count: 0,
+    h6Count: 0,
+    headingOrder: [],
+    wordCount: 0,
+    imagesTotal: 0,
+    imagesMissingAlt: 0,
+    images: [],
+    internalLinks: [],
+    externalLinks: [],
+    hasStructuredData: false,
+    hreflangTags: [],
+    isIndexable: false,
+    responseTimeMs,
+  };
 }
 
 /**

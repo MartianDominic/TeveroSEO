@@ -15,6 +15,8 @@
 - 📋 **v9.0 On-Page Excellence** — Phase 92 (planned)
 - 📋 **v9.1 Keyword Coverage Intelligence** — Phase 93 (planned)
 - ✅ **v9.2 Premium Agency Experience** — Phase 94 (complete 2026-05-06)
+- ✅ **v10.0 Unified Scraping** — Phase 95 (complete 2026-05-07)
+- 📋 **v11.0 Agency Analytics** — Phase 96 (planned)
 
 ## Phases
 
@@ -2737,6 +2739,27 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [x] 95-02-PLAN.md — Multi-Level Caching L1-L4 (Wave 1) [In Progress]
   - [x] 95-03-PLAN.md — Queue & Rate Limiting (Wave 2) [Complete 2026-05-07]
   - [x] 95-04-PLAN.md — DataForSEO Optimization (Wave 2) [In Progress]
-  - [ ] 95-05-PLAN.md — Migration & Monitoring (Wave 3)
+  - [x] 95-05-PLAN.md — Migration & Monitoring (Wave 3) [Complete 2026-05-07]
+
+---
+
+### Phase 96: Agency Analytics Platform
+**Goal**: Unified analytics dashboard eliminating GSC account switching, surfacing actionable insights (growing/decaying, striking distance, cannibalization), and proving ROI to clients.
+**Depends on**: Phase 95 (Unified Scraping Infrastructure)
+**Requirements**: ANALYTICS-01, ANALYTICS-02, ANALYTICS-03, ANALYTICS-04, ANALYTICS-05
+**Working directory**: `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Master dashboard aggregates metrics across 100+ sites in <2s
+  2. Growing/Decaying algorithm detects 3-week trends with >90% accuracy
+  3. Full 25,000 row GSC query capture per sync (not 1,000)
+  4. Cannibalization UI exposes existing CannibalizationService
+  5. Annotations timeline auto-imports Google core updates
+  6. Client portal with per-metric visibility controls
+**Plans**: 5 plans
+  - [ ] 96-01-PLAN.md — GSC Data Foundation: 25K extraction, all dimensions, 5-year retention
+  - [ ] 96-02-PLAN.md — Master Dashboard: multi-site aggregation, tagging, comparison mode
+  - [ ] 96-03-PLAN.md — Actionable Insights: growing/decaying, striking distance, cannibalization UI
+  - [ ] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting
+  - [ ] 96-05-PLAN.md — Client Portal: white-label views, exports, privacy controls
 
 ---

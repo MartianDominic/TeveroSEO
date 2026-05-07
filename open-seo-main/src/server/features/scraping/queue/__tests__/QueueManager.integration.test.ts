@@ -288,9 +288,8 @@ describe("QueueManager Priority System", () => {
   describe("Job Metadata", () => {
     it("should preserve metadata in job data", () => {
       const metadata = {
-        featureContext: "competitor_spy",
+        featureContext: "competitor_spy" as const,
         auditId: "audit-123",
-        userId: "user-456",
       };
 
       const input = createMockJobInput({ metadata });
