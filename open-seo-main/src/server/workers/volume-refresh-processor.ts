@@ -1,6 +1,7 @@
 /**
  * Volume Refresh Processor
  * Phase 93: Keyword Coverage Intelligence
+ * Phase 95-10: Consumer Integration Completion
  *
  * Sandboxed processor for volume refresh jobs.
  * Updates keyword metrics WITHOUT triggering re-clustering.
@@ -8,12 +9,15 @@
  * CRITICAL per 93-RESEARCH.md pitfall #2:
  * - Only update searchVolume, cpc, competition, enrichedAt
  * - Do NOT touch fields that would trigger clustering (keyword, embedding, etc.)
+ *
+ * Phase 95-10: Integrated with DfsCostTracker for cost attribution.
  */
 import type { Job } from "bullmq";
 import { db } from "@/db";
 import { prospectKeywords } from "@/db/prospect-keyword-schema";
 import { prospects } from "@/db/prospect-schema";
 import { researchSessionService } from "@/server/features/keywords/services/ResearchSessionService";
+import { getDfsCostTracker, extractDomainFromUrl } from "@/server/features/scraping/providers/DfsCostTracker";
 import { eq, and, sql, lt, isNull, or, ne } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import type { VolumeRefreshJobData, VolumeRefreshResult } from "@/server/queues/volumeRefreshQueue";
@@ -23,6 +27,7 @@ const log = createLogger({ module: "volume-refresh-processor" });
 const BATCH_SIZE = 1000;  // DataForSEO max per request
 const STALE_THRESHOLD_DAYS = 30;
 const COST_PER_REQUEST_USD = 0.15;  // DataForSEO pricing
+const COST_PER_KEYWORD_USD = 0.0001;  // Labs keyword volume cost per keyword
 
 /**
  * Fetch keyword metrics from DataForSEO.
@@ -76,10 +81,17 @@ async function fetchKeywordMetrics(
     throw new Error(`DataForSEO API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    tasks?: Array<{ result?: Array<{
+      keyword: string;
+      search_volume?: number;
+      cpc?: number;
+      competition?: number;
+    }> }>;
+  };
   const results = data?.tasks?.[0]?.result || [];
 
-  return results.map((r: any) => ({
+  return results.map((r) => ({
     keyword: r.keyword,
     searchVolume: r.search_volume ?? null,
     cpc: r.cpc ?? null,
@@ -89,17 +101,22 @@ async function fetchKeywordMetrics(
 
 /**
  * Process a single prospect's volume refresh.
+ * Phase 95-10: Integrated with DfsCostTracker for cost attribution.
  */
 async function processProspectRefresh(
   prospectId: string,
   triggeredBy: string,
   locationCode: number,
-  languageCode: string
+  languageCode: string,
+  jobId?: string
 ): Promise<VolumeRefreshResult> {
   const startTime = Date.now();
   let keywordsUpdated = 0;
   let keywordsSkipped = 0;
   let totalCost = 0;
+
+  // Get cost tracker for cost attribution
+  const costTracker = getDfsCostTracker(db);
 
   // Query keywords needing refresh (enrichedAt > 30 days old OR null)
   const staleThreshold = sql`NOW() - INTERVAL '${STALE_THRESHOLD_DAYS} days'`;
@@ -138,12 +155,29 @@ async function processProspectRefresh(
   }
 
   // Fetch metrics from DataForSEO
+  const fetchStartTime = Date.now();
   const metrics = await fetchKeywordMetrics(
     staleKeywords.map(k => k.keyword),
     locationCode,
     languageCode
   );
+  const fetchTimeMs = Date.now() - fetchStartTime;
   totalCost = COST_PER_REQUEST_USD;  // One request per batch
+
+  // Track cost for this API call via DfsCostTracker
+  await costTracker.recordCost({
+    url: `labs://search-volume/batch?count=${staleKeywords.length}`,
+    domain: "dataforseo-labs",
+    mode: "basic", // Labs API is basic mode
+    usedStandardQueue: false, // Labs API is always live
+    estimatedCost: totalCost,
+    actualCost: staleKeywords.length * COST_PER_KEYWORD_USD,
+    success: metrics.length > 0,
+    statusCode: metrics.length > 0 ? 200 : 500,
+    responseTimeMs: fetchTimeMs,
+    jobId,
+    // Note: workspaceId and clientId would come from prospect lookup
+  });
 
   // Build keyword -> metrics map
   const metricsMap = new Map(
@@ -191,6 +225,7 @@ async function processProspectRefresh(
     keywordsUpdated,
     keywordsSkipped,
     costUsd: totalCost,
+    jobId,
   });
 
   return {
@@ -204,17 +239,19 @@ async function processProspectRefresh(
 
 /**
  * Main processor function.
+ * Phase 95-10: Pass jobId for cost attribution tracking.
  */
 export default async function volumeRefreshProcessor(
   job: Job<VolumeRefreshJobData>
 ): Promise<VolumeRefreshResult | VolumeRefreshResult[]> {
   const { prospectId, triggeredBy, locationCode, languageCode } = job.data;
   const jobLog = createLogger({ module: "volume-refresh-processor", jobId: job.id });
+  const jobId = job.id;
 
   const loc = locationCode ?? 2440;  // Default: Lithuania
   const lang = languageCode ?? "lt";
 
-  jobLog.info("Starting volume refresh", { prospectId, triggeredBy });
+  jobLog.info("Starting volume refresh", { prospectId, triggeredBy, jobId });
 
   // Handle "all" prospect (monthly global refresh)
   if (prospectId === "all") {
@@ -226,7 +263,7 @@ export default async function volumeRefreshProcessor(
     const results: VolumeRefreshResult[] = [];
     for (const p of allProspects) {
       try {
-        const result = await processProspectRefresh(p.id, triggeredBy, loc, lang);
+        const result = await processProspectRefresh(p.id, triggeredBy, loc, lang, jobId);
         results.push(result);
         // Rate limit: 5 requests per minute per 93-RESEARCH.md
         await new Promise(resolve => setTimeout(resolve, 12000));  // 12s between prospects
@@ -238,5 +275,5 @@ export default async function volumeRefreshProcessor(
   }
 
   // Single prospect refresh
-  return processProspectRefresh(prospectId, triggeredBy, loc, lang);
+  return processProspectRefresh(prospectId, triggeredBy, loc, lang, jobId);
 }
