@@ -5,7 +5,7 @@
  * Handles site-level tag operations for multi-site filtering.
  */
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { DrizzleClient } from '@/server/db';
+import type { DrizzleClient } from '@/db';
 import { siteTags, type SiteTag, type SiteTagInsert } from '@/db/analytics-tags-schema';
 
 export class SiteTagsRepository {

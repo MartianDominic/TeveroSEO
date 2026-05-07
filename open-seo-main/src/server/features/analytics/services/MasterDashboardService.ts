@@ -6,7 +6,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { subDays, format } from 'date-fns';
-import type { DrizzleClient } from '@/server/db';
+import type { DrizzleClient } from '@/db';
 import { SiteTagsRepository } from '../repositories/SiteTagsRepository';
 import type {
   DashboardFilters,

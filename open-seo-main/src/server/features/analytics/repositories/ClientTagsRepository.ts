@@ -5,7 +5,7 @@
  * Handles client-level tag operations for agency organization.
  */
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { DrizzleClient } from '@/server/db';
+import type { DrizzleClient } from '@/db';
 import { clientTags, type ClientTag, type ClientTagInsert } from '@/db/analytics-tags-schema';
 
 export class ClientTagsRepository {
