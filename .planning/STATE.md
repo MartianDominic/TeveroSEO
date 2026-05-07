@@ -617,17 +617,25 @@ Key deliverables:
 
 ### Phase 95 Unified Scraping Infrastructure (2026-05-07)
 
-**Status:** Planning
+**Status:** In Progress (Plan 01 Complete)
 **Estimated Effort:** 5-6 weeks
 **Cost Impact:** 96-98% reduction in scraping costs ($0.02/page → $0.0002/page)
 
 | Plan | Focus | Duration | Status |
 |------|-------|----------|--------|
-| 95-01 | TieredFetcher + Domain Learning | 1.5 weeks | Planned |
+| 95-01 | TieredFetcher + Domain Learning | 1.5 weeks | ✓ Complete |
 | 95-02 | Multi-Level Caching (L1-L4) | 1 week | Planned |
 | 95-03 | Queue & Rate Limiting | 1 week | Planned |
 | 95-04 | DataForSEO Optimization | 0.5 week | Planned |
 | 95-05 | Migration & Monitoring | 1 week | Planned |
+
+**95-01 Key Deliverables:**
+- 7-tier escalation: direct → webshare → geonode → camoufox → dfs_basic → dfs_js → dfs_browser
+- Per-domain learning with Redis L1 cache + PostgreSQL persistence
+- ContentQualityAssessor: SPA detection, bot detection, technology fingerprinting
+- CamoufoxPool: stealth browser management with fingerprint spoofing
+- Migration adapters for HybridCrawler and UniversalCrawler
+- 14 commits, 40 core tests passing
 
 **Architecture:**
 - Tiered proxy escalation: Direct → Webshare → Geonode ($0.77/GB) → DataForSEO
