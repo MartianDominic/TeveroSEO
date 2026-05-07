@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v10.0
-milestone_name: On-Page SEO Mastery
-status: complete
-last_updated: "2026-05-06T20:38:00Z"
-last_activity: "2026-05-06 -- Phase 92 complete (On-Page SEO Mastery)"
+milestone: v2.0
+milestone_name: Unified Product
+status: executing
+last_updated: "2026-05-07T15:59:21.191Z"
+last_activity: 2026-05-06 -- Phase 92 complete (On-Page SEO Mastery)
 progress:
-  total_phases: 15
-  completed_phases: 15
-  total_plans: 68
-  completed_plans: 68
-  percent: 100
+  total_phases: 91
+  completed_phases: 75
+  total_plans: 367
+  completed_plans: 349
+  percent: 95
 ---
 
 # Project State
@@ -624,12 +624,24 @@ Key deliverables:
 | Plan | Focus | Duration | Status |
 |------|-------|----------|--------|
 | 95-01 | TieredFetcher + Domain Learning | 1.5 weeks | ✓ Complete |
-| 95-02 | Multi-Level Caching (L1-L4) | 1 week | In Progress |
+| 95-02 | Multi-Level Caching (L1-L4) | 1 week | ✓ Complete |
 | 95-03 | Queue & Rate Limiting | 1 week | ✓ Complete |
-| 95-04 | DataForSEO Optimization | 0.5 week | In Progress |
+| 95-04 | DataForSEO Optimization | 0.5 week | ✓ Complete |
 | 95-05 | Migration & Monitoring | 1 week | Planned |
 
+**95-02 Key Deliverables:**
+
+- 4-tier caching: L1 Memory LRU (100MB), L2 Redis (2GB), L3 PostgreSQL, L4 R2 Archive
+- URL normalization stripping 20+ tracking parameters (utm_*, fbclid, gclid, etc.)
+- Content-type-aware TTL strategy with level multipliers (L1=10%, L2=50%, L3=100%, L4=300%)
+- Content deduplication via SHA-256 content hashing
+- Cascade invalidation (L4 → L3 → L2 → L1) with stale-while-revalidate
+- Prometheus-compatible metrics with 13 metric definitions
+- TieredFetcher integration with cache-first lookup
+- 355 tests passing across 10 test files
+
 **95-03 Key Deliverables:**
+
 - Redis sliding window rate limiting (2 req/sec per domain) with Lua scripts
 - Domain normalization groups subdomains (www.example.com → example.com)
 - Adaptive backoff: doubles on 429/503 (max 16x), halves on success
@@ -641,6 +653,7 @@ Key deliverables:
 - 99 unit tests passing
 
 **95-01 Key Deliverables:**
+
 - 7-tier escalation: direct → webshare → geonode → camoufox → dfs_basic → dfs_js → dfs_browser
 - Per-domain learning with Redis L1 cache + PostgreSQL persistence
 - ContentQualityAssessor: SPA detection, bot detection, technology fingerprinting
@@ -649,12 +662,14 @@ Key deliverables:
 - 14 commits, 40 core tests passing
 
 **Architecture:**
+
 - Tiered proxy escalation: Direct → Webshare → Geonode ($0.77/GB) → DataForSEO
 - Per-domain learning: Remember which tier works for each domain
 - Multi-level caching: L1 (memory) → L2 (Redis) → L3 (PostgreSQL) → L4 (R2)
 - Unified ScrapingService consumed by all 6 features (Site Audits, Hybrid Crawler, Prospect Analysis, SERP Content, Competitor Spy, Content Briefs)
 
 **Source Documents:**
+
 - `.planning/phases/95-scraping-infrastructure/PHASE-95-CONTEXT.md` — Phase context
 - `.planning/phases/95-scraping-infrastructure/95-01-TIERED-FETCHER-PLAN.md` — TieredFetcher + Domain Learning
 - `.planning/phases/95-scraping-infrastructure/95-02-CACHING-PLAN.md` — Multi-Level Caching
