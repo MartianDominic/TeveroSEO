@@ -8,7 +8,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { gscSyncQueue } from "@/server/features/analytics/jobs/gsc-sync.job";
 
-export const Route = createFileRoute("/api/analytics/sync-health")({
+// Route types regenerated on build - suppress until then
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = (createFileRoute as any)("/api/analytics/sync-health")({
   loader: async () => {
     // Get queue stats in parallel
     const [waiting, active, completed, failed, delayed] = await Promise.all([

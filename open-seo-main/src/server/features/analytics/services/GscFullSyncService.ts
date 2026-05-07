@@ -9,7 +9,7 @@
 import type { GscPaginationService } from "./GscPaginationService";
 import type { QueryAnalyticsRepository } from "../repositories/QueryAnalyticsRepository";
 import type { GscBridgeService } from "@/server/services/GscBridgeService";
-import type { IORedis } from "@/server/lib/redis";
+import type Redis from "ioredis";
 import { DIMENSION_COMBINATIONS, type DimensionCombination } from "../types";
 import { createLogger } from "@/server/lib/logger";
 
@@ -33,7 +33,7 @@ export class GscFullSyncService {
     private paginationService: GscPaginationService,
     private repository: QueryAnalyticsRepository,
     private gscBridge: GscBridgeService,
-    private redis: IORedis
+    private redis: Redis
   ) {}
 
   /**
@@ -173,7 +173,7 @@ export function createGscFullSyncService(
   paginationService: GscPaginationService,
   repository: QueryAnalyticsRepository,
   gscBridge: GscBridgeService,
-  redis: IORedis
+  redis: Redis
 ): GscFullSyncService {
   return new GscFullSyncService(paginationService, repository, gscBridge, redis);
 }
@@ -193,7 +193,7 @@ export function getGscFullSyncService(deps?: {
   paginationService: GscPaginationService;
   repository: QueryAnalyticsRepository;
   gscBridge: GscBridgeService;
-  redis: IORedis;
+  redis: Redis;
 }): GscFullSyncService {
   if (!defaultInstance) {
     if (!deps) {
