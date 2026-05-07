@@ -609,5 +609,36 @@ Key deliverables:
 | Phase | Title | Status |
 |-------|-------|--------|
 | 92 | On-Page SEO Mastery | ✓ Complete |
+| 93 | Coverage Dashboard UI | Planning |
+| 94 | Design System v6 Migration | ✓ Complete |
+| 95 | Unified Scraping Infrastructure | Planning |
 
 **Milestone v10.0: COMPLETE** (2026-05-06)
+
+### Phase 95 Unified Scraping Infrastructure (2026-05-07)
+
+**Status:** Planning
+**Estimated Effort:** 5-6 weeks
+**Cost Impact:** 96-98% reduction in scraping costs ($0.02/page → $0.0002/page)
+
+| Plan | Focus | Duration | Status |
+|------|-------|----------|--------|
+| 95-01 | TieredFetcher + Domain Learning | 1.5 weeks | Planned |
+| 95-02 | Multi-Level Caching (L1-L4) | 1 week | Planned |
+| 95-03 | Queue & Rate Limiting | 1 week | Planned |
+| 95-04 | DataForSEO Optimization | 0.5 week | Planned |
+| 95-05 | Migration & Monitoring | 1 week | Planned |
+
+**Architecture:**
+- Tiered proxy escalation: Direct → Webshare → Geonode ($0.77/GB) → DataForSEO
+- Per-domain learning: Remember which tier works for each domain
+- Multi-level caching: L1 (memory) → L2 (Redis) → L3 (PostgreSQL) → L4 (R2)
+- Unified ScrapingService consumed by all 6 features (Site Audits, Hybrid Crawler, Prospect Analysis, SERP Content, Competitor Spy, Content Briefs)
+
+**Source Documents:**
+- `.planning/phases/95-scraping-infrastructure/PHASE-95-CONTEXT.md` — Phase context
+- `.planning/phases/95-scraping-infrastructure/95-01-TIERED-FETCHER-PLAN.md` — TieredFetcher + Domain Learning
+- `.planning/phases/95-scraping-infrastructure/95-02-CACHING-PLAN.md` — Multi-Level Caching
+- `.planning/phases/95-scraping-infrastructure/95-03-QUEUE-RATE-LIMITING-PLAN.md` — Queue & Rate Limiting
+- `.planning/phases/95-scraping-infrastructure/95-04-DATAFORSEO-OPTIMIZATION-PLAN.md` — DataForSEO Optimization
+- `.planning/phases/95-scraping-infrastructure/95-05-MIGRATION-MONITORING-PLAN.md` — Migration & Monitoring

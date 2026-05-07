@@ -723,6 +723,288 @@ export function getUrlHash(url: string): string {
 | Cache poisoning | Tampering | Validate HTML content before caching |
 | DoS via unbounded cache | Denial of Service | Byte-based cache limits, TTLs |
 
+## Camoufox T2.5 Tier Integration
+
+**Research date:** 2026-05-07
+**Confidence:** HIGH (verified via npm, GitHub, production benchmarks)
+
+### Why Camoufox
+
+Camoufox is a modified Firefox browser with C++/Rust-level anti-detection modifications. Unlike Playwright stealth plugins that inject JavaScript patches after launch, Camoufox modifies Firefox before compilation - making detection virtually impossible via JS inspection.
+
+**Position in tier hierarchy:**
+
+```
+T0: Direct Fetch           → FREE        → 60-70% success
+T1: Webshare Free DC       → FREE        → Defeats IP rate limits
+T2: Geonode Residential    → $0.77/GB    → Defeats DC/ASN detection (fetch only)
+T2.5: Camoufox + Geonode   → $0.77/GB    → Defeats fingerprinting + JS challenges ← NEW
+T3: DataForSEO Basic       → $0.000125   → Defeats most protections
+T4: DataForSEO JS          → $0.00125    → Defeats JS rendering requirements
+T5: DataForSEO Browser     → $0.00425    → Defeats extreme protection
+```
+
+**When to use T2 vs T2.5:**
+- **T2 (fetch + residential):** Site returns full HTML, just blocked datacenter IPs
+- **T2.5 (Camoufox + residential):** Site has fingerprint detection, JS challenges, or behavioral analysis
+
+### Standard Stack - Camoufox
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| `camoufox-js` | latest | Apify's Node.js port of Camoufox |
+| `playwright-core` | existing | Browser automation (Camoufox wraps this) |
+
+**Installation:**
+```bash
+pnpm add camoufox-js playwright-core
+npx camoufox-js fetch  # Downloads browser binary (~300MB)
+```
+
+### Architecture Pattern: Camoufox Pool
+
+**Resource requirements (Contabo 8vCPU / 24GB RAM):**
+- Memory per instance: ~200-250MB (headless)
+- Max concurrent: 25-32 instances
+- Recommended: 15-20 instances for stable operation
+- Instance recycling: After 100 requests OR 30 minutes
+
+```typescript
+import { Camoufox } from 'camoufox-js';
+import type { Browser } from 'playwright-core';
+
+interface CamoufoxPoolConfig {
+  maxInstances: number;      // 15-20 for 24GB RAM
+  maxRequestsPerInstance: number;  // 100
+  maxAgeMs: number;          // 30 * 60 * 1000
+}
+
+class CamoufoxPool {
+  private pool: Browser[] = [];
+  private instanceMeta: WeakMap<Browser, { requests: number; createdAt: number }> = new WeakMap();
+  
+  async acquire(proxyConfig: GeonodeConfig): Promise<Browser> {
+    // Check if existing browser needs recycling
+    const available = this.pool.find(b => {
+      const meta = this.instanceMeta.get(b);
+      if (!meta) return true;
+      return meta.requests < this.config.maxRequestsPerInstance &&
+             Date.now() - meta.createdAt < this.config.maxAgeMs;
+    });
+    
+    if (available) {
+      const meta = this.instanceMeta.get(available)!;
+      meta.requests++;
+      return available;
+    }
+    
+    // Create new instance
+    const browser = await Camoufox({
+      headless: true,
+      os: ['windows', 'macos'],  // Rotate fingerprints
+      geoip: true,               // CRITICAL: Match fingerprint to proxy IP
+      humanize: 2.5,             // Mouse movement delay
+      block_images: true,        // Faster loading
+      block_webrtc: true,        // Prevent IP leaks
+      proxy: {
+        server: 'http://premium-residential.geonode.com:9000',
+        username: this.buildGeonodeUsername(proxyConfig),
+        password: process.env.GEONODE_PASSWORD!,
+      },
+    });
+    
+    this.instanceMeta.set(browser, { requests: 1, createdAt: Date.now() });
+    this.pool.push(browser);
+    return browser;
+  }
+  
+  private buildGeonodeUsername(config: GeonodeConfig): string {
+    let username = process.env.GEONODE_USERNAME!;
+    if (config.sessionId) username += `-session-${config.sessionId}`;
+    if (config.country) username += `-country-${config.country}`;
+    return username;
+  }
+}
+```
+
+### Detection vs Bad Page Assessment
+
+**TypeScript interface for ContentQualityAssessor:**
+
+```typescript
+export type FetchDecision = 
+  | 'SUCCESS'           // Content valid, proceed
+  | 'RETRY_SAME_TIER'   // Transient error, retry
+  | 'ESCALATE_TIER'     // Anti-bot detected, escalate
+  | 'PERMANENT_FAIL';   // Page genuinely broken
+
+export interface AssessmentResult {
+  decision: FetchDecision;
+  escalationScope: 'page' | 'domain';
+  antiBotConfidence: number;     // 0-1
+  contentValidConfidence: number; // 0-1
+  signals: {
+    antiBot: {
+      vendor: 'cloudflare' | 'akamai' | 'datadome' | 'perimeterx' | 'none';
+      hasCaptcha: boolean;
+      hasJsChallenge: boolean;
+    };
+    content: {
+      hasTitle: boolean;
+      wordCount: number;
+      textToHtmlRatio: number;
+      spaFramework: 'react' | 'nextjs' | 'vue' | 'angular' | 'none';
+    };
+  };
+  nextTier?: ScrapeTier;
+}
+```
+
+**Anti-bot detection patterns:**
+```typescript
+const ANTI_BOT_PATTERNS = {
+  cloudflare: ['cf-browser-verification', '__cf_chl_opt', 'Attention Required', 'Ray ID:'],
+  akamai: ['Access Denied - Akamai', 'Reference #'],
+  datadome: ['DataDome', 'dd_challenge', 'geo.captcha-delivery.com'],
+  perimeterx: ['px-captcha', '_px', 'PerimeterX'],
+};
+
+const CAPTCHA_PATTERNS = ['g-recaptcha', 'h-captcha', 'cf-turnstile', 'funcaptcha'];
+```
+
+### Timeout & Backoff Strategy
+
+| Tier | Timeout | Max Retries | Base Backoff |
+|------|---------|-------------|--------------|
+| T0: Direct | 5s | 2 | 1,000ms |
+| T1: Webshare DC | 8s | 2 | 1,000ms |
+| T2: Geonode | 12s | 2 | 1,500ms |
+| T2.5: Camoufox | 20s | 1 | 2,000ms |
+| T3-T5: DataForSEO | 30s | 2 | 2,000ms |
+
+**Escalation triggers:**
+- 429 Rate Limited → Immediate escalate
+- 403 + DC detection → Skip to T2 residential
+- 403 + bot detection → Escalate one tier
+- JS required (empty SPA shell) → Skip to T2.5 or T3
+- CAPTCHA detected → Skip to T3+
+- 3 consecutive failures on different pages → Domain-level escalation
+
+**Circuit breaker:**
+- Failure threshold: 5 failures in 60 seconds
+- Open duration: 30 seconds before half-open probe
+- Reset on success: Immediate close
+
+### BullMQ Integration Pattern
+
+**Job structure:** Domain-level jobs with internal page batching
+
+```typescript
+interface ScrapeJobData {
+  domain: string;
+  urls: string[];
+  step: 'init' | 'fetching' | 'escalating' | 'validating' | 'complete' | 'failed';
+  currentTier: ScrapeTier;
+  pageResults: Record<string, PageResult>;
+  currentBatchStart: number;
+  batchSize: number; // 50 pages
+  escalationCount: number;
+  maxEscalations: number; // 3
+}
+```
+
+**Mid-crawl escalation handling:**
+1. Track per-page tier in `pageResults`
+2. On 5 consecutive failures → trigger escalation step
+3. Escalation step: determine next tier, filter to failed URLs only
+4. Resume fetching with higher tier
+5. Don't re-queue successful pages
+
+**Concurrency control:**
+```typescript
+const TIER_CONCURRENCY: Record<ScrapeTier, number> = {
+  direct: 20,
+  webshare: 10,
+  camoufox: 3,      // Resource intensive
+  geonode: 10,
+  dfs_basic: 15,
+  dfs_js: 8,
+  dfs_browser: 5,
+};
+```
+
+### World-Class Camoufox Configuration
+
+```typescript
+// Production config - all stealth options enabled
+const CAMOUFOX_CONFIG = {
+  // Fingerprint rotation
+  os: ['windows', 'macos'],  // Exclude Linux (uncommon in real traffic)
+  
+  // CRITICAL: Match fingerprint to proxy IP location
+  geoip: true,
+  
+  // Behavioral humanization
+  humanize: 2.5,  // 2.5 second cursor movement variance
+  
+  // Performance
+  headless: true,     // Use true, not 'virtual' for stability
+  block_images: true, // Faster loading for scraping
+  
+  // Security
+  block_webrtc: true,  // Prevent IP leaks
+  allow_webgl: false,  // Disable unless required
+};
+```
+
+**Detection evasion verified:**
+- CreepJS: 0% bot score
+- Pixelscan: Pass
+- bot.sannysoft.com: Pass
+- browserleaks.com: Pass
+
+**Critical warnings:**
+1. Fingerprints do NOT auto-rotate - must recycle browser instance
+2. Behavioral simulation (scrolling, delays) is YOUR responsibility
+3. Inter-request delays should be Gaussian-distributed (2-8 seconds), not fixed
+4. May 2026: v146.x releases are experimental after maintenance gap
+
+### Updated Tier Definitions
+
+```typescript
+export const SCRAPE_TIERS = [
+  "direct",       // T0: Free - direct fetch
+  "webshare",     // T1: Free - DC proxies
+  "geonode",      // T2: $0.77/GB - residential fetch
+  "camoufox",     // T2.5: $0.77/GB - stealth browser + residential
+  "dfs_basic",    // T3: $0.000125/pg - DataForSEO basic
+  "dfs_js",       // T4: $0.00125/pg - DataForSEO JS
+  "dfs_browser",  // T5: $0.00425/pg - DataForSEO browser
+] as const;
+
+export const TIER_INDEX: Record<ScrapeTier, number> = {
+  direct: 0,
+  webshare: 1,
+  geonode: 2,
+  camoufox: 2.5,
+  dfs_basic: 3,
+  dfs_js: 4,
+  dfs_browser: 5,
+};
+```
+
+### Cost Comparison
+
+**5,000 pages scenario (50% need stealth browser):**
+
+| Strategy | Cost |
+|----------|------|
+| All DataForSEO | $100.00 |
+| T0-T2-T3 (no Camoufox) | $5.00 |
+| T0-T2-T2.5-T3 (with Camoufox) | $2.00-3.00 |
+
+**Camoufox reduces DataForSEO fallback by ~50% for sites with JS challenges.**
+
 ## Sources
 
 ### Primary (HIGH confidence)
