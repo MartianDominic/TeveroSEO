@@ -141,3 +141,41 @@ export interface TrendResult {
     threshold: number;
   };
 }
+
+/**
+ * Phase 96-03: Striking Distance Types
+ */
+
+export interface StrikingDistancePage {
+  pageUrl: string;
+  pageTitle?: string;
+  avgPosition: number;
+  impressions: number;
+  currentClicks: number;
+  potentialClicks: number;   // Estimated clicks if moved to position 1-3
+  clickGain: number;         // potentialClicks - currentClicks
+  difficulty: 'easy' | 'medium' | 'hard';
+  topQueries: Array<{
+    query: string;
+    position: number;
+    impressions: number;
+    clicks: number;
+  }>;
+}
+
+export interface StrikingDistanceFilters {
+  minPosition?: number;      // default 11
+  maxPosition?: number;      // default 20
+  minImpressions?: number;   // default 50
+  targetPosition?: number;   // default 3 (estimate CTR at this position)
+  limit?: number;            // default 100
+}
+
+export interface StrikingDistanceResult {
+  pages: StrikingDistancePage[];
+  meta: {
+    totalPages: number;
+    totalPotentialClicks: number;
+    avgDifficulty: number;  // 1=easy, 2=medium, 3=hard
+  };
+}
