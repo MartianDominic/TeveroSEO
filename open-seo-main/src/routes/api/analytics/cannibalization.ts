@@ -31,8 +31,10 @@ async function getClientIdFromSite(_siteId: string): Promise<string | null> {
   return 'client-placeholder';
 }
 
-export const Route = createFileRoute("/api/analytics/cannibalization")({
-  loader: async ({ request }) => {
+// Route types regenerated on build - suppress until then
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = (createFileRoute as any)("/api/analytics/cannibalization")({
+  loader: async ({ request }: any) => {
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams);
 

@@ -16,12 +16,12 @@
  * Uses continuous aggregate for sub-second queries at scale.
  */
 import { sql } from 'drizzle-orm';
-import { db } from '@/db';
+import { db, type DbClient } from '@/db';
 import type { TrendAnalysis, TrendFilters, TrendResult, QueryFilter } from '../types';
 import { format, subDays } from 'date-fns';
 
 export class TrendDetectionService {
-  constructor(private db: typeof db) {}
+  constructor(private db: DbClient) {}
 
   /**
    * Analyze page trends for a site.

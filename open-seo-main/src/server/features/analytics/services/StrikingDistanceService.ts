@@ -16,7 +16,7 @@
  * - Hard (18-20): 1-3 positions to climb (but furthest from page 1)
  */
 import { sql } from 'drizzle-orm';
-import { db } from '@/db';
+import { db, type DbClient } from '@/db';
 import type { StrikingDistancePage, StrikingDistanceFilters, StrikingDistanceResult } from '../types';
 import { format, subDays } from 'date-fns';
 
@@ -29,7 +29,7 @@ const CTR_ESTIMATES: Record<number, number> = {
 };
 
 export class StrikingDistanceService {
-  constructor(private db: typeof db) {}
+  constructor(private db: DbClient) {}
 
   /**
    * Get pages in striking distance (positions 11-20).
@@ -120,7 +120,7 @@ export class StrikingDistanceService {
       LIMIT ${limit}
     `);
 
-    const pages: StrikingDistancePage[] = result.rows.map(row => {
+    const pages: StrikingDistancePage[] = result.rows.map((row: any) => {
       const potentialClicks = Math.round(row.total_impressions * targetCtr);
       const clickGain = potentialClicks - row.total_clicks;
       const difficulty = this.calculateDifficulty(row.avg_position);

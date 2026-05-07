@@ -5,11 +5,13 @@
  * Returns all unique tags for filtering dropdown.
  */
 import { createFileRoute } from '@tanstack/react-router';
-import { getDb } from '@/server/db';
+import { db } from '@/db';
 import { SiteTagsRepository } from '@/server/features/analytics/repositories/SiteTagsRepository';
 
-export const Route = createFileRoute('/api/analytics/tags')({
-  loader: async ({ request }) => {
+// Route types regenerated on build - suppress until then
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = (createFileRoute as any)('/api/analytics/tags')({
+  loader: async ({ request }: any) => {
     try {
       // TODO: Get workspace from auth context for scoping
       const workspaceId = request.headers.get('X-Workspace-ID');
@@ -20,7 +22,6 @@ export const Route = createFileRoute('/api/analytics/tags')({
         );
       }
 
-      const db = getDb();
       const repo = new SiteTagsRepository(db);
 
       // Get all unique tags with counts

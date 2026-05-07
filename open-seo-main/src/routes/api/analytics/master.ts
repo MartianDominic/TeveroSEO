@@ -6,7 +6,7 @@
  */
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
-import { getDb } from '@/server/db';
+import { db } from '@/db';
 import { getMasterDashboardService } from '@/server/features/analytics/services/MasterDashboardService';
 import { SiteTagsRepository } from '@/server/features/analytics/repositories/SiteTagsRepository';
 
@@ -18,8 +18,10 @@ const querySchema = z.object({
   siteIds: z.string().optional(), // Comma-separated UUIDs
 });
 
-export const Route = createFileRoute('/api/analytics/master')({
-  loader: async ({ request }) => {
+// Route types regenerated on build - suppress until then
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = (createFileRoute as any)('/api/analytics/master')({
+  loader: async ({ request }: any) => {
     try {
       const url = new URL(request.url);
       const params = Object.fromEntries(url.searchParams);
@@ -59,7 +61,6 @@ export const Route = createFileRoute('/api/analytics/master')({
       };
 
       // Get service and fetch data
-      const db = getDb();
       const siteTagsRepo = new SiteTagsRepository(db);
       const dashboardService = getMasterDashboardService(db, siteTagsRepo);
 

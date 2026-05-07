@@ -5,11 +5,11 @@
  * Handles site-level tag operations for multi-site filtering.
  */
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { DrizzleClient } from '@/db';
+import type { DbClient } from '@/db';
 import { siteTags, type SiteTag, type SiteTagInsert } from '@/db/analytics-tags-schema';
 
 export class SiteTagsRepository {
-  constructor(private db: DrizzleClient) {}
+  constructor(private db: DbClient) {}
 
   async findBySiteId(siteId: string): Promise<SiteTag[]> {
     return this.db.select().from(siteTags).where(eq(siteTags.siteId, siteId));
@@ -31,7 +31,7 @@ export class SiteTagsRepository {
       .from(siteTags)
       .where(inArray(siteTags.tagName, tagNames));
 
-    return results.map((r) => r.siteId);
+    return results.map((r: any) => r.siteId);
   }
 
   /**

@@ -38,8 +38,10 @@ async function verifySiteOwnership(_siteId: string, _workspaceId: string): Promi
   return true;
 }
 
-export const Route = createFileRoute("/api/analytics/annotations")({
-  loader: async ({ request }) => {
+// Route types regenerated on build - suppress until then
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Route = (createFileRoute as any)("/api/analytics/annotations")({
+  loader: async ({ request }: any) => {
     const workspaceId = await getWorkspaceIdFromRequest(request);
     if (!workspaceId) {
       return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });

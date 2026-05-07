@@ -6,7 +6,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { subDays, format } from 'date-fns';
-import type { DrizzleClient } from '@/db';
+import type { DbClient } from '@/db';
 import { SiteTagsRepository } from '../repositories/SiteTagsRepository';
 import type {
   DashboardFilters,
@@ -18,7 +18,7 @@ import type {
 
 export class MasterDashboardService {
   constructor(
-    private db: DrizzleClient,
+    private db: DbClient,
     private siteTagsRepo: SiteTagsRepository
   ) {}
 
@@ -372,7 +372,7 @@ export class MasterDashboardService {
 let instance: MasterDashboardService | null = null;
 
 export function getMasterDashboardService(
-  db?: DrizzleClient,
+  db?: DbClient,
   siteTagsRepo?: SiteTagsRepository
 ): MasterDashboardService {
   if (!instance && db && siteTagsRepo) {

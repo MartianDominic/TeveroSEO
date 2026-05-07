@@ -3,12 +3,12 @@
  * Phase 96-03: Annotation storage and retrieval
  */
 import { eq, and, gte, lte, inArray, or, isNull } from 'drizzle-orm';
-import { db } from '@/db';
+import { db, type DbClient } from '@/db';
 import { annotations } from '@/db/analytics-schema';
 import type { Annotation, AnnotationFilters, AnnotationType } from '../types';
 
 export class AnnotationsRepository {
-  constructor(private db: typeof db) {}
+  constructor(private db: DbClient) {}
 
   /**
    * Get annotations for a site/workspace with filters.
@@ -39,11 +39,13 @@ export class AnnotationsRepository {
       conditions.push(inArray(annotations.annotationType, filters.types));
     }
 
-    return this.db
+    const results = await this.db
       .select()
       .from(annotations)
       .where(and(...conditions))
-      .orderBy(annotations.annotationDate) as Promise<Annotation[]>;
+      .orderBy(annotations.annotationDate);
+
+    return results as unknown as Annotation[];
   }
 
   /**
@@ -112,7 +114,7 @@ export class AnnotationsRepository {
       })
       .returning();
 
-    return annotation as Annotation;
+    return annotation as unknown as Annotation;
   }
 
   /**

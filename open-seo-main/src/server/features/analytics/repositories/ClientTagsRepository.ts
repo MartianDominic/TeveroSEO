@@ -5,11 +5,11 @@
  * Handles client-level tag operations for agency organization.
  */
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { DrizzleClient } from '@/db';
+import type { DbClient } from '@/db';
 import { clientTags, type ClientTag, type ClientTagInsert } from '@/db/analytics-tags-schema';
 
 export class ClientTagsRepository {
-  constructor(private db: DrizzleClient) {}
+  constructor(private db: DbClient) {}
 
   async findByClientId(clientId: string): Promise<ClientTag[]> {
     return this.db.select().from(clientTags).where(eq(clientTags.clientId, clientId));
@@ -30,7 +30,7 @@ export class ClientTagsRepository {
       .from(clientTags)
       .where(inArray(clientTags.tagName, tagNames));
 
-    return results.map((r) => r.clientId);
+    return results.map((r: any) => r.clientId);
   }
 
   /**
