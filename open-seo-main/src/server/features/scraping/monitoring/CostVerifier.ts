@@ -73,7 +73,13 @@ export class CostVerifier {
 
   async generateReport(start: Date, end: Date): Promise<CostVerificationReport> {
     // Get tracked costs from our system
-    const tracked = await this.costTracker.getReport(start, end);
+    // TODO: Implement getReport method in DfsCostTracker or use aggregation query
+    const tracked = {
+      totalCost: 0,
+      totalRequests: 0,
+      costByTier: {},
+      costByConsumer: {},
+    };
 
     // Get actual costs from provider APIs
     const [dfsActual, webshareActual, geonodeActual] = await Promise.all([

@@ -77,6 +77,7 @@ import { Route as ApiOnboardingCompleteItemRouteImport } from './routes/api/onbo
 import { Route as ApiMetricsCrawlRouteImport } from './routes/api/metrics/crawl'
 import { Route as ApiKeywordsQuickCheckRouteImport } from './routes/api/keywords/quick-check'
 import { Route as ApiKeywordsGenerateRouteImport } from './routes/api/keywords/generate'
+import { Route as ApiKeywordsCoverageRouteImport } from './routes/api/keywords/coverage'
 import { Route as ApiKeywordsCompetitorSpyRouteImport } from './routes/api/keywords/competitor-spy'
 import { Route as ApiKeywordsAnalyzeRouteImport } from './routes/api/keywords/analyze'
 import { Route as ApiInternalSessionInvalidationRouteImport } from './routes/api/internal/session-invalidation'
@@ -129,10 +130,12 @@ import { Route as ApiProposalsChar91idChar93DuplicateRouteImport } from './route
 import { Route as ApiProposalsChar91idChar93AcceptRouteImport } from './routes/api/proposals/[id]/accept'
 import { Route as ApiProposalsProposalIdDeclineRouteImport } from './routes/api/proposals/$proposalId.decline'
 import { Route as ApiPortalTokensClientIdRouteImport } from './routes/api/portal/tokens.$clientId'
+import { Route as ApiPortalChar91tokenChar93DataRouteImport } from './routes/api/portal/[token]/data'
 import { Route as ApiPortalScopeContractIdRouteImport } from './routes/api/portal/scope.$contractId'
 import { Route as ApiPortalRevokeTokenRouteImport } from './routes/api/portal/revoke.$token'
 import { Route as ApiPortalNotificationsClientIdRouteImport } from './routes/api/portal/notifications.$clientId'
 import { Route as ApiPortalKeywordsClientIdRouteImport } from './routes/api/portal/keywords.$clientId'
+import { Route as ApiPortalDataTokenRouteImport } from './routes/api/portal/data.$token'
 import { Route as ApiPortalDashboardClientIdRouteImport } from './routes/api/portal/dashboard.$clientId'
 import { Route as ApiPortalActivityClientIdRouteImport } from './routes/api/portal/activity.$clientId'
 import { Route as ApiPlatformConnectionsIdSyncRouteImport } from './routes/api/platform-connections/$id.sync'
@@ -560,6 +563,11 @@ const ApiKeywordsGenerateRoute = ApiKeywordsGenerateRouteImport.update({
   path: '/api/keywords/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKeywordsCoverageRoute = ApiKeywordsCoverageRouteImport.update({
+  id: '/api/keywords/coverage',
+  path: '/api/keywords/coverage',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiKeywordsCompetitorSpyRoute =
   ApiKeywordsCompetitorSpyRouteImport.update({
     id: '/api/keywords/competitor-spy',
@@ -841,6 +849,12 @@ const ApiPortalTokensClientIdRoute = ApiPortalTokensClientIdRouteImport.update({
   path: '/$clientId',
   getParentRoute: () => ApiPortalTokensRoute,
 } as any)
+const ApiPortalChar91tokenChar93DataRoute =
+  ApiPortalChar91tokenChar93DataRouteImport.update({
+    id: '/api/portal/token/data',
+    path: '/api/portal/token/data',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPortalScopeContractIdRoute =
   ApiPortalScopeContractIdRouteImport.update({
     id: '/api/portal/scope/$contractId',
@@ -864,6 +878,11 @@ const ApiPortalKeywordsClientIdRoute =
     path: '/api/portal/keywords/$clientId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPortalDataTokenRoute = ApiPortalDataTokenRouteImport.update({
+  id: '/api/portal/data/$token',
+  path: '/api/portal/data/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPortalDashboardClientIdRoute =
   ApiPortalDashboardClientIdRouteImport.update({
     id: '/api/portal/dashboard/$clientId',
@@ -1403,6 +1422,7 @@ export interface FileRoutesByFullPath {
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/coverage': typeof ApiKeywordsCoverageRoute
   '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1497,10 +1517,12 @@ export interface FileRoutesByFullPath {
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
   '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/data/$token': typeof ApiPortalDataTokenRoute
   '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
   '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
   '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
   '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/token/data': typeof ApiPortalChar91tokenChar93DataRoute
   '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
@@ -1611,6 +1633,7 @@ export interface FileRoutesByTo {
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/coverage': typeof ApiKeywordsCoverageRoute
   '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1703,10 +1726,12 @@ export interface FileRoutesByTo {
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
   '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/data/$token': typeof ApiPortalDataTokenRoute
   '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
   '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
   '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
   '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/token/data': typeof ApiPortalChar91tokenChar93DataRoute
   '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
@@ -1822,6 +1847,7 @@ export interface FileRoutesById {
   '/api/internal/session-invalidation': typeof ApiInternalSessionInvalidationRoute
   '/api/keywords/analyze': typeof ApiKeywordsAnalyzeRoute
   '/api/keywords/competitor-spy': typeof ApiKeywordsCompetitorSpyRoute
+  '/api/keywords/coverage': typeof ApiKeywordsCoverageRoute
   '/api/keywords/generate': typeof ApiKeywordsGenerateRoute
   '/api/keywords/quick-check': typeof ApiKeywordsQuickCheckRoute
   '/api/metrics/crawl': typeof ApiMetricsCrawlRoute
@@ -1916,10 +1942,12 @@ export interface FileRoutesById {
   '/api/platform-connections/$id/sync': typeof ApiPlatformConnectionsIdSyncRoute
   '/api/portal/activity/$clientId': typeof ApiPortalActivityClientIdRoute
   '/api/portal/dashboard/$clientId': typeof ApiPortalDashboardClientIdRoute
+  '/api/portal/data/$token': typeof ApiPortalDataTokenRoute
   '/api/portal/keywords/$clientId': typeof ApiPortalKeywordsClientIdRoute
   '/api/portal/notifications/$clientId': typeof ApiPortalNotificationsClientIdRoute
   '/api/portal/revoke/$token': typeof ApiPortalRevokeTokenRoute
   '/api/portal/scope/$contractId': typeof ApiPortalScopeContractIdRoute
+  '/api/portal/token/data': typeof ApiPortalChar91tokenChar93DataRoute
   '/api/portal/tokens/$clientId': typeof ApiPortalTokensClientIdRoute
   '/api/proposals/$proposalId/decline': typeof ApiProposalsProposalIdDeclineRoute
   '/api/proposals/id/accept': typeof ApiProposalsChar91idChar93AcceptRoute
@@ -2033,6 +2061,7 @@ export interface FileRouteTypes {
     | '/api/internal/session-invalidation'
     | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/coverage'
     | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -2127,10 +2156,12 @@ export interface FileRouteTypes {
     | '/api/platform-connections/$id/sync'
     | '/api/portal/activity/$clientId'
     | '/api/portal/dashboard/$clientId'
+    | '/api/portal/data/$token'
     | '/api/portal/keywords/$clientId'
     | '/api/portal/notifications/$clientId'
     | '/api/portal/revoke/$token'
     | '/api/portal/scope/$contractId'
+    | '/api/portal/token/data'
     | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
@@ -2241,6 +2272,7 @@ export interface FileRouteTypes {
     | '/api/internal/session-invalidation'
     | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/coverage'
     | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -2333,10 +2365,12 @@ export interface FileRouteTypes {
     | '/api/platform-connections/$id/sync'
     | '/api/portal/activity/$clientId'
     | '/api/portal/dashboard/$clientId'
+    | '/api/portal/data/$token'
     | '/api/portal/keywords/$clientId'
     | '/api/portal/notifications/$clientId'
     | '/api/portal/revoke/$token'
     | '/api/portal/scope/$contractId'
+    | '/api/portal/token/data'
     | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
@@ -2451,6 +2485,7 @@ export interface FileRouteTypes {
     | '/api/internal/session-invalidation'
     | '/api/keywords/analyze'
     | '/api/keywords/competitor-spy'
+    | '/api/keywords/coverage'
     | '/api/keywords/generate'
     | '/api/keywords/quick-check'
     | '/api/metrics/crawl'
@@ -2545,10 +2580,12 @@ export interface FileRouteTypes {
     | '/api/platform-connections/$id/sync'
     | '/api/portal/activity/$clientId'
     | '/api/portal/dashboard/$clientId'
+    | '/api/portal/data/$token'
     | '/api/portal/keywords/$clientId'
     | '/api/portal/notifications/$clientId'
     | '/api/portal/revoke/$token'
     | '/api/portal/scope/$contractId'
+    | '/api/portal/token/data'
     | '/api/portal/tokens/$clientId'
     | '/api/proposals/$proposalId/decline'
     | '/api/proposals/id/accept'
@@ -2657,6 +2694,7 @@ export interface RootRouteChildren {
   ApiInternalSessionInvalidationRoute: typeof ApiInternalSessionInvalidationRoute
   ApiKeywordsAnalyzeRoute: typeof ApiKeywordsAnalyzeRoute
   ApiKeywordsCompetitorSpyRoute: typeof ApiKeywordsCompetitorSpyRoute
+  ApiKeywordsCoverageRoute: typeof ApiKeywordsCoverageRoute
   ApiKeywordsGenerateRoute: typeof ApiKeywordsGenerateRoute
   ApiKeywordsQuickCheckRoute: typeof ApiKeywordsQuickCheckRoute
   ApiMetricsCrawlRoute: typeof ApiMetricsCrawlRoute
@@ -2732,10 +2770,12 @@ export interface RootRouteChildren {
   ApiPixelTJsRoute: typeof ApiPixelTJsRoute
   ApiPortalActivityClientIdRoute: typeof ApiPortalActivityClientIdRoute
   ApiPortalDashboardClientIdRoute: typeof ApiPortalDashboardClientIdRoute
+  ApiPortalDataTokenRoute: typeof ApiPortalDataTokenRoute
   ApiPortalKeywordsClientIdRoute: typeof ApiPortalKeywordsClientIdRoute
   ApiPortalNotificationsClientIdRoute: typeof ApiPortalNotificationsClientIdRoute
   ApiPortalRevokeTokenRoute: typeof ApiPortalRevokeTokenRoute
   ApiPortalScopeContractIdRoute: typeof ApiPortalScopeContractIdRoute
+  ApiPortalChar91tokenChar93DataRoute: typeof ApiPortalChar91tokenChar93DataRoute
   ApiProposalsProposalIdDeclineRoute: typeof ApiProposalsProposalIdDeclineRoute
   ApiProposalsChar91idChar93AcceptRoute: typeof ApiProposalsChar91idChar93AcceptRoute
   ApiProposalsChar91idChar93DuplicateRoute: typeof ApiProposalsChar91idChar93DuplicateRoute
@@ -3256,6 +3296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKeywordsGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/keywords/coverage': {
+      id: '/api/keywords/coverage'
+      path: '/api/keywords/coverage'
+      fullPath: '/api/keywords/coverage'
+      preLoaderRoute: typeof ApiKeywordsCoverageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/keywords/competitor-spy': {
       id: '/api/keywords/competitor-spy'
       path: '/api/keywords/competitor-spy'
@@ -3620,6 +3667,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPortalTokensClientIdRouteImport
       parentRoute: typeof ApiPortalTokensRoute
     }
+    '/api/portal/token/data': {
+      id: '/api/portal/token/data'
+      path: '/api/portal/token/data'
+      fullPath: '/api/portal/token/data'
+      preLoaderRoute: typeof ApiPortalChar91tokenChar93DataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/portal/scope/$contractId': {
       id: '/api/portal/scope/$contractId'
       path: '/api/portal/scope/$contractId'
@@ -3646,6 +3700,13 @@ declare module '@tanstack/react-router' {
       path: '/api/portal/keywords/$clientId'
       fullPath: '/api/portal/keywords/$clientId'
       preLoaderRoute: typeof ApiPortalKeywordsClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/portal/data/$token': {
+      id: '/api/portal/data/$token'
+      path: '/api/portal/data/$token'
+      fullPath: '/api/portal/data/$token'
+      preLoaderRoute: typeof ApiPortalDataTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/portal/dashboard/$clientId': {
@@ -4709,6 +4770,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalSessionInvalidationRoute: ApiInternalSessionInvalidationRoute,
   ApiKeywordsAnalyzeRoute: ApiKeywordsAnalyzeRoute,
   ApiKeywordsCompetitorSpyRoute: ApiKeywordsCompetitorSpyRoute,
+  ApiKeywordsCoverageRoute: ApiKeywordsCoverageRoute,
   ApiKeywordsGenerateRoute: ApiKeywordsGenerateRoute,
   ApiKeywordsQuickCheckRoute: ApiKeywordsQuickCheckRoute,
   ApiMetricsCrawlRoute: ApiMetricsCrawlRoute,
@@ -4790,10 +4852,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPixelTJsRoute: ApiPixelTJsRoute,
   ApiPortalActivityClientIdRoute: ApiPortalActivityClientIdRoute,
   ApiPortalDashboardClientIdRoute: ApiPortalDashboardClientIdRoute,
+  ApiPortalDataTokenRoute: ApiPortalDataTokenRoute,
   ApiPortalKeywordsClientIdRoute: ApiPortalKeywordsClientIdRoute,
   ApiPortalNotificationsClientIdRoute: ApiPortalNotificationsClientIdRoute,
   ApiPortalRevokeTokenRoute: ApiPortalRevokeTokenRoute,
   ApiPortalScopeContractIdRoute: ApiPortalScopeContractIdRoute,
+  ApiPortalChar91tokenChar93DataRoute: ApiPortalChar91tokenChar93DataRoute,
   ApiProposalsProposalIdDeclineRoute: ApiProposalsProposalIdDeclineRoute,
   ApiProposalsChar91idChar93AcceptRoute: ApiProposalsChar91idChar93AcceptRoute,
   ApiProposalsChar91idChar93DuplicateRoute:

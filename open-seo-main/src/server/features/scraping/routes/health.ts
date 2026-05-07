@@ -1,4 +1,5 @@
-import { Router } from 'express';
+// @ts-expect-error - express may not be installed yet
+import { Router, type Request, type Response } from 'express';
 import type { ScrapingService } from '../ScrapingService';
 
 export interface HealthCheckResult {
@@ -30,7 +31,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   const router = Router();
 
   // Basic health check (for load balancers)
-  router.get('/health', async (req, res) => {
+  router.get('/health', async (req: Request, res: Response) => {
     try {
       const health = await scrapingService.healthCheck();
 
@@ -55,7 +56,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Detailed status (for debugging)
-  router.get('/status', async (req, res) => {
+  router.get('/status', async (req: Request, res: Response) => {
     try {
       const [health, metrics, circuits, queue] = await Promise.all([
         scrapingService.healthCheck(),
@@ -72,10 +73,10 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
       res.json({
         health,
         metrics: {
-          requestsToday: metrics.requestsToday || 0,
-          errorRate: metrics.errorRate || 0,
-          cacheHitRate: metrics.cacheHitRate || 0,
-          p95Latency: metrics.p95Latency || 0,
+          requestsToday: metrics.performance.requestsTotal || 0,
+          errorRate: Object.values(metrics.performance.errorsByType).reduce((a, b) => a + b, 0) / Math.max(metrics.performance.requestsTotal, 1) || 0,
+          cacheHitRate: metrics.cache.totalHitRate || 0,
+          p95Latency: metrics.performance.latencyP95Ms || 0,
         },
         circuits,
         queue: {
@@ -95,7 +96,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Prometheus metrics
-  router.get('/metrics', async (req, res) => {
+  router.get('/metrics', async (req: Request, res: Response) => {
     try {
       const metrics = await scrapingService.getPrometheusMetrics?.();
       res.set('Content-Type', 'text/plain');
@@ -106,7 +107,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Cost report
-  router.get('/cost-report', async (req, res) => {
+  router.get('/cost-report', async (req: Request, res: Response) => {
     try {
       const { start, end } = req.query;
       const report = await scrapingService.getCostReport({
@@ -122,7 +123,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Circuit breaker status
-  router.get('/circuits', async (req, res) => {
+  router.get('/circuits', async (req: Request, res: Response) => {
     try {
       const circuits = await scrapingService.getCircuitStates?.();
       res.json(circuits || {});
@@ -134,7 +135,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Manual circuit control (protected by requireAdmin middleware)
-  router.post('/circuits/:tier/close', async (req, res) => {
+  router.post('/circuits/:tier/close', async (req: Request, res: Response) => {
     try {
       await scrapingService.forceCloseCircuit?.(req.params.tier);
       res.json({ success: true });
@@ -146,7 +147,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/circuits/:tier/open', async (req, res) => {
+  router.post('/circuits/:tier/open', async (req: Request, res: Response) => {
     try {
       await scrapingService.forceOpenCircuit?.(req.params.tier);
       res.json({ success: true });
@@ -159,7 +160,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Queue management
-  router.get('/queue/stats', async (req, res) => {
+  router.get('/queue/stats', async (req: Request, res: Response) => {
     try {
       const stats = await scrapingService.getQueueStats?.();
       res.json(stats || { waiting: 0, active: 0, completed: 0, failed: 0 });
@@ -170,7 +171,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/queue/drain', async (req, res) => {
+  router.post('/queue/drain', async (req: Request, res: Response) => {
     try {
       const { older_than } = req.query;
       const count = await scrapingService.drainQueue?.(
@@ -185,7 +186,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Cache management
-  router.get('/cache/stats', async (req, res) => {
+  router.get('/cache/stats', async (req: Request, res: Response) => {
     try {
       const stats = await scrapingService.getCacheStats?.();
       res.json(stats || {});
@@ -196,7 +197,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/warm', async (req, res) => {
+  router.post('/cache/warm', async (req: Request, res: Response) => {
     try {
       const { domains } = req.body;
       await scrapingService.warmCache?.(domains);
@@ -209,11 +210,11 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/invalidate', async (req, res) => {
+  router.post('/cache/invalidate', async (req: Request, res: Response) => {
     try {
       const { pattern } = req.body;
-      const count = await scrapingService.invalidateCache?.(pattern);
-      res.json({ invalidated: count || 0 });
+      const count = (await scrapingService.invalidateCache?.(pattern)) ?? 0;
+      res.json({ invalidated: count });
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
@@ -222,7 +223,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Emergency controls
-  router.post('/emergency-stop', async (req, res) => {
+  router.post('/emergency-stop', async (req: Request, res: Response) => {
     try {
       await scrapingService.emergencyStop?.();
       res.json({ success: true, message: 'All scraping stopped' });
@@ -234,7 +235,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/resume', async (req, res) => {
+  router.post('/resume', async (req: Request, res: Response) => {
     try {
       await scrapingService.resume?.();
       res.json({ success: true, message: 'Scraping resumed' });

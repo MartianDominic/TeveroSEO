@@ -45,6 +45,14 @@ import type {
   DailyCostReport,
   IDomainLearningService,
 } from "./types";
+import {
+  getDirectFetcher,
+  getWebshareFetcher,
+  getGeonodeFetcher,
+  getCamoufoxFetcher,
+  getDataForSEOFetcher,
+  type FetchResult,
+} from "./fetchers";
 
 // =============================================================================
 // Constants
@@ -432,7 +440,7 @@ export class DomainLearningService implements IDomainLearningService {
 
   /**
    * Perform the actual HTTP fetch at a given tier.
-   * This is a stub that should be implemented with real HTTP logic.
+   * Routes to the appropriate fetcher based on tier.
    */
   private async performFetch(
     url: string,
@@ -454,14 +462,273 @@ export class DomainLearningService implements IDomainLearningService {
     validation: ContentValidation;
     technologies?: DetectedTechnology[];
   }> {
-    // This is a stub - actual implementation would:
-    // 1. Select the appropriate HTTP client/proxy based on tier
-    // 2. Make the request with proper headers/timeout
-    // 3. Parse response and validate content
-    // 4. Detect technologies and anti-bot patterns
-    throw new Error(
-      "performFetch must be implemented with actual HTTP fetching logic"
+    let result: FetchResult;
+
+    try {
+      // Route to appropriate fetcher based on tier
+      switch (tier) {
+        case "direct": {
+          const fetcher = getDirectFetcher();
+          result = await fetcher.fetch({
+            url,
+            timeoutMs: options.timeoutMs,
+            headers: options.headers,
+          });
+          break;
+        }
+
+        case "webshare": {
+          const fetcher = getWebshareFetcher();
+          if (!fetcher) {
+            // Webshare not configured, return failure to escalate
+            return {
+              success: false,
+              statusCode: 0,
+              responseTimeMs: 0,
+              responseSizeBytes: 0,
+              escalationReason: "connection_reset",
+              error: "Webshare not configured",
+              validation: this.emptyValidation(),
+            };
+          }
+          result = await fetcher.fetch({
+            url,
+            timeoutMs: options.timeoutMs,
+            headers: options.headers,
+          });
+          break;
+        }
+
+        case "geonode": {
+          const fetcher = getGeonodeFetcher();
+          result = await fetcher.fetch({
+            url,
+            timeoutMs: options.timeoutMs,
+            headers: options.headers,
+            country: options.geo?.country,
+          });
+          break;
+        }
+
+        case "camoufox": {
+          const fetcher = getCamoufoxFetcher();
+          result = await fetcher.fetch({
+            url,
+            timeoutMs: options.timeoutMs,
+            headers: options.headers,
+            waitUntil: "domcontentloaded",
+          });
+          break;
+        }
+
+        case "dfs_basic": {
+          const fetcher = getDataForSEOFetcher();
+          result = await fetcher.fetch({
+            url,
+            tier: "dfs_basic",
+            timeoutMs: options.timeoutMs,
+          });
+          break;
+        }
+
+        case "dfs_js": {
+          const fetcher = getDataForSEOFetcher();
+          result = await fetcher.fetch({
+            url,
+            tier: "dfs_js",
+            timeoutMs: options.timeoutMs,
+          });
+          break;
+        }
+
+        case "dfs_browser": {
+          const fetcher = getDataForSEOFetcher();
+          result = await fetcher.fetch({
+            url,
+            tier: "dfs_browser",
+            timeoutMs: options.timeoutMs,
+          });
+          break;
+        }
+
+        default:
+          throw new Error(`Unknown tier: ${tier}`);
+      }
+    } catch (error) {
+      return {
+        success: false,
+        statusCode: 0,
+        responseTimeMs: 0,
+        responseSizeBytes: 0,
+        escalationReason: "connection_reset",
+        error: error instanceof Error ? error.message : String(error),
+        validation: this.emptyValidation(),
+      };
+    }
+
+    // Validate content if we got HTML
+    const validation = result.html
+      ? this.validateContent(result.html)
+      : this.emptyValidation();
+
+    // Detect technologies if successful
+    const technologies = result.success && result.html
+      ? this.detectTechnologies(result.html)
+      : undefined;
+
+    return {
+      success: result.success,
+      statusCode: result.statusCode ?? 0,
+      html: result.html,
+      headers: result.headers,
+      responseTimeMs: result.latencyMs,
+      responseSizeBytes: result.bytesTransferred,
+      escalationReason: result.errorType,
+      error: result.error,
+      validation,
+      technologies,
+    };
+  }
+
+  /**
+   * Create empty validation result.
+   */
+  private emptyValidation(): ContentValidation {
+    return {
+      hasBody: false,
+      hasTitle: false,
+      hasH1: false,
+      wordCount: 0,
+      textRatio: 0,
+      isSpaShell: false,
+      isBotDetectionPage: false,
+      isCaptchaPage: false,
+    };
+  }
+
+  /**
+   * Validate HTML content quality.
+   */
+  private validateContent(html: string): ContentValidation {
+    const htmlLower = html.toLowerCase();
+
+    // Basic structure checks
+    const hasBody = htmlLower.includes("<body");
+    const hasTitle = /<title[^>]*>[\s\S]*?<\/title>/i.test(html);
+    const hasH1 = /<h1[^>]*>[\s\S]*?<\/h1>/i.test(html);
+
+    // Extract text content (simple approach)
+    const textContent = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
+    const textRatio = textContent.length / html.length;
+
+    // SPA shell detection
+    const isSpaShell = SPA_INDICATORS.some(indicator =>
+      htmlLower.includes(indicator.toLowerCase())
+    ) && wordCount < VALIDATION_THRESHOLDS.MIN_WORD_COUNT;
+
+    // Bot detection page
+    const isBotDetectionPage = BOT_DETECTION_PATTERNS.some(pattern =>
+      htmlLower.includes(pattern.toLowerCase())
     );
+
+    // CAPTCHA page
+    const isCaptchaPage = CAPTCHA_PATTERNS.some(pattern =>
+      htmlLower.includes(pattern.toLowerCase())
+    );
+
+    return {
+      hasBody,
+      hasTitle,
+      hasH1,
+      wordCount,
+      textRatio,
+      isSpaShell,
+      isBotDetectionPage,
+      isCaptchaPage,
+    };
+  }
+
+  /**
+   * Detect technologies from HTML content.
+   */
+  private detectTechnologies(html: string): DetectedTechnology[] {
+    const technologies: DetectedTechnology[] = [];
+    const htmlLower = html.toLowerCase();
+
+    // CMS detection
+    if (htmlLower.includes("wp-content") || htmlLower.includes("wordpress")) {
+      technologies.push("wordpress");
+    }
+    if (htmlLower.includes("shopify") || htmlLower.includes("cdn.shopify")) {
+      technologies.push("shopify");
+    }
+    if (htmlLower.includes("woocommerce")) {
+      technologies.push("woocommerce");
+    }
+    if (htmlLower.includes("squarespace")) {
+      technologies.push("squarespace");
+    }
+    if (htmlLower.includes("wix.com") || htmlLower.includes("wixsite")) {
+      technologies.push("wix");
+    }
+    if (htmlLower.includes("webflow")) {
+      technologies.push("webflow");
+    }
+
+    // Framework detection
+    if (htmlLower.includes("__next") || htmlLower.includes("_next/static")) {
+      technologies.push("nextjs");
+      technologies.push("react");
+    } else if (htmlLower.includes("react") || htmlLower.includes("data-reactroot")) {
+      technologies.push("react");
+    }
+    if (htmlLower.includes("__nuxt") || htmlLower.includes("_nuxt")) {
+      technologies.push("nuxt");
+      technologies.push("vue");
+    } else if (htmlLower.includes("vue") || htmlLower.includes("v-cloak")) {
+      technologies.push("vue");
+    }
+    if (htmlLower.includes("ng-app") || htmlLower.includes("ng-version")) {
+      technologies.push("angular");
+    }
+    if (htmlLower.includes("svelte")) {
+      technologies.push("svelte");
+    }
+    if (htmlLower.includes("gatsby")) {
+      technologies.push("gatsby");
+    }
+
+    // Anti-bot detection
+    if (CLOUDFLARE_PATTERNS.some(p => htmlLower.includes(p.toLowerCase()))) {
+      technologies.push("cloudflare");
+    }
+    if (htmlLower.includes("akamai")) {
+      technologies.push("akamai");
+    }
+    if (htmlLower.includes("imperva") || htmlLower.includes("incapsula")) {
+      technologies.push("imperva");
+    }
+    if (htmlLower.includes("datadome")) {
+      technologies.push("datadome");
+    }
+    if (htmlLower.includes("perimeterx") || htmlLower.includes("px-captcha")) {
+      technologies.push("perimeterx");
+    }
+    if (htmlLower.includes("g-recaptcha") || htmlLower.includes("recaptcha")) {
+      technologies.push("recaptcha");
+    }
+    if (htmlLower.includes("hcaptcha") || htmlLower.includes("h-captcha")) {
+      technologies.push("hcaptcha");
+    }
+
+    return [...new Set(technologies)]; // Deduplicate
   }
 
   // ===========================================================================

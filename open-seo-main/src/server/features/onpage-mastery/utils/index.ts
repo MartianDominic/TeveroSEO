@@ -29,3 +29,21 @@ export {
   calculateEvidenceDensity,
   type ExtractedEntities,
 } from "./EntityExtractor";
+
+export {
+  generateArticleSchema,
+  generateProductSchema,
+  generateLocalBusinessSchema,
+  generateServiceSchema,
+  generateCourseSchema,
+  generateSoftwareSchema,
+  getSchemaTypesForVertical,
+  validateJsonLd,
+  type ArticleData,
+  type ProductData,
+  type LocalBusinessData,
+  type ServiceData,
+  type CourseData,
+  type SoftwareData,
+  type JsonLdValidationResult,
+} from "./SchemaGenerator";

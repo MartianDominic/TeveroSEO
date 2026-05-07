@@ -232,3 +232,6 @@ export * from "./keyword-lockin-schema";
 
 // Research session schema (Phase 93-01)
 export * from "./research-session-schema";
+
+// Domain scrape learning schema (Phase 92 - Tiered Scraping)
+export * from "./domain-scrape-learning-schema";

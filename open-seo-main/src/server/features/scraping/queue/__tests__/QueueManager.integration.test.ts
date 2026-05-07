@@ -243,7 +243,7 @@ describe("QueueManager Priority System", () => {
     it("should prioritize prospect_analysis as critical", () => {
       const input = createMockJobInput({
         source: "ui",
-        metadata: { featureContext: "prospect_analysis" },
+        metadata: { featureContext: "prospect_scrape" },
       });
 
       const priority = assignPriority(input);

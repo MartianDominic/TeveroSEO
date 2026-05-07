@@ -11,7 +11,7 @@
  */
 
 import { eq, sql, and, gte, desc } from "drizzle-orm";
-import type { Database } from "@/db";
+import type { DbClient } from "@/db";
 import {
   dfsCostRecords,
   dfsBudgetAlerts,
@@ -73,11 +73,11 @@ export interface BudgetAlert {
  */
 export class DfsBudgetMonitor {
   private readonly config: BudgetConfig;
-  private readonly db: Database;
+  private readonly db: DbClient;
   private readonly redis?: Redis;
 
   constructor(
-    db: Database,
+    db: DbClient,
     config?: Partial<BudgetConfig>,
     redis?: Redis
   ) {
@@ -443,13 +443,13 @@ let _budgetMonitorInstance: DfsBudgetMonitor | null = null;
 /**
  * Get or create the budget monitor singleton.
  *
- * @param db - Database connection
+ * @param db - DbClient connection
  * @param config - Optional configuration
  * @param redis - Optional Redis connection
  * @returns Budget monitor instance
  */
 export function getDfsBudgetMonitor(
-  db: Database,
+  db: DbClient,
   config?: Partial<BudgetConfig>,
   redis?: Redis
 ): DfsBudgetMonitor {
@@ -474,10 +474,10 @@ export function resetDfsBudgetMonitor(): void {
  * Run budget check as a cron job.
  * Call this from a scheduled task (e.g., every 5 minutes).
  *
- * @param db - Database connection
+ * @param db - DbClient connection
  * @param redis - Optional Redis connection
  */
-export async function runBudgetCheck(db: Database, redis?: Redis): Promise<void> {
+export async function runBudgetCheck(db: DbClient, redis?: Redis): Promise<void> {
   const monitor = getDfsBudgetMonitor(db, undefined, redis);
   const status = await monitor.checkBudget();
 

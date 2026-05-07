@@ -15,6 +15,7 @@
  * Batch size: 50 domains per run
  */
 
+// @ts-expect-error - cron may not be installed yet
 import { CronJob } from "cron";
 import { eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";

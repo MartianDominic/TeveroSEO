@@ -36,8 +36,11 @@ export type DfsUrgency = "immediate" | "background" | "bulk";
 
 /**
  * Options for DataForSEO fetch operations.
+ * Note: url is optional here since batch methods pass URL separately.
  */
-export interface DfsFetchOptions extends BaseFetchOptions {
+export interface DfsFetchOptions extends Omit<BaseFetchOptions, "url"> {
+  /** URL to fetch (optional - may be passed separately for batch operations) */
+  url?: string;
   /** Force specific mode (basic, js, browser) */
   mode?: DfsMode;
 

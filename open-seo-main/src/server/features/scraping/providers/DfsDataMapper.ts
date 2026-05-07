@@ -635,12 +635,10 @@ export function validateParsedDataForChecks(
   const missingFields: string[] = [];
 
   for (const field of requiredFields) {
-    const value = getNestedValue(parsedData, field);
+    const value = getNestedValue(parsedData as unknown as Record<string, unknown>, field);
+    // Field is missing if undefined or null (empty arrays and empty strings are OK)
     if (value === undefined || value === null) {
-      // Allow empty arrays and empty strings
-      if (!Array.isArray(value) && value !== "") {
-        missingFields.push(field);
-      }
+      missingFields.push(field);
     }
   }
 

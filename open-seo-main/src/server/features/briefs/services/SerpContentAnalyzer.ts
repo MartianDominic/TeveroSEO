@@ -6,10 +6,10 @@
  * - Common H2 headings across top-ranking pages
  * - Word count statistics (min, max, avg)
  *
- * Single API call fetches HTML for all URLs, reducing costs.
+ * Uses OptimizedDataForSEOFetcher for cost-efficient batch fetching.
  */
 import * as cheerio from "cheerio";
-import { fetchOnPageInstantPages } from "@/server/lib/dataforseo";
+import { getOptimizedDataForSEOFetcher } from "@/server/features/scraping/providers/OptimizedDataForSEOFetcher";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "SerpContentAnalyzer" });
@@ -56,15 +56,21 @@ export async function analyzeSerpContent(
   }
 
   try {
-    const results = await fetchOnPageInstantPages(urls.slice(0, 5));
+    // Use optimized fetcher with Standard Queue for batch cost savings (70% cheaper)
+    const fetcher = getOptimizedDataForSEOFetcher();
+    const results = await fetcher.fetchBatch(urls.slice(0, 5), {
+      mode: "basic",
+      urgency: "bulk", // Uses Standard Queue automatically
+      includeRawHtml: true,
+    });
 
     for (const result of results) {
-      if (!result.fetch_html || result.status_code !== 200) {
+      if (!result.success || !result.html || result.statusCode !== 200) {
         continue;
       }
 
       analyzedUrls++;
-      const $ = cheerio.load(result.fetch_html);
+      const $ = cheerio.load(result.html);
 
       // Extract H2s
       $("h2").each((_, el) => {

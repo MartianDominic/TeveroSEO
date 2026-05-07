@@ -10,7 +10,7 @@ import {
   prospectKeywords,
   type ProspectKeywordInsert,
 } from "@/db/prospect-keyword-schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, or, isNull, ne } from "drizzle-orm";
 
 /**
  * Normalize a keyword for deduplication:
@@ -34,7 +34,82 @@ export interface DeduplicationResult {
   skipped: number;
 }
 
+/**
+ * Result of pre-research deduplication.
+ * Returns arrays for both new and duplicate keywords for UI display.
+ */
+export interface PreResearchDeduplicationResult {
+  new: string[];       // Keywords to send to DataForSEO
+  duplicate: string[]; // Keywords already in corpus (skipped)
+}
+
 export class KeywordDeduplicator {
+  /**
+   * Deduplicate keywords BEFORE calling DataForSEO API.
+   * CRITICAL: This method MUST be called before any research API call.
+   *
+   * Per 93-RESEARCH.md:
+   * - Returns new keywords to research (not in corpus)
+   * - Returns duplicate keywords (already researched)
+   * - Handles intra-batch duplicates
+   * - Excludes tier='excluded' keywords from consideration
+   */
+  async deduplicateBeforeResearch(
+    prospectId: string,
+    keywords: string[]
+  ): Promise<PreResearchDeduplicationResult> {
+    if (keywords.length === 0) {
+      return { new: [], duplicate: [] };
+    }
+
+    // Normalize all input keywords
+    const normalizedInputs = keywords.map(kw => ({
+      original: kw,
+      normalized: normalizeKeyword(kw),
+    }));
+
+    // Get all normalized values for batch query
+    const normalizedValues = normalizedInputs.map(k => k.normalized);
+
+    // Query existing keywords for this prospect
+    // Exclude tier='excluded' per 93-RESEARCH.md pitfall #3
+    const existing = await db
+      .select({ normalizedKeyword: prospectKeywords.normalizedKeyword })
+      .from(prospectKeywords)
+      .where(
+        and(
+          eq(prospectKeywords.prospectId, prospectId),
+          inArray(prospectKeywords.normalizedKeyword, normalizedValues),
+          // Exclude ignored/excluded keywords from deduplication check
+          or(
+            isNull(prospectKeywords.tier),
+            ne(prospectKeywords.tier, 'excluded')
+          )
+        )
+      );
+
+    const existingSet = new Set(existing.map(r => r.normalizedKeyword));
+
+    // Track seen normalized values to handle intra-batch duplicates
+    const seenInBatch = new Set<string>();
+    const newKeywords: string[] = [];
+    const duplicateKeywords: string[] = [];
+
+    for (const { original, normalized } of normalizedInputs) {
+      if (existingSet.has(normalized) || seenInBatch.has(normalized)) {
+        duplicateKeywords.push(original);
+      } else {
+        newKeywords.push(original);
+        seenInBatch.add(normalized);
+      }
+    }
+
+    return {
+      new: newKeywords,
+      duplicate: duplicateKeywords,
+    };
+  }
+
   /**
    * Deduplicate and insert keywords for a prospect.
    * - Normalizes all keywords

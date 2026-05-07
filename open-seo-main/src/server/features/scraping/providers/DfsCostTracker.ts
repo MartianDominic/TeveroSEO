@@ -10,7 +10,7 @@
  */
 
 import { eq, sql, and, gte, lte, sum, count, avg } from "drizzle-orm";
-import type { Database } from "@/db";
+import type { DbClient } from "@/db";
 import {
   dfsCostRecords,
   dfsCostDailyAggregates,
@@ -30,7 +30,7 @@ import type { DfsUsageStats } from "./DataForSEOFetcher.types";
  * Service for tracking DataForSEO API costs.
  */
 export class DfsCostTracker {
-  constructor(private db: Database) {}
+  constructor(private db: DbClient) {}
 
   /**
    * Record a single API request cost.
@@ -133,7 +133,7 @@ export class DfsCostTracker {
       )
       .returning({ id: dfsCostRecords.id });
 
-    return inserted.map((r) => r.id);
+    return inserted.map((r: { id: number }) => r.id);
   }
 
   /**
@@ -321,30 +321,23 @@ export class DfsCostTracker {
       .where(and(...conditions))
       .groupBy(dfsCostRecords.mode, dfsCostRecords.usedStandardQueue, dfsCostRecords.success);
 
-    // Build aggregate record
-    const aggregate: DfsCostDailyAggregateInsert = {
-      date,
-      workspaceId: workspaceId ?? null,
-      totalCost: 0,
-      requestCount: 0,
-      successCount: 0,
-      failureCount: 0,
-      basicCost: 0,
-      basicCount: 0,
-      jsCost: 0,
-      jsCount: 0,
-      browserCost: 0,
-      browserCount: 0,
-      standardQueueCost: 0,
-      standardQueueCount: 0,
-      liveCost: 0,
-      liveCount: 0,
-      hypotheticalLiveCost: 0,
-      savingsFromStandardQueue: 0,
-      avgResponseTimeMs: null,
-      totalBytesTransferred: null,
-    };
-
+    // Build aggregate record using accumulator values
+    let totalCost = 0;
+    let requestCount = 0;
+    let successCount = 0;
+    let failureCount = 0;
+    let basicCost = 0;
+    let basicCount = 0;
+    let jsCost = 0;
+    let jsCount = 0;
+    let browserCost = 0;
+    let browserCount = 0;
+    let standardQueueCost = 0;
+    let standardQueueCount = 0;
+    let liveCost = 0;
+    let liveCount = 0;
+    let hypotheticalLiveCost = 0;
+    let savingsFromStandardQueue = 0;
     let totalResponseTimeSum = 0;
     let responseTimeCount = 0;
     let totalBytes = 0;
@@ -354,44 +347,44 @@ export class DfsCostTracker {
       const cnt = row.count;
       const cost = row.totalCost;
 
-      aggregate.totalCost += cost;
-      aggregate.requestCount += cnt;
+      totalCost += cost;
+      requestCount += cnt;
 
       if (row.success) {
-        aggregate.successCount += cnt;
+        successCount += cnt;
       } else {
-        aggregate.failureCount += cnt;
+        failureCount += cnt;
       }
 
       // Mode breakdown
       switch (mode) {
         case "basic":
-          aggregate.basicCost += cost;
-          aggregate.basicCount += cnt;
+          basicCost += cost;
+          basicCount += cnt;
           break;
         case "js":
-          aggregate.jsCost += cost;
-          aggregate.jsCount += cnt;
+          jsCost += cost;
+          jsCount += cnt;
           break;
         case "browser":
-          aggregate.browserCost += cost;
-          aggregate.browserCount += cnt;
+          browserCost += cost;
+          browserCount += cnt;
           break;
       }
 
       // Queue breakdown
       if (row.usedStandardQueue) {
-        aggregate.standardQueueCost += cost;
-        aggregate.standardQueueCount += cnt;
+        standardQueueCost += cost;
+        standardQueueCount += cnt;
 
         // Calculate hypothetical live cost
         const liveEquivalent = cnt * DFS_LIVE_COSTS[mode];
-        aggregate.hypotheticalLiveCost += liveEquivalent;
-        aggregate.savingsFromStandardQueue += liveEquivalent - cost;
+        hypotheticalLiveCost += liveEquivalent;
+        savingsFromStandardQueue += liveEquivalent - cost;
       } else {
-        aggregate.liveCost += cost;
-        aggregate.liveCount += cnt;
-        aggregate.hypotheticalLiveCost += cost;
+        liveCost += cost;
+        liveCount += cnt;
+        hypotheticalLiveCost += cost;
       }
 
       // Performance metrics
@@ -404,26 +397,41 @@ export class DfsCostTracker {
       }
     }
 
-    aggregate.avgResponseTimeMs = responseTimeCount > 0
-      ? Math.round(totalResponseTimeSum / responseTimeCount)
-      : null;
-    aggregate.totalBytesTransferred = totalBytes > 0 ? totalBytes : null;
+    // Build final aggregate record
+    const aggregate: DfsCostDailyAggregateInsert = {
+      date,
+      workspaceId: workspaceId ?? null,
+      totalCost,
+      requestCount,
+      successCount,
+      failureCount,
+      basicCost,
+      basicCount,
+      jsCost,
+      jsCount,
+      browserCost,
+      browserCount,
+      standardQueueCost,
+      standardQueueCount,
+      liveCost,
+      liveCount,
+      hypotheticalLiveCost,
+      savingsFromStandardQueue,
+      avgResponseTimeMs: responseTimeCount > 0 ? Math.round(totalResponseTimeSum / responseTimeCount) : null,
+      totalBytesTransferred: totalBytes > 0 ? totalBytes : null,
+    };
 
-    // Upsert aggregate
-    await this.db
-      .insert(dfsCostDailyAggregates)
-      .values(aggregate)
-      .onConflictDoUpdate({
-        target: [
-          dfsCostDailyAggregates.date,
-          sql`COALESCE(${dfsCostDailyAggregates.clientId}, '')`,
-          sql`COALESCE(${dfsCostDailyAggregates.workspaceId}, '')`,
-        ],
-        set: {
-          ...aggregate,
-          updatedAt: new Date(),
-        },
-      });
+    // Delete any existing aggregate for this date/workspace, then insert
+    // (simpler than complex upsert without unique constraint)
+    const deleteConditions = [eq(dfsCostDailyAggregates.date, date)];
+    if (workspaceId) {
+      deleteConditions.push(eq(dfsCostDailyAggregates.workspaceId, workspaceId));
+    } else {
+      deleteConditions.push(sql`${dfsCostDailyAggregates.workspaceId} IS NULL`);
+    }
+
+    await this.db.delete(dfsCostDailyAggregates).where(and(...deleteConditions));
+    await this.db.insert(dfsCostDailyAggregates).values(aggregate);
   }
 
   /**
@@ -491,7 +499,7 @@ export class DfsCostTracker {
       .from(dfsCostRecords)
       .where(eq(dfsCostRecords.jobId, jobId));
 
-    return results.map((r) => ({
+    return results.map((r: { url: string; mode: string; cost: number; success: boolean; responseTimeMs: number | null }) => ({
       url: r.url,
       mode: r.mode as DfsMode,
       cost: r.cost,
@@ -547,7 +555,7 @@ let _costTrackerInstance: DfsCostTracker | null = null;
  * @param db - Database connection
  * @returns Cost tracker instance
  */
-export function getDfsCostTracker(db: Database): DfsCostTracker {
+export function getDfsCostTracker(db: DbClient): DfsCostTracker {
   if (!_costTrackerInstance) {
     _costTrackerInstance = new DfsCostTracker(db);
   }

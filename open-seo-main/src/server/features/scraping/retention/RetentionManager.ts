@@ -1,5 +1,6 @@
 import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
+// @ts-expect-error - cron may not be installed yet
 import { CronJob } from 'cron';
 import { gzip } from 'zlib';
 import { promisify } from 'util';

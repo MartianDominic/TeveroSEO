@@ -36,6 +36,15 @@ One platform. Switch to any client, generate content in their voice AND run SEO 
 - `docs/infra-research/cpu-only-rag-graph.md` — RAG + Graph stack for $50/mo VPS
 - `docs/infra-research/crawling-10-5000-tasks-day.md` — Crawling infrastructure scaling
 
+**Phase 92 On-Page SEO Mastery:**
+- `.planning/phases/92-on-page-seo-mastery/COST-OPTIMIZATION-MASTERPLAN.md` — **MASTER PLAN v4** - 97% cost reduction, 17 sections covering proxy tiers, DataForSEO layering, free APIs, storage/compute/queue/caching optimization, DFS pre-parsed data strategy
+- `.planning/phases/92-on-page-seo-mastery/HIGH-SCALE-SCRAPING-ARCHITECTURE.md` — 100K pages/hour architecture (single Contabo 8vCPU, semaphore concurrency, worker pools)
+- `.planning/phases/92-on-page-seo-mastery/TIERED-SCRAPING-ARCHITECTURE.md` — Proxy escalation (Direct → Webshare → Geonode $0.77/GB → DataForSEO)
+- `.planning/phases/92-on-page-seo-mastery/CHEERIO-SYSTEM-ANALYSIS.md` — Full HTML parsing architecture (26+ cheerio files)
+- `.planning/phases/92-on-page-seo-mastery/IMPLEMENTATION-GAPS.md` — Gap analysis vs SEO-AGI spec
+- `.planning/phases/92-on-page-seo-mastery/CURRENT-VS-OPTIMIZED-SYSTEM.md` — **Current vs Optimized** - Stage-by-stage comparison with 96% cost savings breakdown
+- `.planning/research/WORLD-CLASS-SCRAPING-ARCHITECTURE.md` — Enterprise patterns (Ahrefs, SEMrush)
+
 **Agency Features (Phases 84-89):**
 - `.planning/phases/PHASE-85-89-DEEP-DIVE.md` — Technical deep-dive on upcoming phases
 - `.planning/phases/CLIENT-PORTAL-SPEC.md` — **Keyword Lock-in + Client Portal spec** (design-system-v6 compliant)

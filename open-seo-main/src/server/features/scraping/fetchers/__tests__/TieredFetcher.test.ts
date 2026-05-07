@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TieredFetcher, createTieredFetcher } from "../../TieredFetcher";
-import type { TieredFetchResult } from "../../types";
+import { TieredFetcher, createTieredFetcher } from "../TieredFetcher";
+import type { TieredFetchResult } from "../types";
 import type { ScrapeTier } from "@/db/domain-scrape-learning-schema";
 
 // =============================================================================
@@ -140,8 +140,8 @@ describe("TieredFetcher", () => {
           isNewDomain: true,
           tiersAttempted: ["direct", "webshare"],
           escalationPath: [
-            { tier: "direct" as ScrapeTier, reason: "blocked" as const },
-            { tier: "webshare" as ScrapeTier, reason: "success" as const },
+            { tier: "direct" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "webshare" as ScrapeTier, reason: "success", code: "SUCCESS", confidence: 100 },
           ],
         },
       });
@@ -165,12 +165,12 @@ describe("TieredFetcher", () => {
           isNewDomain: true,
           tiersAttempted: ["direct", "webshare", "geonode", "camoufox", "dfs_basic", "dfs_js"],
           escalationPath: [
-            { tier: "direct" as ScrapeTier, reason: "blocked" as const },
-            { tier: "webshare" as ScrapeTier, reason: "blocked" as const },
-            { tier: "geonode" as ScrapeTier, reason: "blocked" as const },
-            { tier: "camoufox" as ScrapeTier, reason: "blocked" as const },
-            { tier: "dfs_basic" as ScrapeTier, reason: "blocked" as const },
-            { tier: "dfs_js" as ScrapeTier, reason: "success" as const },
+            { tier: "direct" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "webshare" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "geonode" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "camoufox" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "dfs_basic" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
+            { tier: "dfs_js" as ScrapeTier, reason: "success", code: "SUCCESS", confidence: 100 },
           ],
         },
       });
