@@ -238,3 +238,6 @@ export * from "./domain-scrape-learning-schema";
 
 // GSC query analytics schema (Phase 96-01)
 export * from "./gsc-analytics-schema";
+
+// Analytics tags schema (Phase 96-02)
+export * from "./analytics-tags-schema";
