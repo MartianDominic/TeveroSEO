@@ -30,6 +30,7 @@ const RATE_LIMIT_PER_DAY = 100;
 
 /**
  * Query parameters for GSC search analytics.
+ * Phase 96-01: Added startRow for pagination support
  */
 export interface GscQuery {
   siteUrl: string;
@@ -37,10 +38,12 @@ export interface GscQuery {
   endDate: string;
   dimensions?: string[];
   rowLimit?: number;
+  startRow?: number; // Phase 96-01: Pagination support for 25K row extraction
 }
 
 /**
  * Ranking data returned from GSC.
+ * Phase 96-01: Added keys array for dimension mapping
  */
 export interface GscRankingData {
   query: string;
@@ -48,6 +51,7 @@ export interface GscRankingData {
   impressions: number;
   ctr: number;
   position: number;
+  keys?: string[]; // Phase 96-01: Raw dimension keys for pagination service
 }
 
 /**
@@ -121,6 +125,7 @@ export class GscBridgeService {
           end_date: query.endDate,
           dimensions: query.dimensions ?? ["query"],
           row_limit: query.rowLimit ?? 1000,
+          start_row: query.startRow ?? 0, // Phase 96-01: Pagination support
         }),
       });
 
@@ -137,12 +142,14 @@ export class GscBridgeService {
       const rows: GscApiRow[] = data.rows ?? [];
 
       // Transform to our format
+      // Phase 96-01: Include keys array for dimension mapping in pagination service
       const rankings: GscRankingData[] = rows.map((row) => ({
         query: row.keys[0] ?? "",
         clicks: row.clicks,
         impressions: row.impressions,
         ctr: row.ctr,
         position: row.position,
+        keys: row.keys,
       }));
 
       // Cache results
