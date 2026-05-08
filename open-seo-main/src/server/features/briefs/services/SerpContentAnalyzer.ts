@@ -75,6 +75,8 @@ export interface AnalyzeSerpContentOptions {
   clientId?: string;
   /** Workspace ID for cost attribution */
   workspaceId?: string;
+  /** Correlation ID for request tracing (propagated to scraping service) */
+  correlationId?: string;
 }
 
 /**
@@ -137,6 +139,7 @@ export async function analyzeSerpContent(
         includeParsedData: true,
         clientId: options.clientId,
         workspaceId: options.workspaceId,
+        correlationId: options.correlationId,
       },
       transformer: serpContentTransformer,
       concurrency: 5,
