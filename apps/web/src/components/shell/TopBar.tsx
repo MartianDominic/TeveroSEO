@@ -33,7 +33,7 @@ export const TopBar: React.FC<TopBarProps> = ({ className, onOpen }) => {
         onClick={() => onOpen?.()}
       >
         <span>Search...</span>
-        <kbd className="pointer-events-none hidden select-none rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] sm:inline-block">
+        <kbd className="pointer-events-none hidden select-none rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs-safe sm:inline-block">
           ⌘K
         </kbd>
       </button>

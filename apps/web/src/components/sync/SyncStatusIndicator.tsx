@@ -166,7 +166,7 @@ export function SyncOverlay({
       aria-modal="true"
       aria-labelledby="sync-overlay-title"
     >
-      <div className="bg-card border border-border rounded-lg p-6 shadow-lg max-w-sm w-full mx-4">
+      <div className="bg-card border border-border rounded-lg p-6 shadow-[var(--shadow-modal)] max-w-sm w-full mx-4">
         <div className="flex flex-col items-center text-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
 

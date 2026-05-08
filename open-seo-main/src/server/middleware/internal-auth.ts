@@ -9,10 +9,11 @@
  * SECURITY FIXES:
  * - CRIT-002: Standardized HMAC-based signing protocol
  * - CRIT-003: Uses timing-safe comparison to prevent timing attacks
+ * - CSI-001/CSI-002: Removed legacy X-Internal-Api-Key fallback
  *
  * Protocol:
- * - Primary: HMAC-SHA256 signature with timestamp (X-Internal-Signature + X-Internal-Timestamp)
- * - Fallback: Legacy plain API key (X-Internal-Api-Key) for backward compatibility
+ * - HMAC-SHA256 signature with timestamp (X-Internal-Signature + X-Internal-Timestamp)
+ * - Legacy API key auth (X-Internal-Api-Key) has been REMOVED - use HMAC signing
  *
  * Signature format: HMAC-SHA256(timestamp.payload, INTERNAL_API_KEY)
  */

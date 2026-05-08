@@ -300,7 +300,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+      <DialogContent className="sm:max-w-md rounded-xl border border-border bg-card p-6 shadow-[var(--shadow-modal)]">
         <DialogHeader>
           <DialogTitle>Add New Client</DialogTitle>
           <DialogDescription>

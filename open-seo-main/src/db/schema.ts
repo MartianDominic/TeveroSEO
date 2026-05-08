@@ -227,6 +227,12 @@ export * from "./dead-letter-queue-schema";
 export * from "./portal-schema";
 export * from "./client-settings-schema";
 
+// Workspace portal settings schema (Phase 96: CPR-005, CPR-007)
+export * from "./workspace-portal-settings-schema";
+
+// Portal audit log schema (Phase 96: CPR-006)
+export * from "./portal-audit-log-schema";
+
 // Keyword lock-in schema (Phase 89-01, 89-02)
 export * from "./keyword-lockin-schema";
 

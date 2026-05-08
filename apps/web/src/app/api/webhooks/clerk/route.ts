@@ -18,6 +18,7 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import * as crypto from 'crypto';
 import { getClerkWebhookSecret } from '@/lib/env';
 import { logger } from '@/lib/logger';
 
@@ -198,6 +199,7 @@ async function handleUserDeleted(data: WebhookEvent['data']) {
 
 /**
  * FIX H-AUTH-03: Propagate session invalidation to backend services.
+ * CSI-001/CSI-002 FIX: Uses HMAC-SHA256 signed requests instead of plain API key.
  *
  * When a user is deleted from Clerk, we need to notify all backend services
  * to invalidate any cached sessions or tokens for that user. This prevents
@@ -219,9 +221,18 @@ async function propagateSessionInvalidation(userId: string): Promise<void> {
     timestamp: new Date().toISOString(),
   };
 
-  const headers = {
+  const bodyStr = JSON.stringify(invalidationPayload);
+
+  // CSI-001/CSI-002 FIX: Generate HMAC signature for internal API requests
+  const timestamp = Date.now();
+  const message = `${timestamp}.${bodyStr}`;
+  const signature = crypto.createHmac('sha256', internalApiKey).update(message).digest('hex');
+
+  const signedHeaders = {
     'Content-Type': 'application/json',
-    'X-Internal-Api-Key': internalApiKey,
+    'X-Internal-Signature': signature,
+    'X-Internal-Timestamp': timestamp.toString(),
+    'X-Correlation-ID': `clerk-webhook-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
     'X-Source-Service': 'apps-web',
   };
 
@@ -230,8 +241,8 @@ async function propagateSessionInvalidation(userId: string): Promise<void> {
     // Notify open-seo-main
     fetch(`${openSeoUrl}/api/internal/session-invalidation`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify(invalidationPayload),
+      headers: signedHeaders,
+      body: bodyStr,
       signal: AbortSignal.timeout(5000), // 5s timeout
     }).then(res => {
       if (!res.ok) {
@@ -241,10 +252,10 @@ async function propagateSessionInvalidation(userId: string): Promise<void> {
     }),
 
     // Notify AI-Writer
-    fetch(`${aiWriterUrl}/api/internal/session-invalidation`, {
+    fetch(`${aiWriterUrl}/internal/session-invalidation`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify(invalidationPayload),
+      headers: signedHeaders,
+      body: bodyStr,
       signal: AbortSignal.timeout(5000), // 5s timeout
     }).then(res => {
       if (!res.ok) {

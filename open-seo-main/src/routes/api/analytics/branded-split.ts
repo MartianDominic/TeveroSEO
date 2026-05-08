@@ -1,10 +1,11 @@
 /**
  * Branded Split API Route
- * Phase 96-05: GET /api/analytics/branded-split/:clientId
+ * Phase 96-05: GET/POST /api/analytics/branded-split/:clientId
  *
  * Returns branded vs non-branded keyword split for a client.
  * Supports brand term management (add/remove).
  * Rate limited: 60 requests per minute per workspace (standard analytics).
+ * CSRF protected: POST requires valid CSRF token.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -20,6 +21,7 @@ import {
   rateLimitExceededResponse,
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
+import { csrfProtect } from "@/server/middleware/csrf";
 
 const dateRangeSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -145,9 +147,14 @@ export const Route = (createFileRoute as any)("/api/analytics/branded-split/$cli
 });
 
 // POST handler for adding brand term
+// CSRF protected: POST requires valid CSRF token.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const POST = async (request: Request, { params }: { params: { clientId: string } }) => {
   try {
+    // CSRF protection for state-changing request
+    const csrfError = csrfProtect(request);
+    if (csrfError) return csrfError;
+
     const { clientId } = params;
 
     // Authenticate request and get verified workspace context

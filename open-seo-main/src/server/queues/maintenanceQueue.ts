@@ -24,8 +24,20 @@ export interface CacheCleanupJobData {
 }
 
 /**
+ * Job priority levels for BullMQ.
+ * BMQ-003 FIX: Explicit priority levels for job ordering.
+ * Lower number = higher priority (1 is highest).
+ */
+const JOB_PRIORITY = {
+  HIGH: 1,    // Critical jobs: GSC sync, GA4 sync
+  MEDIUM: 2,  // Important jobs: Trend calculation, analytics
+  LOW: 3,     // Maintenance jobs: DLQ cleanup, cache cleanup
+} as const;
+
+/**
  * Default job options.
  * 3 attempts with exponential backoff.
+ * BMQ-003 FIX: LOW priority for maintenance jobs.
  */
 const DEFAULT_JOB_OPTIONS: JobsOptions = {
   attempts: 3,
@@ -35,6 +47,7 @@ const DEFAULT_JOB_OPTIONS: JobsOptions = {
   },
   removeOnComplete: { count: 50 },
   removeOnFail: { count: 100 },
+  priority: JOB_PRIORITY.LOW, // BMQ-003: Maintenance jobs run at low priority
 };
 
 /**

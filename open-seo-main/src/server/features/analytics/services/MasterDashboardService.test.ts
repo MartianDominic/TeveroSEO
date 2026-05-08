@@ -2,11 +2,21 @@
  * Master Dashboard Service Tests
  * Phase 96-02: Master Dashboard
  *
- * TDD RED Phase: Write failing tests first
+ * Tests updated to handle CachedData<DashboardAggregates> wrapper.
+ * Services return { data: DashboardAggregates, metadata: CacheMetadata }.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MasterDashboardService } from './MasterDashboardService';
 import type { DashboardFilters } from '../types';
+
+// Mock the database module before importing the service
+vi.mock('@/db', () => ({
+  db: {
+    execute: vi.fn(),
+  },
+}));
+
+// Now import after mocking
+const { MasterDashboardService } = await import('./MasterDashboardService');
 
 describe('MasterDashboardService', () => {
   let service: MasterDashboardService;
@@ -75,11 +85,12 @@ describe('MasterDashboardService', () => {
 
       const result = await service.getAggregatedMetrics('workspace-1', filters);
 
-      expect(result.sites).toHaveLength(1);
-      expect(result.sites[0].metrics.clicks).toBe(1000);
-      expect(result.sites[0].metrics.impressions).toBe(10000);
-      expect(result.sites[0].metrics.position).toBe(15.5);
-      expect(result.sites[0].metrics.ctr).toBe(0.1);
+      // Service returns CachedData<DashboardAggregates>, access via .data
+      expect(result.data.sites).toHaveLength(1);
+      expect(result.data.sites[0].metrics.clicks).toBe(1000);
+      expect(result.data.sites[0].metrics.impressions).toBe(10000);
+      expect(result.data.sites[0].metrics.position).toBe(15.5);
+      expect(result.data.sites[0].metrics.ctr).toBe(0.1);
     });
 
     it('should filter correctly by date range (7d, 30d, 90d, 365d)', async () => {
@@ -152,8 +163,9 @@ describe('MasterDashboardService', () => {
 
       const result = await service.getAggregatedMetrics('workspace-1', filters);
 
-      expect(result.sites[0].comparison.clicksChange).toBeCloseTo(11.1, 1); // (1000-900)/900 * 100
-      expect(result.meta.comparisonPeriod).not.toBeNull();
+      // Service returns CachedData<DashboardAggregates>, access via .data
+      expect(result.data.sites[0].comparison.clicksChange).toBeCloseTo(11.1, 1); // (1000-900)/900 * 100
+      expect(result.data.meta.comparisonPeriod).not.toBeNull();
     });
 
     it('should return 7-day trend data for sparklines', async () => {
@@ -194,9 +206,10 @@ describe('MasterDashboardService', () => {
 
       const result = await service.getAggregatedMetrics('workspace-1', filters);
 
-      expect(result.sites[0].trend).toHaveLength(7);
-      expect(result.sites[0].trend[0].date).toBe('2026-05-01');
-      expect(result.sites[0].trend[0].clicks).toBe(120);
+      // Service returns CachedData<DashboardAggregates>, access via .data
+      expect(result.data.sites[0].trend).toHaveLength(7);
+      expect(result.data.sites[0].trend[0].date).toBe('2026-05-01');
+      expect(result.data.sites[0].trend[0].clicks).toBe(120);
     });
 
     it('should complete in <500ms for 100+ sites (mock test)', async () => {

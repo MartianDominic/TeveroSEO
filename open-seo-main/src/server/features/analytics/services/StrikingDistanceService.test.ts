@@ -2,7 +2,8 @@
  * StrikingDistanceService Tests
  * Phase 96-03: Quick Win Opportunity Detection
  *
- * RED Phase: Write tests first - they should FAIL
+ * Tests updated to handle CachedData<StrikingDistanceResult> wrapper.
+ * Services return { data: StrikingDistanceResult, metadata: CacheMetadata }.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { StrikingDistanceFilters } from '../types';
@@ -55,9 +56,10 @@ describe('StrikingDistanceService', () => {
 
       const result = await service.getStrikingDistancePages('site-123');
 
-      expect(result.pages).toHaveLength(2);
-      expect(result.pages[0].avgPosition).toBeGreaterThanOrEqual(11);
-      expect(result.pages[0].avgPosition).toBeLessThanOrEqual(20);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages).toHaveLength(2);
+      expect(result.data.pages[0].avgPosition).toBeGreaterThanOrEqual(11);
+      expect(result.data.pages[0].avgPosition).toBeLessThanOrEqual(20);
     });
 
     it('should calculate potentialClicks as impressions * CTR_at_position_3', async () => {
@@ -77,7 +79,8 @@ describe('StrikingDistanceService', () => {
       const result = await service.getStrikingDistancePages('site-123');
 
       // Expected: 10000 * 0.1101 = 1101 clicks
-      expect(result.pages[0].potentialClicks).toBeCloseTo(1101, 0);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages[0].potentialClicks).toBeCloseTo(1101, 0);
     });
 
     it('should calculate clickGain as potentialClicks - currentClicks', async () => {
@@ -96,7 +99,8 @@ describe('StrikingDistanceService', () => {
       const result = await service.getStrikingDistancePages('site-123');
 
       // Expected: 1101 - 150 = 951 clicks gain
-      expect(result.pages[0].clickGain).toBeCloseTo(951, 0);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages[0].clickGain).toBeCloseTo(951, 0);
     });
 
     it('should assign difficulty based on position (easy: 11-13, medium: 14-17, hard: 18-20)', async () => {
@@ -128,9 +132,10 @@ describe('StrikingDistanceService', () => {
 
       const result = await service.getStrikingDistancePages('site-123');
 
-      expect(result.pages[0].difficulty).toBe('easy');
-      expect(result.pages[1].difficulty).toBe('medium');
-      expect(result.pages[2].difficulty).toBe('hard');
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages[0].difficulty).toBe('easy');
+      expect(result.data.pages[1].difficulty).toBe('medium');
+      expect(result.data.pages[2].difficulty).toBe('hard');
     });
 
     it('should sort pages by clickGain descending (biggest opportunity first)', async () => {
@@ -156,7 +161,8 @@ describe('StrikingDistanceService', () => {
       const result = await service.getStrikingDistancePages('site-123');
 
       // SQL already sorts by clickGain DESC, so verify order is preserved
-      expect(result.pages[0].clickGain).toBeGreaterThan(result.pages[1].clickGain);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages[0].clickGain).toBeGreaterThan(result.data.pages[1].clickGain);
     });
 
     it('should filter pages with minimum impressions (>50)', async () => {
@@ -167,7 +173,8 @@ describe('StrikingDistanceService', () => {
 
       const result = await service.getStrikingDistancePages('site-123', { minImpressions: 50 });
 
-      expect(result.pages).toHaveLength(0);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages).toHaveLength(0);
     });
 
     it('should aggregate multiple queries per page correctly', async () => {
@@ -189,8 +196,9 @@ describe('StrikingDistanceService', () => {
 
       const result = await service.getStrikingDistancePages('site-123');
 
-      expect(result.pages[0].topQueries).toHaveLength(3);
-      expect(result.pages[0].topQueries[0].query).toBe('query 1');
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.pages[0].topQueries).toHaveLength(3);
+      expect(result.data.pages[0].topQueries[0].query).toBe('query 1');
     });
   });
 
@@ -218,7 +226,8 @@ describe('StrikingDistanceService', () => {
       const result = await service.getStrikingDistancePages('site-123');
 
       // Expected: (10000 * 0.1101) + (5000 * 0.1101) = 1651.5
-      expect(result.meta.totalPotentialClicks).toBeGreaterThan(1500);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.meta.totalPotentialClicks).toBeGreaterThan(1500);
     });
 
     it('should calculate avgDifficulty (1=easy, 2=medium, 3=hard)', async () => {
@@ -244,7 +253,8 @@ describe('StrikingDistanceService', () => {
       const result = await service.getStrikingDistancePages('site-123');
 
       // Expected: (1 + 3) / 2 = 2.0
-      expect(result.meta.avgDifficulty).toBeCloseTo(2.0, 1);
+      // Service returns CachedData<StrikingDistanceResult>, access via .data
+      expect(result.data.meta.avgDifficulty).toBeCloseTo(2.0, 1);
     });
   });
 });

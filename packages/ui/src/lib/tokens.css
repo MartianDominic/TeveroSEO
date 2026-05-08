@@ -115,6 +115,35 @@
     0 2px 6px rgba(15, 79, 61, 0.25),
     0 8px 18px -4px rgba(15, 79, 61, 0.28);
 
+  /* Elevated surface shadows - for panels, cards that need more lift */
+  --shadow-elevated:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 4px 8px rgba(0, 0, 0, 0.06);
+
+  /* Overlay shadows - for dropdowns, menus */
+  --shadow-overlay:
+    0 4px 8px rgba(0, 0, 0, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.08);
+
+  /* Tooltip shadows - subtle */
+  --shadow-tooltip:
+    0 1px 4px rgba(0, 0, 0, 0.08);
+
+  /* Modal shadows - prominent */
+  --shadow-modal:
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 16px 32px rgba(0, 0, 0, 0.12);
+
+  /* Popover shadows - medium prominence */
+  --shadow-popover:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Dropdown shadows - for select menus, date pickers */
+  --shadow-dropdown:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.10);
+
   /* ===== Motion Tokens ===== */
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-quick: cubic-bezier(0.4, 0, 0.2, 1);
@@ -244,6 +273,15 @@
   box-shadow: 0 0 0 1px var(--hairline);
   border-radius: 4px;
   padding: 1px 5px;
+}
+
+/* ===== Typography Utility: text-xs-safe ===== */
+/* WCAG-compliant 12px minimum floor.
+ * Use this instead of text-xs, text-[10px], or text-[11px].
+ * This ensures accessibility compliance per Design System v6. */
+.text-xs-safe {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;  /* 16px */
 }
 
 /* ===== Dark Mode (Future) ===== */

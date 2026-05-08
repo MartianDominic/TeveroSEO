@@ -1,9 +1,12 @@
 /**
  * Client Portal Dashboard Component
  * Phase 96-05: Client Portal
+ * Phase 96: CPR-007 (Timezone), CPR-010 (Mobile Responsiveness)
  *
  * Main dashboard for client-facing analytics portal.
  * Respects visibility configuration to show/hide metrics.
+ * Displays dates in agency's configured timezone.
+ * Fully responsive with mobile-optimized layouts.
  *
  * Design System v6: Newsreader headers, ghost-edge shadows, grid layout.
  */
@@ -12,6 +15,8 @@ import { BrandedSplitCard } from './BrandedSplitCard';
 import { CtrBenchmarkChart } from './CtrBenchmarkChart';
 import { SparklineChart } from './SparklineChart';
 import type { VisibilityConfig } from '../hooks/useClientVisibility';
+import { useAgencyTimezone } from '../hooks/useAgencyTimezone';
+import { useIsMobile, useResponsive } from '@/client/hooks/useMediaQuery';
 
 /**
  * Convert percentage change to MetricDelta format
@@ -105,6 +110,13 @@ export function ClientPortalDashboard({
     canExport,
   } = visibilityConfig;
 
+  // CPR-007: Agency timezone for date display
+  const { formatDateTime, timezone } = useAgencyTimezone(workspaceId);
+
+  // CPR-010: Mobile responsiveness
+  const isMobile = useIsMobile();
+  const { isTablet } = useResponsive();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -114,37 +126,38 @@ export function ClientPortalDashboard({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with client branding */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    // CPR-010: Responsive padding - smaller on mobile
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6 lg:p-8">
+      {/* Header with client branding - CPR-010: Stack vertically on mobile */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 md:gap-4">
           {clientLogo && (
             <img
               src={clientLogo}
               alt={`${clientName} logo`}
-              className="h-10 w-auto object-contain"
+              className="h-8 md:h-10 w-auto object-contain"
             />
           )}
           <div>
-            <h1 className="font-display text-[24px] font-medium text-text-1">
+            <h1 className="font-display text-[20px] md:text-[24px] font-medium text-text-1">
               {clientName}
             </h1>
-            <p className="text-[13px] text-text-3">SEO Performance Dashboard</p>
+            <p className="text-[12px] md:text-[13px] text-text-3">SEO Performance Dashboard</p>
           </div>
         </div>
 
-        {/* Export buttons */}
+        {/* Export buttons - CPR-010: Full width on mobile, min touch target 44px */}
         {canExport && onExport && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => onExport('csv')}
-              className="px-3 py-1.5 text-[13px] font-medium text-text-2 bg-surface-raised hover:bg-surface-active rounded-md transition-colors"
+              className="flex-1 sm:flex-none min-h-[44px] px-3 py-2 md:py-1.5 text-[13px] font-medium text-text-2 bg-surface-raised hover:bg-surface-active rounded-md transition-colors"
             >
               Export CSV
             </button>
             <button
               onClick={() => onExport('sheets')}
-              className="px-3 py-1.5 text-[13px] font-medium text-white bg-accent hover:bg-accent/90 rounded-md transition-colors"
+              className="flex-1 sm:flex-none min-h-[44px] px-3 py-2 md:py-1.5 text-[13px] font-medium text-white bg-accent hover:bg-accent/90 rounded-md transition-colors"
             >
               Export to Sheets
             </button>
@@ -152,8 +165,8 @@ export function ClientPortalDashboard({
         )}
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards - CPR-010: Single column on small mobile (320px), 2 cols on larger mobile */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {showClicks && metrics && (
           <MetricCard
             label="Clicks"
@@ -184,24 +197,29 @@ export function ClientPortalDashboard({
         )}
       </div>
 
-      {/* Traffic Trend */}
+      {/* Traffic Trend - CPR-010: Responsive chart height */}
       {showClicks && metrics?.trend && metrics.trend.length > 0 && (
         <Card className="bg-surface shadow-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-[15px] font-medium text-text-1">
+          <CardHeader className="pb-2 px-4 md:px-6">
+            <CardTitle className="text-[14px] md:text-[15px] font-medium text-text-1">
               Traffic Trend (Last 30 Days)
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-[120px]">
-              <SparklineChart data={metrics.trend} height={120} showTooltip={true} />
+          <CardContent className="pt-2 px-4 md:px-6">
+            {/* CPR-010: Smaller chart on mobile */}
+            <div className="h-[100px] md:h-[120px]">
+              <SparklineChart
+                data={metrics.trend}
+                height={isMobile ? 100 : 120}
+                showTooltip={true}
+              />
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Two-column layout for branded split and CTR benchmark */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two-column layout for branded split and CTR benchmark - CPR-010: Stack on mobile/tablet */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Branded vs Non-Branded */}
         {(showClicks || showImpressions) && brandedData && (
           <BrandedSplitCard

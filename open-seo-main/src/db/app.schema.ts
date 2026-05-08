@@ -15,6 +15,7 @@ import {
 import { desc, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { clients } from "./client-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 // ============================================================================
 // ENUMS - Database-level type safety for status fields
@@ -53,8 +54,11 @@ export const projects = pgTable(
     domain: text("domain"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
     // Soft delete columns (migration 0038)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
     // H-ONBOARD-01: Idempotency key to prevent duplicate project creation on retry
     // Format: seo-project:{client_id}:{normalized_domain}:{5min_window}
     // Migration: 0073_projects_idempotency.sql
@@ -66,6 +70,8 @@ export const projects = pgTable(
     uniqueIndex("uq_projects_org_name").on(table.organizationId, table.name),
     // Index for efficient soft delete filtering
     index("projects_is_deleted_idx").on(table.isDeleted),
+    // New soft delete index
+    index("ix_projects_soft_deleted").on(table.softDeletedAt),
     // H-ONBOARD-01: Index for idempotency key lookups
     index("idx_projects_idempotency_key").on(table.idempotencyKey),
   ],

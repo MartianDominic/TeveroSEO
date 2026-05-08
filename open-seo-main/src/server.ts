@@ -18,6 +18,11 @@ import {
   initAnalyticsEventConsumers,
   shutdownAnalyticsEventConsumers,
 } from "@/server/features/analytics/events";
+// BMQ-001 FIX: Import scheduler functions for development mode initialization
+import {
+  initAllSchedulers,
+  closeAllQueues as closeSchedulerQueues,
+} from "@/server/queues/queue-scheduler";
 import { pool } from "@/db";
 import { createLogger } from "@/server/lib/logger";
 import { createServer } from "http";
@@ -59,6 +64,18 @@ validateEnv(requiredEnvVars);
       log.info("All workers started in development mode");
     } catch (err) {
       log.error("Failed to start workers in development", err instanceof Error ? err : new Error(String(err)));
+    }
+
+    // BMQ-001 FIX: Initialize job schedulers in development mode
+    // In production, this is handled by worker-entry.ts
+    // CRITICAL: Without this, all cron jobs (GSC sync, trend analysis, maintenance, DLQ cleanup)
+    // will never run - they need BullMQ job schedulers to be set up.
+    try {
+      await initAllSchedulers();
+      log.info("Job schedulers initialized in development mode");
+    } catch (err) {
+      log.error("Failed to initialize job schedulers", err instanceof Error ? err : new Error(String(err)));
+      // Non-fatal: allow manual trigger fallback
     }
   } else {
     // Production mode: workers run in separate process (worker-entry.ts / open-seo-worker container)
@@ -124,6 +141,13 @@ async function shutdown(signal: string): Promise<void> {
     await stopAnalyticsWorker();
   } catch (err) {
     log.error("stopAnalyticsWorker failed", err instanceof Error ? err : new Error(String(err)));
+  }
+  // BMQ-001 FIX: Close scheduler queues before Redis connections
+  try {
+    await closeSchedulerQueues();
+    log.info("Scheduler queues closed");
+  } catch (err) {
+    log.error("closeSchedulerQueues failed", err instanceof Error ? err : new Error(String(err)));
   }
   try {
     await closeRedis();

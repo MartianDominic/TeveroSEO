@@ -106,7 +106,7 @@ export function PackageSelector({
                     {isRecommended && (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0"
+                        className="text-xs-safe px-1.5 py-0"
                       >
                         {t("selector.recommended")}
                       </Badge>

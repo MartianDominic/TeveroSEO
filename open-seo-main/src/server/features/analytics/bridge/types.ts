@@ -258,10 +258,14 @@ export interface AnalyticsAuditContext {
   trendData?: TrendAuditData;
   /** Striking distance data for T4-09 */
   strikingDistanceData?: StrikingDistanceAuditData;
+  /** Position history for historical trend comparison (OPS-006) */
+  positionHistory?: PositionHistoryData;
   /** Whether analytics data is available */
   hasAnalyticsData: boolean;
   /** Last sync timestamp */
   lastSyncAt?: Date;
+  /** GSC data availability status (OPS-005) */
+  gscStatus?: GscDataStatus;
 }
 
 /**
@@ -344,4 +348,83 @@ export interface StrikingDistanceKeywordSummary {
   difficulty: 'easy' | 'medium' | 'hard';
   /** Top keywords for this page */
   topKeywords: string[];
+}
+
+// =============================================================================
+// OPS-004/005/006 FIX: Position History & Fallback Types
+// =============================================================================
+
+/**
+ * Data source indicator for fallback transparency (OPS-005)
+ * Allows UI to indicate data freshness to users
+ */
+export type DataSource = 'fresh' | 'cached' | 'stale' | 'historical' | null;
+
+/**
+ * Wrapper for data with source metadata (OPS-005)
+ */
+export interface DataWithSource<T> {
+  /** The actual data */
+  data: T | null;
+  /** Where the data came from */
+  source: DataSource;
+  /** ISO timestamp when data was originally fetched */
+  fetchedAt?: string;
+  /** ISO timestamp when data will be considered stale */
+  staleAfter?: string;
+}
+
+/**
+ * Single data point in position history time series (OPS-006)
+ */
+export interface PositionHistoryDataPoint {
+  /** Date of the data point (YYYY-MM-DD) */
+  date: string;
+  /** Average position for that date */
+  position: number;
+  /** Clicks for that date */
+  clicks: number;
+  /** Impressions for that date */
+  impressions: number;
+  /** CTR for that date */
+  ctr?: number;
+}
+
+/**
+ * Position history data for historical trend comparison (OPS-006)
+ */
+export interface PositionHistoryData {
+  /** URL being tracked */
+  url: string;
+  /** Time series data points */
+  dataPoints: PositionHistoryDataPoint[];
+  /** Overall trend direction */
+  trend: 'improving' | 'declining' | 'stable';
+  /** Volatility score (0-100, higher = more volatile) */
+  volatility: number;
+  /** Best position achieved in the period */
+  bestPosition: number;
+  /** Worst position in the period */
+  worstPosition: number;
+  /** Average position over the period */
+  avgPosition: number;
+  /** Period in days covered */
+  periodDays: number;
+}
+
+/**
+ * GSC data availability status (OPS-005)
+ * Used for graceful fallback when GSC unavailable
+ */
+export interface GscDataStatus {
+  /** Whether GSC data is available */
+  available: boolean;
+  /** Last successful sync timestamp (if available) */
+  lastSyncAt?: Date;
+  /** Reason if unavailable */
+  unavailableReason?: 'no_connection' | 'sync_failed' | 'quota_exceeded' | 'timeout';
+  /** Whether fallback data was used */
+  usingFallback: boolean;
+  /** Source of the data */
+  dataSource: DataSource;
 }

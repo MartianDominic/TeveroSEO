@@ -140,7 +140,7 @@ export function KeyboardShortcutsHelp({ isOpen: externalOpen, onClose }: Keyboar
 
         <div className="border-t border-border pt-3 mt-4">
           <p className="text-xs text-muted-foreground text-center">
-            Press <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> to close
+            Press <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe">Esc</kbd> to close
           </p>
         </div>
       </DialogContent>

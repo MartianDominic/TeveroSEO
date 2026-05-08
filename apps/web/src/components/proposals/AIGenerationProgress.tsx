@@ -162,7 +162,7 @@ export const AIGenerationProgress: FC<AIGenerationProgressProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={isComplete ? onOpenChange : undefined}>
-      <DialogContent className="max-w-md rounded-lg border bg-background p-6 shadow-lg">
+      <DialogContent className="max-w-md rounded-lg border bg-background p-6 shadow-[var(--shadow-modal)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isComplete ? (

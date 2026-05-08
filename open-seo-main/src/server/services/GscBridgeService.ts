@@ -20,14 +20,12 @@
 import { redis } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { ANALYTICS_CACHE_TTL_SECONDS } from "@/server/cache";
+import { gscBridgeRateLimiter } from "@/server/services/RateLimitService";
 
 const log = createLogger({ module: "gsc-bridge-service" });
 
 // Use shared analytics cache TTL for consistency across all analytics endpoints
 const CACHE_TTL_SECONDS = ANALYTICS_CACHE_TTL_SECONDS;
-
-// Rate limit: 100 calls per day per client
-const RATE_LIMIT_PER_DAY = 100;
 
 /**
  * Query parameters for GSC search analytics.
@@ -262,38 +260,33 @@ export class GscBridgeService {
 
   /**
    * Check if client is within daily rate limit.
+   * SEC-002 FIX: Uses unified RateLimitService which fails CLOSED (not open).
+   * When Redis is unavailable, requests are rate-limited with degraded (stricter) limits
+   * instead of being allowed through without any limits.
    */
   private async checkRateLimit(clientId: string): Promise<boolean> {
-    try {
-      const key = `gsc:ratelimit:${clientId}:${this.getTodayKey()}`;
-      const count = await redis.get(key);
-      return !count || parseInt(count, 10) < RATE_LIMIT_PER_DAY;
-    } catch {
-      // On error, allow the request (fail open for better UX)
-      return true;
+    const result = await gscBridgeRateLimiter(clientId);
+
+    if (!result.allowed) {
+      log.warn("GSC rate limit exceeded (fail-closed)", {
+        clientId,
+        remaining: result.remaining,
+        resetAt: result.resetAt,
+        fromFallback: result.fromFallback,
+      });
     }
+
+    return result.allowed;
   }
 
   /**
    * Increment rate limit counter.
+   * NOTE: With the unified RateLimitService, rate limit tracking is atomic
+   * with the check, so this method is now a no-op. Kept for backward compatibility.
    */
-  private async incrementRateLimit(clientId: string): Promise<void> {
-    try {
-      const key = `gsc:ratelimit:${clientId}:${this.getTodayKey()}`;
-      const pipeline = redis.pipeline();
-      pipeline.incr(key);
-      pipeline.expire(key, 86400); // 24 hours
-      await pipeline.exec();
-    } catch {
-      // Rate limit tracking failure is non-critical
-    }
-  }
-
-  /**
-   * Get today's date key for rate limiting.
-   */
-  private getTodayKey(): string {
-    return new Date().toISOString().split("T")[0];
+  private async incrementRateLimit(_clientId: string): Promise<void> {
+    // Rate limit increment is now handled atomically by gscBridgeRateLimiter
+    // This method is kept for backward compatibility but does nothing
   }
 }
 

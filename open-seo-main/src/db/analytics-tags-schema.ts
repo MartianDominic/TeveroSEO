@@ -22,6 +22,7 @@ export const siteTags = pgTable(
   },
   (table) => [
     unique("uq_site_tags_site_name").on(table.siteId, table.tagName),
+    index("idx_site_tags_site_id").on(table.siteId), // DBS-002: Fast lookup by site
     index("idx_site_tags_name").on(table.tagName),
     index("idx_site_tags_category").on(table.tagCategory),
     index("idx_site_tags_soft_deleted").on(table.softDeletedAt),
@@ -41,6 +42,7 @@ export const clientTags = pgTable(
   },
   (table) => [
     unique("uq_client_tags_client_name").on(table.clientId, table.tagName),
+    index("idx_client_tags_client_id").on(table.clientId), // DBS-003: Fast lookup by client
     index("idx_client_tags_name").on(table.tagName),
     index("idx_client_tags_soft_deleted").on(table.softDeletedAt),
   ]

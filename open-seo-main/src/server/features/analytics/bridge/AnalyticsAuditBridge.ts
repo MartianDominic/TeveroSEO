@@ -12,6 +12,14 @@
  * OPS-01 FIX: Migrated from in-memory Map to Redis caching to support multi-worker
  * audit scenarios where different workers may need to share cached analytics data.
  * Cache keys are scoped to audit runs: audit:{auditId}:{dataType}:{entityId}
+ *
+ * OPS-004 FIX: Added dedicated GSC data caching layer with 1-hour TTL to prevent
+ * redundant API calls during T4 checks. All GSC data is cached at the bridge level.
+ *
+ * OPS-005 FIX: Implemented multi-tier fallback strategy when GSC data unavailable:
+ * 1. Fresh cache -> 2. Stale cache (up to 24h) -> 3. Historical DB data -> 4. Graceful skip
+ *
+ * OPS-006 FIX: Added position history tracking for historical trend comparison in audits.
  */
 
 import { TopicClusterService } from "../services/TopicClusterService";
@@ -23,8 +31,12 @@ import {
 } from "../services/CannibalizationService";
 import { TrendDetectionService, getTrendDetectionService } from "../services/TrendDetectionService";
 import { createLogger } from "@/server/lib/logger";
-import { ANALYTICS_CACHE_TTL_SECONDS } from "@/server/cache";
+import { ANALYTICS_CACHE_TTL_SECONDS, registerInvalidationHandler } from "@/server/cache";
 import { redis, isCircuitBreakerClosed } from "@/server/lib/redis";
+import { db } from "@/db";
+import { seoGscQueryAnalytics } from "@/db/gsc-analytics-schema";
+import { sql, and, eq, gte, lte } from "drizzle-orm";
+import { format, subDays } from "date-fns";
 import type {
   TopicCoverageAuditData,
   ContentGapAuditData,
@@ -41,6 +53,11 @@ import type {
   CannibalizationSummary,
   RecommendationPriority,
   AnalyticsAuditContext,
+  PositionHistoryData,
+  PositionHistoryDataPoint,
+  DataSource,
+  DataWithSource,
+  GscDataStatus,
 } from "./types";
 import type { TopicClusterWithPages, StrikingDistancePage, TrendAnalysis } from "../types";
 
@@ -61,11 +78,39 @@ const CLUSTER_SIZE_TARGET = {
 const AUDIT_CACHE_TTL_SECONDS = 3600;
 
 /**
+ * OPS-004 FIX: TTL for GSC data cache (1 hour).
+ * GSC data has 2-3 day processing latency, so 1 hour freshness is sufficient.
+ */
+const GSC_CACHE_TTL_SECONDS = 3600;
+
+/**
+ * OPS-005 FIX: Maximum age for stale cache data (24 hours).
+ * When fresh data is unavailable, serve stale data up to this age.
+ */
+const STALE_CACHE_MAX_AGE_SECONDS = 86400;
+
+/**
+ * OPS-006 FIX: Default period for position history (90 days).
+ */
+const POSITION_HISTORY_DEFAULT_DAYS = 90;
+
+/**
  * Cache entry with timestamp for expiration (in-memory fallback)
  */
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
+}
+
+/**
+ * OPS-005 FIX: Enhanced cache entry with metadata for stale data support
+ */
+interface EnhancedCacheEntry<T> {
+  data: T;
+  timestamp: number;
+  fetchedAt: string;
+  staleAfter: string;
+  source: DataSource;
 }
 
 /**
@@ -584,6 +629,7 @@ export class AnalyticsAuditBridge {
 
   /**
    * Get all analytics data as a combined context for audit checks.
+   * OPS-005/006 FIX: Now includes GSC status and position history.
    *
    * @param siteId - Site UUID
    * @param pageUrl - Optional page URL for page-specific data
@@ -594,6 +640,9 @@ export class AnalyticsAuditBridge {
     pageUrl?: string,
     auditId?: string
   ): Promise<AnalyticsAuditContext> {
+    // Fetch GSC status first to determine data availability (OPS-005)
+    const gscStatus = await this.getGscDataStatus(siteId);
+
     const [topicCoverage, contentGaps, cannibalization] = await Promise.all([
       this.getTopicCoverageData(siteId, auditId),
       this.getContentGapData(siteId, auditId),
@@ -602,12 +651,19 @@ export class AnalyticsAuditBridge {
 
     let hubSpokeLinking: HubSpokeLinkingAuditData | undefined;
     let clusterSize: ClusterSizeAuditData | null | undefined;
+    let positionHistory: PositionHistoryData | undefined;
 
     if (pageUrl) {
-      [hubSpokeLinking, clusterSize] = await Promise.all([
+      // Fetch page-specific data including position history (OPS-006)
+      const [hubSpokeResult, clusterSizeResult, positionHistoryResult] = await Promise.all([
         this.getHubSpokeLinkingData(siteId, pageUrl, auditId),
         this.getClusterSizeData(siteId, pageUrl, auditId),
+        this.getPositionHistory(siteId, pageUrl, POSITION_HISTORY_DEFAULT_DAYS, auditId),
       ]);
+
+      hubSpokeLinking = hubSpokeResult;
+      clusterSize = clusterSizeResult;
+      positionHistory = positionHistoryResult ?? undefined;
     }
 
     return {
@@ -616,11 +672,13 @@ export class AnalyticsAuditBridge {
       cannibalization,
       hubSpokeLinking,
       clusterSize: clusterSize ?? undefined,
+      positionHistory,
       hasAnalyticsData:
         topicCoverage.totalClusters > 0 ||
         contentGaps.strikingDistanceCount > 0 ||
         cannibalization.totalIssues > 0,
-      lastSyncAt: new Date(),
+      lastSyncAt: gscStatus.lastSyncAt ?? new Date(),
+      gscStatus,
     };
   }
 
@@ -653,12 +711,249 @@ export class AnalyticsAuditBridge {
   }
 
   /**
+   * OPS-006 FIX: Get position history for a URL over a time period.
+   * Provides historical trend data for comparison in audit context.
+   *
+   * @param siteId - Site UUID
+   * @param url - Page URL to get history for
+   * @param days - Number of days of history (default 90)
+   * @param auditId - Optional audit ID for caching
+   */
+  async getPositionHistory(
+    siteId: string,
+    url: string,
+    days: number = POSITION_HISTORY_DEFAULT_DAYS,
+    auditId?: string
+  ): Promise<PositionHistoryData | null> {
+    const cacheKey = `poshistory:${siteId}:${this.hashUrl(url)}:${days}`;
+
+    // Try cache with fallback (OPS-005)
+    const cachedResult = await this.getWithFallback<PositionHistoryData>(
+      cacheKey,
+      auditId,
+      async () => this.fetchPositionHistoryFromDb(siteId, url, days),
+      async () => this.getLastKnownPositionHistory(siteId, url)
+    );
+
+    if (cachedResult.data) {
+      logger.debug("Position history retrieved", {
+        siteId,
+        url,
+        days,
+        source: cachedResult.source,
+        dataPoints: cachedResult.data.dataPoints.length
+      });
+    }
+
+    return cachedResult.data;
+  }
+
+  /**
+   * OPS-006 FIX: Fetch position history directly from the database.
+   */
+  private async fetchPositionHistoryFromDb(
+    siteId: string,
+    url: string,
+    days: number
+  ): Promise<PositionHistoryData | null> {
+    try {
+      const endDate = new Date();
+      const startDate = subDays(endDate, days);
+
+      const result = await db.execute<{
+        query_date: string;
+        avg_position: number;
+        total_clicks: number;
+        total_impressions: number;
+        avg_ctr: number;
+      }>(sql`
+        SELECT
+          DATE(query_time) as query_date,
+          AVG(position) as avg_position,
+          SUM(clicks) as total_clicks,
+          SUM(impressions) as total_impressions,
+          AVG(ctr) as avg_ctr
+        FROM seo_gsc_query_analytics
+        WHERE site_id = ${siteId}
+          AND page_url = ${url}
+          AND query_time >= ${startDate.toISOString()}::timestamptz
+          AND query_time <= ${endDate.toISOString()}::timestamptz
+        GROUP BY DATE(query_time)
+        ORDER BY query_date ASC
+      `);
+
+      if (!result.rows || result.rows.length === 0) {
+        return null;
+      }
+
+      const dataPoints: PositionHistoryDataPoint[] = result.rows.map((row) => ({
+        date: row.query_date,
+        position: Number(row.avg_position),
+        clicks: Number(row.total_clicks),
+        impressions: Number(row.total_impressions),
+        ctr: Number(row.avg_ctr),
+      }));
+
+      const positions = dataPoints.map((d) => d.position);
+      const avgPosition = positions.reduce((a, b) => a + b, 0) / positions.length;
+      const bestPosition = Math.min(...positions);
+      const worstPosition = Math.max(...positions);
+
+      // Calculate trend
+      const trend = this.calculatePositionTrend(dataPoints);
+
+      // Calculate volatility (standard deviation as percentage of mean)
+      const volatility = this.calculateVolatility(positions);
+
+      return {
+        url,
+        dataPoints,
+        trend,
+        volatility,
+        bestPosition,
+        worstPosition,
+        avgPosition,
+        periodDays: days,
+      };
+    } catch (error) {
+      logger.error("Failed to fetch position history from DB", error instanceof Error ? error : undefined, {
+        siteId,
+        url,
+        days,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * OPS-005 FIX: Get last known position history from database as fallback.
+   */
+  private async getLastKnownPositionHistory(
+    siteId: string,
+    url: string
+  ): Promise<PositionHistoryData | null> {
+    // Try to get the most recent 30 days of data as a minimal fallback
+    return this.fetchPositionHistoryFromDb(siteId, url, 30);
+  }
+
+  /**
+   * OPS-005 FIX: Get GSC data availability status for a site.
+   * Used to inform audit checks about data freshness.
+   */
+  async getGscDataStatus(siteId: string): Promise<GscDataStatus> {
+    try {
+      // Check for recent data in the database
+      const result = await db.execute<{ last_sync: string; row_count: number }>(sql`
+        SELECT
+          MAX(query_time) as last_sync,
+          COUNT(*)::int as row_count
+        FROM seo_gsc_query_analytics
+        WHERE site_id = ${siteId}
+          AND query_time >= NOW() - INTERVAL '7 days'
+      `);
+
+      const row = result.rows[0];
+      const hasRecentData = row && row.row_count > 0;
+
+      if (hasRecentData) {
+        return {
+          available: true,
+          lastSyncAt: new Date(row.last_sync),
+          usingFallback: false,
+          dataSource: 'fresh',
+        };
+      }
+
+      // Check for any historical data
+      const historicalResult = await db.execute<{ last_sync: string }>(sql`
+        SELECT MAX(query_time) as last_sync
+        FROM seo_gsc_query_analytics
+        WHERE site_id = ${siteId}
+      `);
+
+      if (historicalResult.rows[0]?.last_sync) {
+        return {
+          available: true,
+          lastSyncAt: new Date(historicalResult.rows[0].last_sync),
+          usingFallback: true,
+          dataSource: 'historical',
+        };
+      }
+
+      return {
+        available: false,
+        unavailableReason: 'no_connection',
+        usingFallback: false,
+        dataSource: null,
+      };
+    } catch (error) {
+      logger.warn("Failed to get GSC data status", {
+        siteId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        available: false,
+        unavailableReason: 'sync_failed',
+        usingFallback: false,
+        dataSource: null,
+      };
+    }
+  }
+
+  /**
    * Clear the in-memory cache (useful at the end of an audit run).
    * For Redis-based cache, use cleanupAuditCache(auditId) instead.
    */
   clearCache(): void {
     this.memoryCache.clear();
     logger.debug("Analytics audit bridge in-memory cache cleared");
+  }
+
+  /**
+   * OPS-004 FIX: Invalidate GSC cache for a site.
+   * Call this when GSC data is refreshed to ensure T4 checks use fresh data.
+   *
+   * @param siteId - Site UUID
+   */
+  async invalidateGscCache(siteId: string): Promise<number> {
+    const patterns = [
+      `gsc:${siteId}:*`,
+      `poshistory:${siteId}:*`,
+      `trend:${siteId}`,
+      `strikingaudit:${siteId}`,
+      `gap:${siteId}`,
+    ];
+
+    let totalDeleted = 0;
+
+    for (const pattern of patterns) {
+      try {
+        const keys = await redis.keys(pattern);
+        if (keys.length > 0) {
+          await redis.del(...keys);
+          totalDeleted += keys.length;
+        }
+      } catch (error) {
+        logger.warn("Failed to invalidate GSC cache pattern", {
+          pattern,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Also clear in-memory cache entries for this site
+    for (const key of this.memoryCache.keys()) {
+      if (key.includes(siteId)) {
+        this.memoryCache.delete(key);
+        totalDeleted++;
+      }
+    }
+
+    if (totalDeleted > 0) {
+      logger.info("GSC cache invalidated", { siteId, keysDeleted: totalDeleted });
+    }
+
+    return totalDeleted;
   }
 
   /**
@@ -707,6 +1002,224 @@ export class AnalyticsAuditBridge {
       return `audit:${auditId}:${key}`;
     }
     return key;
+  }
+
+  /**
+   * OPS-005 FIX: Multi-tier fallback strategy for data retrieval.
+   * Hierarchy: Fresh cache -> Stale cache (24h) -> Historical DB -> null
+   *
+   * @param cacheKey - Cache key for the data
+   * @param auditId - Optional audit ID for caching
+   * @param fetchFn - Function to fetch fresh data
+   * @param lastKnownFn - Function to get last known data from DB
+   */
+  private async getWithFallback<T>(
+    cacheKey: string,
+    auditId: string | undefined,
+    fetchFn: () => Promise<T | null>,
+    lastKnownFn: () => Promise<T | null>
+  ): Promise<DataWithSource<T>> {
+    // 1. Try fresh cache
+    const cached = await this.getFromCacheWithMetadata<T>(cacheKey, auditId);
+    if (cached && !this.isCacheStale(cached)) {
+      return { data: cached.data, source: 'cached', fetchedAt: cached.fetchedAt };
+    }
+
+    // 2. Try fresh fetch
+    try {
+      const fresh = await fetchFn();
+      if (fresh) {
+        await this.setCacheWithMetadata(cacheKey, fresh, auditId);
+        return { data: fresh, source: 'fresh', fetchedAt: new Date().toISOString() };
+      }
+    } catch (error) {
+      logger.warn("Fresh fetch failed, trying fallbacks", {
+        cacheKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // 3. Try stale cache (allow up to 24h old)
+    if (cached && this.isCacheWithinMaxAge(cached)) {
+      logger.info("Using stale cache data", {
+        cacheKey,
+        fetchedAt: cached.fetchedAt,
+        age: this.getCacheAgeSeconds(cached),
+      });
+      return { data: cached.data, source: 'stale', fetchedAt: cached.fetchedAt };
+    }
+
+    // 4. Try last known from DB
+    try {
+      const historical = await lastKnownFn();
+      if (historical) {
+        logger.info("Using historical data from DB", { cacheKey });
+        return { data: historical, source: 'historical' };
+      }
+    } catch (error) {
+      logger.warn("Historical fetch failed", {
+        cacheKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    return { data: null, source: null };
+  }
+
+  /**
+   * Get from cache with enhanced metadata for stale data support.
+   */
+  private async getFromCacheWithMetadata<T>(
+    key: string,
+    auditId?: string
+  ): Promise<EnhancedCacheEntry<T> | undefined> {
+    if (auditId && this.redisAvailable && isCircuitBreakerClosed()) {
+      try {
+        const redisKey = this.buildCacheKey(key, auditId);
+        const cached = await redis.get(redisKey);
+
+        if (cached) {
+          const parsed = JSON.parse(cached) as EnhancedCacheEntry<T>;
+          return parsed;
+        }
+        return undefined;
+      } catch (error) {
+        logger.warn("Redis cache get with metadata failed", {
+          key,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.redisAvailable = false;
+      }
+    }
+
+    // In-memory fallback
+    const entry = this.memoryCache.get(key) as CacheEntry<T> | undefined;
+    if (!entry) return undefined;
+
+    // Convert to enhanced format
+    return {
+      data: entry.data,
+      timestamp: entry.timestamp,
+      fetchedAt: new Date(entry.timestamp).toISOString(),
+      staleAfter: new Date(entry.timestamp + GSC_CACHE_TTL_SECONDS * 1000).toISOString(),
+      source: 'cached',
+    };
+  }
+
+  /**
+   * Set cache with enhanced metadata.
+   */
+  private async setCacheWithMetadata<T>(
+    key: string,
+    data: T,
+    auditId?: string
+  ): Promise<void> {
+    const now = Date.now();
+    const entry: EnhancedCacheEntry<T> = {
+      data,
+      timestamp: now,
+      fetchedAt: new Date(now).toISOString(),
+      staleAfter: new Date(now + GSC_CACHE_TTL_SECONDS * 1000).toISOString(),
+      source: 'fresh',
+    };
+
+    if (auditId && this.redisAvailable && isCircuitBreakerClosed()) {
+      try {
+        const redisKey = this.buildCacheKey(key, auditId);
+        // Use extended TTL to allow stale reads
+        await redis.setex(redisKey, STALE_CACHE_MAX_AGE_SECONDS, JSON.stringify(entry));
+        return;
+      } catch (error) {
+        logger.warn("Redis cache set with metadata failed", {
+          key,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.redisAvailable = false;
+      }
+    }
+
+    // In-memory fallback
+    this.memoryCache.set(key, { data, timestamp: now });
+  }
+
+  /**
+   * Check if cache entry is stale (past TTL but within max age).
+   */
+  private isCacheStale(entry: EnhancedCacheEntry<unknown>): boolean {
+    return new Date(entry.staleAfter) < new Date();
+  }
+
+  /**
+   * Check if cache entry is within maximum age for stale reads.
+   */
+  private isCacheWithinMaxAge(entry: EnhancedCacheEntry<unknown>): boolean {
+    const ageSeconds = this.getCacheAgeSeconds(entry);
+    return ageSeconds < STALE_CACHE_MAX_AGE_SECONDS;
+  }
+
+  /**
+   * Get cache entry age in seconds.
+   */
+  private getCacheAgeSeconds(entry: EnhancedCacheEntry<unknown>): number {
+    return Math.floor((Date.now() - entry.timestamp) / 1000);
+  }
+
+  /**
+   * Hash URL for cache key (simple hash to avoid very long keys).
+   */
+  private hashUrl(url: string): string {
+    let hash = 0;
+    for (let i = 0; i < url.length; i++) {
+      const char = url.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * OPS-006 FIX: Calculate position trend from data points.
+   */
+  private calculatePositionTrend(
+    dataPoints: PositionHistoryDataPoint[]
+  ): 'improving' | 'declining' | 'stable' {
+    if (dataPoints.length < 7) {
+      return 'stable'; // Not enough data for trend
+    }
+
+    // Compare first week average to last week average
+    const firstWeek = dataPoints.slice(0, 7);
+    const lastWeek = dataPoints.slice(-7);
+
+    const firstAvg = firstWeek.reduce((sum, d) => sum + d.position, 0) / firstWeek.length;
+    const lastAvg = lastWeek.reduce((sum, d) => sum + d.position, 0) / lastWeek.length;
+
+    const change = lastAvg - firstAvg;
+    const threshold = 2; // 2 position change threshold
+
+    if (change < -threshold) {
+      return 'improving'; // Lower position = better ranking
+    } else if (change > threshold) {
+      return 'declining'; // Higher position = worse ranking
+    }
+    return 'stable';
+  }
+
+  /**
+   * OPS-006 FIX: Calculate volatility (coefficient of variation).
+   */
+  private calculateVolatility(positions: number[]): number {
+    if (positions.length < 2) return 0;
+
+    const mean = positions.reduce((a, b) => a + b, 0) / positions.length;
+    if (mean === 0) return 0;
+
+    const squaredDiffs = positions.map((p) => Math.pow(p - mean, 2));
+    const variance = squaredDiffs.reduce((a, b) => a + b, 0) / positions.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Coefficient of variation as percentage (0-100 scale)
+    return Math.min(100, Math.round((stdDev / mean) * 100));
   }
 
   /**
@@ -1224,9 +1737,11 @@ export class AnalyticsAuditBridge {
 // ============================================================================
 
 let instance: AnalyticsAuditBridge | null = null;
+let invalidationHandlerRegistered = false;
 
 /**
  * Get the singleton AnalyticsAuditBridge instance.
+ * OPS-004 FIX: Also registers cache invalidation handler on first call.
  */
 export function getAnalyticsAuditBridge(): AnalyticsAuditBridge {
   if (!instance) {
@@ -1236,6 +1751,21 @@ export function getAnalyticsAuditBridge(): AnalyticsAuditBridge {
       getCannibalizationService(),
       getTrendDetectionService()
     );
+
+    // OPS-004 FIX: Register invalidation handler for GSC sync events
+    if (!invalidationHandlerRegistered) {
+      registerInvalidationHandler(async (event) => {
+        if (event.reason === 'gsc_sync_complete' && instance) {
+          await instance.invalidateGscCache(event.siteId);
+          logger.info("Bridge cache invalidated on GSC sync", {
+            siteId: event.siteId,
+            reason: event.reason,
+          });
+        }
+      });
+      invalidationHandlerRegistered = true;
+      logger.debug("Analytics audit bridge invalidation handler registered");
+    }
   }
   return instance;
 }
@@ -1248,4 +1778,5 @@ export function resetAnalyticsAuditBridge(): void {
     instance.clearCache();
   }
   instance = null;
+  // Note: We don't reset invalidationHandlerRegistered as handlers persist
 }

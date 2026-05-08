@@ -93,8 +93,8 @@ export class MasterDashboardService {
         FROM master_dashboard_cagg m
         JOIN site_connections s ON m.site_id = s.id
         WHERE s.workspace_id = ${workspaceId}
-          AND m.bucket >= ${startDate}::date
-          AND m.bucket <= ${endDate}::date
+          AND m.bucket >= ${startDate}::timestamptz
+          AND m.bucket <= ${endDate}::timestamptz
           ${siteIds ? sql`AND m.site_id = ANY(${siteIds})` : sql``}
         GROUP BY m.site_id, s.site_name, s.site_url
         ORDER BY total_clicks DESC
@@ -117,8 +117,8 @@ export class MasterDashboardService {
             AVG(avg_position) as avg_position,
             AVG(avg_ctr) as avg_ctr
           FROM master_dashboard_cagg
-          WHERE bucket >= ${comparisonRange.startDate}::date
-            AND bucket <= ${comparisonRange.endDate}::date
+          WHERE bucket >= ${comparisonRange.startDate}::timestamptz
+            AND bucket <= ${comparisonRange.endDate}::timestamptz
             ${siteIds ? sql`AND site_id = ANY(${siteIds})` : sql``}
           GROUP BY site_id
         `;

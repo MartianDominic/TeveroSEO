@@ -11,11 +11,19 @@
  * - Never trust X-Workspace-ID header alone - must be verified against JWT
  * - For site-scoped routes, verify site belongs to authenticated workspace
  * - All database queries use parameterized queries to prevent SQL injection
+ *
+ * API-002 FIX: All error responses now match OpenAPI spec format:
+ * { success: false, error: { code: "ERROR_CODE", message: "..." } }
  */
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { verifyRequestToken } from "@/server/lib/clerk-verify";
 import { AppError } from "@/server/lib/errors";
+import {
+  ERROR_CODES,
+  createErrorResponse,
+  getHttpStatusForError,
+} from "@/server/features/analytics/types/api-responses";
 
 /**
  * Authenticated workspace context returned from authenticateAnalyticsRequest.
@@ -71,14 +79,17 @@ export async function authenticateAnalyticsRequest(
     };
   } catch (error) {
     if (error instanceof AppError) {
-      const status = error.code === "UNAUTHENTICATED" ? 401 : 403;
+      // API-002 FIX: Use standardized error format matching OpenAPI spec
+      const code = error.code === "UNAUTHENTICATED" ? ERROR_CODES.UNAUTHORIZED : ERROR_CODES.FORBIDDEN;
+      const status = getHttpStatusForError(code);
       throw Response.json(
-        { success: false, error: error.message },
+        createErrorResponse(code, error.message),
         { status }
       );
     }
+    // API-002 FIX: Use standardized error format matching OpenAPI spec
     throw Response.json(
-      { success: false, error: "Authentication failed" },
+      createErrorResponse(ERROR_CODES.UNAUTHORIZED, "Authentication failed"),
       { status: 401 }
     );
   }
@@ -213,30 +224,33 @@ async function verifyWorkspaceMembership(
 
 /**
  * Standard 401 Unauthorized response.
+ * API-002 FIX: Uses standardized error format matching OpenAPI spec.
  */
 export function unauthorizedResponse(message = "Unauthorized"): Response {
   return Response.json(
-    { success: false, error: message },
+    createErrorResponse(ERROR_CODES.UNAUTHORIZED, message),
     { status: 401 }
   );
 }
 
 /**
  * Standard 403 Forbidden response.
+ * API-002 FIX: Uses standardized error format matching OpenAPI spec.
  */
 export function forbiddenResponse(message = "Access denied"): Response {
   return Response.json(
-    { success: false, error: message },
+    createErrorResponse(ERROR_CODES.FORBIDDEN, message),
     { status: 403 }
   );
 }
 
 /**
  * Standard 404 Not Found response for sites.
+ * API-002 FIX: Uses standardized error format matching OpenAPI spec.
  */
 export function siteNotFoundResponse(): Response {
   return Response.json(
-    { success: false, error: "Site not found" },
+    createErrorResponse(ERROR_CODES.NOT_FOUND, "Site not found"),
     { status: 404 }
   );
 }

@@ -3,15 +3,16 @@
  *
  * Provides endpoints to replay or remove a specific DLQ job.
  *
- * SECURITY: Protected by X-Internal-Api-Key header + rate limiting.
+ * SECURITY: Protected by HMAC-SHA256 authentication + rate limiting.
+ * CSI-001/CSI-002 FIX: Migrated from legacy X-Internal-Api-Key to HMAC auth.
  * These endpoints are NOT exposed to public - internal network only.
  * Phase 72-03: Added 10 req/min rate limit per user.
  * Phase 95: Added Zod validation for path parameters (P1.G8).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
+import { requireInternalAuth } from "@/server/middleware/internal-auth";
 import {
   adminRateLimiter,
   rateLimitExceededResponse,
@@ -64,8 +65,6 @@ function validationErrorResponse(error: z.ZodError): Response {
   );
 }
 
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-
 // Module-level logger for admin DLQ operations
 const dlqLogger = createLogger({ module: "admin-dlq" });
 
@@ -76,31 +75,6 @@ interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-}
-
-/**
- * Timing-safe comparison of two strings.
- * Returns false if lengths differ (before comparison) to avoid timing leaks.
- */
-function secureCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
-}
-
-/**
- * Verify internal API key header for service-to-service auth.
- * SECURITY: Uses timing-safe comparison to prevent timing attacks.
- */
-function verifyInternalApiKey(request: Request): boolean {
-  const apiKey = request.headers.get("X-Internal-Api-Key");
-  if (!INTERNAL_API_KEY) {
-    dlqLogger.error("INTERNAL_API_KEY not configured");
-    return false;
-  }
-  if (!apiKey) {
-    return false;
-  }
-  return secureCompare(apiKey, INTERNAL_API_KEY);
 }
 
 /**
@@ -128,13 +102,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        * for /replay suffix in the URL to differentiate from other POST actions.
        * Rate limited: 10 req/min per user (72-03).
        * Phase 95: Added path parameter validation (P1.G8).
+       * CSI-001/CSI-002: Uses HMAC authentication.
        */
       POST: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
-        if (!verifyInternalApiKey(request)) {
-          return Response.json(
-            { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+        // CSI-001/CSI-002: Verify HMAC signature (POST with empty body for replay)
+        const authError = await requireInternalAuth(request, "");
+        if (authError) {
+          return authError;
         }
 
         // Rate limit by user ID or IP (72-03)
@@ -215,13 +189,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        * Use when a job should not be retried (e.g., invalid data, obsolete).
        * Rate limited: 10 req/min per user (72-03).
        * Phase 95: Added path parameter validation (P1.G8).
+       * CSI-001/CSI-002: Uses HMAC authentication.
        */
       DELETE: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
-        if (!verifyInternalApiKey(request)) {
-          return Response.json(
-            { success: false, error: "Unauthorized" } satisfies ApiResponse<never>,
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+        // CSI-001/CSI-002: Verify HMAC signature (DELETE with empty body)
+        const authError = await requireInternalAuth(request, "");
+        if (authError) {
+          return authError;
         }
 
         // Rate limit by user ID or IP (72-03)

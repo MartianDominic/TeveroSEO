@@ -5,6 +5,8 @@
  * Generates CSV downloads and Google Sheets from analytics data.
  * Rate limited: 10 requests per hour per workspace (export operations).
  * CSRF protected: POST requires valid CSRF token.
+ *
+ * API-002 FIX: All error responses use standardized format matching OpenAPI spec.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -22,6 +24,10 @@ import {
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
 import { csrfProtect } from "@/server/middleware/csrf";
+import {
+  createErrorResponse,
+  ERROR_CODES,
+} from "@/server/features/analytics/types/api-responses";
 
 const exportSchema = z.object({
   clientId: z.string().uuid(),
@@ -57,7 +63,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
   loader: async ({ request }: any) => {
     // POST only
     if (request.method !== "POST") {
-      return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
+      return Response.json(createErrorResponse(ERROR_CODES.METHOD_NOT_ALLOWED, "Method not allowed"), { status: 405 });
     }
 
     try {
@@ -79,7 +85,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
 
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
           { status: 400 }
         );
       }
@@ -91,7 +97,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
       const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, auth.workspaceId);
       if (!hasAccess) {
         return Response.json(
-          { success: false, error: "ACCESS_DENIED" },
+          createErrorResponse(ERROR_CODES.FORBIDDEN, "Access denied"),
           { status: 403 }
         );
       }
@@ -99,7 +105,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
       const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, auth.workspaceId);
       if (!visibilityConfig.canExport) {
         return Response.json(
-          { success: false, error: "EXPORT_NOT_ALLOWED", message: "Export permission not granted" },
+          createErrorResponse(ERROR_CODES.FORBIDDEN, "Export permission not granted"),
           { status: 403 }
         );
       }
@@ -120,8 +126,8 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
 
       if (!connection[0]?.siteId) {
         return Response.json(
-          { success: false, error: "Client has no connected GSC site" },
-          { status: 400 }
+          createErrorResponse(ERROR_CODES.SERVICE_NOT_CONNECTED, "Client has no connected GSC site"),
+          { status: 424 }
         );
       }
 
@@ -185,8 +191,8 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
         }));
       } else {
         return Response.json(
-          { success: false, error: "Summary export not yet implemented" },
-          { status: 400 }
+          createErrorResponse(ERROR_CODES.FEATURE_UNAVAILABLE, "Summary export not yet implemented"),
+          { status: 501 }
         );
       }
 
@@ -207,7 +213,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
     } catch (error) {
       console.error("[export/csv] POST error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }
@@ -220,7 +226,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
   loader: async ({ request }: any) => {
     // POST only
     if (request.method !== "POST") {
-      return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
+      return Response.json(createErrorResponse(ERROR_CODES.METHOD_NOT_ALLOWED, "Method not allowed"), { status: 405 });
     }
 
     try {
@@ -235,7 +241,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
 
       if (!oauthToken) {
         return Response.json(
-          { success: false, error: "Google OAuth token required", code: "OAUTH_REQUIRED" },
+          createErrorResponse(ERROR_CODES.UNAUTHORIZED, "Google OAuth token required"),
           { status: 401 }
         );
       }
@@ -251,7 +257,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
 
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
           { status: 400 }
         );
       }
@@ -263,7 +269,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
       const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, auth.workspaceId);
       if (!hasAccess) {
         return Response.json(
-          { success: false, error: "ACCESS_DENIED" },
+          createErrorResponse(ERROR_CODES.FORBIDDEN, "Access denied"),
           { status: 403 }
         );
       }
@@ -271,7 +277,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
       const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, auth.workspaceId);
       if (!visibilityConfig.canExport) {
         return Response.json(
-          { success: false, error: "EXPORT_NOT_ALLOWED", message: "Export permission not granted" },
+          createErrorResponse(ERROR_CODES.FORBIDDEN, "Export permission not granted"),
           { status: 403 }
         );
       }
@@ -292,8 +298,8 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
 
       if (!connection2[0]?.siteId) {
         return Response.json(
-          { success: false, error: "Client has no connected GSC site" },
-          { status: 400 }
+          createErrorResponse(ERROR_CODES.SERVICE_NOT_CONNECTED, "Client has no connected GSC site"),
+          { status: 424 }
         );
       }
 
@@ -357,8 +363,8 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
         }));
       } else {
         return Response.json(
-          { success: false, error: "Summary export not yet implemented" },
-          { status: 400 }
+          createErrorResponse(ERROR_CODES.FEATURE_UNAVAILABLE, "Summary export not yet implemented"),
+          { status: 501 }
         );
       }
 
@@ -382,7 +388,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
     } catch (error) {
       console.error("[export/sheets] POST error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }

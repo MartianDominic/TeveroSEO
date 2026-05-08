@@ -287,6 +287,106 @@ export class AnalyticsExportService {
   }
 
   /**
+   * CPR-002: Export multiple sections to a single Google Sheet.
+   * Each section becomes a separate sheet/tab in the spreadsheet.
+   */
+  async exportMultiSectionToGoogleSheets(
+    sections: { name: string; headers: string[]; rows: string[][] }[],
+    title: string,
+    oauthToken: string
+  ): Promise<SheetsExportResult> {
+    // Create spreadsheet with multiple sheets
+    const sheetDefinitions = sections.map((section, index) => ({
+      properties: {
+        title: section.name.slice(0, 31), // Max 31 chars for sheet name
+        index,
+        gridProperties: {
+          rowCount: Math.max(section.rows.length + 1, 10),
+          columnCount: Math.max(section.headers.length, 5),
+        },
+      },
+    }));
+
+    const createResponse = await fetch(
+      "https://sheets.googleapis.com/v4/spreadsheets",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${oauthToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          properties: { title },
+          sheets: sheetDefinitions,
+        }),
+      }
+    );
+
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      logger.error("Failed to create spreadsheet", undefined, {
+        status: createResponse.status,
+        error: errorText,
+      });
+      throw new Error(
+        `Failed to create spreadsheet: ${createResponse.status} ${createResponse.statusText}`
+      );
+    }
+
+    const spreadsheet = (await createResponse.json()) as {
+      spreadsheetId: string;
+      spreadsheetUrl: string;
+    };
+
+    // Batch update all sheets with data
+    const batchData = sections.map((section) => {
+      const allRows = [section.headers, ...section.rows];
+      const colLetter = this.columnLetter(section.headers.length);
+      return {
+        range: `'${section.name.slice(0, 31)}'!A1:${colLetter}${allRows.length}`,
+        values: allRows,
+      };
+    });
+
+    const updateResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}/values:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${oauthToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          valueInputOption: "USER_ENTERED",
+          data: batchData,
+        }),
+      }
+    );
+
+    if (!updateResponse.ok) {
+      const updateErrorText = await updateResponse.text();
+      logger.error("Failed to update spreadsheet data", undefined, {
+        status: updateResponse.status,
+        spreadsheetId: spreadsheet.spreadsheetId,
+        error: updateErrorText,
+      });
+    }
+
+    logger.info("Multi-section Google Sheet created", {
+      spreadsheetId: spreadsheet.spreadsheetId,
+      sheetCount: sections.length,
+      totalRows: sections.reduce((sum, s) => sum + s.rows.length, 0),
+    });
+
+    return {
+      spreadsheetId: spreadsheet.spreadsheetId,
+      spreadsheetUrl:
+        spreadsheet.spreadsheetUrl ||
+        `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}`,
+    };
+  }
+
+  /**
    * Convert column index to letter (1=A, 26=Z, 27=AA, etc.)
    */
   private columnLetter(index: number): string {

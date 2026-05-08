@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
 import { reportSchedules } from "./schedule-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * Report status enum values.
@@ -64,8 +65,11 @@ export const reports = pgTable(
     emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
 
     // Soft delete columns (migration 0067)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
   },
   (table) => [
     index("ix_reports_client_id").on(table.clientId),
@@ -76,6 +80,7 @@ export const reports = pgTable(
     index("ix_reports_status").on(table.status),
     index("ix_reports_schedule_id").on(table.scheduleId),
     index("ix_reports_deleted").on(table.isDeleted),
+    index("ix_reports_soft_deleted").on(table.softDeletedAt),
   ],
 );
 

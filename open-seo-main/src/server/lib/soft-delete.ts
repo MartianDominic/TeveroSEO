@@ -4,15 +4,35 @@
  * Provides consistent soft delete filtering across all Drizzle queries.
  * Used by repositories to ensure deleted records are excluded by default.
  *
- * Pattern Reference:
- * - Tables use: is_deleted BOOLEAN DEFAULT FALSE, deleted_at TIMESTAMPTZ
- * - Queries should use: withSoftDelete() modifier
- * - Restoration: set is_deleted = false, deleted_at = null
+ * =============================================================================
+ * MIGRATION NOTICE (DBS-005/006/007)
+ * =============================================================================
+ * This file supports TWO soft delete patterns during migration:
+ *
+ * LEGACY PATTERN (being phased out):
+ * - Columns: is_deleted BOOLEAN DEFAULT FALSE, deleted_at TIMESTAMPTZ
+ * - Query: WHERE is_deleted = false
+ * - Functions: withSoftDelete(), softDeleteValues(), restoreValues()
+ *
+ * NEW STANDARD PATTERN (target):
+ * - Column: soft_deleted_at TIMESTAMPTZ DEFAULT NULL
+ * - Query: WHERE soft_deleted_at IS NULL
+ * - Functions: withSoftDeleteV2(), softDeleteValuesV2(), restoreValuesV2()
+ *
+ * After migration 0082 removes legacy columns, the V2 functions will be
+ * renamed to the non-V2 names.
+ * =============================================================================
  *
  * @example
- * // Basic usage
+ * // Basic usage (legacy pattern)
  * const clients = await db.query.clients.findMany({
  *   where: withSoftDelete(clients, eq(clients.workspaceId, orgId))
+ * });
+ *
+ * @example
+ * // New pattern usage
+ * const tags = await db.query.siteTags.findMany({
+ *   where: withSoftDeleteV2(siteTags, eq(siteTags.siteId, siteId))
  * });
  *
  * @example
@@ -22,8 +42,19 @@
  * });
  */
 
-import { and, eq, isNull, SQL, type AnyColumn } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, SQL, type AnyColumn } from "drizzle-orm";
 import type { PgColumn, PgTableWithColumns } from "drizzle-orm/pg-core";
+
+// Re-export V2 utilities from the new module
+export {
+  softDeleteColumns,
+  softDeleteValuesV2,
+  restoreValuesV2,
+  isSoftDeletedV2,
+  isActiveV2,
+  filterActiveV2,
+  filterDeletedV2,
+} from "../../db/soft-delete-columns";
 
 /**
  * Type for tables that support soft delete.
@@ -186,4 +217,80 @@ export function filterDeleted<T extends { isDeleted: boolean }>(
   records: T[]
 ): T[] {
   return records.filter(isDeleted);
+}
+
+// =============================================================================
+// NEW STANDARD PATTERN (DBS-005/006/007)
+// =============================================================================
+
+/**
+ * Type for tables that support the new soft delete pattern.
+ * Tables must have soft_deleted_at (timestamp) column.
+ */
+export interface SoftDeletableTableV2 {
+  softDeletedAt: PgColumn<{
+    name: string;
+    tableName: string;
+    dataType: "date";
+    columnType: "PgTimestamp";
+    data: Date;
+    driverParam: string;
+    notNull: false;
+    hasDefault: false;
+    isPrimaryKey: false;
+    isAutoincrement: false;
+    hasRuntimeDefault: false;
+    enumValues: undefined;
+    baseColumn: never;
+    generated: undefined;
+  }>;
+}
+
+/**
+ * Wraps a condition with soft delete filtering using the new pattern.
+ * Ensures soft_deleted_at IS NULL is always included in the WHERE clause.
+ *
+ * @param table - The table with softDeletedAt column
+ * @param condition - Optional additional condition
+ * @returns Combined SQL condition
+ *
+ * @example
+ * // With additional condition
+ * const activeTags = withSoftDeleteV2(siteTags, eq(siteTags.siteId, siteId));
+ *
+ * // Without additional condition
+ * const allActiveTags = withSoftDeleteV2(siteTags);
+ */
+export function withSoftDeleteV2<T extends SoftDeletableTableV2>(
+  table: T,
+  condition?: SQL | undefined
+): SQL {
+  const notDeleted = isNull(table.softDeletedAt);
+
+  if (condition) {
+    return and(notDeleted, condition)!;
+  }
+
+  return notDeleted;
+}
+
+/**
+ * Wraps a condition to only return soft-deleted records using the new pattern.
+ * Useful for "trash" views.
+ *
+ * @param table - The table with softDeletedAt column
+ * @param condition - Optional additional condition
+ * @returns Combined SQL condition for deleted records only
+ */
+export function withDeletedOnlyV2<T extends SoftDeletableTableV2>(
+  table: T,
+  condition?: SQL | undefined
+): SQL {
+  const onlyDeleted = isNotNull(table.softDeletedAt);
+
+  if (condition) {
+    return and(onlyDeleted, condition)!;
+  }
+
+  return onlyDeleted;
 }

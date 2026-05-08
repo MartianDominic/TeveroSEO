@@ -3,7 +3,10 @@
  * Phase 96-03: GET/POST /api/analytics/annotations
  * Timeline annotations management
  * Rate limited: 60 requests per minute per workspace (standard analytics).
+ * SEC-006 FIX: Annotation creation rate limited to 10/minute/user.
  * CSRF protected: POST/PUT/DELETE require valid CSRF token.
+ *
+ * API-002 FIX: All error responses use standardized format matching OpenAPI spec.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { AnnotationsRepository } from "@/server/features/analytics/repositories/AnnotationsRepository";
@@ -16,10 +19,28 @@ import {
   analyticsStandardRateLimiter,
   rateLimitExceededResponse,
   addRateLimitHeaders,
+  rateLimit,
+  createEndpointRateLimiter,
 } from "@/server/middleware/rate-limit";
 import { csrfProtect } from "@/server/middleware/csrf";
 import { z } from "zod";
 import { db } from "@/db";
+import {
+  createErrorResponse,
+  ERROR_CODES,
+} from "@/server/features/analytics/types/api-responses";
+
+/**
+ * SEC-006 FIX: Stricter rate limit for annotation creation.
+ * 10 creates per minute per user to prevent spam/abuse.
+ */
+const ANNOTATION_CREATE_RATE_LIMIT = {
+  limit: 10,
+  window: 60, // 1 minute
+  keyPrefix: "ratelimit:analytics:annotations:create:",
+};
+
+const annotationCreateRateLimiter = createEndpointRateLimiter(ANNOTATION_CREATE_RATE_LIMIT);
 
 const getQuerySchema = z.object({
   siteId: z.string().uuid().optional(),
@@ -56,8 +77,9 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
 
       const parsed = getQuerySchema.safeParse(params);
       if (!parsed.success) {
+        // API-002 FIX: Use standardized error format
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
           { status: 400 }
         );
       }
@@ -88,11 +110,18 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
       const csrfError = csrfProtect(request);
       if (csrfError) return csrfError;
 
+      // SEC-006 FIX: Additional rate limit for annotation creation (10/min/user)
+      const createRateLimitResult = await annotationCreateRateLimiter(auth.userId);
+      if (!createRateLimitResult.allowed) {
+        return rateLimitExceededResponse(createRateLimitResult);
+      }
+
       const body = await request.json();
       const parsed = postBodySchema.safeParse(body);
       if (!parsed.success) {
+        // API-002 FIX: Use standardized error format
         return Response.json(
-          { success: false, error: "Invalid body", details: parsed.error.flatten() },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid body", parsed.error.flatten()),
           { status: 400 }
         );
       }
@@ -116,6 +145,7 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
       return addRateLimitHeaders(response, rateLimitResult);
     }
 
-    return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
+    // API-002 FIX: Use standardized error format
+    return Response.json(createErrorResponse(ERROR_CODES.METHOD_NOT_ALLOWED, "Method not allowed"), { status: 405 });
   },
 });

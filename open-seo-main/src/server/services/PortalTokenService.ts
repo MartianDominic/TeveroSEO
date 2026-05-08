@@ -1,14 +1,19 @@
 /**
  * Portal Token Service
  * Phase 87-01: Client Portal Foundation
+ * Phase 96: CPR-005 (Configurable Session Timeout)
  *
  * Manages portal access tokens: generation, validation, revocation.
  * Supports three auth levels: token_only, email_verify, full_login.
+ *
+ * CPR-005: Session timeout is now configurable per agency via
+ * workspace_portal_settings table (1-72 hours range).
  */
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
-import { db, portalTokens } from "@/db";
+import { db, portalTokens, clients } from "@/db";
 import type { DbClient } from "@/db";
+import { workspacePortalSettingsService } from "./WorkspacePortalSettingsService";
 
 // Auth levels for portal access
 export type AuthLevel = "token_only" | "email_verify" | "full_login";
@@ -19,7 +24,9 @@ export type AuthLevel = "token_only" | "email_verify" | "full_login";
 export interface TokenGenerationOptions {
   clientId: string;
   authLevel?: AuthLevel;
-  expiresInDays?: number; // default 30
+  expiresInDays?: number; // default 30 for token links
+  /** CPR-005: Use agency's configured session timeout instead of expiresInDays */
+  useAgencySessionTimeout?: boolean;
 }
 
 /**
@@ -45,13 +52,37 @@ export class PortalTokenService {
   /**
    * Generate a new portal access token.
    *
+   * CPR-005: Now supports agency-configurable session timeout.
+   * When useAgencySessionTimeout is true, looks up the client's workspace
+   * and uses the configured session timeout instead of expiresInDays.
+   *
    * @param options Token generation options
    * @returns The generated token string (nanoid 12 chars)
    */
   async generateToken(options: TokenGenerationOptions): Promise<string> {
     const token = nanoid(12);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + (options.expiresInDays ?? 30));
+    let expiresAt: Date;
+
+    // CPR-005: Use agency session timeout if requested
+    if (options.useAgencySessionTimeout) {
+      // Look up client to get workspaceId
+      const client = await this.db.query.clients.findFirst({
+        where: eq(clients.id, options.clientId),
+      });
+
+      if (client) {
+        expiresAt = await workspacePortalSettingsService.getSessionExpiryDate(
+          client.workspaceId
+        );
+      } else {
+        // Fallback to default 24 hours if client not found
+        expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      }
+    } else {
+      // Legacy behavior: use expiresInDays (default 30 for shareable links)
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (options.expiresInDays ?? 30));
+    }
 
     await this.db.insert(portalTokens).values({
       clientId: options.clientId,

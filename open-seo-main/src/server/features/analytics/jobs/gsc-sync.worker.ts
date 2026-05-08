@@ -4,6 +4,7 @@
  *
  * QUEUE-02 FIX: lockDuration set to 600000ms (10 minutes) for long-running GSC API calls
  * DATA-05 FIX: Publishes cache invalidation events after sync completes
+ * BMQ-003 FIX: Circuit breaker integration for GSC API resilience
  *
  * Worker configuration:
  * - lockDuration: 600000 (10 min) - prevents job stalling during API pagination
@@ -12,6 +13,7 @@
  * - Progress updates per site
  * - Graceful shutdown with 30s timeout
  * - Cache invalidation on sync completion
+ * - Circuit breaker for GSC API calls
  */
 
 import { Worker, type Job } from "bullmq";
@@ -24,6 +26,7 @@ import { siteConnections } from "@/db/connection-schema";
 import { eq, and, isNotNull } from "drizzle-orm";
 import { invalidateAfterGscSync } from "@/server/cache";
 import { getAnalyticsEventBus } from "../events/analytics-event-bus";
+import { gscApiBreaker, CircuitOpenError } from "@/server/lib/circuit-breaker";
 
 const log = createLogger({ module: "gsc-sync-worker" });
 
@@ -48,6 +51,16 @@ export const gscSyncWorker = new Worker<GscSyncJobData, GscSyncJobResult>(
 
       for (const site of sites) {
         try {
+          // BMQ-003 FIX: Check circuit breaker before GSC API calls
+          if (await gscApiBreaker.isOpen()) {
+            const errorMsg = `GSC API circuit breaker open - skipping site ${site.id}`;
+            errors.push(errorMsg);
+            log.warn(errorMsg, { siteId: site.id });
+            processed++;
+            await job.updateProgress((processed / sites.length) * 100);
+            continue;
+          }
+
           // Get sync service (lazy-loaded to avoid circular dependencies)
           const { getGscFullSyncService } = await import("../services/GscFullSyncService");
           const { getGscPaginationService } = await import("../services/GscPaginationService");
@@ -64,7 +77,10 @@ export const gscSyncWorker = new Worker<GscSyncJobData, GscSyncJobResult>(
             redis,
           });
 
-          const result = await syncService.fullSyncSite(site.id, site.siteUrl);
+          // BMQ-003 FIX: Wrap GSC API call with circuit breaker
+          const result = await gscApiBreaker.execute(async () => {
+            return syncService.fullSyncSite(site.id, site.siteUrl);
+          });
           totalRows += result.rowsInserted;
 
           log.info("Site sync complete", {
@@ -120,9 +136,18 @@ export const gscSyncWorker = new Worker<GscSyncJobData, GscSyncJobResult>(
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           errors.push(`${site.id}: ${errorMsg}`);
-          log.error("Site sync failed", error instanceof Error ? error : new Error(errorMsg), {
-            siteId: site.id,
-          });
+
+          // BMQ-003 FIX: Log circuit breaker errors differently
+          if (error instanceof CircuitOpenError) {
+            log.warn("Site sync skipped - circuit breaker open", {
+              siteId: site.id,
+              circuitName: error.circuitName,
+            });
+          } else {
+            log.error("Site sync failed", error instanceof Error ? error : new Error(errorMsg), {
+              siteId: site.id,
+            });
+          }
         }
 
         processed++;

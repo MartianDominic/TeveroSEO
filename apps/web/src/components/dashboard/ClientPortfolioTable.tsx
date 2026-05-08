@@ -221,7 +221,7 @@ export function ClientPortfolioTable({
                 size="sm"
               />
               {client.primaryGoalName && (
-                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                <span className="text-xs-safe text-muted-foreground truncate max-w-[120px]">
                   {client.primaryGoalName}
                 </span>
               )}

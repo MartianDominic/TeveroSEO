@@ -42,9 +42,10 @@ const log = createLogger({ module: "portal/export" });
 
 /**
  * Request body schema for export endpoint.
+ * CPR-002: Added "sheets" format for Google Sheets export.
  */
 const exportRequestSchema = z.object({
-  format: z.enum(["csv", "pdf"]),
+  format: z.enum(["csv", "pdf", "sheets"]),
   sections: z
     .array(z.enum(["trends", "cannibalization", "striking_distance", "topic_clusters"]))
     .min(1, "At least one section is required"),
@@ -54,6 +55,8 @@ const exportRequestSchema = z.object({
       end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date must be YYYY-MM-DD"),
     })
     .optional(),
+  // CPR-002: Google Sheets specific options
+  sheets_title: z.string().max(100).optional(),
 });
 
 type ExportRequest = z.infer<typeof exportRequestSchema>;
@@ -299,24 +302,285 @@ export const Route = (createFileRoute as any)("/api/portal/export/$clientId")({
 
           const exportRequest: ExportRequest = parsed.data;
 
-          // Step 6: Check format support
+          // Step 6: Handle PDF export with Puppeteer
           if (exportRequest.format === "pdf") {
+            // Import PDF generation dependencies
+            const { generatePDF } = await import("@/server/services/report/pdf-generator");
+            const { getClientBranding, renderPortalExportPDF } = await import("@/server/services/portal/pdf-export-service");
+
+            // Get white-label branding for agency
+            const branding = await getClientBranding(clientId);
+
+            // Get site ID for analytics queries
+            const siteId = await getClientSiteId(clientId);
+            if (!siteId) {
+              return Response.json(
+                { success: false, error: "No site connection found for this client" },
+                { status: 404 }
+              );
+            }
+
+            // Validate date range for PDF
+            const pdfDateValidation = validateDateRange(exportRequest.date_range);
+            if (!pdfDateValidation.valid) {
+              return Response.json(
+                { success: false, error: pdfDateValidation.error },
+                { status: 400 }
+              );
+            }
+
+            // Get visibility configuration
+            const visibilityService = await getClientVisibilityService();
+            const pdfVisibility = await visibilityService.getVisibilityConfig(
+              clientId,
+              authResult.data.workspaceId
+            );
+
+            // Get client name
+            const pdfClientName = await getClientName(clientId);
+
+            // Render PDF HTML with all requested sections, visibility filtering, and white-label
+            const pdfHtml = await renderPortalExportPDF({
+              clientId,
+              clientName: pdfClientName,
+              siteId,
+              sections: exportRequest.sections,
+              dateRange: {
+                start: pdfDateValidation.start.toISOString().split("T")[0],
+                end: pdfDateValidation.end.toISOString().split("T")[0],
+              },
+              visibility: pdfVisibility,
+              branding,
+              locale: "en",
+            });
+
+            // Generate PDF using Puppeteer
+            const pdfBuffer = await generatePDF(pdfHtml);
+
+            // Log successful PDF export
             logExportAudit(
               clientId,
               authResult.data.workspaceId,
               "pdf",
               exportRequest.sections,
-              false,
-              "PDF export not implemented"
+              true
             );
-            return Response.json(
-              {
-                success: false,
-                error: "PDF export is not yet implemented",
-                code: "NOT_IMPLEMENTED",
-              },
-              { status: 501 }
+
+            log.info("Portal PDF export generated successfully", {
+              clientId,
+              sections: exportRequest.sections,
+              pdfSize: pdfBuffer.byteLength,
+            });
+
+            // Return PDF response
+            const safePdfClientName = sanitizeFilename(pdfClientName);
+            const pdfDateStr = new Date().toISOString().split("T")[0];
+            const pdfFilename = `analytics-export-${safePdfClientName}-${pdfDateStr}.pdf`;
+
+            // Convert Buffer to Uint8Array for Response compatibility
+            const pdfUint8Array = new Uint8Array(pdfBuffer);
+
+            return addRateLimitHeaders(
+              new Response(pdfUint8Array, {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/pdf",
+                  "Content-Disposition": `attachment; filename="${pdfFilename}"`,
+                  "Cache-Control": "no-store, no-cache, must-revalidate",
+                },
+              }),
+              rateLimitResult
             );
+          }
+
+          // Step 6b: Handle Google Sheets export (CPR-002)
+          if (exportRequest.format === "sheets") {
+            // Get Google OAuth token from request header
+            const googleOAuthToken = request.headers.get("X-Google-OAuth-Token");
+            if (!googleOAuthToken) {
+              return Response.json(
+                {
+                  success: false,
+                  error: "Google OAuth token required for Sheets export",
+                  code: "OAUTH_REQUIRED",
+                },
+                { status: 401 }
+              );
+            }
+
+            // Import Sheets export service
+            const { getAnalyticsExportService } = await import("@/server/features/analytics/services/AnalyticsExportService");
+            const { getClientBranding } = await import("@/server/services/portal/pdf-export-service");
+
+            // Get site ID
+            const sheetsSiteId = await getClientSiteId(clientId);
+            if (!sheetsSiteId) {
+              return Response.json(
+                { success: false, error: "No site connection found for this client" },
+                { status: 404 }
+              );
+            }
+
+            // Validate date range
+            const sheetsDateValidation = validateDateRange(exportRequest.date_range);
+            if (!sheetsDateValidation.valid) {
+              return Response.json(
+                { success: false, error: sheetsDateValidation.error },
+                { status: 400 }
+              );
+            }
+
+            // Get visibility configuration
+            const sheetsVisibilityService = await getClientVisibilityService();
+            const sheetsVisibility = await sheetsVisibilityService.getVisibilityConfig(
+              clientId,
+              authResult.data.workspaceId
+            );
+
+            // Check canExport permission
+            if (!sheetsVisibility.canExport) {
+              logExportAudit(
+                clientId,
+                authResult.data.workspaceId,
+                "sheets",
+                exportRequest.sections,
+                false,
+                "Export disabled in visibility settings"
+              );
+              return Response.json(
+                { success: false, error: "Export is disabled for this client", code: "EXPORT_DISABLED" },
+                { status: 403 }
+              );
+            }
+
+            // Get client name and branding
+            const sheetsClientName = await getClientName(clientId);
+            const sheetsBranding = await getClientBranding(clientId);
+
+            // Collect section data (same logic as CSV)
+            const sheetsSections: { name: string; headers: string[]; rows: string[][] }[] = [];
+            const sheetsPeriodDays = Math.ceil(
+              (sheetsDateValidation.end.getTime() - sheetsDateValidation.start.getTime()) / (1000 * 60 * 60 * 24)
+            );
+
+            for (const section of exportRequest.sections) {
+              switch (section) {
+                case "trends": {
+                  if (!sheetsVisibility.canViewGrowing && !sheetsVisibility.canViewDecaying) continue;
+                  const trendResult = await analyzePageTrends(sheetsSiteId, { periodDays: sheetsPeriodDays });
+                  const filteredPages = trendResult.pages.filter((page: TrendAnalysis) => {
+                    if (page.trend === "growing" && !sheetsVisibility.canViewGrowing) return false;
+                    if (page.trend === "decaying" && !sheetsVisibility.canViewDecaying) return false;
+                    return true;
+                  });
+                  sheetsSections.push({
+                    name: "Trends",
+                    headers: ["Page URL", "Current Clicks", "Previous Clicks", "Change %", "Trend"],
+                    rows: filteredPages.map((page: TrendAnalysis) => [
+                      page.pageUrl,
+                      String(page.currentClicks),
+                      String(page.previousClicks),
+                      `${page.changePercent >= 0 ? "+" : ""}${page.changePercent.toFixed(1)}%`,
+                      page.trend,
+                    ]),
+                  });
+                  break;
+                }
+                case "cannibalization": {
+                  if (!sheetsVisibility.canViewCannibalization) continue;
+                  const cannibService = getCannibalizationService();
+                  const issues = await cannibService.detectCannibalization(sheetsSiteId, { limit: 100 });
+                  sheetsSections.push({
+                    name: "Cannibalization",
+                    headers: ["Keyword", "Pages", "Severity", "Primary Page", "Secondary Pages"],
+                    rows: issues.map((issue) => [
+                      issue.query,
+                      String(issue.pages.length),
+                      issue.severity,
+                      issue.pages[0]?.pageUrl || "",
+                      issue.pages.slice(1).map((p) => p.pageUrl).join("; "),
+                    ]),
+                  });
+                  break;
+                }
+                case "striking_distance": {
+                  const strikingResult = await getStrikingDistancePages(sheetsSiteId, { minPosition: 11, maxPosition: 20, limit: 100 });
+                  sheetsSections.push({
+                    name: "Striking Distance",
+                    headers: ["Page URL", "Avg Position", "Impressions", "Current Clicks", "Potential Clicks", "Difficulty"],
+                    rows: strikingResult.pages.map((page) => [
+                      page.pageUrl,
+                      page.avgPosition.toFixed(1),
+                      String(page.impressions),
+                      String(page.currentClicks),
+                      String(page.potentialClicks),
+                      page.difficulty,
+                    ]),
+                  });
+                  break;
+                }
+                case "topic_clusters": {
+                  const clusterService = new TopicClusterService();
+                  const clusters = await clusterService.getClusters(sheetsSiteId);
+                  sheetsSections.push({
+                    name: "Topic Clusters",
+                    headers: ["Cluster", "Hub Page", "Spokes", "Coverage", "Clicks", "Impressions"],
+                    rows: clusters.map((cluster) => [
+                      cluster.name,
+                      cluster.hubPage.url,
+                      String(cluster.spokePages.length),
+                      `${cluster.coverage.toFixed(1)}%`,
+                      String(cluster.totalClicks),
+                      String(cluster.totalImpressions),
+                    ]),
+                  });
+                  break;
+                }
+              }
+            }
+
+            if (sheetsSections.length === 0) {
+              logExportAudit(clientId, authResult.data.workspaceId, "sheets", exportRequest.sections, false, "No data due to visibility");
+              return Response.json({ success: false, error: "No data available due to visibility restrictions" }, { status: 403 });
+            }
+
+            // Create Google Sheet with white-label title
+            const exportService = getAnalyticsExportService();
+            const sheetsTitle = exportRequest.sheets_title ||
+              `${sheetsBranding.companyName} - ${sheetsClientName} Analytics Export`;
+
+            try {
+              const sheetsResult = await exportService.exportMultiSectionToGoogleSheets(
+                sheetsSections,
+                sheetsTitle,
+                googleOAuthToken
+              );
+
+              logExportAudit(clientId, authResult.data.workspaceId, "sheets", exportRequest.sections, true);
+
+              log.info("Portal Sheets export generated successfully", {
+                clientId,
+                sections: exportRequest.sections,
+                spreadsheetUrl: sheetsResult.spreadsheetUrl,
+              });
+
+              return addRateLimitHeaders(
+                Response.json({
+                  success: true,
+                  data: {
+                    spreadsheetUrl: sheetsResult.spreadsheetUrl,
+                    spreadsheetId: sheetsResult.spreadsheetId,
+                  },
+                }),
+                rateLimitResult
+              );
+            } catch (sheetsError) {
+              log.error("Google Sheets export failed", sheetsError instanceof Error ? sheetsError : undefined);
+              return Response.json(
+                { success: false, error: "Failed to create Google Sheet. Please try again or check OAuth permissions." },
+                { status: 500 }
+              );
+            }
           }
 
           // Step 7: Validate date range
@@ -431,7 +695,7 @@ export const Route = (createFileRoute as any)("/api/portal/export/$clientId")({
 
                 const headers = ["keyword", "competing_pages", "severity", "primary_page", "secondary_pages"];
                 const rows = issues.map((issue) => [
-                  issue.keyword,
+                  issue.query,
                   String(issue.pages.length),
                   issue.severity,
                   issue.pages[0]?.pageUrl || "",

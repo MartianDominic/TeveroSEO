@@ -4,6 +4,8 @@
  *
  * Returns all unique tags for filtering dropdown.
  * Rate limited: 60 requests per minute per workspace (standard analytics).
+ *
+ * API-002 FIX: All error responses use standardized format matching OpenAPI spec.
  */
 import { createFileRoute } from '@tanstack/react-router';
 import { db } from '@/db';
@@ -14,6 +16,10 @@ import {
   rateLimitExceededResponse,
   addRateLimitHeaders,
 } from '@/server/middleware/rate-limit';
+import {
+  createErrorResponse,
+  ERROR_CODES,
+} from '@/server/features/analytics/types/api-responses';
 
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,11 +44,9 @@ export const Route = (createFileRoute as any)('/api/analytics/tags')({
       return addRateLimitHeaders(response, rateLimitResult);
     } catch (error) {
       console.error('Tags fetch error:', error);
+      // API-002 FIX: Use standardized error format
       return Response.json(
-        {
-          success: false,
-          error: error instanceof Error ? error.message : 'Internal server error',
-        },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, 'Internal server error'),
         { status: 500 }
       );
     }

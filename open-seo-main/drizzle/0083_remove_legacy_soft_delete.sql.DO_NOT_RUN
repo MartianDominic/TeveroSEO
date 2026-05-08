@@ -1,0 +1,103 @@
+-- Migration 0082: Remove legacy soft delete columns (DO NOT RUN YET)
+--
+-- PREREQUISITE: All application code must be updated to use soft_deleted_at
+-- Run this migration ONLY after verifying:
+-- 1. All queries use soft_deleted_at instead of is_deleted/deleted_at
+-- 2. Migration 0081 has been applied and data migrated
+-- 3. Application has been running on new pattern for at least 1 week
+--
+-- To run: Rename this file to remove .DO_NOT_RUN extension
+--
+-- Tables affected:
+-- - seo_gsc_snapshots
+-- - seo_ga4_snapshots
+-- - clients
+-- - projects
+-- - reports
+-- - content_briefs
+-- - site_changes
+-- - proposals
+
+BEGIN;
+
+-- ============================================================================
+-- PHASE 4: Remove deprecated columns (separate migration after code updates)
+-- ============================================================================
+
+-- Verify all records have soft_deleted_at populated before dropping
+DO $$
+DECLARE
+  orphan_gsc INTEGER;
+  orphan_ga4 INTEGER;
+  orphan_clients INTEGER;
+  orphan_projects INTEGER;
+  orphan_reports INTEGER;
+  orphan_briefs INTEGER;
+  orphan_changes INTEGER;
+  orphan_proposals INTEGER;
+BEGIN
+  -- Check for records where is_deleted=true but soft_deleted_at is NULL
+  SELECT COUNT(*) INTO orphan_gsc FROM seo_gsc_snapshots WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_ga4 FROM seo_ga4_snapshots WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_clients FROM clients WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_projects FROM projects WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_reports FROM reports WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_briefs FROM content_briefs WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_changes FROM site_changes WHERE is_deleted = true AND soft_deleted_at IS NULL;
+  SELECT COUNT(*) INTO orphan_proposals FROM proposals WHERE is_deleted = true AND soft_deleted_at IS NULL;
+
+  IF orphan_gsc > 0 OR orphan_ga4 > 0 OR orphan_clients > 0 OR orphan_projects > 0 OR
+     orphan_reports > 0 OR orphan_briefs > 0 OR orphan_changes > 0 OR orphan_proposals > 0 THEN
+    RAISE EXCEPTION 'Migration 0081 data migration incomplete. Orphan records found: gsc=%, ga4=%, clients=%, projects=%, reports=%, briefs=%, changes=%, proposals=%',
+      orphan_gsc, orphan_ga4, orphan_clients, orphan_projects, orphan_reports, orphan_briefs, orphan_changes, orphan_proposals;
+  END IF;
+
+  RAISE NOTICE 'Pre-check passed: All is_deleted records have soft_deleted_at populated';
+END $$;
+
+-- Drop legacy indexes first
+DROP INDEX IF EXISTS ix_seo_gsc_snapshots_deleted;
+DROP INDEX IF EXISTS ix_seo_ga4_snapshots_deleted;
+DROP INDEX IF EXISTS ix_clients_active;
+DROP INDEX IF EXISTS projects_is_deleted_idx;
+DROP INDEX IF EXISTS ix_reports_deleted;
+DROP INDEX IF EXISTS ix_content_briefs_deleted;
+DROP INDEX IF EXISTS ix_site_changes_deleted;
+DROP INDEX IF EXISTS ix_proposals_deleted;
+
+-- seo_gsc_snapshots: Remove legacy columns
+ALTER TABLE seo_gsc_snapshots DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE seo_gsc_snapshots DROP COLUMN IF EXISTS deleted_at;
+
+-- seo_ga4_snapshots: Remove legacy columns
+ALTER TABLE seo_ga4_snapshots DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE seo_ga4_snapshots DROP COLUMN IF EXISTS deleted_at;
+
+-- clients: Remove legacy columns
+ALTER TABLE clients DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE clients DROP COLUMN IF EXISTS deleted_at;
+
+-- projects: Remove legacy columns
+ALTER TABLE projects DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE projects DROP COLUMN IF EXISTS deleted_at;
+
+-- reports: Remove legacy columns
+ALTER TABLE reports DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE reports DROP COLUMN IF EXISTS deleted_at;
+
+-- content_briefs: Remove legacy columns
+ALTER TABLE content_briefs DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE content_briefs DROP COLUMN IF EXISTS deleted_at;
+
+-- site_changes: Remove legacy columns
+ALTER TABLE site_changes DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE site_changes DROP COLUMN IF EXISTS deleted_at;
+
+-- proposals: Remove legacy columns
+ALTER TABLE proposals DROP COLUMN IF EXISTS is_deleted;
+ALTER TABLE proposals DROP COLUMN IF EXISTS deleted_at;
+
+-- Log completion
+RAISE NOTICE 'Migration 0082 complete: Legacy soft delete columns removed from all tables';
+
+COMMIT;

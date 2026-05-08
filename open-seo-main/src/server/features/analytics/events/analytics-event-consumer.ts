@@ -5,20 +5,54 @@
  * Current consumers:
  * - cannibalization:detected -> Log for alerting (NotificationService integration ready)
  * - trends:analyzed -> Log for alerting (NotificationService integration ready)
- * - analytics:sync-completed -> Cache warming + monitoring (CACHE-02 FIX)
+ * - analytics:sync-completed -> Cache warming + trend calculation trigger (CACHE-02, BMQ-003 FIX)
+ *
+ * BMQ-003 FIX: Event-driven job dependencies
+ * - Trend calculation now triggers after GSC sync completes (event-driven)
+ * - Fallback cron at 2:45 AM still runs as safety net
  *
  * Future consumers can subscribe to events without modifying emitting services.
  *
  * @see .planning/phases/96-agency-analytics/CACHING-STRATEGY.md for cache design
  */
 import { createLogger } from '@/server/lib/logger';
+import { Queue } from 'bullmq';
 import {
   getAnalyticsEventBus,
   type AnalyticsEventPayload,
 } from './analytics-event-bus';
 import { warmAnalyticsCacheForSite } from '@/server/cache';
+import { getSharedBullMQConnection } from '@/server/lib/redis';
+import type { TrendCalculationJobData } from '@/server/workers/trend-calculation-worker';
 
 const log = createLogger({ module: 'analytics-event-consumer' });
+
+// =============================================================================
+// BMQ-003 FIX: Trend Calculation Queue for Event-Driven Dependencies
+// =============================================================================
+
+/**
+ * Lazy-initialized trend calculation queue for event-driven job triggering.
+ * BMQ-003 FIX: Trend analysis now triggered after GSC sync completes.
+ */
+let trendCalculationQueue: Queue<TrendCalculationJobData> | null = null;
+
+function getTrendCalculationQueue(): Queue<TrendCalculationJobData> {
+  if (!trendCalculationQueue) {
+    trendCalculationQueue = new Queue<TrendCalculationJobData>('trend-calculation', {
+      connection: getSharedBullMQConnection('consumer:trend-calculation'),
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { age: 86400, count: 100 },
+        removeOnFail: { age: 604800, count: 500 },
+        // BMQ-003: MEDIUM priority - runs after GSC sync (HIGH), before maintenance (LOW)
+        priority: 2,
+      },
+    });
+  }
+  return trendCalculationQueue;
+}
 
 /**
  * Unsubscribe functions returned by event subscriptions.
@@ -52,11 +86,24 @@ export function initAnalyticsEventConsumers(): void {
  * Shutdown analytics event consumers.
  * Call this during graceful shutdown.
  */
-export function shutdownAnalyticsEventConsumers(): void {
+export async function shutdownAnalyticsEventConsumers(): Promise<void> {
   for (const unsubscribe of unsubscribers) {
     unsubscribe();
   }
   unsubscribers = [];
+
+  // Close trend calculation queue if initialized
+  if (trendCalculationQueue) {
+    try {
+      await trendCalculationQueue.close();
+      trendCalculationQueue = null;
+    } catch (error) {
+      log.warn('Failed to close trend calculation queue', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   log.info('Analytics event consumers shutdown');
 }
 
@@ -141,8 +188,9 @@ async function handleTrendsAnalyzed(
 /**
  * Handle sync completion events.
  * CACHE-02 FIX: Triggers cache warming after GSC sync completes.
+ * BMQ-003 FIX: Triggers trend calculation after GSC sync completes (event-driven dependency).
  *
- * Cache warming runs asynchronously and does not block the event handler.
+ * Cache warming and trend calculation run asynchronously and do not block the event handler.
  * This ensures the first user to load the dashboard after overnight sync
  * gets warm cache hits instead of cold database queries.
  */
@@ -156,6 +204,41 @@ async function handleSyncCompleted(
     recordCount,
     dateRange: `${startDate} to ${endDate}`,
     timestamp: timestamp.toISOString(),
+  });
+
+  // BMQ-003 FIX: Trigger trend calculation via event-driven dependency
+  // This runs AFTER GSC sync completes, ensuring fresh data is available
+  setImmediate(async () => {
+    try {
+      const queue = getTrendCalculationQueue();
+      const jobId = `trend-event:${siteId}:${startDate}`;
+
+      await queue.add(
+        'event-triggered',
+        {
+          workspaceId: siteId, // Use siteId as workspaceId for trend analysis
+          siteId,
+          calculationType: 'incremental',
+          dateRange: { start: startDate, end: endDate },
+        },
+        {
+          jobId, // Dedupe: only one trend job per site per day
+          priority: 2, // MEDIUM priority
+        }
+      );
+
+      log.info('Trend calculation triggered after GSC sync (BMQ-003)', {
+        siteId,
+        jobId,
+        triggeredBy: 'analytics:sync-completed',
+      });
+    } catch (error) {
+      // Non-fatal: cron fallback at 2:45 AM will still run
+      log.warn('Failed to trigger event-driven trend calculation', {
+        siteId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   // CACHE-02 FIX: Trigger cache warming asynchronously (non-blocking)

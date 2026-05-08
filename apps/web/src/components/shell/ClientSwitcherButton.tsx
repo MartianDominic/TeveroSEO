@@ -69,7 +69,7 @@ const ClientSwitcherPopoverContent: React.FC<PopoverBodyProps> = ({
             className="flex items-center gap-2"
           >
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs-safe font-bold text-white"
               style={{ backgroundColor: seedColor(client.name) }}
             >
               {clientInitial(client.name)}
@@ -207,7 +207,7 @@ export const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
             </span>
           ) : (
             <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs-safe font-bold text-white"
               style={
                 name
                   ? { backgroundColor: seedColor(name) }

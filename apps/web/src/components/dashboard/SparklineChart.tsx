@@ -77,7 +77,7 @@ export function SparklineChart({
                 if (!active || !payload?.[0]) return null;
                 const point = payload[0].payload as SparklineDataPoint;
                 return (
-                  <div className="bg-popover border rounded px-2 py-1 text-xs shadow-md">
+                  <div className="bg-popover border rounded px-2 py-1 text-xs shadow-[var(--shadow-tooltip)]">
                     {point.label && <div className="text-muted-foreground">{point.label}</div>}
                     <div className="font-medium">{point.value.toLocaleString()}</div>
                   </div>

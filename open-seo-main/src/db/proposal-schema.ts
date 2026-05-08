@@ -17,6 +17,7 @@ import {
 import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { prospects } from "./prospect-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 import type { ScoredCluster, ClusteringInput, FunnelDistribution } from '../server/features/keywords/clustering/types';
 
 // Proposal status enum values - follows a state machine flow
@@ -148,8 +149,11 @@ export const proposals = pgTable(
       .defaultNow(),
 
     // Soft delete columns (migration 0067)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
 
     // Phase 86: Semantic clustering columns
     clusters: jsonb("clusters").$type<ScoredCluster[]>(),
@@ -166,6 +170,7 @@ export const proposals = pgTable(
     index("ix_proposals_status").on(table.status),
     index("ix_proposals_token").on(table.token),
     index("ix_proposals_deleted").on(table.isDeleted),
+    index("ix_proposals_soft_deleted").on(table.softDeletedAt),
   ],
 );
 

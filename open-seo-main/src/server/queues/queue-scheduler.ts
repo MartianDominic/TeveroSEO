@@ -11,11 +11,12 @@
  * - 2:00 AM - sitemap-refresh (lightweight)
  * - 2:15 AM - gsc-sync (Google Search Console)
  * - 2:30 AM - ga4-sync (Google Analytics 4)
- * - 2:45 AM - trend-calculation
+ * - 2:45 AM - trend-calculation (also event-driven after GSC sync)
  * - 3:00 AM - analytics-sync (legacy sync-all-clients)
  * - 3:15 AM - cannibalization-detection
  * - 3:30 AM - content-audit-batch
- * - 4:00 AM - maintenance (cache cleanup, DLQ cleanup)
+ * - 4:00 AM - maintenance (cache cleanup)
+ * - 4:30 AM - dlq-cleanup (BMQ-002 FIX: staggered from maintenance)
  */
 
 import { Queue } from "bullmq";
@@ -75,7 +76,7 @@ export const SCHEDULED_JOBS = {
     description: "Cache cleanup and system maintenance",
   },
   "dlq-cleanup": {
-    cron: "0 4 * * *", // 4:00 AM UTC (consolidated with maintenance)
+    cron: "30 4 * * *", // 4:30 AM UTC (BMQ-002 FIX: staggered from maintenance at 4:00)
     queue: "dead-letter-queue",
     description: "Dead letter queue cleanup",
   },

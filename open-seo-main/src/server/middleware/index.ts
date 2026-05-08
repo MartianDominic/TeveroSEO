@@ -79,6 +79,9 @@ export {
 /**
  * Rate limiting middleware.
  * Protects endpoints from abuse with sliding window rate limits.
+ *
+ * NOTE: Consider using the unified RateLimitService (below) for new code.
+ * It provides fail-closed behavior and in-memory fallback.
  */
 export {
   // Core functions
@@ -121,6 +124,54 @@ export {
   type RateLimitOptionsWithKeyFn,
   type RouteHandler,
 } from "./rate-limit";
+
+/**
+ * Unified Rate Limit Service (DUP-001 + SEC-002 fix).
+ *
+ * Consolidates multiple rate limiting implementations into one service:
+ * - Fail-CLOSED behavior when Redis unavailable (SEC-002)
+ * - In-memory fallback with degraded (stricter) limits
+ * - Multiple tiers (strict, standard, relaxed)
+ * - Metrics and monitoring support
+ *
+ * USE THIS for new rate limiting needs.
+ */
+export {
+  // Service singleton
+  getRateLimitService,
+  checkRateLimit as checkUnifiedRateLimit,
+  createRateLimiter as createUnifiedRateLimiter,
+
+  // Pre-configured limiters
+  gscBridgeRateLimiter,
+  portalStandardRateLimiter,
+  portalExpensiveRateLimiter,
+  portalExportRateLimiter,
+  analyticsStandardRateLimiter,
+  analyticsExpensiveRateLimiter,
+  analyticsSyncRateLimiter,
+  scrapingCriticalRateLimiter,
+  scrapingStateChangeRateLimiter,
+  scrapingResourceRateLimiter,
+  defaultRateLimiter,
+
+  // Response helpers
+  rateLimitExceededResponse as unifiedRateLimitExceededResponse,
+  addRateLimitHeaders as unifiedAddRateLimitHeaders,
+  rateLimitHeaders,
+  withRateLimit as withUnifiedRateLimit,
+
+  // Configuration
+  RATE_LIMIT_CONFIGS,
+
+  // Types
+  type RateLimitConfig,
+  type RateLimitResult as UnifiedRateLimitResult,
+  type RateLimitTier,
+  type RateLimitMetrics,
+  type RateLimitService,
+  type WithRateLimitOptions,
+} from "../services/RateLimitService";
 
 /**
  * Portal authentication middleware.

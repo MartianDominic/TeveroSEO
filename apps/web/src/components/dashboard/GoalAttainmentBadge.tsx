@@ -79,7 +79,7 @@ export function GoalAttainmentBadge({
         </span>
       )}
       {showDetails && goalsTotal > 0 && (
-        <span className="text-[10px] opacity-70">
+        <span className="text-xs-safe opacity-70">
           ({goalsMet}/{goalsTotal})
         </span>
       )}

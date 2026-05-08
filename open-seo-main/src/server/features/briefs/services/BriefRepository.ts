@@ -65,6 +65,8 @@ export class BriefRepository {
         articleId: contentBriefs.articleId,
         isDeleted: contentBriefs.isDeleted,
         deletedAt: contentBriefs.deletedAt,
+        // DBS-005/006/007: Include new soft delete column
+        softDeletedAt: contentBriefs.softDeletedAt,
         createdAt: contentBriefs.createdAt,
         updatedAt: contentBriefs.updatedAt,
         // P2.G16: Include scraping cost for cost attribution

@@ -25,6 +25,10 @@ import { redis } from '@/server/lib/redis';
 import { publishCacheInvalidation } from '@/server/cache';
 import { createLogger } from '@/server/lib/logger';
 import { csrfProtect } from '@/server/middleware/csrf';
+import {
+  createErrorResponse,
+  ERROR_CODES,
+} from '@/server/features/analytics/types/api-responses';
 
 const log = createLogger({ module: 'analytics-refresh-api' });
 
@@ -99,7 +103,7 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
     // Only allow POST
     if (request.method !== 'POST') {
       return Response.json(
-        { success: false, error: 'Method not allowed' },
+        createErrorResponse(ERROR_CODES.METHOD_NOT_ALLOWED, 'Method not allowed'),
         { status: 405 }
       );
     }
@@ -118,7 +122,7 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
         body = await request.json();
       } catch {
         return Response.json(
-          { success: false, error: 'Invalid JSON body' },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid JSON body'),
           { status: 400 }
         );
       }
@@ -126,11 +130,7 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
       const parsed = bodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          {
-            success: false,
-            error: 'Invalid parameters',
-            details: parsed.error.flatten(),
-          },
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid parameters', parsed.error.flatten()),
           { status: 400 }
         );
       }
@@ -141,12 +141,11 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
       const rateLimit = await checkRefreshRateLimit(auth.workspaceId, siteId);
       if (!rateLimit.allowed) {
         return Response.json(
-          {
-            success: false,
-            error: 'Rate limit exceeded',
-            message: `Maximum ${REFRESH_RATE_LIMIT} refreshes per hour. Try again in ${Math.ceil(rateLimit.resetIn / 60)} minutes.`,
-            resetIn: rateLimit.resetIn,
-          },
+          createErrorResponse(
+            ERROR_CODES.RATE_LIMITED,
+            `Maximum ${REFRESH_RATE_LIMIT} refreshes per hour. Try again in ${Math.ceil(rateLimit.resetIn / 60)} minutes.`,
+            { resetIn: rateLimit.resetIn }
+          ),
           {
             status: 429,
             headers: {
@@ -208,10 +207,7 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
     } catch (error) {
       log.error('Manual refresh error', error instanceof Error ? error : undefined);
       return Response.json(
-        {
-          success: false,
-          error: error instanceof Error ? error.message : 'Internal server error',
-        },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, 'Internal server error'),
         { status: 500 }
       );
     }
@@ -227,7 +223,7 @@ export const getRefreshStatus = async (request: Request): Promise<Response> => {
 
   if (!jobId) {
     return Response.json(
-      { success: false, error: 'jobId parameter required' },
+      createErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'jobId parameter required'),
       { status: 400 }
     );
   }
@@ -237,7 +233,7 @@ export const getRefreshStatus = async (request: Request): Promise<Response> => {
 
     if (!job) {
       return Response.json(
-        { success: false, error: 'Job not found' },
+        createErrorResponse(ERROR_CODES.NOT_FOUND, 'Job not found'),
         { status: 404 }
       );
     }
@@ -258,7 +254,7 @@ export const getRefreshStatus = async (request: Request): Promise<Response> => {
   } catch (error) {
     log.error('Refresh status check error', error instanceof Error ? error : undefined);
     return Response.json(
-      { success: false, error: 'Failed to check job status' },
+      createErrorResponse(ERROR_CODES.INTERNAL_ERROR, 'Failed to check job status'),
       { status: 500 }
     );
   }

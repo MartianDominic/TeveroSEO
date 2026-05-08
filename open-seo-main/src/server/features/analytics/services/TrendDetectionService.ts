@@ -105,8 +105,8 @@ export class TrendDetectionService {
             AVG(avg_position) as position
           FROM growing_pages_cagg
           WHERE site_id = ${siteId}
-            AND bucket >= ${currentStart}::date
-            AND bucket <= ${endDate}::date
+            AND bucket >= ${currentStart}::timestamptz
+            AND bucket <= ${endDate}::timestamptz
           GROUP BY page_url
           HAVING SUM(daily_impressions) >= ${minImpressions}
         ),
@@ -118,8 +118,8 @@ export class TrendDetectionService {
             AVG(avg_position) as position
           FROM growing_pages_cagg
           WHERE site_id = ${siteId}
-            AND bucket >= ${previousStart}::date
-            AND bucket < ${previousEnd}::date
+            AND bucket >= ${previousStart}::timestamptz
+            AND bucket < ${previousEnd}::timestamptz
           GROUP BY page_url
           HAVING SUM(daily_clicks) > 0  -- Exclude pages with zero previous clicks
         ),

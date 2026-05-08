@@ -402,20 +402,40 @@ export const thirdPartyBreaker = new RedisCircuitBreaker({
 });
 
 /**
+ * Circuit breaker for Google Search Console API.
+ * BMQ-003 FIX: Dedicated breaker for GSC API calls in job workers.
+ *
+ * Configuration rationale:
+ * - failureThreshold: 5 (GSC has strict rate limits, 5 consecutive failures indicates quota/auth issue)
+ * - resetTimeoutMs: 60000 (1 minute - GSC rate limits reset per minute)
+ * - halfOpenRequests: 2 (conservative testing during recovery)
+ * - failureWindowSeconds: 120 (2 minute window to accumulate failures)
+ */
+export const gscApiBreaker = new RedisCircuitBreaker({
+  name: "gsc-api",
+  failureThreshold: 5,
+  resetTimeoutMs: 60000,
+  halfOpenRequests: 2,
+  failureWindowSeconds: 120,
+});
+
+/**
  * Get all circuit breaker statuses for monitoring dashboard.
  */
 export async function getAllCircuitStatuses(): Promise<
   Record<string, CircuitStatus>
 > {
-  const [external, database, thirdParty] = await Promise.all([
+  const [external, database, thirdParty, gscApi] = await Promise.all([
     externalApiBreaker.getStatus(),
     databaseBreaker.getStatus(),
     thirdPartyBreaker.getStatus(),
+    gscApiBreaker.getStatus(),
   ]);
 
   return {
     "external-api": external,
     database: database,
     "third-party": thirdParty,
+    "gsc-api": gscApi,
   };
 }

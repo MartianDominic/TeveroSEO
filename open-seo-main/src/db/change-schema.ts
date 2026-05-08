@@ -19,6 +19,7 @@ import {
 import { relations, sql } from "drizzle-orm";
 import { clients } from "./client-schema";
 import { siteConnections } from "./connection-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * site_changes table - tracks every SEO change applied.
@@ -73,8 +74,11 @@ export const siteChanges = pgTable(
       .defaultNow(),
 
     // Soft delete - preserves SEO change history for rollback
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
   },
   (table) => [
     index("ix_site_changes_client").on(table.clientId),
@@ -86,6 +90,7 @@ export const siteChanges = pgTable(
     index("ix_site_changes_created").on(table.createdAt),
     index("ix_site_changes_reverted").on(table.revertedAt),
     index("ix_site_changes_deleted").on(table.isDeleted),
+    index("ix_site_changes_soft_deleted").on(table.softDeletedAt),
     // H-02: Site change status must be valid enum value
     check("chk_site_change_status_valid", sql`status IN ('pending', 'applied', 'verified', 'reverted', 'failed')`),
   ]

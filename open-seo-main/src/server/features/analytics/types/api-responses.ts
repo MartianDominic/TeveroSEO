@@ -261,6 +261,98 @@ export function errorResponse(
   });
 }
 
+// --- Convenience Error Response Functions ---
+// These follow the OpenAPI spec format: { success: false, error: { code, message, details? } }
+
+/**
+ * Validation error response (400).
+ * Use for Zod parse failures and invalid parameters.
+ */
+export function validationErrorResponse(
+  message: string = 'Invalid parameters',
+  details?: unknown
+): Response {
+  return errorResponse(ERROR_CODES.VALIDATION_ERROR, message, details);
+}
+
+/**
+ * Unauthorized error response (401).
+ * Use when authentication is required but missing or invalid.
+ */
+export function unauthorizedErrorResponse(
+  message: string = 'Authentication required'
+): Response {
+  return errorResponse(ERROR_CODES.UNAUTHORIZED, message);
+}
+
+/**
+ * Forbidden error response (403).
+ * Use when authenticated but lacking permission.
+ */
+export function forbiddenErrorResponse(
+  message: string = 'Access denied'
+): Response {
+  return errorResponse(ERROR_CODES.FORBIDDEN, message);
+}
+
+/**
+ * Not found error response (404).
+ * Use for missing resources.
+ */
+export function notFoundErrorResponse(
+  message: string = 'Resource not found'
+): Response {
+  return errorResponse(ERROR_CODES.NOT_FOUND, message);
+}
+
+/**
+ * Method not allowed error response (405).
+ */
+export function methodNotAllowedErrorResponse(
+  message: string = 'Method not allowed'
+): Response {
+  return errorResponse(ERROR_CODES.METHOD_NOT_ALLOWED, message);
+}
+
+/**
+ * Internal server error response (500).
+ * Use for unexpected errors. Never expose internal details to clients.
+ */
+export function internalErrorResponse(
+  message: string = 'Internal server error'
+): Response {
+  return errorResponse(ERROR_CODES.INTERNAL_ERROR, message);
+}
+
+/**
+ * CSRF invalid error response (403).
+ */
+export function csrfInvalidErrorResponse(
+  message: string = 'CSRF token missing or invalid'
+): Response {
+  return errorResponse(ERROR_CODES.CSRF_INVALID, message);
+}
+
+/**
+ * Service not connected error response (424 Failed Dependency).
+ * Use when external service (GSC, GA4) is not connected.
+ */
+export function serviceNotConnectedErrorResponse(
+  message: string = 'Service not connected'
+): Response {
+  return errorResponse(ERROR_CODES.SERVICE_NOT_CONNECTED, message);
+}
+
+/**
+ * Conflict error response (409).
+ * Use for duplicate resources or version mismatches.
+ */
+export function conflictErrorResponse(
+  message: string = 'Resource conflict'
+): Response {
+  return errorResponse(ERROR_CODES.CONFLICT, message);
+}
+
 /**
  * Create a success Response object.
  *

@@ -129,7 +129,7 @@ export function PlatformConnectionFlow({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-background border rounded-lg shadow-lg p-6">
+      <DialogContent className="max-w-lg bg-background border rounded-lg shadow-[var(--shadow-modal)] p-6">
         <DialogHeader>
           <DialogTitle>
             {selectedPlatform ? `Connect ${selectedPlatform}` : "Connect Platform"}

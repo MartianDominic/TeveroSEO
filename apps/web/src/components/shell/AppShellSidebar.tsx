@@ -100,7 +100,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         <div className="mb-2">{renderNavItem(dashboardNav)}</div>
 
         {!collapsed && (
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
+          <p className="text-xs-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
             Client
           </p>
         )}
@@ -109,7 +109,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         </div>
 
         {!collapsed && (
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-5">
+          <p className="text-xs-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-5">
             Workspace
           </p>
         )}

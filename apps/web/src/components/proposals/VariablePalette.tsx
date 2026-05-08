@@ -235,7 +235,7 @@ function VariableChip({
             {variable.isSystem && (
               <Badge
                 variant="outline"
-                className={`opacity-60 ${compact ? "text-[10px] px-1 py-0" : "text-xs"}`}
+                className={`opacity-60 ${compact ? "text-xs-safe px-1 py-0" : "text-xs"}`}
               >
                 sys
               </Badge>
@@ -319,7 +319,7 @@ function CategorySection({
               style={{ backgroundColor: group.color }}
             />
             <span>{categoryLabel}</span>
-            <Badge variant="secondary" className={compact ? "text-[10px]" : "text-xs"}>
+            <Badge variant="secondary" className={compact ? "text-xs-safe" : "text-xs"}>
               {filteredVariables.length}
             </Badge>
           </span>
@@ -399,7 +399,7 @@ export function VariablePalette({
           <h3 className={`font-semibold ${compact ? "text-sm" : "text-base"}`}>
             {t("title", { fallback: "Variables" })}
           </h3>
-          <Badge variant="outline" className={compact ? "text-[10px]" : "text-xs"}>
+          <Badge variant="outline" className={compact ? "text-xs-safe" : "text-xs"}>
             {totalCount}
           </Badge>
         </div>
@@ -449,7 +449,7 @@ export function VariablePalette({
       {/* Drag hint */}
       <div
         className={`border-t text-muted-foreground text-center ${
-          compact ? "px-2 py-1.5 text-[10px]" : "px-3 py-2 text-xs"
+          compact ? "px-2 py-1.5 text-xs-safe" : "px-3 py-2 text-xs"
         }`}
       >
         {t("dragTip", { fallback: "Drag variables into content" })}

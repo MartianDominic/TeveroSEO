@@ -17,6 +17,7 @@ import {
   boolean,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * SEO GSC daily aggregate snapshots.
@@ -43,13 +44,17 @@ export const seoGscSnapshots = pgTable(
       .notNull(),
 
     // Soft delete - analytics data is irreplaceable (can't re-sync historical GSC data)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
   },
   (table) => [
     unique("uq_seo_gsc_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_gsc_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_gsc_snapshots_deleted").on(table.isDeleted),
+    index("ix_seo_gsc_snapshots_soft_deleted").on(table.softDeletedAt),
   ],
 );
 
@@ -112,13 +117,17 @@ export const seoGa4Snapshots = pgTable(
       .notNull(),
 
     // Soft delete - analytics data is irreplaceable (can't re-sync historical GA4 data)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
   },
   (table) => [
     unique("uq_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_ga4_snapshots_client_date").on(table.clientId, table.date),
     index("ix_seo_ga4_snapshots_deleted").on(table.isDeleted),
+    index("ix_seo_ga4_snapshots_soft_deleted").on(table.softDeletedAt),
   ],
 );
 

@@ -267,19 +267,19 @@ export function PublicProposalView({ proposal, token }: PublicProposalViewProps)
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-sm">
+            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-[var(--shadow-card)]">
               <p className="text-text-3 text-sm mb-1">Monthly Traffic</p>
               <p className="text-3xl font-bold text-text-1">
                 {formatNumber(content.currentState.traffic)}
               </p>
             </div>
-            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-sm">
+            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-[var(--shadow-card)]">
               <p className="text-text-3 text-sm mb-1">Ranking Keywords</p>
               <p className="text-3xl font-bold text-text-1">
                 {formatNumber(content.currentState.keywords)}
               </p>
             </div>
-            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-sm">
+            <div className="bg-surface-1 rounded-lg p-6 text-center shadow-[var(--shadow-card)]">
               <p className="text-text-3 text-sm mb-1">Traffic Value</p>
               <p className="text-3xl font-bold text-text-1">
                 {formatCurrency(content.currentState.value * 100, currency)}/mo
@@ -334,7 +334,7 @@ export function PublicProposalView({ proposal, token }: PublicProposalViewProps)
             Projected Return on Investment
           </h2>
 
-          <div className="bg-surface-1 rounded-lg p-8 shadow-sm">
+          <div className="bg-surface-1 rounded-lg p-8 shadow-[var(--shadow-card)]">
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <p className="text-text-3 text-sm mb-2">Projected Traffic Gain</p>

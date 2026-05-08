@@ -107,6 +107,7 @@ export type {
 export { visibilityMiddleware, applyVisibilityFilter } from "./middleware/visibilityMiddleware";
 
 // Bridge (P40: Analytics-Audit Integration)
+// OPS-004/005/006 FIX: Enhanced with caching, fallback, and position history
 export {
   AnalyticsAuditBridge,
   getAnalyticsAuditBridge,
@@ -120,7 +121,22 @@ export type {
   ClusterSizeAuditData,
   AuditRecommendation,
   AnalyticsAuditContext,
+  // OPS-004/005/006 types
+  PositionHistoryData,
+  PositionHistoryDataPoint,
+  DataSource,
+  DataWithSource,
+  GscDataStatus,
 } from "./bridge/types";
+
+// Test utilities (for testing services that return CachedData wrappers)
+export {
+  wrapCachedData,
+  unwrapCachedData,
+  assertIsCachedData,
+  createTestMetadata,
+  createStaleMetadata,
+} from "./test-utils";
 
 // Events (P96: Decoupled Service Communication)
 export {

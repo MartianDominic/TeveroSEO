@@ -279,7 +279,7 @@ export function ApiIntegrationsTab() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-foreground">{s.label}</span>
                         {s.source === "env" && (
-                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-muted text-muted-foreground border border-border">
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs-safe font-medium uppercase tracking-wide bg-muted text-muted-foreground border border-border">
                             ENV
                           </span>
                         )}

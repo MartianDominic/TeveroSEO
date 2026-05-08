@@ -11,6 +11,16 @@
  * - 5-year retention policy via add_retention_policy()
  * - PRIMARY KEY includes query_time for hypertable partitioning
  * - References siteConnections (not clients) for site-level GSC data
+ *
+ * Continuous Aggregates (see migration 0008):
+ * - growing_pages_cagg: Daily page metrics (bucket, daily_clicks, daily_impressions, avg_ctr, avg_position)
+ * - master_dashboard_cagg: Daily site metrics (bucket, daily_clicks, daily_impressions, avg_ctr, avg_position)
+ *
+ * IMPORTANT - Timezone Handling (DBS-004 fix):
+ * - The `bucket` column in continuous aggregates is TIMESTAMPTZ (not DATE)
+ * - Always compare bucket to TIMESTAMPTZ: bucket >= '2024-01-01'::timestamptz
+ * - Avoid implicit DATE casts which lose timezone information
+ * - JavaScript Date objects are UTC internally, Drizzle handles TIMESTAMPTZ correctly
  */
 import { pgTable, uuid, text, integer, real, timestamp, index } from "drizzle-orm/pg-core";
 import { siteConnections } from "./connection-schema";

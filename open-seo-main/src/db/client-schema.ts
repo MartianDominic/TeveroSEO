@@ -20,6 +20,7 @@ import { relations, sql } from "drizzle-orm";
 import { organization } from "./user-schema";
 import { prospects } from "./prospect-schema";
 import { projects } from "./app.schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 // Client status enum values
 export const CLIENT_STATUS = [
@@ -96,8 +97,11 @@ export const clients = pgTable(
       .$onUpdate(() => new Date()),
 
     // Soft delete support - prevents catastrophic cascade deletes
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").default(false).notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
   },
   (table) => [
     index("ix_clients_workspace").on(table.workspaceId),
@@ -106,6 +110,8 @@ export const clients = pgTable(
     index("ix_clients_converted_prospect").on(table.convertedFromProspectId),
     // Partial index for active (non-deleted) clients - speeds up common queries
     index("ix_clients_active").on(table.workspaceId, table.isDeleted),
+    // New soft delete index
+    index("ix_clients_soft_deleted").on(table.softDeletedAt),
     // H-01: Client status must be valid enum value
     check("chk_client_status_valid", sql`status IN ('onboarding', 'active', 'paused', 'churned')`),
   ],

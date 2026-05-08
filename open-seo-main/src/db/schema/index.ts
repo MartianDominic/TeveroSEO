@@ -43,6 +43,30 @@
  *   Active records: WHERE is_deleted = false (or is_archived = false)
  *   Include archived: WHERE is_deleted = false (archives visible)
  *   Everything: No filter (admin/audit views only)
+ *
+ * =============================================================================
+ * DBS-005/006/007: Soft Delete Pattern Standardization (Phase 96)
+ * =============================================================================
+ * MIGRATION IN PROGRESS: Moving from isDeleted+deletedAt to softDeletedAt
+ *
+ * NEW STANDARD PATTERN:
+ *   Column: soft_deleted_at TIMESTAMPTZ DEFAULT NULL
+ *   Query:  WHERE soft_deleted_at IS NULL
+ *   Mixin:  import { softDeleteColumns } from "./soft-delete-columns"
+ *
+ * Tables already using new pattern:
+ *   - site_tags, client_tags
+ *   - content_groups, analytics_topic_clusters
+ *   - page_index_status, indexing_requests
+ *   - analytics_annotations
+ *
+ * Tables with BOTH patterns (migration in progress):
+ *   - clients, projects, reports, content_briefs
+ *   - seo_gsc_snapshots, seo_ga4_snapshots
+ *   - site_changes, proposals
+ *
+ * After migration 0082 completes, legacy columns will be removed.
+ * Use softDeleteColumns mixin for all new tables.
  */
 export * from "./follow-ups";
 export * from "./workflow-templates";

@@ -39,7 +39,8 @@ import { closeDLQQueue, stopDLQCleanupScheduler } from "@/server/queues/dlq";
 import { closeAlertQueue } from "@/server/queues/alertQueue";
 import { closeDashboardMetricsQueue } from "@/server/queues/dashboardMetricsQueue";
 // SCRAPE-02/SCRAPE-03 FIX: Centralized queue scheduler
-import { removeLegacySchedulers, closeAllQueues as closeSchedulerQueues } from "@/server/queues/queue-scheduler";
+// BMQ-001 FIX: Import initAllSchedulers to enable all cron jobs
+import { initAllSchedulers, removeLegacySchedulers, closeAllQueues as closeSchedulerQueues } from "@/server/queues/queue-scheduler";
 import { pool } from "@/db";
 import { createLogger } from "@/server/lib/logger";
 // SVC-01 FIX: Event consumers for analytics event handling
@@ -105,6 +106,19 @@ export async function startAllWorkers(): Promise<void> {
     log.warn("Failed to remove legacy schedulers (may not exist)", {
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+
+  // BMQ-001 FIX: Initialize all cron job schedulers
+  // CRITICAL: This was previously missing - all scheduled jobs (GSC refresh, trend analysis,
+  // maintenance, DLQ cleanup, etc.) were never running because schedulers were never set up.
+  // Uses BullMQ's upsertJobScheduler for idempotent cron setup.
+  try {
+    await initAllSchedulers();
+    log.info("All job schedulers initialized");
+  } catch (err) {
+    log.error("Failed to initialize job schedulers", err instanceof Error ? err : new Error(String(err)));
+    // Non-fatal: workers can still process manually triggered jobs, but scheduled jobs won't run
+    // Consider this a degraded state - alerting should be configured to monitor scheduler health
   }
 
   const results = await Promise.allSettled(

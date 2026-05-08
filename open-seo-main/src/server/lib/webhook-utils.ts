@@ -12,6 +12,9 @@ import { incomingWebhookEvents } from "@/db/webhook-schema";
 import { eq } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import { redis } from "@/server/lib/redis";
+// DUP-003 FIX: Import and re-export consolidated IP utilities for backwards compatibility
+import { isIpInRange } from "@/server/lib/ip-extractor";
+export { isIpInRange };
 
 const log = createLogger({ module: "webhook-utils" });
 
@@ -25,16 +28,6 @@ const DOKOBIT_IP_WHITELIST = [
   "185.44.192.0/24",
   "52.58.0.0/16", // AWS EU (Dokobit infrastructure)
 ];
-
-export function isIpInRange(ip: string, cidr: string): boolean {
-  const [range, bits] = cidr.split("/");
-  const mask = ~(2 ** (32 - parseInt(bits)) - 1);
-
-  const ipNum = ip.split(".").reduce((acc, octet) => (acc << 8) + parseInt(octet), 0);
-  const rangeNum = range.split(".").reduce((acc, octet) => (acc << 8) + parseInt(octet), 0);
-
-  return (ipNum & mask) === (rangeNum & mask);
-}
 
 export function verifyDokobitIp(clientIp: string | null): boolean {
   if (!clientIp) return false;

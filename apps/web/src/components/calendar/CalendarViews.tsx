@@ -174,7 +174,7 @@ export function MonthView({
                     <StatusDot key={article.id} status={article.status} />
                   ))}
                   {dayArticles.length > 4 && (
-                    <span className="text-[11px] text-text-3">
+                    <span className="text-xs-safe text-text-3">
                       +{dayArticles.length - 4}
                     </span>
                   )}

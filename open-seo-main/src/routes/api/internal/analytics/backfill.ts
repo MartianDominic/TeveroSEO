@@ -5,12 +5,13 @@
  * Google credentials. This endpoint queues a backfill job in BullMQ.
  *
  * SECURITY: Protected by HMAC-signed requests (X-Internal-Signature + X-Internal-Timestamp).
- * Also accepts legacy X-Internal-Api-Key header for backward compatibility.
+ * CSI-001/CSI-002 FIX: Legacy X-Internal-Api-Key auth has been removed.
  * This endpoint is NOT exposed to public - internal network only.
  *
  * SECURITY FIXES:
  * - CRIT-002: Uses standardized HMAC-based auth from internal-auth middleware
  * - CRIT-003: Uses timing-safe comparison to prevent timing attacks
+ * - CSI-001/CSI-002: Removed legacy API key authentication
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { queueBackfillJob } from "@/server/queues/analyticsQueue";

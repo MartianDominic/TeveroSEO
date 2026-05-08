@@ -73,6 +73,7 @@ setup_clean_logging()
 from middleware.auth_middleware import get_current_user
 from middleware.security_headers import SecurityHeadersMiddleware
 from middleware.rate_limit import RateLimitMiddleware
+from middleware.internal_auth import InternalAuthMiddleware
 
 # Import component logic endpoints (needs OnboardingSession, so import after models)
 from api.component_logic import router as component_logic_router
@@ -398,7 +399,12 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Applies sliding window rate limits based on path patterns
 app.add_middleware(RateLimitMiddleware)
 
-# 2. SECOND REGISTERED (runs THIRD) - Monitoring middleware
+# 3. Internal authentication middleware (HMAC-SHA256 for /internal/ routes)
+# CSI-001/CSI-002 FIX: Secure service-to-service authentication
+# Validates X-Internal-Signature + X-Internal-Timestamp headers
+app.add_middleware(InternalAuthMiddleware)
+
+# 4. SECOND REGISTERED (runs THIRD) - Monitoring middleware
 app.middleware("http")(monitoring_middleware)
 
 # 2. SECOND REGISTERED (runs SECOND) - Rate limiting

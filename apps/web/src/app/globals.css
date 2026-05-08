@@ -47,6 +47,12 @@
   --shadow-pop: var(--shadow-pop);
   --shadow-cta: var(--shadow-cta);
   --shadow-cta-hover: var(--shadow-cta-hover);
+  --shadow-elevated: var(--shadow-elevated);
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-tooltip: var(--shadow-tooltip);
+  --shadow-modal: var(--shadow-modal);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-dropdown: var(--shadow-dropdown);
 
   /* ===== Radius ===== */
   --radius-input: var(--radius-input);

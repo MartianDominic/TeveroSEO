@@ -36,27 +36,27 @@ export function PipelineFunnel({
     {
       name: "New Prospects",
       value: pipeline?.prospects?.new ?? 0,
-      fill: "#3b82f6",
+      fill: "var(--info)",
     },
     {
       name: "Qualified",
       value: pipeline?.prospects?.qualified ?? 0,
-      fill: "#6366f1",
+      fill: "var(--accent-2)",
     },
     {
       name: "Proposals Sent",
       value: pipeline?.proposals?.sent ?? 0,
-      fill: "#8b5cf6",
+      fill: "var(--accent)",
     },
     {
       name: "Agreements Signed",
       value: pipeline?.agreements?.signed ?? 0,
-      fill: "#a855f7",
+      fill: "var(--accent-tint)",
     },
     {
       name: "Invoices Paid",
       value: pipeline?.payments?.paid30d ?? 0,
-      fill: "#22c55e",
+      fill: "var(--success)",
     },
   ];
 

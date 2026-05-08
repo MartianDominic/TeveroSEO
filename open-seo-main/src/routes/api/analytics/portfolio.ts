@@ -4,6 +4,8 @@
  *
  * Returns aggregated metrics across all clients in workspace.
  * Rate limited: 60 requests per minute per workspace (standard analytics).
+ *
+ * API-002 FIX: All error responses use standardized format matching OpenAPI spec.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
@@ -14,6 +16,10 @@ import {
   rateLimitExceededResponse,
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
+import {
+  createErrorResponse,
+  ERROR_CODES,
+} from "@/server/features/analytics/types/api-responses";
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -56,7 +62,7 @@ export const Route = (createFileRoute as any)("/api/analytics/portfolio")({
     } catch (error) {
       console.error("[portfolio] GET error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }
@@ -97,7 +103,7 @@ export const TrendsRoute = (createFileRoute as any)("/api/analytics/portfolio/tr
     } catch (error) {
       console.error("[portfolio/trends] GET error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }
@@ -129,7 +135,7 @@ export const TopClientsRoute = (createFileRoute as any)("/api/analytics/portfoli
     } catch (error) {
       console.error("[portfolio/top-clients] GET error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }
@@ -161,7 +167,7 @@ export const UnderperformingRoute = (createFileRoute as any)("/api/analytics/por
     } catch (error) {
       console.error("[portfolio/underperforming] GET error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }
@@ -190,7 +196,7 @@ export const ComparisonRoute = (createFileRoute as any)("/api/analytics/portfoli
     } catch (error) {
       console.error("[portfolio/comparison] GET error:", error);
       return Response.json(
-        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        createErrorResponse(ERROR_CODES.INTERNAL_ERROR, "Internal server error"),
         { status: 500 }
       );
     }

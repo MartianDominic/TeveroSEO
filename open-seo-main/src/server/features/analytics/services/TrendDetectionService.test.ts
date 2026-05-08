@@ -2,7 +2,8 @@
  * TrendDetectionService Tests
  * Phase 96-03: Growing/Decaying Page Detection
  *
- * RED Phase: Write tests first - they should FAIL
+ * Tests updated to handle CachedData<TrendResult> wrapper.
+ * Services return { data: TrendResult, metadata: CacheMetadata }.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { TrendFilters } from '../types';
@@ -46,10 +47,11 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123', { trend: 'growing' });
 
-      expect(result.pages).toHaveLength(1);
-      expect(result.pages[0].trend).toBe('growing');
-      expect(result.pages[0].changePercent).toBeCloseTo(50, 1);
-      expect(result.meta.growingCount).toBe(1);
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages).toHaveLength(1);
+      expect(result.data.pages[0].trend).toBe('growing');
+      expect(result.data.pages[0].changePercent).toBeCloseTo(50, 1);
+      expect(result.data.meta.growingCount).toBe(1);
     });
 
     it('should detect decaying pages with >10% click decrease', async () => {
@@ -71,10 +73,11 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123', { trend: 'decaying' });
 
-      expect(result.pages).toHaveLength(1);
-      expect(result.pages[0].trend).toBe('decaying');
-      expect(result.pages[0].changePercent).toBeCloseTo(-40, 1);
-      expect(result.meta.decayingCount).toBe(1);
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages).toHaveLength(1);
+      expect(result.data.pages[0].trend).toBe('decaying');
+      expect(result.data.pages[0].changePercent).toBeCloseTo(-40, 1);
+      expect(result.data.meta.decayingCount).toBe(1);
     });
 
     it('should exclude pages with <100 impressions (minImpressions filter)', async () => {
@@ -85,7 +88,8 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123', { minImpressions: 100 });
 
-      expect(result.pages).toHaveLength(0);
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages).toHaveLength(0);
     });
 
     it('should assign confidence based on impression volume', async () => {
@@ -107,7 +111,8 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123', { trend: 'all' });
 
-      expect(result.pages[0].confidence).toBe('high'); // 8000 + 7000 = 15000 > 1000
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages[0].confidence).toBe('high'); // 8000 + 7000 = 15000 > 1000
     });
 
     it('should respect custom threshold (e.g., 20%)', async () => {
@@ -130,7 +135,8 @@ describe('TrendDetectionService', () => {
       const result = await service.analyzePageTrends('site-123', { threshold: 0.20, trend: 'all' });
 
       // 15% change should be classified as 'stable' with 20% threshold
-      expect(result.pages[0].trend).toBe('stable');
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages[0].trend).toBe('stable');
     });
 
     it('should use custom period (e.g., 14 days vs 21 days)', async () => {
@@ -173,7 +179,8 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123', { trend: 'all' });
 
-      expect(result.pages[0].topQueries).toHaveLength(6);
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages[0].topQueries).toHaveLength(6);
     });
 
     it('should exclude pages with zero previous clicks (avoid division by zero)', async () => {
@@ -184,7 +191,8 @@ describe('TrendDetectionService', () => {
 
       const result = await service.analyzePageTrends('site-123');
 
-      expect(result.pages).toHaveLength(0);
+      // Service returns CachedData<TrendResult>, access via .data
+      expect(result.data.pages).toHaveLength(0);
     });
   });
 

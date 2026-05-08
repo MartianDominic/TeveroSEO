@@ -1335,6 +1335,666 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
 
+  /annotations/{annotationId}:
+    put:
+      operationId: updateAnnotation
+      summary: Update annotation
+      description: |
+        Updates an existing annotation.
+        API-003: Endpoint documented for future implementation.
+      tags: [Dashboard]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: annotationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 1000
+                impact:
+                  type: string
+                  enum: [positive, negative, neutral]
+      responses:
+        '200':
+          description: Annotation updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/Annotation'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    delete:
+      operationId: deleteAnnotation
+      summary: Delete annotation
+      description: |
+        Deletes an annotation by ID.
+        API-003: Endpoint documented for future implementation.
+      tags: [Dashboard]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: annotationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Annotation deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+                        enum: [true]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /export/pdf:
+    get:
+      operationId: exportPdf
+      summary: Export report as PDF
+      description: |
+        Generates a PDF export of analytics data.
+        API-003: Endpoint documented for future implementation.
+        Uses export rate limit (10 req/hour).
+      tags: [Export]
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [queries, pages, summary]
+            default: summary
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /sites/{siteId}/tags:
+    get:
+      operationId: getSiteTags
+      summary: Get site tags
+      description: |
+        Returns all tags for a specific site.
+        API-003: Endpoint documented for future implementation.
+      tags: [Dashboard]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Site tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        tag:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    post:
+      operationId: addSiteTag
+      summary: Add tag to site
+      description: |
+        Adds a tag to a specific site.
+        API-003: Endpoint documented for future implementation.
+      tags: [Dashboard]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag]
+              properties:
+                tag:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+      responses:
+        '201':
+          description: Tag added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      tag:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Tag already exists on site
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /sites/{siteId}/tags/{tagId}:
+    delete:
+      operationId: removeSiteTag
+      summary: Remove tag from site
+      description: |
+        Removes a tag from a specific site.
+        API-003: Endpoint documented for future implementation.
+      tags: [Dashboard]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tag removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+                        enum: [true]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /clients/{clientId}/tags:
+    get:
+      operationId: getClientTags
+      summary: Get client tags
+      description: |
+        Returns all tags for a specific client.
+        API-003: Endpoint documented for future implementation.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Client tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        tag:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    post:
+      operationId: addClientTag
+      summary: Add tag to client
+      description: |
+        Adds a tag to a specific client.
+        API-003: Endpoint documented for future implementation.
+      tags: [Portfolio]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag]
+              properties:
+                tag:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+      responses:
+        '201':
+          description: Tag added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      tag:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Tag already exists on client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /clients/{clientId}/tags/{tagId}:
+    delete:
+      operationId: removeClientTag
+      summary: Remove tag from client
+      description: |
+        Removes a tag from a specific client.
+        API-003: Endpoint documented for future implementation.
+      tags: [Portfolio]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tag removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+                        enum: [true]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /oauth/refresh:
+    post:
+      operationId: refreshOAuthToken
+      summary: Refresh OAuth token
+      description: |
+        Refreshes the Google OAuth token for GSC/Sheets access.
+        API-003: Endpoint documented for future implementation.
+      tags: [System]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  description: Google OAuth refresh token
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        description: Token expiry in seconds
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /maintenance/trigger:
+    post:
+      operationId: triggerMaintenance
+      summary: Trigger maintenance task
+      description: |
+        Triggers a maintenance task (admin only).
+        API-003: Endpoint documented for future implementation.
+      tags: [System]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task]
+              properties:
+                task:
+                  type: string
+                  enum:
+                    - cleanup_stale_data
+                    - recompute_metrics
+                    - vacuum_indexes
+                    - sync_algorithm_updates
+                options:
+                  type: object
+                  description: Task-specific options
+      responses:
+        '200':
+          description: Task triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                      status:
+                        type: string
+                        enum: [queued, running]
+                      estimatedDuration:
+                        type: integer
+                        description: Estimated duration in seconds
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '501':
+          description: Not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /tags:
     get:
       operationId: getTags
@@ -2171,6 +2831,10 @@ paths:
       summary: Add brand term
       description: Adds a new brand term for branded/non-branded classification.
       tags: [Portfolio]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
       parameters:
         - name: clientId
           in: path

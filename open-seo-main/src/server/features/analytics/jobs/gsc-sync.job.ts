@@ -42,10 +42,23 @@ export const GSC_RATE_LIMIT = {
 } as const;
 
 /**
+ * Job priority levels for BullMQ.
+ * BMQ-003 FIX: Explicit priority levels for job ordering.
+ * Lower number = higher priority (1 is highest).
+ */
+export const JOB_PRIORITY = {
+  HIGH: 1,    // Critical jobs: GSC sync, GA4 sync
+  MEDIUM: 2,  // Important jobs: Trend calculation, analytics
+  LOW: 3,     // Maintenance jobs: DLQ cleanup, cache cleanup
+} as const;
+
+/**
  * GSC sync queue with rate limiting and retry configuration.
  *
  * Rate limiting is enforced at the worker level (see gsc-sync.worker.ts),
  * but we define the constants here for consistency.
+ *
+ * BMQ-003 FIX: HIGH priority (1) for critical data sync jobs.
  */
 export const gscSyncQueue = new Queue<GscSyncJobData, GscSyncJobResult>("gsc-sync", {
   connection: getSharedBullMQConnection("queue:gsc-sync"),
@@ -54,6 +67,7 @@ export const gscSyncQueue = new Queue<GscSyncJobData, GscSyncJobResult>("gsc-syn
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: { age: 86400, count: 1000 }, // 24 hours, keep 1000 recent
     removeOnFail: { age: 604800, count: 5000 }, // 7 days, keep 5000 recent
+    priority: JOB_PRIORITY.HIGH, // BMQ-003: Critical sync jobs get highest priority
   },
 });
 

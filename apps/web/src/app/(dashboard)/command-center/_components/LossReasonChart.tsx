@@ -21,17 +21,17 @@ import { useTranslations } from "next-intl";
 
 /**
  * Color palette for chart segments.
- * Uses Tailwind-inspired colors for visual consistency.
+ * Uses Design System v6 semantic colors for visual consistency.
  */
 const COLORS = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#eab308", // yellow-500
-  "#22c55e", // green-500
-  "#3b82f6", // blue-500
-  "#8b5cf6", // violet-500
-  "#ec4899", // pink-500
-  "#6b7280", // gray-500
+  "var(--error)",      // error red
+  "var(--warning)",    // warning amber
+  "var(--info)",       // info blue
+  "var(--success)",    // success green
+  "var(--accent)",     // accent emerald
+  "var(--accent-2)",   // accent-2 lighter emerald
+  "var(--accent-tint)", // accent-tint muted
+  "var(--text-3)",     // text-3 gray
 ];
 
 interface LossReasonData {

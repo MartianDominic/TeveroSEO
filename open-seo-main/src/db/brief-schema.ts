@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { keywordPageMapping } from "./mapping-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 // Brief status workflow: draft → ready → generating → published
 export const BRIEF_STATUSES = [
@@ -60,8 +61,11 @@ export const contentBriefs = pgTable(
       .defaultNow(),
 
     // Soft delete columns (migration 0067)
+    // Legacy columns (deprecated - use softDeletedAt instead)
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "date" }),
+    // New standardized soft delete column (DBS-005/006/007)
+    ...softDeleteColumns,
 
     // P2.G16: Cost attribution for scraping operations (SERP + competitor fetches)
     scrapingCostUsd: decimal("scraping_cost_usd", { precision: 10, scale: 6 }),
@@ -70,6 +74,7 @@ export const contentBriefs = pgTable(
     index("ix_briefs_mapping").on(table.mappingId),
     index("ix_briefs_status").on(table.status),
     index("ix_content_briefs_deleted").on(table.isDeleted),
+    index("ix_content_briefs_soft_deleted").on(table.softDeletedAt),
     // P2.G16: Index for cost reporting/aggregation queries
     index("ix_briefs_mapping_cost").on(table.mappingId, table.scrapingCostUsd),
     // M-18: Target word count must be reasonable (100-50000)
