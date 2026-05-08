@@ -36,9 +36,7 @@ export {
   logCircuitStateChange,
   logCostRecord,
   logQueueOperation,
-  // Types
-  type RequestContext,
 } from './Logger';
 
-// Re-export RequestContext type
+// Export RequestContext type
 export type { RequestContext } from './Logger';

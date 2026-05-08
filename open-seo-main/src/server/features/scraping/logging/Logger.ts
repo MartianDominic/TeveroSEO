@@ -19,7 +19,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 /**
  * Context stored per async execution.
  */
-interface RequestContext {
+export interface RequestContext {
   correlationId: string;
   clientId?: string;
   jobId?: string;

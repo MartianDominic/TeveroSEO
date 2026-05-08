@@ -29,6 +29,14 @@ import {
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
 import { AlertManager } from "./monitoring/AlertManager";
+import { getMetricsCollector, recordScrapeRequest, recordCircuitState } from "./monitoring/MetricsCollector";
+import {
+  logger,
+  withRequestContextAsync,
+  generateCorrelationId,
+  logScrapeComplete,
+  logScrapeError,
+} from "./logging";
 
 // =============================================================================
 // Types
@@ -52,6 +60,9 @@ export interface ScrapeOptions extends FetchOptions {
 
   /** CWV strategy: 'crux-only' skips PSI fallback, 'full' uses all sources */
   cwvStrategy?: 'crux-only' | 'full';
+
+  /** Correlation ID for request tracing (auto-generated if not provided) */
+  correlationId?: string;
 }
 
 /**
@@ -63,6 +74,9 @@ export interface ScrapeResult extends FetchResult {
 
   /** Core Web Vitals data (if requested and available) */
   cwv?: CwvMetrics;
+
+  /** Correlation ID for request tracing */
+  correlationId?: string;
 }
 
 /**
@@ -281,41 +295,97 @@ export class ScrapingService {
    * Scrape a single URL using the optimal strategy.
    */
   async scrape(url: string, options: ScrapeOptions = {}): Promise<ScrapeResult> {
-    this.trackRequest(options.feature);
+    const correlationId = options.correlationId ?? generateCorrelationId();
+    const startTime = Date.now();
 
-    const fetchOptions: FetchOptions = {
-      ...options,
-    };
+    return withRequestContextAsync(
+      { correlationId, url, clientId: options.clientId },
+      async () => {
+        this.trackRequest(options.feature);
 
-    // Parallel fetch: HTML + CWV
-    const [result, cwvMetrics] = await Promise.all([
-      this.tieredFetcher.fetch(url, fetchOptions),
-      options.includeCwv && this.cwvService
-        ? this.cwvService.getCwvData(url).catch((error) => {
-            console.warn('CWV fetch failed:', error);
-            return undefined;
-          })
-        : Promise.resolve(undefined),
-    ]);
+        const fetchOptions: FetchOptions = {
+          ...options,
+        };
 
-    // Track cost
-    this.trackCost(options.feature, result.estimatedCostUsd);
+        try {
+          // Parallel fetch: HTML + CWV
+          const [result, cwvMetrics] = await Promise.all([
+            this.tieredFetcher.fetch(url, fetchOptions),
+            options.includeCwv && this.cwvService
+              ? this.cwvService.getCwvData(url).catch((error) => {
+                  logger.warn({ url, error: error instanceof Error ? error.message : String(error) }, 'CWV fetch failed');
+                  return undefined;
+                })
+              : Promise.resolve(undefined),
+          ]);
 
-    // Add parsed data if requested
-    let parsedData: ParsedPageData | undefined;
-    if (options.includeParsedData && result.html) {
-      parsedData = this.parseHtml(result.html, url);
-    }
+          const durationMs = Date.now() - startTime;
 
-    // Optionally strip HTML
-    const scrapeResult: ScrapeResult = {
-      ...result,
-      html: options.includeHtml === false ? undefined : result.html,
-      parsedData,
-      cwv: cwvMetrics,
-    };
+          // Track cost
+          this.trackCost(options.feature, result.estimatedCostUsd);
 
-    return scrapeResult;
+          // Record metrics for Prometheus
+          recordScrapeRequest({
+            tier: result.tierUsed,
+            status: result.success ? 'success' : 'error',
+            durationSeconds: durationMs / 1000,
+            costUsd: result.estimatedCostUsd,
+            cached: result.fromCache,
+            cacheLevel: result.cacheLevel,
+            clientId: options.clientId,
+          });
+
+          // Log completion
+          logScrapeComplete({
+            url,
+            tier: result.tierUsed,
+            cached: result.fromCache,
+            durationMs,
+            costUsd: result.estimatedCostUsd,
+            statusCode: result.statusCode,
+          });
+
+          // Add parsed data if requested
+          let parsedData: ParsedPageData | undefined;
+          if (options.includeParsedData && result.html) {
+            parsedData = this.parseHtml(result.html, url);
+          }
+
+          // Optionally strip HTML
+          const scrapeResult: ScrapeResult = {
+            ...result,
+            html: options.includeHtml === false ? undefined : result.html,
+            parsedData,
+            cwv: cwvMetrics,
+            correlationId,
+          };
+
+          return scrapeResult;
+        } catch (error) {
+          const durationMs = Date.now() - startTime;
+
+          // Record error metrics
+          recordScrapeRequest({
+            tier: options.forceTier ?? options.startTier ?? 'direct',
+            status: 'error',
+            durationSeconds: durationMs / 1000,
+            costUsd: 0,
+            cached: false,
+            clientId: options.clientId,
+          });
+
+          // Log error
+          logScrapeError({
+            url,
+            tier: options.forceTier ?? options.startTier ?? 'direct',
+            error: error instanceof Error ? error.message : String(error),
+            durationMs,
+          });
+
+          throw error;
+        }
+      }
+    );
   }
 
   /**
@@ -482,57 +552,76 @@ export class ScrapingService {
   async getMetrics(): Promise<ScrapingMetrics> {
     const flags = loadMigrationFlagsCached();
     const cacheStats = this.cacheManager?.getStats() ?? this.emptyCacheStats();
+    const metricsCollector = getMetricsCollector();
 
     // Get domain learning stats
     const revalidationCandidates = await this.domainLearning.getRevalidationCandidates(1);
 
+    // Calculate latency percentiles from histogram
+    const latencyP50Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 50) * 1000;
+    const latencyP95Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 95) * 1000;
+    const latencyP99Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 99) * 1000;
+
+    // Get request counts by tier from MetricsCollector
+    const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
+    const requestsByTier: Record<ScrapeTier, number> = {
+      direct: 0,
+      webshare: 0,
+      geonode: 0,
+      camoufox: 0,
+      dfs_basic: 0,
+      dfs_js: 0,
+      dfs_browser: 0,
+    };
+    const costByTier: Record<ScrapeTier, number> = {
+      direct: 0,
+      webshare: 0,
+      geonode: 0,
+      camoufox: 0,
+      dfs_basic: 0,
+      dfs_js: 0,
+      dfs_browser: 0,
+    };
+
+    let totalRequests = 0;
+    let successfulRequests = 0;
+
+    for (const tier of tiers) {
+      const successCount = metricsCollector.getCounter('scraping_requests_total', { tier, status: 'success' });
+      const errorCount = metricsCollector.getCounter('scraping_requests_total', { tier, status: 'error' });
+      requestsByTier[tier] = successCount + errorCount;
+      totalRequests += successCount + errorCount;
+      successfulRequests += successCount;
+
+      costByTier[tier] = metricsCollector.getCounter('scraping_cost_usd_total', { tier });
+    }
+
+    const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 1;
+    const totalCost = Object.values(costByTier).reduce((sum, cost) => sum + cost, 0);
+
     return {
       cost: {
-        today: 0, // Would need to aggregate from history
-        thisWeek: 0,
+        today: totalCost,
+        thisWeek: 0, // Would need to aggregate from history
         thisMonth: 0,
-        byTier: {
-          direct: 0,
-          webshare: 0,
-          geonode: 0,
-          camoufox: 0,
-          dfs_basic: 0,
-          dfs_js: 0,
-          dfs_browser: 0,
-        },
+        byTier: costByTier,
         byFeature: Object.fromEntries(this.costByFeature),
         byClient: {},
       },
       performance: {
-        requestsTotal: cacheStats.totalRequests,
-        requestsByTier: {
-          direct: 0,
-          webshare: 0,
-          geonode: 0,
-          camoufox: 0,
-          dfs_basic: 0,
-          dfs_js: 0,
-          dfs_browser: 0,
-        },
-        latencyP50Ms: 0,
-        latencyP95Ms: 0,
-        latencyP99Ms: 0,
-        successRate: cacheStats.totalHitRate,
+        requestsTotal: totalRequests || cacheStats.totalRequests,
+        requestsByTier,
+        latencyP50Ms,
+        latencyP95Ms,
+        latencyP99Ms,
+        successRate,
         errorsByType: {},
       },
       cache: cacheStats,
       domainLearning: {
         totalDomains: 0, // Would query from DB
         accuracyRate: 0.95, // Target accuracy
-        tierDistribution: {
-          direct: 0,
-          webshare: 0,
-          geonode: 0,
-          camoufox: 0,
-          dfs_basic: 0,
-          dfs_js: 0,
-          dfs_browser: 0,
-        },
+        tierDistribution: requestsByTier,
         discoveriesToday: 0,
         revalidationsPending: revalidationCandidates.length > 0 ? 1 : 0,
       },
@@ -1012,8 +1101,20 @@ export class ScrapingService {
   async getPrometheusMetrics(): Promise<string> {
     const lines: string[] = [];
     const health = await this.healthCheck();
+    const metricsCollector = getMetricsCollector();
 
+    // ==========================================================================
+    // MetricsCollector metrics (histograms, counters from actual requests)
+    // ==========================================================================
+    const collectorMetrics = metricsCollector.toPrometheusFormat();
+    if (collectorMetrics) {
+      lines.push(collectorMetrics);
+      lines.push('');
+    }
+
+    // ==========================================================================
     // Component health gauges
+    // ==========================================================================
     lines.push('# HELP scraping_component_health Component health status (1=healthy, 0=unhealthy)');
     lines.push('# TYPE scraping_component_health gauge');
     for (const [name, component] of Object.entries(health.components)) {
@@ -1029,17 +1130,23 @@ export class ScrapingService {
     }
     lines.push('');
 
-    // Circuit breaker states
+    // ==========================================================================
+    // Circuit breaker states (also update MetricsCollector gauges)
+    // ==========================================================================
     const circuits = this.getCircuitStates();
-    lines.push('# HELP scraping_circuit_state Circuit breaker state (0=closed, 1=half-open, 2=open)');
-    lines.push('# TYPE scraping_circuit_state gauge');
+    lines.push('# HELP scraping_circuit_breaker_state Circuit breaker state (0=closed, 1=half-open, 2=open)');
+    lines.push('# TYPE scraping_circuit_breaker_state gauge');
     for (const [tier, state] of Object.entries(circuits)) {
       const stateValue = { closed: 0, 'half-open': 1, open: 2 }[state] ?? 0;
-      lines.push(`scraping_circuit_state{tier="${tier}"} ${stateValue}`);
+      lines.push(`scraping_circuit_breaker_state{tier="${tier}"} ${stateValue}`);
+      // Also record in MetricsCollector for consistency
+      recordCircuitState(tier, state);
     }
     lines.push('');
 
+    // ==========================================================================
     // Queue metrics
+    // ==========================================================================
     const queueStats = await this.getQueueStats();
     lines.push('# HELP scraping_queue_jobs Queue job counts');
     lines.push('# TYPE scraping_queue_jobs gauge');
@@ -1049,7 +1156,9 @@ export class ScrapingService {
     lines.push(`scraping_queue_jobs{state="failed"} ${queueStats.failed}`);
     lines.push('');
 
+    // ==========================================================================
     // Cache metrics
+    // ==========================================================================
     if (this.cacheManager) {
       const cacheStats = this.cacheManager.getStats();
       lines.push('# HELP scraping_cache_hit_rate Cache hit rate (0-1)');
@@ -1061,13 +1170,25 @@ export class ScrapingService {
       lines.push(`scraping_cache_hit_rate{level="total"} ${cacheStats.totalHitRate}`);
       lines.push('');
 
+      lines.push('# HELP scraping_cache_size_bytes Cache size in bytes');
+      lines.push('# TYPE scraping_cache_size_bytes gauge');
+      lines.push(`scraping_cache_size_bytes{level="l1"} ${cacheStats.l1.sizeBytes}`);
+      lines.push('');
+
+      lines.push('# HELP scraping_cache_items Cache item count');
+      lines.push('# TYPE scraping_cache_items gauge');
+      lines.push(`scraping_cache_items{level="l1"} ${cacheStats.l1.itemCount}`);
+      lines.push('');
+
       lines.push('# HELP scraping_cache_requests_total Total cache requests');
       lines.push('# TYPE scraping_cache_requests_total counter');
       lines.push(`scraping_cache_requests_total ${cacheStats.totalRequests}`);
       lines.push('');
     }
 
+    // ==========================================================================
     // Migration metrics
+    // ==========================================================================
     lines.push('# HELP scraping_migration_shadow_mismatches Shadow mode comparison mismatches');
     lines.push('# TYPE scraping_migration_shadow_mismatches counter');
     lines.push(`scraping_migration_shadow_mismatches ${this.shadowMismatches}`);
@@ -1076,6 +1197,20 @@ export class ScrapingService {
     lines.push('# HELP scraping_migration_fallbacks Legacy fallbacks triggered');
     lines.push('# TYPE scraping_migration_fallbacks counter');
     lines.push(`scraping_migration_fallbacks ${this.fallbacksTriggered}`);
+    lines.push('');
+
+    // ==========================================================================
+    // Latency percentiles (computed from histogram)
+    // ==========================================================================
+    const p50 = metricsCollector.getPercentile('scraping_request_duration_seconds', 50);
+    const p95 = metricsCollector.getPercentile('scraping_request_duration_seconds', 95);
+    const p99 = metricsCollector.getPercentile('scraping_request_duration_seconds', 99);
+
+    lines.push('# HELP scraping_latency_percentile_seconds Request latency percentiles');
+    lines.push('# TYPE scraping_latency_percentile_seconds gauge');
+    lines.push(`scraping_latency_percentile_seconds{quantile="0.5"} ${p50.toFixed(6)}`);
+    lines.push(`scraping_latency_percentile_seconds{quantile="0.95"} ${p95.toFixed(6)}`);
+    lines.push(`scraping_latency_percentile_seconds{quantile="0.99"} ${p99.toFixed(6)}`);
     lines.push('');
 
     return lines.join('\n');
@@ -1120,7 +1255,7 @@ export class ScrapingService {
    * Drain old jobs from the queue.
    */
   async drainQueue(olderThanMs?: number): Promise<number> {
-    console.log(`Draining queue older than: ${olderThanMs}ms`);
+    logger.info({ olderThanMs }, 'Draining queue');
     // TODO: Implement actual queue drain logic
     return 0;
   }
@@ -1136,7 +1271,7 @@ export class ScrapingService {
    * Emergency stop - pause all queues and open all circuits.
    */
   async emergencyStop(): Promise<void> {
-    console.warn('[ScrapingService] Emergency stop triggered');
+    logger.warn({}, 'Emergency stop triggered');
 
     // Open all circuit breakers
     const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
@@ -1158,7 +1293,7 @@ export class ScrapingService {
    * Resume operations - close circuits and resume queues.
    */
   async resume(): Promise<void> {
-    console.info('[ScrapingService] Resuming operations');
+    logger.info({}, 'Resuming operations');
 
     // Reset all circuit breakers
     const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
