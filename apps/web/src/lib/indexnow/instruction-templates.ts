@@ -25,7 +25,8 @@ export type Platform =
   | "vercel"
   | "netlify"
   | "cpanel"
-  | "ftp";
+  | "ftp"
+  | "cloudflare";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -692,6 +693,56 @@ export function get_indexnow(request) {
         titleKey: "indexnow.errors.cpanelPermissions.title",
         descriptionKey: "indexnow.errors.cpanelPermissions.description",
         solutionKey: "indexnow.errors.cpanelPermissions.solution",
+      },
+    ],
+  },
+
+  // ---------------------------------------------------------------------------
+  // Cloudflare (Zero-Touch via Crawler Hints)
+  // ---------------------------------------------------------------------------
+  cloudflare: {
+    platform: "cloudflare",
+    nameKey: "indexnow.platforms.cloudflare",
+    estimatedMinutes: 1,
+    difficulty: "easy",
+    paidPlanRequired: false,
+    prerequisiteKeys: [
+      "indexnow.prereq.cloudflareAccount",
+    ],
+    steps: [
+      {
+        number: 1,
+        titleKey: "indexnow.cloudflare.step1.title",
+        descriptionKey: "indexnow.cloudflare.step1.description",
+        screenshot: "cloudflare-dashboard.png",
+        tipKey: "indexnow.cloudflare.step1.tip",
+      },
+      {
+        number: 2,
+        titleKey: "indexnow.cloudflare.step2.title",
+        descriptionKey: "indexnow.cloudflare.step2.description",
+        screenshot: "cloudflare-caching.png",
+      },
+      {
+        number: 3,
+        titleKey: "indexnow.cloudflare.step3.title",
+        descriptionKey: "indexnow.cloudflare.step3.description",
+        screenshot: "cloudflare-crawler-hints.png",
+        tipKey: "indexnow.cloudflare.step3.tip",
+      },
+    ],
+    verification: [
+      {
+        instructionKey: "indexnow.cloudflare.verify",
+        checkUrl: "https://dash.cloudflare.com",
+        expectedContent: "Crawler Hints: On",
+      },
+    ],
+    commonErrors: [
+      {
+        titleKey: "indexnow.errors.cloudflareNotEnabled.title",
+        descriptionKey: "indexnow.errors.cloudflareNotEnabled.description",
+        solutionKey: "indexnow.errors.cloudflareNotEnabled.solution",
       },
     ],
   },

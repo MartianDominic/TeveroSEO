@@ -1,0 +1,369 @@
+{
+  "title": "IndexNow Key Installation",
+  "subtitle": "Add your IndexNow key to enable instant search engine indexing",
+  "autoDeployFailed": "Automatic deployment was not possible. Follow these steps to add the key manually.",
+  "selectPlatform": "Select your platform",
+  "estimatedTime": "{minutes} min",
+  "paidRequired": "Paid plan required",
+  "difficulty": {
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Advanced"
+  },
+  "platforms": {
+    "wordpress": "WordPress",
+    "shopify": "Shopify",
+    "wix": "Wix",
+    "squarespace": "Squarespace",
+    "webflow": "Webflow",
+    "vercel": "Vercel",
+    "netlify": "Netlify",
+    "cpanel": "cPanel",
+    "ftp": "FTP Upload"
+  },
+  "prereq": {
+    "wpAdmin": "WordPress admin access",
+    "fileManagerOrFtp": "File Manager plugin or FTP access",
+    "shopifyAdmin": "Shopify admin access",
+    "wixPremium": "Wix Premium plan (for custom code)",
+    "wixEditor": "Wix Editor access",
+    "squarespaceBusiness": "Squarespace Business plan or higher",
+    "squarespaceAdmin": "Squarespace admin access",
+    "webflowCMS": "Webflow CMS or higher plan",
+    "webflowDesigner": "Webflow Designer access",
+    "vercelProject": "Vercel project access",
+    "gitAccess": "Git repository access",
+    "netlifySite": "Netlify site access",
+    "cpanelAccess": "cPanel login credentials",
+    "ftpCredentials": "FTP/SFTP credentials (host, username, password)",
+    "ftpClient": "FTP client (FileZilla recommended)"
+  },
+  "wordpress": {
+    "step1": {
+      "title": "Log in to WordPress Admin",
+      "description": "Go to your WordPress dashboard at yourdomain.com/wp-admin and log in with your admin credentials."
+    },
+    "step2": {
+      "title": "Open File Manager",
+      "description": "Install and open the 'File Manager' plugin from Plugins > Add New. Search for 'WP File Manager' and activate it.",
+      "tip": "If you already have File Manager installed, skip the installation and go directly to WP File Manager in your sidebar."
+    },
+    "step3": {
+      "title": "Navigate to Root Directory",
+      "description": "In File Manager, navigate to the root directory of your WordPress installation. This is usually 'public_html' or 'www' folder, where you see wp-content, wp-admin, etc."
+    },
+    "step4": {
+      "title": "Create the Key File",
+      "description": "Click 'Create New File' and enter the filename below. Then paste the API key as the file content."
+    },
+    "step5": {
+      "title": "Save and Verify",
+      "description": "Save the file. The filename must exactly match the content (your API key).",
+      "warning": "Make sure there are no extra spaces or line breaks in the file content."
+    }
+  },
+  "shopify": {
+    "step1": {
+      "title": "Log in to Shopify Admin",
+      "description": "Go to your Shopify admin panel at yourdomain.myshopify.com/admin"
+    },
+    "step2": {
+      "title": "Go to Content > Files",
+      "description": "In the left sidebar, click 'Content' then 'Files'. This is where Shopify stores static files."
+    },
+    "step3": {
+      "title": "Upload the Key File",
+      "description": "Create a text file on your computer with the API key as content, name it with the key + .txt extension, then upload it here.",
+      "tip": "Shopify may not serve .txt files directly from the Files section. If this doesn't work, use the theme.liquid method in step 4."
+    },
+    "step4": {
+      "title": "Alternative: Edit theme.liquid",
+      "description": "Go to Online Store > Themes > Actions > Edit code. Open 'Layout/theme.liquid' and add this code just after the opening <body> tag:",
+      "warning": "Be careful when editing theme files. Make a backup first."
+    }
+  },
+  "wix": {
+    "step1": {
+      "title": "Open Wix Dashboard",
+      "description": "Log in to your Wix account and open your site's dashboard."
+    },
+    "step2": {
+      "title": "Go to Settings",
+      "description": "Click 'Settings' in the left sidebar, then find 'Custom Code' or 'Advanced Settings'."
+    },
+    "step3": {
+      "title": "Enable Velo (Dev Mode)",
+      "description": "Turn on Velo by clicking 'Dev Mode' in the top menu. This enables custom code.",
+      "tip": "Velo requires a Premium plan. If you don't have one, contact us for alternative solutions."
+    },
+    "step4": {
+      "title": "Add Router Code",
+      "description": "In the Velo sidebar, create or open routers.js and add the following code:",
+      "warning": "This requires familiarity with Wix Velo. If unsure, contact your developer."
+    }
+  },
+  "squarespace": {
+    "step1": {
+      "title": "Open Squarespace Settings",
+      "description": "Log in to Squarespace and go to your site's Settings panel.",
+      "warning": "Squarespace has limited support for serving raw .txt files. You may need to use an alternative method."
+    },
+    "step2": {
+      "title": "Go to Advanced Settings",
+      "description": "Navigate to Settings > Advanced > Code Injection."
+    },
+    "step3": {
+      "title": "Add Code Injection",
+      "description": "Squarespace doesn't directly support serving .txt files. Consider using one of these alternatives:",
+      "tip": "The easiest option is to use a URL redirect service or host the file elsewhere."
+    },
+    "step4": {
+      "title": "Alternative Methods",
+      "description": "Option 1: Create a page with URL /{apiKey} and add the key as plain text content. Option 2: Use a redirect to an externally hosted file."
+    },
+    "step5": {
+      "title": "Consider External Hosting",
+      "description": "For reliable IndexNow support, consider hosting the key file on a CDN like Cloudflare R2 or AWS S3, then redirecting to it."
+    }
+  },
+  "webflow": {
+    "step1": {
+      "title": "Open Webflow Designer",
+      "description": "Log in to Webflow and open your project in the Designer."
+    },
+    "step2": {
+      "title": "Go to Assets Panel",
+      "description": "Click the Assets panel (folder icon) in the left sidebar."
+    },
+    "step3": {
+      "title": "Upload Key File",
+      "description": "Create a .txt file with your API key on your computer, then drag and drop it into the Assets panel. Note the asset URL after upload.",
+      "tip": "Webflow serves assets from a CDN with a different URL. You may need to set up a redirect."
+    },
+    "step4": {
+      "title": "Publish Changes",
+      "description": "Click 'Publish' in the top right to deploy your changes to the live site."
+    }
+  },
+  "vercel": {
+    "step1": {
+      "title": "Open Your Project",
+      "description": "Access your project's source code in your local development environment or GitHub."
+    },
+    "step2": {
+      "title": "Add to Public Folder",
+      "description": "Create a new file in your 'public' folder (or 'static' for some frameworks) with the key filename and content."
+    },
+    "step3": {
+      "title": "Alternative: Use vercel.json",
+      "description": "If the public folder approach doesn't work, you can create an API route and use rewrites in vercel.json.",
+      "tip": "The public folder method is simpler and works for most frameworks (Next.js, Create React App, etc.)"
+    },
+    "step4": {
+      "title": "Deploy",
+      "description": "Commit and push your changes. Vercel will automatically deploy the update."
+    }
+  },
+  "netlify": {
+    "step1": {
+      "title": "Open Your Project",
+      "description": "Access your project's source code locally or in your Git repository."
+    },
+    "step2": {
+      "title": "Add to Public/Static Folder",
+      "description": "Create the key file in your 'public' or 'static' folder depending on your framework."
+    },
+    "step3": {
+      "title": "Alternative: Use _redirects",
+      "description": "Create a _redirects file in your publish directory to handle the route.",
+      "tip": "Make sure the _redirects file is in your build output directory, not just the source."
+    },
+    "step4": {
+      "title": "Deploy",
+      "description": "Push your changes to trigger a new Netlify build and deployment."
+    }
+  },
+  "cpanel": {
+    "step1": {
+      "title": "Log in to cPanel",
+      "description": "Access your hosting control panel, usually at yourdomain.com/cpanel or yourdomain.com:2083"
+    },
+    "step2": {
+      "title": "Open File Manager",
+      "description": "In the Files section, click on 'File Manager' to open the web-based file browser."
+    },
+    "step3": {
+      "title": "Navigate to public_html",
+      "description": "Click on 'public_html' (or 'www' or 'htdocs' depending on your host). This is your website's root directory.",
+      "tip": "If you have multiple domains, make sure you're in the correct domain's folder."
+    },
+    "step4": {
+      "title": "Create New File",
+      "description": "Click '+ File' in the top menu to create a new file. Enter the filename exactly as shown:"
+    },
+    "step5": {
+      "title": "Edit File Content",
+      "description": "Right-click the new file and select 'Edit' or 'Code Edit'. Paste only the API key (no extra characters) and save.",
+      "warning": "Ensure there are no blank lines or spaces before or after the key."
+    }
+  },
+  "ftp": {
+    "step1": {
+      "title": "Download an FTP Client",
+      "description": "Download and install FileZilla (free) or use your preferred FTP client."
+    },
+    "step2": {
+      "title": "Connect to Your Server",
+      "description": "Open FileZilla and enter your FTP credentials: Host (usually ftp.yourdomain.com), Username, Password, and Port (usually 21 for FTP or 22 for SFTP).",
+      "tip": "Check your hosting welcome email or control panel for FTP credentials."
+    },
+    "step3": {
+      "title": "Navigate to Web Root",
+      "description": "In the remote site panel (right side), navigate to your website's root directory. Common paths: /public_html, /www, /htdocs, or /html"
+    },
+    "step4": {
+      "title": "Create the Key File Locally",
+      "description": "On your computer, create a new text file with the exact filename and content shown below."
+    },
+    "step5": {
+      "title": "Upload the File",
+      "description": "Drag the file from your local site (left panel) to the remote site (right panel) in the root directory.",
+      "warning": "Make sure you're uploading to the root directory, not a subdirectory."
+    }
+  },
+  "verify": {
+    "title": "Verify Installation",
+    "instruction": "After completing the steps above, verify the installation:",
+    "visitUrl": "Visit this URL in your browser:",
+    "expectedContent": "You should see only the API key with no other content.",
+    "success": "Verification Successful!",
+    "successMessage": "Your IndexNow key is properly installed. Search engines can now instantly discover your content updates.",
+    "failed": "Verification Failed",
+    "failedMessage": "We couldn't find your key file. Please check the common errors below.",
+    "checking": "Checking...",
+    "retry": "Check Again"
+  },
+  "errors": {
+    "404": {
+      "title": "File Not Found (404)",
+      "description": "The key file doesn't exist at the expected URL.",
+      "solution": "Double-check the filename matches exactly (case-sensitive) and the file is in the root directory."
+    },
+    "wrongContent": {
+      "title": "Wrong File Content",
+      "description": "The file exists but contains incorrect content.",
+      "solution": "Open the file and ensure it contains ONLY the API key - no extra spaces, line breaks, or HTML."
+    },
+    "htaccess": {
+      "title": ".htaccess Blocking",
+      "description": "WordPress security plugins or .htaccess rules may be blocking .txt files.",
+      "solution": "Check your .htaccess file for rules blocking .txt files, or whitelist this specific file in your security plugin."
+    },
+    "shopifyRedirect": {
+      "title": "Shopify Redirect Issue",
+      "description": "Shopify is redirecting the .txt file request.",
+      "solution": "Use the theme.liquid method instead of the Files upload method."
+    },
+    "liquidSyntax": {
+      "title": "Liquid Syntax Error",
+      "description": "The Liquid code has a syntax error.",
+      "solution": "Check for missing quotes, brackets, or typos in the Liquid code. Make sure you copied all of it."
+    },
+    "wixPremium": {
+      "title": "Wix Premium Required",
+      "description": "Wix Velo requires a Premium plan.",
+      "solution": "Upgrade to Wix Premium or contact us for alternative deployment methods."
+    },
+    "wixVelo": {
+      "title": "Velo Not Enabled",
+      "description": "Wix Velo (Dev Mode) is not enabled.",
+      "solution": "Enable Dev Mode from the top menu bar in the Wix Editor."
+    },
+    "squarespaceNoTxt": {
+      "title": "Squarespace .txt Limitation",
+      "description": "Squarespace doesn't natively support serving .txt files.",
+      "solution": "Use the external hosting workaround or contact us for help."
+    },
+    "squarespacePlan": {
+      "title": "Plan Limitation",
+      "description": "Code injection requires Squarespace Business plan or higher.",
+      "solution": "Upgrade your Squarespace plan or use an external file hosting solution."
+    },
+    "webflowAsset": {
+      "title": "Asset URL Mismatch",
+      "description": "Webflow serves assets from a CDN with a different URL.",
+      "solution": "Set up a redirect from your domain to the Webflow asset URL, or use a custom domain for assets."
+    },
+    "webflowPublish": {
+      "title": "Changes Not Published",
+      "description": "Changes haven't been published to the live site.",
+      "solution": "Click 'Publish' in the Webflow Designer and ensure you're publishing to the correct domain."
+    },
+    "vercelPublic": {
+      "title": "File Not in Public Folder",
+      "description": "The file isn't being served because it's not in the correct folder.",
+      "solution": "Ensure the file is in 'public/' (not 'src/public/' or another location). Check your framework's docs for the correct static file directory."
+    },
+    "vercelCache": {
+      "title": "Vercel Cache Issue",
+      "description": "Vercel's CDN may be serving a cached version.",
+      "solution": "Go to your Vercel dashboard, find the deployment, and click 'Redeploy' with the cache cleared."
+    },
+    "netlifyPath": {
+      "title": "Wrong Directory",
+      "description": "The file isn't in the published directory.",
+      "solution": "Check your netlify.toml or build settings for the publish directory. The file must be in the final build output."
+    },
+    "netlifyBuild": {
+      "title": "Build Not Triggered",
+      "description": "The deploy didn't run or failed.",
+      "solution": "Check the Netlify dashboard for deploy status. Trigger a manual deploy if needed."
+    },
+    "cpanelPath": {
+      "title": "Wrong Directory",
+      "description": "The file is not in the website's root directory.",
+      "solution": "Make sure the file is directly in public_html (or your domain's root), not in a subdirectory."
+    },
+    "cpanelPermissions": {
+      "title": "File Permissions",
+      "description": "The file has incorrect permissions.",
+      "solution": "Right-click the file, select 'Change Permissions', and set it to 644."
+    },
+    "ftpConnection": {
+      "title": "Connection Failed",
+      "description": "Cannot connect to the FTP server.",
+      "solution": "Verify your credentials, check if your IP is whitelisted, and try both FTP (port 21) and SFTP (port 22)."
+    },
+    "ftpDirectory": {
+      "title": "Wrong Directory",
+      "description": "File uploaded to wrong directory.",
+      "solution": "Navigate to the correct root directory. Common paths: /public_html, /www, /htdocs. Look for where index.html or index.php exists."
+    },
+    "ftpPermissions": {
+      "title": "Upload Permission Denied",
+      "description": "You don't have permission to upload to this directory.",
+      "solution": "Contact your hosting provider to ensure your FTP account has write permissions to the web root."
+    }
+  },
+  "copy": {
+    "button": "Copy",
+    "copied": "Copied!",
+    "copyFilename": "Copy Filename",
+    "copyContent": "Copy Content",
+    "copyUrl": "Copy URL"
+  },
+  "help": {
+    "stuck": "Stuck?",
+    "watchVideo": "Watch Video",
+    "chatWithUs": "Chat with us",
+    "contactSupport": "Contact Support",
+    "tryAlternative": "Try Alternative Method"
+  },
+  "navigation": {
+    "back": "Back",
+    "next": "I did this",
+    "verify": "Verify Installation",
+    "done": "Done",
+    "skip": "Skip for now"
+  }
+}
