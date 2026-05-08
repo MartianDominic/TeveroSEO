@@ -653,6 +653,17 @@ Key deliverables:
 | 95-14 | Admin Security | 0.5 day | ✓ Complete |
 | 95-16 | Metrics & Observability | 0.5 day | ✓ Complete |
 | 95-17 | Consumer Integration Completion | 0.5 day | ✓ Complete |
+| 95-18 | Resilience Hardening | 0.5 day | ✓ Complete |
+
+**95-18 Key Deliverables:**
+
+- CruxRateLimiter with Redis daily counters, 80%/95% warning/critical thresholds
+- DatabaseCircuitBreaker wrapping PostgreSQL operations with health checks
+- BandwidthTracker for Geonode (10GB/$0.77/GB) and Webshare (50GB/$0.10/GB)
+- Circuit breaker integration in L3Cache, DomainLearningService, DfsCostTracker
+- Bandwidth tracking integration in GeonodeFetcher and WebshareFetcher
+- Prometheus metrics for CrUX quota, DB circuit state, proxy bandwidth
+- 4 commits, TypeScript compilation passing
 
 **95-17 Key Deliverables:**
 
