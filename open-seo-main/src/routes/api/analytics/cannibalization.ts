@@ -1,40 +1,37 @@
 /**
  * Cannibalization API Route
  * Phase 96-03: GET /api/analytics/cannibalization
- * Exposes existing CannibalizationService in analytics dashboard
+ * Detects keyword cannibalization using GSC data analysis
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { eq, and, inArray, sql } from "drizzle-orm";
-import { db } from "@/db";
+import {
+  authenticateAnalyticsRequest,
+  getClientIdFromSite,
+  siteNotFoundResponse,
+} from "@/server/features/analytics/auth/analytics-auth";
+import {
+  getCannibalizationService,
+  getSeverityBreakdown,
+} from "@/server/features/analytics";
 import { z } from "zod";
-
-// Stub schema import (would reference real link-schema.ts)
-const keywordCannibalization = {
-  clientId: 'clientId',
-  status: 'status',
-  severity: 'severity',
-} as any;
 
 const querySchema = z.object({
   siteId: z.string().uuid(),
-  status: z.enum(['detected', 'resolved', 'ignored', 'monitoring', 'all']).optional(),
-  severity: z.enum(['critical', 'high', 'medium', 'low', 'all']).optional(),
+  query: z.string().optional(), // If provided, get details for specific query
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  minImpressions: z.coerce.number().min(1).optional(),
   limit: z.coerce.number().min(1).max(500).optional(),
+  summaryOnly: z.coerce.boolean().optional(), // If true, only return severity breakdown
 });
-
-// Placeholder helpers
-async function getWorkspaceIdFromRequest(_request: Request): Promise<string | null> {
-  return 'workspace-placeholder';
-}
-
-async function getClientIdFromSite(_siteId: string): Promise<string | null> {
-  return 'client-placeholder';
-}
 
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/cannibalization")({
   loader: async ({ request }: any) => {
+    // Authenticate request and get verified workspace context
+    const auth = await authenticateAnalyticsRequest(request);
+
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams);
 
@@ -46,53 +43,61 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
       );
     }
 
-    const workspaceId = await getWorkspaceIdFromRequest(request);
-    if (!workspaceId) {
-      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get clientId from siteId (sites are linked to clients)
-    const clientId = await getClientIdFromSite(parsed.data.siteId);
+    // Get clientId from siteId with workspace verification
+    const clientId = await getClientIdFromSite(parsed.data.siteId, auth.workspaceId);
     if (!clientId) {
-      return Response.json({ success: false, error: "Site not found" }, { status: 404 });
+      return siteNotFoundResponse();
     }
 
-    // Build query conditions
-    const conditions = [eq(keywordCannibalization.clientId, clientId)];
+    const service = getCannibalizationService();
+    const { siteId, query, startDate, endDate, minImpressions, limit, summaryOnly } = parsed.data;
 
-    if (parsed.data.status && parsed.data.status !== 'all') {
-      conditions.push(eq(keywordCannibalization.status, parsed.data.status));
-    } else {
-      // Default: show detected and monitoring
-      conditions.push(inArray(keywordCannibalization.status, ['detected', 'monitoring']));
+    // Summary-only mode: just return severity breakdown
+    if (summaryOnly) {
+      const breakdown = await getSeverityBreakdown(siteId);
+      return Response.json({
+        success: true,
+        data: {
+          summary: breakdown,
+        },
+      });
     }
 
-    if (parsed.data.severity && parsed.data.severity !== 'all') {
-      conditions.push(eq(keywordCannibalization.severity, parsed.data.severity));
+    // Specific query mode: get cannibalization details for one query
+    if (query) {
+      const result = await service.getCannibalizationForQuery(siteId, query);
+      if (!result) {
+        return Response.json({
+          success: true,
+          data: {
+            issue: null,
+            message: "No cannibalization detected for this query",
+          },
+        });
+      }
+      return Response.json({
+        success: true,
+        data: {
+          issue: result,
+        },
+      });
     }
 
-    // Query cannibalization issues
-    const issues = await db
-      .select()
-      .from(keywordCannibalization)
-      .where(and(...conditions))
-      .orderBy(
-        sql`CASE ${keywordCannibalization.severity}
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          ELSE 4
-        END`
-      )
-      .limit(parsed.data.limit ?? 100);
+    // Default mode: detect all cannibalization issues
+    const issues = await service.detectCannibalization(siteId, {
+      startDate,
+      endDate,
+      minImpressions,
+      limit,
+    });
 
     // Calculate summary stats
     const summary = {
       total: issues.length,
-      critical: issues.filter((i: any) => i.severity === 'critical').length,
-      high: issues.filter((i: any) => i.severity === 'high').length,
-      medium: issues.filter((i: any) => i.severity === 'medium').length,
-      low: issues.filter((i: any) => i.severity === 'low').length,
+      high: issues.filter(i => i.severity === 'high').length,
+      medium: issues.filter(i => i.severity === 'medium').length,
+      low: issues.filter(i => i.severity === 'low').length,
+      totalImpactEstimate: issues.reduce((sum, i) => sum + i.impactEstimate, 0),
     };
 
     return Response.json({

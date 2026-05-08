@@ -3,6 +3,7 @@
  * Phase 96-01: GSC Analytics Infrastructure
  * Phase 96-02: Master Dashboard
  * Phase 96-03: Actionable Insights & Annotations
+ * Phase 96-05: Client Portal
  *
  * Barrel export for all analytics components.
  */
@@ -23,6 +24,19 @@ export { MasterDashboardService, getMasterDashboardService } from "./services/Ma
 export { TrendDetectionService, getTrendDetectionService, analyzePageTrends } from "./services/TrendDetectionService";
 export { StrikingDistanceService, getStrikingDistanceService } from "./services/StrikingDistanceService";
 export { AnnotationImportService, importGoogleUpdates } from "./services/AnnotationImportService";
+export {
+  CannibalizationService,
+  getCannibalizationService,
+  detectCannibalization,
+  getCannibalizationForQuery,
+  getSeverityBreakdown,
+} from "./services/CannibalizationService";
+export type {
+  CannibalizationResult,
+  CannibalizingPage,
+  CannibalizationFilters,
+  SeverityBreakdown,
+} from "./services/CannibalizationService";
 
 // Repositories (96-01)
 export { QueryAnalyticsRepository, createQueryAnalyticsRepository, getQueryAnalyticsRepository } from "./repositories/QueryAnalyticsRepository";
@@ -41,3 +55,13 @@ export { gscSyncWorker, startGscSyncWorker, stopGscSyncWorker } from "./jobs/gsc
 
 // Jobs (96-03)
 export { annotationsImportQueue, scheduleAnnotationsImport, triggerAnnotationsImport } from "./jobs/annotations-import.job";
+
+// Services (96-05: Client Portal)
+export { ClientVisibilityService, getClientVisibilityService } from "./services/ClientVisibilityService";
+export { BrandedKeywordService, getBrandedKeywordService } from "./services/BrandedKeywordService";
+export { CtrBenchmarkService, getCtrBenchmarkService } from "./services/CtrBenchmarkService";
+export { PortfolioMetricsService, getPortfolioMetricsService } from "./services/PortfolioMetricsService";
+export { AnalyticsExportService, getAnalyticsExportService } from "./services/AnalyticsExportService";
+
+// Middleware (96-05)
+export { visibilityMiddleware, applyVisibilityFilter } from "./middleware/visibilityMiddleware";
