@@ -1,6 +1,6 @@
 import type { WorkflowStep } from "@/server/workflows/workflow-types";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
-import { discoverUrls, fetchRobotsTxt } from "@/server/lib/audit/discovery";
+import { discoverUrls, fetchRobotsTxt, type DiscoveryCostOptions } from "@/server/lib/audit/discovery";
 import {
   fetchAndStoreLighthouseResult,
   selectLighthouseSample,
@@ -134,14 +134,27 @@ export async function runAuditPhases(
   const origin = getOrigin(startUrl);
   const maxPages = config.maxPages;
 
+  // GAP-O1/GAP-O3: Pass cost options for tracking discovery phase costs
   const discovery = await runDiscoveryPhase(
     step,
     auditId,
     workflowInstanceId,
     origin,
     maxPages,
+    {
+      auditId,
+      clientId: billingCustomer.organizationId,
+      workspaceId: projectId,
+    },
   );
-  const robots = await fetchRobotsTxt(origin);
+  // GAP-O1/GAP-O3: Pass cost options to robots.txt fetch for tracking
+  const robots = await fetchRobotsTxt(origin, {
+    auditId,
+    clientId: billingCustomer.organizationId,
+    workspaceId: projectId,
+    trackCosts: true,
+  });
+  // GAP-O1/GAP-O3: Pass cost attribution for per-audit cost tracking
   const crawlResult = await runCrawlPhase(step, {
     auditId,
     workflowInstanceId,
@@ -150,6 +163,9 @@ export async function runAuditPhases(
     maxPages,
     robots,
     sitemapUrls: discovery.sitemapUrls,
+    // Cost attribution: organizationId as clientId, projectId as workspaceId
+    clientId: billingCustomer.organizationId,
+    workspaceId: projectId,
   });
   const { allPages, htmlByPageId } = crawlResult;
 
@@ -186,15 +202,29 @@ export async function runAuditPhases(
   });
 }
 
+/** GAP-O1/GAP-O3: Discovery phase cost options */
+interface DiscoveryPhaseOptions {
+  auditId: string;
+  clientId?: string;
+  workspaceId?: string;
+}
+
 async function runDiscoveryPhase(
   step: WorkflowStep,
   auditId: string,
   workflowInstanceId: string,
   origin: string,
   maxPages: number,
+  costOptions?: DiscoveryPhaseOptions,
 ) {
   return step.do("discover-urls", async () => {
-    const result = await discoverUrls(origin, maxPages);
+    // GAP-O1/GAP-O3: Pass cost options for tracking discovery phase costs
+    const result = await discoverUrls(origin, maxPages, costOptions ? {
+      auditId: costOptions.auditId,
+      clientId: costOptions.clientId,
+      workspaceId: costOptions.workspaceId,
+      trackCosts: true,
+    } : undefined);
     await AuditRepository.updateAuditProgress(auditId, workflowInstanceId, {
       pagesTotal: Math.min(result.urls.length + 1, maxPages),
       currentPhase: "crawling",
