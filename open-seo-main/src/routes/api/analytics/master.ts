@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { getMasterDashboardService } from '@/server/features/analytics/services/MasterDashboardService';
 import { SiteTagsRepository } from '@/server/features/analytics/repositories/SiteTagsRepository';
+import { authenticateAnalyticsRequest } from '@/server/features/analytics/auth/analytics-auth';
 import {
   analyticsStandardRateLimiter,
   rateLimitExceededResponse,
@@ -29,6 +30,9 @@ const querySchema = z.object({
 export const Route = (createFileRoute as any)('/api/analytics/master')({
   loader: async ({ request }: any) => {
     try {
+      // Authenticate request and get verified workspace context
+      const auth = await authenticateAnalyticsRequest(request);
+
       const url = new URL(request.url);
       const params = Object.fromEntries(url.searchParams);
 
@@ -45,18 +49,8 @@ export const Route = (createFileRoute as any)('/api/analytics/master')({
         );
       }
 
-      // TODO: Get workspace from auth context
-      // For now, extract from header or use placeholder
-      const workspaceId = request.headers.get('X-Workspace-ID');
-      if (!workspaceId) {
-        return Response.json(
-          { success: false, error: 'Workspace ID required' },
-          { status: 401 }
-        );
-      }
-
       // Rate limit check: 60 requests per minute per workspace (standard analytics)
-      const rateLimitResult = await analyticsStandardRateLimiter(workspaceId);
+      const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
       if (!rateLimitResult.allowed) {
         return rateLimitExceededResponse(rateLimitResult);
       }
@@ -76,7 +70,7 @@ export const Route = (createFileRoute as any)('/api/analytics/master')({
       const siteTagsRepo = new SiteTagsRepository(db);
       const dashboardService = getMasterDashboardService(db, siteTagsRepo);
 
-      const data = await dashboardService.getAggregatedMetrics(workspaceId, filters);
+      const data = await dashboardService.getAggregatedMetrics(auth.workspaceId, filters);
 
       const response = Response.json({ success: true, data });
       return addRateLimitHeaders(response, rateLimitResult);

@@ -30,85 +30,94 @@ export class MasterDashboardService {
     workspaceId: string,
     filters: DashboardFilters
   ): Promise<DashboardAggregates> {
-    // 1. Calculate date ranges
-    const { startDate, endDate } = filters.dateRange;
-    const comparisonRange = this.calculateComparisonRange(filters.dateRange, filters.comparison);
+    try {
+      // 1. Calculate date ranges
+      const { startDate, endDate } = filters.dateRange;
+      const comparisonRange = this.calculateComparisonRange(filters.dateRange, filters.comparison);
 
-    // 2. Get site IDs filtered by tags (if any)
-    let siteIds = filters.siteIds;
-    if (filters.tags?.length) {
-      siteIds = await this.siteTagsRepo.findSiteIdsByTags(filters.tags);
-      if (siteIds.length === 0) {
-        // No sites match tags - return empty result
-        return this.emptyResult(filters.dateRange, comparisonRange);
+      // 2. Get site IDs filtered by tags (if any)
+      let siteIds = filters.siteIds;
+      if (filters.tags?.length) {
+        siteIds = await this.siteTagsRepo.findSiteIdsByTags(filters.tags);
+        if (siteIds.length === 0) {
+          // No sites match tags - return empty result
+          return this.emptyResult(filters.dateRange, comparisonRange);
+        }
       }
-    }
 
-    // 3. Query master_dashboard_cagg for current period
-    const currentMetricsQuery = sql`
-      SELECT
-        m.site_id,
-        s.site_name,
-        s.site_url,
-        SUM(m.daily_clicks) as total_clicks,
-        SUM(m.daily_impressions) as total_impressions,
-        AVG(m.avg_position) as avg_position,
-        AVG(m.avg_ctr) as avg_ctr
-      FROM master_dashboard_cagg m
-      JOIN site_connections s ON m.site_id = s.id
-      WHERE s.workspace_id = ${workspaceId}
-        AND m.bucket >= ${startDate}::date
-        AND m.bucket <= ${endDate}::date
-        ${siteIds ? sql`AND m.site_id = ANY(${siteIds})` : sql``}
-      GROUP BY m.site_id, s.site_name, s.site_url
-      ORDER BY total_clicks DESC
-    `;
-
-    const currentMetrics = await this.db.execute(currentMetricsQuery);
-
-    if (currentMetrics.rows.length === 0) {
-      return this.emptyResult(filters.dateRange, comparisonRange);
-    }
-
-    // 4. Query comparison period (if requested)
-    let comparisonMetrics: any = null;
-    if (comparisonRange) {
-      const comparisonQuery = sql`
+      // 3. Query master_dashboard_cagg for current period
+      const currentMetricsQuery = sql`
         SELECT
-          site_id,
-          SUM(daily_clicks) as total_clicks,
-          SUM(daily_impressions) as total_impressions,
-          AVG(avg_position) as avg_position,
-          AVG(avg_ctr) as avg_ctr
-        FROM master_dashboard_cagg
-        WHERE bucket >= ${comparisonRange.startDate}::date
-          AND bucket <= ${comparisonRange.endDate}::date
-          ${siteIds ? sql`AND site_id = ANY(${siteIds})` : sql``}
-        GROUP BY site_id
+          m.site_id,
+          s.site_name,
+          s.site_url,
+          SUM(m.daily_clicks) as total_clicks,
+          SUM(m.daily_impressions) as total_impressions,
+          AVG(m.avg_position) as avg_position,
+          AVG(m.avg_ctr) as avg_ctr
+        FROM master_dashboard_cagg m
+        JOIN site_connections s ON m.site_id = s.id
+        WHERE s.workspace_id = ${workspaceId}
+          AND m.bucket >= ${startDate}::date
+          AND m.bucket <= ${endDate}::date
+          ${siteIds ? sql`AND m.site_id = ANY(${siteIds})` : sql``}
+        GROUP BY m.site_id, s.site_name, s.site_url
+        ORDER BY total_clicks DESC
       `;
 
-      comparisonMetrics = await this.db.execute(comparisonQuery);
+      const currentMetrics = await this.db.execute(currentMetricsQuery);
+
+      if (currentMetrics.rows.length === 0) {
+        return this.emptyResult(filters.dateRange, comparisonRange);
+      }
+
+      // 4. Query comparison period (if requested)
+      let comparisonMetrics: any = null;
+      if (comparisonRange) {
+        const comparisonQuery = sql`
+          SELECT
+            site_id,
+            SUM(daily_clicks) as total_clicks,
+            SUM(daily_impressions) as total_impressions,
+            AVG(avg_position) as avg_position,
+            AVG(avg_ctr) as avg_ctr
+          FROM master_dashboard_cagg
+          WHERE bucket >= ${comparisonRange.startDate}::date
+            AND bucket <= ${comparisonRange.endDate}::date
+            ${siteIds ? sql`AND site_id = ANY(${siteIds})` : sql``}
+          GROUP BY site_id
+        `;
+
+        comparisonMetrics = await this.db.execute(comparisonQuery);
+      }
+
+      // 5. Get sparkline data for each site (last 7 days)
+      const sparklines = await this.getSitesSparklines(
+        currentMetrics.rows.map((r: any) => r.site_id),
+        7
+      );
+
+      // 6. Get tags for each site
+      const siteTags = await this.siteTagsRepo.findBySiteIds(
+        currentMetrics.rows.map((r: any) => r.site_id)
+      );
+
+      // 7. Assemble response with percentage changes
+      return this.assembleResponse(
+        currentMetrics,
+        comparisonMetrics,
+        sparklines,
+        siteTags,
+        filters
+      );
+    } catch (error) {
+      console.error('[MasterDashboardService] getAggregatedMetrics failed:', {
+        method: 'getAggregatedMetrics',
+        params: { workspaceId, dateRange: filters.dateRange, comparison: filters.comparison },
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new Error(`Failed to get aggregated metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    // 5. Get sparkline data for each site (last 7 days)
-    const sparklines = await this.getSitesSparklines(
-      currentMetrics.rows.map((r: any) => r.site_id),
-      7
-    );
-
-    // 6. Get tags for each site
-    const siteTags = await this.siteTagsRepo.findBySiteIds(
-      currentMetrics.rows.map((r: any) => r.site_id)
-    );
-
-    // 7. Assemble response with percentage changes
-    return this.assembleResponse(
-      currentMetrics,
-      comparisonMetrics,
-      sparklines,
-      siteTags,
-      filters
-    );
   }
 
   /**
@@ -151,33 +160,42 @@ export class MasterDashboardService {
   ): Promise<Map<string, Array<{ date: string; clicks: number }>>> {
     if (siteIds.length === 0) return new Map();
 
-    const query = sql`
-      SELECT
-        site_id,
-        bucket::date as date,
-        daily_clicks as clicks
-      FROM master_dashboard_cagg
-      WHERE site_id = ANY(${siteIds})
-        AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
-      ORDER BY site_id, bucket ASC
-    `;
+    try {
+      const query = sql`
+        SELECT
+          site_id,
+          bucket::date as date,
+          daily_clicks as clicks
+        FROM master_dashboard_cagg
+        WHERE site_id = ANY(${siteIds})
+          AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
+        ORDER BY site_id, bucket ASC
+      `;
 
-    const result = await this.db.execute(query);
+      const result = await this.db.execute(query);
 
-    const sparklineMap = new Map<string, Array<{ date: string; clicks: number }>>();
+      const sparklineMap = new Map<string, Array<{ date: string; clicks: number }>>();
 
-    for (const row of result.rows as any[]) {
-      const siteId = row.site_id;
-      if (!sparklineMap.has(siteId)) {
-        sparklineMap.set(siteId, []);
+      for (const row of result.rows as any[]) {
+        const siteId = row.site_id;
+        if (!sparklineMap.has(siteId)) {
+          sparklineMap.set(siteId, []);
+        }
+        sparklineMap.get(siteId)!.push({
+          date: row.date.toISOString().split('T')[0],
+          clicks: Number(row.clicks),
+        });
       }
-      sparklineMap.get(siteId)!.push({
-        date: row.date.toISOString().split('T')[0],
-        clicks: Number(row.clicks),
-      });
-    }
 
-    return sparklineMap;
+      return sparklineMap;
+    } catch (error) {
+      console.error('[MasterDashboardService] getSitesSparklines failed:', {
+        method: 'getSitesSparklines',
+        params: { siteIdsCount: siteIds.length, days },
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new Error(`Failed to get sparklines: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
@@ -187,22 +205,31 @@ export class MasterDashboardService {
     siteId: string,
     days: number
   ): Promise<Array<{ date: string; clicks: number }>> {
-    const query = sql`
-      SELECT
-        bucket::date as date,
-        daily_clicks as clicks
-      FROM master_dashboard_cagg
-      WHERE site_id = ${siteId}
-        AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
-      ORDER BY bucket ASC
-    `;
+    try {
+      const query = sql`
+        SELECT
+          bucket::date as date,
+          daily_clicks as clicks
+        FROM master_dashboard_cagg
+        WHERE site_id = ${siteId}
+          AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
+        ORDER BY bucket ASC
+      `;
 
-    const result = await this.db.execute(query);
+      const result = await this.db.execute(query);
 
-    return result.rows.map((r: any) => ({
-      date: r.date.toISOString().split('T')[0],
-      clicks: Number(r.clicks),
-    }));
+      return result.rows.map((r: any) => ({
+        date: r.date.toISOString().split('T')[0],
+        clicks: Number(r.clicks),
+      }));
+    } catch (error) {
+      console.error('[MasterDashboardService] getSiteSparkline failed:', {
+        method: 'getSiteSparkline',
+        params: { siteId, days },
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new Error(`Failed to get site sparkline: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**

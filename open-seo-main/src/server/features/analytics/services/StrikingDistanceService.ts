@@ -46,110 +46,119 @@ export class StrikingDistanceService {
       limit = 100,
     } = filters;
 
-    const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd');
-    const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd'); // Last 30 days
+    try {
+      const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd');
+      const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd'); // Last 30 days
 
-    const targetCtr = CTR_ESTIMATES[targetPosition] ?? 0.1101;
+      const targetCtr = CTR_ESTIMATES[targetPosition] ?? 0.1101;
 
-    // Query pages with avg position in striking distance
-    const result = await this.db.execute<{
-      page_url: string;
-      avg_position: number;
-      total_impressions: number;
-      total_clicks: number;
-      top_queries: Array<{
-        query: string;
-        position: number;
-        impressions: number;
-        clicks: number;
-      }>;
-    }>(sql`
-      WITH page_metrics AS (
+      // Query pages with avg position in striking distance
+      const result = await this.db.execute<{
+        page_url: string;
+        avg_position: number;
+        total_impressions: number;
+        total_clicks: number;
+        top_queries: Array<{
+          query: string;
+          position: number;
+          impressions: number;
+          clicks: number;
+        }>;
+      }>(sql`
+        WITH page_metrics AS (
+          SELECT
+            page_url,
+            AVG(position) as avg_position,
+            SUM(impressions) as total_impressions,
+            SUM(clicks) as total_clicks
+          FROM seo_gsc_query_analytics
+          WHERE site_id = ${siteId}
+            AND query_time >= ${startDate}::date
+            AND query_time <= ${endDate}::date
+            AND page_url IS NOT NULL
+          GROUP BY page_url
+          HAVING AVG(position) >= ${minPosition}
+            AND AVG(position) <= ${maxPosition}
+            AND SUM(impressions) >= ${minImpressions}
+        ),
+        query_details AS (
+          SELECT
+            page_url,
+            query,
+            AVG(position) as avg_position,
+            SUM(impressions) as total_impressions,
+            SUM(clicks) as total_clicks
+          FROM seo_gsc_query_analytics
+          WHERE site_id = ${siteId}
+            AND query_time >= ${startDate}::date
+            AND query_time <= ${endDate}::date
+          GROUP BY page_url, query
+        ),
+        aggregated_queries AS (
+          SELECT
+            page_url,
+            ARRAY_AGG(
+              JSON_BUILD_OBJECT(
+                'query', query,
+                'position', avg_position,
+                'impressions', total_impressions,
+                'clicks', total_clicks
+              )
+              ORDER BY total_impressions DESC
+            ) FILTER (WHERE query IS NOT NULL) as top_queries
+          FROM query_details
+          GROUP BY page_url
+        )
         SELECT
-          page_url,
-          AVG(position) as avg_position,
-          SUM(impressions) as total_impressions,
-          SUM(clicks) as total_clicks
-        FROM seo_gsc_query_analytics
-        WHERE site_id = ${siteId}
-          AND query_time >= ${startDate}::date
-          AND query_time <= ${endDate}::date
-          AND page_url IS NOT NULL
-        GROUP BY page_url
-        HAVING AVG(position) >= ${minPosition}
-          AND AVG(position) <= ${maxPosition}
-          AND SUM(impressions) >= ${minImpressions}
-      ),
-      query_details AS (
-        SELECT
-          page_url,
-          query,
-          AVG(position) as avg_position,
-          SUM(impressions) as total_impressions,
-          SUM(clicks) as total_clicks
-        FROM seo_gsc_query_analytics
-        WHERE site_id = ${siteId}
-          AND query_time >= ${startDate}::date
-          AND query_time <= ${endDate}::date
-        GROUP BY page_url, query
-      ),
-      aggregated_queries AS (
-        SELECT
-          page_url,
-          ARRAY_AGG(
-            JSON_BUILD_OBJECT(
-              'query', query,
-              'position', avg_position,
-              'impressions', total_impressions,
-              'clicks', total_clicks
-            )
-            ORDER BY total_impressions DESC
-          ) FILTER (WHERE query IS NOT NULL) as top_queries
-        FROM query_details
-        GROUP BY page_url
-      )
-      SELECT
-        pm.page_url,
-        pm.avg_position,
-        pm.total_impressions,
-        pm.total_clicks,
-        COALESCE(aq.top_queries[1:5], ARRAY[]::jsonb[]) as top_queries
-      FROM page_metrics pm
-      LEFT JOIN aggregated_queries aq ON pm.page_url = aq.page_url
-      ORDER BY (pm.total_impressions * ${targetCtr} - pm.total_clicks) DESC
-      LIMIT ${limit}
-    `);
+          pm.page_url,
+          pm.avg_position,
+          pm.total_impressions,
+          pm.total_clicks,
+          COALESCE(aq.top_queries[1:5], ARRAY[]::jsonb[]) as top_queries
+        FROM page_metrics pm
+        LEFT JOIN aggregated_queries aq ON pm.page_url = aq.page_url
+        ORDER BY (pm.total_impressions * ${targetCtr} - pm.total_clicks) DESC
+        LIMIT ${limit}
+      `);
 
-    const pages: StrikingDistancePage[] = result.rows.map((row: any) => {
-      const potentialClicks = Math.round(row.total_impressions * targetCtr);
-      const clickGain = potentialClicks - row.total_clicks;
-      const difficulty = this.calculateDifficulty(row.avg_position);
+      const pages: StrikingDistancePage[] = result.rows.map((row: any) => {
+        const potentialClicks = Math.round(row.total_impressions * targetCtr);
+        const clickGain = potentialClicks - row.total_clicks;
+        const difficulty = this.calculateDifficulty(row.avg_position);
+
+        return {
+          pageUrl: row.page_url,
+          avgPosition: Number(row.avg_position.toFixed(1)),
+          impressions: Number(row.total_impressions),
+          currentClicks: Number(row.total_clicks),
+          potentialClicks,
+          clickGain,
+          difficulty,
+          topQueries: (row.top_queries ?? []) as any,
+        };
+      });
+
+      const totalPotentialClicks = pages.reduce((sum, p) => sum + p.potentialClicks, 0);
+      const avgDifficulty = pages.length > 0
+        ? pages.reduce((sum, p) => sum + (p.difficulty === 'easy' ? 1 : p.difficulty === 'medium' ? 2 : 3), 0) / pages.length
+        : 0;
 
       return {
-        pageUrl: row.page_url,
-        avgPosition: Number(row.avg_position.toFixed(1)),
-        impressions: Number(row.total_impressions),
-        currentClicks: Number(row.total_clicks),
-        potentialClicks,
-        clickGain,
-        difficulty,
-        topQueries: (row.top_queries ?? []) as any,
+        pages,
+        meta: {
+          totalPages: pages.length,
+          totalPotentialClicks,
+          avgDifficulty,
+        },
       };
-    });
-
-    const totalPotentialClicks = pages.reduce((sum, p) => sum + p.potentialClicks, 0);
-    const avgDifficulty = pages.length > 0
-      ? pages.reduce((sum, p) => sum + (p.difficulty === 'easy' ? 1 : p.difficulty === 'medium' ? 2 : 3), 0) / pages.length
-      : 0;
-
-    return {
-      pages,
-      meta: {
-        totalPages: pages.length,
-        totalPotentialClicks,
-        avgDifficulty,
-      },
-    };
+    } catch (error) {
+      console.error('[StrikingDistanceService] getStrikingDistancePages failed:', {
+        method: 'getStrikingDistancePages',
+        params: { siteId, minPosition, maxPosition, minImpressions, limit },
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new Error(`Failed to get striking distance pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**

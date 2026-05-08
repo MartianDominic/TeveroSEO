@@ -8,6 +8,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getPortfolioMetricsService } from "@/server/features/analytics/services/PortfolioMetricsService";
+import { authenticateAnalyticsRequest } from "@/server/features/analytics/auth/analytics-auth";
 import {
   analyticsExpensiveRateLimiter,
   rateLimitExceededResponse,

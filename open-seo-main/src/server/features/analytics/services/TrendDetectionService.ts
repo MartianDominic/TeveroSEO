@@ -39,140 +39,149 @@ export class TrendDetectionService {
       queryFilter,
     } = filters;
 
-    const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd'); // GSC 3-day latency
-    const currentStart = format(subDays(new Date(), 3 + periodDays), 'yyyy-MM-dd');
-    const previousStart = format(subDays(new Date(), 3 + periodDays * 2), 'yyyy-MM-dd');
-    const previousEnd = format(subDays(new Date(), 3 + periodDays), 'yyyy-MM-dd');
+    try {
+      const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd'); // GSC 3-day latency
+      const currentStart = format(subDays(new Date(), 3 + periodDays), 'yyyy-MM-dd');
+      const previousStart = format(subDays(new Date(), 3 + periodDays * 2), 'yyyy-MM-dd');
+      const previousEnd = format(subDays(new Date(), 3 + periodDays), 'yyyy-MM-dd');
 
-    // Build query filter condition
-    const queryCondition = this.buildQueryFilterCondition(queryFilter);
+      // Build query filter condition
+      const queryCondition = this.buildQueryFilterCondition(queryFilter);
 
-    // Query continuous aggregate for both periods
-    const result = await this.db.execute<{
-      page_url: string;
-      current_clicks: number;
-      previous_clicks: number;
-      current_impressions: number;
-      previous_impressions: number;
-      current_position: number;
-      previous_position: number;
-      top_queries: string[];
-    }>(sql`
-      WITH current_period AS (
+      // Query continuous aggregate for both periods
+      const result = await this.db.execute<{
+        page_url: string;
+        current_clicks: number;
+        previous_clicks: number;
+        current_impressions: number;
+        previous_impressions: number;
+        current_position: number;
+        previous_position: number;
+        top_queries: string[];
+      }>(sql`
+        WITH current_period AS (
+          SELECT
+            page_url,
+            SUM(daily_clicks) as clicks,
+            SUM(daily_impressions) as impressions,
+            AVG(avg_position) as position
+          FROM growing_pages_cagg
+          WHERE site_id = ${siteId}
+            AND bucket >= ${currentStart}::date
+            AND bucket <= ${endDate}::date
+          GROUP BY page_url
+          HAVING SUM(daily_impressions) >= ${minImpressions}
+        ),
+        previous_period AS (
+          SELECT
+            page_url,
+            SUM(daily_clicks) as clicks,
+            SUM(daily_impressions) as impressions,
+            AVG(avg_position) as position
+          FROM growing_pages_cagg
+          WHERE site_id = ${siteId}
+            AND bucket >= ${previousStart}::date
+            AND bucket < ${previousEnd}::date
+          GROUP BY page_url
+          HAVING SUM(daily_clicks) > 0  -- Exclude pages with zero previous clicks
+        ),
+        top_queries AS (
+          SELECT
+            page_url,
+            ARRAY_AGG(query ORDER BY SUM(clicks) DESC) FILTER (WHERE query IS NOT NULL) as queries
+          FROM seo_gsc_query_analytics
+          WHERE site_id = ${siteId}
+            AND query_time >= ${currentStart}::date
+            AND query_time <= ${endDate}::date
+            ${queryCondition}
+          GROUP BY page_url
+        )
         SELECT
-          page_url,
-          SUM(daily_clicks) as clicks,
-          SUM(daily_impressions) as impressions,
-          AVG(avg_position) as position
-        FROM growing_pages_cagg
-        WHERE site_id = ${siteId}
-          AND bucket >= ${currentStart}::date
-          AND bucket <= ${endDate}::date
-        GROUP BY page_url
-        HAVING SUM(daily_impressions) >= ${minImpressions}
-      ),
-      previous_period AS (
-        SELECT
-          page_url,
-          SUM(daily_clicks) as clicks,
-          SUM(daily_impressions) as impressions,
-          AVG(avg_position) as position
-        FROM growing_pages_cagg
-        WHERE site_id = ${siteId}
-          AND bucket >= ${previousStart}::date
-          AND bucket < ${previousEnd}::date
-        GROUP BY page_url
-        HAVING SUM(daily_clicks) > 0  -- Exclude pages with zero previous clicks
-      ),
-      top_queries AS (
-        SELECT
-          page_url,
-          ARRAY_AGG(query ORDER BY SUM(clicks) DESC) FILTER (WHERE query IS NOT NULL) as queries
-        FROM seo_gsc_query_analytics
-        WHERE site_id = ${siteId}
-          AND query_time >= ${currentStart}::date
-          AND query_time <= ${endDate}::date
-          ${queryCondition}
-        GROUP BY page_url
-      )
-      SELECT
-        c.page_url,
-        c.clicks as current_clicks,
-        p.clicks as previous_clicks,
-        c.impressions as current_impressions,
-        p.impressions as previous_impressions,
-        c.position as current_position,
-        p.position as previous_position,
-        (SELECT queries[1:5] FROM top_queries tq WHERE tq.page_url = c.page_url) as top_queries
-      FROM current_period c
-      JOIN previous_period p ON c.page_url = p.page_url
-      WHERE p.clicks > 0
-      ORDER BY ABS((c.clicks - p.clicks)::float / p.clicks) DESC
-    `);
+          c.page_url,
+          c.clicks as current_clicks,
+          p.clicks as previous_clicks,
+          c.impressions as current_impressions,
+          p.impressions as previous_impressions,
+          c.position as current_position,
+          p.position as previous_position,
+          (SELECT queries[1:5] FROM top_queries tq WHERE tq.page_url = c.page_url) as top_queries
+        FROM current_period c
+        JOIN previous_period p ON c.page_url = p.page_url
+        WHERE p.clicks > 0
+        ORDER BY ABS((c.clicks - p.clicks)::float / p.clicks) DESC
+      `);
 
-    // Transform and filter results
-    const pages: TrendAnalysis[] = [];
-    let growingCount = 0;
-    let decayingCount = 0;
-    let stableCount = 0;
+      // Transform and filter results
+      const pages: TrendAnalysis[] = [];
+      let growingCount = 0;
+      let decayingCount = 0;
+      let stableCount = 0;
 
-    for (const row of result.rows) {
-      const changePercent = ((row.current_clicks - row.previous_clicks) / row.previous_clicks) * 100;
+      for (const row of result.rows) {
+        const changePercent = ((row.current_clicks - row.previous_clicks) / row.previous_clicks) * 100;
 
-      let pageTrend: 'growing' | 'decaying' | 'stable';
-      if (changePercent > threshold * 100) {
-        pageTrend = 'growing';
-        growingCount++;
-      } else if (changePercent < -threshold * 100) {
-        pageTrend = 'decaying';
-        decayingCount++;
-      } else {
-        pageTrend = 'stable';
-        stableCount++;
+        let pageTrend: 'growing' | 'decaying' | 'stable';
+        if (changePercent > threshold * 100) {
+          pageTrend = 'growing';
+          growingCount++;
+        } else if (changePercent < -threshold * 100) {
+          pageTrend = 'decaying';
+          decayingCount++;
+        } else {
+          pageTrend = 'stable';
+          stableCount++;
+        }
+
+        // Filter by requested trend type
+        if (trend !== 'all' && pageTrend !== trend) {
+          continue;
+        }
+
+        // Calculate confidence based on impression volume
+        const totalImpressions = row.current_impressions + row.previous_impressions;
+        let confidence: 'high' | 'medium' | 'low';
+        if (totalImpressions > 1000) {
+          confidence = 'high';
+        } else if (totalImpressions > 200) {
+          confidence = 'medium';
+        } else {
+          confidence = 'low';
+        }
+
+        pages.push({
+          pageUrl: row.page_url,
+          currentClicks: Number(row.current_clicks),
+          previousClicks: Number(row.previous_clicks),
+          currentImpressions: Number(row.current_impressions),
+          previousImpressions: Number(row.previous_impressions),
+          currentPosition: Number(row.current_position),
+          previousPosition: Number(row.previous_position),
+          changePercent,
+          trend: pageTrend,
+          confidence,
+          topQueries: row.top_queries ?? [],
+        });
       }
 
-      // Filter by requested trend type
-      if (trend !== 'all' && pageTrend !== trend) {
-        continue;
-      }
-
-      // Calculate confidence based on impression volume
-      const totalImpressions = row.current_impressions + row.previous_impressions;
-      let confidence: 'high' | 'medium' | 'low';
-      if (totalImpressions > 1000) {
-        confidence = 'high';
-      } else if (totalImpressions > 200) {
-        confidence = 'medium';
-      } else {
-        confidence = 'low';
-      }
-
-      pages.push({
-        pageUrl: row.page_url,
-        currentClicks: Number(row.current_clicks),
-        previousClicks: Number(row.previous_clicks),
-        currentImpressions: Number(row.current_impressions),
-        previousImpressions: Number(row.previous_impressions),
-        currentPosition: Number(row.current_position),
-        previousPosition: Number(row.previous_position),
-        changePercent,
-        trend: pageTrend,
-        confidence,
-        topQueries: row.top_queries ?? [],
+      return {
+        pages,
+        meta: {
+          totalAnalyzed: result.rows.length,
+          growingCount,
+          decayingCount,
+          stableCount,
+          periodDays,
+          threshold,
+        },
+      };
+    } catch (error) {
+      console.error('[TrendDetectionService] analyzePageTrends failed:', {
+        method: 'analyzePageTrends',
+        params: { siteId, periodDays: filters.periodDays, threshold: filters.threshold },
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
+      throw new Error(`Failed to analyze page trends: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    return {
-      pages,
-      meta: {
-        totalAnalyzed: result.rows.length,
-        growingCount,
-        decayingCount,
-        stableCount,
-        periodDays,
-        threshold,
-      },
-    };
   }
 
   /**
