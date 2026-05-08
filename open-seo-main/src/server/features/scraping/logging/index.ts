@@ -36,7 +36,8 @@ export {
   logCircuitStateChange,
   logCostRecord,
   logQueueOperation,
+  // Dynamic logger creation
+  createComponentLogger,
+  // Type export
+  type RequestContext,
 } from './Logger';
-
-// Export RequestContext type
-export type { RequestContext } from './Logger';

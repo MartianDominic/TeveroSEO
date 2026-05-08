@@ -119,6 +119,14 @@ export const migrationLogger = logger.child({ component: 'migration' });
  */
 export const circuitLogger = logger.child({ component: 'circuit' });
 
+/**
+ * Create a child logger for a specific component.
+ * Use this for custom components not covered by the predefined loggers.
+ */
+export function createComponentLogger(component: string) {
+  return logger.child({ component });
+}
+
 // =============================================================================
 // Correlation ID Utilities
 // =============================================================================
