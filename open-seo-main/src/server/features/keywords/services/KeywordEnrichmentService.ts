@@ -7,9 +7,12 @@
  * - 7-day Redis caching to reduce API costs
  * - Skip logic for CSV imports that already have metrics
  * - Cost tracking per batch
+ * - Migration flag support for Phase 95 scraping infrastructure
+ * - DfsCostTracker integration for cost attribution
  */
 
 import { db } from "@/db";
+import type { DbClient } from "@/db";
 import {
   prospectKeywords,
   type ProspectKeywordSelect,
@@ -18,6 +21,11 @@ import { redis } from "@/server/lib/redis";
 import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { eq, inArray } from "drizzle-orm";
+import {
+  loadMigrationFlagsCached,
+  shouldUseUnified,
+} from "@/server/features/scraping/config";
+import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
 
 // Constants - exported for testing
 export const CACHE_PREFIX = CACHE_NS.KEYWORD;
@@ -25,12 +33,28 @@ export const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 export const BATCH_SIZE = 1000;
 export const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
 
+// DataForSEO Labs API cost per keyword (in dollars)
+// Based on search_volume/live endpoint pricing
+export const DFS_COST_PER_KEYWORD = 0.005;
+
 export interface EnrichmentResult {
   enriched: number;
   cached: number;
   skipped: number;
   failed: number;
   totalCostCents: number;
+}
+
+/**
+ * Options for keyword enrichment with cost attribution.
+ */
+export interface EnrichmentOptions {
+  /** Client ID for cost attribution */
+  clientId?: string;
+  /** Workspace ID for cost attribution */
+  workspaceId?: string;
+  /** Job ID for tracking (optional) */
+  jobId?: string;
 }
 
 interface CachedMetrics {
@@ -44,19 +68,31 @@ export class KeywordEnrichmentService {
   private locationCode: number;
   private languageCode: string;
   private BATCH_SIZE = BATCH_SIZE;
+  private dbClient: DbClient;
 
-  constructor(locationCode: number = 2440, languageCode: string = "lt") {
+  constructor(locationCode: number = 2440, languageCode: string = "lt", dbClient: DbClient = db) {
     this.locationCode = locationCode;
     this.languageCode = languageCode;
+    this.dbClient = dbClient;
+  }
+
+  /**
+   * Estimate the DataForSEO cost for a batch of keywords.
+   * Based on Labs API search_volume/live pricing.
+   */
+  estimateEnrichmentCost(keywordCount: number): number {
+    return keywordCount * DFS_COST_PER_KEYWORD;
   }
 
   /**
    * Enrich keywords that need metrics.
+   * - Checks migration flag (volumeRefresh) before API calls
    * - Checks Redis cache first (7-day TTL)
    * - Skips keywords with existing metrics from source
    * - Batches API calls (max 1000 per call)
+   * - Tracks costs via DfsCostTracker for attribution
    */
-  async enrichBatch(keywordIds: string[]): Promise<EnrichmentResult> {
+  async enrichBatch(keywordIds: string[], options: EnrichmentOptions = {}): Promise<EnrichmentResult> {
     const result: EnrichmentResult = {
       enriched: 0,
       cached: 0,
@@ -69,8 +105,23 @@ export class KeywordEnrichmentService {
       return result;
     }
 
+    // Check migration flag for volumeRefresh feature
+    const flags = loadMigrationFlagsCached();
+    const useUnifiedPath = shouldUseUnified(flags.volumeRefresh);
+
+    // If unified path is enabled, route through new infrastructure
+    // For now, we continue with legacy path but add cost tracking
+    // TODO: Implement unified path routing when TieredFetcher supports keyword enrichment
+    if (useUnifiedPath) {
+      // eslint-disable-next-line no-console
+      console.info("[KeywordEnrichmentService] volumeRefresh flag set to unified - using legacy with tracking");
+    }
+
+    // Get cost tracker for attribution
+    const costTracker = getDfsCostTracker(this.dbClient);
+
     // Fetch keywords from DB
-    const keywords = await db
+    const keywords = await this.dbClient
       .select()
       .from(prospectKeywords)
       .where(inArray(prospectKeywords.id, keywordIds));
@@ -100,7 +151,7 @@ export class KeywordEnrichmentService {
     // Update skipped
     result.skipped = skip.length;
     if (skip.length > 0) {
-      await db
+      await this.dbClient
         .update(prospectKeywords)
         .set({ enrichmentStatus: "skipped" })
         .where(
@@ -139,7 +190,7 @@ export class KeywordEnrichmentService {
 
       // Execute batch updates - one query per unique metric combination
       for (const { ids, metrics } of updateGroups.values()) {
-        await db
+        await this.dbClient
           .update(prospectKeywords)
           .set({
             searchVolume: metrics.searchVolume,
@@ -153,16 +204,34 @@ export class KeywordEnrichmentService {
       }
     }
 
-    // Batch API calls
+    // Batch API calls with cost tracking
     const batches = this.chunkArray(needsEnrichment, this.BATCH_SIZE);
     for (const batch of batches) {
+      const batchStartTime = Date.now();
+      const keywordStrings = batch.map((k) => k.normalizedKeyword);
+      const estimatedCost = this.estimateEnrichmentCost(batch.length);
+
       try {
-        const keywordStrings = batch.map((k) => k.normalizedKeyword);
         const metrics = await fetchKeywordMetrics(
           keywordStrings,
           this.locationCode,
           this.languageCode
         );
+
+        // Record successful cost
+        await costTracker.recordCost({
+          url: `keyword-enrichment:batch:${batch.length}`,
+          domain: "labs-api",
+          mode: "basic",
+          usedStandardQueue: false,
+          estimatedCost,
+          actualCost: estimatedCost,
+          success: true,
+          responseTimeMs: Date.now() - batchStartTime,
+          clientId: options.clientId,
+          workspaceId: options.workspaceId,
+          jobId: options.jobId,
+        });
 
         // Map metrics to keywords
         const metricsMap = new Map(
@@ -197,7 +266,7 @@ export class KeywordEnrichmentService {
 
         // Batch update failed keywords
         if (failedIds.length > 0) {
-          await db
+          await this.dbClient
             .update(prospectKeywords)
             .set({ enrichmentStatus: "failed" })
             .where(inArray(prospectKeywords.id, failedIds));
@@ -222,7 +291,7 @@ export class KeywordEnrichmentService {
 
           // Execute batch updates - one query per unique metric combination
           for (const { ids, metrics: m } of updateGroups.values()) {
-            await db
+            await this.dbClient
               .update(prospectKeywords)
               .set({
                 searchVolume: m.searchVolume,
@@ -254,8 +323,24 @@ export class KeywordEnrichmentService {
           batchSize: batch.length,
           error: error instanceof Error ? error.message : String(error),
         });
+
+        // Record failed cost
+        await costTracker.recordCost({
+          url: `keyword-enrichment:batch:${batch.length}`,
+          domain: "labs-api",
+          mode: "basic",
+          usedStandardQueue: false,
+          estimatedCost,
+          success: false,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          responseTimeMs: Date.now() - batchStartTime,
+          clientId: options.clientId,
+          workspaceId: options.workspaceId,
+          jobId: options.jobId,
+        });
+
         // Mark entire batch as failed on error
-        await db
+        await this.dbClient
           .update(prospectKeywords)
           .set({ enrichmentStatus: "failed" })
           .where(

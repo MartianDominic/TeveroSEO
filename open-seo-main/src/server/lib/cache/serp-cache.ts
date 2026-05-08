@@ -10,6 +10,16 @@
  * CRIT-CACHE-01 FIX: Cross-instance invalidation via Redis Pub/Sub.
  * When L1 cache is invalidated, a message is published to notify other
  * instances to clear their local L1 caches.
+ *
+ * GAP-B4 Design Note: Intentionally separate from ScrapingService L1-L4 cache hierarchy.
+ * Rationale:
+ * - SERP analysis results are structured JSON (SerpAnalysisData), not raw HTML
+ * - 24h TTL is appropriate for SERP data (rankings change daily)
+ * - ScrapingService cache (L1-L4) optimizes for raw page content with different TTL tiers
+ * - Keeping separate allows independent tuning of SERP-specific caching needs
+ *
+ * Observability: All cache operations tracked via recordCacheHit/recordCacheMiss/recordCacheInvalidation.
+ * Metrics available in cache dashboard (MED-CACHE-03).
  */
 
 import { redis } from "@/server/lib/redis";
