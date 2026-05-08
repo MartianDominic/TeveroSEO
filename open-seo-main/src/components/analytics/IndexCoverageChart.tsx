@@ -1,7 +1,7 @@
 /**
  * IndexCoverageChart
  * Phase 96-04: Index coverage stats visualization
- * WCAG 2.1 AA compliant: role="img", aria-label, hidden data table
+ * UI-04/05/06: Uses design system tokens, error boundary, loading states.
  */
 import { useMemo } from "react";
 import {
@@ -12,6 +12,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { IndexCoverageStats, IndexingQuota } from "@/server/features/analytics/types";
+import { ChartErrorBoundary } from "@/components/charts/ChartErrorBoundary";
+import { Skeleton } from "@/client/components/ui/skeleton";
 
 interface IndexCoverageChartProps {
   stats: IndexCoverageStats;
@@ -20,17 +22,64 @@ interface IndexCoverageChartProps {
   isLoading?: boolean;
 }
 
-// Color mapping for coverage states
+// Color mapping for coverage states using design tokens
 const STATE_COLORS: Record<string, { bg: string; text: string; icon: typeof CheckCircle2 }> = {
-  "Submitted and indexed": { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2 },
-  "Crawled - currently not indexed": { bg: "bg-yellow-100", text: "text-yellow-700", icon: AlertCircle },
-  "Discovered - currently not indexed": { bg: "bg-orange-100", text: "text-orange-700", icon: Clock },
-  "URL is unknown to Google": { bg: "bg-gray-100", text: "text-gray-700", icon: XCircle },
-  "Blocked by robots.txt": { bg: "bg-red-100", text: "text-red-700", icon: XCircle },
-  "Blocked by noindex": { bg: "bg-red-100", text: "text-red-700", icon: XCircle },
-  "Not found (404)": { bg: "bg-red-100", text: "text-red-700", icon: XCircle },
-  "Page with redirect": { bg: "bg-blue-100", text: "text-blue-700", icon: AlertCircle },
+  "Submitted and indexed": { bg: "bg-success/10", text: "text-success", icon: CheckCircle2 },
+  "Crawled - currently not indexed": { bg: "bg-warning/10", text: "text-warning", icon: AlertCircle },
+  "Discovered - currently not indexed": { bg: "bg-warning/20", text: "text-warning", icon: Clock },
+  "URL is unknown to Google": { bg: "bg-muted", text: "text-muted-foreground", icon: XCircle },
+  "Blocked by robots.txt": { bg: "bg-destructive/10", text: "text-destructive", icon: XCircle },
+  "Blocked by noindex": { bg: "bg-destructive/10", text: "text-destructive", icon: XCircle },
+  "Not found (404)": { bg: "bg-destructive/10", text: "text-destructive", icon: XCircle },
+  "Page with redirect": { bg: "bg-primary/10", text: "text-primary", icon: AlertCircle },
 };
+
+/**
+ * Loading skeleton for IndexCoverageChart
+ */
+function IndexCoverageChartSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-36" />
+        <Skeleton className="h-8 w-24" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg bg-muted p-4">
+            <Skeleton className="h-5 w-20 mb-2" />
+            <Skeleton className="h-9 w-24 mb-1" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg bg-muted p-4">
+        <div className="flex justify-between mb-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+        <Skeleton className="h-4 w-full rounded-full" />
+      </div>
+      <div className="rounded-lg border border-border">
+        <div className="border-b border-border p-4">
+          <Skeleton className="h-5 w-32" />
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 border-b border-border last:border-0">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function IndexCoverageChart({
   stats,
@@ -58,172 +107,107 @@ export function IndexCoverageChart({
     }).format(new Date(date));
   };
 
-  // Generate accessibility description
-  const ariaLabel = useMemo(() => {
-    const notIndexedPercent = stats.total > 0 ? ((stats.notIndexed / stats.total) * 100).toFixed(1) : 0;
-    return `Index coverage chart showing ${stats.indexed.toLocaleString()} indexed pages (${indexedPercent.toFixed(1)}%) and ${stats.notIndexed.toLocaleString()} not indexed pages (${notIndexedPercent}%) out of ${stats.total.toLocaleString()} total pages.`;
-  }, [stats, indexedPercent]);
+  // Show skeleton while loading
+  if (isLoading) {
+    return <IndexCoverageChartSkeleton />;
+  }
 
   return (
-    <div
-      className="space-y-6"
-      role="region"
-      aria-label={ariaLabel}
-    >
+    <ChartErrorBoundary fallbackHeight={400}>
+    <div className="space-y-6">
       {/* Header with refresh */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           Index Coverage
         </h3>
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            aria-label={isLoading ? "Refreshing index coverage data" : "Refresh index coverage data"}
-            className="flex items-center gap-2 rounded-md bg-indigo-50 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         )}
       </div>
 
-      {/* Visually hidden data table for screen readers */}
-      <div className="sr-only">
-        <table>
-          <caption>Index Coverage Statistics</caption>
-          <thead>
-            <tr>
-              <th scope="col">Status</th>
-              <th scope="col">Count</th>
-              <th scope="col">Percentage</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Indexed</td>
-              <td>{stats.indexed.toLocaleString()}</td>
-              <td>{indexedPercent.toFixed(1)}%</td>
-            </tr>
-            <tr>
-              <td>Not Indexed</td>
-              <td>{stats.notIndexed.toLocaleString()}</td>
-              <td>{((stats.notIndexed / stats.total) * 100).toFixed(1)}%</td>
-            </tr>
-            <tr>
-              <td>Total</td>
-              <td>{stats.total.toLocaleString()}</td>
-              <td>100%</td>
-            </tr>
-          </tbody>
-        </table>
-        {sortedStates.length > 0 && (
-          <table>
-            <caption>Breakdown by Coverage State</caption>
-            <thead>
-              <tr>
-                <th scope="col">State</th>
-                <th scope="col">Count</th>
-                <th scope="col">Percentage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedStates.map(([state, count]) => (
-                <tr key={state}>
-                  <td>{state}</td>
-                  <td>{count.toLocaleString()}</td>
-                  <td>{((count / stats.total) * 100).toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
       {/* Main stats */}
-      <div className="grid grid-cols-3 gap-4" role="list" aria-label="Index coverage summary">
-        <div className="rounded-lg bg-gradient-to-br from-green-50 to-green-100 p-4 dark:from-green-900/30 dark:to-green-800/20" role="listitem">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-lg bg-success/10 p-4">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" aria-hidden="true" />
-            <span className="text-sm text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-5 w-5 text-success" />
+            <span className="text-sm text-success">
               Indexed
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold text-green-800 dark:text-green-300">
+          <p className="mt-2 text-3xl font-bold text-success">
             {stats.indexed.toLocaleString()}
           </p>
-          <p className="text-sm text-green-600 dark:text-green-400">
+          <p className="text-sm text-success/80">
             {indexedPercent.toFixed(1)}% of total
           </p>
         </div>
 
-        <div className="rounded-lg bg-gradient-to-br from-red-50 to-red-100 p-4 dark:from-red-900/30 dark:to-red-800/20" role="listitem">
+        <div className="rounded-lg bg-destructive/10 p-4">
           <div className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-600" aria-hidden="true" />
-            <span className="text-sm text-red-700 dark:text-red-400">
+            <XCircle className="h-5 w-5 text-destructive" />
+            <span className="text-sm text-destructive">
               Not Indexed
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold text-red-800 dark:text-red-300">
+          <p className="mt-2 text-3xl font-bold text-destructive">
             {stats.notIndexed.toLocaleString()}
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
+          <p className="text-sm text-destructive/80">
             {((stats.notIndexed / stats.total) * 100).toFixed(1)}% of total
           </p>
         </div>
 
-        <div className="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-gray-800/50 dark:to-gray-700/30" role="listitem">
+        <div className="rounded-lg bg-muted p-4">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-gray-600" aria-hidden="true" />
-            <span className="text-sm text-gray-700 dark:text-gray-400">
+            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
               Total Pages
             </span>
           </div>
-          <p className="mt-2 text-3xl font-bold text-gray-800 dark:text-gray-300">
+          <p className="mt-2 text-3xl font-bold text-foreground">
             {stats.total.toLocaleString()}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Last updated: {formatDate(stats.lastUpdated)}
           </p>
         </div>
       </div>
 
       {/* Coverage bar */}
-      <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-800">
+      <div className="rounded-lg bg-muted p-4">
         <div className="mb-2 flex justify-between text-sm">
-          <span id="index-rate-label" className="text-gray-600 dark:text-gray-400">Index Rate</span>
-          <span className="font-medium text-gray-900 dark:text-white">
+          <span className="text-muted-foreground">Index Rate</span>
+          <span className="font-medium text-foreground">
             {indexedPercent.toFixed(1)}%
           </span>
         </div>
-        <div
-          className="h-4 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
-          role="progressbar"
-          aria-valuenow={Math.round(indexedPercent)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-labelledby="index-rate-label"
-          aria-valuetext={`${indexedPercent.toFixed(1)}% of pages indexed`}
-        >
+        <div className="h-4 overflow-hidden rounded-full bg-muted-foreground/20">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500"
+            className="h-full rounded-full bg-success transition-all duration-500"
             style={{ width: `${indexedPercent}%` }}
           />
         </div>
       </div>
 
       {/* Breakdown by state */}
-      <div className="rounded-xl bg-[var(--surface)] shadow-[var(--shadow-card)] dark:bg-[var(--surface)]">
-        <div className="border-b border-[var(--hairline-2)] p-4">
-          <h4 className="font-medium text-gray-900 dark:text-white">
+      <div className="rounded-lg border border-border">
+        <div className="border-b border-border p-4">
+          <h4 className="font-medium text-foreground">
             Coverage by State
           </h4>
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-700" role="list" aria-label="Coverage states breakdown">
+        <div className="divide-y divide-border">
           {sortedStates.map(([state, count]) => {
             const config = STATE_COLORS[state] || {
-              bg: "bg-gray-100",
-              text: "text-gray-700",
+              bg: "bg-muted",
+              text: "text-muted-foreground",
               icon: AlertCircle,
             };
             const Icon = config.icon;
@@ -232,24 +216,21 @@ export function IndexCoverageChart({
             return (
               <div
                 key={state}
-                className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 rounded"
-                role="listitem"
-                tabIndex={0}
-                aria-label={`${state}: ${count.toLocaleString()} pages, ${percent}% of total`}
+                className="flex items-center justify-between p-3 hover:bg-muted/50"
               >
                 <div className="flex items-center gap-3">
                   <div className={`rounded-md p-1.5 ${config.bg}`}>
-                    <Icon className={`h-4 w-4 ${config.text}`} aria-hidden="true" />
+                    <Icon className={`h-4 w-4 ${config.text}`} />
                   </div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-sm text-muted-foreground">
                     {state}
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-foreground">
                     {count.toLocaleString()}
                   </span>
-                  <span className="w-12 text-right text-sm text-gray-500">
+                  <span className="w-12 text-right text-sm text-muted-foreground">
                     {percent}%
                   </span>
                 </div>
@@ -261,26 +242,26 @@ export function IndexCoverageChart({
 
       {/* Quota usage */}
       {quota && (
-        <div className="rounded-xl bg-[var(--surface)] p-4 shadow-[var(--shadow-card)] dark:bg-[var(--surface)]">
-          <h4 className="mb-3 font-medium text-gray-900 dark:text-white">
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="mb-3 font-medium text-foreground">
             API Quota Usage (Today)
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-muted-foreground">
                   Inspections
                 </span>
-                <span className="text-gray-900 dark:text-white">
+                <span className="text-foreground">
                   {quota.inspectionsUsed} / {quota.inspectionsLimit}
                 </span>
               </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-full rounded-full transition-all ${
                     quota.inspectionsUsed / quota.inspectionsLimit > 0.9
-                      ? "bg-red-500"
-                      : "bg-blue-500"
+                      ? "bg-destructive"
+                      : "bg-primary"
                   }`}
                   style={{
                     width: `${(quota.inspectionsUsed / quota.inspectionsLimit) * 100}%`,
@@ -290,19 +271,19 @@ export function IndexCoverageChart({
             </div>
             <div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-muted-foreground">
                   Indexing Requests
                 </span>
-                <span className="text-gray-900 dark:text-white">
+                <span className="text-foreground">
                   {quota.indexingRequestsUsed} / {quota.indexingRequestsLimit}
                 </span>
               </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-full rounded-full transition-all ${
                     quota.indexingRequestsUsed / quota.indexingRequestsLimit > 0.9
-                      ? "bg-red-500"
-                      : "bg-purple-500"
+                      ? "bg-destructive"
+                      : "bg-accent"
                   }`}
                   style={{
                     width: `${(quota.indexingRequestsUsed / quota.indexingRequestsLimit) * 100}%`,
@@ -311,11 +292,12 @@ export function IndexCoverageChart({
               </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             Resets at: {formatDate(quota.resetsAt)}
           </p>
         </div>
       )}
     </div>
+    </ChartErrorBoundary>
   );
 }

@@ -13,6 +13,11 @@ import {
   NotificationService,
   type NotificationSettingsUpdate,
 } from "@/server/features/portal/services/NotificationService";
+import {
+  portalStandardRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
 import { createLogger } from "@/server/lib/logger";
 import { z } from "zod";
 
@@ -47,7 +52,6 @@ const settingsUpdateSchema = z
   })
   .strict(); // Reject unknown fields per T-90-07
 
-// @ts-expect-error - Route not in FileRoutesByPath until generated
 export const Route = createFileRoute(
   "/api/portal/notifications/settings/$clientId"
 )({
@@ -109,13 +113,25 @@ export const Route = createFileRoute(
             );
           }
 
+          // Check rate limit (60 req/min per clientId)
+          const rateLimitResult = await portalStandardRateLimiter(clientId);
+          if (!rateLimitResult.allowed) {
+            log.warn("Portal notification settings rate limit exceeded", {
+              clientId,
+              current: rateLimitResult.current,
+              limit: rateLimitResult.limit,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           // Fetch settings
           const settings =
             await NotificationService.getNotificationSettings(clientId);
 
           log.debug("Notification settings retrieved", { clientId });
 
-          return Response.json({
+          const response = Response.json({
             success: true,
             data: {
               winEmail: settings.winEmail,
@@ -129,11 +145,14 @@ export const Route = createFileRoute(
               digestDay: settings.digestDay,
             },
           });
+
+          return addRateLimitHeaders(response, rateLimitResult);
         } catch (error) {
-          log.error("Notification settings GET error", {
-            error: error instanceof Error ? error.message : String(error),
-            clientId: params.clientId,
-          });
+          log.error(
+            "Notification settings GET error",
+            error instanceof Error ? error : undefined,
+            { clientId: params.clientId }
+          );
           return Response.json(
             { success: false, error: "Failed to fetch notification settings" },
             { status: 500 }
@@ -197,6 +216,18 @@ export const Route = createFileRoute(
             );
           }
 
+          // Check rate limit (60 req/min per clientId)
+          const rateLimitResult = await portalStandardRateLimiter(clientId);
+          if (!rateLimitResult.allowed) {
+            log.warn("Portal notification settings PUT rate limit exceeded", {
+              clientId,
+              current: rateLimitResult.current,
+              limit: rateLimitResult.limit,
+              retryAfter: rateLimitResult.retryAfter,
+            });
+            return rateLimitExceededResponse(rateLimitResult);
+          }
+
           // Parse and validate request body (T-90-07)
           let body: unknown;
           try {
@@ -212,13 +243,13 @@ export const Route = createFileRoute(
           if (!parseResult.success) {
             log.warn("Invalid settings payload", {
               clientId,
-              errors: parseResult.error.errors,
+              errors: parseResult.error.issues,
             });
             return Response.json(
               {
                 success: false,
                 error: "Invalid settings payload",
-                details: parseResult.error.errors.map((e) => ({
+                details: parseResult.error.issues.map((e) => ({
                   field: e.path.join("."),
                   message: e.message,
                 })),
@@ -241,7 +272,7 @@ export const Route = createFileRoute(
             updates: Object.keys(updates),
           });
 
-          return Response.json({
+          const response = Response.json({
             success: true,
             data: {
               winEmail: updatedSettings.winEmail,
@@ -255,11 +286,14 @@ export const Route = createFileRoute(
               digestDay: updatedSettings.digestDay,
             },
           });
+
+          return addRateLimitHeaders(response, rateLimitResult);
         } catch (error) {
-          log.error("Notification settings PUT error", {
-            error: error instanceof Error ? error.message : String(error),
-            clientId: params.clientId,
-          });
+          log.error(
+            "Notification settings PUT error",
+            error instanceof Error ? error : undefined,
+            { clientId: params.clientId }
+          );
           return Response.json(
             { success: false, error: "Failed to update notification settings" },
             { status: 500 }

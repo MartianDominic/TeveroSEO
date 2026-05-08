@@ -2,6 +2,8 @@
  * GSC Query Analytics Schema
  * Phase 96-01: TimescaleDB hypertable for agency-scale GSC data
  *
+ * @see docs/architecture/gsc-data-flow.md for the complete GSC data architecture
+ *
  * Design decisions:
  * - TIMESTAMPTZ for query_time (required by TimescaleDB hypertables)
  * - 7-day chunks for 125M rows/day workload

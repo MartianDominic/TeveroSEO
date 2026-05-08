@@ -1,6 +1,7 @@
 /**
  * TrendDetectionService
  * Phase 96-03: Growing/Decaying Page Detection
+ * DATA-01, DATA-07 FIX: Unified cache with freshness metadata
  *
  * Uses 3-week rolling comparison (industry standard) to detect:
  * - Growing pages: >10% click increase over previous 3-week period
@@ -14,23 +15,43 @@
  * 5. Assign confidence based on impression volume
  *
  * Uses continuous aggregate for sub-second queries at scale.
+ * Returns cache metadata for UI freshness indicators.
  */
 import { sql } from 'drizzle-orm';
 import { db, type DbClient } from '@/db';
 import type { TrendAnalysis, TrendFilters, TrendResult, QueryFilter } from '../types';
 import { format, subDays } from 'date-fns';
+import { createLogger } from '@/server/lib/logger';
+import {
+  getAnalyticsCache,
+  wrapWithMetadata,
+  type CachedData,
+} from '@/server/cache';
+import { getAnalyticsEventBus } from '../events/analytics-event-bus';
+
+const logger = createLogger({ module: 'trend-detection-service' });
 
 export class TrendDetectionService {
+  private cache = getAnalyticsCache();
+
   constructor(private db: DbClient) {}
 
   /**
    * Analyze page trends for a site.
    * Returns pages with >threshold% change in clicks.
+   * Includes cache metadata for UI freshness indicators.
+   *
+   * @param siteId - Site UUID
+   * @param filters - Trend filters
+   * @param workspaceId - Workspace UUID (required for caching)
+   * @param options - Optional cache behavior settings
    */
   async analyzePageTrends(
     siteId: string,
-    filters: TrendFilters = {}
-  ): Promise<TrendResult> {
+    filters: TrendFilters = {},
+    workspaceId?: string,
+    options: { skipCache?: boolean } = {}
+  ): Promise<CachedData<TrendResult>> {
     const {
       periodDays = 21,
       threshold = 0.10,
@@ -38,6 +59,23 @@ export class TrendDetectionService {
       trend = 'all',
       queryFilter,
     } = filters;
+
+    // Build cache key from filters
+    const cacheKey = this.buildCacheKey(filters);
+
+    // Try cache first (if workspaceId provided and skipCache is false)
+    if (workspaceId && !options.skipCache) {
+      const cached = await this.cache.get<TrendResult>(
+        'trends',
+        workspaceId,
+        siteId,
+        cacheKey
+      );
+
+      if (cached && !cached.metadata.refreshAvailable) {
+        return cached;
+      }
+    }
 
     try {
       const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd'); // GSC 3-day latency
@@ -163,7 +201,7 @@ export class TrendDetectionService {
         });
       }
 
-      return {
+      const data: TrendResult = {
         pages,
         meta: {
           totalAnalyzed: result.rows.length,
@@ -174,49 +212,164 @@ export class TrendDetectionService {
           threshold,
         },
       };
+
+      // Cache the result if workspaceId provided
+      const dataAsOf = new Date();
+      if (workspaceId) {
+        await this.cache.set(
+          'trends',
+          workspaceId,
+          siteId,
+          data,
+          dataAsOf,
+          cacheKey
+        );
+      }
+
+      // Emit event asynchronously (non-blocking)
+      if (growingCount > 0 || decayingCount > 0) {
+        setImmediate(() => {
+          try {
+            const eventBus = getAnalyticsEventBus();
+            eventBus.emit('trends:analyzed', {
+              siteId,
+              growingCount,
+              decayingCount,
+              stableCount,
+              timestamp: new Date(),
+            });
+          } catch (error) {
+            logger.warn('Failed to emit trends:analyzed event', {
+              siteId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        });
+      }
+
+      return wrapWithMetadata(data, dataAsOf);
     } catch (error) {
-      console.error('[TrendDetectionService] analyzePageTrends failed:', {
+      logger.error('analyzePageTrends failed', error instanceof Error ? error : undefined, {
         method: 'analyzePageTrends',
-        params: { siteId, periodDays: filters.periodDays, threshold: filters.threshold },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        siteId,
+        periodDays: filters.periodDays,
+        threshold: filters.threshold,
       });
       throw new Error(`Failed to analyze page trends: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
+   * Build cache key from filters.
+   */
+  private buildCacheKey(filters: TrendFilters): string {
+    const parts = [
+      String(filters.periodDays ?? 21),
+      String(filters.threshold ?? 0.10),
+      String(filters.minImpressions ?? 100),
+      filters.trend ?? 'all',
+      filters.queryFilter?.include?.join(',') ?? '',
+      filters.queryFilter?.exclude?.join(',') ?? '',
+      filters.queryFilter?.pattern ?? '',
+    ];
+    return parts.join(':');
+  }
+
+  /**
    * Build SQL condition for query filtering (AND/OR/NOT).
+   * Uses parameterized queries to prevent SQL injection.
    */
   private buildQueryFilterCondition(filter?: QueryFilter): ReturnType<typeof sql> {
     if (!filter) return sql``;
 
-    const conditions: string[] = [];
+    const conditions: Array<ReturnType<typeof sql>> = [];
 
     if (filter.include?.length) {
+      // Sanitize terms: escape SQL LIKE wildcards in user input
+      const sanitizedTerms = filter.include.map(term =>
+        this.sanitizeLikeTerm(term)
+      );
+
       if (filter.mode === 'or') {
-        const orConditions = filter.include.map(term => `query ILIKE '%${term}%'`);
-        conditions.push(`(${orConditions.join(' OR ')})`);
+        // Build OR conditions with parameterized ILIKE
+        const orConditions = sanitizedTerms.map(term =>
+          sql`query ILIKE ${'%' + term + '%'}`
+        );
+        // Combine with OR
+        if (orConditions.length === 1) {
+          conditions.push(orConditions[0]);
+        } else {
+          conditions.push(sql`(${sql.join(orConditions, sql` OR `)})`);
+        }
       } else {
-        // Default: AND mode
-        for (const term of filter.include) {
-          conditions.push(`query ILIKE '%${term}%'`);
+        // Default: AND mode - each term becomes a separate condition
+        for (const term of sanitizedTerms) {
+          conditions.push(sql`query ILIKE ${'%' + term + '%'}`);
         }
       }
     }
 
     if (filter.exclude?.length) {
-      for (const term of filter.exclude) {
-        conditions.push(`query NOT ILIKE '%${term}%'`);
+      const sanitizedTerms = filter.exclude.map(term =>
+        this.sanitizeLikeTerm(term)
+      );
+      for (const term of sanitizedTerms) {
+        conditions.push(sql`query NOT ILIKE ${'%' + term + '%'}`);
       }
     }
 
     if (filter.pattern) {
-      conditions.push(`query ~ '${filter.pattern}'`);
+      // Validate regex pattern to prevent ReDoS and injection
+      const sanitizedPattern = this.sanitizeRegexPattern(filter.pattern);
+      if (sanitizedPattern) {
+        // Use parameterized regex - Drizzle will handle escaping
+        conditions.push(sql`query ~ ${sanitizedPattern}`);
+      }
     }
 
     if (conditions.length === 0) return sql``;
 
-    return sql.raw(`AND ${conditions.join(' AND ')}`);
+    // Join all conditions with AND, prefixed with AND keyword
+    return sql`AND ${sql.join(conditions, sql` AND `)}`;
+  }
+
+  /**
+   * Sanitize a term for use in ILIKE patterns.
+   * Escapes SQL LIKE special characters (%, _, \).
+   */
+  private sanitizeLikeTerm(term: string): string {
+    return term
+      .replace(/\\/g, '\\\\')  // Escape backslashes first
+      .replace(/%/g, '\\%')    // Escape percent
+      .replace(/_/g, '\\_');   // Escape underscore
+  }
+
+  /**
+   * Validate and sanitize regex pattern.
+   * Returns null if pattern is invalid or potentially dangerous.
+   */
+  private sanitizeRegexPattern(pattern: string): string | null {
+    // Reject empty patterns
+    if (!pattern || pattern.trim().length === 0) {
+      return null;
+    }
+
+    // Limit pattern length to prevent ReDoS
+    if (pattern.length > 200) {
+      logger.warn('Regex pattern too long, rejecting', { patternLength: pattern.length });
+      return null;
+    }
+
+    // Test that the pattern is valid PostgreSQL regex
+    try {
+      // Create a simple RegExp to validate syntax (basic check)
+      new RegExp(pattern);
+    } catch {
+      logger.warn('Invalid regex pattern, rejecting', { pattern });
+      return null;
+    }
+
+    return pattern;
   }
 }
 
@@ -229,10 +382,24 @@ export function getTrendDetectionService(): TrendDetectionService {
   return instance;
 }
 
-// Convenience function
+// Convenience function - returns CachedData with metadata
+export async function analyzePageTrendsWithMetadata(
+  siteId: string,
+  filters?: TrendFilters,
+  workspaceId?: string
+): Promise<CachedData<TrendResult>> {
+  return getTrendDetectionService().analyzePageTrends(siteId, filters, workspaceId);
+}
+
+/**
+ * Convenience function - returns just the data (backward compatible).
+ * Use analyzePageTrendsWithMetadata() for cache metadata.
+ */
 export async function analyzePageTrends(
   siteId: string,
-  filters?: TrendFilters
+  filters?: TrendFilters,
+  workspaceId?: string
 ): Promise<TrendResult> {
-  return getTrendDetectionService().analyzePageTrends(siteId, filters);
+  const result = await getTrendDetectionService().analyzePageTrends(siteId, filters, workspaceId);
+  return result.data;
 }

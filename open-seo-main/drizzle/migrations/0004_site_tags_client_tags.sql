@@ -4,7 +4,7 @@
 -- Site tags table
 CREATE TABLE IF NOT EXISTS "site_tags" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "site_id" uuid NOT NULL REFERENCES "site_connections"("id") ON DELETE CASCADE,
+  "site_id" text NOT NULL REFERENCES "site_connections"("id") ON DELETE CASCADE,
   "tag_name" text NOT NULL,
   "tag_color" text,
   "tag_category" text,

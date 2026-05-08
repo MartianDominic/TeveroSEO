@@ -1,17 +1,58 @@
 /**
  * TopicClusterVisualization
  * Phase 96-04: Hub + Spoke SVG visualization
- * WCAG 2.1 AA compliant: role="img", aria-label, hidden data table
+ * UI-04/05/06: Uses design system tokens, error boundary, loading states.
  */
 import { useMemo } from "react";
-import { Link2, Link2Off, ExternalLink, Check, X } from "lucide-react";
+import { Link2, Link2Off } from "lucide-react";
 import type { TopicClusterWithPages } from "@/server/features/analytics/types";
+import { ChartErrorBoundary } from "@/components/charts/ChartErrorBoundary";
+import { Skeleton } from "@/client/components/ui/skeleton";
 
 interface TopicClusterVisualizationProps {
   cluster: TopicClusterWithPages;
   onSpokeClick?: (pageUrl: string) => void;
   width?: number;
   height?: number;
+  isLoading?: boolean;
+}
+
+/**
+ * Loading skeleton for TopicClusterVisualization
+ */
+function TopicClusterSkeleton({ width = 600, height = 400 }: { width?: number; height?: number }) {
+  return (
+    <div className="relative animate-pulse">
+      <div className="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-6 w-10" />
+      </div>
+      <div className="flex items-center justify-center" style={{ width, height }}>
+        {/* Central hub skeleton */}
+        <Skeleton className="h-24 w-24 rounded-full" />
+      </div>
+      {/* Legend skeleton */}
+      <div className="mt-4 flex justify-center gap-6">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3 w-3 rounded-full" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3 w-3 rounded-full" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+      </div>
+      {/* Metrics skeleton */}
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg bg-muted p-3 text-center">
+            <Skeleton className="mx-auto h-3 w-16 mb-2" />
+            <Skeleton className="mx-auto h-6 w-12" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function TopicClusterVisualization({
@@ -19,6 +60,7 @@ export function TopicClusterVisualization({
   onSpokeClick,
   width = 600,
   height = 400,
+  isLoading = false,
 }: TopicClusterVisualizationProps) {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -50,45 +92,31 @@ export function TopicClusterVisualization({
     return path.slice(0, maxLength - 3) + "...";
   };
 
-  // Calculate linked/unlinked counts for accessibility description
-  const linkedCount = cluster.spokePages.filter((s) => s.linksToHub).length;
-  const unlinkedCount = cluster.spokePages.length - linkedCount;
-
-  // Generate accessible description for screen readers
-  const generateClusterDescription = () => {
-    const spokeDescriptions = cluster.spokePages
-      .map((spoke) => `${truncateUrl(spoke.url, 50)}: ${spoke.linksToHub ? "linked" : "needs link"}`)
-      .join("; ");
-    return `Hub page has ${cluster.hubPage.clicks} clicks. Spoke pages: ${spokeDescriptions}. Content gaps identified: ${cluster.gaps.length}.`;
-  };
+  // Show skeleton while loading
+  if (isLoading) {
+    return <TopicClusterSkeleton width={width} height={height} />;
+  }
 
   return (
+    <ChartErrorBoundary fallbackHeight={height + 200}>
     <div className="relative">
       {/* Coverage indicator */}
-      <div className="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 shadow-sm dark:bg-gray-800/90">
-        <div className="text-sm text-gray-600 dark:text-gray-300">Coverage</div>
+      <div className="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-background/90 px-3 py-2 shadow-sm">
+        <div className="text-sm text-muted-foreground">Coverage</div>
         <div
           className={`text-lg font-bold ${
             cluster.coverage >= 80
-              ? "text-green-600"
+              ? "text-success"
               : cluster.coverage >= 50
-                ? "text-yellow-600"
-                : "text-red-600"
+                ? "text-warning"
+                : "text-destructive"
           }`}
         >
           {cluster.coverage.toFixed(0)}%
         </div>
       </div>
 
-      <svg
-        width={width}
-        height={height}
-        className="mx-auto"
-        role="img"
-        aria-label={`Topic cluster visualization showing ${cluster.hubPage.url} as hub with ${cluster.spokePages.length} related pages. ${linkedCount} pages are linked, ${unlinkedCount} need links. Coverage: ${cluster.coverage.toFixed(0)}%.`}
-      >
-        <title>Topic cluster: {cluster.hubPage.url}</title>
-        <desc>{generateClusterDescription()}</desc>
+      <svg width={width} height={height} className="mx-auto">
         {/* Connection lines from spokes to hub */}
         {spokePositions.map((spoke, index) => (
           <g key={`line-${index}`}>
@@ -120,7 +148,7 @@ export function TopicClusterVisualization({
             x={centerX}
             y={centerY - 8}
             textAnchor="middle"
-            className="fill-white text-xs font-bold"
+            className="fill-white text-sm font-bold"
           >
             HUB
           </text>
@@ -128,27 +156,18 @@ export function TopicClusterVisualization({
             x={centerX}
             y={centerY + 8}
             textAnchor="middle"
-            className="fill-white/80 text-[10px]"
+            className="fill-white/80 text-sm"
           >
             {formatNumber(cluster.hubPage.clicks)} clicks
           </text>
         </g>
 
-        {/* Spoke circles with accessible status indicators */}
+        {/* Spoke circles */}
         {spokePositions.map((spoke, index) => (
           <g
             key={`spoke-${index}`}
-            className="cursor-pointer transition-transform hover:scale-110 focus-visible:outline-none"
+            className="cursor-pointer transition-transform hover:scale-110"
             onClick={() => onSpokeClick?.(spoke.url)}
-            role="button"
-            tabIndex={0}
-            aria-label={`${truncateUrl(spoke.url)}: ${spoke.linksToHub ? "linked to hub" : "needs link to hub"}`}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSpokeClick?.(spoke.url);
-              }
-            }}
           >
             <circle
               cx={spoke.x}
@@ -157,19 +176,8 @@ export function TopicClusterVisualization({
               fill={spoke.linksToHub ? "#dcfce7" : "#fee2e2"}
               stroke={spoke.linksToHub ? "#22c55e" : "#ef4444"}
               strokeWidth={2}
-              strokeDasharray={spoke.linksToHub ? undefined : "4,2"}
             />
-            {/* Focus ring */}
-            <circle
-              cx={spoke.x}
-              cy={spoke.y}
-              r={spokeRadius + 4}
-              fill="none"
-              stroke="transparent"
-              strokeWidth={2}
-              className="group-focus-visible:stroke-indigo-500"
-            />
-            {/* Link icon with checkmark/X for non-color indication */}
+            {/* Link icon */}
             <foreignObject
               x={spoke.x - 8}
               y={spoke.y - 8}
@@ -177,25 +185,11 @@ export function TopicClusterVisualization({
               height={16}
             >
               {spoke.linksToHub ? (
-                <Link2 className="h-4 w-4 text-green-600" aria-hidden="true" />
+                <Link2 className="h-4 w-4 text-success" />
               ) : (
-                <Link2Off className="h-4 w-4 text-red-500" aria-hidden="true" />
+                <Link2Off className="h-4 w-4 text-destructive" />
               )}
             </foreignObject>
-            {/* Secondary status indicator: checkmark or X mark for colorblind users */}
-            <g transform={`translate(${spoke.x + spokeRadius - 8}, ${spoke.y - spokeRadius - 4})`}>
-              {spoke.linksToHub ? (
-                <g aria-hidden="true">
-                  <circle cx={6} cy={6} r={8} fill="#22c55e" />
-                  <path d="M3 6l2 2 4-4" stroke="white" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </g>
-              ) : (
-                <g aria-hidden="true">
-                  <circle cx={6} cy={6} r={8} fill="#ef4444" />
-                  <path d="M3 3l6 6M9 3l-6 6" stroke="white" strokeWidth={2} fill="none" strokeLinecap="round" />
-                </g>
-              )}
-            </g>
           </g>
         ))}
 
@@ -213,7 +207,7 @@ export function TopicClusterVisualization({
               x={labelX}
               y={labelY}
               textAnchor={textAnchor}
-              className="fill-gray-600 text-[10px] dark:fill-gray-300"
+              className="fill-muted-foreground text-sm"
             >
               {truncateUrl(spoke.url)}
             </text>
@@ -221,75 +215,35 @@ export function TopicClusterVisualization({
         })}
       </svg>
 
-      {/* Visually hidden data table for screen readers */}
-      <div className="sr-only">
-        <table>
-          <caption>Topic cluster data for {cluster.hubPage.url}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Page URL</th>
-              <th scope="col">Type</th>
-              <th scope="col">Link Status</th>
-              <th scope="col">Clicks</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{cluster.hubPage.url}</td>
-              <td>Hub</td>
-              <td>N/A</td>
-              <td>{cluster.hubPage.clicks}</td>
-            </tr>
-            {cluster.spokePages.map((spoke) => (
-              <tr key={spoke.url}>
-                <td>{spoke.url}</td>
-                <td>Spoke</td>
-                <td>{spoke.linksToHub ? "Linked to hub" : "Needs link"}</td>
-                <td>{spoke.clicks || "N/A"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p>
-          Summary: {linkedCount} of {cluster.spokePages.length} spoke pages link to the hub.
-          Coverage: {cluster.coverage.toFixed(0)}%.
-          {cluster.gaps.length > 0 && ` Content gaps identified: ${cluster.gaps.join(", ")}.`}
-        </p>
-      </div>
-
-      {/* Legend with icons for colorblind accessibility */}
+      {/* Legend */}
       <div className="mt-4 flex justify-center gap-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500">
-            <Check className="h-3 w-3 text-white" aria-hidden="true" />
-          </div>
-          <span className="text-gray-600 dark:text-gray-300">Links to hub (solid line)</span>
+          <div className="h-3 w-3 rounded-full bg-success" />
+          <span className="text-muted-foreground">Links to hub</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
-            <X className="h-3 w-3 text-white" aria-hidden="true" />
-          </div>
-          <span className="text-gray-600 dark:text-gray-300">Missing link (dashed line)</span>
+          <div className="h-3 w-3 rounded-full bg-destructive" />
+          <span className="text-muted-foreground">Missing link</span>
         </div>
       </div>
 
       {/* Cluster metrics */}
       <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Total Clicks</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="rounded-lg bg-muted p-3">
+          <p className="text-sm text-muted-foreground">Total Clicks</p>
+          <p className="text-xl font-bold text-foreground">
             {formatNumber(cluster.totalClicks)}
           </p>
         </div>
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Impressions</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="rounded-lg bg-muted p-3">
+          <p className="text-sm text-muted-foreground">Impressions</p>
+          <p className="text-xl font-bold text-foreground">
             {formatNumber(cluster.totalImpressions)}
           </p>
         </div>
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Avg Position</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="rounded-lg bg-muted p-3">
+          <p className="text-sm text-muted-foreground">Avg Position</p>
+          <p className="text-xl font-bold text-foreground">
             {cluster.avgPosition.toFixed(1)}
           </p>
         </div>
@@ -297,21 +251,21 @@ export function TopicClusterVisualization({
 
       {/* Content gaps */}
       {cluster.gaps.length > 0 && (
-        <div className="mt-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900/50 dark:bg-yellow-900/20">
-          <h4 className="mb-2 font-medium text-yellow-800 dark:text-yellow-200">
+        <div className="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-4">
+          <h4 className="mb-2 font-medium text-warning">
             Content Gaps ({cluster.gaps.length})
           </h4>
           <ul className="space-y-1">
             {cluster.gaps.slice(0, 5).map((gap, index) => (
               <li
                 key={index}
-                className="text-sm text-yellow-700 dark:text-yellow-300"
+                className="text-sm text-warning/80"
               >
                 - {gap}
               </li>
             ))}
             {cluster.gaps.length > 5 && (
-              <li className="text-sm text-yellow-600 dark:text-yellow-400">
+              <li className="text-sm text-warning/60">
                 +{cluster.gaps.length - 5} more gaps
               </li>
             )}
@@ -319,5 +273,6 @@ export function TopicClusterVisualization({
         </div>
       )}
     </div>
+    </ChartErrorBoundary>
   );
 }

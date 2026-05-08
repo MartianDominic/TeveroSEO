@@ -1,18 +1,21 @@
 /**
  * Tier 4 Checks Index
  * Phase 32: 107 SEO Checks Implementation
+ * Phase 96: Analytics-based checks (T4-08, T4-09)
  *
- * Registers all 7 Tier 4 crawl-based checks.
+ * Registers all 9 Tier 4 crawl-based checks.
  * Tier 4 checks require site-wide crawl data (SiteContext).
  */
 
 // Import all category files to register checks
 import "./architecture"; // T4-01 to T4-05
 import "./differentiation"; // T4-06 to T4-07
+import "./analytics"; // T4-08 to T4-09
 
 // Re-export check IDs for documentation
 export { architectureCheckIds } from "./architecture";
 export { differentiationCheckIds } from "./differentiation";
+export { analyticsCheckIds } from "./analytics";
 
 // Export aggregated check info
 import { getChecksByTier } from "../registry";
@@ -37,6 +40,9 @@ export const TIER_4_CHECK_IDS = [
   // Content Differentiation (T4-06 to T4-07)
   "T4-06", // 30-40% unique content
   "T4-07", // No scaled content patterns
+  // Analytics Integration (T4-08 to T4-09) - Phase 96
+  "T4-08", // Content trend health (growing/decaying pages)
+  "T4-09", // Striking distance opportunities
 ] as const;
 
 /**

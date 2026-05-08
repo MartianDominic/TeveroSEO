@@ -147,30 +147,6 @@ export const RATE_LIMITS = {
     window: 60,
     keyPrefix: "ratelimit:admin:",
   },
-  /** Analytics export - CSV, Google Sheets, 10 req/hour per workspace */
-  ANALYTICS_EXPORT: {
-    limit: 10,
-    window: 3600, // 1 hour
-    keyPrefix: "ratelimit:analytics:export:",
-  },
-  /** Batch operations - URL inspection batch, 100 req/hour per workspace */
-  ANALYTICS_BATCH: {
-    limit: 100,
-    window: 3600, // 1 hour
-    keyPrefix: "ratelimit:analytics:batch:",
-  },
-  /** Expensive aggregations - portfolio metrics, 30 req/min per workspace */
-  ANALYTICS_EXPENSIVE: {
-    limit: 30,
-    window: 60,
-    keyPrefix: "ratelimit:analytics:expensive:",
-  },
-  /** Standard analytics - general analytics endpoints, 60 req/min per workspace */
-  ANALYTICS_STANDARD: {
-    limit: 60,
-    window: 60,
-    keyPrefix: "ratelimit:analytics:standard:",
-  },
 } as const;
 
 // --- Redis Key Helpers ---
@@ -610,40 +586,345 @@ export const serpAnalyzeRateLimiter = createEndpointRateLimiter(
  */
 export const adminRateLimiter = createEndpointRateLimiter(RATE_LIMITS.ADMIN);
 
+// --- Phase 96-Security: Scraping Admin Rate Limiters ---
+
 /**
- * Rate limiter for analytics export endpoints (CSV, Google Sheets).
- * 10 exports per hour per workspace.
- * Phase 96-security: Prevent export abuse and GSC/Sheets API exhaustion.
+ * Scraping admin rate limit configurations.
+ * Tiered limits based on operation severity.
  */
-export const analyticsExportRateLimiter = createEndpointRateLimiter(
-  RATE_LIMITS.ANALYTICS_EXPORT
+export const SCRAPING_ADMIN_RATE_LIMITS = {
+  /** Critical operations (emergency-stop, resume) - 2 req/min */
+  CRITICAL_OPS: {
+    limit: 2,
+    window: 60,
+    keyPrefix: "ratelimit:scraping:admin:critical:",
+  },
+  /** State change operations (migration advance/rollback) - 5 req/min */
+  STATE_CHANGE: {
+    limit: 5,
+    window: 60,
+    keyPrefix: "ratelimit:scraping:admin:state:",
+  },
+  /** Resource intensive operations (cache warm, domain reset) - 10 req/min */
+  RESOURCE_INTENSIVE: {
+    limit: 10,
+    window: 60,
+    keyPrefix: "ratelimit:scraping:admin:resource:",
+  },
+  /** General admin operations (metrics, status) - 30 req/min */
+  GENERAL_ADMIN: {
+    limit: 30,
+    window: 60,
+    keyPrefix: "ratelimit:scraping:admin:general:",
+  },
+  /** Circuit breaker operations - 5 req/min */
+  CIRCUIT_OPS: {
+    limit: 5,
+    window: 60,
+    keyPrefix: "ratelimit:scraping:admin:circuit:",
+  },
+} as const;
+
+/**
+ * Rate limiter for critical scraping operations.
+ * 2 requests per minute per IP.
+ * Phase 96-Security: Prevent DoS on emergency controls.
+ */
+export const scrapingCriticalOpsRateLimiter = createEndpointRateLimiter(
+  SCRAPING_ADMIN_RATE_LIMITS.CRITICAL_OPS
 );
 
 /**
- * Rate limiter for batch operations (URL inspection batch).
- * 100 batch operations per hour per workspace.
- * Phase 96-security: Prevent GSC API quota exhaustion.
+ * Rate limiter for state change operations.
+ * 5 requests per minute per IP.
+ * Phase 96-Security: Migration advance/rollback protection.
  */
-export const analyticsBatchRateLimiter = createEndpointRateLimiter(
-  RATE_LIMITS.ANALYTICS_BATCH
+export const scrapingStateChangeRateLimiter = createEndpointRateLimiter(
+  SCRAPING_ADMIN_RATE_LIMITS.STATE_CHANGE
 );
 
 /**
- * Rate limiter for expensive aggregation queries (portfolio metrics).
- * 30 requests per minute per workspace.
- * Phase 96-security: Prevent DoS via cross-client aggregations.
+ * Rate limiter for resource intensive operations.
+ * 10 requests per minute per IP.
+ * Phase 96-Security: Cache warming, domain reset protection.
  */
-export const analyticsExpensiveRateLimiter = createEndpointRateLimiter(
-  RATE_LIMITS.ANALYTICS_EXPENSIVE
+export const scrapingResourceIntensiveRateLimiter = createEndpointRateLimiter(
+  SCRAPING_ADMIN_RATE_LIMITS.RESOURCE_INTENSIVE
 );
+
+/**
+ * Rate limiter for general admin operations.
+ * 30 requests per minute per IP.
+ * Phase 96-Security: Read-only admin endpoints.
+ */
+export const scrapingGeneralAdminRateLimiter = createEndpointRateLimiter(
+  SCRAPING_ADMIN_RATE_LIMITS.GENERAL_ADMIN
+);
+
+/**
+ * Rate limiter for circuit breaker operations.
+ * 5 requests per minute per IP.
+ * Phase 96-Security: Circuit reset/open/close protection.
+ */
+export const scrapingCircuitOpsRateLimiter = createEndpointRateLimiter(
+  SCRAPING_ADMIN_RATE_LIMITS.CIRCUIT_OPS
+);
+
+// --- Express Middleware Wrappers ---
+
+/**
+ * Extract IP from Express request for rate limiting.
+ */
+function extractIpFromExpressRequest(req: {
+  ip?: string;
+  headers: { [key: string]: string | string[] | undefined };
+}): string {
+  // Try X-Forwarded-For header first (common for proxied requests)
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+    return ip.trim();
+  }
+  // Fall back to req.ip
+  return req.ip ?? "unknown";
+}
+
+/**
+ * Create Express middleware for rate limiting.
+ * Returns middleware that checks rate limits and returns 429 if exceeded.
+ *
+ * @param rateLimiter - Rate limiter function from createEndpointRateLimiter
+ * @param errorMessage - Custom error message for rate limit exceeded
+ * @returns Express middleware function
+ *
+ * @example
+ * ```typescript
+ * import { createExpressRateLimitMiddleware, scrapingCriticalOpsRateLimiter } from '../../../middleware/rate-limit';
+ *
+ * const criticalRateLimit = createExpressRateLimitMiddleware(
+ *   scrapingCriticalOpsRateLimiter,
+ *   'Too many critical operation requests'
+ * );
+ *
+ * router.post('/emergency-stop', criticalRateLimit, requireAdmin, handler);
+ * ```
+ */
+export function createExpressRateLimitMiddleware(
+  rateLimiter: (key: string) => Promise<RateLimitResult>,
+  errorMessage = "Too many requests"
+): (
+  req: { ip?: string; headers: { [key: string]: string | string[] | undefined } },
+  res: { status: (code: number) => { json: (body: unknown) => void }; set: (name: string, value: string) => void },
+  next: () => void
+) => Promise<void> {
+  return async (req, res, next): Promise<void> => {
+    const ip = extractIpFromExpressRequest(req);
+    const result = await rateLimiter(ip);
+
+    // Set rate limit headers
+    res.set("X-RateLimit-Limit", result.limit.toString());
+    res.set("X-RateLimit-Remaining", result.remaining.toString());
+
+    if (!result.allowed) {
+      res.set("Retry-After", (result.retryAfter ?? 60).toString());
+      res.set(
+        "X-RateLimit-Reset",
+        (Math.floor(Date.now() / 1000) + (result.retryAfter ?? 60)).toString()
+      );
+      res.status(429).json({
+        error: errorMessage,
+        message: `Rate limit exceeded. Please retry after ${result.retryAfter ?? 60} seconds.`,
+        retryAfter: result.retryAfter ?? 60,
+      });
+      return;
+    }
+
+    next();
+  };
+}
+
+// --- Pre-built Express Rate Limit Middleware ---
+
+/**
+ * Express middleware for critical scraping operations (2 req/min).
+ * Use for: emergency-stop, resume
+ */
+export const expressScrapingCriticalRateLimit = createExpressRateLimitMiddleware(
+  scrapingCriticalOpsRateLimiter,
+  "Too many critical operation requests"
+);
+
+/**
+ * Express middleware for state change operations (5 req/min).
+ * Use for: migration advance, rollback
+ */
+export const expressScrapingStateChangeRateLimit = createExpressRateLimitMiddleware(
+  scrapingStateChangeRateLimiter,
+  "Too many state change requests"
+);
+
+/**
+ * Express middleware for resource intensive operations (10 req/min).
+ * Use for: cache warm, domain reset, queue drain, cache invalidate
+ */
+export const expressScrapingResourceIntensiveRateLimit = createExpressRateLimitMiddleware(
+  scrapingResourceIntensiveRateLimiter,
+  "Too many resource-intensive requests"
+);
+
+/**
+ * Express middleware for general admin operations (30 req/min).
+ * Use for: read-only endpoints, metrics, status
+ */
+export const expressScrapingGeneralAdminRateLimit = createExpressRateLimitMiddleware(
+  scrapingGeneralAdminRateLimiter,
+  "Too many admin requests"
+);
+
+/**
+ * Express middleware for circuit breaker operations (5 req/min).
+ * Use for: circuit reset, open, close
+ */
+export const expressScrapingCircuitOpsRateLimit = createExpressRateLimitMiddleware(
+  scrapingCircuitOpsRateLimiter,
+  "Too many circuit breaker requests"
+);
+
+// --- Phase 96: Portal Rate Limiters ---
+
+/**
+ * Portal rate limit configurations.
+ * Keyed by clientId to give each client their own quota.
+ */
+export const PORTAL_RATE_LIMITS = {
+  /** Standard portal endpoints - 60 req/min per client */
+  STANDARD: {
+    limit: 60,
+    window: 60,
+    keyPrefix: "ratelimit:portal:standard:",
+  },
+  /** Expensive portal analytics operations - 30 req/min per client */
+  EXPENSIVE: {
+    limit: 30,
+    window: 60,
+    keyPrefix: "ratelimit:portal:expensive:",
+  },
+  /** Batch/export portal operations - 10 req/min per client */
+  BATCH: {
+    limit: 10,
+    window: 60,
+    keyPrefix: "ratelimit:portal:batch:",
+  },
+} as const;
+
+/**
+ * Rate limiter for standard portal endpoints.
+ * 60 requests per minute per client.
+ * Phase 96: Portal rate limiting by clientId.
+ */
+export const portalStandardRateLimiter = createEndpointRateLimiter(
+  PORTAL_RATE_LIMITS.STANDARD
+);
+
+/**
+ * Rate limiter for expensive portal analytics operations.
+ * 30 requests per minute per client.
+ * Phase 96: Portal analytics rate limiting (trends, cannibalization, striking distance).
+ */
+export const portalExpensiveRateLimiter = createEndpointRateLimiter(
+  PORTAL_RATE_LIMITS.EXPENSIVE
+);
+
+/**
+ * Rate limiter for portal batch/export operations.
+ * 10 requests per minute per client.
+ * Phase 96: Portal export and bulk operations.
+ */
+export const portalBatchRateLimiter = createEndpointRateLimiter(
+  PORTAL_RATE_LIMITS.BATCH
+);
+
+// --- Phase 96: Analytics Rate Limiters ---
+
+/**
+ * Analytics rate limit configurations.
+ */
+export const ANALYTICS_RATE_LIMITS = {
+  /** Standard analytics endpoints - 60 req/min per workspace */
+  STANDARD: {
+    limit: 60,
+    window: 60,
+    keyPrefix: "ratelimit:analytics:standard:",
+  },
+  /** Expensive analytics operations - 30 req/min per workspace */
+  EXPENSIVE: {
+    limit: 30,
+    window: 60,
+    keyPrefix: "ratelimit:analytics:expensive:",
+  },
+  /** Batch operations - 100 req/hour per workspace */
+  BATCH: {
+    limit: 100,
+    window: 3600,
+    keyPrefix: "ratelimit:analytics:batch:",
+  },
+  /** Export operations - 10 req/hour per workspace */
+  EXPORT: {
+    limit: 10,
+    window: 3600,
+    keyPrefix: "ratelimit:analytics:export:",
+  },
+  /** Sync trigger operations - 5 req/hour per workspace */
+  SYNC: {
+    limit: 5,
+    window: 3600,
+    keyPrefix: "ratelimit:analytics:sync:",
+  },
+} as const;
 
 /**
  * Rate limiter for standard analytics endpoints.
  * 60 requests per minute per workspace.
- * Phase 96-security: General analytics protection.
+ * Phase 96-03: Analytics rate limiting.
  */
 export const analyticsStandardRateLimiter = createEndpointRateLimiter(
-  RATE_LIMITS.ANALYTICS_STANDARD
+  ANALYTICS_RATE_LIMITS.STANDARD
+);
+
+/**
+ * Rate limiter for expensive analytics operations.
+ * 30 requests per minute per workspace.
+ * Phase 96-03: Trend detection, cannibalization analysis.
+ */
+export const analyticsExpensiveRateLimiter = createEndpointRateLimiter(
+  ANALYTICS_RATE_LIMITS.EXPENSIVE
+);
+
+/**
+ * Rate limiter for batch analytics operations.
+ * 100 requests per hour per workspace.
+ * Phase 96-04: Batch indexing requests.
+ */
+export const analyticsBatchRateLimiter = createEndpointRateLimiter(
+  ANALYTICS_RATE_LIMITS.BATCH
+);
+
+/**
+ * Rate limiter for export operations.
+ * 10 requests per hour per workspace.
+ * Phase 96-03: CSV/JSON data exports.
+ */
+export const analyticsExportRateLimiter = createEndpointRateLimiter(
+  ANALYTICS_RATE_LIMITS.EXPORT
+);
+
+/**
+ * Rate limiter for sync trigger operations.
+ * 5 requests per hour per workspace.
+ * Phase 96-security: Prevent GSC/GA4 API quota exhaustion.
+ */
+export const analyticsSyncRateLimiter = createEndpointRateLimiter(
+  ANALYTICS_RATE_LIMITS.SYNC
 );
 
 // --- Testing Utilities ---

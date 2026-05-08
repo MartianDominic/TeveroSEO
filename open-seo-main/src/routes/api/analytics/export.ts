@@ -3,13 +3,15 @@
  * Phase 96-05: POST /api/analytics/export/csv, /api/analytics/export/sheets
  *
  * Generates CSV downloads and Google Sheets from analytics data.
- * Rate limited: 10 exports per hour per workspace (96-security).
+ * Rate limited: 10 requests per hour per workspace (export operations).
+ * CSRF protected: POST requires valid CSRF token.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { db } from "@/db";
 import { getAnalyticsExportService } from "@/server/features/analytics/services/AnalyticsExportService";
 import { getClientVisibilityService } from "@/server/features/analytics/services/ClientVisibilityService";
+import { authenticateAnalyticsRequest } from "@/server/features/analytics/auth/analytics-auth";
 import { seoGscQueryAnalytics } from "@/db/gsc-analytics-schema";
 import { clients } from "@/db/client-schema";
 import { siteConnections } from "@/db/connection-schema";
@@ -18,7 +20,8 @@ import {
   analyticsExportRateLimiter,
   rateLimitExceededResponse,
   addRateLimitHeaders,
-} from "@/server/middleware";
+} from "@/server/middleware/rate-limit";
+import { csrfProtect } from "@/server/middleware/csrf";
 
 const exportSchema = z.object({
   clientId: z.string().uuid(),
@@ -58,17 +61,15 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
     }
 
     try {
-      const workspaceId = request.headers.get("X-Workspace-ID");
+      // CSRF protection for state-changing request
+      const csrfError = csrfProtect(request);
+      if (csrfError) return csrfError;
 
-      if (!workspaceId) {
-        return Response.json(
-          { success: false, error: "Workspace ID required" },
-          { status: 401 }
-        );
-      }
+      // Authenticate request and get verified workspace context
+      const auth = await authenticateAnalyticsRequest(request);
 
-      // Rate limit check: 10 exports per hour per workspace
-      const rateLimitResult = await analyticsExportRateLimiter(workspaceId);
+      // Rate limit check: 10 requests per hour per workspace (export operations)
+      const rateLimitResult = await analyticsExportRateLimiter(auth.workspaceId);
       if (!rateLimitResult.allowed) {
         return rateLimitExceededResponse(rateLimitResult);
       }
@@ -87,7 +88,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
 
       // Validate workspace access and export permission
       const visibilityService = await getClientVisibilityService();
-      const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, workspaceId);
+      const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, auth.workspaceId);
       if (!hasAccess) {
         return Response.json(
           { success: false, error: "ACCESS_DENIED" },
@@ -95,7 +96,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
         );
       }
 
-      const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, workspaceId);
+      const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, auth.workspaceId);
       if (!visibilityConfig.canExport) {
         return Response.json(
           { success: false, error: "EXPORT_NOT_ALLOWED", message: "Export permission not granted" },
@@ -196,14 +197,13 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
       // Return as downloadable file with rate limit headers
       const filename = `${clientData[0].name.replace(/\s+/g, "-")}-${type}-${startDate}-to-${endDate}.csv`;
 
-      const response = new Response(csv, {
+      const csvResponse = new Response(csv, {
         headers: {
           "Content-Type": "text/csv",
           "Content-Disposition": `attachment; filename="${filename}"`,
         },
       });
-
-      return addRateLimitHeaders(response, rateLimitResult);
+      return addRateLimitHeaders(csvResponse, rateLimitResult);
     } catch (error) {
       console.error("[export/csv] POST error:", error);
       return Response.json(
@@ -224,27 +224,26 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
     }
 
     try {
-      const workspaceId = request.headers.get("X-Workspace-ID");
+      // CSRF protection for state-changing request
+      const csrfError = csrfProtect(request);
+      if (csrfError) return csrfError;
+
+      // Authenticate request and get verified workspace context
+      const auth = await authenticateAnalyticsRequest(request);
+
       const oauthToken = request.headers.get("X-Google-OAuth-Token");
-
-      if (!workspaceId) {
-        return Response.json(
-          { success: false, error: "Workspace ID required" },
-          { status: 401 }
-        );
-      }
-
-      // Rate limit check: 10 exports per hour per workspace
-      const rateLimitResult = await analyticsExportRateLimiter(workspaceId);
-      if (!rateLimitResult.allowed) {
-        return rateLimitExceededResponse(rateLimitResult);
-      }
 
       if (!oauthToken) {
         return Response.json(
           { success: false, error: "Google OAuth token required", code: "OAUTH_REQUIRED" },
           { status: 401 }
         );
+      }
+
+      // Rate limit check: 10 requests per hour per workspace (export operations)
+      const rateLimitResult = await analyticsExportRateLimiter(auth.workspaceId);
+      if (!rateLimitResult.allowed) {
+        return rateLimitExceededResponse(rateLimitResult);
       }
 
       const body = await request.json();
@@ -261,7 +260,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
 
       // Validate workspace access and export permission
       const visibilityService = await getClientVisibilityService();
-      const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, workspaceId);
+      const hasAccess = await visibilityService.validateWorkspaceAccess(clientId, auth.workspaceId);
       if (!hasAccess) {
         return Response.json(
           { success: false, error: "ACCESS_DENIED" },
@@ -269,7 +268,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
         );
       }
 
-      const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, workspaceId);
+      const visibilityConfig = await visibilityService.getVisibilityConfig(clientId, auth.workspaceId);
       if (!visibilityConfig.canExport) {
         return Response.json(
           { success: false, error: "EXPORT_NOT_ALLOWED", message: "Export permission not granted" },
@@ -375,12 +374,11 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
         { visibilityConfig }
       );
 
-      const response = Response.json({
+      const sheetsResponse = Response.json({
         success: true,
         data: result,
       });
-
-      return addRateLimitHeaders(response, rateLimitResult);
+      return addRateLimitHeaders(sheetsResponse, rateLimitResult);
     } catch (error) {
       console.error("[export/sheets] POST error:", error);
       return Response.json(

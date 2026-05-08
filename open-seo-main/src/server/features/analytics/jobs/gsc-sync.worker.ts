@@ -2,16 +2,28 @@
  * GSC Sync Worker
  * Phase 96-01 Task 4: BullMQ worker processing GSC sync jobs
  *
+ * QUEUE-02 FIX: lockDuration set to 600000ms (10 minutes) for long-running GSC API calls
+ * DATA-05 FIX: Publishes cache invalidation events after sync completes
+ *
  * Worker configuration:
+ * - lockDuration: 600000 (10 min) - prevents job stalling during API pagination
  * - Concurrency: 1 (sequential site processing)
  * - Rate limiter: 50 req/min global
  * - Progress updates per site
+ * - Graceful shutdown with 30s timeout
+ * - Cache invalidation on sync completion
  */
 
 import { Worker, type Job } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import type { GscSyncJobData, GscSyncJobResult } from "./gsc-sync.job";
 import { createLogger } from "@/server/lib/logger";
+import { db } from "@/db";
+import { platformConnections } from "@/db/platform-connection-schema";
+import { siteConnections } from "@/db/connection-schema";
+import { eq, and, isNotNull } from "drizzle-orm";
+import { invalidateAfterGscSync } from "@/server/cache";
+import { getAnalyticsEventBus } from "../events/analytics-event-bus";
 
 const log = createLogger({ module: "gsc-sync-worker" });
 
@@ -60,6 +72,51 @@ export const gscSyncWorker = new Worker<GscSyncJobData, GscSyncJobResult>(
             rows: result.rowsInserted,
             durationMs: result.durationMs,
           });
+
+          // Emit sync completed event asynchronously (non-blocking)
+          const syncDate = new Date().toISOString().split("T")[0];
+          setImmediate(() => {
+            try {
+              const eventBus = getAnalyticsEventBus();
+              eventBus.emit('analytics:sync-completed', {
+                siteId: site.id,
+                recordCount: result.rowsInserted,
+                startDate: syncDate,
+                endDate: syncDate,
+                timestamp: new Date(),
+              });
+            } catch (eventError) {
+              log.warn("Failed to emit analytics:sync-completed event", {
+                siteId: site.id,
+                error: eventError instanceof Error ? eventError.message : String(eventError),
+              });
+            }
+          });
+
+          // DATA-05 FIX: Publish cache invalidation after successful sync
+          // Use clientId as workspace identifier for cache invalidation
+          try {
+            const siteConnection = await db
+              .select({ clientId: siteConnections.clientId })
+              .from(siteConnections)
+              .where(eq(siteConnections.id, site.id))
+              .limit(1);
+
+            if (siteConnection.length > 0 && siteConnection[0].clientId) {
+              // Use clientId as workspaceId for cache key consistency
+              await invalidateAfterGscSync(siteConnection[0].clientId, site.id);
+              log.debug("Cache invalidated after sync", {
+                siteId: site.id,
+                clientId: siteConnection[0].clientId,
+              });
+            }
+          } catch (cacheError) {
+            // Non-fatal: cache will expire naturally via TTL
+            log.warn("Failed to invalidate cache after sync", {
+              siteId: site.id,
+              error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+            });
+          }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           errors.push(`${site.id}: ${errorMsg}`);
@@ -92,6 +149,8 @@ export const gscSyncWorker = new Worker<GscSyncJobData, GscSyncJobResult>(
   },
   {
     connection: getSharedBullMQConnection("worker:gsc-sync"),
+    lockDuration: 600_000, // QUEUE-02 FIX: 10 min for long-running GSC API calls
+    maxStalledCount: 2,
     concurrency: 1, // Single worker for sequential processing
     limiter: {
       max: 50, // 50 requests
@@ -130,18 +189,61 @@ export function startGscSyncWorker(): void {
 
 /**
  * Stop the GSC sync worker gracefully.
+ * QUEUE-H05 FIX: Graceful shutdown with timeout
  */
 export async function stopGscSyncWorker(): Promise<void> {
-  await gscSyncWorker.close();
+  const SHUTDOWN_TIMEOUT_MS = 30_000;
+
+  const timeout = new Promise<"timeout">((resolve) =>
+    setTimeout(() => resolve("timeout"), SHUTDOWN_TIMEOUT_MS)
+  );
+  const closed = gscSyncWorker.close().then(() => "closed" as const);
+
+  const result = await Promise.race([closed, timeout]);
+  if (result === "timeout") {
+    log.error("GSC sync worker graceful shutdown timeout, forcing close", undefined, {
+      timeoutMs: SHUTDOWN_TIMEOUT_MS,
+    });
+    await gscSyncWorker.close(true);
+  }
+
   log.info("GSC sync worker stopped");
 }
 
 /**
  * Get all active sites with GSC credentials.
- * Stub implementation - will be replaced with actual query.
+ * Queries platformConnections for active Google Search Console connections
+ * that have valid OAuth tokens.
  */
 async function getActiveSitesWithGsc(): Promise<Array<{ id: string; siteUrl: string }>> {
-  // TODO: Query siteConnections table for sites with GSC platform
-  // and hasCredentials = true
-  return [];
+  try {
+    const connections = await db
+      .select({
+        id: platformConnections.id,
+        siteUrl: platformConnections.platformSiteUrl,
+      })
+      .from(platformConnections)
+      .where(
+        and(
+          eq(platformConnections.platform, "google_search_console"),
+          eq(platformConnections.status, "active"),
+          isNotNull(platformConnections.accessTokenEncrypted)
+        )
+      );
+
+    // Filter out any connections without a siteUrl (shouldn't happen, but be defensive)
+    const validConnections = connections.filter(
+      (conn): conn is { id: string; siteUrl: string } => conn.siteUrl !== null
+    );
+
+    log.info("Found active GSC connections", { count: validConnections.length });
+
+    return validConnections;
+  } catch (error) {
+    log.error(
+      "Failed to query GSC connections",
+      error instanceof Error ? error : new Error(String(error))
+    );
+    return [];
+  }
 }

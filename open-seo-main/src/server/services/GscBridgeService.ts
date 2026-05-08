@@ -19,18 +19,18 @@
 
 import { redis } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { ANALYTICS_CACHE_TTL_SECONDS } from "@/server/cache";
 
 const log = createLogger({ module: "gsc-bridge-service" });
 
-// Phase 91: Extended from 1h to 6h — GSC data has 2-3 day processing latency anyway
-const CACHE_TTL_SECONDS = 6 * 60 * 60;
+// Use shared analytics cache TTL for consistency across all analytics endpoints
+const CACHE_TTL_SECONDS = ANALYTICS_CACHE_TTL_SECONDS;
 
 // Rate limit: 100 calls per day per client
 const RATE_LIMIT_PER_DAY = 100;
 
 /**
  * Query parameters for GSC search analytics.
- * Phase 96-01: Added startRow for pagination support
  */
 export interface GscQuery {
   siteUrl: string;
@@ -38,12 +38,12 @@ export interface GscQuery {
   endDate: string;
   dimensions?: string[];
   rowLimit?: number;
-  startRow?: number; // Phase 96-01: Pagination support for 25K row extraction
+  /** Starting row for pagination (Phase 96-01) */
+  startRow?: number;
 }
 
 /**
  * Ranking data returned from GSC.
- * Phase 96-01: Added keys array for dimension mapping
  */
 export interface GscRankingData {
   query: string;
@@ -51,7 +51,8 @@ export interface GscRankingData {
   impressions: number;
   ctr: number;
   position: number;
-  keys?: string[]; // Phase 96-01: Raw dimension keys for pagination service
+  /** Raw dimension keys for multi-dimension queries (Phase 96-01) */
+  keys?: string[];
 }
 
 /**
@@ -125,7 +126,7 @@ export class GscBridgeService {
           end_date: query.endDate,
           dimensions: query.dimensions ?? ["query"],
           row_limit: query.rowLimit ?? 1000,
-          start_row: query.startRow ?? 0, // Phase 96-01: Pagination support
+          start_row: query.startRow ?? 0,
         }),
       });
 
@@ -141,8 +142,7 @@ export class GscBridgeService {
       const data = (await response.json()) as { rows?: GscApiRow[] };
       const rows: GscApiRow[] = data.rows ?? [];
 
-      // Transform to our format
-      // Phase 96-01: Include keys array for dimension mapping in pagination service
+      // Transform to our format, preserving keys for multi-dimension queries
       const rankings: GscRankingData[] = rows.map((row) => ({
         query: row.keys[0] ?? "",
         clicks: row.clicks,

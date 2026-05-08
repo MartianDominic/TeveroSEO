@@ -1,185 +1,215 @@
 /**
- * CannibalizationService
- * Phase 96-03: Keyword Cannibalization Detection
+ * CannibalizationService - Unified Keyword Cannibalization Detection
  *
- * Detects when multiple pages from the same site compete for the same keyword
- * in search results. This dilutes ranking potential and confuses search engines.
+ * Facade that orchestrates detection, scoring, and reporting modules.
+ * Maintains backward compatibility with existing API consumers.
  *
- * Detection criteria:
- * 1. Same keyword appears for 2+ different pages
- * 2. Both pages have significant impressions (configurable threshold)
- * 3. Position variance indicates Google uncertainty about which page to rank
- *
- * Severity levels:
- * - HIGH: >3 pages OR top 2 pages both in top 10
- * - MEDIUM: 2-3 pages with significant impressions
- * - LOW: 2 pages with one having minimal traffic
+ * @see CannibalizationDetector - Core detection logic
+ * @see CannibalizationScorer - Risk scoring algorithms
+ * @see CannibalizationReporter - Export and alert formatting
  */
 import { sql } from 'drizzle-orm';
 import { db, type DbClient } from '@/db';
+import type { CannibalizationSeverity } from '@/db/link-schema';
 import { format, subDays } from 'date-fns';
+import { createLogger } from '@/server/lib/logger';
+import { getAnalyticsEventBus } from '../events/analytics-event-bus';
+import { CannibalizationDetector, type DetectionOptions } from './CannibalizationDetector';
+import {
+  CannibalizationScorer,
+  type CannibalizingPage,
+  type CannibalizationIssue,
+  type ImpactEstimate,
+  type Recommendation,
+  type DetectionSummary,
+} from './CannibalizationScorer';
+import {
+  CannibalizationReporter,
+  type CannibalizationResult,
+  type SeverityBreakdown,
+  type CannibalizationFilters,
+} from './CannibalizationReporter';
 
-// CTR estimates by position for impact calculation
-const CTR_ESTIMATES: Record<number, number> = {
-  1: 0.2786, 2: 0.1538, 3: 0.1101, 4: 0.0804, 5: 0.0685,
-  6: 0.0573, 7: 0.0500, 8: 0.0447, 9: 0.0404, 10: 0.0372,
-  11: 0.0199, 12: 0.0168, 13: 0.0152, 14: 0.0140, 15: 0.0130,
-  16: 0.0120, 17: 0.0112, 18: 0.0105, 19: 0.0099, 20: 0.0093,
+const log = createLogger({ module: 'cannibalization-service' });
+
+// =============================================================================
+// Re-export Types for Backward Compatibility
+// =============================================================================
+
+export type {
+  CannibalizingPage,
+  CannibalizationIssue,
+  ImpactEstimate,
+  Recommendation,
+  DetectionSummary,
+  DetectionOptions,
+  CannibalizationResult,
+  SeverityBreakdown,
+  CannibalizationFilters,
 };
 
-// Expected CTR if consolidated to best-performing page
-const CONSOLIDATED_TARGET_CTR = 0.1101; // Position 3 CTR
-
 /**
- * Page data within a cannibalization issue
+ * Metadata about the detection run
  */
-export interface CannibalizingPage {
-  pageUrl: string;
-  clicks: number;
-  impressions: number;
-  avgPosition: number;
-  ctr: number;
+export interface DetectionMetadata {
+  mode: 'stored' | 'live';
+  dateRange: { start: string; end: string };
+  queryCount: number;
+  executionTimeMs: number;
 }
 
 /**
- * Result of cannibalization detection for a single query
+ * Full detection result
  */
-export interface CannibalizationResult {
-  query: string;
-  pages: CannibalizingPage[];
-  severity: 'high' | 'medium' | 'low';
-  impactEstimate: number; // Estimated lost clicks due to cannibalization
-  recommendation: string;
+export interface DetectionResult {
+  issues: CannibalizationIssue[];
+  summary: DetectionSummary;
+  metadata: DetectionMetadata;
 }
 
-/**
- * Options for cannibalization detection
- */
-export interface CannibalizationFilters {
-  startDate?: string;
-  endDate?: string;
-  minImpressions?: number;
-  limit?: number;
-}
-
-/**
- * Severity breakdown for a site
- */
-export interface SeverityBreakdown {
-  high: number;
-  medium: number;
-  low: number;
-  total: number;
-}
+// =============================================================================
+// CannibalizationService Class
+// =============================================================================
 
 export class CannibalizationService {
-  constructor(private db: DbClient) {}
+  private detector: CannibalizationDetector;
+  private scorer: CannibalizationScorer;
+  private reporter: CannibalizationReporter;
+
+  constructor(private database: DbClient) {
+    this.scorer = new CannibalizationScorer();
+    this.detector = new CannibalizationDetector(database, this.scorer);
+    this.reporter = new CannibalizationReporter();
+  }
+
+  // ===========================================================================
+  // Public API - Unified Methods
+  // ===========================================================================
 
   /**
-   * Detect keyword cannibalization for a site.
-   * Returns queries where multiple pages are competing.
+   * Unified detection entry point.
+   * Automatically chooses between stored and live detection based on options.
+   */
+  async detect(
+    siteId: string,
+    options: DetectionOptions = {}
+  ): Promise<DetectionResult> {
+    const startTime = Date.now();
+    const mode = options.mode ?? 'auto';
+
+    log.info('Starting cannibalization detection', { siteId, mode, options });
+
+    let issues: CannibalizationIssue[];
+    let actualMode: 'stored' | 'live';
+    let dateRange: { start: string; end: string };
+
+    if (mode === 'live') {
+      const result = await this.detector.detectLive(siteId, options);
+      issues = result.issues;
+      actualMode = 'live';
+      dateRange = result.dateRange;
+    } else if (mode === 'stored') {
+      const result = await this.detector.detectFromStoredData(siteId, options);
+      issues = result.issues;
+      actualMode = 'stored';
+      dateRange = result.dateRange;
+    } else {
+      // Auto mode: try stored first, fall back to live if no data
+      const storedResult = await this.detector.detectFromStoredData(siteId, options);
+      if (storedResult.issues.length > 0) {
+        issues = storedResult.issues;
+        actualMode = 'stored';
+        dateRange = storedResult.dateRange;
+      } else {
+        log.info('No stored data found, falling back to live detection', { siteId });
+        const liveResult = await this.detector.detectLive(siteId, options);
+        issues = liveResult.issues;
+        actualMode = 'live';
+        dateRange = liveResult.dateRange;
+      }
+    }
+
+    // Persist if requested and using live mode
+    if (options.persist !== false && actualMode === 'live') {
+      await this.detector.persistIssues(siteId, issues);
+    }
+
+    // Apply limit
+    const limit = options.limit ?? 100;
+    const limitedIssues = issues.slice(0, limit);
+
+    // Calculate summary
+    const summary = this.scorer.calculateSummary(limitedIssues);
+
+    const executionTimeMs = Date.now() - startTime;
+    log.info('Cannibalization detection complete', {
+      siteId,
+      mode: actualMode,
+      issueCount: limitedIssues.length,
+      executionTimeMs,
+    });
+
+    // Emit event asynchronously (non-blocking)
+    if (limitedIssues.length > 0) {
+      setImmediate(() => {
+        try {
+          const eventBus = getAnalyticsEventBus();
+          eventBus.emit('cannibalization:detected', {
+            siteId,
+            issueCount: limitedIssues.length,
+            severity: {
+              critical: summary.bySeverity.critical,
+              high: summary.bySeverity.high,
+              medium: summary.bySeverity.medium,
+              low: summary.bySeverity.low,
+            },
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          log.warn('Failed to emit cannibalization:detected event', {
+            siteId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      });
+    }
+
+    return {
+      issues: limitedIssues,
+      summary,
+      metadata: {
+        mode: actualMode,
+        dateRange,
+        queryCount: issues.length,
+        executionTimeMs,
+      },
+    };
+  }
+
+  // ===========================================================================
+  // Public API - Legacy Methods (Backward Compatibility)
+  // ===========================================================================
+
+  /**
+   * Legacy method: Detect keyword cannibalization for a site.
+   * @deprecated Use detect() for new implementations
    */
   async detectCannibalization(
     siteId: string,
     filters: CannibalizationFilters = {}
   ): Promise<CannibalizationResult[]> {
-    const {
-      startDate: filterStartDate,
-      endDate: filterEndDate,
-      minImpressions = 100,
-      limit = 100,
-    } = filters;
+    const result = await this.detect(siteId, {
+      ...filters,
+      mode: 'stored',
+      persist: false,
+    });
 
-    const endDate = filterEndDate ?? format(subDays(new Date(), 3), 'yyyy-MM-dd'); // GSC 3-day latency
-    const startDate = filterStartDate ?? format(subDays(new Date(), 30), 'yyyy-MM-dd'); // Default 30 days
-
-    // Query for queries with multiple pages
-    const result = await this.db.execute<{
-      query: string;
-      page_url: string;
-      total_clicks: number;
-      total_impressions: number;
-      avg_position: number;
-      avg_ctr: number;
-    }>(sql`
-      WITH query_pages AS (
-        SELECT
-          query,
-          page_url,
-          SUM(clicks) as total_clicks,
-          SUM(impressions) as total_impressions,
-          AVG(position) as avg_position,
-          CASE
-            WHEN SUM(impressions) > 0 THEN SUM(clicks)::float / SUM(impressions)
-            ELSE 0
-          END as avg_ctr
-        FROM seo_gsc_query_analytics
-        WHERE site_id = ${siteId}
-          AND query_time >= ${startDate}::date
-          AND query_time <= ${endDate}::date
-          AND query IS NOT NULL
-          AND page_url IS NOT NULL
-        GROUP BY query, page_url
-        HAVING SUM(impressions) >= ${minImpressions}
-      ),
-      cannibalized_queries AS (
-        SELECT query
-        FROM query_pages
-        GROUP BY query
-        HAVING COUNT(DISTINCT page_url) >= 2
-      )
-      SELECT
-        qp.query,
-        qp.page_url,
-        qp.total_clicks,
-        qp.total_impressions,
-        qp.avg_position,
-        qp.avg_ctr
-      FROM query_pages qp
-      INNER JOIN cannibalized_queries cq ON qp.query = cq.query
-      ORDER BY qp.query, qp.total_impressions DESC
-    `);
-
-    // Group results by query
-    const queryMap = new Map<string, CannibalizingPage[]>();
-
-    for (const row of result.rows) {
-      const pages = queryMap.get(row.query) ?? [];
-      pages.push({
-        pageUrl: row.page_url,
-        clicks: Number(row.total_clicks),
-        impressions: Number(row.total_impressions),
-        avgPosition: Number(row.avg_position),
-        ctr: Number(row.avg_ctr),
-      });
-      queryMap.set(row.query, pages);
-    }
-
-    // Transform to results with severity and recommendations
-    const results: CannibalizationResult[] = [];
-
-    for (const [query, pages] of queryMap) {
-      const severity = this.calculateSeverity(pages);
-      const impactEstimate = this.calculateImpact(pages);
-      const recommendation = this.generateRecommendation(pages, query);
-
-      results.push({
-        query,
-        pages,
-        severity,
-        impactEstimate,
-        recommendation,
-      });
-    }
-
-    // Sort by impact descending, then limit
-    results.sort((a, b) => b.impactEstimate - a.impactEstimate);
-
-    return results.slice(0, limit);
+    return result.issues.map(issue => this.reporter.toLegacyFormat(issue));
   }
 
   /**
-   * Get cannibalization details for a specific query.
+   * Legacy method: Get cannibalization details for a specific query.
+   * @deprecated Use detect() with query filter for new implementations
    */
   async getCannibalizationForQuery(
     siteId: string,
@@ -188,7 +218,7 @@ export class CannibalizationService {
     const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd');
     const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
-    const result = await this.db.execute<{
+    const result = await this.database.execute<{
       page_url: string;
       total_clicks: number;
       total_impressions: number;
@@ -216,150 +246,64 @@ export class CannibalizationService {
     `);
 
     if (result.rows.length < 2) {
-      return null; // No cannibalization - need at least 2 pages
+      return null;
     }
 
-    const pages: CannibalizingPage[] = result.rows.map(row => ({
-      pageUrl: row.page_url,
-      clicks: Number(row.total_clicks),
-      impressions: Number(row.total_impressions),
-      avgPosition: Number(row.avg_position),
-      ctr: Number(row.avg_ctr),
-    }));
+    const pages = this.detector.processPageRows(result.rows);
+    const issue = this.scorer.createIssue(query, pages);
 
-    return {
-      query,
-      pages,
-      severity: this.calculateSeverity(pages),
-      impactEstimate: this.calculateImpact(pages),
-      recommendation: this.generateRecommendation(pages, query),
-    };
+    return this.reporter.toLegacyFormat(issue);
   }
 
   /**
-   * Get severity breakdown for a site.
+   * Legacy method: Get severity breakdown for a site.
+   * @deprecated Use detect() summary for new implementations
    */
   async getSeverityBreakdown(siteId: string): Promise<SeverityBreakdown> {
-    const issues = await this.detectCannibalization(siteId, { limit: 1000 });
-
-    const breakdown: SeverityBreakdown = {
-      high: 0,
-      medium: 0,
-      low: 0,
-      total: issues.length,
-    };
-
-    for (const issue of issues) {
-      breakdown[issue.severity]++;
-    }
-
-    return breakdown;
+    const result = await this.detect(siteId, { limit: 1000, persist: false });
+    return this.reporter.toLegacySeverityBreakdown(result.issues);
   }
 
-  /**
-   * Calculate severity based on page count and positions.
-   *
-   * - HIGH: >3 pages OR top 2 pages both in top 10 positions
-   * - MEDIUM: 2-3 pages with significant impressions
-   * - LOW: 2 pages with one having minimal traffic (low impression share)
-   */
-  private calculateSeverity(pages: CannibalizingPage[]): 'high' | 'medium' | 'low' {
-    const pageCount = pages.length;
+  // ===========================================================================
+  // Public API - Monitoring & Storage Methods
+  // ===========================================================================
 
-    // HIGH: More than 3 pages competing
-    if (pageCount > 3) {
-      return 'high';
-    }
-
-    // Sort by position to get top performers
-    const sortedByPosition = [...pages].sort((a, b) => a.avgPosition - b.avgPosition);
-    const top2Positions = sortedByPosition.slice(0, 2).map(p => p.avgPosition);
-
-    // HIGH: Top 2 pages both in top 10 (direct SERP competition)
-    if (top2Positions.every(pos => pos <= 10)) {
-      return 'high';
-    }
-
-    // Calculate impression distribution
-    const totalImpressions = pages.reduce((sum, p) => sum + p.impressions, 0);
-    const maxImpressions = Math.max(...pages.map(p => p.impressions));
-    const maxShare = maxImpressions / totalImpressions;
-
-    // LOW: One page dominates (>80% of impressions)
-    if (maxShare > 0.8) {
-      return 'low';
-    }
-
-    // MEDIUM: Everything else (2-3 pages with distributed traffic)
-    return 'medium';
+  async isTargetCannibalized(targetUrl: string, clientId: string): Promise<boolean> {
+    return this.detector.isTargetCannibalized(targetUrl, clientId);
   }
 
-  /**
-   * Calculate estimated impact (lost clicks) due to cannibalization.
-   *
-   * Formula: Sum of (impressions * (target_ctr - current_ctr)) for secondary pages
-   * This estimates clicks lost by not consolidating to a single page.
-   */
-  private calculateImpact(pages: CannibalizingPage[]): number {
-    const totalImpressions = pages.reduce((sum, p) => sum + p.impressions, 0);
-    const totalClicks = pages.reduce((sum, p) => sum + p.clicks, 0);
-    const currentCtr = totalImpressions > 0 ? totalClicks / totalImpressions : 0;
-
-    // Estimate clicks if all impressions went to a consolidated page at position 3 CTR
-    const potentialClicks = totalImpressions * CONSOLIDATED_TARGET_CTR;
-    const lostClicks = Math.max(0, potentialClicks - totalClicks);
-
-    return Math.round(lostClicks);
+  async getStoredIssues(
+    clientId: string,
+    options: { includeResolved?: boolean; limit?: number } = {}
+  ): Promise<CannibalizationIssue[]> {
+    const results = await this.detector.getStoredIssues(clientId, options);
+    return results.map(row => this.reporter.fromStoredFormat(row));
   }
 
-  /**
-   * Generate actionable recommendation based on page data.
-   */
-  private generateRecommendation(pages: CannibalizingPage[], query: string): string {
-    // Sort by combined metric: clicks + (impressions * position weight)
-    const sortedPages = [...pages].sort((a, b) => {
-      const scoreA = a.clicks + (a.impressions * (1 / (a.avgPosition + 1)));
-      const scoreB = b.clicks + (b.impressions * (1 / (b.avgPosition + 1)));
-      return scoreB - scoreA;
-    });
+  async updateIssueStatus(
+    issueId: string,
+    status: 'acknowledged' | 'in_progress' | 'resolved' | 'ignored' | 'monitoring'
+  ): Promise<void> {
+    return this.detector.updateIssueStatus(issueId, status);
+  }
 
-    const primaryPage = sortedPages[0];
-    const secondaryPages = sortedPages.slice(1);
-    const pageCount = pages.length;
+  // ===========================================================================
+  // Delegate Access to Sub-modules (for advanced usage)
+  // ===========================================================================
 
-    // Extract page slugs for readability
-    const getPrimarySlug = (url: string): string => {
-      try {
-        const path = new URL(url).pathname;
-        return path.length > 40 ? path.substring(0, 40) + '...' : path;
-      } catch {
-        return url.substring(0, 40);
-      }
-    };
+  async detectFromStoredData(siteId: string, options: DetectionOptions = {}) {
+    return this.detector.detectFromStoredData(siteId, options);
+  }
 
-    const primarySlug = getPrimarySlug(primaryPage.pageUrl);
-
-    if (pageCount > 3) {
-      return `Consolidate content: ${pageCount} pages compete for "${query}". ` +
-        `Designate ${primarySlug} as the primary page and redirect or remove others.`;
-    }
-
-    if (secondaryPages.length === 1) {
-      const secondarySlug = getPrimarySlug(secondaryPages[0].pageUrl);
-      if (secondaryPages[0].avgPosition < primaryPage.avgPosition) {
-        return `Consider merging: ${secondarySlug} ranks higher but ${primarySlug} gets more traffic. ` +
-          `Evaluate which page better serves user intent for "${query}".`;
-      }
-      return `Add canonical tag from ${secondarySlug} to ${primarySlug}, ` +
-        `or 301 redirect if content overlap is high for "${query}".`;
-    }
-
-    return `Designate ${primarySlug} as the primary page for "${query}". ` +
-      `Add canonical tags or redirects from the ${secondaryPages.length} competing pages.`;
+  async detectLive(siteId: string, options: DetectionOptions = {}) {
+    return this.detector.detectLive(siteId, options);
   }
 }
 
-// Singleton instance
+// =============================================================================
+// Singleton & Convenience Functions
+// =============================================================================
+
 let instance: CannibalizationService | null = null;
 
 export function getCannibalizationService(): CannibalizationService {
@@ -369,7 +313,11 @@ export function getCannibalizationService(): CannibalizationService {
   return instance;
 }
 
-// Convenience functions
+export function resetCannibalizationService(): void {
+  instance = null;
+}
+
+// Legacy convenience functions
 export async function detectCannibalization(
   siteId: string,
   filters?: CannibalizationFilters
@@ -388,4 +336,19 @@ export async function getSeverityBreakdown(
   siteId: string
 ): Promise<SeverityBreakdown> {
   return getCannibalizationService().getSeverityBreakdown(siteId);
+}
+
+// New convenience functions
+export async function detectKeywordCannibalization(
+  clientId: string,
+  options?: DetectionOptions
+): Promise<DetectionResult> {
+  return getCannibalizationService().detect(clientId, options);
+}
+
+export async function isTargetCannibalized(
+  targetUrl: string,
+  clientId: string
+): Promise<boolean> {
+  return getCannibalizationService().isTargetCannibalized(targetUrl, clientId);
 }

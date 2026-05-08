@@ -27,15 +27,25 @@ export { AnnotationImportService, importGoogleUpdates } from "./services/Annotat
 export {
   CannibalizationService,
   getCannibalizationService,
+  resetCannibalizationService,
   detectCannibalization,
   getCannibalizationForQuery,
   getSeverityBreakdown,
+  detectKeywordCannibalization,
+  isTargetCannibalized,
 } from "./services/CannibalizationService";
 export type {
   CannibalizationResult,
   CannibalizingPage,
   CannibalizationFilters,
   SeverityBreakdown,
+  CannibalizationIssue,
+  DetectionOptions,
+  DetectionResult,
+  DetectionSummary,
+  DetectionMetadata,
+  ImpactEstimate,
+  Recommendation,
 } from "./services/CannibalizationService";
 
 // Repositories (96-01)
@@ -63,5 +73,64 @@ export { CtrBenchmarkService, getCtrBenchmarkService } from "./services/CtrBench
 export { PortfolioMetricsService, getPortfolioMetricsService } from "./services/PortfolioMetricsService";
 export { AnalyticsExportService, getAnalyticsExportService } from "./services/AnalyticsExportService";
 
+// Services (AI-Writer Integration)
+export {
+  ContentInsightsService,
+  getContentInsightsService,
+  resetContentInsightsService,
+} from "./services/ContentInsightsService";
+export type {
+  InsightType,
+  TrendingTopic,
+  ContentGap,
+  RelatedCluster,
+  ContentBriefInsights,
+  TopPerformingContent,
+  EngagementMetrics,
+  VoiceInsights,
+  StrikingKeywordInsight,
+  InternalLinkingOpportunity,
+  OptimizationInsights,
+  CannibalizationConflict,
+  PrePublishCheck,
+  ContentInsightsResponse,
+} from "./services/ContentInsightsService";
+
 // Middleware (96-05)
 export { visibilityMiddleware, applyVisibilityFilter } from "./middleware/visibilityMiddleware";
+
+// Bridge (P40: Analytics-Audit Integration)
+export {
+  AnalyticsAuditBridge,
+  getAnalyticsAuditBridge,
+  resetAnalyticsAuditBridge,
+} from "./bridge/AnalyticsAuditBridge";
+export type {
+  TopicCoverageAuditData,
+  ContentGapAuditData,
+  CannibalizationAuditData,
+  HubSpokeLinkingAuditData,
+  ClusterSizeAuditData,
+  AuditRecommendation,
+  AnalyticsAuditContext,
+} from "./bridge/types";
+
+// Events (P96: Decoupled Service Communication)
+export {
+  AnalyticsEventBus,
+  getAnalyticsEventBus,
+  resetAnalyticsEventBus,
+  type AnalyticsEvent,
+  type AnalyticsEventType,
+  type AnalyticsEventPayload,
+  type AnalyticsEventHandler,
+  type CannibalizationDetectedEvent,
+  type TrendsAnalyzedEvent,
+  type ClusterMetricsUpdatedEvent,
+  type ContentGroupChangedEvent,
+  type AnalyticsSyncCompletedEvent,
+} from "./events";
+export {
+  initAnalyticsEventConsumers,
+  shutdownAnalyticsEventConsumers,
+} from "./events";
