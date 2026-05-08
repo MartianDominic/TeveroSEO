@@ -1,11 +1,13 @@
 /**
  * GSC Sync Job Queue
  * Phase 96-01 Task 4: BullMQ queue for GSC sync orchestration
+ * Phase 96-Queue: Enhanced with rate limiting and DLQ integration
  *
  * Creates queue with:
- * - 50 req/min global rate limiting
+ * - 50 req/min global rate limiting (respects GSC API limits)
  * - Daily 3 AM UTC repeatable job
  * - Exponential backoff on failures (3 attempts)
+ * - DLQ integration for failed jobs
  */
 
 import { Queue } from "bullmq";
@@ -30,7 +32,20 @@ export interface GscSyncJobResult {
 }
 
 /**
+ * GSC API rate limit configuration.
+ * Google Search Console API allows 1200 queries/min per project,
+ * but we use a conservative 50/min to leave headroom for other services.
+ */
+export const GSC_RATE_LIMIT = {
+  max: 50, // Maximum requests per duration
+  duration: 60000, // Duration in ms (1 minute)
+} as const;
+
+/**
  * GSC sync queue with rate limiting and retry configuration.
+ *
+ * Rate limiting is enforced at the worker level (see gsc-sync.worker.ts),
+ * but we define the constants here for consistency.
  */
 export const gscSyncQueue = new Queue<GscSyncJobData, GscSyncJobResult>("gsc-sync", {
   connection: getSharedBullMQConnection("queue:gsc-sync"),

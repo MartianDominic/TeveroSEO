@@ -3,12 +3,18 @@
  * Phase 96-02: GET /api/analytics/master
  *
  * Returns aggregated metrics for all sites in workspace with tag filtering and comparison.
+ * Rate limited: 60 requests per minute per workspace (standard analytics).
  */
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
 import { db } from '@/db';
 import { getMasterDashboardService } from '@/server/features/analytics/services/MasterDashboardService';
 import { SiteTagsRepository } from '@/server/features/analytics/repositories/SiteTagsRepository';
+import {
+  analyticsStandardRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from '@/server/middleware';
 
 const querySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
@@ -49,6 +55,12 @@ export const Route = (createFileRoute as any)('/api/analytics/master')({
         );
       }
 
+      // Rate limit check: 60 requests per minute per workspace (standard analytics)
+      const rateLimitResult = await analyticsStandardRateLimiter(workspaceId);
+      if (!rateLimitResult.allowed) {
+        return rateLimitExceededResponse(rateLimitResult);
+      }
+
       // Build filters
       const filters = {
         dateRange: {
@@ -66,7 +78,8 @@ export const Route = (createFileRoute as any)('/api/analytics/master')({
 
       const data = await dashboardService.getAggregatedMetrics(workspaceId, filters);
 
-      return Response.json({ success: true, data });
+      const response = Response.json({ success: true, data });
+      return addRateLimitHeaders(response, rateLimitResult);
     } catch (error) {
       console.error('Master dashboard error:', error);
       return Response.json(

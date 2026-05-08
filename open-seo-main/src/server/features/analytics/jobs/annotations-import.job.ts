@@ -1,8 +1,10 @@
 /**
  * Annotations Import BullMQ Job
  * Phase 96-03: Daily Google algorithm update import
+ * Phase 96-Queue: Enhanced with DLQ integration and event logging
  *
  * Runs daily at 4 AM UTC for all active workspaces.
+ * When used with analytics-orchestrator, runs after GSC sync completes.
  */
 import { Queue, Worker, type Job } from 'bullmq';
 import { getSharedBullMQConnection } from '@/server/lib/redis';
@@ -11,11 +13,11 @@ import { createLogger } from '@/server/lib/logger';
 
 const log = createLogger({ module: 'annotations-import-job' });
 
-interface AnnotationsImportJobData {
+export interface AnnotationsImportJobData {
   workspaceId: string;
 }
 
-interface AnnotationsImportJobResult {
+export interface AnnotationsImportJobResult {
   imported: number;
   skipped: number;
 }

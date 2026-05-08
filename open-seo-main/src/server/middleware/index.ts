@@ -108,6 +108,12 @@ export {
   // Admin rate limiter (72-03)
   adminRateLimiter,
 
+  // Analytics rate limiters (96-security)
+  analyticsExportRateLimiter,
+  analyticsBatchRateLimiter,
+  analyticsExpensiveRateLimiter,
+  analyticsStandardRateLimiter,
+
   // Testing utilities
   resetRateLimit,
   getRateLimitStatus,

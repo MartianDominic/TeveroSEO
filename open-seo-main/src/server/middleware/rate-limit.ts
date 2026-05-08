@@ -147,6 +147,30 @@ export const RATE_LIMITS = {
     window: 60,
     keyPrefix: "ratelimit:admin:",
   },
+  /** Analytics export - CSV, Google Sheets, 10 req/hour per workspace */
+  ANALYTICS_EXPORT: {
+    limit: 10,
+    window: 3600, // 1 hour
+    keyPrefix: "ratelimit:analytics:export:",
+  },
+  /** Batch operations - URL inspection batch, 100 req/hour per workspace */
+  ANALYTICS_BATCH: {
+    limit: 100,
+    window: 3600, // 1 hour
+    keyPrefix: "ratelimit:analytics:batch:",
+  },
+  /** Expensive aggregations - portfolio metrics, 30 req/min per workspace */
+  ANALYTICS_EXPENSIVE: {
+    limit: 30,
+    window: 60,
+    keyPrefix: "ratelimit:analytics:expensive:",
+  },
+  /** Standard analytics - general analytics endpoints, 60 req/min per workspace */
+  ANALYTICS_STANDARD: {
+    limit: 60,
+    window: 60,
+    keyPrefix: "ratelimit:analytics:standard:",
+  },
 } as const;
 
 // --- Redis Key Helpers ---
@@ -585,6 +609,42 @@ export const serpAnalyzeRateLimiter = createEndpointRateLimiter(
  * Phase 72-03: SaaS Readiness - Admin endpoint protection.
  */
 export const adminRateLimiter = createEndpointRateLimiter(RATE_LIMITS.ADMIN);
+
+/**
+ * Rate limiter for analytics export endpoints (CSV, Google Sheets).
+ * 10 exports per hour per workspace.
+ * Phase 96-security: Prevent export abuse and GSC/Sheets API exhaustion.
+ */
+export const analyticsExportRateLimiter = createEndpointRateLimiter(
+  RATE_LIMITS.ANALYTICS_EXPORT
+);
+
+/**
+ * Rate limiter for batch operations (URL inspection batch).
+ * 100 batch operations per hour per workspace.
+ * Phase 96-security: Prevent GSC API quota exhaustion.
+ */
+export const analyticsBatchRateLimiter = createEndpointRateLimiter(
+  RATE_LIMITS.ANALYTICS_BATCH
+);
+
+/**
+ * Rate limiter for expensive aggregation queries (portfolio metrics).
+ * 30 requests per minute per workspace.
+ * Phase 96-security: Prevent DoS via cross-client aggregations.
+ */
+export const analyticsExpensiveRateLimiter = createEndpointRateLimiter(
+  RATE_LIMITS.ANALYTICS_EXPENSIVE
+);
+
+/**
+ * Rate limiter for standard analytics endpoints.
+ * 60 requests per minute per workspace.
+ * Phase 96-security: General analytics protection.
+ */
+export const analyticsStandardRateLimiter = createEndpointRateLimiter(
+  RATE_LIMITS.ANALYTICS_STANDARD
+);
 
 // --- Testing Utilities ---
 
