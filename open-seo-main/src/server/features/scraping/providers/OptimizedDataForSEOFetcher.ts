@@ -40,6 +40,8 @@ import {
   shouldEscalateTier,
 } from "./DfsErrorHandler";
 import { dataForSeoRateLimiter } from "@/server/lib/dataforseo";
+import { getDfsCostTracker, extractDomainFromUrl, type DfsCostTracker } from "./DfsCostTracker";
+import type { DbClient } from "@/db";
 
 // =============================================================================
 // Constants
@@ -140,7 +142,7 @@ export class OptimizedDataForSEOFetcher {
   private readonly batcher: DataForSEOBatcher;
   private readonly circuitBreaker = getDfsCircuitBreaker();
   private readonly defaultTimeout: number;
-  private readonly costRecords: CostRecord[] = [];
+  private costTracker: DfsCostTracker | null = null;
 
   constructor(options: {
     apiKey?: string;
@@ -148,6 +150,7 @@ export class OptimizedDataForSEOFetcher {
     batchSize?: number;
     flushTimeoutMs?: number;
     webhookBaseUrl?: string;
+    db?: DbClient;
   } = {}) {
     this.apiKey = options.apiKey ?? process.env.DATAFORSEO_API_KEY ?? "";
     this.defaultTimeout = options.timeoutMs ?? 60000;
@@ -163,6 +166,19 @@ export class OptimizedDataForSEOFetcher {
       flushTimeoutMs: options.flushTimeoutMs,
       webhookBaseUrl: options.webhookBaseUrl,
     });
+
+    // Initialize cost tracker if database connection provided
+    if (options.db) {
+      this.costTracker = getDfsCostTracker(options.db);
+    }
+  }
+
+  /**
+   * Set the database connection for cost tracking.
+   * Call this after construction if db wasn't provided in constructor.
+   */
+  setDatabase(db: DbClient): void {
+    this.costTracker = getDfsCostTracker(db);
   }
 
   /**
@@ -363,62 +379,31 @@ export class OptimizedDataForSEOFetcher {
 
   /**
    * Get current usage statistics.
+   * Queries from DfsCostTracker (database) if available.
    */
   async getUsageStats(): Promise<DfsUsageStats> {
-    // This would normally query the database
-    // For now, return from in-memory records
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const todayRecords = this.costRecords.filter((r) => r.timestamp >= todayStart);
-    const monthRecords = this.costRecords.filter((r) => r.timestamp >= monthStart);
-
-    const tierDistribution = {
-      basic: { cost: 0, count: 0 },
-      js: { cost: 0, count: 0 },
-      browser: { cost: 0, count: 0 },
-    };
-
-    const queueDistribution = {
-      standard: { cost: 0, count: 0 },
-      live: { cost: 0, count: 0 },
-    };
-
-    for (const record of monthRecords) {
-      tierDistribution[record.mode].cost += record.cost;
-      tierDistribution[record.mode].count += 1;
-
-      if (record.usedStandardQueue) {
-        queueDistribution.standard.cost += record.cost;
-        queueDistribution.standard.count += 1;
-      } else {
-        queueDistribution.live.cost += record.cost;
-        queueDistribution.live.count += 1;
-      }
+    // Query from DfsCostTracker if available (persistent database storage)
+    if (this.costTracker) {
+      return this.costTracker.getUsageStats();
     }
 
-    const todaySpend = todayRecords.reduce((sum, r) => sum + r.cost, 0);
-    const monthSpend = monthRecords.reduce((sum, r) => sum + r.cost, 0);
-
-    // Calculate savings from Standard Queue
-    let savingsFromStandardQueue = 0;
-    for (const record of monthRecords) {
-      if (record.usedStandardQueue) {
-        const liveEquivalent = DFS_LIVE_COSTS[record.mode];
-        savingsFromStandardQueue += liveEquivalent - record.cost;
-      }
-    }
-
+    // Fallback: return empty stats if no cost tracker
     return {
-      todaySpend,
-      monthSpend,
-      requestsToday: todayRecords.length,
-      requestsMonth: monthRecords.length,
-      averageCostPerRequest: monthRecords.length > 0 ? monthSpend / monthRecords.length : 0,
-      tierDistribution,
-      queueDistribution,
-      savingsFromStandardQueue,
+      todaySpend: 0,
+      monthSpend: 0,
+      requestsToday: 0,
+      requestsMonth: 0,
+      averageCostPerRequest: 0,
+      tierDistribution: {
+        basic: { cost: 0, count: 0 },
+        js: { cost: 0, count: 0 },
+        browser: { cost: 0, count: 0 },
+      },
+      queueDistribution: {
+        standard: { cost: 0, count: 0 },
+        live: { cost: 0, count: 0 },
+      },
+      savingsFromStandardQueue: 0,
     };
   }
 
@@ -513,13 +498,19 @@ export class OptimizedDataForSEOFetcher {
       parsedData = mapDfsResultToParsedData(result as import("./DataForSEOFetcher.types").DfsOnPageResultItem);
     }
 
-    // Record cost
-    this.recordCost({
+    // Record cost to persistent storage (fire-and-forget)
+    this.recordCostToTracker({
       url,
       mode,
       cost,
       usedStandardQueue: false,
       timestamp: new Date(),
+      success: true,
+      statusCode: result.status_code,
+      responseSizeBytes: Buffer.byteLength(html, "utf8"),
+      responseTimeMs: latencyMs,
+    }).catch(() => {
+      // Silently ignore - don't let cost tracking affect scraping
     });
 
     return {
@@ -579,14 +570,49 @@ export class OptimizedDataForSEOFetcher {
   }
 
   /**
-   * Record a cost entry.
+   * Record a cost entry to DfsCostTracker (persistent database storage).
+   * Falls back to no-op if cost tracker not initialized.
    */
-  private recordCost(record: CostRecord): void {
-    this.costRecords.push(record);
+  private async recordCostToTracker(record: CostRecord & {
+    clientId?: string;
+    workspaceId?: string;
+    jobId?: string;
+    taskId?: string;
+    success?: boolean;
+    statusCode?: number;
+    responseSizeBytes?: number;
+    responseTimeMs?: number;
+    errorMessage?: string;
+  }): Promise<void> {
+    if (!this.costTracker) {
+      // Cost tracker not initialized - silently skip
+      // This allows the fetcher to work without database connection
+      return;
+    }
 
-    // Keep only last 10000 records in memory
-    if (this.costRecords.length > 10000) {
-      this.costRecords.splice(0, this.costRecords.length - 10000);
+    try {
+      await this.costTracker.recordCost({
+        url: record.url,
+        domain: extractDomainFromUrl(record.url),
+        mode: record.mode,
+        usedStandardQueue: record.usedStandardQueue,
+        estimatedCost: record.cost,
+        actualCost: record.cost,
+        success: record.success ?? true,
+        statusCode: record.statusCode,
+        responseSizeBytes: record.responseSizeBytes,
+        responseTimeMs: record.responseTimeMs,
+        clientId: record.clientId,
+        workspaceId: record.workspaceId,
+        jobId: record.jobId,
+        taskId: record.taskId,
+        errorMessage: record.errorMessage,
+      });
+    } catch (error) {
+      // Fire-and-forget: don't let cost tracking failures affect scraping
+      console.warn(
+        `[OptimizedDataForSEOFetcher] Failed to record cost: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -616,7 +642,7 @@ export class OptimizedDataForSEOFetcher {
 }
 
 // =============================================================================
-// Cost Record Type
+// Cost Record Type (for internal use with recordCostToTracker)
 // =============================================================================
 
 interface CostRecord {
@@ -625,6 +651,16 @@ interface CostRecord {
   cost: number;
   usedStandardQueue: boolean;
   timestamp: Date;
+  // Optional fields for enhanced tracking
+  clientId?: string;
+  workspaceId?: string;
+  jobId?: string;
+  taskId?: string;
+  success?: boolean;
+  statusCode?: number;
+  responseSizeBytes?: number;
+  responseTimeMs?: number;
+  errorMessage?: string;
 }
 
 // =============================================================================
@@ -641,9 +677,13 @@ export function getOptimizedDataForSEOFetcher(options?: {
   batchSize?: number;
   flushTimeoutMs?: number;
   webhookBaseUrl?: string;
+  db?: DbClient;
 }): OptimizedDataForSEOFetcher {
   if (!_optimizedFetcher) {
     _optimizedFetcher = new OptimizedDataForSEOFetcher(options);
+  } else if (options?.db && !_optimizedFetcher['costTracker']) {
+    // If singleton exists but doesn't have cost tracker, set the database
+    _optimizedFetcher.setDatabase(options.db);
   }
   return _optimizedFetcher;
 }
