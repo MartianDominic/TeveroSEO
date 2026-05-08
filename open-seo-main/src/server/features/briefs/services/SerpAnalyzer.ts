@@ -111,13 +111,16 @@ export function calculateMetaLengths(items: SerpLiveItem[]): {
  * @param mappingId - Keyword mapping ID for cache key
  * @param keyword - Target keyword
  * @param locationCode - DataForSEO location code (default: 2840 = United States)
+ * @param workspaceId - Workspace ID for cost attribution
+ * @param correlationId - Correlation ID for request tracing (propagated to downstream calls)
  */
 export async function analyzeSerpForKeyword(
   clientId: string,
   mappingId: string,
   keyword: string,
   locationCode: number = 2840,
-  workspaceId?: string
+  workspaceId?: string,
+  correlationId?: string
 ): Promise<SerpAnalysisData> {
   const cacheKey = buildSerpCacheKey(clientId, mappingId, keyword);
 
@@ -149,6 +152,7 @@ export async function analyzeSerpForKeyword(
         clientId,
         workspaceId,
         jobId: mappingId,
+        correlationId,
       })
       .catch((err) => {
         log.warn("Failed to record DFS cost for SERP API", { error: err });
@@ -169,6 +173,7 @@ export async function analyzeSerpForKeyword(
         clientId,
         workspaceId,
         jobId: mappingId,
+        correlationId,
       })
       .catch((err) => {
         log.warn("Failed to record DFS cost for SERP API failure", { error: err });
@@ -184,8 +189,12 @@ export async function analyzeSerpForKeyword(
     .slice(0, 5)
     .map((item) => item.url as string);
 
-  // Analyze competitor content (H2s and word counts)
-  const contentAnalysis = await analyzeSerpContent(organicUrls);
+  // Analyze competitor content (H2s and word counts) with correlation ID propagation
+  const contentAnalysis = await analyzeSerpContent(organicUrls, {
+    clientId,
+    workspaceId,
+    correlationId,
+  });
 
   // Extract patterns
   const analysis: SerpAnalysisData = {
