@@ -241,7 +241,7 @@ export {
 } from "./workers";
 
 // =============================================================================
-// Monitoring (Plan 95-03)
+// Monitoring (Plan 95-03, 95-16)
 // =============================================================================
 
 export {
@@ -262,7 +262,55 @@ export {
   type ProcessingRateStats,
   type GlobalProcessingStats,
   type MetricsSnapshot,
+  // Metrics collector (Plan 95-16)
+  MetricsCollector,
+  getMetricsCollector,
+  resetMetricsCollector,
+  withTiming,
+  createTimer,
+  recordScrapeRequest,
+  recordCircuitState,
+  recordDfsBudgetUsage,
 } from "./monitoring";
+
+// =============================================================================
+// Structured Logging (Plan 95-16)
+// =============================================================================
+
+export {
+  // Main logger
+  logger,
+  // Component loggers
+  fetcherLogger,
+  cacheLogger,
+  queueLogger,
+  costLogger,
+  domainLogger,
+  alertLogger,
+  migrationLogger,
+  circuitLogger,
+  // Correlation ID utilities
+  generateCorrelationId,
+  getCorrelationId,
+  getRequestContext,
+  withCorrelationId,
+  withRequestContext,
+  withRequestContextAsync,
+  // Middleware
+  correlationMiddleware,
+  // Job context
+  createJobContext,
+  withJobContext,
+  // Logging helpers
+  logScrapeStart,
+  logScrapeComplete,
+  logScrapeError,
+  logTierEscalation,
+  logCacheOperation,
+  logCircuitStateChange,
+  logCostRecord,
+  logQueueOperation,
+} from "./logging";
 
 // =============================================================================
 // Interfaces (Plan 95-03)

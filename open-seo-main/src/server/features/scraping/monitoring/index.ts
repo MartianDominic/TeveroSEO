@@ -1,6 +1,6 @@
 /**
  * Monitoring Module Exports.
- * Phase 95: Unified Scraping Infrastructure - Plan 03 & 05
+ * Phase 95: Unified Scraping Infrastructure - Plan 03, 05, 16
  */
 
 // =============================================================================
@@ -8,6 +8,21 @@
 // =============================================================================
 
 export * from "./alerts.config";
+
+// =============================================================================
+// Metrics Collector (Plan 95-16)
+// =============================================================================
+
+export {
+  MetricsCollector,
+  getMetricsCollector,
+  resetMetricsCollector,
+  withTiming,
+  createTimer,
+  recordScrapeRequest,
+  recordCircuitState,
+  recordDfsBudgetUsage,
+} from "./MetricsCollector";
 
 // =============================================================================
 // Trackers (Plan 95-03)
