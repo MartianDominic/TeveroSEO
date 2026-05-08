@@ -66,6 +66,8 @@ export class DfsCostTracker {
     workspaceId?: string;
     jobId?: string;
     taskId?: string;
+    /** Correlation ID for request tracing (used in logs, not stored in DB) */
+    correlationId?: string;
   }): Promise<number> {
     const circuitBreaker = getDatabaseCircuitBreaker();
 
@@ -97,12 +99,12 @@ export class DfsCostTracker {
       }, -1);
 
       if (result === -1) {
-        logger.debug("recordCost skipped - circuit open", { url: record.url });
+        logger.debug({ url: record.url, correlationId: record.correlationId }, "recordCost skipped - circuit open");
       }
 
       return result;
     } catch (error) {
-      logger.error("recordCost error", { url: record.url, error: error instanceof Error ? error.message : String(error) });
+      logger.error({ url: record.url, correlationId: record.correlationId, error: error instanceof Error ? error.message : String(error) }, "recordCost error");
       return -1;
     }
   }
@@ -131,6 +133,8 @@ export class DfsCostTracker {
       workspaceId?: string;
       jobId?: string;
       taskId?: string;
+      /** Correlation ID for request tracing (used in logs, not stored in DB) */
+      correlationId?: string;
     }>
   ): Promise<number[]> {
     if (records.length === 0) return [];
