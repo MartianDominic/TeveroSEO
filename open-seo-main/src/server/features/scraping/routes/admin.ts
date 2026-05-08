@@ -1,12 +1,17 @@
 /**
  * Admin Dashboard Routes
  * Phase 95-13: E2E Testing & Migration Rollout
+ * Phase 95-14: Security & Authentication
  *
  * Provides admin endpoints for:
  * - Migration status and control
  * - Cache warming operations
  * - Domain learning feedback monitoring
  * - Operational controls
+ *
+ * Security:
+ * - All routes require SCRAPING_ADMIN_API_KEY via X-Admin-API-Key header
+ * - All actions are audit logged
  */
 
 // @ts-expect-error - express may not be installed yet
@@ -17,6 +22,7 @@ import { domainLearningService } from '../DomainLearningService';
 import type { CacheWarmer, WarmingResult, WarmingProgress } from '../cache/CacheWarmer';
 import type { DomainFeedbackService } from '../DomainFeedback';
 import type { ScrapingFeature, MigrationState } from '../config';
+import { requireAdminAuth, type AdminRequest } from '../middleware/adminAuth';
 
 // =============================================================================
 // Types
@@ -128,6 +134,12 @@ export interface AdminRouteDependencies {
 export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   const router = Router();
   const { scrapingService, migrationRollout, cacheWarmer, feedbackService } = deps;
+
+  // ===========================================================================
+  // Authentication - All admin routes require API key
+  // Phase 95-14: Security & Authentication
+  // ===========================================================================
+  router.use(requireAdminAuth);
 
   // ===========================================================================
   // Migration Status Endpoints

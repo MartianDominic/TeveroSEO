@@ -1,6 +1,17 @@
+/**
+ * Health and Monitoring Routes
+ * Phase 95-11: Health & Metrics
+ * Phase 95-14: Security & Authentication
+ *
+ * Provides health check and monitoring endpoints:
+ * - GET endpoints: Public (monitoring access)
+ * - POST endpoints: Require admin authentication
+ */
+
 // @ts-expect-error - express may not be installed yet
 import { Router, type Request, type Response } from 'express';
 import type { ScrapingService, HealthCheckResult } from '../ScrapingService';
+import { requireAdminAuth } from '../middleware/adminAuth';
 
 export interface StatusResult {
   health: HealthCheckResult;
@@ -203,8 +214,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Reset circuit breaker (admin only)
-  router.post('/health/circuits/:tier/reset', async (req: Request, res: Response) => {
+  // Reset circuit breaker (admin only - requires authentication)
+  router.post('/health/circuits/:tier/reset', requireAdminAuth, async (req: Request, res: Response) => {
     const { tier } = req.params;
 
     try {
@@ -220,8 +231,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Manual circuit control (protected by requireAdmin middleware)
-  router.post('/circuits/:tier/close', async (req: Request, res: Response) => {
+  // Manual circuit control (requires authentication)
+  router.post('/circuits/:tier/close', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       scrapingService.forceCloseCircuit(req.params.tier);
       res.json({ success: true });
@@ -233,7 +244,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/circuits/:tier/open', async (req: Request, res: Response) => {
+  router.post('/circuits/:tier/open', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       scrapingService.forceOpenCircuit(req.params.tier);
       res.json({ success: true });
@@ -275,7 +286,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/queue/drain', async (req: Request, res: Response) => {
+  router.post('/queue/drain', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const { older_than } = req.query;
       const count = await scrapingService.drainQueue(
@@ -301,7 +312,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/warm', async (req: Request, res: Response) => {
+  router.post('/cache/warm', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const { urls } = req.body;
       if (!Array.isArray(urls)) {
@@ -318,7 +329,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/invalidate', async (req: Request, res: Response) => {
+  router.post('/cache/invalidate', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const { pattern } = req.body;
       if (!pattern || typeof pattern !== 'string') {
@@ -334,8 +345,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Emergency controls
-  router.post('/emergency-stop', async (req: Request, res: Response) => {
+  // Emergency controls (require authentication)
+  router.post('/emergency-stop', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       await scrapingService.emergencyStop();
       res.json({ success: true, message: 'All scraping stopped' });
@@ -347,7 +358,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/resume', async (req: Request, res: Response) => {
+  router.post('/resume', requireAdminAuth, async (req: Request, res: Response) => {
     try {
       await scrapingService.resume();
       res.json({ success: true, message: 'Scraping resumed' });
