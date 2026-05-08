@@ -20,6 +20,7 @@ import {
 } from "@/db/dfs-cost-tracking-schema";
 import type { DfsBudgetStatus } from "./DataForSEOFetcher.types";
 import { Redis } from "ioredis";
+import { dfsBudgetLogger } from "../logging";
 
 // =============================================================================
 // Configuration Types
@@ -293,7 +294,7 @@ export class DfsBudgetMonitor {
       }
     } catch (error) {
       deliveryError = error instanceof Error ? error.message : String(error);
-      console.error(`[DfsBudgetMonitor] Failed to send ${type} budget alert:`, error);
+      dfsBudgetLogger.error({ alertType: type, error: deliveryError }, 'Failed to send budget alert');
     }
 
     // Record alert in database
@@ -399,9 +400,7 @@ export class DfsBudgetMonitor {
   private async sendEmailAlert(_alert: BudgetAlert): Promise<void> {
     // Placeholder for email integration
     // In production, integrate with your email service (e.g., Resend)
-    console.warn(
-      "[DfsBudgetMonitor] Email alerts not implemented. Configure webhook instead."
-    );
+    dfsBudgetLogger.warn('Email alerts not implemented. Configure webhook instead.');
   }
 
   /**
@@ -482,8 +481,12 @@ export async function runBudgetCheck(db: DbClient, redis?: Redis): Promise<void>
   const status = await monitor.checkBudget();
 
   // Log status for monitoring
-  console.log(
-    `[DfsBudgetMonitor] Daily: $${status.dailySpend.toFixed(2)}/$${status.dailyLimit.toFixed(2)} (${(status.dailyUsagePercent * 100).toFixed(1)}%) | ` +
-    `Monthly: $${status.monthlySpend.toFixed(2)}/$${status.monthlyLimit.toFixed(2)} (${(status.monthlyUsagePercent * 100).toFixed(1)}%)`
-  );
+  dfsBudgetLogger.info({
+    dailySpend: status.dailySpend,
+    dailyLimit: status.dailyLimit,
+    dailyUsagePercent: status.dailyUsagePercent * 100,
+    monthlySpend: status.monthlySpend,
+    monthlyLimit: status.monthlyLimit,
+    monthlyUsagePercent: status.monthlyUsagePercent * 100,
+  }, 'Budget check completed');
 }

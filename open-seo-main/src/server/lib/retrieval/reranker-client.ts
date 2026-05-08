@@ -147,12 +147,13 @@ export async function rerankCandidates<T extends Record<string, unknown>>(
     }
   }
 
-  log.error("Reranker request failed after all retries", {
-    error: lastError?.message,
-    candidates: candidates.length,
-  });
+  log.error(
+    "Reranker request failed after all retries",
+    lastError ?? new Error("Reranker request failed"),
+    { candidateCount: candidates.length }
+  );
 
-  throw lastError || new Error("Reranker request failed");
+  throw lastError ?? new Error("Reranker request failed");
 }
 
 /**
@@ -176,7 +177,7 @@ export async function isRerankerAvailable(
       return false;
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { status?: string };
     return data.status === "healthy";
   } catch {
     return false;

@@ -11,6 +11,8 @@
  * - HALF_OPEN: Testing if service recovered, limited requests
  */
 
+import { circuitLogger } from "../logging";
+
 export type CircuitState = "closed" | "open" | "half-open";
 
 export interface CircuitBreakerConfig {
@@ -63,7 +65,7 @@ export class CircuitOpenError extends Error {
  * Circuit Breaker implementation.
  * Wraps operations and tracks success/failure rates.
  */
-export class CircuitBreaker<T = any> {
+export class CircuitBreaker<_T = unknown> {
   private state: CircuitState = "closed";
   private failures = 0;
   private successes = 0;
@@ -228,7 +230,8 @@ export class CircuitBreaker<T = any> {
       try {
         listener(oldState, newState);
       } catch (error) {
-        console.error("[CircuitBreaker] State change listener error:", error);
+        const err = error instanceof Error ? error : new Error(String(error));
+        circuitLogger.error({ circuitName: this.config.name, error: err.message, stack: err.stack }, 'State change listener error');
       }
     }
   }

@@ -14,6 +14,7 @@
  */
 
 import type { CwvMetrics } from './types';
+import { cruxLogger } from '../logging';
 
 // =============================================================================
 // Types
@@ -67,7 +68,7 @@ export class PsiClient {
   private readonly apiKey: string;
   private readonly timeout: number;
   private readonly strategy: 'mobile' | 'desktop';
-  private readonly categories: string[];
+  private readonly _categories: string[]; // Reserved for future multi-category support
   private readonly baseUrl = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
   constructor(config: PsiClientConfig) {
@@ -78,7 +79,7 @@ export class PsiClient {
     this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? 30000; // 30s default for slow pages
     this.strategy = config.strategy ?? 'mobile';
-    this.categories = config.categories ?? ['performance'];
+    this._categories = config.categories ?? ['performance'];
   }
 
   /**
@@ -103,12 +104,12 @@ export class PsiClient {
       clearTimeout(timeoutId);
 
       if (response.status === 429) {
-        console.warn('PSI rate limit exceeded:', url);
+        cruxLogger.warn({ url }, 'PSI rate limit exceeded');
         return null;
       }
 
       if (!response.ok) {
-        console.error(`PSI API error: ${response.status} ${response.statusText}`);
+        cruxLogger.error({ url, status: response.status, statusText: response.statusText }, 'PSI API error');
         return null;
       }
 
@@ -116,9 +117,10 @@ export class PsiClient {
       return data as PsiResponse;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn('PSI request timeout:', url);
+        cruxLogger.warn({ url }, 'PSI request timeout');
       } else {
-        console.error('PSI request failed:', error);
+        const err = error instanceof Error ? error : new Error(String(error));
+        cruxLogger.error({ url, error: err.message, stack: err.stack }, 'PSI request failed');
       }
       return null;
     }

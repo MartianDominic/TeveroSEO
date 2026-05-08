@@ -11,6 +11,7 @@
 
 import { DomainLearningService, normalizeDomain } from './DomainLearningService';
 import type { ScrapeTier } from '@/db/domain-scrape-learning-schema';
+import { domainLogger } from './logging';
 
 // =============================================================================
 // Types
@@ -292,7 +293,7 @@ export class DomainFeedbackService {
           updatesApplied++;
         }
       } catch (error) {
-        console.error(`[DomainFeedback] Error processing ${domain}:`, error);
+        domainLogger.error({ domain, error: error instanceof Error ? error.message : String(error) }, 'Error processing domain feedback');
         // Re-add to buffer for retry
         const existing = this.feedbackBuffer.get(domain) ?? [];
         this.feedbackBuffer.set(domain, [...existing, ...feedbacks]);
@@ -300,7 +301,7 @@ export class DomainFeedbackService {
     }
 
     if (domainsProcessed > 0) {
-      console.info(`[DomainFeedback] Processed ${domainsProcessed} domains, ${updatesApplied} updates applied`);
+      domainLogger.info({ domainsProcessed, updatesApplied }, 'Domain feedback flush completed');
     }
 
     return { domainsProcessed, updatesApplied };
@@ -339,7 +340,7 @@ export class DomainFeedbackService {
       ...updates,
     });
 
-    console.info(`[DomainFeedback] Updated ${domain}:`, updates);
+    domainLogger.info({ domain, updates }, "Domain config updated from feedback");
     return true;
   }
 

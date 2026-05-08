@@ -14,7 +14,7 @@ export { LITHUANIAN_CITIES, extractCityFromKeyword, removeCity } from './Lithuan
 export { PSEODetector, detectPSEOPatterns, computePSEOScore } from './PSEODetector';
 
 // Side Keyword Expansion
-export { SideKeywordExpander, discoverSideKeywords } from './SideKeywordExpander';
+export { SideKeywordExpander, discoverSideKeywords, type ExpandOptions } from './SideKeywordExpander';
 
 // Product Linkage
 export { linkKeywordsToProducts, type Product, type LinkedProduct, type ProductLinkage } from './ProductLinker';

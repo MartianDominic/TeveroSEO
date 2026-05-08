@@ -1,11 +1,13 @@
 /**
  * Tier 4 SEO Checks Test Suite
  * Phase 72-02: SEO Checks Validation
+ * Phase 96: Added analytics-based checks (T4-08, T4-09)
  *
- * Tests 7 crawl-based checks for:
+ * Tests 9 crawl-based checks for:
  * - Consistent scoring (0.4 pts each, max 4 pts)
  * - SiteContext dependency handling
  * - Duplicate content gate integration
+ * - Analytics integration (trend detection, striking distance)
  */
 import { describe, it, expect } from "vitest";
 import { runTier4Checks } from "@/server/lib/audit/checks/runner";
@@ -16,11 +18,11 @@ import type { SiteContext } from "@/server/lib/audit/checks/types";
 // Import to trigger registration
 import "@/server/lib/audit/checks/tier4";
 
-const TIER4_CHECK_COUNT = 7;
+const TIER4_CHECK_COUNT = 9;
 
 describe("Tier 4 SEO Checks", () => {
   describe("Registration", () => {
-    it("should register exactly 7 Tier 4 checks", () => {
+    it("should register exactly 9 Tier 4 checks", () => {
       const checks = getChecksByTier(4);
       expect(checks.length).toBe(TIER4_CHECK_COUNT);
     });
@@ -37,6 +39,7 @@ describe("Tier 4 SEO Checks", () => {
 
     it("should have valid categories", () => {
       const checks = getChecksByTier(4);
+      // T4-08 and T4-09 use "architecture" category for analytics checks
       const validCategories = ["architecture", "differentiation"];
       for (const check of checks) {
         expect(validCategories).toContain(check.category);
@@ -46,9 +49,9 @@ describe("Tier 4 SEO Checks", () => {
 
   describe("Scoring Integration", () => {
     it("should contribute 0.4 points per passing check (max 4 pts)", () => {
-      // 7 checks * 0.4 = 2.8 pts, under max
-      const allPassScore = Math.min(4, 7 * 0.4);
-      expect(allPassScore).toBeCloseTo(2.8, 1);
+      // 9 checks * 0.4 = 3.6 pts, under max
+      const allPassScore = Math.min(4, 9 * 0.4);
+      expect(allPassScore).toBeCloseTo(3.6, 1);
     });
 
     it("should cap Tier 4 contribution at 4 points", () => {
@@ -339,9 +342,9 @@ describe("Tier 4 SEO Checks", () => {
   });
 
   describe("Category Coverage", () => {
-    it("should have 5 architecture checks (T4-01 to T4-05)", () => {
+    it("should have 7 architecture checks (T4-01 to T4-05, T4-08, T4-09)", () => {
       const checks = getChecksByTier(4).filter((c) => c.category === "architecture");
-      expect(checks.length).toBe(5);
+      expect(checks.length).toBe(7);
     });
 
     it("should have 2 differentiation checks (T4-06, T4-07)", () => {

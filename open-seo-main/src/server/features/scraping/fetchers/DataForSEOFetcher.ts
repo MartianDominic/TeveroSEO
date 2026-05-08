@@ -15,7 +15,10 @@
 import { z } from "zod";
 import type { FetchResult, BaseFetchOptions, ConnectionTestResult } from "./types";
 import { TIER_TO_NUMBER } from "./types";
-import type { ScrapeTier, EscalationReason } from "@/db/domain-scrape-learning-schema";
+import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
+import { DFS_LIVE_COSTS } from "../cost";
+import { db } from "@/db";
+import { getDfsCostTracker, extractDomainFromUrl } from "../providers/DfsCostTracker";
 
 // =============================================================================
 // Types
@@ -36,6 +39,18 @@ export interface DataForSEOFetchOptions extends BaseFetchOptions {
 
   /** Custom user agent */
   userAgent?: string;
+
+  /** Client ID for cost attribution */
+  clientId?: string;
+
+  /** Workspace ID for cost attribution */
+  workspaceId?: string;
+
+  /** Job ID for correlation */
+  jobId?: string;
+
+  /** Task ID for correlation */
+  taskId?: string;
 }
 
 // =============================================================================
@@ -259,11 +274,11 @@ function classifyDfsError(
 // =============================================================================
 
 export class DataForSEOFetcher {
-  private defaultTimeout: number;
+  private _defaultTimeout: number;
   private maxRetries: number;
 
   constructor(options: { timeoutMs?: number; maxRetries?: number } = {}) {
-    this.defaultTimeout = options.timeoutMs ?? 60000; // DFS can be slow
+    this._defaultTimeout = options.timeoutMs ?? 60000; // DFS can be slow
     this.maxRetries = options.maxRetries ?? 1;
   }
 
@@ -330,13 +345,30 @@ export class DataForSEOFetcher {
           };
         }
 
+        const bytesTransferred = Buffer.byteLength(result.html, "utf8");
+
+        // Track cost (fire-and-forget pattern)
+        this.recordCostFireAndForget({
+          url: options.url,
+          tier,
+          success: true,
+          statusCode: result.statusCode,
+          actualCost: result.cost,
+          responseSizeBytes: bytesTransferred,
+          responseTimeMs: latencyMs,
+          clientId: options.clientId,
+          workspaceId: options.workspaceId,
+          jobId: options.jobId,
+          taskId: options.taskId,
+        });
+
         return {
           success: true,
           tier: TIER_TO_NUMBER[tier],
           html: result.html,
           statusCode: result.statusCode,
           latencyMs,
-          bytesTransferred: Buffer.byteLength(result.html, "utf8"),
+          bytesTransferred,
           proxyUsed: `dataforseo:${tier}`,
         };
       } catch (error) {
@@ -360,6 +392,63 @@ export class DataForSEOFetcher {
       bytesTransferred: 0,
       proxyUsed: `dataforseo:${tier}`,
     };
+  }
+
+  /**
+   * Record cost to DfsCostTracker (fire-and-forget pattern).
+   * Does not block fetch completion - errors are logged but don't fail the request.
+   */
+  private recordCostFireAndForget(record: {
+    url: string;
+    tier: "dfs_basic" | "dfs_js" | "dfs_browser";
+    success: boolean;
+    statusCode?: number;
+    actualCost?: number;
+    responseSizeBytes?: number;
+    responseTimeMs?: number;
+    errorMessage?: string;
+    clientId?: string;
+    workspaceId?: string;
+    jobId?: string;
+    taskId?: string;
+  }): void {
+    // Map tier to DFS mode
+    const tierToMode = {
+      dfs_basic: "basic" as const,
+      dfs_js: "js" as const,
+      dfs_browser: "browser" as const,
+    };
+    const mode = tierToMode[record.tier];
+
+    // Calculate estimated cost from pricing if actual cost not provided
+    const estimatedCost = DFS_LIVE_COSTS[mode];
+
+    // Fire and forget - don't await, don't block
+    getDfsCostTracker(db)
+      .recordCost({
+        url: record.url,
+        domain: extractDomainFromUrl(record.url),
+        mode,
+        usedStandardQueue: false, // Live API, not standard queue
+        estimatedCost,
+        actualCost: record.actualCost,
+        success: record.success,
+        statusCode: record.statusCode,
+        errorMessage: record.errorMessage,
+        responseSizeBytes: record.responseSizeBytes,
+        responseTimeMs: record.responseTimeMs,
+        clientId: record.clientId,
+        workspaceId: record.workspaceId,
+        jobId: record.jobId,
+        taskId: record.taskId,
+      })
+      .catch((error) => {
+        // Log error but don't fail the fetch
+        console.error(
+          `[DataForSEOFetcher] Failed to record cost for ${record.url}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      });
   }
 
   /**
@@ -480,7 +569,9 @@ export class DataForSEOFetcher {
     options: DataForSEOFetchOptions
   ): Promise<{ html: string; statusCode: number; cost: number }> {
     // Use the advanced SERP endpoint for full browser simulation
-    const response = await postApi("/v3/serp/google/organic/live/html", [
+    // Note: This call is made but not used - the actual browser rendering
+    // is done via content_parsing/live below. Kept for potential future use.
+    await postApi("/v3/serp/google/organic/live/html", [
       {
         // For SERP endpoint, we use a search query that returns the URL
         // Actually, for arbitrary URL fetching, we should use the screenshot or
@@ -614,16 +705,16 @@ export class DataForSEOFetcher {
   }
 
   /**
-   * Get estimated cost for a tier.
+   * Get estimated cost for a tier (from centralized pricing).
    */
   static getTierCost(tier: "dfs_basic" | "dfs_js" | "dfs_browser"): number {
     switch (tier) {
       case "dfs_basic":
-        return 0.000125;
+        return DFS_LIVE_COSTS.basic;
       case "dfs_js":
-        return 0.00125;
+        return DFS_LIVE_COSTS.js;
       case "dfs_browser":
-        return 0.00425;
+        return DFS_LIVE_COSTS.browser;
     }
   }
 }

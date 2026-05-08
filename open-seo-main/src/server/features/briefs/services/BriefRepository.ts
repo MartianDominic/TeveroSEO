@@ -67,6 +67,8 @@ export class BriefRepository {
         deletedAt: contentBriefs.deletedAt,
         createdAt: contentBriefs.createdAt,
         updatedAt: contentBriefs.updatedAt,
+        // P2.G16: Include scraping cost for cost attribution
+        scrapingCostUsd: contentBriefs.scrapingCostUsd,
       })
       .from(contentBriefs)
       .innerJoin(

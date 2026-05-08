@@ -111,7 +111,7 @@ function BriefDetailPage() {
         </p>
         <Button variant="outline" className="mt-4" asChild>
           <Link
-            to="/_app/clients/$clientId/briefs/"
+            to="/clients/$clientId/briefs"
             params={{ clientId }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -138,7 +138,7 @@ function BriefDetailPage() {
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
           <Link
-            to="/_app/clients/$clientId/briefs/"
+            to="/clients/$clientId/briefs"
             params={{ clientId }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

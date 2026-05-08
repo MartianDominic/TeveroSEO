@@ -10,10 +10,12 @@ import {
   analyticsTopicClusterPages,
   type AnalyticsTopicCluster,
   type AnalyticsTopicClusterInsert,
-  type AnalyticsTopicClusterPage,
 } from "@/db/content-intelligence-schema";
 import { seoGscQueryAnalytics } from "@/db/gsc-analytics-schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
+import { createLogger } from "@/server/lib/logger";
+
+const logger = createLogger({ module: "topic-cluster-repository" });
 
 export interface ClusterPageData {
   pageUrl: string;
@@ -123,51 +125,6 @@ export class TopicClusterRepository {
       impressions: r.impressions ?? 0,
       position: r.position,
     }));
-  }
-
-  /**
-   * Batch get pages for multiple clusters (avoids N+1 queries)
-   */
-  async getClusterPagesBatch(
-    clusterIds: string[]
-  ): Promise<Map<string, ClusterPageData[]>> {
-    if (clusterIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await db
-      .select({
-        clusterId: analyticsTopicClusterPages.clusterId,
-        pageUrl: analyticsTopicClusterPages.pageUrl,
-        pageTopic: analyticsTopicClusterPages.pageTopic,
-        isHub: analyticsTopicClusterPages.isHub,
-        linksToHub: analyticsTopicClusterPages.linksToHub,
-        internalLinkCount: analyticsTopicClusterPages.internalLinkCount,
-        clicks: analyticsTopicClusterPages.clicks,
-        impressions: analyticsTopicClusterPages.impressions,
-        position: analyticsTopicClusterPages.position,
-      })
-      .from(analyticsTopicClusterPages)
-      .where(sql`${analyticsTopicClusterPages.clusterId} = ANY(${clusterIds})`);
-
-    // Group results by clusterId
-    const map = new Map<string, ClusterPageData[]>();
-    for (const r of results) {
-      const existing = map.get(r.clusterId) || [];
-      existing.push({
-        pageUrl: r.pageUrl,
-        pageTopic: r.pageTopic,
-        isHub: r.isHub ?? false,
-        linksToHub: r.linksToHub ?? false,
-        internalLinkCount: r.internalLinkCount ?? 0,
-        clicks: r.clicks ?? 0,
-        impressions: r.impressions ?? 0,
-        position: r.position,
-      });
-      map.set(r.clusterId, existing);
-    }
-
-    return map;
   }
 
   /**
@@ -312,7 +269,7 @@ export class TopicClusterRepository {
    */
   async findPotentialHubs(
     siteId: string,
-    minLinks: number = 10
+    _minLinks: number = 10
   ): Promise<
     Array<{
       pageUrl: string;
@@ -353,5 +310,62 @@ export class TopicClusterRepository {
       impressions: parseInt(r.impressions, 10),
       position: parseFloat(r.position),
     }));
+  }
+
+  /**
+   * Get pages for multiple clusters in a single batch query.
+   * More efficient than calling getClusterPages for each cluster.
+   *
+   * @param clusterIds - Array of cluster IDs to fetch pages for
+   * @returns Map of clusterId to array of ClusterPageData
+   */
+  async getClusterPagesBatch(
+    clusterIds: string[]
+  ): Promise<Map<string, ClusterPageData[]>> {
+    if (clusterIds.length === 0) {
+      return new Map();
+    }
+
+    logger.debug("Fetching pages for clusters batch", {
+      clusterCount: clusterIds.length,
+    });
+
+    const results = await db
+      .select({
+        clusterId: analyticsTopicClusterPages.clusterId,
+        pageUrl: analyticsTopicClusterPages.pageUrl,
+        pageTopic: analyticsTopicClusterPages.pageTopic,
+        isHub: analyticsTopicClusterPages.isHub,
+        linksToHub: analyticsTopicClusterPages.linksToHub,
+        internalLinkCount: analyticsTopicClusterPages.internalLinkCount,
+        clicks: analyticsTopicClusterPages.clicks,
+        impressions: analyticsTopicClusterPages.impressions,
+        position: analyticsTopicClusterPages.position,
+      })
+      .from(analyticsTopicClusterPages)
+      .where(inArray(analyticsTopicClusterPages.clusterId, clusterIds));
+
+    // Initialize map with empty arrays for all requested clusters
+    const resultMap = new Map<string, ClusterPageData[]>();
+    for (const clusterId of clusterIds) {
+      resultMap.set(clusterId, []);
+    }
+
+    // Populate map with results
+    for (const row of results) {
+      const pageData: ClusterPageData = {
+        pageUrl: row.pageUrl,
+        pageTopic: row.pageTopic,
+        isHub: row.isHub ?? false,
+        linksToHub: row.linksToHub ?? false,
+        internalLinkCount: row.internalLinkCount ?? 0,
+        clicks: row.clicks ?? 0,
+        impressions: row.impressions ?? 0,
+        position: row.position,
+      };
+      resultMap.get(row.clusterId)?.push(pageData);
+    }
+
+    return resultMap;
   }
 }

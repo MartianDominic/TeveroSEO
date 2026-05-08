@@ -50,7 +50,6 @@ export function loadMigrationFlags(): ScrapingMigrationFlags {
       FLAG_ENV_VARS.serpContent,
       DEFAULT_FLAGS.serpContent
     ),
-    serpApi: getEnvFlag(FLAG_ENV_VARS.serpApi, DEFAULT_FLAGS.serpApi),
     competitorSpy: getEnvFlag(
       FLAG_ENV_VARS.competitorSpy,
       DEFAULT_FLAGS.competitorSpy

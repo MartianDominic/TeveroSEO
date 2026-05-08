@@ -108,12 +108,6 @@ export {
   // Admin rate limiter (72-03)
   adminRateLimiter,
 
-  // Analytics rate limiters (96-security)
-  analyticsExportRateLimiter,
-  analyticsBatchRateLimiter,
-  analyticsExpensiveRateLimiter,
-  analyticsStandardRateLimiter,
-
   // Testing utilities
   resetRateLimit,
   getRateLimitStatus,
@@ -127,3 +121,23 @@ export {
   type RateLimitOptionsWithKeyFn,
   type RouteHandler,
 } from "./rate-limit";
+
+/**
+ * Portal authentication middleware.
+ * Phase 96-05: Bridges portal token auth with P96 analytics routes.
+ * Resolves: portal token -> clientId -> workspaceId
+ */
+export {
+  validatePortalAuth,
+  verifyClientIdMatch,
+  hasPortalPermission,
+  requirePortalPermission,
+  portalAuthErrorResponse,
+  portalUnauthorizedResponse,
+  portalForbiddenResponse,
+  type PortalAuthResult,
+  type PortalAuthSuccess,
+  type PortalAuthFailure,
+  type PortalAuthData,
+  type PortalPermissions,
+} from "./portal-auth";

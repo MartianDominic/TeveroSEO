@@ -14,10 +14,27 @@ import { getSharedBullMQConnection, redis } from "@/server/lib/redis";
 import type { ScrapeJobData, ScrapeJobResult, ScrapeErrorCode, ScrapeQueueName } from "../queue/queue.types";
 import { SCRAPE_QUEUE_NAMES, QUEUE_CONFIG } from "../queue/queue.types";
 import { getRetryPolicy, shouldEscalateTier, isPermanentError, calculateDelay } from "../queue/retry.config";
+import { DEFAULT_RETRY_CONFIG } from "../queue/retry.config";
 import { RateLimiter, RateLimitExceededError } from "../ratelimit/RateLimiter";
 import { AdaptiveBackoff } from "../ratelimit/AdaptiveBackoff";
 import { GlobalConcurrencyLimiter } from "../ratelimit/GlobalConcurrencyLimiter";
 import type { TieredFetchRequest, TieredFetchResult } from "../types";
+import { workerLogger } from "../logging";
+import type { QueueManager } from "../queue/QueueManager";
+
+/**
+ * Failure history tracking for DLQ.
+ */
+interface FailureHistoryEntry {
+  error: string;
+  timestamp: number;
+  attemptNumber: number;
+}
+
+/**
+ * Map to track failure history per job for DLQ.
+ */
+const jobFailureHistory = new Map<string, FailureHistoryEntry[]>();
 
 /**
  * Worker configuration.
@@ -34,6 +51,9 @@ export interface ScrapeWorkerConfig {
 
   /** Enable adaptive backoff */
   enableAdaptiveBackoff: boolean;
+
+  /** Queue manager for DLQ operations (optional) */
+  queueManager?: QueueManager;
 }
 
 /**
@@ -238,8 +258,9 @@ export function createScrapeWorker(
         if (shouldEscalateTier(errorCode)) {
           // The next retry will use a higher tier
           // This is handled by TieredFetcher's domain learning
-          console.log(
-            `[ScrapeWorker] Tier escalation triggered for ${job.data.domain}: ${errorCode}`
+          workerLogger.info(
+            { domain: job.data.domain, errorCode },
+            "Tier escalation triggered"
           );
         }
 
@@ -268,19 +289,72 @@ export function createScrapeWorker(
 
   // Event handlers for monitoring
   worker.on("completed", (job) => {
-    console.log(
-      `[${queueName}] Job ${job.id} completed: ${job.data.url} (${job.returnvalue?.processingTimeMs}ms)`
+    // Clean up failure history on successful completion
+    jobFailureHistory.delete(job.data.jobId);
+
+    workerLogger.info(
+      { queueName, jobId: job.id, url: job.data.url, processingTimeMs: job.returnvalue?.processingTimeMs },
+      "Job completed"
     );
   });
 
-  worker.on("failed", (job, error) => {
-    console.error(
-      `[${queueName}] Job ${job?.id} failed: ${job?.data.url} - ${error.message}`
+  worker.on("failed", async (job, error) => {
+    if (!job) {
+      workerLogger.error({ queueName, error: error.message }, "Job failed with no job context");
+      return;
+    }
+
+    // Track failure history for this job
+    const jobId = job.data.jobId;
+    const history = jobFailureHistory.get(jobId) || [];
+    history.push({
+      error: error.message,
+      timestamp: Date.now(),
+      attemptNumber: job.attemptsMade,
+    });
+    jobFailureHistory.set(jobId, history);
+
+    // Determine max attempts for this job based on error type
+    const errorCode = mapErrorCode(error);
+    const retryPolicy = getRetryPolicy(errorCode);
+    const maxAttempts = retryPolicy.attempts || DEFAULT_RETRY_CONFIG.attempts;
+
+    workerLogger.error(
+      {
+        queueName,
+        jobId: job.id,
+        url: job.data.url,
+        error: error.message,
+        attemptsMade: job.attemptsMade,
+        maxAttempts,
+        errorCode,
+      },
+      "Job failed"
     );
+
+    // Check if retries are exhausted - move to DLQ
+    if (job.attemptsMade >= maxAttempts && workerConfig.queueManager) {
+      try {
+        const failureHistory = jobFailureHistory.get(jobId) || [];
+        await workerConfig.queueManager.moveToDlq(job, error, failureHistory);
+
+        // Clean up failure history after moving to DLQ
+        jobFailureHistory.delete(jobId);
+      } catch (dlqError) {
+        workerLogger.error(
+          {
+            queueName,
+            jobId: job.id,
+            error: dlqError instanceof Error ? dlqError.message : String(dlqError),
+          },
+          "Failed to move job to DLQ"
+        );
+      }
+    }
   });
 
   worker.on("stalled", (jobId) => {
-    console.warn(`[${queueName}] Job ${jobId} stalled`);
+    workerLogger.warn({ queueName, jobId }, "Job stalled");
   });
 
   return worker;
@@ -301,9 +375,36 @@ export function createAllScrapeWorkers(
   standardWorker: Worker<ScrapeJobData, ScrapeJobResult>;
   backgroundWorker: Worker<ScrapeJobData, ScrapeJobResult>;
 } {
+  // Ensure all workers share the same queueManager for DLQ operations
   return {
     priorityWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.PRIORITY, tieredFetcher, config),
     standardWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.STANDARD, tieredFetcher, config),
     backgroundWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.BACKGROUND, tieredFetcher, config),
+  };
+}
+
+/**
+ * Create all scrape workers with DLQ support.
+ *
+ * @param tieredFetcher - Fetcher service
+ * @param queueManager - Queue manager for DLQ operations
+ * @param config - Additional worker configuration
+ * @returns Object with all three workers
+ */
+export function createAllScrapeWorkersWithDlq(
+  tieredFetcher: { fetch: (request: TieredFetchRequest) => Promise<TieredFetchResult> },
+  queueManager: QueueManager,
+  config: Partial<Omit<ScrapeWorkerConfig, "queueManager">> = {}
+): {
+  priorityWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+  standardWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+  backgroundWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+} {
+  const configWithDlq = { ...config, queueManager };
+
+  return {
+    priorityWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.PRIORITY, tieredFetcher, configWithDlq),
+    standardWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.STANDARD, tieredFetcher, configWithDlq),
+    backgroundWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.BACKGROUND, tieredFetcher, configWithDlq),
   };
 }

@@ -26,11 +26,19 @@ import type {
   ICacheManager,
   InvalidationEvent,
   RevalidationHeaders,
-  LevelStats,
-  TTL_BY_CONTENT_TYPE,
-  TTL_LEVEL_MULTIPLIERS,
 } from "./types";
 import { normalizeUrl, getCacheKey } from "./urlNormalization";
+import { cacheLogger } from "../logging";
+
+// =============================================================================
+// Domain Tracking Constants
+// =============================================================================
+
+/** Key prefix for domain-to-hash tracking SETs in Redis */
+const DOMAIN_TRACKING_PREFIX = "cache:domain:";
+
+/** TTL for domain tracking SETs (30 days in seconds) */
+const DOMAIN_TRACKING_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 // =============================================================================
 // Default Configuration
@@ -80,6 +88,7 @@ export class CacheManager implements ICacheManager {
   private l2: L2Cache;
   private l3: L3Cache;
   private l4: L4Cache;
+  private redis: Redis;
   private config: CacheConfig;
 
   // Aggregate stats
@@ -101,6 +110,7 @@ export class CacheManager implements ICacheManager {
       l4: { ...DEFAULT_CONFIG.l4, ...deps.config?.l4 },
     };
 
+    this.redis = deps.redis;
     this.l1 = createL1Cache(this.config.l1);
     this.l2 = createL2Cache(deps.redis, this.config.l2);
     this.l3 = createL3Cache(deps.db, this.config.l3);
@@ -176,15 +186,24 @@ export class CacheManager implements ICacheManager {
   }
 
   async set(url: string, page: CachedPage, options: SetOptions = {}): Promise<void> {
-    const hash = getCacheKey(normalizeUrl(url));
+    const normalizedUrl = normalizeUrl(url);
+    const hash = getCacheKey(normalizedUrl);
     const skipLevels = new Set(options.skipLevels ?? []);
 
     // Calculate TTL based on content type
     const contentType = options.contentType ?? page.contentType ?? "generic";
     const baseTtlMs = options.ttlMs ?? this.getBaseTtl(contentType);
 
+    // Extract domain for tracking
+    const domain = this.extractDomain(normalizedUrl);
+
     // Store in all levels (parallel for performance)
     const promises: Promise<void>[] = [];
+
+    // Track hash for this domain in Redis SET (for domain invalidation)
+    if (domain) {
+      promises.push(this.trackDomainHash(domain, hash));
+    }
 
     if (!skipLevels.has("L1")) {
       promises.push(
@@ -226,22 +245,37 @@ export class CacheManager implements ICacheManager {
   }
 
   async invalidateDomain(domain: string): Promise<void> {
-    // For L1, we need to iterate keys (not efficient, but L1 is small)
-    const l1Keys = this.l1.getKeys();
-    for (const key of l1Keys) {
-      // Key format: html:{hash}
-      // We can't easily map hash back to domain without additional tracking
-      // For now, just clear L1 entirely for domain invalidation
-    }
-
-    // Clear L1 entirely for domain invalidation (conservative approach)
+    // Clear L1 entirely for domain invalidation (conservative approach - L1 is small)
     await this.l1.clear();
 
-    // For L2/L3, we would need domain->hash tracking
-    // This is a simplified implementation
-    console.warn(
-      `[CacheManager] Domain invalidation for ${domain} cleared L1 only. L2/L3/L4 require hash tracking.`
-    );
+    // Get all hashes for this domain from Redis SET
+    const domainKey = `${DOMAIN_TRACKING_PREFIX}${domain}`;
+
+    try {
+      const hashes = await this.redis.smembers(domainKey);
+
+      if (hashes.length > 0) {
+        // Clear L2-L4 using the tracked hashes (parallel for performance)
+        await Promise.all(
+          hashes.map((hash) =>
+            Promise.all([
+              this.l2.delete(hash),
+              this.l3.delete(hash),
+              this.l4.delete(hash),
+            ])
+          )
+        );
+
+        // Clear the domain tracking SET
+        await this.redis.del(domainKey);
+      }
+    } catch (error) {
+      // Log error but don't throw - L1 was already cleared, so partial success
+      cacheLogger.error(
+        { domain, error: error instanceof Error ? error.message : String(error) },
+        "Domain invalidation error"
+      );
+    }
   }
 
   async prewarm(urls: string[]): Promise<void> {
@@ -504,6 +538,40 @@ export class CacheManager implements ICacheManager {
     };
 
     return Math.round(baseTtlMs * MULTIPLIERS[level]);
+  }
+
+  /**
+   * Track a cache hash for a domain in Redis SET.
+   * Used for domain-level cache invalidation.
+   */
+  private async trackDomainHash(domain: string, hash: string): Promise<void> {
+    const domainKey = `${DOMAIN_TRACKING_PREFIX}${domain}`;
+
+    try {
+      // Add hash to domain's SET
+      await this.redis.sadd(domainKey, hash);
+
+      // Set/refresh TTL on the domain SET (30 days)
+      await this.redis.expire(domainKey, DOMAIN_TRACKING_TTL_SECONDS);
+    } catch (error) {
+      // Non-critical - log and continue
+      cacheLogger.error(
+        { domain, hash, error: error instanceof Error ? error.message : String(error) },
+        "Failed to track domain hash"
+      );
+    }
+  }
+
+  /**
+   * Extract domain from a URL string.
+   */
+  private extractDomain(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname;
+    } catch {
+      return null;
+    }
   }
 }
 

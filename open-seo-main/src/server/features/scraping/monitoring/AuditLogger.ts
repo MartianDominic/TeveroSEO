@@ -17,7 +17,8 @@ import {
   type ScrapingAuditSeverity,
 } from "@/db/scraping-audit-schema";
 import { redis } from "@/server/lib/redis";
-import type { AdminContext } from "../middleware/adminAuth";
+import type { AdminContext, AdminRole } from "../middleware/adminAuth";
+import { alertLogger } from "../logging";
 
 // =============================================================================
 // Types
@@ -44,6 +45,8 @@ export interface AuditEntry {
     ip: string;
     userAgent?: string;
     apiKeyPrefix?: string;
+    /** Role of the actor (admin or readonly) */
+    role?: AdminRole;
   };
   /** Target of the action (optional) */
   target?: AuditTarget;
@@ -143,6 +146,7 @@ export class AuditLogger {
         actorIp: entry.actor.ip,
         actorUserAgent: entry.actor.userAgent,
         actorApiKeyPrefix: entry.actor.apiKeyPrefix,
+        actorRole: entry.actor.role,
         targetType: entry.target?.type,
         targetId: entry.target?.id,
         parameters: entry.parameters,
@@ -152,7 +156,7 @@ export class AuditLogger {
         createdAt: entry.timestamp,
       });
     } catch (error) {
-      console.error("[AuditLogger] Failed to persist entry:", error);
+      alertLogger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to persist audit entry');
       // Don't throw - audit logging should not break admin operations
     }
   }
@@ -167,7 +171,12 @@ export class AuditLogger {
         JSON.stringify({
           action: entry.action,
           severity: entry.severity,
-          actor: entry.actor,
+          actor: {
+            ip: entry.actor.ip,
+            userAgent: entry.actor.userAgent,
+            apiKeyPrefix: entry.actor.apiKeyPrefix,
+            role: entry.actor.role,
+          },
           target: entry.target,
           result: entry.result,
           timestamp: entry.timestamp.toISOString(),
@@ -189,9 +198,9 @@ export class AuditLogger {
 
       // Use evaluate method with a metric snapshot that triggers the alert
       // This integrates with existing AlertManager infrastructure
-      console.warn(
-        `[AuditLogger] CRITICAL admin action: ${entry.action} by ${entry.actor.ip}` +
-          (entry.result === "failure" ? ` - FAILED: ${entry.errorMessage}` : "")
+      alertLogger.warn(
+        { action: entry.action, actorIp: entry.actor.ip, result: entry.result, errorMessage: entry.errorMessage },
+        'CRITICAL admin action'
       );
 
       // Fire alert via AlertManager channels if configured
@@ -204,7 +213,7 @@ export class AuditLogger {
       }
     } catch (error) {
       // Alert failure should not break the audit log
-      console.error("[AuditLogger] Failed to fire critical alert:", error);
+      alertLogger.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fire critical alert');
     }
   }
 
@@ -226,6 +235,7 @@ export class AuditLogger {
           actorIp: entry.actor.ip,
           actorUserAgent: entry.actor.userAgent,
           actorApiKeyPrefix: entry.actor.apiKeyPrefix,
+          actorRole: entry.actor.role,
           targetType: entry.target?.type,
           targetId: entry.target?.id,
           parameters: entry.parameters,
@@ -236,9 +246,9 @@ export class AuditLogger {
         }))
       );
     } catch (error) {
-      console.error(
-        `[AuditLogger] Failed to flush ${entries.length} entries:`,
-        error
+      alertLogger.error(
+        { entryCount: entries.length, error: error instanceof Error ? error.message : String(error) },
+        'Failed to flush audit entries'
       );
       // Put entries back in buffer for retry on next flush
       this.buffer = [...entries, ...this.buffer].slice(0, this.BUFFER_SIZE * 2);
@@ -254,7 +264,7 @@ export class AuditLogger {
     this.flushInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.flush().catch((error) => {
-          console.error("[AuditLogger] Flush interval error:", error);
+          alertLogger.error({ error: error instanceof Error ? error.message : String(error) }, 'Audit flush interval error');
         });
       }
     }, this.FLUSH_INTERVAL_MS);
@@ -352,6 +362,7 @@ export function createAuditContext(req: {
       ip: req.adminContext.clientIp,
       userAgent: req.adminContext.userAgent,
       apiKeyPrefix: req.adminContext.apiKeyPrefix,
+      role: req.adminContext.role,
     };
   }
 

@@ -7,8 +7,6 @@
  * - 7-day Redis caching to reduce API costs
  * - Skip logic for CSV imports that already have metrics
  * - Cost tracking per batch
- * - Migration flag support for Phase 95 scraping infrastructure
- * - DfsCostTracker integration for cost attribution
  */
 
 import { db } from "@/db";
@@ -22,20 +20,15 @@ import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { eq, inArray } from "drizzle-orm";
 import {
-  loadMigrationFlagsCached,
-  shouldUseUnified,
-} from "@/server/features/scraping/config";
-import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
+  withBudgetCheck,
+  BudgetExceededError,
+} from "@/server/features/scraping";
 
 // Constants - exported for testing
 export const CACHE_PREFIX = CACHE_NS.KEYWORD;
 export const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 export const BATCH_SIZE = 1000;
 export const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
-
-// DataForSEO Labs API cost per keyword (in dollars)
-// Based on search_volume/live endpoint pricing
-export const DFS_COST_PER_KEYWORD = 0.005;
 
 export interface EnrichmentResult {
   enriched: number;
@@ -46,15 +39,11 @@ export interface EnrichmentResult {
 }
 
 /**
- * Options for keyword enrichment with cost attribution.
+ * Options for keyword enrichment with budget enforcement.
  */
 export interface EnrichmentOptions {
-  /** Client ID for cost attribution */
-  clientId?: string;
-  /** Workspace ID for cost attribution */
+  /** Workspace ID for budget enforcement */
   workspaceId?: string;
-  /** Job ID for tracking (optional) */
-  jobId?: string;
 }
 
 interface CachedMetrics {
@@ -63,6 +52,9 @@ interface CachedMetrics {
   cpc: number;
   competition: number;
 }
+
+// DataForSEO Labs API cost per keyword (in dollars)
+const DFS_COST_PER_KEYWORD = 0.005;
 
 export class KeywordEnrichmentService {
   private locationCode: number;
@@ -78,19 +70,19 @@ export class KeywordEnrichmentService {
 
   /**
    * Estimate the DataForSEO cost for a batch of keywords.
-   * Based on Labs API search_volume/live pricing.
    */
   estimateEnrichmentCost(keywordCount: number): number {
     return keywordCount * DFS_COST_PER_KEYWORD;
   }
 
   /**
-   * Enrich keywords that need metrics.
-   * - Checks migration flag (volumeRefresh) before API calls
+   * Enrich keywords that need metrics with budget enforcement.
+   * - Checks budget before each API batch (COST-1)
    * - Checks Redis cache first (7-day TTL)
    * - Skips keywords with existing metrics from source
    * - Batches API calls (max 1000 per call)
-   * - Tracks costs via DfsCostTracker for attribution
+   *
+   * @throws BudgetExceededError if DataForSEO budget is exceeded
    */
   async enrichBatch(keywordIds: string[], options: EnrichmentOptions = {}): Promise<EnrichmentResult> {
     const result: EnrichmentResult = {
@@ -104,21 +96,6 @@ export class KeywordEnrichmentService {
     if (keywordIds.length === 0) {
       return result;
     }
-
-    // Check migration flag for volumeRefresh feature
-    const flags = loadMigrationFlagsCached();
-    const useUnifiedPath = shouldUseUnified(flags.volumeRefresh);
-
-    // If unified path is enabled, route through new infrastructure
-    // For now, we continue with legacy path but add cost tracking
-    // TODO: Implement unified path routing when TieredFetcher supports keyword enrichment
-    if (useUnifiedPath) {
-      // eslint-disable-next-line no-console
-      console.info("[KeywordEnrichmentService] volumeRefresh flag set to unified - using legacy with tracking");
-    }
-
-    // Get cost tracker for attribution
-    const costTracker = getDfsCostTracker(this.dbClient);
 
     // Fetch keywords from DB
     const keywords = await this.dbClient
@@ -204,34 +181,24 @@ export class KeywordEnrichmentService {
       }
     }
 
-    // Batch API calls with cost tracking
+    // Batch API calls with budget check (COST-1)
     const batches = this.chunkArray(needsEnrichment, this.BATCH_SIZE);
     for (const batch of batches) {
-      const batchStartTime = Date.now();
       const keywordStrings = batch.map((k) => k.normalizedKeyword);
       const estimatedCost = this.estimateEnrichmentCost(batch.length);
 
       try {
-        const metrics = await fetchKeywordMetrics(
-          keywordStrings,
-          this.locationCode,
-          this.languageCode
-        );
-
-        // Record successful cost
-        await costTracker.recordCost({
-          url: `keyword-enrichment:batch:${batch.length}`,
-          domain: "labs-api",
-          mode: "basic",
-          usedStandardQueue: false,
+        // Budget pre-check before making API call
+        const metrics = await withBudgetCheck(
+          () => fetchKeywordMetrics(
+            keywordStrings,
+            this.locationCode,
+            this.languageCode
+          ),
           estimatedCost,
-          actualCost: estimatedCost,
-          success: true,
-          responseTimeMs: Date.now() - batchStartTime,
-          clientId: options.clientId,
-          workspaceId: options.workspaceId,
-          jobId: options.jobId,
-        });
+          this.dbClient,
+          { workspaceId: options.workspaceId }
+        );
 
         // Map metrics to keywords
         const metricsMap = new Map(
@@ -317,28 +284,34 @@ export class KeywordEnrichmentService {
 
         result.totalCostCents += batch.length * COST_PER_KEYWORD_CENTS;
       } catch (error) {
+        // Handle budget exceeded error - stop processing remaining batches
+        if (error instanceof BudgetExceededError) {
+          // eslint-disable-next-line no-console
+          console.warn("[KeywordEnrichmentService] Budget exceeded, stopping enrichment", {
+            budgetType: error.budgetType,
+            currentSpend: error.currentSpend,
+            budgetLimit: error.budgetLimit,
+          });
+          // Mark remaining keywords as failed due to budget
+          await this.dbClient
+            .update(prospectKeywords)
+            .set({ enrichmentStatus: "failed" })
+            .where(
+              inArray(
+                prospectKeywords.id,
+                batch.map((k) => k.id)
+              )
+            );
+          result.failed += batch.length;
+          throw error; // Re-throw to stop processing
+        }
+
         // Log the error for debugging before marking batch as failed
         // eslint-disable-next-line no-console
         console.error("[KeywordEnrichmentService] Batch enrichment failed", {
           batchSize: batch.length,
           error: error instanceof Error ? error.message : String(error),
         });
-
-        // Record failed cost
-        await costTracker.recordCost({
-          url: `keyword-enrichment:batch:${batch.length}`,
-          domain: "labs-api",
-          mode: "basic",
-          usedStandardQueue: false,
-          estimatedCost,
-          success: false,
-          errorMessage: error instanceof Error ? error.message : String(error),
-          responseTimeMs: Date.now() - batchStartTime,
-          clientId: options.clientId,
-          workspaceId: options.workspaceId,
-          jobId: options.jobId,
-        });
-
         // Mark entire batch as failed on error
         await this.dbClient
           .update(prospectKeywords)

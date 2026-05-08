@@ -4,6 +4,7 @@
  *
  * Recharts-based line chart for showing traffic trends.
  * Animated on scroll into view.
+ * UI-04/05/06: Uses chart theme CSS variables, error boundary, loading states.
  */
 
 import { useRef, useState, useEffect } from "react";
@@ -18,6 +19,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useInView } from "framer-motion";
+import { CHART_COLORS, CHART_GRID } from "@/components/charts/chart-theme";
+import { ChartErrorBoundary } from "@/components/charts/ChartErrorBoundary";
+import { ChartSkeleton } from "@/components/charts/ChartSkeleton";
 
 interface ChartDataPoint {
   month: string;
@@ -27,7 +31,7 @@ interface ChartDataPoint {
 interface TrafficChartProps {
   /** Chart data points */
   data: ChartDataPoint[];
-  /** Primary color for the chart */
+  /** Primary color for the chart - defaults to chart-1 */
   primaryColor?: string;
   /** Chart height in pixels */
   height?: number;
@@ -37,6 +41,8 @@ interface TrafficChartProps {
   showGradient?: boolean;
   /** Format for Y-axis values */
   yAxisFormatter?: (value: number) => string;
+  /** Loading state */
+  isLoading?: boolean;
 }
 
 /**
@@ -81,11 +87,12 @@ function defaultYAxisFormatter(value: number): string {
  */
 export function TrafficChart({
   data,
-  primaryColor = "#2563eb",
+  primaryColor = CHART_COLORS.primary,
   height = 200,
   className = "",
   showGradient = true,
   yAxisFormatter = defaultYAxisFormatter,
+  isLoading = false,
 }: TrafficChartProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
@@ -123,70 +130,78 @@ export function TrafficChart({
     requestAnimationFrame(animate);
   }, [isInView, data]);
 
+  // Show skeleton while loading
+  if (isLoading) {
+    return <ChartSkeleton variant="area" height={height} className={className} />;
+  }
+
   if (data.length === 0) {
     return (
       <div
-        className={`flex items-center justify-center h-[${height}px] text-muted-foreground ${className}`}
+        className={`flex items-center justify-center text-muted-foreground ${className}`}
+        style={{ height }}
       >
-        Nėra duomenų
+        No data available
       </div>
     );
   }
 
-  const gradientId = `traffic-gradient-${primaryColor.replace("#", "")}`;
+  const gradientId = `traffic-gradient-${primaryColor.replace(/[^a-zA-Z0-9]/g, "")}`;
 
   return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial={{ opacity: 0 }}
-      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <ResponsiveContainer width="100%" height={height}>
-        <AreaChart
-          data={animatedData}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-        >
-          <defs>
-            {showGradient && (
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={primaryColor} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={primaryColor} stopOpacity={0} />
-              </linearGradient>
-            )}
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="currentColor"
-            opacity={0.1}
-            vertical={false}
-          />
-          <XAxis
-            dataKey="month"
-            tick={{ fontSize: 11, fill: "#888" }}
-            tickLine={false}
-            axisLine={false}
-            dy={10}
-          />
-          <YAxis
-            tickFormatter={yAxisFormatter}
-            tick={{ fontSize: 11, fill: "#888" }}
-            tickLine={false}
-            axisLine={false}
-            width={45}
-          />
-          <Tooltip content={<ChartTooltip />} />
-          <Area
-            type="monotone"
-            dataKey="traffic"
-            stroke={primaryColor}
-            strokeWidth={2}
-            fill={showGradient ? `url(#${gradientId})` : primaryColor}
-            fillOpacity={showGradient ? 1 : 0.2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </motion.div>
+    <ChartErrorBoundary fallbackHeight={height}>
+      <motion.div
+        ref={ref}
+        className={className}
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <ResponsiveContainer width="100%" height={height}>
+          <AreaChart
+            data={animatedData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          >
+            <defs>
+              {showGradient && (
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={primaryColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={primaryColor} stopOpacity={0} />
+                </linearGradient>
+              )}
+            </defs>
+            <CartesianGrid
+              strokeDasharray={CHART_GRID.strokeDasharray}
+              stroke={CHART_GRID.stroke}
+              strokeOpacity={CHART_GRID.strokeOpacity}
+              vertical={false}
+            />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={false}
+              dy={10}
+            />
+            <YAxis
+              tickFormatter={yAxisFormatter}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={false}
+              width={45}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="traffic"
+              stroke={primaryColor}
+              strokeWidth={2}
+              fill={showGradient ? `url(#${gradientId})` : primaryColor}
+              fillOpacity={showGradient ? 1 : 0.2}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </motion.div>
+    </ChartErrorBoundary>
   );
 }

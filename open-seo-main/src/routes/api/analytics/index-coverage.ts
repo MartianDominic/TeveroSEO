@@ -2,11 +2,12 @@
  * Index Coverage API Route
  * Phase 96-04: URL Inspection + Index Coverage
  *
- * GET /api/analytics/index-coverage - Get coverage stats
- * GET /api/analytics/index-coverage/quota - Get quota usage
- * POST /api/analytics/index-coverage/inspect - Inspect single URL
- * POST /api/analytics/index-coverage/batch-inspect - Batch inspect URLs (rate limited: 100/hour)
- * POST /api/analytics/index-coverage/request-indexing - Request indexing
+ * GET /api/analytics/index-coverage - Get coverage stats (60 req/min standard)
+ * GET /api/analytics/index-coverage/quota - Get quota usage (60 req/min standard)
+ * POST /api/analytics/index-coverage/inspect - Inspect single URL (100 req/hour batch)
+ * POST /api/analytics/index-coverage/batch-inspect - Batch inspect URLs (100 req/hour batch)
+ * POST /api/analytics/index-coverage/request-indexing - Request indexing (5 req/hour sync)
+ * CSRF protected: POST requires valid CSRF token.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { IndexCoverageService } from "@/server/features/analytics/services/IndexCoverageService";
@@ -17,11 +18,13 @@ import {
 } from "@/server/features/analytics/auth/analytics-auth";
 import { z } from "zod";
 import {
-  analyticsBatchRateLimiter,
   analyticsStandardRateLimiter,
+  analyticsBatchRateLimiter,
+  analyticsSyncRateLimiter,
   rateLimitExceededResponse,
   addRateLimitHeaders,
-} from "@/server/middleware";
+} from "@/server/middleware/rate-limit";
+import { csrfProtect } from "@/server/middleware/csrf";
 
 const statsQuerySchema = z.object({
   siteId: z.string(),
@@ -67,8 +70,14 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
 
     const service = new IndexCoverageService();
 
-    // GET - Stats, quota, or priority URLs
+    // GET - Stats, quota, or priority URLs (60 req/min standard)
     if (method === "GET") {
+      // Rate limit check for GET requests: 60 requests per minute per workspace
+      const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
+      if (!rateLimitResult.allowed) {
+        return rateLimitExceededResponse(rateLimitResult);
+      }
+
       const params = Object.fromEntries(url.searchParams);
 
       // Quota usage
@@ -87,7 +96,8 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
         }
 
         const quota = await service.getQuota(parsed.data.siteId);
-        return Response.json({ success: true, data: quota });
+        const response = Response.json({ success: true, data: quota });
+        return addRateLimitHeaders(response, rateLimitResult);
       }
 
       // Priority URLs for inspection
@@ -109,7 +119,8 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
           parsed.data.siteId,
           parsed.data.limit || 100
         );
-        return Response.json({ success: true, data: priority });
+        const response = Response.json({ success: true, data: priority });
+        return addRateLimitHeaders(response, rateLimitResult);
       }
 
       // Coverage stats
@@ -127,15 +138,26 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
       }
 
       const stats = await service.getIndexCoverageStats(parsed.data.siteId);
-      return Response.json({ success: true, data: stats });
+      const response = Response.json({ success: true, data: stats });
+      return addRateLimitHeaders(response, rateLimitResult);
     }
 
     // POST - Inspect, batch inspect, or request indexing
     if (method === "POST") {
+      // CSRF protection for state-changing request
+      const csrfError = csrfProtect(request);
+      if (csrfError) return csrfError;
+
       const body = await request.json();
 
-      // Single URL inspection
+      // Single URL inspection (100 req/hour batch tier)
       if (url.pathname.endsWith("/inspect")) {
+        // Rate limit check: 100 requests per hour per workspace (batch operations)
+        const rateLimitResult = await analyticsBatchRateLimiter(auth.workspaceId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
+        }
+
         const parsed = inspectBodySchema.safeParse(body);
         if (!parsed.success) {
           return Response.json(
@@ -166,16 +188,17 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
             parsed.data.siteUrl,
             parsed.data.pageUrl
           );
-          return Response.json({ success: true, data: result });
+          const response = Response.json({ success: true, data: result });
+          return addRateLimitHeaders(response, rateLimitResult);
         } catch (error) {
           const message = error instanceof Error ? error.message : "Inspection failed";
           return Response.json({ success: false, error: message }, { status: 500 });
         }
       }
 
-      // Batch inspection - rate limited: 100 batch ops per hour per workspace
+      // Batch inspection (100 req/hour batch tier)
       if (url.pathname.endsWith("/batch-inspect")) {
-        // Rate limit check for batch operations
+        // Rate limit check: 100 requests per hour per workspace (batch operations)
         const rateLimitResult = await analyticsBatchRateLimiter(auth.workspaceId);
         if (!rateLimitResult.allowed) {
           return rateLimitExceededResponse(rateLimitResult);
@@ -213,8 +236,14 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
         return addRateLimitHeaders(response, rateLimitResult);
       }
 
-      // Request indexing
+      // Request indexing (5 req/hour sync tier - strictest limit to prevent GSC quota exhaustion)
       if (url.pathname.endsWith("/request-indexing")) {
+        // Rate limit check: 5 requests per hour per workspace (sync operations)
+        const rateLimitResult = await analyticsSyncRateLimiter(auth.workspaceId);
+        if (!rateLimitResult.allowed) {
+          return rateLimitExceededResponse(rateLimitResult);
+        }
+
         const parsed = requestIndexingBodySchema.safeParse(body);
         if (!parsed.success) {
           return Response.json(
@@ -243,7 +272,8 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
           parsed.data.pageUrl,
           parsed.data.requestType
         );
-        return Response.json({ success: true, data: result });
+        const response = Response.json({ success: true, data: result });
+        return addRateLimitHeaders(response, rateLimitResult);
       }
 
       return Response.json({ success: false, error: "Invalid POST target" }, { status: 400 });

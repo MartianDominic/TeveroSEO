@@ -17,15 +17,12 @@ const mockRepo = {
   delete: vi.fn(),
   getGroupPages: vi.fn(),
   addPageToGroup: vi.fn(),
-  addPagesToGroupBatch: vi.fn(),
   removePageFromGroup: vi.fn(),
   clearGroupPages: vi.fn(),
   getDistinctFolders: vi.fn(),
   getPagesMatchingFolder: vi.fn(),
   getPagesMatchingRegex: vi.fn(),
   getGroupMetrics: vi.fn(),
-  getGroupPagesBatch: vi.fn(),
-  getGroupMetricsBatch: vi.fn(),
 };
 
 // Mock the repository
@@ -38,15 +35,12 @@ vi.mock("../repositories/ContentGroupRepository", () => ({
     delete = mockRepo.delete;
     getGroupPages = mockRepo.getGroupPages;
     addPageToGroup = mockRepo.addPageToGroup;
-    addPagesToGroupBatch = mockRepo.addPagesToGroupBatch;
     removePageFromGroup = mockRepo.removePageFromGroup;
     clearGroupPages = mockRepo.clearGroupPages;
     getDistinctFolders = mockRepo.getDistinctFolders;
     getPagesMatchingFolder = mockRepo.getPagesMatchingFolder;
     getPagesMatchingRegex = mockRepo.getPagesMatchingRegex;
     getGroupMetrics = mockRepo.getGroupMetrics;
-    getGroupPagesBatch = mockRepo.getGroupPagesBatch;
-    getGroupMetricsBatch = mockRepo.getGroupMetricsBatch;
   },
 }));
 
@@ -191,7 +185,6 @@ describe("ContentGroupService", () => {
       // Mock page population - clearGroupPages and addPageToGroup will be called
       mockRepo.clearGroupPages.mockResolvedValue(undefined);
       mockRepo.addPageToGroup.mockResolvedValue(undefined);
-      mockRepo.addPagesToGroupBatch.mockResolvedValue(undefined);
       mockRepo.getPagesMatchingFolder.mockResolvedValue([
         "https://example.com/blog/post-1",
         "https://example.com/blog/post-2",
@@ -222,11 +215,6 @@ describe("ContentGroupService", () => {
       expect(result?.matchType).toBe("folder");
       expect(result?.matchPattern).toBe("/blog/");
       expect(mockRepo.clearGroupPages).toHaveBeenCalledWith("group-1", true);
-      expect(mockRepo.addPagesToGroupBatch).toHaveBeenCalledWith(
-        "group-1",
-        ["https://example.com/blog/post-1", "https://example.com/blog/post-2"],
-        false
-      );
     });
 
     it("should apply regex pattern to populate pages", async () => {
@@ -248,7 +236,6 @@ describe("ContentGroupService", () => {
 
       mockRepo.clearGroupPages.mockResolvedValue(undefined);
       mockRepo.addPageToGroup.mockResolvedValue(undefined);
-      mockRepo.addPagesToGroupBatch.mockResolvedValue(undefined);
       mockRepo.getPagesMatchingRegex.mockResolvedValue([
         "https://example.com/products/shoes",
       ]);
@@ -347,8 +334,6 @@ describe("ContentGroupService", () => {
           name: "Blog",
           matchType: "folder",
           matchPattern: "/blog/",
-          createdAt: new Date(),
-          updatedAt: new Date(),
         },
         {
           id: "group-2",
@@ -356,60 +341,59 @@ describe("ContentGroupService", () => {
           name: "Tutorials",
           matchType: "folder",
           matchPattern: "/blog/tutorials/",
-          createdAt: new Date(),
-          updatedAt: new Date(),
         },
       ]);
 
-      // Mock batch pages fetch
-      mockRepo.getGroupPagesBatch.mockResolvedValue(
-        new Map([
-          [
-            "group-1",
-            [
-              {
-                pageUrl: "https://example.com/blog/news-post",
-                manuallyAdded: false,
-              },
-            ],
-          ],
-          [
-            "group-2",
-            [
-              {
-                pageUrl: "https://example.com/blog/tutorials/lesson-1",
-                manuallyAdded: false,
-              },
-            ],
-          ],
-        ])
-      );
+      mockRepo.getGroupPages.mockImplementation((groupId: string) => {
+        if (groupId === "group-2") {
+          // More specific group should have tutorial pages
+          return Promise.resolve([
+            {
+              pageUrl: "https://example.com/blog/tutorials/lesson-1",
+              manuallyAdded: false,
+            },
+          ]);
+        }
+        // Broader group should have other blog pages
+        return Promise.resolve([
+          {
+            pageUrl: "https://example.com/blog/news-post",
+            manuallyAdded: false,
+          },
+        ]);
+      });
 
-      // Mock batch metrics fetch
-      mockRepo.getGroupMetricsBatch.mockResolvedValue(
-        new Map([
-          [
-            "https://example.com/blog/news-post",
-            {
-              clicks: 50,
-              impressions: 500,
-              position: 5,
-              prevClicks: 45,
-              prevImpressions: 450,
-            },
-          ],
-          [
-            "https://example.com/blog/tutorials/lesson-1",
-            {
-              clicks: 50,
-              impressions: 500,
-              position: 5,
-              prevClicks: 45,
-              prevImpressions: 450,
-            },
-          ],
-        ])
-      );
+      mockRepo.findById.mockImplementation((id: string) => {
+        const groups = {
+          "group-1": {
+            id: "group-1",
+            siteId,
+            name: "Blog",
+            matchType: "folder",
+            matchPattern: "/blog/",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          "group-2": {
+            id: "group-2",
+            siteId,
+            name: "Tutorials",
+            matchType: "folder",
+            matchPattern: "/blog/tutorials/",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        };
+        return Promise.resolve(groups[id as keyof typeof groups]);
+      });
+
+      mockRepo.getGroupMetrics.mockResolvedValue({
+        totalClicks: 100,
+        totalImpressions: 1000,
+        avgPosition: 5,
+        prevClicks: 90,
+        prevImpressions: 900,
+      });
 
       const groups = await service.getGroups(siteId);
 

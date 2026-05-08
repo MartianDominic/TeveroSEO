@@ -15,8 +15,17 @@ import { redis } from "@/server/lib/redis";
 import { fetchKeywordMetrics } from "@/server/lib/dataforseo";
 import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { createLogger } from "@/server/lib/logger";
+import { db } from "@/db";
+import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
+import { getLabsCost } from "@/server/features/scraping/cost";
 
 const log = createLogger({ module: "quick-check-service" });
+
+// Pseudo-client ID for anonymous/quick checks
+const QUICK_CHECK_CLIENT_ID = "system:quick-check";
+
+// DataForSEO Labs API cost per keyword (from centralized pricing)
+const DFS_COST_PER_KEYWORD = getLabsCost("keywordMetrics");
 
 // Constants
 const MAX_KEYWORDS = 20;
@@ -56,6 +65,11 @@ interface CachedMetrics {
   competition: number;
 }
 
+export interface QuickCheckOptions {
+  /** Client ID for cost attribution (uses system:quick-check if not provided) */
+  clientId?: string;
+}
+
 export class QuickCheckService {
   private locationCode: number;
   private languageCode: string;
@@ -66,10 +80,44 @@ export class QuickCheckService {
   }
 
   /**
+   * Record cost to DfsCostTracker (fire-and-forget pattern).
+   * Non-blocking - errors are caught silently to avoid disrupting the main flow.
+   */
+  private recordCostFireAndForget(
+    keywordCount: number,
+    success: boolean,
+    responseTimeMs: number,
+    clientId: string,
+    errorMessage?: string
+  ): void {
+    const estimatedCost = keywordCount * DFS_COST_PER_KEYWORD;
+    const costTracker = getDfsCostTracker(db);
+
+    // Fire-and-forget: don't await, catch errors silently
+    costTracker
+      .recordCost({
+        url: `quick-check:keywords:${keywordCount}`,
+        domain: "labs-api",
+        mode: "basic",
+        usedStandardQueue: false,
+        estimatedCost,
+        actualCost: success ? estimatedCost : undefined,
+        success,
+        responseTimeMs,
+        clientId,
+        errorMessage,
+      })
+      .catch(() => {
+        // Silently ignore - cost tracking is non-blocking
+      });
+  }
+
+  /**
    * Check 1-20 keywords instantly without creating a workspace.
    * Uses Redis cache to minimize API calls.
+   * Tracks costs via DfsCostTracker for budget monitoring.
    */
-  async checkKeywords(keywords: string[]): Promise<QuickCheckResult> {
+  async checkKeywords(keywords: string[], options: QuickCheckOptions = {}): Promise<QuickCheckResult> {
     // Validate input
     if (keywords.length === 0) {
       throw new Error("At least one keyword is required");
@@ -77,6 +125,9 @@ export class QuickCheckService {
     if (keywords.length > MAX_KEYWORDS) {
       throw new Error(`Maximum ${MAX_KEYWORDS} keywords allowed`);
     }
+
+    // Use provided clientId or fall back to pseudo-client for anonymous checks
+    const clientId = options.clientId ?? QUICK_CHECK_CLIENT_ID;
 
     // Normalize and dedupe
     const normalizedKeywords = [
@@ -114,11 +165,22 @@ export class QuickCheckService {
 
     // Fetch from API
     if (needsEnrichment.length > 0) {
+      const startTime = Date.now();
       try {
         const metrics = await fetchKeywordMetrics(
           needsEnrichment,
           this.locationCode,
           this.languageCode
+        );
+
+        const responseTimeMs = Date.now() - startTime;
+
+        // Track cost via DfsCostTracker (fire-and-forget)
+        this.recordCostFireAndForget(
+          needsEnrichment.length,
+          true,
+          responseTimeMs,
+          clientId
         );
 
         const metricsMap = new Map(
@@ -154,6 +216,18 @@ export class QuickCheckService {
         // Cost: $0.005 per keyword
         result.costCents = needsEnrichment.length * COST_PER_KEYWORD_CENTS;
       } catch (error) {
+        const responseTimeMs = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Track failed cost via DfsCostTracker (fire-and-forget)
+        this.recordCostFireAndForget(
+          needsEnrichment.length,
+          false,
+          responseTimeMs,
+          clientId,
+          errorMessage
+        );
+
         log.error("Quick check API error", error instanceof Error ? error : new Error(String(error)));
         throw new Error("Failed to fetch keyword metrics");
       }

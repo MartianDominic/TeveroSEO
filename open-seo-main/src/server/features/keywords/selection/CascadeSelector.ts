@@ -79,11 +79,11 @@ export class CascadeSelector {
     let remaining = config.targetCount;
 
     // Stage selection order by priority
-    const stages: Array<{ stage: FunnelStage; config: typeof config.stages.bofu }> = [
-      { stage: 'bofu', config: config.stages.bofu },
-      { stage: 'mofu', config: config.stages.mofu },
-      { stage: 'tofu', config: config.stages.tofu },
-    ].sort((a, b) => a.config.priority - b.config.priority);
+    const stages: Array<{ stage: FunnelStage; config: typeof config.stages.bofu }> = ([
+      { stage: 'bofu' as FunnelStage, config: config.stages.bofu },
+      { stage: 'mofu' as FunnelStage, config: config.stages.mofu },
+      { stage: 'tofu' as FunnelStage, config: config.stages.tofu },
+    ] as Array<{ stage: FunnelStage; config: typeof config.stages.bofu }>).sort((a, b) => a.config.priority - b.config.priority);
 
     // Select from each stage in priority order
     for (const { stage, config: stageConfig } of stages) {

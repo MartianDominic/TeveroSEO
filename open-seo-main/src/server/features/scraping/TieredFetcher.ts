@@ -32,6 +32,7 @@ import { CircuitBreaker, type CircuitState, CircuitOpenError } from "./resilienc
 import type { AlertManager } from "./monitoring/AlertManager";
 import { recordCircuitState } from "./monitoring/MetricsCollector";
 import { fetcherLogger, cacheLogger, logCircuitStateChange, logTierEscalation } from "./logging";
+import { getBandwidthTracker, type BandwidthTracker, type ProxyProvider } from "./monitoring/BandwidthTracker";
 
 // =============================================================================
 // Types
@@ -162,6 +163,20 @@ const TIER_ORDER: ScrapeTier[] = [
   'dfs_browser',
 ];
 
+/**
+ * Mapping of tiers to their proxy providers for bandwidth tracking.
+ * Tiers with null don't use tracked proxies (direct fetch or DFS-managed).
+ */
+const TIER_PROVIDERS: Record<ScrapeTier, ProxyProvider | null> = {
+  direct: null,       // No proxy
+  webshare: 'webshare',
+  geonode: 'geonode',
+  camoufox: 'geonode', // Uses geonode proxies
+  dfs_basic: null,    // DFS manages own quota
+  dfs_js: null,
+  dfs_browser: null,
+};
+
 // =============================================================================
 // TieredFetcher
 // =============================================================================
@@ -170,8 +185,10 @@ export class TieredFetcher {
   private cacheManager: CacheManager | null = null;
   private circuitBreakers: Map<ScrapeTier, CircuitBreaker> = new Map();
   private alertManager: AlertManager | null = null;
+  private bandwidthTracker: BandwidthTracker;
 
   constructor() {
+    this.bandwidthTracker = getBandwidthTracker();
     this.initializeCircuitBreakers();
   }
 
@@ -275,6 +292,24 @@ export class TieredFetcher {
       }
     }
 
+    // Check if the selected tier's provider is bandwidth-exhausted
+    const provider = TIER_PROVIDERS[tier];
+    if (provider) {
+      const status = await this.bandwidthTracker.getStatus(provider);
+      if (status.isExhausted) {
+        fetcherLogger.info({
+          url,
+          tier,
+          provider,
+          usedPercent: status.percentUsed.toFixed(1),
+        }, 'Initial tier bandwidth exhausted, escalating');
+        // Escalate to next available tier
+        const result = await this.escalateToNextTier(url, tier, options, startTime, 'bandwidth_exhausted');
+        await this.storeToCacheIfSuccessful(url, result);
+        return result;
+      }
+    }
+
     // Execute fetch with circuit breaker protection
     const result = await this.fetchWithCircuitBreaker(url, tier, options, startTime);
     await this.storeToCacheIfSuccessful(url, result);
@@ -330,15 +365,16 @@ export class TieredFetcher {
   }
 
   /**
-   * Escalate to the next tier when current tier's circuit is open.
+   * Escalate to the next tier when current tier's circuit is open or bandwidth exhausted.
    */
   private async escalateToNextTier(
     url: string,
     currentTier: ScrapeTier,
     options: FetchOptions,
-    startTime: number
+    startTime: number,
+    reason: EscalationReason = 'circuit_open'
   ): Promise<FetchResult> {
-    const nextTier = this.getNextTier(currentTier, options.maxTier);
+    const nextTier = await this.getNextTier(currentTier, options.maxTier);
 
     if (!nextTier) {
       // All tiers exhausted
@@ -351,30 +387,47 @@ export class TieredFetcher {
         responseTimeMs: Date.now() - startTime,
         responseSizeBytes: 0,
         estimatedCostUsd: 0,
-        error: `All tiers exhausted (circuits open). Last tier: ${currentTier}`,
+        error: `All tiers exhausted (circuits open or bandwidth exhausted). Last tier: ${currentTier}`,
       };
     }
 
-    logTierEscalation(url, currentTier, nextTier, 'circuit_open');
+    logTierEscalation(url, currentTier, nextTier, reason);
     return this.fetchWithCircuitBreaker(url, nextTier, { ...options, startTier: nextTier }, startTime);
   }
 
   /**
    * Get the next tier in the escalation order.
+   * Skips tiers with open circuits or exhausted bandwidth.
    */
-  private getNextTier(currentTier: ScrapeTier, maxTier?: ScrapeTier): ScrapeTier | null {
+  private async getNextTier(currentTier: ScrapeTier, maxTier?: ScrapeTier): Promise<ScrapeTier | null> {
     const currentIndex = TIER_ORDER.indexOf(currentTier);
     const maxIndex = maxTier ? TIER_ORDER.indexOf(maxTier) : TIER_ORDER.length - 1;
 
-    // Find next available tier that isn't circuit-broken
+    // Find next available tier that isn't circuit-broken or bandwidth-exhausted
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
       const nextTier = TIER_ORDER[i];
       const breaker = this.circuitBreakers.get(nextTier);
 
-      // If no breaker or circuit is not open, use this tier
-      if (!breaker || breaker.getState() !== 'open') {
-        return nextTier;
+      // Skip if circuit is open
+      if (breaker && breaker.getState() === 'open') {
+        continue;
       }
+
+      // Skip if provider bandwidth is exhausted
+      const provider = TIER_PROVIDERS[nextTier];
+      if (provider) {
+        const status = await this.bandwidthTracker.getStatus(provider);
+        if (status.isExhausted) {
+          fetcherLogger.info({
+            tier: nextTier,
+            provider,
+            usedPercent: status.percentUsed.toFixed(1),
+          }, 'Skipping tier due to bandwidth exhaustion');
+          continue;
+        }
+      }
+
+      return nextTier;
     }
 
     return null;

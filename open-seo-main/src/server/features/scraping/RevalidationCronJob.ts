@@ -26,6 +26,7 @@ import {
 } from "@/db/domain-scrape-learning-schema";
 import { domainLearningService } from "./DomainLearningService";
 import type { RevalidationCandidate, RevalidationResult } from "./types";
+import { domainLogger } from "./logging";
 
 // =============================================================================
 // Configuration
@@ -118,12 +119,12 @@ export class RevalidationCronJob {
    */
   start(): void {
     if (!this.config.enabled) {
-      console.log("[RevalidationCron] Job is disabled, not starting");
+      domainLogger.info('Revalidation job is disabled, not starting');
       return;
     }
 
     if (this.job) {
-      console.log("[RevalidationCron] Job already running");
+      domainLogger.info('Revalidation job already running');
       return;
     }
 
@@ -135,9 +136,7 @@ export class RevalidationCronJob {
       "UTC"
     );
 
-    console.log(
-      `[RevalidationCron] Started with schedule: ${this.config.schedule}`
-    );
+    domainLogger.info({ schedule: this.config.schedule }, 'Revalidation cron job started');
 
     if (this.config.runOnStartup) {
       // Run after a short delay to allow system initialization
@@ -152,7 +151,7 @@ export class RevalidationCronJob {
     if (this.job) {
       this.job.stop();
       this.job = null;
-      console.log("[RevalidationCron] Stopped");
+      domainLogger.info('Revalidation cron job stopped');
     }
   }
 
@@ -175,7 +174,7 @@ export class RevalidationCronJob {
    */
   async run(): Promise<RevalidationRunStats> {
     if (this.isRunning) {
-      console.log("[RevalidationCron] Previous run still in progress, skipping");
+      domainLogger.debug('Previous revalidation run still in progress, skipping');
       return this.lastRunStats ?? this.createEmptyStats();
     }
 
@@ -185,7 +184,7 @@ export class RevalidationCronJob {
     stats.timestamp = new Date();
 
     try {
-      console.log("[RevalidationCron] Starting revalidation run");
+      domainLogger.info('Starting revalidation run');
 
       // Get candidates
       const candidates = await domainLearningService.getRevalidationCandidates(
@@ -194,13 +193,11 @@ export class RevalidationCronJob {
       stats.candidatesFound = candidates.length;
 
       if (candidates.length === 0) {
-        console.log("[RevalidationCron] No candidates for revalidation");
+        domainLogger.debug('No candidates for revalidation');
         return stats;
       }
 
-      console.log(
-        `[RevalidationCron] Found ${candidates.length} candidates for revalidation`
-      );
+      domainLogger.info({ candidateCount: candidates.length }, 'Found revalidation candidates');
 
       // Track by reason
       for (const candidate of candidates) {
@@ -219,9 +216,7 @@ export class RevalidationCronJob {
           // Check minimum interval
           const canRevalidate = await this.checkMinimumInterval(candidate.domain);
           if (!canRevalidate) {
-            console.log(
-              `[RevalidationCron] Skipping ${candidate.domain} - too recent`
-            );
+            domainLogger.debug({ domain: candidate.domain }, 'Skipping revalidation - too recent');
             continue;
           }
 
@@ -236,15 +231,16 @@ export class RevalidationCronJob {
               previousTier: result.previousTier,
               newTier: result.newTier,
             });
-            console.log(
-              `[RevalidationCron] ${result.domain}: tier changed ${result.previousTier} -> ${result.newTier}`
+            domainLogger.info(
+              { domain: result.domain, previousTier: result.previousTier, newTier: result.newTier },
+              'Domain tier changed during revalidation'
             );
           }
         } catch (error) {
           stats.failureCount++;
-          console.error(
-            `[RevalidationCron] Failed to revalidate ${candidate.domain}:`,
-            error instanceof Error ? error.message : error
+          domainLogger.error(
+            { domain: candidate.domain, error: error instanceof Error ? error.message : String(error) },
+            'Failed to revalidate domain'
           );
         }
 
@@ -257,13 +253,14 @@ export class RevalidationCronJob {
           ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
           : 0;
 
-      console.log(
-        `[RevalidationCron] Completed: ${stats.successCount} success, ${stats.failureCount} failed, ${stats.tierChangedCount} tier changes`
+      domainLogger.info(
+        { successCount: stats.successCount, failureCount: stats.failureCount, tierChangedCount: stats.tierChangedCount },
+        'Revalidation run completed'
       );
     } catch (error) {
-      console.error(
-        "[RevalidationCron] Run failed:",
-        error instanceof Error ? error.message : error
+      domainLogger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Revalidation run failed'
       );
     } finally {
       stats.totalTimeMs = Date.now() - startTime;
@@ -326,7 +323,7 @@ export class RevalidationCronJob {
    * Manually trigger revalidation for a specific domain.
    */
   async revalidateDomain(domain: string): Promise<RevalidationResult> {
-    console.log(`[RevalidationCron] Manual revalidation triggered for ${domain}`);
+    domainLogger.info({ domain }, 'Manual revalidation triggered');
     return domainLearningService.revalidate(domain);
   }
 
@@ -385,7 +382,7 @@ export class HistoryCleanupJob {
       "UTC"
     );
 
-    console.log("[HistoryCleanup] Started, retention: ${this.retentionDays} days");
+    domainLogger.info({ retentionDays: this.retentionDays }, 'History cleanup job started');
   }
 
   /**
@@ -406,9 +403,7 @@ export class HistoryCleanupJob {
       Date.now() - this.retentionDays * 24 * 60 * 60 * 1000
     );
 
-    console.log(
-      `[HistoryCleanup] Deleting records older than ${cutoffDate.toISOString()}`
-    );
+    domainLogger.info({ cutoffDate: cutoffDate.toISOString() }, 'Starting history cleanup');
 
     const result = await db
       .delete(domainScrapeHistory)
@@ -416,7 +411,7 @@ export class HistoryCleanupJob {
       .returning({ id: domainScrapeHistory.id });
 
     const deletedCount = result.length;
-    console.log(`[HistoryCleanup] Deleted ${deletedCount} old records`);
+    domainLogger.info({ deletedCount }, 'History cleanup completed');
 
     return { deletedCount };
   }

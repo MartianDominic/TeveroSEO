@@ -9,6 +9,19 @@ import { discoverSideKeywords, SideKeywordExpander } from './SideKeywordExpander
 import type { SideKeywordExpanderConfig } from './types';
 import * as dataforseo from '@/server/lib/dataforseo';
 
+// Mock db module before any imports that use it
+vi.mock('@/db', () => ({
+  db: {},
+}));
+
+// Mock DfsCostTracker
+const mockRecordCost = vi.fn().mockResolvedValue(1);
+vi.mock('@/server/features/scraping/providers/DfsCostTracker', () => ({
+  getDfsCostTracker: vi.fn(() => ({
+    recordCost: mockRecordCost,
+  })),
+}));
+
 // Mock DataForSEO
 vi.mock('@/server/lib/dataforseo', () => ({
   fetchKeywordIdeasRaw: vi.fn(),
@@ -17,6 +30,7 @@ vi.mock('@/server/lib/dataforseo', () => ({
 describe('SideKeywordExpander', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRecordCost.mockResolvedValue(1);
   });
 
   describe('discoverSideKeywords', () => {
@@ -39,21 +53,22 @@ describe('SideKeywordExpander', () => {
             keyword_info_normalized_with_clickstream: null,
           },
         ],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 2 },
       });
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'skincare',
           productCategories: [],
           problemsSolved: ['sausa oda'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const result = await discoverSideKeywords(constraints, new Set(), {
@@ -88,21 +103,22 @@ describe('SideKeywordExpander', () => {
             keyword_info_normalized_with_clickstream: null,
           },
         ],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 2 },
       });
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'skincare',
           productCategories: [],
           problemsSolved: ['sausa oda'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const existingKeywords = new Set(['existing keyword']);
@@ -136,21 +152,22 @@ describe('SideKeywordExpander', () => {
             keyword_info_normalized_with_clickstream: null,
           },
         ],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 2 },
       });
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'skincare',
           productCategories: [],
           problemsSolved: ['test problem'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const result = await discoverSideKeywords(constraints, new Set(), {
@@ -178,21 +195,22 @@ describe('SideKeywordExpander', () => {
             keyword_info_normalized_with_clickstream: null,
           },
         ],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 1 },
       });
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'hair care',
           productCategories: [],
           problemsSolved: ['plaukų slinkimas'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const result = await discoverSideKeywords(constraints, new Set(), {
@@ -218,21 +236,22 @@ describe('SideKeywordExpander', () => {
             keyword_info_normalized_with_clickstream: null,
           },
         ],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 1 },
       });
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'testing',
           productCategories: [],
           problemsSolved: ['test'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const result = await discoverSideKeywords(constraints, new Set(), {
@@ -243,6 +262,102 @@ describe('SideKeywordExpander', () => {
       });
 
       expect(result[0].expansionMethod).toBe('dataforseo_keyword_ideas');
+    });
+
+    it('should record cost via DfsCostTracker on successful API call', async () => {
+      vi.mocked(dataforseo.fetchKeywordIdeasRaw).mockResolvedValue({
+        data: [
+          {
+            keyword: 'test keyword',
+            keyword_info: { search_volume: 500, cpc: 1.0, competition: 0.40 },
+            keyword_properties: { keyword_difficulty: 20 },
+            search_intent_info: null,
+            keyword_info_normalized_with_clickstream: null,
+          },
+        ],
+        billing: { costUsd: 0.0005, path: ['test'], resultCount: 1 },
+      });
+
+      const constraints = {
+        business: {
+          type: 'service' as const,
+          coreOffering: 'testing',
+          productCategories: [],
+          problemsSolved: ['test'],
+        },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
+        priorities: [],
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
+      };
+
+      await discoverSideKeywords(constraints, new Set(), {
+        locationCode: 2440,
+        languageCode: 'lt',
+        limit: 100,
+        relevanceThreshold: 0.4,
+      }, { clientId: 'test-client', workspaceId: 'test-workspace' });
+
+      // Wait for fire-and-forget promise
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockRecordCost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'keyword-ideas:test',
+          domain: 'dataforseo-labs',
+          mode: 'basic',
+          success: true,
+          clientId: 'test-client',
+          workspaceId: 'test-workspace',
+        })
+      );
+    });
+
+    it('should record failed cost when API call fails', async () => {
+      vi.mocked(dataforseo.fetchKeywordIdeasRaw).mockRejectedValue(new Error('API Error'));
+
+      const constraints = {
+        business: {
+          type: 'service' as const,
+          coreOffering: 'testing',
+          productCategories: [],
+          problemsSolved: ['test'],
+        },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
+        priorities: [],
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
+      };
+
+      // Suppress console.error for this test
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await discoverSideKeywords(constraints, new Set(), {
+        locationCode: 2440,
+        languageCode: 'lt',
+        limit: 100,
+        relevanceThreshold: 0.4,
+      }, { clientId: 'test-client' });
+
+      // Wait for fire-and-forget promise
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockRecordCost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'keyword-ideas:test',
+          domain: 'dataforseo-labs',
+          mode: 'basic',
+          success: false,
+          errorMessage: 'API Error',
+          clientId: 'test-client',
+        })
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 
@@ -263,7 +378,7 @@ describe('SideKeywordExpander', () => {
     it('should call discoverSideKeywords via expand method', async () => {
       vi.mocked(dataforseo.fetchKeywordIdeasRaw).mockResolvedValue({
         data: [],
-        billing: { cost: 0.01, path: ['test'] },
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 0 },
       });
 
       const config: SideKeywordExpanderConfig = {
@@ -276,17 +391,18 @@ describe('SideKeywordExpander', () => {
       const expander = new SideKeywordExpander(config);
 
       const constraints = {
-        businessContext: {
-          businessType: 'service' as const,
+        business: {
+          type: 'service' as const,
+          coreOffering: 'testing',
           productCategories: [],
           problemsSolved: ['test'],
         },
-        geoConstraints: { scope: 'national' as const, country: 'lithuania' },
-        audienceConstraints: { targetTypes: ['b2c' as const] },
-        funnelConfig: { primary: 'bofu' as const },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
         priorities: [],
-        negativeFilters: { terms: [], brands: [], intents: [] },
-        specialModes: {},
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
       };
 
       const result = await expander.expand(constraints, new Set());
@@ -298,6 +414,49 @@ describe('SideKeywordExpander', () => {
         2440,
         'lt',
         50,
+      );
+    });
+
+    it('should pass options through to discoverSideKeywords', async () => {
+      vi.mocked(dataforseo.fetchKeywordIdeasRaw).mockResolvedValue({
+        data: [],
+        billing: { costUsd: 0.01, path: ['test'], resultCount: 0 },
+      });
+
+      const config: SideKeywordExpanderConfig = {
+        locationCode: 2440,
+        languageCode: 'lt',
+        limit: 50,
+        relevanceThreshold: 0.3,
+      };
+
+      const expander = new SideKeywordExpander(config);
+
+      const constraints = {
+        business: {
+          type: 'service' as const,
+          coreOffering: 'testing',
+          productCategories: [],
+          problemsSolved: ['test'],
+        },
+        geo: { scope: 'national' as const, includeCities: [], excludeCities: [], nearMeAllowed: true, genericAllowed: true },
+        audience: { b2bOnly: false, b2cAllowed: true, industryFocus: [] },
+        funnel: { primary: 'bofu' as const, fallbackOrder: ['mofu', 'tofu'], targetCount: 100 },
+        priorities: [],
+        negatives: { excludeTerms: [], excludeBrands: [], excludeIntents: [] },
+        specialModes: { pSEODetection: false, sideKeywordDiscovery: true, competitorGaps: false },
+      };
+
+      await expander.expand(constraints, new Set(), { clientId: 'client-123', workspaceId: 'ws-456' });
+
+      // Wait for fire-and-forget promise
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockRecordCost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: 'client-123',
+          workspaceId: 'ws-456',
+        })
       );
     });
   });

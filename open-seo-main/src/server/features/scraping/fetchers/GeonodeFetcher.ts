@@ -16,6 +16,7 @@ import type {
   ConnectionTestResult,
 } from "./types";
 import { TIER_TO_NUMBER } from "./types";
+import { getBandwidthTracker } from "../monitoring/BandwidthTracker";
 
 // =============================================================================
 // Types
@@ -183,12 +184,17 @@ export class GeonodeFetcher {
 
         const html = await response.text();
         const latencyMs = Date.now() - startTime;
+        const responseBytes = Buffer.byteLength(html, "utf8");
 
         // Extract response headers
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           responseHeaders[key] = value;
         });
+
+        // Track bandwidth usage (estimate request size: URL + headers ~500 bytes)
+        const requestBytes = Buffer.byteLength(options.url, "utf8") + 500;
+        getBandwidthTracker().recordUsage("geonode", requestBytes, responseBytes);
 
         return {
           success: response.ok,
@@ -197,7 +203,7 @@ export class GeonodeFetcher {
           statusCode: response.status,
           error: response.ok ? undefined : `HTTP ${response.status}`,
           latencyMs,
-          bytesTransferred: Buffer.byteLength(html, "utf8"),
+          bytesTransferred: responseBytes,
           proxyUsed: `geonode:${proxy.modifiers.join(",")}`,
           headers: responseHeaders,
         };

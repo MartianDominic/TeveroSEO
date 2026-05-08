@@ -5,36 +5,17 @@
  * Provides industry-standard CTR benchmarks by search position
  * and compares actual performance against benchmarks.
  *
- * CTR benchmarks based on Advanced Web Rankings research (2024).
+ * NOTE: Uses shared CtrBenchmarkCalculator for consistent benchmarks.
  */
+import { createLogger } from '@/server/lib/logger';
+import {
+  getExpectedCtr,
+  compareToBenchmark as sharedCompareToBenchmark,
+  generateCtrCurve as sharedGenerateCtrCurve,
+  getIndustryBenchmarks,
+} from '../utils/ctr-benchmark-calculator';
 
-/**
- * Industry-standard CTR benchmarks by position
- * Based on Advanced Web Rankings aggregate data
- */
-const POSITION_CTR_BENCHMARKS: Record<number, number> = {
-  1: 0.284,   // 28.4% CTR
-  2: 0.155,   // 15.5% CTR
-  3: 0.110,   // 11.0% CTR
-  4: 0.082,   // 8.2% CTR
-  5: 0.065,   // 6.5% CTR
-  6: 0.047,   // 4.7% CTR
-  7: 0.038,   // 3.8% CTR
-  8: 0.032,   // 3.2% CTR
-  9: 0.028,   // 2.8% CTR
-  10: 0.024,  // 2.4% CTR
-  // Positions 11-20 (striking distance)
-  11: 0.018,  // 1.8%
-  12: 0.015,
-  13: 0.013,
-  14: 0.011,
-  15: 0.010,
-  16: 0.009,
-  17: 0.008,
-  18: 0.007,
-  19: 0.006,
-  20: 0.005,  // 0.5%
-};
+const logger = createLogger({ module: 'ctr-benchmark-service' });
 
 /**
  * CTR comparison result
@@ -76,20 +57,10 @@ export interface PositionOpportunities {
 export class CtrBenchmarkService {
   /**
    * Get the benchmark CTR for a given search position.
-   * Uses industry-standard data for positions 1-20, exponential decay beyond.
+   * Uses shared calculator for consistent benchmarks.
    */
   getPositionCtrBenchmark(position: number): number {
-    if (position < 1) {
-      return 0;
-    }
-
-    if (position in POSITION_CTR_BENCHMARKS) {
-      return POSITION_CTR_BENCHMARKS[position];
-    }
-
-    // Exponential decay for positions beyond 20
-    // Uses decay factor that roughly matches observed behavior
-    return Math.max(0.001, 0.284 * Math.pow(0.7, position - 1));
+    return getExpectedCtr(position);
   }
 
   /**
@@ -97,26 +68,15 @@ export class CtrBenchmarkService {
    * Returns comparison data including status (above/at/below).
    */
   compareActualToBenchmark(position: number, actualCtr: number): CtrComparison {
-    const benchmark = this.getPositionCtrBenchmark(position);
-    const delta = actualCtr - benchmark;
-    const deltaPercent = benchmark > 0 ? ((actualCtr - benchmark) / benchmark) * 100 : 0;
-
-    let status: "above" | "at" | "below";
-    if (actualCtr > benchmark * 1.1) {
-      status = "above";
-    } else if (actualCtr < benchmark * 0.9) {
-      status = "below";
-    } else {
-      status = "at";
-    }
+    const result = sharedCompareToBenchmark(actualCtr, position);
 
     return {
       position,
-      benchmarkCtr: benchmark,
-      actualCtr,
-      delta,
-      deltaPercent,
-      status,
+      benchmarkCtr: result.expectedCtr,
+      actualCtr: result.actualCtr,
+      delta: result.absoluteDifference,
+      deltaPercent: result.percentDifference,
+      status: result.performance,
     };
   }
 
@@ -125,10 +85,7 @@ export class CtrBenchmarkService {
    * Returns position/CTR pairs for positions 1 to maxPosition.
    */
   generateCtrCurve(maxPosition: number = 20): CtrCurvePoint[] {
-    return Array.from({ length: maxPosition }, (_, i) => ({
-      position: i + 1,
-      ctr: this.getPositionCtrBenchmark(i + 1),
-    }));
+    return sharedGenerateCtrCurve(maxPosition);
   }
 
   /**
@@ -152,6 +109,12 @@ export class CtrBenchmarkService {
     // Sort below-benchmark by opportunity size (biggest delta first)
     belowBenchmark.sort((a, b) => a.comparison.delta - b.comparison.delta);
 
+    logger.debug('Analyzed CTR opportunities', {
+      totalPages: pages.length,
+      belowBenchmark: belowBenchmark.length,
+      atOrAbove: atOrAboveBenchmark.length,
+    });
+
     return {
       belowBenchmark,
       atOrAboveBenchmark,
@@ -162,8 +125,7 @@ export class CtrBenchmarkService {
    * Get all industry benchmark data as a lookup object.
    */
   getIndustryBenchmarks(): Record<number, number> {
-    // Return copy to prevent mutation
-    return { ...POSITION_CTR_BENCHMARKS };
+    return { ...getIndustryBenchmarks() };
   }
 }
 

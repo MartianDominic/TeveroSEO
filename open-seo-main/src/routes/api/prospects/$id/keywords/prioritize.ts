@@ -22,6 +22,7 @@ const WeightsSchema = z.object({
   relevance: z.number().min(0).max(1),
   focus: z.number().min(0).max(1),
   position: z.number().min(0).max(1),
+  geo: z.number().min(0).max(1), // Phase 77: Geographic Intelligence
 });
 
 const PrioritizeSchema = z.object({

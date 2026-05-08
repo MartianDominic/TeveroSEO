@@ -21,6 +21,9 @@ import { createLogger } from "@/server/lib/logger";
 import { routeRequest, scrapingService } from "@/server/features/scraping";
 import type { ScrapeResult } from "@/server/features/scraping";
 import type { ConsumerAdapter, ComparisonResult } from "@/server/features/scraping/migration/adapters/types";
+import { db } from "@/db";
+import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
+import { getLabsCost } from "@/server/features/scraping/cost";
 
 const log = createLogger({ module: "competitor-spy-service" });
 
@@ -29,7 +32,8 @@ const CACHE_PREFIX = CACHE_NS.COMPETITOR_SPY;
 const CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 const DEFAULT_LIMIT = 100;
 const COST_PER_DOMAIN_CENTS = 2; // $0.02 per domain
-const LABS_API_COST_USD = 0.001; // Labs API cost per domain
+// Labs API cost per domain from centralized pricing ($0.002/query)
+const LABS_API_COST_USD = getLabsCost("rankedKeywords");
 
 // =============================================================================
 // Page Fetch Types (for MigrationRouter integration)
@@ -130,6 +134,38 @@ export class CompetitorSpyService {
   }
 
   /**
+   * Record Labs API cost to DfsCostTracker (fire-and-forget pattern).
+   * Non-blocking - errors are caught silently to avoid disrupting the main flow.
+   */
+  private recordLabsCostFireAndForget(
+    domain: string,
+    success: boolean,
+    responseTimeMs: number,
+    clientId?: string,
+    errorMessage?: string
+  ): void {
+    const costTracker = getDfsCostTracker(db);
+
+    // Fire-and-forget: don't await, catch errors silently
+    costTracker
+      .recordCost({
+        url: `labs:ranked_keywords:${domain}`,
+        domain,
+        mode: "basic", // Labs API doesn't have JS/browser modes
+        usedStandardQueue: false, // Labs API uses live endpoint
+        estimatedCost: LABS_API_COST_USD,
+        actualCost: success ? LABS_API_COST_USD : undefined,
+        success,
+        responseTimeMs,
+        clientId,
+        errorMessage,
+      })
+      .catch(() => {
+        // Silently ignore - cost tracking is non-blocking
+      });
+  }
+
+  /**
    * Extract top keywords for a competitor domain.
    * Results cached for 24 hours.
    */
@@ -158,12 +194,22 @@ export class CompetitorSpyService {
     }
 
     // Fetch from DataForSEO
+    const startTime = Date.now();
     try {
       const organicKeywords = await fetchOrganicKeywords(
         normalizedDomain,
         this.locationCode,
         this.languageCode,
         limit
+      );
+
+      const responseTimeMs = Date.now() - startTime;
+
+      // Track Labs API cost (fire-and-forget)
+      this.recordLabsCostFireAndForget(
+        normalizedDomain,
+        true,
+        responseTimeMs
       );
 
       // Transform to CompetitorKeyword format
@@ -203,6 +249,18 @@ export class CompetitorSpyService {
 
       return result;
     } catch (error) {
+      const responseTimeMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Track failed request cost (fire-and-forget)
+      this.recordLabsCostFireAndForget(
+        normalizedDomain,
+        false,
+        responseTimeMs,
+        undefined,
+        errorMessage
+      );
+
       log.error("Competitor spy error", error instanceof Error ? error : new Error(String(error)), { domain: normalizedDomain });
       throw new Error(`Failed to fetch keywords for ${normalizedDomain}`);
     }

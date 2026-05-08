@@ -35,6 +35,7 @@ const bodySchema = z.object({
     .optional(),
 });
 
+// @ts-expect-error Route path is correct but may not be in generated types yet
 export const Route = createFileRoute("/api/keywords/research")({
   server: {
     handlers: {

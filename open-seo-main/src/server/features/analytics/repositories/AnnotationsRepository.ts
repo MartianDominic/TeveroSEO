@@ -3,8 +3,8 @@
  * Phase 96-03: Annotation storage and retrieval
  */
 import { eq, and, gte, lte, inArray, or, isNull } from 'drizzle-orm';
-import { db, type DbClient } from '@/db';
-import { annotations } from '@/db/analytics-schema';
+import { type DbClient } from '@/db';
+import { annotations } from '@/db/content-intelligence-schema';
 import type { Annotation, AnnotationFilters, AnnotationType } from '../types';
 
 export class AnnotationsRepository {

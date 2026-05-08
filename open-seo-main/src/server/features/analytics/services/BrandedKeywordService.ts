@@ -10,29 +10,10 @@
  * - Manual brand term management
  * - Query classification for branded/non-branded split
  * - Metrics aggregation by brand status
- * - In-memory caching with 5-minute TTL
  */
 import { eq, and } from "drizzle-orm";
 import type { DbClient } from "@/db";
 import { brandTerms } from "@/db/analytics-extended-schema";
-
-/**
- * In-memory cache for brand terms to avoid repeated DB queries.
- * Brand terms rarely change, so a 5-minute TTL is appropriate.
- */
-const brandTermsCache = new Map<
-  string,
-  { terms: BrandTerm[]; timestamp: number }
->();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Escape special regex characters in a string.
- * Used to safely create word boundary patterns from user-provided brand terms.
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /**
  * Brand term entity
@@ -138,37 +119,24 @@ export class BrandedKeywordService {
 
   /**
    * Get all brand terms for a client.
-   * Results are cached with a 5-minute TTL.
    */
   async getBrandTerms(clientId: string): Promise<BrandTerm[]> {
-    // Check cache first
-    const cached = brandTermsCache.get(clientId);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return cached.terms;
-    }
-
     const results = await this.db
       .select()
       .from(brandTerms)
       .where(eq(brandTerms.clientId, clientId));
 
-    const terms = results.map((row) => ({
+    return results.map((row) => ({
       id: row.id,
       clientId: row.clientId,
       term: row.term,
       isAutoDetected: row.isAutoDetected,
       createdAt: row.createdAt,
     }));
-
-    // Update cache
-    brandTermsCache.set(clientId, { terms, timestamp: Date.now() });
-
-    return terms;
   }
 
   /**
    * Add a brand term (manual or auto-detected).
-   * Invalidates the cache for this client.
    */
   async addBrandTerm(
     clientId: string,
@@ -184,9 +152,6 @@ export class BrandedKeywordService {
       })
       .returning();
 
-    // Invalidate cache on write
-    brandTermsCache.delete(clientId);
-
     const row = result[0];
     return {
       id: row.id,
@@ -199,15 +164,11 @@ export class BrandedKeywordService {
 
   /**
    * Remove a brand term by ID.
-   * Invalidates the cache for this client.
    */
   async removeBrandTerm(clientId: string, termId: string): Promise<void> {
     await this.db
       .delete(brandTerms)
       .where(and(eq(brandTerms.clientId, clientId), eq(brandTerms.id, termId)));
-
-    // Invalidate cache on delete
-    brandTermsCache.delete(clientId);
   }
 
   /**
@@ -242,8 +203,6 @@ export class BrandedKeywordService {
 
   /**
    * Classify a search query as branded or non-branded.
-   * Uses word boundary matching to prevent false positives
-   * (e.g., "acme" should not match "macmedia").
    */
   classifyQuery(
     query: string,
@@ -257,9 +216,7 @@ export class BrandedKeywordService {
 
     for (const term of brandTerms) {
       const normalizedTerm = term.toLowerCase().trim();
-      // Use word boundary matching to prevent false positives
-      const pattern = new RegExp(`\\b${escapeRegex(normalizedTerm)}\\b`, "i");
-      if (pattern.test(normalizedQuery)) {
+      if (normalizedQuery.includes(normalizedTerm)) {
         return "branded";
       }
     }
@@ -430,13 +387,4 @@ export async function getBrandedKeywordService(): Promise<BrandedKeywordService>
 // Reset singleton for testing
 export function resetBrandedKeywordService(): void {
   instance = null;
-}
-
-// Clear cache for testing or manual invalidation
-export function clearBrandTermsCache(clientId?: string): void {
-  if (clientId) {
-    brandTermsCache.delete(clientId);
-  } else {
-    brandTermsCache.clear();
-  }
 }

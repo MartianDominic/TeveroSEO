@@ -9,7 +9,7 @@
  * - seo_gsc_daily_snapshots: Daily aggregate metrics per client
  * - seo_gsc_query_snapshots: Top queries per client per day
  */
-import { db, seoGscDailySnapshots, seoGscQuerySnapshots } from "@/db";
+import { db, seoGscSnapshots, gscQuerySnapshots } from "@/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 
@@ -110,26 +110,26 @@ export class DashboardService {
     // Fetch current period data
     const currentData = await db
       .select()
-      .from(seoGscDailySnapshots)
+      .from(seoGscSnapshots)
       .where(
         and(
-          eq(seoGscDailySnapshots.clientId, clientId),
-          gte(seoGscDailySnapshots.date, currentStartDate.toISOString().split("T")[0]),
-          lte(seoGscDailySnapshots.date, endDate.toISOString().split("T")[0]),
-          eq(seoGscDailySnapshots.isDeleted, false)
+          eq(seoGscSnapshots.clientId, clientId),
+          gte(seoGscSnapshots.date, currentStartDate.toISOString().split("T")[0]),
+          lte(seoGscSnapshots.date, endDate.toISOString().split("T")[0]),
+          eq(seoGscSnapshots.isDeleted, false)
         )
       );
 
     // Fetch previous period data
     const previousData = await db
       .select()
-      .from(seoGscDailySnapshots)
+      .from(seoGscSnapshots)
       .where(
         and(
-          eq(seoGscDailySnapshots.clientId, clientId),
-          gte(seoGscDailySnapshots.date, previousStartDate.toISOString().split("T")[0]),
-          lte(seoGscDailySnapshots.date, previousEndDate.toISOString().split("T")[0]),
-          eq(seoGscDailySnapshots.isDeleted, false)
+          eq(seoGscSnapshots.clientId, clientId),
+          gte(seoGscSnapshots.date, previousStartDate.toISOString().split("T")[0]),
+          lte(seoGscSnapshots.date, previousEndDate.toISOString().split("T")[0]),
+          eq(seoGscSnapshots.isDeleted, false)
         )
       );
 
@@ -185,24 +185,24 @@ export class DashboardService {
     // Fetch recent query snapshots
     const recentData = await db
       .select()
-      .from(seoGscQuerySnapshots)
+      .from(gscQuerySnapshots)
       .where(
         and(
-          eq(seoGscQuerySnapshots.clientId, clientId),
-          gte(seoGscQuerySnapshots.date, recentStartDate.toISOString().split("T")[0]),
-          lte(seoGscQuerySnapshots.date, endDate.toISOString().split("T")[0])
+          eq(gscQuerySnapshots.clientId, clientId),
+          gte(gscQuerySnapshots.date, recentStartDate.toISOString().split("T")[0]),
+          lte(gscQuerySnapshots.date, endDate.toISOString().split("T")[0])
         )
       );
 
     // Fetch previous period query snapshots
     const previousData = await db
       .select()
-      .from(seoGscQuerySnapshots)
+      .from(gscQuerySnapshots)
       .where(
         and(
-          eq(seoGscQuerySnapshots.clientId, clientId),
-          gte(seoGscQuerySnapshots.date, previousStartDate.toISOString().split("T")[0]),
-          lte(seoGscQuerySnapshots.date, previousEndDate.toISOString().split("T")[0])
+          eq(gscQuerySnapshots.clientId, clientId),
+          gte(gscQuerySnapshots.date, previousStartDate.toISOString().split("T")[0]),
+          lte(gscQuerySnapshots.date, previousEndDate.toISOString().split("T")[0])
         )
       );
 
@@ -265,24 +265,24 @@ export class DashboardService {
     // Fetch recent query snapshots
     const recentData = await db
       .select()
-      .from(seoGscQuerySnapshots)
+      .from(gscQuerySnapshots)
       .where(
         and(
-          eq(seoGscQuerySnapshots.clientId, clientId),
-          gte(seoGscQuerySnapshots.date, recentStartDate.toISOString().split("T")[0]),
-          lte(seoGscQuerySnapshots.date, endDate.toISOString().split("T")[0])
+          eq(gscQuerySnapshots.clientId, clientId),
+          gte(gscQuerySnapshots.date, recentStartDate.toISOString().split("T")[0]),
+          lte(gscQuerySnapshots.date, endDate.toISOString().split("T")[0])
         )
       );
 
     // Fetch previous period query snapshots
     const previousData = await db
       .select()
-      .from(seoGscQuerySnapshots)
+      .from(gscQuerySnapshots)
       .where(
         and(
-          eq(seoGscQuerySnapshots.clientId, clientId),
-          gte(seoGscQuerySnapshots.date, previousStartDate.toISOString().split("T")[0]),
-          lte(seoGscQuerySnapshots.date, previousEndDate.toISOString().split("T")[0])
+          eq(gscQuerySnapshots.clientId, clientId),
+          gte(gscQuerySnapshots.date, previousStartDate.toISOString().split("T")[0]),
+          lte(gscQuerySnapshots.date, previousEndDate.toISOString().split("T")[0])
         )
       );
 
@@ -395,14 +395,14 @@ async function getTop10Count(clientId: string, endDate: Date): Promise<number> {
   startDate.setDate(startDate.getDate() - 7);
 
   const result = await db
-    .select({ count: sql<number>`count(distinct ${seoGscQuerySnapshots.query})` })
-    .from(seoGscQuerySnapshots)
+    .select({ count: sql<number>`count(distinct ${gscQuerySnapshots.query})` })
+    .from(gscQuerySnapshots)
     .where(
       and(
-        eq(seoGscQuerySnapshots.clientId, clientId),
-        gte(seoGscQuerySnapshots.date, startDate.toISOString().split("T")[0]),
-        lte(seoGscQuerySnapshots.date, endDate.toISOString().split("T")[0]),
-        lte(seoGscQuerySnapshots.position, 10)
+        eq(gscQuerySnapshots.clientId, clientId),
+        gte(gscQuerySnapshots.date, startDate.toISOString().split("T")[0]),
+        lte(gscQuerySnapshots.date, endDate.toISOString().split("T")[0]),
+        lte(gscQuerySnapshots.position, 10)
       )
     );
 

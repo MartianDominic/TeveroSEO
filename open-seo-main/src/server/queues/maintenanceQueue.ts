@@ -51,30 +51,41 @@ export const maintenanceQueue = new Queue<CacheCleanupJobData>(
 
 /**
  * Initialize the maintenance queue with repeatable jobs.
- * - Cache cleanup runs daily at 3 AM
+ * - Cache cleanup runs daily at 4 AM
+ *
+ * SCRAPE-03 FIX: Moved from 3 AM to 4 AM to prevent collision with
+ * analytics jobs (GSC 2:15, GA4 2:30, trend 2:45, analytics 3:00,
+ * cannibalization 3:15, content-audit 3:30).
+ *
+ * NOTE: This scheduler is now managed by the centralized queue-scheduler.ts.
+ * This function is kept for backward compatibility.
  */
 export async function initMaintenanceQueue(): Promise<void> {
-  // Add repeatable cache cleanup job (daily at 3 AM)
+  const dateStr = new Date().toISOString().split("T")[0];
+
+  // Add repeatable cache cleanup job (daily at 4 AM)
   await maintenanceQueue.add(
     "cache-cleanup",
     { triggeredAt: new Date().toISOString() },
     {
       repeat: {
-        pattern: "0 3 * * *", // Daily at 3 AM
+        pattern: "0 4 * * *", // Daily at 4 AM (SCRAPE-03 fix)
       },
-      jobId: "cache-cleanup-daily",
+      jobId: `maintenance:system:${dateStr}`, // QUEUE-04 fix: date-based deduplication
     },
   );
 
-  // Remove any stale repeatable jobs
+  // Remove any stale repeatable jobs (including old 3 AM jobs)
   const repeatableJobs = await maintenanceQueue.getRepeatableJobs();
   for (const job of repeatableJobs) {
-    if (job.id !== "cache-cleanup-daily") {
+    // Remove legacy schedulers with old patterns
+    if (job.id === "cache-cleanup-daily" || job.pattern === "0 3 * * *") {
       await maintenanceQueue.removeRepeatableByKey(job.key);
+      log.info("Removed legacy maintenance scheduler", { key: job.key, pattern: job.pattern });
     }
   }
 
-  log.info("Maintenance queue initialized with daily cache cleanup job");
+  log.info("Maintenance queue initialized with daily cache cleanup job", { schedule: "04:00 UTC" });
 }
 
 /**

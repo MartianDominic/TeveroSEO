@@ -184,7 +184,13 @@ async function cleanupWaitingJobs(
 }
 
 /**
- * Start the scheduled DLQ cleanup (runs daily at 3 AM UTC).
+ * Start the scheduled DLQ cleanup (runs daily at 4 AM UTC).
+ *
+ * SCRAPE-03 FIX: Moved from 3 AM to 4 AM to prevent collision with
+ * analytics jobs. Runs alongside maintenance for consolidated cleanup.
+ *
+ * NOTE: This scheduler is now managed by the centralized queue-scheduler.ts.
+ * This function is kept for backward compatibility.
  */
 export function startDLQCleanupScheduler(): void {
   if (cleanupIntervalId) {
@@ -194,10 +200,10 @@ export function startDLQCleanupScheduler(): void {
   // Run cleanup every 24 hours
   const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-  // Schedule first cleanup to run at next 3 AM UTC
+  // Schedule first cleanup to run at next 4 AM UTC (SCRAPE-03 fix)
   const now = new Date();
   const nextRun = new Date(now);
-  nextRun.setUTCHours(3, 0, 0, 0);
+  nextRun.setUTCHours(4, 0, 0, 0); // Changed from 3 AM to 4 AM
   if (nextRun <= now) {
     nextRun.setDate(nextRun.getDate() + 1);
   }
@@ -212,7 +218,7 @@ export function startDLQCleanupScheduler(): void {
     }, CLEANUP_INTERVAL_MS);
   }, initialDelay);
 
-  log.info('DLQ cleanup scheduler started', { nextRun: nextRun.toISOString() });
+  log.info('DLQ cleanup scheduler started', { nextRun: nextRun.toISOString(), schedule: '04:00 UTC' });
 }
 
 /**

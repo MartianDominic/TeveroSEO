@@ -17,12 +17,12 @@ import type {
 } from "./DataForSEOFetcher.types";
 import {
   DFS_ERROR_CODES,
-  RETRYABLE_DFS_ERRORS,
-  ESCALATE_TIER_DFS_ERRORS,
   DEFAULT_DFS_RETRY_CONFIG,
   DEFAULT_CIRCUIT_BREAKER_CONFIG,
 } from "./DataForSEOFetcher.types";
 import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
+import { DFS_LIVE_COSTS } from "../cost";
+import { dfsBudgetLogger } from "../logging";
 
 // =============================================================================
 // Error Classification
@@ -143,12 +143,12 @@ const TIER_ESCALATION: Record<DfsMode, DfsMode> = {
 };
 
 /**
- * Cost per page for each mode.
+ * Cost per page for each mode (from centralized pricing).
  */
 const MODE_COSTS: Record<DfsMode, number> = {
-  basic: 0.000125,
-  js: 0.00125,
-  browser: 0.00425,
+  basic: DFS_LIVE_COSTS.basic,
+  js: DFS_LIVE_COSTS.js,
+  browser: DFS_LIVE_COSTS.browser,
 };
 
 /**
@@ -314,9 +314,7 @@ export class DfsCircuitBreaker {
       this.successes = 0;
     } else if (this.failures >= this.config.failureThreshold) {
       this.state = "open";
-      console.error(
-        `[DataForSEO] Circuit breaker opened after ${this.failures} failures`
-      );
+      dfsBudgetLogger.error({ failures: this.failures }, 'Circuit breaker opened');
     }
   }
 

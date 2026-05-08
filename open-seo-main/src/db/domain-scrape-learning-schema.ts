@@ -24,7 +24,7 @@ import {
   uniqueIndex,
   bigint,
 } from "drizzle-orm/pg-core";
-import { relations, sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 
 // =============================================================================
 // Scrape Tier Definitions
@@ -80,18 +80,20 @@ export const TIER_INDEX: Record<ScrapeTier, number> = {
  * Reasons for tier escalation during discovery.
  */
 export const ESCALATION_REASONS = [
-  "rate_limited",     // HTTP 429 - need proxy rotation
-  "ip_blocked",       // HTTP 403 - IP is blocked
-  "dc_detected",      // Cloudflare DC/ASN detection
-  "geo_blocked",      // Content varies by geo or blocked for region
-  "js_required",      // SPA - needs JS rendering
-  "captcha",          // CAPTCHA challenge detected
-  "bot_detected",     // Generic bot detection page
-  "empty_response",   // Response too small or missing content
-  "timeout",          // Request timed out
-  "ssl_error",        // SSL/TLS handshake failure
-  "dns_error",        // DNS resolution failed
-  "connection_reset", // Connection reset by peer
+  "rate_limited",        // HTTP 429 - need proxy rotation
+  "ip_blocked",          // HTTP 403 - IP is blocked
+  "dc_detected",         // Cloudflare DC/ASN detection
+  "geo_blocked",         // Content varies by geo or blocked for region
+  "js_required",         // SPA - needs JS rendering
+  "captcha",             // CAPTCHA challenge detected
+  "bot_detected",        // Generic bot detection page
+  "empty_response",      // Response too small or missing content
+  "timeout",             // Request timed out
+  "ssl_error",           // SSL/TLS handshake failure
+  "dns_error",           // DNS resolution failed
+  "connection_reset",    // Connection reset by peer
+  "circuit_open",        // Circuit breaker is open for tier
+  "bandwidth_exhausted", // Proxy provider bandwidth quota exhausted
 ] as const;
 export type EscalationReason = (typeof ESCALATION_REASONS)[number];
 

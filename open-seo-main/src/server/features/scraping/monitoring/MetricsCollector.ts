@@ -112,6 +112,89 @@ export class MetricsCollector {
       'counter',
       'Savings from using Standard Queue over Live'
     );
+
+    // ==========================================================================
+    // Phase 95-18: Resilience Hardening Metrics
+    // ==========================================================================
+
+    // CrUX Rate Limiter metrics
+    this.registerMetric(
+      'scraping_crux_requests_total',
+      'counter',
+      'Total CrUX API requests'
+    );
+
+    this.registerMetric(
+      'scraping_crux_quota_remaining',
+      'gauge',
+      'Remaining CrUX API quota for today'
+    );
+
+    this.registerMetric(
+      'scraping_crux_alerts_total',
+      'counter',
+      'Total CrUX quota alerts by level'
+    );
+
+    // Database Circuit Breaker metrics
+    this.registerMetric(
+      'scraping_db_circuit_state',
+      'gauge',
+      'Database circuit breaker state (0=closed, 0.5=half-open, 1=open)'
+    );
+
+    this.registerMetric(
+      'scraping_db_health_check_status',
+      'gauge',
+      'Database health check status (0=unhealthy, 1=healthy)'
+    );
+
+    this.registerMetric(
+      'scraping_db_health_check_duration_seconds',
+      'histogram',
+      'Database health check duration in seconds'
+    );
+
+    // Proxy Bandwidth Tracking metrics
+    this.registerMetric(
+      'scraping_proxy_bandwidth_bytes',
+      'counter',
+      'Total proxy bandwidth usage in bytes'
+    );
+
+    this.registerMetric(
+      'scraping_proxy_bandwidth_cost_usd',
+      'gauge',
+      'Estimated proxy bandwidth cost in USD'
+    );
+
+    this.registerMetric(
+      'scraping_proxy_bandwidth_alerts_total',
+      'counter',
+      'Total proxy bandwidth alerts by provider and level'
+    );
+
+    // ==========================================================================
+    // Phase 95: P95 Latency Alerting (Gap P3.G20)
+    // ==========================================================================
+
+    this.registerMetric(
+      'scraping_p95_latency_rolling_ms',
+      'gauge',
+      'Rolling P95 latency in milliseconds (last 100 requests)'
+    );
+
+    this.registerMetric(
+      'scraping_p95_threshold_breach',
+      'gauge',
+      'P95 latency threshold breach indicator (1=above, 0=below)'
+    );
+
+    this.registerMetric(
+      'scraping_p95_consecutive_breaches',
+      'gauge',
+      'Number of consecutive P95 threshold breaches'
+    );
   }
 
   /**
@@ -584,4 +667,35 @@ export function recordDfsBudgetUsage(
 
   collector.setGauge('scraping_dfs_budget_used_percent', usedPercent);
   collector.addCounter('scraping_dfs_savings_usd', savingsUsd);
+}
+
+// =============================================================================
+// Phase 95-18: Resilience Metrics Helpers
+// =============================================================================
+
+/**
+ * Record CrUX rate limiter status.
+ */
+export function recordCruxQuotaStatus(
+  requestsToday: number,
+  quotaRemaining: number,
+  dailyLimit: number
+): void {
+  const collector = getMetricsCollector();
+  collector.setGauge('scraping_crux_quota_remaining', quotaRemaining);
+  collector.setGauge('scraping_crux_usage_percent', (requestsToday / dailyLimit) * 100);
+}
+
+/**
+ * Record proxy bandwidth status.
+ */
+export function recordProxyBandwidthStatus(
+  provider: 'geonode' | 'webshare',
+  usedBytes: number,
+  limitBytes: number,
+  estimatedCostUsd: number
+): void {
+  const collector = getMetricsCollector();
+  collector.setGauge('scraping_proxy_bandwidth_cost_usd', estimatedCostUsd, { provider });
+  collector.setGauge('scraping_proxy_bandwidth_used_percent', (usedBytes / limitBytes) * 100, { provider });
 }

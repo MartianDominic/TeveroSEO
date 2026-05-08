@@ -3,7 +3,7 @@
  * Phase 95: Unified Scraping Infrastructure - Plan 03
  */
 
-// Types
+// Types (includes DLQ types)
 export * from "./queue.types";
 
 // Configuration
@@ -23,3 +23,13 @@ export {
   getPriorityDescription,
   BULLMQ_PRIORITY_VALUES,
 } from "./PriorityAssigner";
+
+// Re-export DLQ types and constants explicitly for clarity
+export type {
+  DlqJobData,
+  DlqEnqueueResult,
+  DlqJobStatus,
+  AllQueueName,
+} from "./queue.types";
+
+export { DLQ_QUEUE_NAME } from "./queue.types";

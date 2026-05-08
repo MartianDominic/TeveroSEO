@@ -93,12 +93,27 @@ export class AnnotationImportService {
   }
 }
 
+// Singleton instance
+let instance: AnnotationImportService | null = null;
+
+export async function getAnnotationImportService(): Promise<AnnotationImportService> {
+  if (!instance) {
+    const { db } = await import('@/db');
+    const repo = new AnnotationsRepository(db);
+    instance = new AnnotationImportService(repo);
+  }
+  return instance;
+}
+
+// For testing
+export function resetAnnotationImportService(): void {
+  instance = null;
+}
+
 // Convenience function
 export async function importGoogleUpdates(
   workspaceId: string
 ): Promise<{ imported: number; skipped: number }> {
-  const { db } = await import('@/db');
-  const repo = new AnnotationsRepository(db);
-  const service = new AnnotationImportService(repo);
+  const service = await getAnnotationImportService();
   return service.importGoogleUpdates(workspaceId);
 }

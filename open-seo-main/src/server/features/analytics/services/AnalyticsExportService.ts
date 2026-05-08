@@ -12,6 +12,9 @@
  * - Large dataset handling (100K+ rows)
  */
 import type { VisibilityConfig } from "@/db/analytics-extended-schema";
+import { createLogger } from "@/server/lib/logger";
+
+const logger = createLogger({ module: "analytics-export-service" });
 
 /**
  * Export column definition
@@ -185,9 +188,10 @@ export class AnalyticsExportService {
     );
 
     if (!updateResponse.ok) {
-      console.error(
-        `Failed to update spreadsheet data: ${updateResponse.status}`
-      );
+      logger.error('Failed to update spreadsheet data', undefined, {
+        status: updateResponse.status,
+        spreadsheetId: spreadsheet.spreadsheetId,
+      });
     }
 
     return {

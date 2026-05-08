@@ -446,6 +446,11 @@ export function getBullMQConnectionLabels(): string[] {
  * - Maintenance: 1
  * - DLQ: 5
  * - Failed audits: 2
+ * - GSC sync: 1 (sequential for API rate limits)
+ * - GA4 sync: 2 (parallel property syncs)
+ * - Trend calculation: 3 (parallel workspace analysis)
+ * - Cannibalization: 2 (parallel detection)
+ * - Alert dispatch: 10 (fast notification delivery)
  */
 export const WORKER_CONCURRENCY_LIMITS = {
   audit: parseInt(process.env.WORKER_CONCURRENCY_AUDIT ?? "5", 10),
@@ -467,6 +472,12 @@ export const WORKER_CONCURRENCY_LIMITS = {
   maintenance: parseInt(process.env.WORKER_CONCURRENCY_MAINTENANCE ?? "1", 10),
   dlq: parseInt(process.env.WORKER_CONCURRENCY_DLQ ?? "5", 10),
   failedAudits: parseInt(process.env.WORKER_CONCURRENCY_FAILED_AUDITS ?? "2", 10),
+  // Phase 96 Analytics Workers (QUEUE-01)
+  gscSync: parseInt(process.env.WORKER_CONCURRENCY_GSC_SYNC ?? "1", 10),
+  ga4Sync: parseInt(process.env.WORKER_CONCURRENCY_GA4_SYNC ?? "2", 10),
+  trendCalculation: parseInt(process.env.WORKER_CONCURRENCY_TREND_CALCULATION ?? "3", 10),
+  cannibalization: parseInt(process.env.WORKER_CONCURRENCY_CANNIBALIZATION ?? "2", 10),
+  alertDispatch: parseInt(process.env.WORKER_CONCURRENCY_ALERT_DISPATCH ?? "10", 10),
 } as const;
 
 /**
@@ -608,9 +619,9 @@ export async function enqueueWithFairness<T extends DRRJobData>(
   await drr.registerJob(jobData.clientId, drrJobId);
 
   // Add to BullMQ queue
-  // BullMQ Queue.add() has complex generics for job names; using type assertion
-  // since we accept any string job name
-  const job = await (queue.add as (name: string, data: T, opts?: JobsOptions) => Promise<Job<T>>)(
+  // BullMQ Queue.add() has complex generics for job names (ExtractNameType);
+  // we accept any string job name, so we use unknown intermediate cast
+  const job = await (queue.add as unknown as (name: string, data: T, opts?: JobsOptions) => Promise<Job<T>>)(
     jobName,
     jobData,
     opts

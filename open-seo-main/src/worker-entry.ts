@@ -23,6 +23,12 @@ import { startOnboardingWorker, stopOnboardingWorker } from "@/server/workers/on
 import { startMaintenanceWorker, stopMaintenanceWorker } from "@/server/workers/maintenance-worker";
 import { startDLQWorker, stopDLQWorker } from "@/server/workers/dlq-worker";
 import { startFailedAuditsWorker, stopFailedAuditsWorker } from "@/server/workers/failed-audits-worker";
+// Phase 96 Analytics Workers (QUEUE-01 fix: register all P96 workers)
+import { startGscSyncWorker, stopGscSyncWorker } from "@/server/features/analytics/jobs/gsc-sync.worker";
+import { startGa4SyncWorker, stopGa4SyncWorker } from "@/server/workers/ga4-sync-worker";
+import { startTrendCalculationWorker, stopTrendCalculationWorker } from "@/server/workers/trend-calculation-worker";
+import { startCannibalizationWorker, stopCannibalizationWorker } from "@/server/workers/cannibalization-worker";
+import { startAlertDispatchWorker, stopAlertDispatchWorker } from "@/server/workers/alert-dispatch-worker";
 import { closeRedis } from "@/server/lib/redis";
 import { closeWebhookQueue } from "@/server/queues/webhookQueue";
 import { closeOnboardingQueue } from "@/server/queues/onboardingQueue";
@@ -30,6 +36,8 @@ import { closePipelineFlowProducer } from "@/server/queues/pipelineQueue";
 import { closeDLQQueue, stopDLQCleanupScheduler } from "@/server/queues/dlq";
 import { closeAlertQueue } from "@/server/queues/alertQueue";
 import { closeDashboardMetricsQueue } from "@/server/queues/dashboardMetricsQueue";
+// SCRAPE-02/SCRAPE-03 FIX: Centralized queue scheduler
+import { removeLegacySchedulers, closeAllQueues as closeSchedulerQueues } from "@/server/queues/queue-scheduler";
 import { pool } from "@/db";
 import { createLogger } from "@/server/lib/logger";
 
@@ -61,6 +69,13 @@ const workers = [
   { name: "Maintenance", start: startMaintenanceWorker },
   { name: "DLQ", start: startDLQWorker },
   { name: "Failed audits", start: startFailedAuditsWorker },
+  // Phase 96 Analytics Workers (QUEUE-01 fix)
+  // lockDuration configured in each worker file per QUEUE-02 requirements
+  { name: "GSC sync", start: startGscSyncWorker },
+  { name: "GA4 sync", start: startGa4SyncWorker },
+  { name: "Trend calculation", start: startTrendCalculationWorker },
+  { name: "Cannibalization", start: startCannibalizationWorker },
+  { name: "Alert dispatch", start: startAlertDispatchWorker },
 ] as const;
 
 /**
@@ -73,6 +88,17 @@ const workers = [
  */
 export async function startAllWorkers(): Promise<void> {
   log.info("Starting all workers...", { count: workers.length });
+
+  // SCRAPE-02 FIX: Remove legacy schedulers before starting workers
+  // This ensures old schedules (2 AM analytics, 3 AM gsc, etc.) are cleaned up
+  try {
+    await removeLegacySchedulers();
+    log.info("Legacy schedulers cleaned up");
+  } catch (err) {
+    log.warn("Failed to remove legacy schedulers (may not exist)", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   const results = await Promise.allSettled(
     workers.map(async ({ name, start }) => {
@@ -127,6 +153,12 @@ async function shutdown(signal: string): Promise<void> {
   try { await stopMaintenanceWorker(); } catch (err) { log.error("stopMaintenanceWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopDLQWorker(); } catch (err) { log.error("stopDLQWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopFailedAuditsWorker(); } catch (err) { log.error("stopFailedAuditsWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  // Phase 96 Analytics Workers (QUEUE-H05 fix: graceful shutdown)
+  try { await stopGscSyncWorker(); } catch (err) { log.error("stopGscSyncWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  try { await stopGa4SyncWorker(); } catch (err) { log.error("stopGa4SyncWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  try { await stopTrendCalculationWorker(); } catch (err) { log.error("stopTrendCalculationWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  try { await stopCannibalizationWorker(); } catch (err) { log.error("stopCannibalizationWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  try { await stopAlertDispatchWorker(); } catch (err) { log.error("stopAlertDispatchWorker failed", err instanceof Error ? err : new Error(String(err))); }
   // Close queues before Redis connections
   try { stopDLQCleanupScheduler(); } catch (err) { log.error("stopDLQCleanupScheduler failed", err instanceof Error ? err : new Error(String(err))); }
   try { await closeWebhookQueue(); } catch (err) { log.error("closeWebhookQueue failed", err instanceof Error ? err : new Error(String(err))); }
@@ -135,6 +167,8 @@ async function shutdown(signal: string): Promise<void> {
   try { await closeDLQQueue(); } catch (err) { log.error("closeDLQQueue failed", err instanceof Error ? err : new Error(String(err))); }
   try { await closeAlertQueue(); } catch (err) { log.error("closeAlertQueue failed", err instanceof Error ? err : new Error(String(err))); }
   try { await closeDashboardMetricsQueue(); } catch (err) { log.error("closeDashboardMetricsQueue failed", err instanceof Error ? err : new Error(String(err))); }
+  // SCRAPE-02/SCRAPE-03 FIX: Close centralized scheduler queues
+  try { await closeSchedulerQueues(); } catch (err) { log.error("closeSchedulerQueues failed", err instanceof Error ? err : new Error(String(err))); }
   try { await closeRedis(); } catch (err) { log.error("closeRedis failed", err instanceof Error ? err : new Error(String(err))); }
   try { await pool.end(); } catch (err) { log.error("pool.end failed", err instanceof Error ? err : new Error(String(err))); }
   log.info("Shutdown complete");

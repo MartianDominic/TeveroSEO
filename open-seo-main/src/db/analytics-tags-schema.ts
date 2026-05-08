@@ -18,11 +18,13 @@ export const siteTags = pgTable(
     tagColor: text("tag_color"), // Hex color for UI badge (e.g., "#1B6E45")
     tagCategory: text("tag_category"), // Optional: "project", "region", "custom"
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    softDeletedAt: timestamp("soft_deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("uq_site_tags_site_name").on(table.siteId, table.tagName),
     index("idx_site_tags_name").on(table.tagName),
     index("idx_site_tags_category").on(table.tagCategory),
+    index("idx_site_tags_soft_deleted").on(table.softDeletedAt),
   ]
 );
 
@@ -35,10 +37,12 @@ export const clientTags = pgTable(
     tagColor: text("tag_color"),
     tagCategory: text("tag_category"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    softDeletedAt: timestamp("soft_deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("uq_client_tags_client_name").on(table.clientId, table.tagName),
     index("idx_client_tags_name").on(table.tagName),
+    index("idx_client_tags_soft_deleted").on(table.softDeletedAt),
   ]
 );
 

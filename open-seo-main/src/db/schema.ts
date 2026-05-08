@@ -233,17 +233,44 @@ export * from "./keyword-lockin-schema";
 // Research session schema (Phase 93-01)
 export * from "./research-session-schema";
 
-// Domain scrape learning schema (Phase 92 - Tiered Scraping)
-export * from "./domain-scrape-learning-schema";
-
-// GSC query analytics schema (Phase 96-01)
-export * from "./gsc-analytics-schema";
-
-// Analytics tags schema (Phase 96-02)
-export * from "./analytics-tags-schema";
+// Scraping shadow comparison logs (MIG-3)
+export * from "./scraping-shadow-schema";
 
 // Content intelligence schema (Phase 96-04)
-export * from "./content-intelligence-schema";
+// Re-export with explicit names to avoid collisions
+export {
+  contentGroups,
+  contentGroupPages,
+  analyticsTopicClusters,
+  analyticsTopicClusterPages,
+  pageIndexStatus,
+  indexingRequests,
+  annotations,
+  googleAlgorithmUpdates,
+  type ContentGroup,
+  type ContentGroupInsert,
+  type ContentGroupPage,
+  type ContentGroupPageInsert,
+  type AnalyticsTopicCluster,
+  type AnalyticsTopicClusterInsert,
+  type AnalyticsTopicClusterPage,
+  type AnalyticsTopicClusterPageInsert,
+  type PageIndexStatus,
+  type PageIndexStatusInsert,
+  type IndexingRequest,
+  type IndexingRequestInsert,
+  type Annotation,
+  type AnnotationInsert,
+  type GoogleAlgorithmUpdate,
+  type GoogleAlgorithmUpdateInsert,
+} from "./content-intelligence-schema";
 
-// Analytics extended schema (Phase 96-05 - Client Portal)
-export * from "./analytics-extended-schema";
+// Analytics tags schema (Phase 96-02)
+export {
+  siteTags,
+  clientTags,
+  type SiteTag,
+  type SiteTagInsert,
+  type ClientTag,
+  type ClientTagInsert,
+} from "./analytics-tags-schema";

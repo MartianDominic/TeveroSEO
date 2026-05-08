@@ -5,7 +5,9 @@
  * Per ADR-003: Only client site audits require crawling (5-10% of tasks).
  */
 
-export * from "./sitemap-parser";
+// Re-export sitemap utilities from unified module
+export * from "@/server/lib/sitemap";
+
 export * from "./delta-sync";
 export * from "./hybrid-crawler";
 export * from "./template-hash";

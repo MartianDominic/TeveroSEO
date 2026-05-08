@@ -2,6 +2,7 @@
  * Cannibalization API Route
  * Phase 96-03: GET /api/analytics/cannibalization
  * Detects keyword cannibalization using GSC data analysis
+ * Rate limited: 30 requests per minute per workspace (expensive analytics).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -13,6 +14,11 @@ import {
   getCannibalizationService,
   getSeverityBreakdown,
 } from "@/server/features/analytics";
+import {
+  analyticsExpensiveRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -31,6 +37,12 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
   loader: async ({ request }: any) => {
     // Authenticate request and get verified workspace context
     const auth = await authenticateAnalyticsRequest(request);
+
+    // Rate limit check: 30 requests per minute per workspace (expensive analytics)
+    const rateLimitResult = await analyticsExpensiveRateLimiter(auth.workspaceId);
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult);
+    }
 
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams);
@@ -55,32 +67,35 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
     // Summary-only mode: just return severity breakdown
     if (summaryOnly) {
       const breakdown = await getSeverityBreakdown(siteId);
-      return Response.json({
+      const response = Response.json({
         success: true,
         data: {
           summary: breakdown,
         },
       });
+      return addRateLimitHeaders(response, rateLimitResult);
     }
 
     // Specific query mode: get cannibalization details for one query
     if (query) {
       const result = await service.getCannibalizationForQuery(siteId, query);
       if (!result) {
-        return Response.json({
+        const response = Response.json({
           success: true,
           data: {
             issue: null,
             message: "No cannibalization detected for this query",
           },
         });
+        return addRateLimitHeaders(response, rateLimitResult);
       }
-      return Response.json({
+      const response = Response.json({
         success: true,
         data: {
           issue: result,
         },
       });
+      return addRateLimitHeaders(response, rateLimitResult);
     }
 
     // Default mode: detect all cannibalization issues
@@ -100,12 +115,13 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
       totalImpactEstimate: issues.reduce((sum, i) => sum + i.impactEstimate, 0),
     };
 
-    return Response.json({
+    const response = Response.json({
       success: true,
       data: {
         issues,
         summary,
       },
     });
+    return addRateLimitHeaders(response, rateLimitResult);
   },
 });

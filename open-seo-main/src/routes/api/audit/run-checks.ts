@@ -13,9 +13,11 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { runChecks } from "@/server/lib/audit/checks/runner";
+import { runChecks, runTier5ChecksWithContext } from "@/server/lib/audit/checks/runner";
 import { calculateOnPageScore } from "@/server/lib/audit/checks/scoring";
 import type { CheckTier } from "@/server/lib/audit/checks/types";
+import type { Vertical } from "@/server/features/onpage-mastery/types";
+import { getVerticalClassifierService } from "@/server/features/onpage-mastery/services/VerticalClassifier";
 import { createLogger } from "@/server/lib/logger";
 import { metrics, recordRequestMetrics } from "@/server/lib/metrics";
 import { resolveClerkContext } from "@/middleware/ensure-user/clerk";
@@ -26,7 +28,7 @@ import { captureServerEvent } from "@/server/lib/posthog";
 const log = createLogger({ module: "api/audit/run-checks" });
 
 // Type-safe tier validation using the canonical CheckTier type
-const VALID_TIERS: readonly CheckTier[] = [1, 2, 3, 4];
+const VALID_TIERS: readonly CheckTier[] = [1, 2, 3, 4, 5];
 
 function isValidTier(n: number): n is CheckTier {
   return (VALID_TIERS as readonly number[]).includes(n);
@@ -40,8 +42,15 @@ const requestSchema = z.object({
   url: z.string().url("Valid URL required"),
   keyword: z.string().optional(),
   tiers: z
-    .array(z.number().refine(isValidTier, { message: "Tier must be 1, 2, 3, or 4" }))
+    .array(z.number().refine(isValidTier, { message: "Tier must be 1, 2, 3, 4, or 5" }))
     .optional(),
+  // Tier 5 options (optional - vertical will be auto-classified if not provided)
+  vertical: z.enum([
+    "healthcare", "legal", "financial", "ecommerce", "saas",
+    "real_estate", "home_services", "hospitality", "education",
+    "professional", "manufacturing", "nonprofit", "general"
+  ]).optional(),
+  clientId: z.string().optional(),
 });
 
 /**
@@ -144,25 +153,74 @@ export const Route = createFileRoute("/api/audit/run-checks")({
           // Capture context for error logging
           url = parsed.data.url;
           htmlLength = parsed.data.html.length;
-          const { html, keyword, tiers } = parsed.data;
+          const { html, keyword, tiers, vertical: providedVertical, clientId } = parsed.data;
 
           // Type-safe tier handling (no assertion needed - already validated by refine)
           const tiersToRun: CheckTier[] = tiers ?? [1, 2, 3, 4];
+          const includesTier5 = tiersToRun.includes(5);
 
-          const results = await runChecks(html, url, {
-            keyword,
-            tiers: tiersToRun,
-          });
+          // Run Tier 1-4 checks
+          const tier1to4Tiers = tiersToRun.filter((t) => t !== 5) as CheckTier[];
+          let results = tier1to4Tiers.length > 0
+            ? await runChecks(html, url, { keyword, tiers: tier1to4Tiers })
+            : [];
+
+          // Run Tier 5 checks with vertical classification if requested
+          if (includesTier5) {
+            let vertical: Vertical | undefined = providedVertical;
+
+            // Auto-classify vertical if not provided
+            if (!vertical) {
+              try {
+                const classifier = getVerticalClassifierService();
+                const domain = new URL(url).hostname;
+                const path = new URL(url).pathname;
+                const classification = await classifier.classify(
+                  domain,
+                  path,
+                  html,
+                  clientId ?? userId
+                );
+                vertical = classification.vertical;
+                reqLog.debug("Auto-classified page vertical", {
+                  url,
+                  vertical,
+                  confidence: classification.confidence,
+                  method: classification.method,
+                });
+              } catch (classifyError) {
+                reqLog.warn("Vertical classification failed, using 'general'", {
+                  error: classifyError instanceof Error ? classifyError.message : String(classifyError),
+                });
+                vertical = "general";
+              }
+            }
+
+            // Run Tier 5 checks with vertical context
+            const tier5Results = await runTier5ChecksWithContext(html, url, {
+              vertical,
+              clientId: clientId ?? userId,
+              keyword,
+            });
+            results = [...results, ...tier5Results];
+          }
 
           const score = calculateOnPageScore(results);
           const latencyMs = Date.now() - startTime;
           const passedCount = results.filter((r) => r.passed).length;
           const failedCount = results.filter((r) => !r.passed).length;
 
+          // Tier 5 quality gate evaluation
+          const blockingFailures = results.filter((r) => !r.passed && r.blocking);
+          const passesQualityGate = blockingFailures.length === 0;
+
           // Record centralized metrics
           metrics.increment("api.checks.total", {}, results.length);
           metrics.increment("api.checks.passed", {}, passedCount);
           metrics.increment("api.checks.failed", {}, failedCount);
+          if (includesTier5) {
+            metrics.increment("api.checks.tier5_blocked", {}, blockingFailures.length);
+          }
           recordRequestMetrics("run-checks", startTime, "success");
 
           // MEDIUM: Metrics tracking (PostHog event)
@@ -179,6 +237,9 @@ export const Route = createFileRoute("/api/audit/run-checks")({
               latencyMs,
               tiers: tiersToRun,
               hasKeyword: !!keyword,
+              includesTier5,
+              passesQualityGate,
+              blockingFailures: blockingFailures.map((r) => r.checkId),
             },
           });
 
@@ -189,6 +250,7 @@ export const Route = createFileRoute("/api/audit/run-checks")({
             failed: failedCount,
             score: score.score,
             latencyMs,
+            passesQualityGate,
           });
 
           return Response.json({
@@ -197,6 +259,15 @@ export const Route = createFileRoute("/api/audit/run-checks")({
             totalChecks: results.length,
             passedChecks: passedCount,
             failedChecks: failedCount,
+            // Tier 5 quality gate info
+            qualityGate: includesTier5 ? {
+              passes: passesQualityGate,
+              blockingFailures: blockingFailures.map((r) => ({
+                checkId: r.checkId,
+                message: r.message,
+              })),
+              readyForPublish: passesQualityGate && score.score >= 80,
+            } : undefined,
           });
         } catch (error) {
           const latencyMs = Date.now() - startTime;

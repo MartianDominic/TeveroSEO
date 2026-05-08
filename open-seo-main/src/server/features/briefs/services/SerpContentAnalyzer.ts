@@ -12,6 +12,7 @@
 import * as cheerio from "cheerio";
 import { getOptimizedDataForSEOFetcher } from "@/server/features/scraping/providers/OptimizedDataForSEOFetcher";
 import { routeBatchRequest, type ScrapeResult } from "@/server/features/scraping";
+import { getSerpCost } from "@/server/features/scraping/cost";
 import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "SerpContentAnalyzer" });
@@ -32,6 +33,8 @@ export interface SerpContentAnalysis {
   wordCountStats: WordCountStats;
   wordCounts: number[];
   analyzedUrls: number;
+  /** P2.G16: Total cost of scraping operations in USD */
+  totalCostUsd: number;
 }
 
 /**
@@ -57,7 +60,7 @@ const serpContentTransformer = {
     fromCache: false,
     responseTimeMs: 0,
     responseSizeBytes: legacy.html?.length ?? 0,
-    estimatedCostUsd: 0.002, // DFS basic cost estimate
+    estimatedCostUsd: getSerpCost('live'), // From centralized DFS pricing
   }),
   newToLegacy: (newResult: ScrapeResult): LegacyFetchResult => ({
     url: newResult.url,
@@ -68,29 +71,15 @@ const serpContentTransformer = {
 };
 
 /**
- * Options for SERP content analysis.
- */
-export interface AnalyzeSerpContentOptions {
-  /** Client ID for cost attribution */
-  clientId?: string;
-  /** Workspace ID for cost attribution */
-  workspaceId?: string;
-  /** Correlation ID for request tracing (propagated to scraping service) */
-  correlationId?: string;
-}
-
-/**
  * Analyze SERP competitor content for H2s and word counts.
  * Fetches HTML for up to 5 URLs via MigrationRouter.
  * Routes through unified ScrapingService when feature flag is active.
  *
  * @param urls - Competitor URLs from SERP results
- * @param options - Options including clientId for cost tracking
  * @returns Analysis with common H2s and word count stats
  */
 export async function analyzeSerpContent(
-  urls: string[],
-  options: AnalyzeSerpContentOptions = {}
+  urls: string[]
 ): Promise<SerpContentAnalysis> {
   const h2Counts = new Map<string, number>();
   const wordCounts: number[] = [];
@@ -102,8 +91,12 @@ export async function analyzeSerpContent(
       wordCountStats: { min: 1500, max: 2500, avg: 2000 },
       wordCounts: [],
       analyzedUrls: 0,
+      totalCostUsd: 0,
     };
   }
+
+  // P2.G16: Track cumulative scraping costs
+  let totalCostUsd = 0;
 
   try {
     // Route through MigrationRouter for gradual rollout
@@ -137,9 +130,6 @@ export async function analyzeSerpContent(
         feature: "serpContent",
         includeHtml: true,
         includeParsedData: true,
-        clientId: options.clientId,
-        workspaceId: options.workspaceId,
-        correlationId: options.correlationId,
       },
       transformer: serpContentTransformer,
       concurrency: 5,
@@ -147,6 +137,10 @@ export async function analyzeSerpContent(
 
     // Process results (same logic for both paths)
     for (const result of resultsMap.values()) {
+      // P2.G16: Accumulate cost from each scrape result (handle undefined gracefully)
+      const resultCost = (result as ScrapeResult).estimatedCostUsd ?? 0;
+      totalCostUsd += resultCost;
+
       if (!result.success || !result.html || result.statusCode !== 200) {
         continue;
       }
@@ -205,6 +199,7 @@ export async function analyzeSerpContent(
         : { min: 1500, max: 2500, avg: 2000 },
     wordCounts,
     analyzedUrls,
+    totalCostUsd,
   };
 }
 

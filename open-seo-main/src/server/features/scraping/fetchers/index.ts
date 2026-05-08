@@ -10,6 +10,21 @@
  * - T3-T5: DataForSEOFetcher (enterprise API)
  */
 
+// Error Classification (shared utility)
+export {
+  ErrorType,
+  classifyStatusCode,
+  classifyError,
+  detectBotProtection,
+  getBackoffMs,
+  isRetryable,
+  shouldEscalateTier,
+  getEscalationReason,
+  mapStatusCodeToEscalationReason,
+  mapErrorToEscalationReason,
+  type ClassifiedError,
+} from "./ErrorClassifier";
+
 // Types
 export type {
   FetchResult,

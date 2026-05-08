@@ -4,19 +4,18 @@
  *
  * Shows coverage dashboard and research mode selector.
  */
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { CoverageDashboard } from "@/client/features/keywords/components/CoverageDashboard";
 import { ResearchModeSelector } from "@/client/features/keywords/components/ResearchModeSelector";
 
+// @ts-expect-error Route path is correct but may not be in generated types yet
 export const Route = createFileRoute("/_app/clients/$clientId/keywords/coverage")({
   component: CoveragePage,
 });
 
 function CoveragePage() {
-  const { clientId } = useParams({
-    from: "/_app/clients/$clientId/keywords/coverage",
-  });
+  const { clientId } = Route.useParams();
   const [showResearch, setShowResearch] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);

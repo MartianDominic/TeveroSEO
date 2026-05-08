@@ -138,9 +138,9 @@ export class L3Cache implements ICacheLevel {
     } catch (error) {
       this.misses++;
       if (error instanceof CircuitOpenError) {
-        logger.debug("L3Cache get skipped - circuit open", { hash });
+        logger.debug({ hash }, "L3Cache get skipped - circuit open");
       } else {
-        logger.error("L3Cache get error", { error: error instanceof Error ? error.message : String(error) });
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, "L3Cache get error");
       }
       return null;
     } finally {
@@ -217,9 +217,9 @@ export class L3Cache implements ICacheLevel {
       });
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        logger.debug("L3Cache set skipped - circuit open", { hash });
+        logger.debug({ hash }, "L3Cache set skipped - circuit open");
       } else {
-        logger.error("L3Cache set error", { error: error instanceof Error ? error.message : String(error) });
+        logger.error({ error: error instanceof Error ? error.message : String(error) }, "L3Cache set error");
       }
     }
   }
@@ -234,7 +234,7 @@ export class L3Cache implements ICacheLevel {
       // Then delete the main entry
       await this.db.delete(htmlCache).where(eq(htmlCache.urlHash, hash));
     } catch (error) {
-      console.error("[L3Cache] Delete error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Delete error:", error);
     }
   }
 
@@ -273,7 +273,7 @@ export class L3Cache implements ICacheLevel {
 
       return result.length > 0;
     } catch (error) {
-      console.error("[L3Cache] Has error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Has error:", error);
       return false;
     }
   }
@@ -296,7 +296,7 @@ export class L3Cache implements ICacheLevel {
       await this.db.delete(htmlCache);
       this.resetStats();
     } catch (error) {
-      console.error("[L3Cache] Clear error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Clear error:", error);
     }
   }
 
@@ -387,7 +387,7 @@ export class L3Cache implements ICacheLevel {
           },
         });
     } catch (error) {
-      console.error("[L3Cache] SetWithUrl error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] SetWithUrl error:", error);
     }
   }
 
@@ -429,7 +429,7 @@ export class L3Cache implements ICacheLevel {
 
       this.requestCount++;
     } catch (error) {
-      console.error("[L3Cache] Mget error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Mget error:", error);
     } finally {
       this.totalLatencyMs += performance.now() - startTime;
     }
@@ -454,7 +454,7 @@ export class L3Cache implements ICacheLevel {
 
       return result.rowCount ?? 0;
     } catch (error) {
-      console.error("[L3Cache] DeleteExpired error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] DeleteExpired error:", error);
       return 0;
     }
   }
@@ -494,7 +494,7 @@ export class L3Cache implements ICacheLevel {
         newestEntry: entriesResult[0]?.newest ?? null,
       };
     } catch (error) {
-      console.error("[L3Cache] GetStorageStats error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] GetStorageStats error:", error);
       return {
         totalEntries: 0,
         totalAliases: 0,
@@ -527,7 +527,7 @@ export class L3Cache implements ICacheLevel {
         ...aliases.map((a) => a.aliasUrlHash),
       ];
     } catch (error) {
-      console.error("[L3Cache] FindByContentHash error:", error);
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] FindByContentHash error:", error);
       return [];
     }
   }

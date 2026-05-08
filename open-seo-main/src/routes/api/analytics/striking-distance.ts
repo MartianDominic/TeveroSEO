@@ -2,9 +2,20 @@
  * Striking Distance API Route
  * Phase 96-03: GET /api/analytics/striking-distance
  * Returns positions 11-20 opportunities with CTR potential
+ * Rate limited: 60 requests per minute per workspace (standard analytics).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { getStrikingDistanceService } from "@/server/features/analytics/services/StrikingDistanceService";
+import {
+  authenticateAnalyticsRequest,
+  verifySiteOwnership,
+  siteNotFoundResponse,
+} from "@/server/features/analytics/auth/analytics-auth";
+import {
+  analyticsStandardRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -16,19 +27,19 @@ const querySchema = z.object({
   limit: z.coerce.number().min(1).max(500).optional(),
 });
 
-// Placeholder auth helpers
-async function getWorkspaceIdFromRequest(_request: Request): Promise<string | null> {
-  return 'workspace-placeholder';
-}
-
-async function verifySiteOwnership(_siteId: string, _workspaceId: string): Promise<boolean> {
-  return true;
-}
-
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/striking-distance")({
   loader: async ({ request }: any) => {
+    // Authenticate request and get verified workspace context
+    const auth = await authenticateAnalyticsRequest(request);
+
+    // Rate limit check: 60 requests per minute per workspace (standard analytics)
+    const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult);
+    }
+
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams);
 
@@ -40,14 +51,10 @@ export const Route = (createFileRoute as any)("/api/analytics/striking-distance"
       );
     }
 
-    const workspaceId = await getWorkspaceIdFromRequest(request);
-    if (!workspaceId) {
-      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
-    const siteVerified = await verifySiteOwnership(parsed.data.siteId, workspaceId);
+    // Verify site belongs to authenticated workspace
+    const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
     if (!siteVerified) {
-      return Response.json({ success: false, error: "Site not found" }, { status: 404 });
+      return siteNotFoundResponse();
     }
 
     const service = getStrikingDistanceService();
@@ -59,6 +66,7 @@ export const Route = (createFileRoute as any)("/api/analytics/striking-distance"
       limit: parsed.data.limit,
     });
 
-    return Response.json({ success: true, data: result });
+    const response = Response.json({ success: true, data: result });
+    return addRateLimitHeaders(response, rateLimitResult);
   },
 });

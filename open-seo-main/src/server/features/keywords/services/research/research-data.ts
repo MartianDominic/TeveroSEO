@@ -9,6 +9,11 @@ import {
 } from "./helpers";
 import type { KeywordSource } from "./selection";
 import { createLogger } from "@/server/lib/logger";
+import { db } from "@/db";
+import {
+  withBudgetCheck,
+  DFS_API_COSTS,
+} from "@/server/features/scraping";
 
 const log = createLogger({ module: "research-data" });
 
@@ -60,6 +65,8 @@ type FetchResearchRowsParams = {
   languageCode: string;
   resultLimit: number;
   source: KeywordSource;
+  /** Workspace ID for budget enforcement (optional) */
+  workspaceId?: string;
 };
 
 function mapKeywordDataItems(items: LabsKeywordDataItem[]): EnrichedKeyword[] {
@@ -101,13 +108,19 @@ async function fetchRelatedRows(
   params: Omit<FetchResearchRowsParams, "source">,
   dataforseo: ReturnType<typeof createDataforseoClient>,
 ) {
-  const rawItems = await dataforseo.keywords.related({
-    keyword: params.seedKeyword,
-    locationCode: params.locationCode,
-    languageCode: params.languageCode,
-    limit: params.resultLimit,
-    depth: 3,
-  });
+  // Budget pre-check before making API call (COST-1)
+  const rawItems = await withBudgetCheck(
+    () => dataforseo.keywords.related({
+      keyword: params.seedKeyword,
+      locationCode: params.locationCode,
+      languageCode: params.languageCode,
+      limit: params.resultLimit,
+      depth: 3,
+    }),
+    DFS_API_COSTS.LABS_RELATED,
+    db,
+    { workspaceId: params.workspaceId }
+  );
 
   // Validate and parse the API response
   const parsed = relatedKeywordsResponseSchema.safeParse(rawItems);
@@ -152,6 +165,11 @@ async function fetchRelatedRows(
   return rows;
 }
 
+/**
+ * Fetch research rows by source with budget enforcement (COST-1).
+ *
+ * @throws BudgetExceededError if DataForSEO budget is exceeded
+ */
 export async function fetchResearchRowsBySource(
   params: FetchResearchRowsParams,
   billingCustomer: BillingCustomerContext,
@@ -163,22 +181,32 @@ export async function fetchResearchRowsBySource(
   }
 
   if (params.source === "suggestions") {
-    return mapKeywordDataItems(
-      await dataforseo.keywords.suggestions({
+    // Budget pre-check before making API call (COST-1)
+    const items = await withBudgetCheck(
+      () => dataforseo.keywords.suggestions({
         keyword: params.seedKeyword,
         locationCode: params.locationCode,
         languageCode: params.languageCode,
         limit: params.resultLimit,
       }),
+      DFS_API_COSTS.LABS_SUGGESTIONS,
+      db,
+      { workspaceId: params.workspaceId }
     );
+    return mapKeywordDataItems(items);
   }
 
-  return mapKeywordDataItems(
-    await dataforseo.keywords.ideas({
+  // Default: ideas - Budget pre-check before making API call (COST-1)
+  const items = await withBudgetCheck(
+    () => dataforseo.keywords.ideas({
       keyword: params.seedKeyword,
       locationCode: params.locationCode,
       languageCode: params.languageCode,
       limit: params.resultLimit,
     }),
+    DFS_API_COSTS.LABS_IDEAS,
+    db,
+    { workspaceId: params.workspaceId }
   );
+  return mapKeywordDataItems(items);
 }

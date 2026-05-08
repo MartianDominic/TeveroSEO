@@ -11,6 +11,7 @@
 import type { Worker } from "bullmq";
 import type { QueueManager } from "./QueueManager";
 import { QUEUE_CONFIG, SCRAPE_QUEUE_NAMES } from "./queue.types";
+import { queueLogger } from "../logging";
 
 /**
  * Orchestrator configuration.
@@ -78,7 +79,7 @@ export class QueueOrchestrator {
       void this.checkAndAdjust();
     }, this.config.checkIntervalMs);
 
-    console.log("[QueueOrchestrator] Started monitoring queue health");
+    queueLogger.info({ checkIntervalMs: this.config.checkIntervalMs }, 'Queue orchestrator started monitoring');
   }
 
   /**
@@ -90,7 +91,7 @@ export class QueueOrchestrator {
       this.checkInterval = undefined;
     }
     this.isRunning = false;
-    console.log("[QueueOrchestrator] Stopped monitoring");
+    queueLogger.info('Queue orchestrator stopped monitoring');
   }
 
   /**
@@ -120,8 +121,9 @@ export class QueueOrchestrator {
         !this.isBackgroundPaused
       ) {
         await this.pauseBackground();
-        console.log(
-          `[QueueOrchestrator] Background paused: priority=${(priorityUtilization * 100).toFixed(1)}%, standard=${(standardUtilization * 100).toFixed(1)}%`
+        queueLogger.info(
+          { action: 'pause', priorityUtilization: priorityUtilization * 100, standardUtilization: standardUtilization * 100 },
+          'Background queue paused due to congestion'
         );
       }
 
@@ -132,12 +134,13 @@ export class QueueOrchestrator {
         this.isBackgroundPaused
       ) {
         await this.resumeBackground();
-        console.log(
-          `[QueueOrchestrator] Background resumed: priority=${(priorityUtilization * 100).toFixed(1)}%, standard=${(standardUtilization * 100).toFixed(1)}%`
+        queueLogger.info(
+          { action: 'resume', priorityUtilization: priorityUtilization * 100, standardUtilization: standardUtilization * 100 },
+          'Background queue resumed'
         );
       }
     } catch (error) {
-      console.error("[QueueOrchestrator] Error checking queue health:", error);
+      queueLogger.error({ error: error instanceof Error ? error.message : String(error) }, 'Error checking queue health');
     }
   }
 
@@ -181,7 +184,7 @@ export class QueueOrchestrator {
    */
   async forcePauseBackground(): Promise<void> {
     await this.pauseBackground();
-    console.log("[QueueOrchestrator] Background force-paused");
+    queueLogger.info({ action: 'force-pause' }, 'Background queue force-paused');
   }
 
   /**
@@ -189,6 +192,6 @@ export class QueueOrchestrator {
    */
   async forceResumeBackground(): Promise<void> {
     await this.resumeBackground();
-    console.log("[QueueOrchestrator] Background force-resumed");
+    queueLogger.info({ action: 'force-resume' }, 'Background queue force-resumed');
   }
 }

@@ -27,6 +27,14 @@ declare namespace NodeJS {
     LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID?: string;
 
     AUTUMN_SECRET_KEY?: string;
+
+    // R2 Cache Configuration
+    R2_ACCESS_KEY_ID?: string;
+    R2_SECRET_ACCESS_KEY?: string;
+    R2_BUCKET?: string;
+    CF_ACCOUNT_ID?: string;
+    R2_RETENTION_DAYS?: string; // Default: "90" - days to keep cached HTML in R2
+    R2_PURGE_RATE_LIMIT?: string; // Default: "100" - max purge operations per minute
   }
 }
 

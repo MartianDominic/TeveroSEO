@@ -14,8 +14,8 @@
  * @module delta-cascade
  */
 
-import type { SitemapUrl } from "./sitemap-parser";
-import { filterByLastmod } from "./sitemap-parser";
+import type { SitemapUrl } from "@/server/lib/sitemap";
+import { filterByLastmod } from "@/server/lib/sitemap";
 import type { DeltaSyncService } from "./delta-sync";
 import { conditionalGet, hasConditionalHeaders, type CachedHeaders } from "./conditional-get";
 import { recordDeltaSkip, recordFullProcess } from "@/server/lib/metrics/crawl-metrics";

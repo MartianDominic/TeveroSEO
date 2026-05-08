@@ -19,6 +19,7 @@
 // @ts-expect-error - Dependencies installed during implementation phase
 import { Browser, BrowserContext, Page } from "playwright-core";
 import { EventEmitter } from "events";
+import { camoufoxLogger } from "../logging";
 
 // Re-export for external use
 export type { Browser, BrowserContext, Page };
@@ -208,7 +209,7 @@ export class CamoufoxPool extends EventEmitter {
   }> = [];
 
   // Semaphores for concurrency control
-  private instanceSemaphore: Semaphore;
+  private _instanceSemaphore: Semaphore;
   private pageSemaphore: Semaphore;
 
   // Metrics
@@ -236,7 +237,7 @@ export class CamoufoxPool extends EventEmitter {
     super();
     this.config = { ...DEFAULT_POOL_CONFIG, ...config };
 
-    this.instanceSemaphore = new Semaphore(this.config.maxInstances);
+    this._instanceSemaphore = new Semaphore(this.config.maxInstances);
     this.pageSemaphore = new Semaphore(
       this.config.maxInstances * this.config.maxPagesPerInstance
     );
@@ -250,8 +251,9 @@ export class CamoufoxPool extends EventEmitter {
    * Initialize the pool with pre-warmed instances
    */
   async initialize(): Promise<void> {
-    console.log(
-      `[CamoufoxPool] Initializing with ${this.config.minInstances} instances...`
+    camoufoxLogger.info(
+      { minInstances: this.config.minInstances },
+      "Initializing pool"
     );
 
     // Lazy load camoufox-js
@@ -270,7 +272,7 @@ export class CamoufoxPool extends EventEmitter {
     for (let i = 0; i < this.config.minInstances; i++) {
       warmupPromises.push(
         this.createInstance().then(() => {}).catch((err) => {
-          console.error(`[CamoufoxPool] Failed to create instance ${i}:`, err);
+          camoufoxLogger.error({ instanceIndex: i, error: err instanceof Error ? err.message : String(err) }, "Failed to create instance");
         })
       );
 
@@ -288,8 +290,9 @@ export class CamoufoxPool extends EventEmitter {
     this.startHealthChecks();
     this.startCleanupTask();
 
-    console.log(
-      `[CamoufoxPool] Initialized with ${this.instances.size} instances`
+    camoufoxLogger.info(
+      { instanceCount: this.instances.size },
+      "Pool initialized"
     );
     this.emit("initialized", this.getMetrics());
   }
@@ -405,7 +408,7 @@ export class CamoufoxPool extends EventEmitter {
    * Gracefully shutdown the pool
    */
   async shutdown(timeoutMs = 30000): Promise<void> {
-    console.log("[CamoufoxPool] Shutting down...");
+    camoufoxLogger.info("Shutting down pool");
     this.isShuttingDown = true;
 
     // Stop background tasks
@@ -432,7 +435,7 @@ export class CamoufoxPool extends EventEmitter {
     // Cleanup orphan processes
     await this.cleanupOrphanProcesses();
 
-    console.log("[CamoufoxPool] Shutdown complete");
+    camoufoxLogger.info("Shutdown complete");
     this.emit("shutdown");
   }
 
@@ -446,7 +449,7 @@ export class CamoufoxPool extends EventEmitter {
     }
 
     const id = this.generateInstanceId();
-    console.log(`[CamoufoxPool] Creating instance ${id}...`);
+    camoufoxLogger.debug({ instanceId: id }, "Creating instance");
 
     const options: CamoufoxOptions = {
       ...this.config.camoufoxOptions,
@@ -484,7 +487,7 @@ export class CamoufoxPool extends EventEmitter {
     this.instances.set(id, instance);
     this.metrics.totalInstances++;
 
-    console.log(`[CamoufoxPool] Instance ${id} created`);
+    camoufoxLogger.debug({ instanceId: id }, "Instance created");
     this.emit("instanceCreated", id);
 
     return instance;
@@ -492,9 +495,9 @@ export class CamoufoxPool extends EventEmitter {
 
   private async destroyInstance(
     instance: InstanceState,
-    timeoutMs = 10000
+    _timeoutMs = 10000
   ): Promise<void> {
-    console.log(`[CamoufoxPool] Destroying instance ${instance.id}...`);
+    camoufoxLogger.debug({ instanceId: instance.id }, "Destroying instance");
     instance.state = "dead";
 
     try {
@@ -525,7 +528,7 @@ export class CamoufoxPool extends EventEmitter {
     this.instances.delete(instance.id);
     this.metrics.totalInstances--;
 
-    console.log(`[CamoufoxPool] Instance ${instance.id} destroyed`);
+    camoufoxLogger.debug({ instanceId: instance.id }, "Instance destroyed");
     this.emit("instanceDestroyed", instance.id);
   }
 
@@ -731,7 +734,7 @@ export class CamoufoxPool extends EventEmitter {
             if (ageSeconds > 300) {
               // 5 minutes
               process.kill(parseInt(pid, 10), "SIGKILL");
-              console.log(`[CamoufoxPool] Killed orphan ${name} process ${pid}`);
+              camoufoxLogger.info({ processName: name, pid }, "Killed orphan process");
             }
           } catch {
             // Process already dead
@@ -787,7 +790,7 @@ export class CamoufoxPool extends EventEmitter {
   // --------------------------------------------------------------------------
 
   private generateInstanceId(): string {
-    return `cf-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `cf-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private sleep(ms: number): Promise<void> {
@@ -815,9 +818,7 @@ export function createGeonodePool(config?: Partial<PoolConfig>): CamoufoxPool {
   const geonodePassword = process.env.GEONODE_PASSWORD;
 
   if (!geonodeUsername || !geonodePassword) {
-    console.warn(
-      "[CamoufoxPool] GEONODE_USERNAME or GEONODE_PASSWORD not set. Running without proxy."
-    );
+    camoufoxLogger.warn("GEONODE_USERNAME or GEONODE_PASSWORD not set - running without proxy");
   }
 
   return new CamoufoxPool({

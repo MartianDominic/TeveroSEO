@@ -25,6 +25,21 @@ export {
 } from "./MetricsCollector";
 
 // =============================================================================
+// Latency Tracker (Gap P3.G20 - P95 Latency Alerting)
+// =============================================================================
+
+export {
+  LatencyTracker,
+  getLatencyTracker,
+  resetLatencyTracker,
+  recordLatency,
+  getP95LatencyMs,
+  getLatencyStats,
+  type LatencyTrackerConfig,
+  type LatencyStats,
+} from "./LatencyTracker";
+
+// =============================================================================
 // Trackers (Plan 95-03)
 // =============================================================================
 

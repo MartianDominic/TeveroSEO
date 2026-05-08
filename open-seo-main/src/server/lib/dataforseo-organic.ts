@@ -3,6 +3,22 @@
  *
  * Fetches organic keywords for a domain using the
  * dataforseo_labs/google/ranked_keywords endpoint.
+ *
+ * NOTE: This is a legacy module. For cost-tracked API calls, use:
+ * - fetchOrganicKeywordsTracked from @/server/features/scraping/providers/DfsApiWrapper
+ *
+ * Migration guide:
+ * @example
+ * // Before (no cost tracking):
+ * import { fetchOrganicKeywords } from "@/server/lib/dataforseo-organic";
+ * const keywords = await fetchOrganicKeywords(domain, locationCode, languageCode, limit);
+ *
+ * // After (with cost tracking):
+ * import { fetchOrganicKeywordsTracked } from "@/server/features/scraping/providers/DfsApiWrapper";
+ * const keywords = await fetchOrganicKeywordsTracked(domain, locationCode, languageCode, limit, {
+ *   clientId: "client-123",
+ *   workspaceId: "workspace-456"
+ * });
  */
 
 import { getDataForSEOAuthHeader } from "@/server/lib/dataforseo-auth";

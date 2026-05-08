@@ -18,10 +18,6 @@ import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import { LOCATION_CODES } from "./AnalysisService";
-import {
-  getDfsCostTracker,
-  extractDomainFromUrl,
-} from "@/server/features/scraping/providers/DfsCostTracker";
 
 const log = createLogger({ module: "ProspectAnalysisService" });
 
@@ -99,55 +95,12 @@ export const ProspectAnalysisService = {
 
     // Call DataForSEO competitors_domain
     const client = createDataforseoClient(customer);
-    const startTime = Date.now();
-    let rawCompetitors;
-
-    try {
-      rawCompetitors = await client.prospect.competitorsDomain({
-        target: prospect.domain,
-        locationCode,
-        languageCode: targetLanguage,
-        limit: 10, // Fetch more than needed for filtering
-      });
-
-      // Record cost for successful API call (fire-and-forget)
-      const costTracker = getDfsCostTracker(db);
-      costTracker
-        .recordCost({
-          url: prospect.domain,
-          domain: extractDomainFromUrl(prospect.domain),
-          mode: "basic",
-          usedStandardQueue: false,
-          estimatedCost: 0.001, // DFS Labs API cost
-          actualCost: 0.001,
-          success: true,
-          responseTimeMs: Date.now() - startTime,
-          workspaceId,
-        })
-        .catch((err) => {
-          log.warn("Failed to record DFS cost for competitors_domain", { error: err });
-        });
-    } catch (error) {
-      // Record cost even on failure
-      const costTracker = getDfsCostTracker(db);
-      costTracker
-        .recordCost({
-          url: prospect.domain,
-          domain: extractDomainFromUrl(prospect.domain),
-          mode: "basic",
-          usedStandardQueue: false,
-          estimatedCost: 0.001,
-          actualCost: 0.001,
-          success: false,
-          errorMessage: error instanceof Error ? error.message : String(error),
-          responseTimeMs: Date.now() - startTime,
-          workspaceId,
-        })
-        .catch((err) => {
-          log.warn("Failed to record DFS cost for competitors_domain failure", { error: err });
-        });
-      throw error;
-    }
+    const rawCompetitors = await client.prospect.competitorsDomain({
+      target: prospect.domain,
+      locationCode,
+      languageCode: targetLanguage,
+      limit: 10, // Fetch more than needed for filtering
+    });
 
     // Filter by intersection count (relevance)
     const filtered = rawCompetitors
@@ -227,14 +180,12 @@ export const ProspectAnalysisService = {
 
     const client = createDataforseoClient(customer);
     const allGaps: KeywordGap[] = [];
-    const costTracker = getDfsCostTracker(db);
 
     // Fetch gaps for all competitors in parallel using Promise.allSettled
     // This allows partial success - we collect results from successful calls
     // and log failures without stopping the entire analysis
-    const intersectionPromises = competitorDomains.map((competitorDomain) => {
-      const startTime = Date.now();
-      return client.prospect
+    const intersectionPromises = competitorDomains.map((competitorDomain) =>
+      client.prospect
         .domainIntersection({
           target1: competitorDomain, // Competitor has the keywords
           target2: prospect.domain, // Prospect is missing them
@@ -242,52 +193,13 @@ export const ProspectAnalysisService = {
           languageCode,
           limit: 100, // Limit per competitor
         })
-        .then((gaps) => {
-          // Record cost for successful API call (fire-and-forget)
-          costTracker
-            .recordCost({
-              url: competitorDomain,
-              domain: extractDomainFromUrl(competitorDomain),
-              mode: "basic",
-              usedStandardQueue: false,
-              estimatedCost: 0.001, // DFS Labs API cost
-              actualCost: 0.001,
-              success: true,
-              responseTimeMs: Date.now() - startTime,
-              workspaceId,
-              jobId: analysisId,
-            })
-            .catch((err) => {
-              log.warn("Failed to record DFS cost for domain_intersection", { error: err });
-            });
-          return { competitorDomain, gaps, success: true as const };
-        })
-        .catch((error) => {
-          // Record cost even on failure
-          costTracker
-            .recordCost({
-              url: competitorDomain,
-              domain: extractDomainFromUrl(competitorDomain),
-              mode: "basic",
-              usedStandardQueue: false,
-              estimatedCost: 0.001,
-              actualCost: 0.001,
-              success: false,
-              errorMessage: error instanceof Error ? error.message : String(error),
-              responseTimeMs: Date.now() - startTime,
-              workspaceId,
-              jobId: analysisId,
-            })
-            .catch((err) => {
-              log.warn("Failed to record DFS cost for domain_intersection failure", { error: err });
-            });
-          return {
-            competitorDomain,
-            error: error as Error,
-            success: false as const,
-          };
-        });
-    });
+        .then((gaps) => ({ competitorDomain, gaps, success: true as const }))
+        .catch((error) => ({
+          competitorDomain,
+          error: error as Error,
+          success: false as const,
+        })),
+    );
 
     const results = await Promise.all(intersectionPromises);
 

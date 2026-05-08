@@ -24,6 +24,18 @@ vi.mock("nanoid", () => ({
   nanoid: vi.fn(() => "mock-token-12345"),
 }));
 
+// Mock database
+vi.mock("@/db", () => ({
+  db: {},
+}));
+
+// Mock DfsCostTracker - fire-and-forget, so we just mock recordCost to resolve
+vi.mock("@/server/features/scraping/providers/DfsCostTracker", () => ({
+  getDfsCostTracker: vi.fn(() => ({
+    recordCost: vi.fn().mockResolvedValue(1),
+  })),
+}));
+
 describe("QuickCheckService", () => {
   beforeEach(() => {
     vi.clearAllMocks();

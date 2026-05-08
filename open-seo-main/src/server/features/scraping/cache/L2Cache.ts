@@ -23,6 +23,7 @@ import {
   decompressFromBase64,
   shouldCompress,
 } from "./compression";
+import { cacheLogger } from "../logging";
 
 // =============================================================================
 // Default Configuration
@@ -155,7 +156,7 @@ export class L2Cache implements ICacheLevel {
       return null;
     } catch (error) {
       this.misses++;
-      console.error("[L2Cache] Get error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Get error:", error);
       return null;
     } finally {
       this.totalLatencyMs += performance.now() - startTime;
@@ -178,7 +179,7 @@ export class L2Cache implements ICacheLevel {
         });
       }
     } catch (error) {
-      console.error("[L2Cache] Set error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Set error:", error);
     }
   }
 
@@ -191,7 +192,7 @@ export class L2Cache implements ICacheLevel {
       ];
       await this.redis.del(...keys);
     } catch (error) {
-      console.error("[L2Cache] Delete error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Delete error:", error);
     }
   }
 
@@ -201,7 +202,7 @@ export class L2Cache implements ICacheLevel {
       const exists = await this.redis.exists(key);
       return exists === 1;
     } catch (error) {
-      console.error("[L2Cache] Has error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Has error:", error);
       return false;
     }
   }
@@ -242,7 +243,7 @@ export class L2Cache implements ICacheLevel {
 
       this.resetStats();
     } catch (error) {
-      console.error("[L2Cache] Clear error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Clear error:", error);
     }
   }
 
@@ -277,7 +278,7 @@ export class L2Cache implements ICacheLevel {
         lastModified: data.lastModified || undefined,
       };
     } catch (error) {
-      console.error("[L2Cache] GetRevalidationHeaders error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] GetRevalidationHeaders error:", error);
       return null;
     }
   }
@@ -302,7 +303,7 @@ export class L2Cache implements ICacheLevel {
 
       await this.redis.expire(key, ttlSeconds);
     } catch (error) {
-      console.error("[L2Cache] SetRevalidationHeaders error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] SetRevalidationHeaders error:", error);
     }
   }
 
@@ -314,7 +315,7 @@ export class L2Cache implements ICacheLevel {
       const key = this.makeKey("skip", hash);
       await this.redis.setex(key, ttlSeconds, "1");
     } catch (error) {
-      console.error("[L2Cache] MarkSkipCache error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] MarkSkipCache error:", error);
     }
   }
 
@@ -327,7 +328,7 @@ export class L2Cache implements ICacheLevel {
       const exists = await this.redis.exists(key);
       return exists === 1;
     } catch (error) {
-      console.error("[L2Cache] ShouldSkipCache error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] ShouldSkipCache error:", error);
       return false;
     }
   }
@@ -341,7 +342,7 @@ export class L2Cache implements ICacheLevel {
       const result = await this.redis.expire(key, ttlSeconds);
       return result === 1;
     } catch (error) {
-      console.error("[L2Cache] ExtendTtl error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] ExtendTtl error:", error);
       return false;
     }
   }
@@ -355,7 +356,7 @@ export class L2Cache implements ICacheLevel {
       const ttl = await this.redis.ttl(key);
       return ttl >= 0 ? ttl : null;
     } catch (error) {
-      console.error("[L2Cache] GetRemainingTtl error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] GetRemainingTtl error:", error);
       return null;
     }
   }
@@ -387,7 +388,7 @@ export class L2Cache implements ICacheLevel {
 
       this.requestCount++;
     } catch (error) {
-      console.error("[L2Cache] Mget error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] Mget error:", error);
     } finally {
       this.totalLatencyMs += performance.now() - startTime;
     }
@@ -423,7 +424,7 @@ export class L2Cache implements ICacheLevel {
 
       return { used, peak, fragmentation };
     } catch (error) {
-      console.error("[L2Cache] GetMemoryInfo error:", error);
+      cacheLogger.error({ error: error instanceof Error ? error.message : String(error) }, "[L2Cache] GetMemoryInfo error:", error);
       return null;
     }
   }

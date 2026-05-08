@@ -265,9 +265,9 @@ export class DomainLearningService implements IDomainLearningService {
       return config;
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        logger.debug("getConfig skipped - circuit open", { domain: normalizedDomain });
+        logger.debug({ domain: normalizedDomain }, "getConfig skipped - circuit open");
       } else {
-        logger.error("getConfig error", { domain: normalizedDomain, error: error instanceof Error ? error.message : String(error) });
+        logger.error({ domain: normalizedDomain, error: error instanceof Error ? error.message : String(error) }, "getConfig error");
       }
       return null;
     }

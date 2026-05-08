@@ -3,6 +3,8 @@
  * Phase 96-01 Task 3: Repository for GSC query analytics CRUD
  *
  * Handles batch inserts with upsert behavior for GSC analytics data.
+ *
+ * @see docs/architecture/gsc-data-flow.md for the complete GSC data architecture
  */
 
 import { db } from "@/db";

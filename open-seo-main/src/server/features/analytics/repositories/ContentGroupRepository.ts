@@ -10,10 +10,13 @@ import {
   contentGroupPages,
   type ContentGroup,
   type ContentGroupInsert,
-  type ContentGroupPage,
 } from "@/db/content-intelligence-schema";
 import { seoGscQueryAnalytics } from "@/db/gsc-analytics-schema";
-import { eq, and, sql, like, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
+import { sanitizeFolderPattern, validateRegexPattern, ValidationError } from "../utils/query-validation";
+import { createLogger } from "@/server/lib/logger";
+
+const logger = createLogger({ module: "content-group-repository" });
 
 export interface DistinctFolder {
   folder: string;
@@ -111,22 +114,6 @@ export class ContentGroupRepository {
   }
 
   /**
-   * Batch add pages to a group (more efficient than N individual inserts)
-   */
-  async addPagesToGroupBatch(
-    groupId: string,
-    pageUrls: string[],
-    manuallyAdded: boolean = false
-  ): Promise<void> {
-    if (pageUrls.length === 0) return;
-
-    await db
-      .insert(contentGroupPages)
-      .values(pageUrls.map((pageUrl) => ({ groupId, pageUrl, manuallyAdded })))
-      .onConflictDoNothing();
-  }
-
-  /**
    * Remove a page from a group
    */
   async removePageFromGroup(groupId: string, pageUrl: string): Promise<void> {
@@ -198,40 +185,23 @@ export class ContentGroupRepository {
 
   /**
    * Get pages matching a folder pattern
+   * Uses sanitized LIKE pattern to prevent SQL injection
    */
   async getPagesMatchingFolder(
     siteId: string,
     folderPattern: string
   ): Promise<string[]> {
-    const results = await db
-      .selectDistinct({ pageUrl: seoGscQueryAnalytics.pageUrl })
-      .from(seoGscQueryAnalytics)
-      .where(
-        and(
-          eq(seoGscQueryAnalytics.siteId, siteId),
-          like(seoGscQueryAnalytics.pageUrl, `%${folderPattern}%`)
-        )
-      );
+    // Sanitize the folder pattern to escape LIKE special characters (%, _, \)
+    const sanitizedPattern = sanitizeFolderPattern(folderPattern);
+    const likePattern = `%${sanitizedPattern}%`;
 
-    return results
-      .map((r) => r.pageUrl)
-      .filter((url): url is string => url !== null);
-  }
-
-  /**
-   * Get pages matching a regex pattern
-   */
-  async getPagesMatchingRegex(
-    siteId: string,
-    regexPattern: string
-  ): Promise<string[]> {
     const results = await db.execute<{ page_url: string }>(
       sql`
         SELECT DISTINCT page_url
         FROM ${seoGscQueryAnalytics}
         WHERE site_id = ${siteId}
           AND page_url IS NOT NULL
-          AND REGEXP_REPLACE(page_url, '^https?://[^/]+', '') ~ ${regexPattern}
+          AND page_url LIKE ${likePattern}
       `
     );
 
@@ -239,136 +209,32 @@ export class ContentGroupRepository {
   }
 
   /**
-   * Batch get pages for multiple groups (avoids N+1 queries)
+   * Get pages matching a regex pattern
+   * Validates regex pattern before use to prevent ReDoS and injection
    */
-  async getGroupPagesBatch(
-    groupIds: string[]
-  ): Promise<Map<string, Array<{ pageUrl: string; manuallyAdded: boolean }>>> {
-    if (groupIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await db
-      .select({
-        groupId: contentGroupPages.groupId,
-        pageUrl: contentGroupPages.pageUrl,
-        manuallyAdded: contentGroupPages.manuallyAdded,
-      })
-      .from(contentGroupPages)
-      .where(inArray(contentGroupPages.groupId, groupIds));
-
-    // Group results by groupId
-    const map = new Map<
-      string,
-      Array<{ pageUrl: string; manuallyAdded: boolean }>
-    >();
-    for (const r of results) {
-      const existing = map.get(r.groupId) || [];
-      existing.push({
-        pageUrl: r.pageUrl,
-        manuallyAdded: r.manuallyAdded ?? false,
-      });
-      map.set(r.groupId, existing);
-    }
-
-    return map;
-  }
-
-  /**
-   * Batch get metrics for multiple pages (avoids N+1 queries)
-   * Returns a map of pageUrl -> metrics
-   */
-  async getGroupMetricsBatch(
-    pageUrls: string[],
+  async getPagesMatchingRegex(
     siteId: string,
-    currentStartDate: string,
-    currentEndDate: string,
-    prevStartDate: string,
-    prevEndDate: string
-  ): Promise<
-    Map<
-      string,
-      {
-        clicks: number;
-        impressions: number;
-        position: number;
-        prevClicks: number;
-        prevImpressions: number;
-      }
-    >
-  > {
-    if (pageUrls.length === 0) {
-      return new Map();
+    regexPattern: string
+  ): Promise<string[]> {
+    // Validate regex pattern to prevent ReDoS and ensure it's valid
+    const validatedPattern = validateRegexPattern(regexPattern);
+    if (!validatedPattern) {
+      throw new ValidationError(
+        `Invalid regex pattern: "${regexPattern}". Pattern must be valid regex and under 200 characters.`
+      );
     }
 
-    const result = await db.execute<{
-      page_url: string;
-      clicks: string;
-      impressions: string;
-      position: string;
-      prev_clicks: string;
-      prev_impressions: string;
-    }>(
+    const results = await db.execute<{ page_url: string }>(
       sql`
-        WITH current_period AS (
-          SELECT
-            page_url,
-            COALESCE(SUM(clicks), 0) as clicks,
-            COALESCE(SUM(impressions), 0) as impressions,
-            COALESCE(AVG(position), 0) as position
-          FROM ${seoGscQueryAnalytics}
-          WHERE site_id = ${siteId}
-            AND page_url = ANY(${pageUrls})
-            AND query_time >= ${currentStartDate}::date
-            AND query_time <= ${currentEndDate}::date
-          GROUP BY page_url
-        ),
-        prev_period AS (
-          SELECT
-            page_url,
-            COALESCE(SUM(clicks), 0) as prev_clicks,
-            COALESCE(SUM(impressions), 0) as prev_impressions
-          FROM ${seoGscQueryAnalytics}
-          WHERE site_id = ${siteId}
-            AND page_url = ANY(${pageUrls})
-            AND query_time >= ${prevStartDate}::date
-            AND query_time <= ${prevEndDate}::date
-          GROUP BY page_url
-        )
-        SELECT
-          COALESCE(c.page_url, p.page_url) as page_url,
-          COALESCE(c.clicks, 0)::text as clicks,
-          COALESCE(c.impressions, 0)::text as impressions,
-          COALESCE(c.position, 0)::text as position,
-          COALESCE(p.prev_clicks, 0)::text as prev_clicks,
-          COALESCE(p.prev_impressions, 0)::text as prev_impressions
-        FROM current_period c
-        FULL OUTER JOIN prev_period p ON c.page_url = p.page_url
+        SELECT DISTINCT page_url
+        FROM ${seoGscQueryAnalytics}
+        WHERE site_id = ${siteId}
+          AND page_url IS NOT NULL
+          AND REGEXP_REPLACE(page_url, '^https?://[^/]+', '') ~ ${validatedPattern}
       `
     );
 
-    const map = new Map<
-      string,
-      {
-        clicks: number;
-        impressions: number;
-        position: number;
-        prevClicks: number;
-        prevImpressions: number;
-      }
-    >();
-
-    for (const row of result.rows) {
-      map.set(row.page_url, {
-        clicks: parseInt(row.clicks || "0", 10),
-        impressions: parseInt(row.impressions || "0", 10),
-        position: parseFloat(row.position || "0"),
-        prevClicks: parseInt(row.prev_clicks || "0", 10),
-        prevImpressions: parseInt(row.prev_impressions || "0", 10),
-      });
-    }
-
-    return map;
+    return results.rows.map((r) => r.page_url);
   }
 
   /**
@@ -445,5 +311,253 @@ export class ContentGroupRepository {
       prevClicks: parseInt(row?.prev_clicks || "0", 10),
       prevImpressions: parseInt(row?.prev_impressions || "0", 10),
     };
+  }
+
+  /**
+   * Get pages for multiple groups in a single batch query.
+   * More efficient than calling getGroupPages for each group.
+   *
+   * @param groupIds - Array of group IDs to fetch pages for
+   * @returns Map of groupId to array of page data
+   */
+  async getGroupPagesBatch(
+    groupIds: string[]
+  ): Promise<Map<string, Array<{ pageUrl: string; manuallyAdded: boolean }>>> {
+    if (groupIds.length === 0) {
+      return new Map();
+    }
+
+    logger.debug("Fetching pages for groups batch", {
+      groupCount: groupIds.length,
+    });
+
+    const results = await db
+      .select({
+        groupId: contentGroupPages.groupId,
+        pageUrl: contentGroupPages.pageUrl,
+        manuallyAdded: contentGroupPages.manuallyAdded,
+      })
+      .from(contentGroupPages)
+      .where(inArray(contentGroupPages.groupId, groupIds));
+
+    // Initialize map with empty arrays for all requested groups
+    const resultMap = new Map<string, Array<{ pageUrl: string; manuallyAdded: boolean }>>();
+    for (const groupId of groupIds) {
+      resultMap.set(groupId, []);
+    }
+
+    // Populate map with results
+    for (const row of results) {
+      resultMap.get(row.groupId)?.push({
+        pageUrl: row.pageUrl,
+        manuallyAdded: row.manuallyAdded ?? false,
+      });
+    }
+
+    return resultMap;
+  }
+
+  /**
+   * Get metrics for multiple groups in a single batch query.
+   *
+   * @param groupIds - Array of group IDs to fetch metrics for
+   * @param siteId - Site ID for GSC data lookup
+   * @param currentStartDate - Start date for current period
+   * @param currentEndDate - End date for current period
+   * @param prevStartDate - Start date for previous period
+   * @param prevEndDate - End date for previous period
+   * @returns Map of groupId to metrics
+   */
+  async getGroupMetricsBatch(
+    groupIds: string[],
+    siteId: string,
+    currentStartDate: string,
+    currentEndDate: string,
+    prevStartDate: string,
+    prevEndDate: string
+  ): Promise<Map<string, {
+    totalClicks: number;
+    totalImpressions: number;
+    avgPosition: number;
+    prevClicks: number;
+    prevImpressions: number;
+  }>> {
+    if (groupIds.length === 0) {
+      return new Map();
+    }
+
+    logger.debug("Fetching metrics for groups batch", {
+      groupCount: groupIds.length,
+      siteId,
+    });
+
+    // First get all pages for all groups
+    const pagesMap = await this.getGroupPagesBatch(groupIds);
+
+    // Collect all unique page URLs
+    const allPageUrls = new Set<string>();
+    for (const pages of pagesMap.values()) {
+      for (const page of pages) {
+        allPageUrls.add(page.pageUrl);
+      }
+    }
+
+    if (allPageUrls.size === 0) {
+      // Return empty metrics for all groups
+      const emptyMetrics = {
+        totalClicks: 0,
+        totalImpressions: 0,
+        avgPosition: 0,
+        prevClicks: 0,
+        prevImpressions: 0,
+      };
+      const resultMap = new Map<string, typeof emptyMetrics>();
+      for (const groupId of groupIds) {
+        resultMap.set(groupId, { ...emptyMetrics });
+      }
+      return resultMap;
+    }
+
+    const pageUrlsArray = Array.from(allPageUrls);
+
+    // Get metrics for all pages at once
+    const result = await db.execute<{
+      page_url: string;
+      current_clicks: string;
+      current_impressions: string;
+      current_position: string;
+      prev_clicks: string;
+      prev_impressions: string;
+    }>(
+      sql`
+        WITH current_period AS (
+          SELECT
+            page_url,
+            COALESCE(SUM(clicks), 0) as clicks,
+            COALESCE(SUM(impressions), 0) as impressions,
+            COALESCE(AVG(position), 0) as position
+          FROM ${seoGscQueryAnalytics}
+          WHERE site_id = ${siteId}
+            AND page_url = ANY(${pageUrlsArray})
+            AND query_time >= ${currentStartDate}::date
+            AND query_time <= ${currentEndDate}::date
+          GROUP BY page_url
+        ),
+        prev_period AS (
+          SELECT
+            page_url,
+            COALESCE(SUM(clicks), 0) as clicks,
+            COALESCE(SUM(impressions), 0) as impressions
+          FROM ${seoGscQueryAnalytics}
+          WHERE site_id = ${siteId}
+            AND page_url = ANY(${pageUrlsArray})
+            AND query_time >= ${prevStartDate}::date
+            AND query_time <= ${prevEndDate}::date
+          GROUP BY page_url
+        )
+        SELECT
+          COALESCE(c.page_url, p.page_url) as page_url,
+          COALESCE(c.clicks, 0)::text as current_clicks,
+          COALESCE(c.impressions, 0)::text as current_impressions,
+          COALESCE(c.position, 0)::text as current_position,
+          COALESCE(p.clicks, 0)::text as prev_clicks,
+          COALESCE(p.impressions, 0)::text as prev_impressions
+        FROM current_period c
+        FULL OUTER JOIN prev_period p ON c.page_url = p.page_url
+      `
+    );
+
+    // Build page metrics lookup
+    const pageMetrics = new Map<string, {
+      clicks: number;
+      impressions: number;
+      position: number;
+      prevClicks: number;
+      prevImpressions: number;
+    }>();
+
+    for (const row of result.rows) {
+      pageMetrics.set(row.page_url, {
+        clicks: parseInt(row.current_clicks, 10),
+        impressions: parseInt(row.current_impressions, 10),
+        position: parseFloat(row.current_position),
+        prevClicks: parseInt(row.prev_clicks, 10),
+        prevImpressions: parseInt(row.prev_impressions, 10),
+      });
+    }
+
+    // Aggregate metrics per group
+    const resultMap = new Map<string, {
+      totalClicks: number;
+      totalImpressions: number;
+      avgPosition: number;
+      prevClicks: number;
+      prevImpressions: number;
+    }>();
+
+    for (const groupId of groupIds) {
+      const groupPages = pagesMap.get(groupId) ?? [];
+      let totalClicks = 0;
+      let totalImpressions = 0;
+      let totalPosition = 0;
+      let positionCount = 0;
+      let prevClicks = 0;
+      let prevImpressions = 0;
+
+      for (const page of groupPages) {
+        const metrics = pageMetrics.get(page.pageUrl);
+        if (metrics) {
+          totalClicks += metrics.clicks;
+          totalImpressions += metrics.impressions;
+          if (metrics.position > 0) {
+            totalPosition += metrics.position;
+            positionCount++;
+          }
+          prevClicks += metrics.prevClicks;
+          prevImpressions += metrics.prevImpressions;
+        }
+      }
+
+      resultMap.set(groupId, {
+        totalClicks,
+        totalImpressions,
+        avgPosition: positionCount > 0 ? totalPosition / positionCount : 0,
+        prevClicks,
+        prevImpressions,
+      });
+    }
+
+    return resultMap;
+  }
+
+  /**
+   * Add multiple pages to a group in a single batch operation.
+   *
+   * @param groupId - Group ID to add pages to
+   * @param pages - Array of page URLs with optional manuallyAdded flag
+   */
+  async addPagesToGroupBatch(
+    groupId: string,
+    pages: Array<{ pageUrl: string; manuallyAdded?: boolean }>
+  ): Promise<void> {
+    if (pages.length === 0) {
+      return;
+    }
+
+    logger.debug("Adding pages to group batch", {
+      groupId,
+      pageCount: pages.length,
+    });
+
+    const values = pages.map((p) => ({
+      groupId,
+      pageUrl: p.pageUrl,
+      manuallyAdded: p.manuallyAdded ?? false,
+    }));
+
+    await db
+      .insert(contentGroupPages)
+      .values(values)
+      .onConflictDoNothing();
   }
 }

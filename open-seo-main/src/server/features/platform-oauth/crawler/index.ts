@@ -11,12 +11,13 @@ export {
   type RobotsTxtRule,
 } from "./RobotsTxtParser";
 
+// Re-export from unified sitemap module
 export {
   SitemapParser,
   SITEMAP_LOCATIONS,
   type SitemapUrl,
   type SitemapParseResult,
-} from "./SitemapParser";
+} from "@/server/lib/sitemap";
 
 export {
   SPADetector,

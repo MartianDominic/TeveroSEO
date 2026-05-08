@@ -7,6 +7,8 @@ import { promisify } from 'util';
 
 const gzipAsync = promisify(gzip);
 
+import { retentionLogger } from '../logging';
+
 export interface RetentionPolicy {
   target: 'cache' | 'logs' | 'metrics' | 'domain_learning';
   retention: number;
@@ -74,7 +76,7 @@ const DEFAULT_POLICIES: RetentionPolicy[] = [
 
 export class RetentionManager {
   private jobs: Map<string, CronJob> = new Map();
-  private redis: Redis;
+  private _redis: Redis;
   private pg: Pool;
   private r2?: R2Client;
   private policies: RetentionPolicy[];
@@ -84,13 +86,13 @@ export class RetentionManager {
   };
 
   constructor(config: RetentionManagerConfig) {
-    this.redis = config.redis;
+    this._redis = config.redis;
     this.pg = config.pg;
     this.r2 = config.r2;
     this.policies = config.policies || DEFAULT_POLICIES;
     this.logger = config.logger || {
-      info: (msg, meta) => console.log(msg, meta),
-      error: (msg, meta) => console.error(msg, meta),
+      info: (msg, meta) => retentionLogger.info(meta, msg),
+      error: (msg, meta) => retentionLogger.error(meta, msg),
     };
   }
 
@@ -242,7 +244,7 @@ export class RetentionManager {
     }
   }
 
-  private async cleanDomainLearning(cutoff: Date, action: string): Promise<void> {
+  private async cleanDomainLearning(cutoff: Date, _action: string): Promise<void> {
     // Remove domain mappings not accessed recently
     const result = await this.pg.query(
       `

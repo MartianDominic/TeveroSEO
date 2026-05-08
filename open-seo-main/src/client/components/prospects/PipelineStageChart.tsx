@@ -3,6 +3,7 @@
  * Phase 30.5: Prospect Pipeline Automation
  *
  * Horizontal bar chart showing prospect counts by pipeline stage.
+ * UI-04/05/06: Uses chart theme CSS variables, error boundary, loading states.
  */
 import {
   BarChart,
@@ -14,6 +15,8 @@ import {
   Cell,
 } from "recharts";
 import type { PipelineStage } from "@/db/prospect-schema";
+import { ChartErrorBoundary } from "@/components/charts/ChartErrorBoundary";
+import { ChartSkeleton } from "@/components/charts/ChartSkeleton";
 
 interface StageData {
   stage: PipelineStage;
@@ -24,6 +27,7 @@ interface PipelineStageChartProps {
   data: StageData[];
   height?: number;
   className?: string;
+  isLoading?: boolean;
 }
 
 const STAGE_COLORS: Record<PipelineStage, string> = {
@@ -74,7 +78,13 @@ export function PipelineStageChart({
   data,
   height = 300,
   className = "",
+  isLoading = false,
 }: PipelineStageChartProps) {
+  // Show skeleton while loading
+  if (isLoading) {
+    return <ChartSkeleton variant="bar" height={height} className={className} />;
+  }
+
   // Map data with labels for display
   const chartData = data.map((d) => ({
     ...d,
@@ -95,31 +105,40 @@ export function PipelineStageChart({
   }
 
   return (
-    <div className={className}>
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart
-          data={chartData}
-          layout="vertical"
-          margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
-        >
-          <XAxis type="number" tick={{ fontSize: 12 }} />
-          <YAxis
-            type="category"
-            dataKey="label"
-            tick={{ fontSize: 12 }}
-            width={90}
-          />
-          <Tooltip content={<ChartTooltip />} />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={30}>
-            {chartData.map((entry) => (
-              <Cell
-                key={entry.stage}
-                fill={STAGE_COLORS[entry.stage]}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartErrorBoundary fallbackHeight={height}>
+      <div className={className}>
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
+          >
+            <XAxis
+              type="number"
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+            />
+            <YAxis
+              type="category"
+              dataKey="label"
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              width={90}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={30}>
+              {chartData.map((entry) => (
+                <Cell
+                  key={entry.stage}
+                  fill={STAGE_COLORS[entry.stage]}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartErrorBoundary>
   );
 }

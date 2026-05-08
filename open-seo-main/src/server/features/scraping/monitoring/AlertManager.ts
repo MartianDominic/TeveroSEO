@@ -1,6 +1,7 @@
 import type { Redis } from 'ioredis';
 import { SlackAlertChannel } from './SlackAlertChannel';
 import { PagerDutyAlertChannel } from './PagerDutyAlertChannel';
+import { alertLogger } from '../logging';
 
 export type AlertSeverity = 'critical' | 'warning' | 'info';
 export type AlertChannel = 'slack' | 'pagerduty' | 'email' | 'webhook';
@@ -120,7 +121,7 @@ export class AlertManager {
       this.channels.set('slack', new SlackAlertChannel({
         webhookUrl: slackWebhookUrl,
       }));
-      console.info('[AlertManager] Slack channel configured');
+      alertLogger.info({ channel: 'slack' }, 'Alert channel configured');
     }
 
     // PagerDuty channel (for critical alerts only)
@@ -130,11 +131,11 @@ export class AlertManager {
         routingKey: pagerDutyRoutingKey,
         runbookBaseUrl: this.runbookBaseUrl,
       }));
-      console.info('[AlertManager] PagerDuty channel configured');
+      alertLogger.info({ channel: 'pagerduty' }, 'Alert channel configured');
     }
 
     if (this.channels.size === 0) {
-      console.warn('[AlertManager] No alert channels configured. Set SLACK_WEBHOOK_URL or PAGERDUTY_ROUTING_KEY');
+      alertLogger.warn('No alert channels configured. Set SLACK_WEBHOOK_URL or PAGERDUTY_ROUTING_KEY');
     }
   }
 
@@ -338,7 +339,7 @@ export class AlertManager {
         try {
           await handler.send(alert);
         } catch (error) {
-          console.error(`Failed to send alert to ${channel}:`, error);
+          alertLogger.error({ channel, alertName: alert.name, error: error instanceof Error ? error.message : String(error) }, 'Failed to send alert');
         }
       }
     }
@@ -347,7 +348,7 @@ export class AlertManager {
     this.cooldowns.set(alert.name, Date.now());
 
     // Log alert for observability
-    console.info(`[AlertManager] Alert fired: ${alert.severity} - ${alert.name}`);
+    alertLogger.info({ severity: alert.severity, alertName: alert.name, metric: alert.metric, value: alert.value, threshold: alert.threshold }, 'Alert fired');
   }
 
   getActiveAlerts(): Alert[] {

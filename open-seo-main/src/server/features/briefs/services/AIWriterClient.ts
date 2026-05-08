@@ -22,12 +22,6 @@ export interface ArticleCreatePayload {
   voice_mode?: string;
   suggested_h2s?: string[];
   paa_questions?: string[];
-  /** Total scraping cost in USD for SERP analysis (GAP-B2 fix) */
-  scraping_cost_usd?: number;
-  /** Correlation ID for cross-service tracing (GAP-B2 fix) */
-  correlation_id?: string;
-  /** Timestamp when SERP analysis was performed */
-  serp_analysis_timestamp?: string;
 }
 
 export interface ArticleResponse {
@@ -53,39 +47,10 @@ export function buildArticleTitle(keyword: string): string {
   return `${title} - Complete Guide ${year}`;
 }
 
-/**
- * Options for creating an article from a brief.
- * GAP-B2: Includes scraping cost and correlation ID for cross-service tracing.
- */
-export interface CreateArticleOptions {
-  brief: ContentBriefSelect;
-  clientId: string;
-  /** Total scraping cost in USD from brief generation */
-  scrapingCostUsd?: number;
-  /** Correlation ID for cross-service request tracing */
-  correlationId?: string;
-}
-
-export async function createArticleFromBrief(
-  options: CreateArticleOptions
-): Promise<ArticleResponse>;
-/**
- * @deprecated Use object options form instead for cost tracking support
- */
 export async function createArticleFromBrief(
   brief: ContentBriefSelect,
   clientId: string
-): Promise<ArticleResponse>;
-export async function createArticleFromBrief(
-  briefOrOptions: ContentBriefSelect | CreateArticleOptions,
-  clientIdParam?: string
 ): Promise<ArticleResponse> {
-  // Handle both signatures for backwards compatibility
-  const options: CreateArticleOptions = 'brief' in briefOrOptions
-    ? briefOrOptions
-    : { brief: briefOrOptions, clientId: clientIdParam! };
-
-  const { brief, clientId, scrapingCostUsd, correlationId } = options;
   const title = buildArticleTitle(brief.keyword);
 
   const payload: ArticleCreatePayload = {
@@ -97,28 +62,13 @@ export async function createArticleFromBrief(
     voice_mode: brief.voiceMode,
     suggested_h2s: brief.serpAnalysis?.commonH2s.map((h) => h.heading) ?? [],
     paa_questions: brief.serpAnalysis?.paaQuestions ?? [],
-    // GAP-B2: Include scraping cost and correlation ID for total cost reporting
-    scraping_cost_usd: scrapingCostUsd,
-    correlation_id: correlationId,
-    serp_analysis_timestamp: brief.serpAnalysis?.analyzedAt,
   };
 
-  log.info("Creating article from brief", {
-    briefId: brief.id,
-    keyword: brief.keyword,
-    correlationId,
-    scrapingCostUsd,
-  });
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  // GAP-B2: Include correlation ID in header for cross-service tracing
-  if (correlationId) {
-    headers["X-Correlation-ID"] = correlationId;
-  }
+  log.info("Creating article from brief", { briefId: brief.id, keyword: brief.keyword });
 
   const response = await fetch(`${AI_WRITER_API}/api/articles`, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(AI_WRITER_TIMEOUT_MS),
   });

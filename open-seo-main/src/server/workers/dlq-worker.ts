@@ -12,6 +12,12 @@
  * 2. Investigation - preserving context for debugging
  * 3. Manual intervention - allowing ops to replay or discard
  *
+ * QUEUE-03 MIGRATION NOTE:
+ * This worker processes the LEGACY Redis-based DLQ. New jobs are written
+ * directly to the DB-based DLQ (see src/server/lib/dead-letter-queue.ts).
+ * This worker remains active to process any legacy jobs still in Redis.
+ * Once Redis DLQ is drained, this worker can be deprecated.
+ *
  * @module dlq-worker
  */
 import { Worker, type Job } from "bullmq";

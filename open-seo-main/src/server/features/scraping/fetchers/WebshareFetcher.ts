@@ -14,7 +14,12 @@
 import { HttpsProxyAgent } from "https-proxy-agent";
 import type { FetchResult, BaseFetchOptions, ConnectionTestResult } from "./types";
 import { TIER_TO_NUMBER } from "./types";
-import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
+import {
+  classifyError as sharedClassifyError,
+  detectBotProtection as sharedDetectBotProtection,
+  mapStatusCodeToEscalationReason,
+} from "./ErrorClassifier";
+import { getBandwidthTracker } from "../monitoring/BandwidthTracker";
 
 // =============================================================================
 // Types
@@ -113,84 +118,32 @@ const DEFAULT_HEADERS: Record<string, string> = {
 };
 
 // =============================================================================
-// Error Classification
+// Error Classification (using shared ErrorClassifier)
 // =============================================================================
 
 /**
- * Classify HTTP status code or error for escalation.
+ * Classify HTTP status code for escalation.
+ * Delegates to shared ErrorClassifier utility.
  */
-function classifyStatusCode(statusCode: number): EscalationReason | undefined {
-  if (statusCode === 429) return "rate_limited";
-  if (statusCode === 403) return "ip_blocked";
-  if (statusCode === 503) return "bot_detected";
-  return undefined;
+function classifyStatusCode(statusCode: number) {
+  return mapStatusCodeToEscalationReason(statusCode);
 }
 
 /**
  * Classify fetch error for escalation.
+ * Delegates to shared ErrorClassifier utility.
  */
-function classifyError(error: Error): EscalationReason {
-  const message = error.message.toLowerCase();
-
-  if (
-    error.name === "AbortError" ||
-    message.includes("timeout") ||
-    message.includes("etimedout")
-  ) {
-    return "timeout";
-  }
-  if (message.includes("econnrefused") || message.includes("econnreset")) {
-    return "connection_reset";
-  }
-  if (message.includes("enotfound") || message.includes("getaddrinfo")) {
-    return "dns_error";
-  }
-  if (
-    message.includes("ssl") ||
-    message.includes("certificate") ||
-    message.includes("tls")
-  ) {
-    return "ssl_error";
-  }
-
-  return "connection_reset"; // Default fallback
+function classifyError(error: Error) {
+  return sharedClassifyError(error).escalationReason;
 }
 
 /**
  * Detect DC/ASN-based blocking.
+ * Delegates to shared ErrorClassifier utility.
  */
-function detectDcBlocking(html: string, headers: Headers): EscalationReason | undefined {
-  const htmlLower = html.toLowerCase();
-
-  // Cloudflare DC detection
-  if (
-    headers.get("cf-ray") &&
-    (htmlLower.includes("attention required") ||
-      htmlLower.includes("checking your browser") ||
-      htmlLower.includes("just a moment"))
-  ) {
-    return "dc_detected";
-  }
-
-  // CAPTCHA detection
-  if (
-    htmlLower.includes("recaptcha") ||
-    htmlLower.includes("hcaptcha") ||
-    htmlLower.includes("g-recaptcha")
-  ) {
-    return "captcha";
-  }
-
-  // Generic bot detection
-  if (
-    htmlLower.includes("access denied") ||
-    htmlLower.includes("datacenter") ||
-    htmlLower.includes("automated")
-  ) {
-    return "dc_detected";
-  }
-
-  return undefined;
+function detectDcBlocking(html: string, headers: Headers) {
+  const result = sharedDetectBotProtection(html, headers);
+  return result?.escalationReason;
 }
 
 // =============================================================================
@@ -302,12 +255,17 @@ export class WebshareFetcher {
 
         const html = await response.text();
         const latencyMs = Date.now() - startTime;
+        const responseBytes = Buffer.byteLength(html, "utf8");
 
         // Extract response headers
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((value, key) => {
           responseHeaders[key] = value;
         });
+
+        // Track bandwidth usage (estimate request size: URL + headers ~500 bytes)
+        const requestBytes = Buffer.byteLength(options.url, "utf8") + 500;
+        getBandwidthTracker().recordUsage("webshare", requestBytes, responseBytes);
 
         // Check for DC blocking
         const dcBlocking = detectDcBlocking(html, response.headers);
@@ -320,7 +278,7 @@ export class WebshareFetcher {
             error: `DC proxy blocked: ${dcBlocking}`,
             errorType: dcBlocking,
             latencyMs,
-            bytesTransferred: Buffer.byteLength(html, "utf8"),
+            bytesTransferred: responseBytes,
             proxyUsed: `webshare:${proxy.host}:${proxy.port}`,
             headers: responseHeaders,
           };
@@ -337,7 +295,7 @@ export class WebshareFetcher {
             error: `HTTP ${response.status}`,
             errorType: statusError,
             latencyMs,
-            bytesTransferred: Buffer.byteLength(html, "utf8"),
+            bytesTransferred: responseBytes,
             proxyUsed: `webshare:${proxy.host}:${proxy.port}`,
             headers: responseHeaders,
           };
@@ -353,7 +311,7 @@ export class WebshareFetcher {
             error: "Response too small",
             errorType: "empty_response",
             latencyMs,
-            bytesTransferred: Buffer.byteLength(html, "utf8"),
+            bytesTransferred: responseBytes,
             proxyUsed: `webshare:${proxy.host}:${proxy.port}`,
             headers: responseHeaders,
           };
@@ -366,7 +324,7 @@ export class WebshareFetcher {
           statusCode: response.status,
           error: response.ok ? undefined : `HTTP ${response.status}`,
           latencyMs,
-          bytesTransferred: Buffer.byteLength(html, "utf8"),
+          bytesTransferred: responseBytes,
           proxyUsed: `webshare:${proxy.host}:${proxy.port}`,
           headers: responseHeaders,
         };

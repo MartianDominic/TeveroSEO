@@ -10,7 +10,11 @@
 
 import type { FetchResult, BaseFetchOptions, ConnectionTestResult } from "./types";
 import { TIER_TO_NUMBER } from "./types";
-import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
+import {
+  classifyError as sharedClassifyError,
+  detectBotProtection as sharedDetectBotProtection,
+  mapStatusCodeToEscalationReason,
+} from "./ErrorClassifier";
 
 // =============================================================================
 // Types
@@ -96,77 +100,32 @@ const DEFAULT_HEADERS: Record<string, string> = {
 };
 
 // =============================================================================
-// Error Classification
+// Error Classification (using shared ErrorClassifier)
 // =============================================================================
 
 /**
- * Classify HTTP status code or error for escalation.
+ * Classify HTTP status code for escalation.
+ * Delegates to shared ErrorClassifier utility.
  */
-function classifyStatusCode(statusCode: number): EscalationReason | undefined {
-  if (statusCode === 429) return "rate_limited";
-  if (statusCode === 403) return "ip_blocked";
-  if (statusCode === 503) return "bot_detected";
-  return undefined;
+function classifyStatusCode(statusCode: number) {
+  return mapStatusCodeToEscalationReason(statusCode);
 }
 
 /**
  * Classify fetch error for escalation.
+ * Delegates to shared ErrorClassifier utility.
  */
-function classifyError(error: Error): EscalationReason {
-  const message = error.message.toLowerCase();
-
-  if (error.name === "AbortError" || message.includes("timeout") || message.includes("etimedout")) {
-    return "timeout";
-  }
-  if (message.includes("econnrefused") || message.includes("econnreset")) {
-    return "connection_reset";
-  }
-  if (message.includes("enotfound") || message.includes("getaddrinfo")) {
-    return "dns_error";
-  }
-  if (message.includes("ssl") || message.includes("certificate") || message.includes("tls")) {
-    return "ssl_error";
-  }
-
-  return "connection_reset"; // Default fallback
+function classifyError(error: Error) {
+  return sharedClassifyError(error).escalationReason;
 }
 
 /**
  * Detect bot protection from response HTML.
+ * Delegates to shared ErrorClassifier utility.
  */
-function detectBotProtection(html: string, headers: Headers): EscalationReason | undefined {
-  const htmlLower = html.toLowerCase();
-
-  // Cloudflare detection
-  if (
-    headers.get("cf-ray") ||
-    headers.get("cf-mitigated") ||
-    htmlLower.includes("cloudflare") ||
-    htmlLower.includes("checking your browser") ||
-    htmlLower.includes("just a moment")
-  ) {
-    return "dc_detected";
-  }
-
-  // CAPTCHA detection
-  if (
-    htmlLower.includes("recaptcha") ||
-    htmlLower.includes("hcaptcha") ||
-    htmlLower.includes("g-recaptcha")
-  ) {
-    return "captcha";
-  }
-
-  // Generic bot detection pages
-  if (
-    htmlLower.includes("access denied") ||
-    htmlLower.includes("please verify") ||
-    htmlLower.includes("are you a robot")
-  ) {
-    return "bot_detected";
-  }
-
-  return undefined;
+function detectBotProtection(html: string, headers: Headers) {
+  const result = sharedDetectBotProtection(html, headers);
+  return result?.escalationReason;
 }
 
 // =============================================================================

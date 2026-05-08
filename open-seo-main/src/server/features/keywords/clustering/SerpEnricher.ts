@@ -1,21 +1,27 @@
 /**
  * SERP Enricher
  * Phase 86-06b: Semantic Intelligence Pipeline
- * Phase 95: GAP-K2 - DataForSEO SERP Integration
  *
  * Post-clustering SERP enrichment for selected keywords.
  * Fetches position data and identifies quick-win opportunities.
  *
- * Cost: ~$0.002 per keyword (SERP API live endpoint)
+ * Cost: $4-10 per prospect (position-only endpoint)
  * NOT used for clustering -- enrichment for proposal only.
  */
 
 import type { ClusteringInput } from './types';
-import { fetchLiveSerpItemsRaw, dataForSeoRateLimiter } from '@/server/lib/dataforseo';
-import type { SerpLiveItem } from '@/server/lib/dataforseoSchemas';
-import { db } from '@/db/index';
-import { getDfsCostTracker } from '@/server/features/scraping/providers/DfsCostTracker';
-import { createComponentLogger } from '@/server/features/scraping/logging';
+import { fetchLiveSerpItemsRaw, type SerpLiveItem } from '@/server/lib/dataforseo';
+import {
+  withBudgetCheck,
+  getDfsCostTracker,
+  DFS_API_COSTS,
+  BudgetExceededError,
+} from '@/server/features/scraping';
+import { db } from '@/db';
+import { createLogger } from '@/server/lib/logger';
+import type { DataforseoApiResponse } from '@/server/lib/dataforseoCost';
+
+const log = createLogger({ module: 'keywords/serp-enricher' });
 
 export interface SerpEnrichmentConfig {
   /** Domain to check rankings for */
@@ -59,53 +65,15 @@ const DEFAULT_CONFIG: Required<Omit<SerpEnrichmentConfig, 'domain'>> = {
   batchDelayMs: 1000,
 };
 
-// =============================================================================
-// Logger
-// =============================================================================
-
-const logger = createComponentLogger('serp-enricher');
-
-// =============================================================================
-// SERP Position Types (GAP-K2)
-// =============================================================================
-
-/**
- * Result for a single keyword's SERP position lookup.
- */
-export interface SerpPositionResult {
-  keyword: string;
-  positions: Array<{
-    url: string;
-    position: number;
-    title?: string;
-  }>;
-  locationCode: number;
-  languageCode: string;
-}
-
-/**
- * Options for batch position fetching.
- */
-export interface FetchBatchPositionsOptions {
-  keywords: string[];
-  locationCode?: number;
-  languageCode?: string;
-  depth?: number;
-  clientId?: string;
-  workspaceId?: string;
-}
-
 /**
  * SERP Enricher for post-clustering keyword analysis.
  * IMMUTABLE: Returns new EnrichedKeyword objects.
  */
 export class SerpEnricher {
   private config: Required<SerpEnrichmentConfig>;
-  private costTracker: ReturnType<typeof getDfsCostTracker>;
 
   constructor(config: SerpEnrichmentConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config } as Required<SerpEnrichmentConfig>;
-    this.costTracker = getDfsCostTracker(db);
   }
 
   /**
@@ -148,253 +116,150 @@ export class SerpEnricher {
   }
 
   /**
-   * Fetch positions for a batch of keywords via DataForSEO SERP API.
+   * Fetch positions for a batch of keywords via DataForSEO.
    * Returns NEW EnrichedKeyword objects (IMMUTABLE).
    *
-   * Phase 95 GAP-K2: Full DataForSEO integration with cost tracking.
-   *
-   * @param batch - Keywords to fetch positions for
-   * @param options - Optional clientId/workspaceId for cost attribution
+   * Uses DataForSEO SERP Live API with:
+   * - Budget pre-check (COST-1)
+   * - Cost tracking via DfsCostTracker
+   * - Graceful error handling (null positions on failure)
    */
   private async fetchBatchPositions(
-    batch: readonly ClusteringInput[],
-    options?: { clientId?: string; workspaceId?: string }
+    batch: readonly ClusteringInput[]
   ): Promise<EnrichedKeyword[]> {
     const results: EnrichedKeyword[] = [];
-    const { clientId, workspaceId } = options ?? {};
+    const costTracker = getDfsCostTracker(db);
+    const targetDomain = this.extractTargetDomain(this.config.domain);
 
-    // Process each keyword individually (DataForSEO SERP API is per-keyword)
-    for (const keywordInput of batch) {
-      const startTime = Date.now();
-      let position: number | null = null;
-
+    for (const keyword of batch) {
       try {
-        // Fetch SERP data from DataForSEO
-        const response = await fetchLiveSerpItemsRaw(
-          keywordInput.keyword,
-          this.config.locationCode,
-          this.config.languageCode
+        // Budget pre-check before making API call
+        const serpResponse: DataforseoApiResponse<SerpLiveItem[]> = await withBudgetCheck(
+          () => fetchLiveSerpItemsRaw(
+            keyword.keyword,
+            this.config.locationCode,
+            this.config.languageCode
+          ),
+          DFS_API_COSTS.SERP_LIVE,
+          db,
+          { workspaceId: undefined } // Could be passed via config if needed
         );
 
-        // Find our domain's position in organic results
-        position = this.findDomainPosition(response.data, this.config.domain);
+        // Track cost (fire and forget)
+        void costTracker.recordCost({
+          url: `serp://${keyword.keyword}`,
+          domain: targetDomain,
+          mode: 'basic',
+          usedStandardQueue: false,
+          estimatedCost: DFS_API_COSTS.SERP_LIVE,
+          actualCost: serpResponse.billing?.costUsd ?? DFS_API_COSTS.SERP_LIVE,
+          success: true,
+          clientId: undefined,
+          workspaceId: undefined,
+        }).catch((err: unknown) => {
+          log.warn('Failed to record SERP cost', { error: String(err) });
+        });
 
-        // Record cost (fire-and-forget pattern from SerpAnalyzer)
-        this.costTracker
-          .recordCost({
-            url: keywordInput.keyword, // Use keyword as "url" for SERP calls
-            domain: 'serp-api',
-            mode: 'basic',
-            usedStandardQueue: false,
-            estimatedCost: 0.002, // SERP API cost per query
-            actualCost: response.billing?.costUsd ?? 0.002,
-            success: true,
-            responseTimeMs: Date.now() - startTime,
-            clientId,
-            workspaceId,
-            jobId: `serp-enricher:${this.config.domain}`,
-          })
-          .catch((err) => {
-            logger.warn(
-              { error: err instanceof Error ? err.message : String(err), keyword: keywordInput.keyword },
-              'Failed to record DFS cost for SERP enrichment'
-            );
-          });
+        // Find position for target domain in SERP results
+        const serpItems = serpResponse.data ?? [];
+        const position = this.findPositionForDomain(serpItems, targetDomain);
 
-        logger.debug(
-          { keyword: keywordInput.keyword, position, responseTimeMs: Date.now() - startTime },
-          'SERP position fetched'
-        );
+        // Extract SERP features if available
+        const serpFeatures = this.extractSerpFeatures(serpItems);
+
+        results.push(this.enrichKeyword(keyword, position, serpFeatures));
       } catch (error) {
-        // Record cost even on failure
-        this.costTracker
-          .recordCost({
-            url: keywordInput.keyword,
-            domain: 'serp-api',
-            mode: 'basic',
-            usedStandardQueue: false,
-            estimatedCost: 0.002,
-            actualCost: 0.002,
-            success: false,
-            errorMessage: error instanceof Error ? error.message : String(error),
-            responseTimeMs: Date.now() - startTime,
-            clientId,
-            workspaceId,
-            jobId: `serp-enricher:${this.config.domain}`,
-          })
-          .catch((err) => {
-            logger.warn(
-              { error: err instanceof Error ? err.message : String(err), keyword: keywordInput.keyword },
-              'Failed to record DFS cost for SERP failure'
-            );
-          });
+        // Handle budget exceeded gracefully - stop processing
+        if (error instanceof BudgetExceededError) {
+          log.warn(
+            'Budget exceeded during SERP enrichment, stopping batch',
+            { keyword: keyword.keyword, budgetType: error.budgetType }
+          );
+          // Add remaining keywords with null positions
+          const remainingIndex = batch.indexOf(keyword);
+          for (let i = remainingIndex; i < batch.length; i++) {
+            results.push(this.enrichKeyword(batch[i], null));
+          }
+          break;
+        }
 
-        // Log error but continue with other keywords (partial success pattern)
-        logger.error(
-          { error: error instanceof Error ? error.message : String(error), keyword: keywordInput.keyword },
-          'SERP fetch failed for keyword'
+        // Log other errors and continue with null position
+        log.warn(
+          'Failed to fetch SERP position, using null',
+          { keyword: keyword.keyword, error: error instanceof Error ? error.message : String(error) }
         );
-        // Keep position as null for failed fetches
-      }
 
-      results.push(this.enrichKeyword(keywordInput, position));
+        // Track failed request cost
+        void costTracker.recordCost({
+          url: `serp://${keyword.keyword}`,
+          domain: targetDomain,
+          mode: 'basic',
+          usedStandardQueue: false,
+          estimatedCost: DFS_API_COSTS.SERP_LIVE,
+          success: false,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        }).catch(() => {
+          // Silently ignore cost tracking errors for failed requests
+        });
+
+        results.push(this.enrichKeyword(keyword, null));
+      }
     }
 
     return results;
   }
 
   /**
-   * Find the position of our domain in SERP organic results.
-   *
-   * @param items - SERP items from DataForSEO
-   * @param domain - Domain to find (without protocol/www)
-   * @returns Position (1-indexed) or null if not found
+   * Extract normalized target domain for matching in SERP results.
    */
-  private findDomainPosition(items: SerpLiveItem[], domain: string): number | null {
-    const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+  private extractTargetDomain(domain: string): string {
+    // Remove protocol and www prefix
+    return domain
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .toLowerCase()
+      .split('/')[0]; // Remove any path
+  }
 
+  /**
+   * Find the ranking position for target domain in SERP results.
+   * Returns null if domain is not found in results.
+   */
+  private findPositionForDomain(
+    items: SerpLiveItem[],
+    targetDomain: string
+  ): number | null {
     for (const item of items) {
-      if (item.type !== 'organic' || !item.url) {
-        continue;
-      }
+      if (!item.domain) continue;
 
-      try {
-        const itemDomain = new URL(item.url).hostname.toLowerCase().replace(/^www\./, '');
-        if (itemDomain === normalizedDomain || itemDomain.endsWith(`.${normalizedDomain}`)) {
-          // rank_group is the position in organic results (1-indexed)
-          return item.rank_group ?? null;
-        }
-      } catch {
-        // Invalid URL, skip
-        continue;
+      // Normalize the SERP domain for comparison
+      const serpDomain = item.domain
+        .replace(/^www\./, '')
+        .toLowerCase();
+
+      // Check if target domain matches or is a subdomain
+      if (
+        serpDomain === targetDomain ||
+        serpDomain.endsWith(`.${targetDomain}`)
+      ) {
+        // Prefer rank_group (position within organic results) over rank_absolute
+        return item.rank_group ?? item.rank_absolute ?? null;
       }
     }
-
     return null;
   }
 
   /**
-   * Fetch SERP positions for multiple keywords with cost tracking.
-   * Public API for external callers (e.g., clustering pipeline).
-   *
-   * Phase 95 GAP-K2: Full implementation with DataForSEO integration.
-   *
-   * @param options - Batch fetch options
-   * @returns Array of SERP position results
+   * Extract SERP features present in results.
    */
-  async fetchBatchPositionsPublic(options: FetchBatchPositionsOptions): Promise<SerpPositionResult[]> {
-    const {
-      keywords,
-      locationCode = this.config.locationCode,
-      languageCode = this.config.languageCode,
-      depth = 100, // Default to top 100 results
-      clientId,
-      workspaceId,
-    } = options;
-
-    if (keywords.length === 0) {
-      return [];
-    }
-
-    const results: SerpPositionResult[] = [];
-    const BATCH_SIZE = this.config.batchSize;
-
-    // Process in batches with rate limiting
-    for (let i = 0; i < keywords.length; i += BATCH_SIZE) {
-      const batch = keywords.slice(i, i + BATCH_SIZE);
-
-      for (const keyword of batch) {
-        const startTime = Date.now();
-
-        try {
-          const response = await fetchLiveSerpItemsRaw(keyword, locationCode, languageCode);
-
-          // Transform to SerpPositionResult format
-          const positions = response.data
-            .filter((item): item is SerpLiveItem & { url: string } =>
-              item.type === 'organic' && typeof item.url === 'string'
-            )
-            .slice(0, depth)
-            .map((item) => ({
-              url: item.url,
-              position: item.rank_group ?? 0,
-              title: item.title ?? undefined,
-            }));
-
-          results.push({
-            keyword,
-            positions,
-            locationCode,
-            languageCode,
-          });
-
-          // Record cost
-          this.costTracker
-            .recordCost({
-              url: keyword,
-              domain: 'serp-api',
-              mode: 'basic',
-              usedStandardQueue: false,
-              estimatedCost: 0.002,
-              actualCost: response.billing?.costUsd ?? 0.002,
-              success: true,
-              responseTimeMs: Date.now() - startTime,
-              clientId,
-              workspaceId,
-              jobId: 'serp-enricher-batch',
-            })
-            .catch((err) => {
-              logger.warn(
-                { error: err instanceof Error ? err.message : String(err), keyword },
-                'Failed to record DFS cost for batch SERP'
-              );
-            });
-        } catch (error) {
-          // Record failure cost
-          this.costTracker
-            .recordCost({
-              url: keyword,
-              domain: 'serp-api',
-              mode: 'basic',
-              usedStandardQueue: false,
-              estimatedCost: 0.002,
-              actualCost: 0.002,
-              success: false,
-              errorMessage: error instanceof Error ? error.message : String(error),
-              responseTimeMs: Date.now() - startTime,
-              clientId,
-              workspaceId,
-              jobId: 'serp-enricher-batch',
-            })
-            .catch((err) => {
-              logger.warn(
-                { error: err instanceof Error ? err.message : String(err), keyword },
-                'Failed to record DFS cost for batch SERP failure'
-              );
-            });
-
-          logger.error(
-            { error: error instanceof Error ? error.message : String(error), keyword },
-            'Batch SERP fetch failed for keyword'
-          );
-
-          // Add empty result for failed keyword (partial success)
-          results.push({
-            keyword,
-            positions: [],
-            locationCode,
-            languageCode,
-          });
-        }
-      }
-
-      // Rate limiting delay between batches
-      if (i + BATCH_SIZE < keywords.length) {
-        await this.delay(this.config.batchDelayMs);
+  private extractSerpFeatures(items: SerpLiveItem[]): string[] {
+    const features = new Set<string>();
+    for (const item of items) {
+      if (item.type && item.type !== 'organic') {
+        features.add(item.type);
       }
     }
-
-    return results;
+    return Array.from(features);
   }
 
   /**
@@ -403,7 +268,8 @@ export class SerpEnricher {
    */
   private enrichKeyword(
     keyword: ClusteringInput,
-    position: number | null
+    position: number | null,
+    serpFeatures?: string[]
   ): EnrichedKeyword {
     const isQuickWin = position !== null && position >= 11 && position <= 50;
     const opportunityScore = this.calculateOpportunityScore(keyword, position, isQuickWin);
@@ -414,6 +280,7 @@ export class SerpEnricher {
       currentPosition: position,
       isQuickWin,
       opportunityScore,
+      serpFeatures,
     };
   }
 

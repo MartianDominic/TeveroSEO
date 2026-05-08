@@ -6,17 +6,13 @@ import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { createDataforseoClient } from "@/server/lib/dataforseoClient";
 import { normalizeKeyword } from "./helpers";
 import { createLogger } from "@/server/lib/logger";
-import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
-import { getFeatureFlagWithOverride } from "@/server/features/scraping/config/flags-loader";
-import type { DbClient } from "@/db";
+import { db } from "@/db";
+import {
+  withBudgetCheck,
+  DFS_API_COSTS,
+} from "@/server/features/scraping";
 
 const log = createLogger({ module: "keywords/serp" });
-
-/**
- * SERP Live API cost per request (DataForSEO pricing)
- * Reference: https://dataforseo.com/pricing
- */
-const SERP_LIVE_API_COST = 0.002;
 
 const SERP_CACHE_TTL_SECONDS = 12 * 60 * 60;
 
@@ -67,43 +63,27 @@ function mapOrganicSerpItems(items: SerpLiveItem[]): SerpResultItem[] {
 }
 
 /**
- * Options for SERP analysis with cost tracking support.
+ * Options for SERP analysis with budget enforcement support.
  */
 interface SerpAnalysisOptions {
   projectId: string;
   keyword: string;
   locationCode: number;
   languageCode: string;
-  /** Client ID for cost attribution (Phase 95) */
-  clientId?: string;
-  /** Workspace ID for cost attribution (Phase 95) */
+  /** Workspace ID for budget enforcement (optional) */
   workspaceId?: string;
 }
 
 /**
- * Fetch SERP analysis with optional cost tracking.
+ * Fetch SERP analysis with budget pre-check (COST-1).
  *
- * Phase 95 Gap Closure (GAP-K4):
- * - Added clientId/workspaceId for cost attribution
- * - Added DfsCostTracker integration for SERP API calls
- * - Preserved existing R2 cache behavior
- * - serpApi migration flag checked for future routing
- *
- * @param input - SERP analysis input with optional cost attribution
- * @param billingCustomer - Billing context for DataForSEO client
- * @param db - Database client for cost tracking (optional for backward compatibility)
+ * @throws BudgetExceededError if DataForSEO budget is exceeded
  */
 async function getSerpLiveAnalysis(
   input: SerpAnalysisOptions,
   billingCustomer: BillingCustomerContext,
-  db?: DbClient,
 ): Promise<SerpAnalysisResult> {
   const keyword = normalizeKeyword(input.keyword);
-  const startTime = Date.now();
-
-  // Check serpApi migration flag for future routing decisions
-  const serpApiFlag = getFeatureFlagWithOverride("serpApi");
-  const shouldTrackCosts = db && (serpApiFlag !== "legacy");
 
   const cacheKey = await buildCacheKey("serp:analysis", {
     organizationId: billingCustomer.organizationId,
@@ -120,70 +100,29 @@ async function getSerpLiveAnalysis(
     return cached.data;
   }
 
-  // Get cost tracker if we should track costs
-  const costTracker = shouldTrackCosts ? getDfsCostTracker(db) : null;
-
-  try {
-    const liveItems = await createDataforseoClient(billingCustomer).serp.live({
+  // Budget pre-check before making API call (COST-1)
+  const liveItems = await withBudgetCheck(
+    () => createDataforseoClient(billingCustomer).serp.live({
       keyword,
       locationCode: input.locationCode,
       languageCode: input.languageCode,
-    });
+    }),
+    DFS_API_COSTS.SERP_LIVE,
+    db,
+    { workspaceId: input.workspaceId }
+  );
 
-    const responseTimeMs = Date.now() - startTime;
-
-    // Record successful cost
-    if (costTracker) {
-      void costTracker.recordCost({
-        url: keyword,
-        domain: "serp-api",
-        mode: "basic",
-        usedStandardQueue: false, // SERP Live API uses live queue
-        estimatedCost: SERP_LIVE_API_COST,
-        actualCost: SERP_LIVE_API_COST,
-        success: true,
-        responseTimeMs,
-        clientId: input.clientId,
-        workspaceId: input.workspaceId,
-      }).catch((err) => {
-        log.warn("Failed to record SERP cost", { error: err instanceof Error ? err.message : String(err) });
-      });
-    }
-
-    const items = mapOrganicSerpItems(liveItems);
-    const result: SerpAnalysisResult = { requestedKeyword: keyword, items };
-    if (items.length === 0) {
-      result.reason = "no_organic_results";
-    }
-
-    void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS).catch((error) => {
-      log.error("Cache write failed", error instanceof Error ? error : new Error(String(error)));
-    });
-
-    return result;
-  } catch (error) {
-    const responseTimeMs = Date.now() - startTime;
-
-    // Record failed cost
-    if (costTracker) {
-      void costTracker.recordCost({
-        url: keyword,
-        domain: "serp-api",
-        mode: "basic",
-        usedStandardQueue: false,
-        estimatedCost: SERP_LIVE_API_COST,
-        success: false,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        responseTimeMs,
-        clientId: input.clientId,
-        workspaceId: input.workspaceId,
-      }).catch((err) => {
-        log.warn("Failed to record SERP error cost", { error: err instanceof Error ? err.message : String(err) });
-      });
-    }
-
-    throw error;
+  const items = mapOrganicSerpItems(liveItems);
+  const result: SerpAnalysisResult = { requestedKeyword: keyword, items };
+  if (items.length === 0) {
+    result.reason = "no_organic_results";
   }
+
+  void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS).catch((error) => {
+    log.error("Cache write failed", error instanceof Error ? error : new Error(String(error)));
+  });
+
+  return result;
 }
 
 export const getSerpAnalysis = getSerpLiveAnalysis;

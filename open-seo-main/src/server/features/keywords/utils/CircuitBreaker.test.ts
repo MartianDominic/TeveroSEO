@@ -505,4 +505,256 @@ describe("CircuitBreaker", () => {
       expect(breaker.stats.failures).toBe(1);
     });
   });
+
+  describe("Metrics and Observability (P3.G21)", () => {
+    it("has a configurable name", () => {
+      const namedBreaker = new CircuitBreaker({ name: "my-api-breaker" });
+      expect(namedBreaker.name).toBe("my-api-breaker");
+    });
+
+    it("defaults to 'unnamed' if no name provided", () => {
+      expect(breaker.name).toBe("unnamed");
+    });
+
+    it("calls onStateChange callback on state transitions", async () => {
+      const onStateChange = vi.fn();
+      const customBreaker = new CircuitBreaker({
+        name: "test-breaker",
+        failureThreshold: 2,
+        onStateChange,
+      });
+
+      // Trigger CLOSED -> OPEN
+      customBreaker.recordFailure();
+      customBreaker.recordFailure();
+
+      // Allow microtask to run
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      expect(onStateChange).toHaveBeenCalledOnce();
+      expect(onStateChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "test-breaker",
+          fromState: "closed",
+          toState: "open",
+          reason: "threshold_reached",
+        })
+      );
+    });
+
+    it("includes full stats in state transition event", async () => {
+      const onStateChange = vi.fn();
+      const customBreaker = new CircuitBreaker({
+        name: "stats-breaker",
+        failureThreshold: 2,
+        onStateChange,
+      });
+
+      customBreaker.recordFailure();
+      customBreaker.recordFailure();
+
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      const transition = onStateChange.mock.calls[0][0];
+      expect(transition.stats).toBeDefined();
+      expect(transition.stats.failures).toBe(2);
+      expect(transition.stats.state).toBe("open");
+    });
+
+    it("tracks state duration in transition events", async () => {
+      const onStateChange = vi.fn();
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 5000,
+        onStateChange,
+      });
+
+      // Open circuit
+      customBreaker.recordFailure();
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      // Advance time and transition to half_open
+      vi.advanceTimersByTime(5000);
+      customBreaker.state; // Trigger state check
+
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      // Should have two transitions: closed->open, open->half_open
+      expect(onStateChange).toHaveBeenCalledTimes(2);
+
+      const halfOpenTransition = onStateChange.mock.calls[1][0];
+      expect(halfOpenTransition.fromState).toBe("open");
+      expect(halfOpenTransition.toState).toBe("half_open");
+      expect(halfOpenTransition.durationInPreviousStateMs).toBe(5000);
+    });
+
+    it("provides getMetrics() for dashboard polling", () => {
+      const metrics = breaker.getMetrics();
+
+      expect(metrics).toHaveProperty("name");
+      expect(metrics).toHaveProperty("state");
+      expect(metrics).toHaveProperty("totalFailures");
+      expect(metrics).toHaveProperty("totalSuccesses");
+      expect(metrics).toHaveProperty("totalRejected");
+      expect(metrics).toHaveProperty("stateTransitionCount");
+      expect(metrics).toHaveProperty("currentStateDurationMs");
+      expect(metrics).toHaveProperty("createdAt");
+      expect(metrics).toHaveProperty("lastTransitionAt");
+      expect(metrics).toHaveProperty("openCount");
+      expect(metrics).toHaveProperty("avgOpenDurationMs");
+      expect(metrics).toHaveProperty("stats");
+    });
+
+    it("tracks openCount correctly", async () => {
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 1000,
+      });
+
+      expect(customBreaker.getMetrics().openCount).toBe(0);
+
+      // First open
+      customBreaker.recordFailure();
+      expect(customBreaker.getMetrics().openCount).toBe(1);
+
+      // Recover
+      vi.advanceTimersByTime(1000);
+      await customBreaker.execute(vi.fn().mockResolvedValue("ok"));
+      expect(customBreaker.state).toBe("closed");
+
+      // Second open
+      customBreaker.recordFailure();
+      expect(customBreaker.getMetrics().openCount).toBe(2);
+    });
+
+    it("calculates avgOpenDurationMs", async () => {
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 1000,
+      });
+
+      // First open for 1000ms
+      customBreaker.recordFailure();
+      vi.advanceTimersByTime(1000);
+      await customBreaker.execute(vi.fn().mockResolvedValue("ok"));
+
+      // Second open for 2000ms
+      customBreaker.recordFailure();
+      vi.advanceTimersByTime(2000);
+      customBreaker.state; // Trigger half_open transition
+
+      const metrics = customBreaker.getMetrics();
+      // Average of 1000 + 2000 = 1500ms
+      expect(metrics.avgOpenDurationMs).toBe(1500);
+    });
+
+    it("tracks stateTransitionCount", async () => {
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 1000,
+      });
+
+      expect(customBreaker.getMetrics().stateTransitionCount).toBe(0);
+
+      // closed -> open
+      customBreaker.recordFailure();
+      expect(customBreaker.getMetrics().stateTransitionCount).toBe(1);
+
+      // open -> half_open
+      vi.advanceTimersByTime(1000);
+      customBreaker.state;
+      expect(customBreaker.getMetrics().stateTransitionCount).toBe(2);
+
+      // half_open -> closed
+      await customBreaker.execute(vi.fn().mockResolvedValue("ok"));
+      expect(customBreaker.getMetrics().stateTransitionCount).toBe(3);
+    });
+
+    it("does not throw if onStateChange callback throws", async () => {
+      const throwingCallback = vi.fn().mockImplementation(() => {
+        throw new Error("Callback error");
+      });
+
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        onStateChange: throwingCallback,
+      });
+
+      // Should not throw even though callback throws
+      expect(() => customBreaker.recordFailure()).not.toThrow();
+
+      // Allow microtask to run
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      expect(throwingCallback).toHaveBeenCalled();
+      // Circuit should still be open
+      expect(customBreaker.state).toBe("open");
+    });
+
+    it("emits metrics with correct reason for each transition type", async () => {
+      const onStateChange = vi.fn();
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 1000,
+        onStateChange,
+      });
+
+      // threshold_reached
+      customBreaker.recordFailure();
+      await new Promise((resolve) => queueMicrotask(resolve));
+      expect(onStateChange.mock.calls[0][0].reason).toBe("threshold_reached");
+
+      // timeout_elapsed
+      vi.advanceTimersByTime(1000);
+      customBreaker.state;
+      await new Promise((resolve) => queueMicrotask(resolve));
+      expect(onStateChange.mock.calls[1][0].reason).toBe("timeout_elapsed");
+
+      // recovery_success
+      await customBreaker.execute(vi.fn().mockResolvedValue("ok"));
+      await new Promise((resolve) => queueMicrotask(resolve));
+      expect(onStateChange.mock.calls[2][0].reason).toBe("recovery_success");
+
+      // manual_trip
+      customBreaker.trip();
+      await new Promise((resolve) => queueMicrotask(resolve));
+      expect(onStateChange.mock.calls[3][0].reason).toBe("manual_trip");
+
+      // manual_reset
+      customBreaker.reset();
+      await new Promise((resolve) => queueMicrotask(resolve));
+      expect(onStateChange.mock.calls[4][0].reason).toBe("manual_reset");
+    });
+
+    it("emits recovery_failure when half_open test fails", async () => {
+      const onStateChange = vi.fn();
+      const customBreaker = new CircuitBreaker({
+        failureThreshold: 1,
+        resetTimeout: 1000,
+        onStateChange,
+      });
+
+      // Open circuit
+      customBreaker.recordFailure();
+
+      // Transition to half_open
+      vi.advanceTimersByTime(1000);
+      customBreaker.state;
+
+      // Fail the test request
+      await expect(
+        customBreaker.execute(vi.fn().mockRejectedValue(new Error("fail")))
+      ).rejects.toThrow();
+
+      await new Promise((resolve) => queueMicrotask(resolve));
+
+      // Find the recovery_failure transition
+      const recoveryFailureCall = onStateChange.mock.calls.find(
+        (call) => call[0].reason === "recovery_failure"
+      );
+      expect(recoveryFailureCall).toBeDefined();
+      expect(recoveryFailureCall[0].fromState).toBe("half_open");
+      expect(recoveryFailureCall[0].toState).toBe("open");
+    });
+  });
 });

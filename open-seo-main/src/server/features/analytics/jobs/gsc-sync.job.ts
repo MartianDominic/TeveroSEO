@@ -58,19 +58,29 @@ export const gscSyncQueue = new Queue<GscSyncJobData, GscSyncJobResult>("gsc-syn
 });
 
 /**
- * Schedule daily full GSC sync at 3 AM UTC.
+ * Schedule daily full GSC sync at 2:15 AM UTC.
  * Idempotent: Uses jobId to prevent duplicate repeatable jobs.
+ *
+ * SCRAPE-03 FIX: Staggered from 3 AM to 2:15 AM to prevent collision with
+ * other jobs (GA4 at 2:30, trend at 2:45, analytics at 3:00).
+ *
+ * QUEUE-04 FIX: Uses date-based jobId for deduplication - prevents multiple
+ * concurrent syncs for the same day.
+ *
+ * NOTE: This scheduler is now managed by the centralized queue-scheduler.ts.
+ * This function is kept for backward compatibility.
  */
 export async function scheduleGscSync(): Promise<void> {
+  const dateStr = new Date().toISOString().split("T")[0];
   await gscSyncQueue.add(
     "full-sync",
     { syncType: "full" },
     {
       repeat: {
-        pattern: "0 3 * * *", // 3 AM UTC daily
+        pattern: "15 2 * * *", // 2:15 AM UTC daily (SCRAPE-03 fix)
         tz: "UTC",
       },
-      jobId: "gsc-full-sync-daily", // Prevents duplicates
+      jobId: `gsc-sync:system:${dateStr}`, // QUEUE-04 fix: date-based deduplication
     }
   );
 }

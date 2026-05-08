@@ -17,6 +17,7 @@
 
 import type { CwvMetrics } from './types';
 import { getCruxRateLimiter } from './CruxRateLimiter';
+import { cruxLogger } from '../logging';
 
 // =============================================================================
 // Types
@@ -169,7 +170,8 @@ export class CruxClient {
         attempt++;
 
         if (attempt > this.retries) {
-          console.error('CrUX query failed after retries:', error);
+          const err = error instanceof Error ? error : new Error(String(error));
+          cruxLogger.error({ error: err.message, stack: err.stack, retries: this.retries }, 'CrUX query failed after retries');
           return null;
         }
 

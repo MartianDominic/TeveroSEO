@@ -5,9 +5,11 @@
  * Uses Recharts for trend visualization.
  * Design System v6: hover-to-reveal with smooth motion.
  * WCAG 2.1 AA compliant: role="img", aria-label for screen readers
+ * UI-04: Uses chart theme CSS variables for consistent colors.
  */
 import { useMemo } from 'react';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
+import { CHART_COLORS } from '@/components/charts/chart-theme';
 
 interface SparklineData {
   date: string;
@@ -30,12 +32,12 @@ export function SparklineChart({
   showTooltip = true,
   ariaLabel,
 }: SparklineChartProps) {
-  // Determine trend color based on first vs last value
+  // Determine trend color based on first vs last value using design system colors
   const trendColor =
     data.length >= 2
       ? data[data.length - 1].clicks >= data[0].clicks
-        ? '#1B6E45' // success
-        : '#9B2C2C' // error
+        ? CHART_COLORS.success
+        : CHART_COLORS.destructive
       : color;
 
   // Calculate trend direction and percentage for accessibility

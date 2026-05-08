@@ -40,8 +40,9 @@ import {
   shouldEscalateTier,
 } from "./DfsErrorHandler";
 import { dataForSeoRateLimiter } from "@/server/lib/dataforseo";
-import { getDfsCostTracker, extractDomainFromUrl, type DfsCostTracker } from "./DfsCostTracker";
-import type { DbClient } from "@/db";
+import { dfsBudgetLogger } from "../logging";
+import { db } from "@/db";
+import { getDfsCostTracker, extractDomainFromUrl } from "./DfsCostTracker";
 
 // =============================================================================
 // Constants
@@ -142,7 +143,7 @@ export class OptimizedDataForSEOFetcher {
   private readonly batcher: DataForSEOBatcher;
   private readonly circuitBreaker = getDfsCircuitBreaker();
   private readonly defaultTimeout: number;
-  private costTracker: DfsCostTracker | null = null;
+  private readonly costRecords: CostRecord[] = [];
 
   constructor(options: {
     apiKey?: string;
@@ -150,7 +151,6 @@ export class OptimizedDataForSEOFetcher {
     batchSize?: number;
     flushTimeoutMs?: number;
     webhookBaseUrl?: string;
-    db?: DbClient;
   } = {}) {
     this.apiKey = options.apiKey ?? process.env.DATAFORSEO_API_KEY ?? "";
     this.defaultTimeout = options.timeoutMs ?? 60000;
@@ -166,19 +166,6 @@ export class OptimizedDataForSEOFetcher {
       flushTimeoutMs: options.flushTimeoutMs,
       webhookBaseUrl: options.webhookBaseUrl,
     });
-
-    // Initialize cost tracker if database connection provided
-    if (options.db) {
-      this.costTracker = getDfsCostTracker(options.db);
-    }
-  }
-
-  /**
-   * Set the database connection for cost tracking.
-   * Call this after construction if db wasn't provided in constructor.
-   */
-  setDatabase(db: DbClient): void {
-    this.costTracker = getDfsCostTracker(db);
   }
 
   /**
@@ -232,9 +219,7 @@ export class OptimizedDataForSEOFetcher {
         () => this.executeliveFetch(url, mode, options, startTime),
         undefined,
         (attempt, error, delay) => {
-          console.warn(
-            `[DataForSEO] Retry ${attempt} for ${url}: ${error.message}. Waiting ${delay}ms`
-          );
+          dfsBudgetLogger.warn({ url, attempt, error: error.message, delayMs: delay }, 'DataForSEO retry');
         }
       );
     });
@@ -379,31 +364,62 @@ export class OptimizedDataForSEOFetcher {
 
   /**
    * Get current usage statistics.
-   * Queries from DfsCostTracker (database) if available.
    */
   async getUsageStats(): Promise<DfsUsageStats> {
-    // Query from DfsCostTracker if available (persistent database storage)
-    if (this.costTracker) {
-      return this.costTracker.getUsageStats();
+    // This would normally query the database
+    // For now, return from in-memory records
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const todayRecords = this.costRecords.filter((r) => r.timestamp >= todayStart);
+    const monthRecords = this.costRecords.filter((r) => r.timestamp >= monthStart);
+
+    const tierDistribution = {
+      basic: { cost: 0, count: 0 },
+      js: { cost: 0, count: 0 },
+      browser: { cost: 0, count: 0 },
+    };
+
+    const queueDistribution = {
+      standard: { cost: 0, count: 0 },
+      live: { cost: 0, count: 0 },
+    };
+
+    for (const record of monthRecords) {
+      tierDistribution[record.mode].cost += record.cost;
+      tierDistribution[record.mode].count += 1;
+
+      if (record.usedStandardQueue) {
+        queueDistribution.standard.cost += record.cost;
+        queueDistribution.standard.count += 1;
+      } else {
+        queueDistribution.live.cost += record.cost;
+        queueDistribution.live.count += 1;
+      }
     }
 
-    // Fallback: return empty stats if no cost tracker
+    const todaySpend = todayRecords.reduce((sum, r) => sum + r.cost, 0);
+    const monthSpend = monthRecords.reduce((sum, r) => sum + r.cost, 0);
+
+    // Calculate savings from Standard Queue
+    let savingsFromStandardQueue = 0;
+    for (const record of monthRecords) {
+      if (record.usedStandardQueue) {
+        const liveEquivalent = DFS_LIVE_COSTS[record.mode];
+        savingsFromStandardQueue += liveEquivalent - record.cost;
+      }
+    }
+
     return {
-      todaySpend: 0,
-      monthSpend: 0,
-      requestsToday: 0,
-      requestsMonth: 0,
-      averageCostPerRequest: 0,
-      tierDistribution: {
-        basic: { cost: 0, count: 0 },
-        js: { cost: 0, count: 0 },
-        browser: { cost: 0, count: 0 },
-      },
-      queueDistribution: {
-        standard: { cost: 0, count: 0 },
-        live: { cost: 0, count: 0 },
-      },
-      savingsFromStandardQueue: 0,
+      todaySpend,
+      monthSpend,
+      requestsToday: todayRecords.length,
+      requestsMonth: monthRecords.length,
+      averageCostPerRequest: monthRecords.length > 0 ? monthSpend / monthRecords.length : 0,
+      tierDistribution,
+      queueDistribution,
+      savingsFromStandardQueue,
     };
   }
 
@@ -498,8 +514,8 @@ export class OptimizedDataForSEOFetcher {
       parsedData = mapDfsResultToParsedData(result as import("./DataForSEOFetcher.types").DfsOnPageResultItem);
     }
 
-    // Record cost to persistent storage (fire-and-forget)
-    this.recordCostToTracker({
+    // Record cost (persisted to both memory cache and database)
+    this.recordCost({
       url,
       mode,
       cost,
@@ -507,10 +523,11 @@ export class OptimizedDataForSEOFetcher {
       timestamp: new Date(),
       success: true,
       statusCode: result.status_code,
-      responseSizeBytes: Buffer.byteLength(html, "utf8"),
       responseTimeMs: latencyMs,
-    }).catch(() => {
-      // Silently ignore - don't let cost tracking affect scraping
+      responseSizeBytes: Buffer.byteLength(html, "utf8"),
+      clientId: options.clientId,
+      workspaceId: options.workspaceId,
+      jobId: options.jobId,
     });
 
     return {
@@ -570,28 +587,31 @@ export class OptimizedDataForSEOFetcher {
   }
 
   /**
-   * Record a cost entry to DfsCostTracker (persistent database storage).
-   * Falls back to no-op if cost tracker not initialized.
+   * Record a cost entry.
+   * Persists to both in-memory cache (for fast lookups) and database (for durability).
+   * Database write is fire-and-forget to not block the main fetch flow.
    */
-  private async recordCostToTracker(record: CostRecord & {
-    clientId?: string;
-    workspaceId?: string;
-    jobId?: string;
-    taskId?: string;
-    success?: boolean;
-    statusCode?: number;
-    responseSizeBytes?: number;
-    responseTimeMs?: number;
-    errorMessage?: string;
-  }): Promise<void> {
-    if (!this.costTracker) {
-      // Cost tracker not initialized - silently skip
-      // This allows the fetcher to work without database connection
-      return;
+  private recordCost(record: CostRecord): void {
+    // Keep in-memory cache for fast getCostReport() calls
+    this.costRecords.push(record);
+
+    // Keep only last 10000 records in memory
+    if (this.costRecords.length > 10000) {
+      this.costRecords.splice(0, this.costRecords.length - 10000);
     }
 
+    // Persist to database (fire-and-forget - don't block fetch flow)
+    void this.persistCostToDb(record);
+  }
+
+  /**
+   * Persist cost record to database via DfsCostTracker.
+   * Fire-and-forget pattern - errors are logged but don't propagate.
+   */
+  private async persistCostToDb(record: CostRecord): Promise<void> {
     try {
-      await this.costTracker.recordCost({
+      const costTracker = getDfsCostTracker(db);
+      await costTracker.recordCost({
         url: record.url,
         domain: extractDomainFromUrl(record.url),
         mode: record.mode,
@@ -600,18 +620,17 @@ export class OptimizedDataForSEOFetcher {
         actualCost: record.cost,
         success: record.success ?? true,
         statusCode: record.statusCode,
-        responseSizeBytes: record.responseSizeBytes,
         responseTimeMs: record.responseTimeMs,
+        responseSizeBytes: record.responseSizeBytes,
         clientId: record.clientId,
         workspaceId: record.workspaceId,
         jobId: record.jobId,
-        taskId: record.taskId,
-        errorMessage: record.errorMessage,
       });
     } catch (error) {
-      // Fire-and-forget: don't let cost tracking failures affect scraping
-      console.warn(
-        `[OptimizedDataForSEOFetcher] Failed to record cost: ${error instanceof Error ? error.message : String(error)}`
+      // Log but don't throw - fire-and-forget pattern
+      dfsBudgetLogger.warn(
+        { url: record.url, error: error instanceof Error ? error.message : String(error) },
+        'Failed to persist DFS cost to database'
       );
     }
   }
@@ -642,7 +661,7 @@ export class OptimizedDataForSEOFetcher {
 }
 
 // =============================================================================
-// Cost Record Type (for internal use with recordCostToTracker)
+// Cost Record Type
 // =============================================================================
 
 interface CostRecord {
@@ -651,16 +670,14 @@ interface CostRecord {
   cost: number;
   usedStandardQueue: boolean;
   timestamp: Date;
-  // Optional fields for enhanced tracking
+  // Optional fields for DB persistence
+  success?: boolean;
+  statusCode?: number;
+  responseTimeMs?: number;
+  responseSizeBytes?: number;
   clientId?: string;
   workspaceId?: string;
   jobId?: string;
-  taskId?: string;
-  success?: boolean;
-  statusCode?: number;
-  responseSizeBytes?: number;
-  responseTimeMs?: number;
-  errorMessage?: string;
 }
 
 // =============================================================================
@@ -677,13 +694,9 @@ export function getOptimizedDataForSEOFetcher(options?: {
   batchSize?: number;
   flushTimeoutMs?: number;
   webhookBaseUrl?: string;
-  db?: DbClient;
 }): OptimizedDataForSEOFetcher {
   if (!_optimizedFetcher) {
     _optimizedFetcher = new OptimizedDataForSEOFetcher(options);
-  } else if (options?.db && !_optimizedFetcher['costTracker']) {
-    // If singleton exists but doesn't have cost tracker, set the database
-    _optimizedFetcher.setDatabase(options.db);
   }
   return _optimizedFetcher;
 }

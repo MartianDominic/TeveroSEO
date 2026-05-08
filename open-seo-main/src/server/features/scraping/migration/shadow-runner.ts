@@ -5,9 +5,18 @@
  * Runs both legacy and new implementations in parallel,
  * compares results, and logs differences for analysis.
  * Always returns the legacy result in shadow mode.
+ *
+ * MIG-3: Now persists comparison logs to database for long-term analysis.
  */
 
+import { db } from "@/db";
+import {
+  shadowComparisonLogs,
+  type ShadowAnalysis,
+} from "@/db/scraping-shadow-schema";
+import { and, eq, gte, lt, desc } from "drizzle-orm";
 import { scrapingService } from "../ScrapingService";
+import { migrationLogger } from "../logging";
 
 // =============================================================================
 // Types
@@ -71,12 +80,13 @@ const MAX_BUFFER_SIZE = 1000;
 
 /**
  * Log a shadow comparison result.
- * Stores in memory buffer and optionally writes to persistent storage.
+ * Stores in memory buffer for quick access and persists to database
+ * for long-term analysis (MIG-3).
  */
 export async function logShadowComparison(
   log: ShadowComparisonLog
 ): Promise<void> {
-  // Add to in-memory buffer
+  // Add to in-memory buffer for quick access
   shadowComparisonBuffer.push(log);
 
   // Trim buffer if too large
@@ -86,18 +96,33 @@ export async function logShadowComparison(
 
   // Log warning for mismatches
   if (!log.match) {
-    console.warn(`[Shadow] Mismatch in ${log.feature}:`, {
+    migrationLogger.warn({
+      feature: log.feature,
       differences: log.differences.slice(0, 5),
       legacyTimeMs: log.legacyTimeMs,
       newTimeMs: log.newTimeMs,
-    });
+    }, 'Shadow mismatch');
 
     // Track in ScrapingService
     scrapingService.recordShadowMismatch();
   }
 
-  // TODO: Persist to database for long-term analysis
-  // await db.insert(shadowComparisonLogs).values(log);
+  // Persist to database (fire-and-forget for performance)
+  db.insert(shadowComparisonLogs).values({
+    feature: log.feature,
+    url: log.url,
+    legacyStatus: log.legacySuccess ? "success" : "failure",
+    newStatus: log.newSuccess ? "success" : "failure",
+    matches: log.match,
+    legacyDurationMs: log.legacyTimeMs,
+    newDurationMs: log.newTimeMs,
+    legacyCost: log.legacyCost,
+    newCost: log.newCost,
+    differences: log.differences,
+    sampleDiff: log.sampleDiff,
+  }).catch(err => {
+    migrationLogger.warn({ error: err instanceof Error ? err.message : String(err) }, 'Failed to persist shadow log');
+  });
 }
 
 /**
@@ -321,4 +346,100 @@ export async function runShadowAsync<T>(
     });
 
   return legacyResult;
+}
+
+// =============================================================================
+// Database Query Functions (MIG-3)
+// =============================================================================
+
+/**
+ * Get shadow analysis from the database for a specific feature.
+ * Queries persisted logs for long-term mismatch analysis.
+ *
+ * @param feature Feature name to analyze
+ * @param options Query options
+ * @returns Shadow analysis with logs and statistics
+ */
+export async function getShadowAnalysis(
+  feature: string,
+  options: { days?: number; onlyMismatches?: boolean; limit?: number } = {}
+): Promise<ShadowAnalysis> {
+  const { days = 7, onlyMismatches = false, limit = 1000 } = options;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const whereConditions = [
+    eq(shadowComparisonLogs.feature, feature),
+    gte(shadowComparisonLogs.createdAt, since),
+  ];
+
+  if (onlyMismatches) {
+    whereConditions.push(eq(shadowComparisonLogs.matches, false));
+  }
+
+  const logs = await db.select()
+    .from(shadowComparisonLogs)
+    .where(and(...whereConditions))
+    .orderBy(desc(shadowComparisonLogs.createdAt))
+    .limit(limit);
+
+  const total = logs.length;
+  const matches = logs.filter(l => l.matches).length;
+  const mismatches = total - matches;
+
+  // Calculate average durations
+  const validLegacyDurations = logs.filter(l => l.legacyDurationMs != null);
+  const validNewDurations = logs.filter(l => l.newDurationMs != null);
+
+  const avgLegacyDurationMs = validLegacyDurations.length > 0
+    ? validLegacyDurations.reduce((sum, l) => sum + (l.legacyDurationMs ?? 0), 0) / validLegacyDurations.length
+    : 0;
+
+  const avgNewDurationMs = validNewDurations.length > 0
+    ? validNewDurations.reduce((sum, l) => sum + (l.newDurationMs ?? 0), 0) / validNewDurations.length
+    : 0;
+
+  return {
+    total,
+    matches,
+    mismatches,
+    matchRate: total > 0 ? matches / total : 0,
+    avgLegacyDurationMs,
+    avgNewDurationMs,
+    avgSpeedup: avgNewDurationMs > 0 ? avgLegacyDurationMs / avgNewDurationMs : 0,
+    logs,
+  };
+}
+
+/**
+ * Get all features that have shadow logs.
+ * Useful for discovering what features are being tested.
+ */
+export async function getShadowFeatures(): Promise<string[]> {
+  const result = await db.selectDistinct({ feature: shadowComparisonLogs.feature })
+    .from(shadowComparisonLogs)
+    .orderBy(shadowComparisonLogs.feature);
+
+  return result.map(r => r.feature);
+}
+
+/**
+ * Cleanup old shadow logs based on retention policy.
+ * Default retention is 30 days.
+ *
+ * @param retentionDays Number of days to retain logs (default: 30)
+ * @returns Number of deleted rows
+ */
+export async function cleanupOldShadowLogs(retentionDays = 30): Promise<number> {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+
+  const result = await db.delete(shadowComparisonLogs)
+    .where(lt(shadowComparisonLogs.createdAt, cutoff));
+
+  const deletedCount = result.rowCount ?? 0;
+
+  if (deletedCount > 0) {
+    migrationLogger.info({ deletedCount, retentionDays, cutoffDate: cutoff.toISOString() }, 'Cleaned up old shadow logs');
+  }
+
+  return deletedCount;
 }

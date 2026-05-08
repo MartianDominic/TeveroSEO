@@ -15,6 +15,13 @@ export {
   alertLogger,
   migrationLogger,
   circuitLogger,
+  camoufoxLogger,
+  cruxLogger,
+  retentionLogger,
+  workerLogger,
+  dfsBudgetLogger,
+  // Dynamic logger creation
+  createComponentLogger,
   // Correlation ID utilities
   generateCorrelationId,
   getCorrelationId,
@@ -36,8 +43,10 @@ export {
   logCircuitStateChange,
   logCostRecord,
   logQueueOperation,
-  // Dynamic logger creation
-  createComponentLogger,
-  // Type export
-  type RequestContext,
 } from './Logger';
+
+// Export RequestContext type
+export type { RequestContext } from './Logger';
+
+// Re-export pino logger type for advanced usage
+export type { Logger as PinoLogger } from 'pino';

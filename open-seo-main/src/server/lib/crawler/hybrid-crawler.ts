@@ -11,16 +11,24 @@
  * Per crawling doc Section 1:
  * - Cookie consent/bot challenge pages return HTTP 200 but block content
  * - Detect these and retry with Playwright
+ *
+ * MIG-2: Integrated with MigrationRouter for gradual migration to unified scraping.
  */
 
 import {
   fetchAllSitemapUrls,
   filterByLastmod,
   type SitemapUrl,
-} from "./sitemap-parser";
+} from "@/server/lib/sitemap";
 import { DeltaSyncService, ChangeType } from "./delta-sync";
 import { validatePage } from "@/server/lib/lightrag/extraction-pipeline";
 import { createLogger } from "@/server/lib/logger";
+import {
+  loadMigrationFlagsCached,
+  shouldUseUnified,
+} from "@/server/features/scraping/config";
+import { routeRequest } from "@/server/features/scraping/migration/adapters";
+import type { ScrapeResult, ScrapeOptions } from "@/server/features/scraping/ScrapingService";
 
 const log = createLogger({ module: "hybrid-crawler" });
 
@@ -41,6 +49,12 @@ export interface CrawlOptions {
   playwrightFallback?: boolean;
   /** Maximum redirect chain depth (default: 10) - FIX-13 (HIGH-SEO-02) */
   maxRedirects?: number;
+  /** MIG-2: Client ID for cost attribution */
+  clientId?: string;
+  /** MIG-2: Job ID for cost attribution */
+  jobId?: string;
+  /** MIG-2: Force legacy path (skip MigrationRouter) */
+  forceLegacy?: boolean;
 }
 
 export interface CrawlResult {
@@ -86,6 +100,10 @@ const DEFAULT_OPTIONS: Required<CrawlOptions> = {
   lastCrawlDate: new Date(0),
   playwrightFallback: true,
   maxRedirects: 10, // FIX-13 (HIGH-SEO-02): Limit redirect chain depth
+  // MIG-2: Cost tracking defaults (optional fields)
+  clientId: undefined as unknown as string,
+  jobId: undefined as unknown as string,
+  forceLegacy: false,
 };
 
 /**
@@ -130,7 +148,7 @@ class Semaphore {
  */
 export class HybridCrawler {
   private options: Required<CrawlOptions>;
-  private _deltaSync: DeltaSyncService; // TODO: Wire up in Phase 43
+  private readonly _deltaSync: DeltaSyncService; // TODO: Wire up in Phase 43 (prefixed _ to indicate intentionally unused)
 
   constructor(options?: CrawlOptions) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -235,8 +253,109 @@ export class HybridCrawler {
   /**
    * Fetch a single page, with Playwright fallback if needed.
    * FIX-13 (HIGH-SEO-02): Added redirect loop detection with visited URL tracking.
+   * MIG-2: Integrated with MigrationRouter for gradual migration.
    */
   async fetchPage(url: string): Promise<CrawlResult> {
+    // MIG-2: Check if we should route through unified scraping
+    if (!this.options.forceLegacy) {
+      const flags = loadMigrationFlagsCached();
+      const hybridCrawlerState = flags.hybridCrawler;
+
+      if (shouldUseUnified(hybridCrawlerState)) {
+        return this.fetchPageViaUnified(url);
+      }
+    }
+
+    // Legacy path
+    return this.fetchPageLegacy(url);
+  }
+
+  /**
+   * MIG-2: Route fetch through unified ScrapingService via MigrationRouter.
+   */
+  private async fetchPageViaUnified(url: string): Promise<CrawlResult> {
+    const headers: Record<string, string> = {};
+    if (this.options.userAgent) {
+      headers["User-Agent"] = this.options.userAgent;
+    }
+    if (this.options.acceptLanguage) {
+      headers["Accept-Language"] = this.options.acceptLanguage;
+    }
+
+    const scrapeOptions: ScrapeOptions = {
+      timeoutMs: this.options.timeoutMs ?? 30000,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      clientId: this.options.clientId,
+      jobId: this.options.jobId,
+      feature: "hybridCrawler",
+      includeHtml: true,
+    };
+
+    try {
+      const result = await routeRequest<CrawlResult>({
+        feature: "hybridCrawler",
+        url,
+        legacyFn: () => this.fetchPageLegacy(url),
+        scrapeOptions,
+        transformer: {
+          legacyToNew: (legacy: CrawlResult): ScrapeResult => this.crawlResultToScrapeResult(legacy),
+          newToLegacy: (scrapeResult: ScrapeResult): CrawlResult => this.scrapeResultToCrawlResult(scrapeResult),
+        },
+      });
+
+      return result;
+    } catch (error) {
+      // On routing error, fall back to legacy
+      log.warn(
+        `MigrationRouter error, falling back to legacy: ${url}`,
+        error instanceof Error ? { error: error.message } : { error: String(error) }
+      );
+      return this.fetchPageLegacy(url);
+    }
+  }
+
+  /**
+   * Convert CrawlResult to ScrapeResult for unified system.
+   */
+  private crawlResultToScrapeResult(result: CrawlResult): ScrapeResult {
+    return {
+      url: result.url,
+      success: result.statusCode >= 200 && result.statusCode < 400,
+      html: result.html,
+      statusCode: result.statusCode,
+      tierUsed: result.fetchMethod === "playwright" ? "camoufox" : "direct",
+      fromCache: false,
+      responseTimeMs: result.fetchTimeMs,
+      responseSizeBytes: result.html?.length ?? 0,
+      estimatedCostUsd: 0,
+    };
+  }
+
+  /**
+   * Convert ScrapeResult to CrawlResult for legacy compatibility.
+   */
+  private scrapeResultToCrawlResult(result: ScrapeResult): CrawlResult {
+    // Map tier to fetchMethod
+    const fetchMethod: "http" | "playwright" =
+      result.tierUsed === "camoufox" || result.tierUsed === "dfs_browser"
+        ? "playwright"
+        : "http";
+
+    return {
+      url: result.url,
+      html: result.html ?? "",
+      statusCode: result.statusCode,
+      fetchMethod,
+      changeType: ChangeType.ADD, // Delta sync not yet integrated
+      fetchTimeMs: result.responseTimeMs,
+    };
+  }
+
+  /**
+   * Legacy fetch implementation (original behavior).
+   * FIX-13 (HIGH-SEO-02): Added redirect loop detection with visited URL tracking.
+   */
+  private async fetchPageLegacy(url: string): Promise<CrawlResult> {
     const fetchStart = Date.now();
 
     // FIX-13 (HIGH-SEO-02): Track visited URLs to detect redirect loops

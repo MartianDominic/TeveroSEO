@@ -1,43 +1,53 @@
 /**
  * StrikingDistanceService
  * Phase 96-03: Quick Win Opportunity Detection
+ * DATA-01, DATA-07 FIX: Unified cache with freshness metadata
  *
  * Identifies pages ranking on page 2 (positions 11-20) that could
  * capture significant traffic with minor optimization.
- *
- * CTR estimates from Advanced Web Rankings data:
- * - Position 3: 11.01% CTR (target for potential calculation)
- * - Position 11: 1.99% CTR
- * - Position 20: 0.93% CTR
  *
  * Difficulty based on position gap to page 1:
  * - Easy (11-13): 8-10 positions to climb
  * - Medium (14-17): 4-7 positions to climb
  * - Hard (18-20): 1-3 positions to climb (but furthest from page 1)
+ *
+ * NOTE: Uses shared CtrBenchmarkCalculator for consistent CTR benchmarks.
+ * Returns cache metadata for UI freshness indicators.
  */
 import { sql } from 'drizzle-orm';
 import { db, type DbClient } from '@/db';
 import type { StrikingDistancePage, StrikingDistanceFilters, StrikingDistanceResult } from '../types';
 import { format, subDays } from 'date-fns';
+import { createLogger } from '@/server/lib/logger';
+import { getExpectedCtr } from '../utils/ctr-benchmark-calculator';
+import {
+  getAnalyticsCache,
+  wrapWithMetadata,
+  type CachedData,
+} from '@/server/cache';
 
-// CTR estimates by position (AWR data)
-const CTR_ESTIMATES: Record<number, number> = {
-  1: 0.2786, 2: 0.1538, 3: 0.1101, 4: 0.0804, 5: 0.0685,
-  6: 0.0573, 7: 0.0500, 8: 0.0447, 9: 0.0404, 10: 0.0372,
-  11: 0.0199, 12: 0.0168, 13: 0.0152, 14: 0.0140, 15: 0.0130,
-  16: 0.0120, 17: 0.0112, 18: 0.0105, 19: 0.0099, 20: 0.0093,
-};
+const logger = createLogger({ module: 'striking-distance-service' });
 
 export class StrikingDistanceService {
+  private cache = getAnalyticsCache();
+
   constructor(private db: DbClient) {}
 
   /**
    * Get pages in striking distance (positions 11-20).
+   * Returns data with cache metadata for UI freshness indicators.
+   *
+   * @param siteId - Site UUID
+   * @param filters - Striking distance filters
+   * @param workspaceId - Workspace UUID (required for caching)
+   * @param options - Optional cache behavior settings
    */
   async getStrikingDistancePages(
     siteId: string,
-    filters: StrikingDistanceFilters = {}
-  ): Promise<StrikingDistanceResult> {
+    filters: StrikingDistanceFilters = {},
+    workspaceId?: string,
+    options: { skipCache?: boolean } = {}
+  ): Promise<CachedData<StrikingDistanceResult>> {
     const {
       minPosition = 11,
       maxPosition = 20,
@@ -46,11 +56,28 @@ export class StrikingDistanceService {
       limit = 100,
     } = filters;
 
+    // Build cache key from filters
+    const cacheKey = `${minPosition}:${maxPosition}:${minImpressions}:${targetPosition}:${limit}`;
+
+    // Try cache first (if workspaceId provided and skipCache is false)
+    if (workspaceId && !options.skipCache) {
+      const cached = await this.cache.get<StrikingDistanceResult>(
+        'striking',
+        workspaceId,
+        siteId,
+        cacheKey
+      );
+
+      if (cached && !cached.metadata.refreshAvailable) {
+        return cached;
+      }
+    }
+
     try {
       const endDate = format(subDays(new Date(), 3), 'yyyy-MM-dd');
       const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd'); // Last 30 days
 
-      const targetCtr = CTR_ESTIMATES[targetPosition] ?? 0.1101;
+      const targetCtr = getExpectedCtr(targetPosition);
 
       // Query pages with avg position in striking distance
       const result = await this.db.execute<{
@@ -143,7 +170,7 @@ export class StrikingDistanceService {
         ? pages.reduce((sum, p) => sum + (p.difficulty === 'easy' ? 1 : p.difficulty === 'medium' ? 2 : 3), 0) / pages.length
         : 0;
 
-      return {
+      const data: StrikingDistanceResult = {
         pages,
         meta: {
           totalPages: pages.length,
@@ -151,11 +178,29 @@ export class StrikingDistanceService {
           avgDifficulty,
         },
       };
+
+      // Cache the result if workspaceId provided
+      const dataAsOf = new Date();
+      if (workspaceId) {
+        await this.cache.set(
+          'striking',
+          workspaceId,
+          siteId,
+          data,
+          dataAsOf,
+          cacheKey
+        );
+      }
+
+      return wrapWithMetadata(data, dataAsOf);
     } catch (error) {
-      console.error('[StrikingDistanceService] getStrikingDistancePages failed:', {
+      logger.error('getStrikingDistancePages failed', error instanceof Error ? error : undefined, {
         method: 'getStrikingDistancePages',
-        params: { siteId, minPosition, maxPosition, minImpressions, limit },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        siteId,
+        minPosition,
+        maxPosition,
+        minImpressions,
+        limit,
       });
       throw new Error(`Failed to get striking distance pages: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -181,4 +226,26 @@ export function getStrikingDistanceService(): StrikingDistanceService {
     instance = new StrikingDistanceService(db);
   }
   return instance;
+}
+
+// Convenience function - returns CachedData with metadata
+export async function getStrikingDistancePagesWithMetadata(
+  siteId: string,
+  filters?: StrikingDistanceFilters,
+  workspaceId?: string
+): Promise<CachedData<StrikingDistanceResult>> {
+  return getStrikingDistanceService().getStrikingDistancePages(siteId, filters, workspaceId);
+}
+
+/**
+ * Convenience function - returns just the data (backward compatible).
+ * Use getStrikingDistancePagesWithMetadata() for cache metadata.
+ */
+export async function getStrikingDistancePages(
+  siteId: string,
+  filters?: StrikingDistanceFilters,
+  workspaceId?: string
+): Promise<StrikingDistanceResult> {
+  const result = await getStrikingDistanceService().getStrikingDistancePages(siteId, filters, workspaceId);
+  return result.data;
 }

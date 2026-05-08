@@ -7,12 +7,45 @@
  */
 import { useState } from 'react';
 import { format, subDays } from 'date-fns';
-import { KPICard } from './KPICard';
+import { MetricCard, type MetricDelta } from '@tevero/ui';
 import { SiteTable } from './SiteTable';
 import { DateRangePicker } from './DateRangePicker';
 import { TagFilter } from './TagFilter';
 import { useDashboardData, useTags } from '../hooks/useDashboardData';
 import type { ComparisonPeriod, DashboardFilters } from '@/server/features/analytics/types';
+
+/**
+ * Convert percentage change to MetricDelta format
+ * @param change - Percentage change (e.g., 15.2 for +15.2%)
+ * @param invertChange - For metrics where lower is better (e.g., position)
+ */
+function toMetricDelta(change: number, invertChange = false): MetricDelta | undefined {
+  if (change === 0) return undefined;
+  const isPositive = invertChange ? change < 0 : change > 0;
+  return {
+    value: Math.abs(change),
+    direction: isPositive ? 'up' : change < 0 ? 'down' : 'flat',
+  };
+}
+
+/**
+ * Format value based on type
+ */
+function formatValue(value: number, format: 'number' | 'decimal' | 'percent' = 'number'): string {
+  switch (format) {
+    case 'decimal':
+      return value.toFixed(1);
+    case 'percent':
+      return `${(value * 100).toFixed(1)}%`;
+    default:
+      if (value >= 1_000_000) {
+        return `${(value / 1_000_000).toFixed(1)}M`;
+      } else if (value >= 1_000) {
+        return `${(value / 1_000).toFixed(1)}K`;
+      }
+      return value.toLocaleString();
+  }
+}
 
 export function MasterDashboard() {
   const [filters, setFilters] = useState<DashboardFilters>(() => ({
@@ -71,24 +104,25 @@ export function MasterDashboard() {
 
       {/* KPI Grid - 4 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Total Clicks" value={totals.clicks} change={comparison.clicksChange} />
-        <KPICard
-          title="Total Impressions"
-          value={totals.impressions}
-          change={comparison.impressionsChange}
+        <MetricCard
+          label="Total Clicks"
+          value={formatValue(totals.clicks)}
+          delta={toMetricDelta(comparison.clicksChange)}
         />
-        <KPICard
-          title="Avg Position"
-          value={totals.avgPosition}
-          change={comparison.positionChange}
-          format="decimal"
-          invertChange={true}
+        <MetricCard
+          label="Total Impressions"
+          value={formatValue(totals.impressions)}
+          delta={toMetricDelta(comparison.impressionsChange)}
         />
-        <KPICard
-          title="Avg CTR"
-          value={totals.avgCtr}
-          change={comparison.ctrChange}
-          format="percent"
+        <MetricCard
+          label="Avg Position"
+          value={formatValue(totals.avgPosition, 'decimal')}
+          delta={toMetricDelta(comparison.positionChange, true)}
+        />
+        <MetricCard
+          label="Avg CTR"
+          value={formatValue(totals.avgCtr, 'percent')}
+          delta={toMetricDelta(comparison.ctrChange)}
         />
       </div>
 

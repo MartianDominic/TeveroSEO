@@ -206,12 +206,12 @@ export class CamoufoxFetcher {
 
         // Configure page
         if (options.blockImages) {
-          await page.route("**/*.{png,jpg,jpeg,gif,webp,svg}", (route: { abort: () => void }) =>
+          await page.route("**/*.{png,jpg,jpeg,gif,webp,svg}", (route: { abort: () => Promise<void> }) =>
             route.abort()
           );
         }
         if (options.blockFonts) {
-          await page.route("**/*.{woff,woff2,ttf,otf}", (route: { abort: () => void }) =>
+          await page.route("**/*.{woff,woff2,ttf,otf}", (route: { abort: () => Promise<void> }) =>
             route.abort()
           );
         }

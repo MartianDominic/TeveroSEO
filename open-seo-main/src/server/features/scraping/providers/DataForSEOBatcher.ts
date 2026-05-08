@@ -25,6 +25,8 @@ import type {
 } from "./DataForSEOFetcher.types";
 import { mapDfsResultToParsedData } from "./DfsDataMapper";
 import { DFS_STANDARD_COSTS } from "@/db/dfs-cost-tracking-schema";
+import { db } from "@/db";
+import { getDfsCostTracker, extractDomainFromUrl } from "./DfsCostTracker";
 
 // =============================================================================
 // Constants
@@ -378,6 +380,7 @@ export class DataForSEOBatcher {
 
   /**
    * Resolve results for a completed batch.
+   * Tracks costs for Standard Queue usage (70% cheaper than Live API).
    */
   private resolveResults(
     batch: DfsBatch,
@@ -385,6 +388,22 @@ export class DataForSEOBatcher {
   ): void {
     const callbacks = this.batchCallbacks.get(batch.id);
     if (!callbacks) return;
+
+    const mode = batch.options.mode ?? "basic";
+    const costRecords: Array<{
+      url: string;
+      domain: string;
+      mode: DfsMode;
+      usedStandardQueue: boolean;
+      estimatedCost: number;
+      success: boolean;
+      statusCode?: number;
+      responseSizeBytes?: number;
+      clientId?: string;
+      workspaceId?: string;
+      jobId?: string;
+      taskId?: string;
+    }> = [];
 
     for (const urlItem of batch.urls) {
       const callback = callbacks.get(urlItem.url);
@@ -395,6 +414,22 @@ export class DataForSEOBatcher {
         urlItem.status = "completed";
         urlItem.result = result;
         callback(result);
+
+        // Collect cost record for successful fetch
+        costRecords.push({
+          url: urlItem.url,
+          domain: extractDomainFromUrl(urlItem.url),
+          mode,
+          usedStandardQueue: true,
+          estimatedCost: DFS_STANDARD_COSTS[mode],
+          success: result.success,
+          statusCode: result.statusCode,
+          responseSizeBytes: result.bytesTransferred,
+          clientId: batch.options.clientId,
+          workspaceId: batch.options.workspaceId,
+          jobId: batch.options.jobId,
+          taskId: urlItem.taskId,
+        });
       } else {
         // URL not found in results - return failure
         urlItem.status = "failed";
@@ -404,17 +439,42 @@ export class DataForSEOBatcher {
           error: "URL not in batch results (timeout or task failure)",
           latencyMs: 0,
           bytesTransferred: 0,
-          estimatedCost: DFS_STANDARD_COSTS[batch.options.mode ?? "basic"],
-          modeUsed: batch.options.mode ?? "basic",
+          estimatedCost: DFS_STANDARD_COSTS[mode],
+          modeUsed: mode,
           usedStandardQueue: true,
         };
         urlItem.result = failResult;
         callback(failResult);
+
+        // Track failed URLs too (we still pay for the attempt)
+        costRecords.push({
+          url: urlItem.url,
+          domain: extractDomainFromUrl(urlItem.url),
+          mode,
+          usedStandardQueue: true,
+          estimatedCost: DFS_STANDARD_COSTS[mode],
+          success: false,
+          clientId: batch.options.clientId,
+          workspaceId: batch.options.workspaceId,
+          jobId: batch.options.jobId,
+        });
       }
     }
 
     // Cleanup callbacks
     this.batchCallbacks.delete(batch.id);
+
+    // Fire-and-forget cost tracking for Standard Queue savings visibility
+    if (costRecords.length > 0) {
+      const costTracker = getDfsCostTracker(db);
+      costTracker.recordCostBatch(costRecords).catch((err) => {
+        // Log but don't fail - cost tracking is non-critical
+        console.warn(
+          `[DataForSEOBatcher] Failed to track batch costs for ${costRecords.length} URLs:`,
+          err instanceof Error ? err.message : String(err)
+        );
+      });
+    }
   }
 
   /**

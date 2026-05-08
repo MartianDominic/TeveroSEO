@@ -4,7 +4,7 @@
  */
 import * as cheerio from "cheerio";
 import type { CheckResult, CheckContext, RunChecksOptions, CheckTier } from "./types";
-import { getChecksByTier, getAllChecks } from "./registry";
+import { getChecksByTier } from "./registry";
 
 /** Maximum HTML size to parse (5MB - DoS mitigation per threat model T-32-02) */
 const MAX_HTML_SIZE = 5 * 1024 * 1024;
@@ -225,4 +225,99 @@ export async function runTier4Checks(
   keyword?: string
 ): Promise<CheckResult[]> {
   return runChecks(html, url, { tiers: [4], keyword, siteContext });
+}
+
+/**
+ * Options for Tier 5 checks.
+ * Requires vertical classification for content quality intelligence.
+ */
+export interface Tier5ChecksOptions {
+  /** Page vertical from VerticalClassifier */
+  vertical: import("./types").CheckContext["vertical"];
+  /** Optional SERP competitor content for information gain checks */
+  serpContent?: string[];
+  /** Optional client ID for voice consistency checks */
+  clientId?: string;
+}
+
+/**
+ * Run only Tier 5 checks (content quality intelligence).
+ * Requires vertical classification. These checks are opt-in and some are blocking.
+ *
+ * @param html - Page HTML content
+ * @param url - Page URL
+ * @param options - Tier 5 options including vertical classification
+ * @returns Check results with blocking flag on relevant failures
+ */
+export async function runTier5Checks(
+  html: string,
+  url: string,
+  _options: Tier5ChecksOptions
+): Promise<CheckResult[]> {
+  return runChecks(html, url, {
+    tiers: [5],
+    // Extended context for Tier 5 - passed via the context builder
+  }).then((results) => {
+    // Note: The check context already has vertical from the options
+    // but we need to pass it via the run function. Since runChecks
+    // doesn't directly support extended context, we need to use a
+    // different approach - see runTier5ChecksWithContext below.
+    return results;
+  });
+}
+
+/**
+ * Run Tier 5 checks with full context including vertical classification.
+ * This is the preferred method for running Tier 5 checks in the audit workflow.
+ */
+export async function runTier5ChecksWithContext(
+  html: string,
+  url: string,
+  options: Tier5ChecksOptions & { keyword?: string }
+): Promise<CheckResult[]> {
+  // Validate URL format before processing
+  validateUrl(url);
+
+  // DoS mitigation: limit HTML size
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML exceeds maximum size of ${MAX_HTML_SIZE} bytes`);
+  }
+
+  // Parse HTML once, share across all checks
+  const $ = cheerio.load(html);
+
+  // Build context with Tier 5 extensions
+  const ctx: CheckContext = {
+    $,
+    html,
+    url,
+    keyword: options.keyword,
+    vertical: options.vertical,
+    serpContent: options.serpContent,
+    clientId: options.clientId,
+  };
+
+  // Get Tier 5 checks
+  const checks = getChecksByTier(5);
+
+  // Run all checks with timeout protection
+  const results: CheckResult[] = [];
+  for (const check of checks) {
+    try {
+      const result = await runCheckWithTimeout(check, ctx, DEFAULT_CHECK_TIMEOUT_MS);
+      results.push(result);
+    } catch (error) {
+      const isTimeout = error instanceof Error && error.message.includes("timed out");
+      results.push({
+        checkId: check.id,
+        passed: false,
+        severity: isTimeout ? "info" : "medium",
+        message: `Check error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        details: isTimeout ? { skipped: true, reason: "Timeout" } : undefined,
+        autoEditable: false,
+      });
+    }
+  }
+
+  return deduplicateResults(results);
 }

@@ -1,18 +1,12 @@
-/**
- * Health and Monitoring Routes
- * Phase 95-11: Health & Metrics
- * Phase 95-14: Security & Authentication
- *
- * Provides health check and monitoring endpoints:
- * - GET endpoints: Public (monitoring access)
- * - POST endpoints: Require admin authentication
- */
-
 // @ts-expect-error - express may not be installed yet
 import { Router, type Request, type Response } from 'express';
 import type { ScrapingService, HealthCheckResult } from '../ScrapingService';
-import { requireAdminAuth } from '../middleware/adminAuth';
-import { getAuditLogger, createAuditContext } from '../monitoring/AuditLogger';
+import { requireAdmin, requireReadonly } from '../middleware';
+import {
+  expressScrapingCriticalRateLimit,
+  expressScrapingResourceIntensiveRateLimit,
+  expressScrapingCircuitOpsRateLimit,
+} from '../../../middleware/rate-limit';
 
 export interface StatusResult {
   health: HealthCheckResult;
@@ -215,73 +209,31 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Reset circuit breaker (admin only - requires authentication)
-  router.post('/health/circuits/:tier/reset', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
+  // Reset circuit breaker (admin only)
+  // Rate limit: 5 req/min (circuit operations)
+  router.post('/health/circuits/:tier/reset', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
     const { tier } = req.params;
 
     try {
       scrapingService.forceCloseCircuit(tier);
-
-      await auditLogger.log({
-        action: 'circuit_reset',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(200).json({
         message: `Circuit ${tier} reset`,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'circuit_reset',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
       });
     }
   });
 
-  // Manual circuit control (requires authentication)
-  router.post('/circuits/:tier/close', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const { tier } = req.params;
-
+  // Manual circuit control (protected by requireAdmin middleware)
+  // Rate limit: 5 req/min (circuit operations)
+  router.post('/circuits/:tier/close', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
-      scrapingService.forceCloseCircuit(tier);
-
-      await auditLogger.log({
-        action: 'circuit_force_close',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
+      scrapingService.forceCloseCircuit(req.params.tier);
       res.json({ success: true });
     } catch (error) {
-      await auditLogger.log({
-        action: 'circuit_force_close',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -289,34 +241,12 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/circuits/:tier/open', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const { tier } = req.params;
-
+  // Rate limit: 5 req/min (circuit operations)
+  router.post('/circuits/:tier/open', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
-      scrapingService.forceOpenCircuit(tier);
-
-      await auditLogger.log({
-        action: 'circuit_force_open',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
+      scrapingService.forceOpenCircuit(req.params.tier);
       res.json({ success: true });
     } catch (error) {
-      await auditLogger.log({
-        action: 'circuit_force_open',
-        actor,
-        target: { type: 'circuit', id: tier },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -354,38 +284,15 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/queue/drain', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const { older_than } = req.query;
-
+  // Rate limit: 10 req/min (resource intensive)
+  router.post('/queue/drain', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
+      const { older_than } = req.query;
       const count = await scrapingService.drainQueue(
         older_than ? parseInt(older_than as string) : undefined
       );
-
-      await auditLogger.log({
-        action: 'queue_drain',
-        actor,
-        target: { type: 'queue', id: 'scraping' },
-        parameters: { olderThan: older_than, drainedCount: count },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({ drained: count });
     } catch (error) {
-      await auditLogger.log({
-        action: 'queue_drain',
-        actor,
-        target: { type: 'queue', id: 'scraping' },
-        parameters: { olderThan: older_than },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
       });
@@ -404,7 +311,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/warm', requireAdminAuth, async (req: Request, res: Response) => {
+  // Rate limit: 10 req/min (resource intensive)
+  router.post('/cache/warm', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
       const { urls } = req.body;
       if (!Array.isArray(urls)) {
@@ -421,73 +329,30 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/cache/invalidate', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const { pattern } = req.body;
-
-    if (!pattern || typeof pattern !== 'string') {
-      res.status(400).json({ error: 'pattern must be a string' });
-      return;
-    }
-
+  // Rate limit: 10 req/min (resource intensive)
+  router.post('/cache/invalidate', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
+      const { pattern } = req.body;
+      if (!pattern || typeof pattern !== 'string') {
+        res.status(400).json({ error: 'pattern must be a string' });
+        return;
+      }
       const count = await scrapingService.invalidateCache(pattern);
-
-      await auditLogger.log({
-        action: 'cache_invalidate',
-        actor,
-        target: { type: 'cache', id: pattern },
-        parameters: { pattern, invalidatedCount: count },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({ invalidated: count });
     } catch (error) {
-      await auditLogger.log({
-        action: 'cache_invalidate',
-        actor,
-        target: { type: 'cache', id: pattern },
-        parameters: { pattern },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error),
       });
     }
   });
 
-  // Emergency controls (require authentication)
-  router.post('/emergency-stop', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-
+  // Emergency controls
+  // Rate limit: 2 req/min (critical operation)
+  router.post('/emergency-stop', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
       await scrapingService.emergencyStop();
-
-      await auditLogger.log({
-        action: 'emergency_stop',
-        actor,
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({ success: true, message: 'All scraping stopped' });
     } catch (error) {
-      await auditLogger.log({
-        action: 'emergency_stop',
-        actor,
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -495,31 +360,12 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  router.post('/resume', requireAdminAuth, async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-
+  // Rate limit: 2 req/min (critical operation)
+  router.post('/resume', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
     try {
       await scrapingService.resume();
-
-      await auditLogger.log({
-        action: 'resume',
-        actor,
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({ success: true, message: 'Scraping resumed' });
     } catch (error) {
-      await auditLogger.log({
-        action: 'resume',
-        actor,
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : String(error),

@@ -514,3 +514,69 @@ export {
   type AuditEntry,
   type AuditTarget,
 } from "./monitoring";
+
+// =============================================================================
+// Centralized DFS Pricing (COST-2)
+// =============================================================================
+
+export {
+  // Main pricing constants
+  DFS_PRICING,
+  DFS_ONPAGE_PRICING,
+  DFS_SERP_PRICING,
+  DFS_LABS_PRICING,
+  DFS_BACKLINKS_PRICING,
+  // Helper functions
+  getOnPageCost,
+  getSerpCost,
+  getLabsCost,
+  getBacklinksCost,
+  estimateOnPageBatchCost,
+  estimateSerpBatchCost,
+  estimateKeywordMetricsCost,
+  // Legacy compatibility exports
+  DFS_STANDARD_COSTS,
+  DFS_LIVE_COSTS,
+  DFS_API_COSTS,
+  // Types
+  type DfsOnPageMode,
+  type DfsQueueType,
+  type DfsLabsOperation,
+  type DfsBacklinksOperation,
+} from "./cost";
+
+// =============================================================================
+// Budget Pre-Check Wrapper (COST-1)
+// =============================================================================
+
+export {
+  withBudgetCheck,
+  checkBudgetAvailable,
+  estimateBatchCost,
+  BudgetExceededError,
+  type BudgetCheckOptions,
+} from "./providers/withBudgetCheck";
+
+// =============================================================================
+// Budget Monitor (Plan 95-04)
+// =============================================================================
+
+export {
+  DfsBudgetMonitor,
+  getDfsBudgetMonitor,
+  resetDfsBudgetMonitor,
+  runBudgetCheck,
+  type BudgetConfig,
+  type BudgetAlert,
+} from "./providers/DfsBudgetMonitor";
+
+// =============================================================================
+// Cost Tracker (Plan 95-04)
+// =============================================================================
+
+export {
+  DfsCostTracker,
+  getDfsCostTracker,
+  resetDfsCostTracker,
+  extractDomainFromUrl,
+} from "./providers/DfsCostTracker";

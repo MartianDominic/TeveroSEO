@@ -10,11 +10,19 @@
  *
  * Playwright is OPT-IN only via explicit flag, never automatic.
  * This ensures scalability to thousands of users.
+ *
+ * MIG-2: Integrated with MigrationRouter for gradual migration to unified scraping.
  */
 
-import { RobotsTxtParser, type RobotsTxt } from "./RobotsTxtParser";
-import { SitemapParser, type SitemapUrl } from "./SitemapParser";
-import { SPADetector, type SPADetectionResult } from "./SPADetector";
+import { RobotsTxtParser } from "./RobotsTxtParser";
+import { SitemapParser } from "@/server/lib/sitemap";
+import { SPADetector } from "./SPADetector";
+import {
+  loadMigrationFlagsCached,
+  shouldUseUnified,
+} from "@/server/features/scraping/config";
+import { routeRequest } from "@/server/features/scraping/migration/adapters";
+import type { ScrapeResult, ScrapeOptions } from "@/server/features/scraping/ScrapingService";
 
 export interface CrawlOptions {
   /** Maximum pages to crawl (default: 100) */
@@ -41,6 +49,12 @@ export interface CrawlOptions {
     password: string;
     enableBrowserRendering?: boolean;
   };
+  /** MIG-2: Client ID for cost attribution */
+  clientId?: string;
+  /** MIG-2: Job ID for cost attribution */
+  jobId?: string;
+  /** MIG-2: Force legacy path (skip MigrationRouter) */
+  forceLegacy?: boolean;
 }
 
 export interface PageData {
@@ -110,13 +124,159 @@ export class UniversalCrawler {
    * Crawl a URL with tiered provider selection.
    *
    * Strategy:
-   * 1. Check robots.txt
-   * 2. Detect if JS rendering needed
-   * 3. Route to appropriate provider (NOT auto-Playwright)
+   * 1. MIG-2: Check feature flag and route through MigrationRouter if enabled
+   * 2. Check robots.txt
+   * 3. Detect if JS rendering needed
+   * 4. Route to appropriate provider (NOT auto-Playwright)
    */
   async crawl(url: string, options?: CrawlOptions): Promise<CrawlResult> {
     const opts = { ...this.options, ...options };
 
+    // MIG-2: Check if we should route through unified scraping
+    if (!opts.forceLegacy) {
+      const flags = loadMigrationFlagsCached();
+      const crawlWorkflowState = flags.crawlWorkflow;
+
+      if (shouldUseUnified(crawlWorkflowState)) {
+        return this.crawlViaUnified(url, opts);
+      }
+    }
+
+    // Legacy path
+    return this.crawlLegacy(url, opts);
+  }
+
+  /**
+   * MIG-2: Route crawl through unified ScrapingService via MigrationRouter.
+   */
+  private async crawlViaUnified(
+    url: string,
+    opts: typeof this.options & CrawlOptions
+  ): Promise<CrawlResult> {
+    const headers: Record<string, string> = {};
+    if (opts.userAgent) {
+      headers["User-Agent"] = opts.userAgent;
+    }
+
+    const scrapeOptions: ScrapeOptions = {
+      timeoutMs: opts.timeout ?? 30000,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      clientId: opts.clientId,
+      jobId: opts.jobId,
+      feature: "crawlWorkflow",
+      includeHtml: true,
+      includeParsedData: true,
+    };
+
+    try {
+      const result = await routeRequest<CrawlResult>({
+        feature: "crawlWorkflow",
+        url,
+        legacyFn: () => this.crawlLegacy(url, opts),
+        scrapeOptions,
+        transformer: {
+          legacyToNew: (legacy: CrawlResult): ScrapeResult => this.crawlResultToScrapeResult(legacy, url),
+          newToLegacy: (scrapeResult: ScrapeResult): CrawlResult => this.scrapeResultToCrawlResult(scrapeResult),
+        },
+      });
+
+      return result;
+    } catch (error) {
+      // On routing error, fall back to legacy
+      console.warn(
+        `[UniversalCrawler] MigrationRouter error, falling back to legacy:`,
+        error instanceof Error ? error.message : String(error)
+      );
+      return this.crawlLegacy(url, opts);
+    }
+  }
+
+  /**
+   * Convert CrawlResult to ScrapeResult for unified system.
+   */
+  private crawlResultToScrapeResult(result: CrawlResult, url: string): ScrapeResult {
+    return {
+      url,
+      success: result.status === "success",
+      statusCode: result.status === "success" ? 200 : result.status === "blocked" ? 403 : 500,
+      tierUsed: result.method === "dataforseo" ? "dfs_basic" : result.method === "playwright" ? "camoufox" : "direct",
+      fromCache: false,
+      responseTimeMs: 0,
+      responseSizeBytes: 0,
+      estimatedCostUsd: 0,
+      error: result.error,
+      parsedData: result.data ? {
+        title: result.data.title,
+        metaDescription: result.data.metaDescription ?? undefined,
+        h1: result.data.h1,
+        h2: result.data.h2,
+        canonical: result.data.canonicalUrl ?? undefined,
+        internalLinks: result.data.internalLinks.map(link => ({ url: link, text: "" })),
+      } : undefined,
+    };
+  }
+
+  /**
+   * Convert ScrapeResult to CrawlResult for legacy compatibility.
+   */
+  private scrapeResultToCrawlResult(result: ScrapeResult): CrawlResult {
+    if (!result.success) {
+      if (result.statusCode === 403 || result.statusCode === 429) {
+        return {
+          status: "blocked",
+          reason: result.error ?? "Access blocked",
+          error: result.error,
+        };
+      }
+      return {
+        status: "error",
+        error: result.error ?? "Unknown error",
+      };
+    }
+
+    // Map tier to method
+    let method: "fetch" | "dataforseo" | "playwright" = "fetch";
+    if (result.tierUsed === "dfs_basic" || result.tierUsed === "dfs_js" || result.tierUsed === "dfs_browser") {
+      method = "dataforseo";
+    } else if (result.tierUsed === "camoufox") {
+      method = "playwright";
+    }
+
+    // Extract page data
+    const data: PageData = result.parsedData ? {
+      title: result.parsedData.title ?? "",
+      metaDescription: result.parsedData.metaDescription ?? null,
+      h1: result.parsedData.h1 ?? [],
+      h2: result.parsedData.h2 ?? [],
+      canonicalUrl: result.parsedData.canonical ?? null,
+      ogTitle: null,
+      ogDescription: null,
+      internalLinks: (result.parsedData.internalLinks ?? []).map(l => l.url),
+    } : {
+      title: "",
+      metaDescription: null,
+      h1: [],
+      h2: [],
+      canonicalUrl: null,
+      ogTitle: null,
+      ogDescription: null,
+      internalLinks: [],
+    };
+
+    return {
+      status: "success",
+      method,
+      data,
+    };
+  }
+
+  /**
+   * Legacy crawl implementation (original behavior).
+   */
+  private async crawlLegacy(
+    url: string,
+    opts: typeof this.options & CrawlOptions
+  ): Promise<CrawlResult> {
     try {
       const parsedUrl = new URL(url);
       const path = parsedUrl.pathname;
@@ -322,7 +482,7 @@ export class UniversalCrawler {
 
     const item = task.result[0].items[0];
     const meta = item.meta ?? {};
-    const onPage = item.onpage_score ?? {};
+    // Note: onpage_score is available in item.onpage_score but not used yet
 
     // Map DataForSEO response to our PageData format
     const data: PageData = {

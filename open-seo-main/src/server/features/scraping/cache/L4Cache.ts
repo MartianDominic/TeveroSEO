@@ -3,9 +3,38 @@
  * Phase 95-02: Multi-Level Caching
  *
  * Long-term HTML archive storage using Cloudflare R2.
- * - TTL: 90 days (configurable)
+ * - TTL: 90 days (configurable via R2_RETENTION_DAYS env var)
  * - Compression: zstd/gzip
  * - Cost: $0.015/GB/mo + FREE egress
+ *
+ * ## R2 Bucket Lifecycle Configuration (Cloudflare Dashboard)
+ *
+ * To enforce 90-day retention at the storage level, configure a lifecycle rule
+ * in the Cloudflare dashboard:
+ *
+ * 1. Go to R2 > Your Bucket > Settings > Lifecycle rules
+ * 2. Add a rule with the following settings:
+ *    - Rule name: "html-retention-90d"
+ *    - Prefix filter: "html/" (applies to cached HTML only)
+ *    - Action: Delete objects after 90 days
+ *    - Enable the rule
+ *
+ * 3. For audit snapshots (longer retention), add a separate rule:
+ *    - Rule name: "snapshot-retention-365d"
+ *    - Prefix filter: "snapshots/"
+ *    - Action: Delete objects after 365 days
+ *
+ * Note: Lifecycle rules are set via dashboard, not API. This module adds
+ * x-cache-timestamp metadata and performs application-level age checks
+ * as defense-in-depth alongside the lifecycle rules.
+ *
+ * Environment Variables:
+ * - R2_RETENTION_DAYS: Override default 90-day retention (default: "90")
+ * - R2_PURGE_RATE_LIMIT: Max purge operations per minute (default: "100")
+ * - CF_ACCOUNT_ID: Cloudflare account ID for R2 endpoint
+ * - R2_ACCESS_KEY_ID: R2 API access key
+ * - R2_SECRET_ACCESS_KEY: R2 API secret key
+ * - R2_BUCKET: Bucket name (default: "scrape-archive")
  */
 
 import {
@@ -24,17 +53,30 @@ import type {
   LevelStats,
 } from "./types";
 import { compress, decompress } from "./compression";
+import { cacheLogger } from "../logging";
 
 // =============================================================================
 // Default Configuration
 // =============================================================================
 
 const DEFAULT_CONFIG: L4CacheConfig = {
-  bucket: "scrape-archive",
-  retentionDays: 90,
+  bucket: process.env.R2_BUCKET ?? "scrape-archive",
+  retentionDays: parseInt(process.env.R2_RETENTION_DAYS ?? "90", 10),
   compressionAlgo: "zstd", // Using gzip as equivalent
   accountId: process.env.CF_ACCOUNT_ID ?? "",
 };
+
+/** Default purge rate limit (operations per minute) */
+const DEFAULT_PURGE_RATE_LIMIT = parseInt(process.env.R2_PURGE_RATE_LIMIT ?? "100", 10);
+
+/** Metadata key for cache timestamp (ISO 8601) */
+const CACHE_TIMESTAMP_KEY = "x-cache-timestamp";
+
+/** Metadata key for cache version (for future schema migrations) */
+const CACHE_VERSION_KEY = "x-cache-version";
+
+/** Current cache metadata version */
+const CACHE_VERSION = "1";
 
 // =============================================================================
 // L4Cache Implementation
@@ -60,8 +102,13 @@ export class L4Cache implements ICacheLevel {
   private totalLatencyMs = 0;
   private requestCount = 0;
 
+  // Purge rate limiting (sliding window)
+  private purgeTimestamps: number[] = [];
+  private purgeRateLimit: number;
+
   constructor(config: Partial<L4CacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.purgeRateLimit = DEFAULT_PURGE_RATE_LIMIT;
 
     // Initialize S3 client for R2
     this.client = new S3Client({
@@ -107,8 +154,7 @@ export class L4Cache implements ICacheLevel {
       const html = decompress(bodyBytes);
       const metadata = this.parseMetadata(response.Metadata ?? {});
 
-      this.hits++;
-      return {
+      const entry: CachedPage = {
         html,
         contentHash: metadata.contentHash ?? hash,
         fetchedAt: new Date(metadata.fetchedAt ?? Date.now()),
@@ -120,13 +166,47 @@ export class L4Cache implements ICacheLevel {
         lastModified: metadata.lastModified,
         contentType: metadata.contentType as CachedPage["contentType"],
       };
+
+      // Check expiration before returning
+      if (this.isExpired(entry)) {
+        cacheLogger.debug(
+          { hash, expiresAt: entry.expiresAt.toISOString() },
+          "L4 cache entry expired"
+        );
+        // Fire-and-forget deletion of stale entry
+        this.delete(hash).catch(() => {});
+        this.misses++;
+        return null;
+      }
+
+      // Defense-in-depth: Also check cache age based on x-cache-timestamp metadata
+      // This catches entries that may have survived beyond retention period
+      const cacheTimestamp = metadata[CACHE_TIMESTAMP_KEY] ?? metadata[CACHE_TIMESTAMP_KEY.toLowerCase()];
+      if (cacheTimestamp) {
+        const cacheDate = new Date(cacheTimestamp);
+        const ageDays = Math.floor((Date.now() - cacheDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (ageDays >= this.config.retentionDays) {
+          cacheLogger.debug(
+            { hash, ageDays, retentionDays: this.config.retentionDays },
+            "L4 cache entry exceeds retention period"
+          );
+          // Fire-and-forget deletion of stale entry
+          this.delete(hash).catch(() => {});
+          this.misses++;
+          return null;
+        }
+      }
+
+      this.hits++;
+      return entry;
     } catch (error: any) {
       if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
         this.misses++;
         return null;
       }
 
-      console.error("[L4Cache] Get error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache Get error:", error);
       this.misses++;
       return null;
     } finally {
@@ -134,14 +214,17 @@ export class L4Cache implements ICacheLevel {
     }
   }
 
-  async set(hash: string, page: CachedPage, ttlMs: number): Promise<void> {
+  async set(hash: string, page: CachedPage, _ttlMs: number): Promise<void> {
     try {
       const key = this.getObjectKey(hash);
 
       // Compress the HTML
       const compressed = compress(page.html, { level: 6 });
 
-      // Prepare metadata
+      // Current timestamp for cache age tracking
+      const cacheTimestamp = new Date().toISOString();
+
+      // Prepare metadata with cache timestamp for retention tracking
       const metadata: Record<string, string> = {
         contentHash: page.contentHash,
         fetchedAt: page.fetchedAt.toISOString(),
@@ -149,6 +232,9 @@ export class L4Cache implements ICacheLevel {
         tierUsed: page.tierUsed,
         statusCode: String(page.statusCode),
         pageSizeBytes: String(page.pageSizeBytes),
+        // Cache timestamp metadata for retention policy enforcement
+        [CACHE_TIMESTAMP_KEY]: cacheTimestamp,
+        [CACHE_VERSION_KEY]: CACHE_VERSION,
       };
 
       if (page.etag) metadata.etag = page.etag;
@@ -167,7 +253,7 @@ export class L4Cache implements ICacheLevel {
 
       await this.client.send(command);
     } catch (error) {
-      console.error("[L4Cache] Set error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache Set error:", error);
     }
   }
 
@@ -182,7 +268,7 @@ export class L4Cache implements ICacheLevel {
 
       await this.client.send(command);
     } catch (error) {
-      console.error("[L4Cache] Delete error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache Delete error:", error);
     }
   }
 
@@ -201,7 +287,7 @@ export class L4Cache implements ICacheLevel {
       if (error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
         return false;
       }
-      console.error("[L4Cache] Has error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache Has error:", error);
       return false;
     }
   }
@@ -246,7 +332,7 @@ export class L4Cache implements ICacheLevel {
 
       this.resetStats();
     } catch (error) {
-      console.error("[L4Cache] Clear error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache Clear error:", error);
     }
   }
 
@@ -309,7 +395,7 @@ export class L4Cache implements ICacheLevel {
         await this.client.send(pageCommand);
       }
     } catch (error) {
-      console.error("[L4Cache] StoreAuditSnapshot error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache StoreAuditSnapshot error:", error);
     }
   }
 
@@ -338,7 +424,7 @@ export class L4Cache implements ICacheLevel {
       if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
         return null;
       }
-      console.error("[L4Cache] GetAuditSnapshotManifest error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache GetAuditSnapshotManifest error:", error);
       return null;
     }
   }
@@ -371,7 +457,7 @@ export class L4Cache implements ICacheLevel {
           return filename.replace(".html.gz", "");
         });
     } catch (error) {
-      console.error("[L4Cache] ListByDate error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache ListByDate error:", error);
       return [];
     }
   }
@@ -409,14 +495,198 @@ export class L4Cache implements ICacheLevel {
 
       return { totalObjects, totalSizeBytes };
     } catch (error) {
-      console.error("[L4Cache] GetStorageStats error:", error);
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache GetStorageStats error:", error);
       return { totalObjects: 0, totalSizeBytes: 0 };
     }
+  }
+
+  /**
+   * Get cache age in days for a specific hash.
+   * Returns null if the entry doesn't exist or has no timestamp metadata.
+   */
+  async getCacheAge(hash: string): Promise<number | null> {
+    try {
+      const key = this.getObjectKey(hash);
+
+      const command = new HeadObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+      });
+
+      const response = await this.client.send(command);
+      const metadata = response.Metadata ?? {};
+
+      // Check for cache timestamp in metadata
+      const cacheTimestamp = metadata[CACHE_TIMESTAMP_KEY] ?? metadata[CACHE_TIMESTAMP_KEY.toLowerCase()];
+
+      if (!cacheTimestamp) {
+        // Fall back to fetchedAt if no cache timestamp
+        const fetchedAt = metadata.fetchedat ?? metadata.fetchedAt;
+        if (!fetchedAt) return null;
+
+        const fetchedDate = new Date(fetchedAt);
+        return Math.floor((Date.now() - fetchedDate.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      const cacheDate = new Date(cacheTimestamp);
+      return Math.floor((Date.now() - cacheDate.getTime()) / (1000 * 60 * 60 * 24));
+    } catch (error: any) {
+      if (error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      cacheLogger.error({ level: "L4", error: error instanceof Error ? error.message : String(error) }, "L4Cache GetCacheAge error:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if a cached entry is stale (older than retention period).
+   * Uses the x-cache-timestamp metadata for accurate age calculation.
+   *
+   * @param hash - The cache key hash
+   * @param maxAgeDays - Optional override for retention period (default: config.retentionDays)
+   * @returns true if entry is stale or doesn't exist, false if fresh
+   */
+  async isStale(hash: string, maxAgeDays?: number): Promise<boolean> {
+    const age = await this.getCacheAge(hash);
+
+    if (age === null) {
+      return true; // Treat missing entries as stale
+    }
+
+    const maxAge = maxAgeDays ?? this.config.retentionDays;
+    return age >= maxAge;
+  }
+
+  /**
+   * Purge a specific URL from the cache with rate limiting.
+   *
+   * Rate limiting prevents abuse and protects against accidental mass deletions.
+   * Default limit: 100 purge operations per minute (configurable via R2_PURGE_RATE_LIMIT).
+   *
+   * @param hash - The cache key hash to purge
+   * @returns Object with success status and optional error message
+   */
+  async purgeCache(hash: string): Promise<{ success: boolean; error?: string }> {
+    // Rate limiting check (sliding window of 1 minute)
+    const now = Date.now();
+    const oneMinuteAgo = now - 60_000;
+
+    // Clean up old timestamps
+    this.purgeTimestamps = this.purgeTimestamps.filter((ts) => ts > oneMinuteAgo);
+
+    // Check rate limit
+    if (this.purgeTimestamps.length >= this.purgeRateLimit) {
+      const error = `Purge rate limit exceeded (${this.purgeRateLimit}/min). Try again later.`;
+      cacheLogger.warn({ hash, rateLimit: this.purgeRateLimit }, error);
+      return { success: false, error };
+    }
+
+    try {
+      // Record this purge operation
+      this.purgeTimestamps.push(now);
+
+      const key = this.getObjectKey(hash);
+
+      const command = new DeleteObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+      });
+
+      await this.client.send(command);
+
+      cacheLogger.info({ hash, key }, "Cache entry purged successfully");
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      cacheLogger.error({ level: "L4", hash, error: errorMessage }, "L4Cache Purge error");
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Bulk purge multiple cache entries with rate limiting.
+   * Stops if rate limit is reached and returns partial results.
+   *
+   * @param hashes - Array of cache key hashes to purge
+   * @returns Object with count of purged entries and any errors
+   */
+  async purgeCacheBulk(hashes: string[]): Promise<{
+    purged: number;
+    failed: number;
+    rateLimited: boolean;
+    errors: string[];
+  }> {
+    let purged = 0;
+    let failed = 0;
+    let rateLimited = false;
+    const errors: string[] = [];
+
+    for (const hash of hashes) {
+      const result = await this.purgeCache(hash);
+
+      if (result.success) {
+        purged++;
+      } else if (result.error?.includes("rate limit")) {
+        rateLimited = true;
+        break; // Stop processing on rate limit
+      } else {
+        failed++;
+        if (result.error) {
+          errors.push(`${hash}: ${result.error}`);
+        }
+      }
+    }
+
+    return { purged, failed, rateLimited, errors };
+  }
+
+  /**
+   * Get the configured retention period in days.
+   */
+  getRetentionDays(): number {
+    return this.config.retentionDays;
+  }
+
+  /**
+   * Get the current purge rate limit status.
+   */
+  getPurgeRateLimitStatus(): {
+    limit: number;
+    used: number;
+    remaining: number;
+    resetsAt: Date;
+  } {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60_000;
+
+    // Clean up old timestamps
+    this.purgeTimestamps = this.purgeTimestamps.filter((ts) => ts > oneMinuteAgo);
+
+    const used = this.purgeTimestamps.length;
+    const oldestTimestamp = this.purgeTimestamps[0];
+    const resetsAt = oldestTimestamp
+      ? new Date(oldestTimestamp + 60_000)
+      : new Date(now);
+
+    return {
+      limit: this.purgeRateLimit,
+      used,
+      remaining: Math.max(0, this.purgeRateLimit - used),
+      resetsAt,
+    };
   }
 
   // ===========================================================================
   // Private Methods
   // ===========================================================================
+
+  /**
+   * Check if a cached entry has expired.
+   */
+  private isExpired(entry: CachedPage): boolean {
+    return entry.expiresAt.getTime() < Date.now();
+  }
 
   /**
    * Get object key for a hash.

@@ -100,6 +100,7 @@ export const scrapingAuditLogs = pgTable(
     actorIp: text("actor_ip").notNull(),
     actorUserAgent: text("actor_user_agent"),
     actorApiKeyPrefix: text("actor_api_key_prefix"), // First 8 chars for identification
+    actorRole: text("actor_role"), // 'admin' or 'readonly'
 
     // Target information (what was acted upon)
     targetType: text("target_type"), // 'circuit', 'migration', 'cache', 'queue', 'domain'

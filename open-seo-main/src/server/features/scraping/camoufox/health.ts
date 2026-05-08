@@ -9,6 +9,7 @@
 
 import http from "http";
 import type { CamoufoxPool, PoolMetrics } from "./pool";
+import { camoufoxLogger } from "../logging";
 
 // ============================================================================
 // Types
@@ -79,7 +80,7 @@ export function createHealthServer(
   });
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`[CamoufoxHealth] Health server listening on port ${port}`);
+    camoufoxLogger.info({ port }, "Health server listening");
   });
 
   return server;

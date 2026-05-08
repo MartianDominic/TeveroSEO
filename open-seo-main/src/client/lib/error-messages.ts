@@ -6,6 +6,7 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
     "OpenSEO auth is not configured. Follow the README setup steps for Cloudflare Access.",
   PAYMENT_REQUIRED:
     "An active hosted subscription is required before you can use OpenSEO.",
+  PERMISSION_DENIED: "You do not have permission to access this resource.",
   FORBIDDEN: "You do not have access to this resource.",
   NOT_FOUND: "The requested resource was not found.",
   GONE: "This resource is no longer available.",

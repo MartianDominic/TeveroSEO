@@ -2,10 +2,22 @@
  * Annotations API Route
  * Phase 96-03: GET/POST /api/analytics/annotations
  * Timeline annotations management
+ * Rate limited: 60 requests per minute per workspace (standard analytics).
+ * CSRF protected: POST/PUT/DELETE require valid CSRF token.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { AnnotationsRepository } from "@/server/features/analytics/repositories/AnnotationsRepository";
-import { triggerAnnotationsImport } from "@/server/features/analytics/jobs/annotations-import.job";
+import {
+  authenticateAnalyticsRequest,
+  verifySiteOwnership,
+  siteNotFoundResponse,
+} from "@/server/features/analytics/auth/analytics-auth";
+import {
+  analyticsStandardRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
+import { csrfProtect } from "@/server/middleware/csrf";
 import { z } from "zod";
 import { db } from "@/db";
 
@@ -25,26 +37,17 @@ const postBodySchema = z.object({
   impact: z.enum(['positive', 'negative', 'neutral']),
 });
 
-// Placeholder helpers
-async function getWorkspaceIdFromRequest(_request: Request): Promise<string | null> {
-  return 'workspace-placeholder';
-}
-
-async function getUserIdFromRequest(_request: Request): Promise<string> {
-  return 'user-placeholder';
-}
-
-async function verifySiteOwnership(_siteId: string, _workspaceId: string): Promise<boolean> {
-  return true;
-}
-
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/annotations")({
   loader: async ({ request }: any) => {
-    const workspaceId = await getWorkspaceIdFromRequest(request);
-    if (!workspaceId) {
-      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    // Authenticate request and get verified workspace context
+    const auth = await authenticateAnalyticsRequest(request);
+
+    // Rate limit check: 60 requests per minute per workspace (standard analytics)
+    const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult);
     }
 
     if (request.method === 'GET') {
@@ -59,8 +62,16 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
         );
       }
 
+      // If siteId provided, verify ownership
+      if (parsed.data.siteId) {
+        const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
+        if (!siteVerified) {
+          return siteNotFoundResponse();
+        }
+      }
+
       const repo = new AnnotationsRepository(db);
-      const annotations = await repo.findByFilters(workspaceId, {
+      const annotations = await repo.findByFilters(auth.workspaceId, {
         siteId: parsed.data.siteId,
         startDate: parsed.data.startDate,
         endDate: parsed.data.endDate,
@@ -68,10 +79,15 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
         includeGlobal: parsed.data.includeGlobal ?? true,
       });
 
-      return Response.json({ success: true, data: annotations });
+      const response = Response.json({ success: true, data: annotations });
+      return addRateLimitHeaders(response, rateLimitResult);
     }
 
     if (request.method === 'POST') {
+      // CSRF protection for state-changing request
+      const csrfError = csrfProtect(request);
+      if (csrfError) return csrfError;
+
       const body = await request.json();
       const parsed = postBodySchema.safeParse(body);
       if (!parsed.success) {
@@ -82,22 +98,22 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
       }
 
       // Verify site ownership
-      const siteVerified = await verifySiteOwnership(parsed.data.siteId, workspaceId);
+      const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
       if (!siteVerified) {
-        return Response.json({ success: false, error: "Site not found" }, { status: 404 });
+        return siteNotFoundResponse();
       }
 
-      const userId = await getUserIdFromRequest(request);
       const repo = new AnnotationsRepository(db);
-      const annotation = await repo.createCustom(workspaceId, parsed.data.siteId, {
+      const annotation = await repo.createCustom(auth.workspaceId, parsed.data.siteId, {
         date: new Date(parsed.data.date),
         title: parsed.data.title,
         description: parsed.data.description,
         impact: parsed.data.impact,
-        createdBy: userId,
+        createdBy: auth.userId,
       });
 
-      return Response.json({ success: true, data: annotation }, { status: 201 });
+      const response = Response.json({ success: true, data: annotation }, { status: 201 });
+      return addRateLimitHeaders(response, rateLimitResult);
     }
 
     return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });

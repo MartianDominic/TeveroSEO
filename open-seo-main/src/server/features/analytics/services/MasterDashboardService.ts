@@ -1,13 +1,20 @@
 /**
  * Master Dashboard Service
  * Phase 96-02: Master Dashboard
+ * DATA-01, DATA-07 FIX: Unified cache with freshness metadata
  *
  * Multi-site aggregation using continuous aggregates for sub-second queries.
+ * Returns cache metadata for UI freshness indicators.
  */
 import { sql } from 'drizzle-orm';
 import { subDays, format } from 'date-fns';
 import type { DbClient } from '@/db';
 import { SiteTagsRepository } from '../repositories/SiteTagsRepository';
+import {
+  getAnalyticsCache,
+  wrapWithMetadata,
+  type CachedData,
+} from '@/server/cache';
 import type {
   DashboardFilters,
   DashboardAggregates,
@@ -15,8 +22,13 @@ import type {
   ComparisonPeriod,
   SiteMetrics,
 } from '../types';
+import { createLogger } from '@/server/lib/logger';
+
+const logger = createLogger({ module: 'master-dashboard-service' });
 
 export class MasterDashboardService {
+  private cache = getAnalyticsCache();
+
   constructor(
     private db: DbClient,
     private siteTagsRepo: SiteTagsRepository
@@ -25,11 +37,34 @@ export class MasterDashboardService {
   /**
    * Get aggregated metrics for all sites in workspace.
    * Uses master_dashboard_cagg continuous aggregate for performance.
+   * Returns data with cache metadata for UI freshness indicators.
+   *
+   * @param workspaceId - Workspace UUID
+   * @param filters - Dashboard filters (date range, comparison, tags, sites)
+   * @param options - Optional cache behavior settings
    */
   async getAggregatedMetrics(
     workspaceId: string,
-    filters: DashboardFilters
-  ): Promise<DashboardAggregates> {
+    filters: DashboardFilters,
+    options: { skipCache?: boolean } = {}
+  ): Promise<CachedData<DashboardAggregates>> {
+    // Build cache key suffix from filters
+    const cacheKey = this.buildCacheKey(filters);
+
+    // Try cache first (unless skipCache is true)
+    if (!options.skipCache) {
+      const cached = await this.cache.get<DashboardAggregates>(
+        'dashboard',
+        workspaceId,
+        'all', // Workspace-level aggregation
+        cacheKey
+      );
+
+      if (cached && !cached.metadata.refreshAvailable) {
+        return cached;
+      }
+    }
+
     try {
       // 1. Calculate date ranges
       const { startDate, endDate } = filters.dateRange;
@@ -103,18 +138,33 @@ export class MasterDashboardService {
       );
 
       // 7. Assemble response with percentage changes
-      return this.assembleResponse(
+      const data = this.assembleResponseData(
         currentMetrics,
         comparisonMetrics,
         sparklines,
         siteTags,
         filters
       );
+
+      // 8. Cache the result with current timestamp as data freshness
+      const dataAsOf = new Date();
+      await this.cache.set(
+        'dashboard',
+        workspaceId,
+        'all',
+        data,
+        dataAsOf,
+        cacheKey
+      );
+
+      // 9. Return with metadata
+      return wrapWithMetadata(data, dataAsOf);
     } catch (error) {
-      console.error('[MasterDashboardService] getAggregatedMetrics failed:', {
+      logger.error('getAggregatedMetrics failed', error instanceof Error ? error : undefined, {
         method: 'getAggregatedMetrics',
-        params: { workspaceId, dateRange: filters.dateRange, comparison: filters.comparison },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        workspaceId,
+        dateRange: filters.dateRange,
+        comparison: filters.comparison,
       });
       throw new Error(`Failed to get aggregated metrics: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -160,7 +210,11 @@ export class MasterDashboardService {
   ): Promise<Map<string, Array<{ date: string; clicks: number }>>> {
     if (siteIds.length === 0) return new Map();
 
+    // Validate days parameter
+    const safeDays = this.validateDaysParam(days);
+
     try {
+      // Use parameterized interval multiplication instead of sql.raw()
       const query = sql`
         SELECT
           site_id,
@@ -168,7 +222,7 @@ export class MasterDashboardService {
           daily_clicks as clicks
         FROM master_dashboard_cagg
         WHERE site_id = ANY(${siteIds})
-          AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
+          AND bucket >= NOW() - (INTERVAL '1 day' * ${safeDays})
         ORDER BY site_id, bucket ASC
       `;
 
@@ -189,10 +243,10 @@ export class MasterDashboardService {
 
       return sparklineMap;
     } catch (error) {
-      console.error('[MasterDashboardService] getSitesSparklines failed:', {
+      logger.error('getSitesSparklines failed', error instanceof Error ? error : undefined, {
         method: 'getSitesSparklines',
-        params: { siteIdsCount: siteIds.length, days },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        siteIdsCount: siteIds.length,
+        days,
       });
       throw new Error(`Failed to get sparklines: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -205,14 +259,18 @@ export class MasterDashboardService {
     siteId: string,
     days: number
   ): Promise<Array<{ date: string; clicks: number }>> {
+    // Validate days parameter
+    const safeDays = this.validateDaysParam(days);
+
     try {
+      // Use parameterized interval multiplication instead of sql.raw()
       const query = sql`
         SELECT
           bucket::date as date,
           daily_clicks as clicks
         FROM master_dashboard_cagg
         WHERE site_id = ${siteId}
-          AND bucket >= NOW() - INTERVAL '${sql.raw(days.toString())} days'
+          AND bucket >= NOW() - (INTERVAL '1 day' * ${safeDays})
         ORDER BY bucket ASC
       `;
 
@@ -223,19 +281,33 @@ export class MasterDashboardService {
         clicks: Number(r.clicks),
       }));
     } catch (error) {
-      console.error('[MasterDashboardService] getSiteSparkline failed:', {
+      logger.error('getSiteSparkline failed', error instanceof Error ? error : undefined, {
         method: 'getSiteSparkline',
-        params: { siteId, days },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        siteId,
+        days,
       });
       throw new Error(`Failed to get site sparkline: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Assemble final response with percentage changes.
+   * Build cache key suffix from filters.
    */
-  private assembleResponse(
+  private buildCacheKey(filters: DashboardFilters): string {
+    const parts = [
+      filters.dateRange.startDate,
+      filters.dateRange.endDate,
+      filters.comparison ?? 'none',
+      filters.tags?.sort().join(',') ?? '',
+      filters.siteIds?.sort().join(',') ?? '',
+    ];
+    return parts.join(':');
+  }
+
+  /**
+   * Assemble final response data with percentage changes.
+   */
+  private assembleResponseData(
     currentMetrics: any,
     comparisonMetrics: any,
     sparklines: Map<string, Array<{ date: string; clicks: number }>>,
@@ -367,10 +439,25 @@ export class MasterDashboardService {
   }
 
   /**
-   * Return empty result structure.
+   * Validate and sanitize days parameter.
+   * Returns a safe positive integer within reasonable bounds.
    */
-  private emptyResult(dateRange: DateRange, comparisonPeriod: DateRange | null): DashboardAggregates {
-    return {
+  private validateDaysParam(days: number): number {
+    // Ensure it's a finite number
+    if (!Number.isFinite(days)) {
+      return 7; // Default fallback
+    }
+
+    // Convert to integer and clamp to reasonable range (1-365 days)
+    const safeDays = Math.floor(Math.abs(days));
+    return Math.max(1, Math.min(safeDays, 365));
+  }
+
+  /**
+   * Return empty result structure with metadata.
+   */
+  private emptyResult(dateRange: DateRange, comparisonPeriod: DateRange | null): CachedData<DashboardAggregates> {
+    const data: DashboardAggregates = {
       totals: {
         clicks: 0,
         impressions: 0,
@@ -390,6 +477,7 @@ export class MasterDashboardService {
         comparisonPeriod,
       },
     };
+    return wrapWithMetadata(data, new Date());
   }
 }
 

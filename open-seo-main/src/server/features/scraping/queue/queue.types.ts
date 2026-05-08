@@ -83,6 +83,12 @@ export interface ScrapeJobData {
     auditId?: string;
     /** Feature that initiated the job */
     featureContext?: "site_audit" | "competitor_spy" | "content_brief" | "serp_analysis" | "prospect_scrape" | "cache_warming";
+    /** Indicates this job was replayed from DLQ */
+    replayedFromDlq?: boolean;
+    /** Original DLQ job ID if replayed */
+    originalDlqJobId?: string;
+    /** Previous failure timestamp if replayed from DLQ */
+    previousFailedAt?: number;
   };
 }
 
@@ -145,7 +151,70 @@ export const SCRAPE_QUEUE_NAMES = {
   BACKGROUND: "scrape:background",
 } as const;
 
+/**
+ * Dead Letter Queue name (separate from main queues).
+ */
+export const DLQ_QUEUE_NAME = "scraping-dlq" as const;
+
 export type ScrapeQueueName = (typeof SCRAPE_QUEUE_NAMES)[keyof typeof SCRAPE_QUEUE_NAMES];
+
+/**
+ * All queue names including DLQ.
+ */
+export type AllQueueName = ScrapeQueueName | typeof DLQ_QUEUE_NAME;
+
+// =============================================================================
+// Dead Letter Queue Types
+// =============================================================================
+
+/**
+ * Data stored in DLQ for failed jobs.
+ */
+export interface DlqJobData {
+  /** Original job ID */
+  originalJobId: string;
+  /** Source queue where job failed */
+  sourceQueue: ScrapeQueueName;
+  /** Original job data */
+  jobData: ScrapeJobData;
+  /** Final error message */
+  error: string;
+  /** Error stack trace */
+  stackTrace?: string;
+  /** Number of attempts made before DLQ */
+  attemptsMade: number;
+  /** Timestamp when moved to DLQ */
+  failedAt: number;
+  /** History of all failures */
+  failureHistory: Array<{
+    error: string;
+    timestamp: number;
+    attemptNumber: number;
+  }>;
+}
+
+/**
+ * Result of adding a job to the DLQ.
+ */
+export interface DlqEnqueueResult {
+  dlqJobId: string;
+  originalJobId: string;
+  sourceQueue: string;
+}
+
+/**
+ * Status of a DLQ job.
+ */
+export interface DlqJobStatus {
+  dlqJobId: string;
+  originalJobId: string;
+  sourceQueue: string;
+  jobData: ScrapeJobData;
+  error: string;
+  attemptsMade: number;
+  failedAt: number;
+  replayedAt?: number;
+}
 
 /**
  * Queue configuration.

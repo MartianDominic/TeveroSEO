@@ -1,7 +1,6 @@
 /**
  * Admin Dashboard Routes
  * Phase 95-13: E2E Testing & Migration Rollout
- * Phase 95-14: Security & Authentication
  *
  * Provides admin endpoints for:
  * - Migration status and control
@@ -9,9 +8,9 @@
  * - Domain learning feedback monitoring
  * - Operational controls
  *
- * Security:
- * - All routes require SCRAPING_ADMIN_API_KEY via X-Admin-API-Key header
- * - All actions are audit logged
+ * Access Control:
+ * - GET endpoints: requireReadonly (monitoring access)
+ * - POST endpoints: requireAdmin (write access)
  */
 
 // @ts-expect-error - express may not be installed yet
@@ -22,8 +21,14 @@ import { domainLearningService } from '../DomainLearningService';
 import type { CacheWarmer, WarmingResult, WarmingProgress } from '../cache/CacheWarmer';
 import type { DomainFeedbackService } from '../DomainFeedback';
 import type { ScrapingFeature, MigrationState } from '../config';
-import { requireAdminAuth, type AdminRequest } from '../middleware/adminAuth';
-import { getAuditLogger, createAuditContext, type AuditEntry } from '../monitoring/AuditLogger';
+import { requireAdmin, requireReadonly } from '../middleware';
+import { cacheLogger } from '../logging';
+import {
+  expressScrapingCriticalRateLimit,
+  expressScrapingStateChangeRateLimit,
+  expressScrapingResourceIntensiveRateLimit,
+  expressScrapingGeneralAdminRateLimit,
+} from '../../../middleware/rate-limit';
 
 // =============================================================================
 // Types
@@ -137,20 +142,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   const { scrapingService, migrationRollout, cacheWarmer, feedbackService } = deps;
 
   // ===========================================================================
-  // Authentication - All admin routes require API key
-  // Phase 95-14: Security & Authentication
-  // ===========================================================================
-  router.use(requireAdminAuth);
-
-  // ===========================================================================
   // Migration Status Endpoints
   // ===========================================================================
 
   /**
    * GET /admin/migration/status
    * Get full migration status for all features.
+   * Access: readonly
    */
-  router.get('/migration/status', async (_req: Request, res: Response) => {
+  router.get('/migration/status', requireReadonly, async (_req: Request, res: Response) => {
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -194,8 +194,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * GET /admin/migration/:feature/ready
    * Check if a feature is ready to advance to next state.
+   * Access: readonly
    */
-  router.get('/migration/:feature/ready', async (req: Request, res: Response) => {
+  router.get('/migration/:feature/ready', requireReadonly, async (req: Request, res: Response) => {
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -235,14 +236,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/migration/:feature/advance
    * Advance a feature to the next migration state.
+   * Access: admin
+   * Rate limit: 5 req/min (state change)
    */
-  router.post('/migration/:feature/advance', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const feature = req.params.feature as ScrapingFeature;
-    const { force = false, reason } = req.body;
-
+  router.post('/migration/:feature/advance', expressScrapingStateChangeRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -250,6 +247,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       });
       return;
     }
+
+    const feature = req.params.feature as ScrapingFeature;
+    const { force = false, reason } = req.body;
 
     try {
       // First check readiness unless forced
@@ -271,15 +271,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       const result = await migrationRollout.advanceFeature(feature);
 
       if (result.success) {
-        await auditLogger.log({
-          action: 'migration_advance',
-          actor,
-          target: { type: 'migration', id: feature },
-          parameters: { fromState: result.previousState, toState: result.newState, forced: force, reason },
-          result: 'success',
-          durationMs: Date.now() - startTime,
-        });
-
         res.json({
           success: true,
           feature,
@@ -290,16 +281,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
           timestamp: new Date().toISOString(),
         });
       } else {
-        await auditLogger.log({
-          action: 'migration_advance',
-          actor,
-          target: { type: 'migration', id: feature },
-          parameters: { forced: force, reason },
-          result: 'failure',
-          errorMessage: result.message,
-          durationMs: Date.now() - startTime,
-        });
-
         res.status(400).json({
           success: false,
           feature,
@@ -309,16 +290,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         });
       }
     } catch (error) {
-      await auditLogger.log({
-        action: 'migration_advance',
-        actor,
-        target: { type: 'migration', id: feature },
-        parameters: { forced: force, reason },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         feature,
@@ -330,14 +301,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/migration/:feature/rollback
    * Rollback a feature to a previous migration state.
+   * Access: admin
+   * Rate limit: 5 req/min (state change)
    */
-  router.post('/migration/:feature/rollback', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-    const feature = req.params.feature as ScrapingFeature;
-    const { targetState, reason } = req.body;
-
+  router.post('/migration/:feature/rollback', expressScrapingStateChangeRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -346,19 +313,13 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       return;
     }
 
+    const feature = req.params.feature as ScrapingFeature;
+    const { targetState, reason } = req.body;
+
     try {
       const result = await migrationRollout.rollbackFeature(feature, reason);
 
       if (result.success) {
-        await auditLogger.log({
-          action: 'migration_rollback',
-          actor,
-          target: { type: 'migration', id: feature },
-          parameters: { fromState: result.previousState, toState: result.newState, reason },
-          result: 'success',
-          durationMs: Date.now() - startTime,
-        });
-
         res.json({
           success: true,
           feature,
@@ -368,16 +329,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
           timestamp: new Date().toISOString(),
         });
       } else {
-        await auditLogger.log({
-          action: 'migration_rollback',
-          actor,
-          target: { type: 'migration', id: feature },
-          parameters: { reason },
-          result: 'failure',
-          errorMessage: result.reason,
-          durationMs: Date.now() - startTime,
-        });
-
         res.status(400).json({
           success: false,
           feature,
@@ -387,16 +338,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         });
       }
     } catch (error) {
-      await auditLogger.log({
-        action: 'migration_rollback',
-        actor,
-        target: { type: 'migration', id: feature },
-        parameters: { reason },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         feature,
@@ -412,12 +353,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/cache/warm
    * Warm cache with provided URLs.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/cache/warm', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-
+  router.post('/cache/warm', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!cacheWarmer) {
       res.status(503).json({
         error: 'Cache warmer service not available',
@@ -453,20 +392,11 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         clientId,
         onProgress: (progress: WarmingProgress) => {
           // Progress is logged server-side, not sent to client
-          console.info(
-            `[CacheWarmer] Progress: ${progress.warmed}/${progress.total} warmed, ` +
-            `${progress.alreadyCached} cached, ${progress.failed} failed`
+          cacheLogger.info(
+            { warmed: progress.warmed, total: progress.total, cached: progress.alreadyCached, failed: progress.failed },
+            "Cache warming progress"
           );
         },
-      });
-
-      await auditLogger.log({
-        action: 'cache_warm',
-        actor,
-        target: { type: 'cache', id: 'urls' },
-        parameters: { urlCount: urls.length, priority, concurrency, clientId },
-        result: 'success',
-        durationMs: Date.now() - startTime,
       });
 
       res.json({
@@ -475,16 +405,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'cache_warm',
-        actor,
-        target: { type: 'cache', id: 'urls' },
-        parameters: { urlCount: urls.length, priority, concurrency, clientId },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -495,8 +415,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/cache/warm-audit/:auditId
    * Warm cache for all URLs in an audit job.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/cache/warm-audit/:auditId', async (req: Request, res: Response) => {
+  router.post('/cache/warm-audit/:auditId', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!cacheWarmer) {
       res.status(503).json({
         error: 'Cache warmer service not available',
@@ -537,8 +459,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/cache/warm-sitemap
    * Warm cache from a sitemap URL.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/cache/warm-sitemap', async (req: Request, res: Response) => {
+  router.post('/cache/warm-sitemap', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!cacheWarmer) {
       res.status(503).json({
         error: 'Cache warmer service not available',
@@ -581,8 +505,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/cache/warm-domain
    * Intelligent cache warming for a domain.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/cache/warm-domain', async (req: Request, res: Response) => {
+  router.post('/cache/warm-domain', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     if (!cacheWarmer) {
       res.status(503).json({
         error: 'Cache warmer service not available',
@@ -629,8 +555,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * GET /admin/feedback/status
    * Get current feedback buffer status.
+   * Access: readonly
    */
-  router.get('/feedback/status', (_req: Request, res: Response) => {
+  router.get('/feedback/status', requireReadonly, (_req: Request, res: Response) => {
     if (!feedbackService) {
       res.status(503).json({
         error: 'Feedback service not available',
@@ -658,12 +585,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/feedback/flush
    * Manually flush feedback buffer.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/feedback/flush', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-
+  router.post('/feedback/flush', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (_req: Request, res: Response) => {
     if (!feedbackService) {
       res.status(503).json({
         error: 'Feedback service not available',
@@ -675,29 +600,12 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
     try {
       const result = await feedbackService.flush();
 
-      await auditLogger.log({
-        action: 'feedback_flush',
-        actor,
-        target: { type: 'feedback', id: 'buffer' },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({
         success: true,
         ...result,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'feedback_flush',
-        actor,
-        target: { type: 'feedback', id: 'buffer' },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -708,12 +616,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/feedback/clear
    * Clear feedback buffer without processing.
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/feedback/clear', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
-
+  router.post('/feedback/clear', expressScrapingResourceIntensiveRateLimit, requireAdmin, (_req: Request, res: Response) => {
     if (!feedbackService) {
       res.status(503).json({
         error: 'Feedback service not available',
@@ -727,15 +633,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       feedbackService.clearBuffer();
       const afterSize = feedbackService.getBufferSize();
 
-      await auditLogger.log({
-        action: 'feedback_clear',
-        actor,
-        target: { type: 'feedback', id: 'buffer' },
-        parameters: { clearedDomains: beforeSize.domains, clearedFeedback: beforeSize.totalFeedback },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({
         success: true,
         cleared: {
@@ -746,15 +643,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'feedback_clear',
-        actor,
-        target: { type: 'feedback', id: 'buffer' },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -769,8 +657,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * GET /admin/domains/:domain/config
    * Get domain scrape configuration.
+   * Access: readonly
    */
-  router.get('/domains/:domain/config', async (req: Request, res: Response) => {
+  router.get('/domains/:domain/config', requireReadonly, async (req: Request, res: Response) => {
     const { domain } = req.params;
 
     try {
@@ -803,26 +692,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/domains/:domain/reset
    * Reset domain configuration to default (invalidate cache to trigger re-discovery).
+   * Access: admin
+   * Rate limit: 10 req/min (resource intensive)
    */
-  router.post('/domains/:domain/reset', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
+  router.post('/domains/:domain/reset', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
     const { domain } = req.params;
     const { reason } = req.body;
 
     try {
       // Invalidate cache forces re-discovery on next request
       await domainLearningService.invalidateCache(domain);
-
-      await auditLogger.log({
-        action: 'domain_reset',
-        actor,
-        target: { type: 'domain', id: domain },
-        parameters: { reason },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
 
       res.json({
         success: true,
@@ -832,16 +711,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'domain_reset',
-        actor,
-        target: { type: 'domain', id: domain },
-        parameters: { reason },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         domain,
@@ -857,8 +726,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * GET /admin/system/status
    * Get comprehensive system status.
+   * Access: readonly
    */
-  router.get('/system/status', async (_req: Request, res: Response) => {
+  router.get('/system/status', requireReadonly, async (_req: Request, res: Response) => {
     try {
       const [health, metrics, circuitStates, queueStats] = await Promise.all([
         scrapingService.healthCheck(),
@@ -914,11 +784,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/system/emergency-stop
    * Emergency stop all scraping operations.
+   * Access: admin
+   * Rate limit: 2 req/min (critical operation)
    */
-  router.post('/system/emergency-stop', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
+  router.post('/system/emergency-stop', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
     const { reason } = req.body;
 
     try {
@@ -929,14 +798,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         feedbackService.stop();
       }
 
-      await auditLogger.log({
-        action: 'emergency_stop',
-        actor,
-        parameters: { reason },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({
         success: true,
         message: 'All scraping operations stopped',
@@ -944,15 +805,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'emergency_stop',
-        actor,
-        parameters: { reason },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -963,11 +815,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
   /**
    * POST /admin/system/resume
    * Resume scraping operations after emergency stop.
+   * Access: admin
+   * Rate limit: 2 req/min (critical operation)
    */
-  router.post('/system/resume', async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const auditLogger = getAuditLogger();
-    const actor = createAuditContext(req);
+  router.post('/system/resume', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
     const { reason } = req.body;
 
     try {
@@ -978,14 +829,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         feedbackService.startAutoFlush();
       }
 
-      await auditLogger.log({
-        action: 'resume',
-        actor,
-        parameters: { reason },
-        result: 'success',
-        durationMs: Date.now() - startTime,
-      });
-
       res.json({
         success: true,
         message: 'Scraping operations resumed',
@@ -993,15 +836,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      await auditLogger.log({
-        action: 'resume',
-        actor,
-        parameters: { reason },
-        result: 'failure',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        durationMs: Date.now() - startTime,
-      });
-
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),

@@ -19,7 +19,8 @@ import {
   initScheduleQueue,
   type ScheduleJobData,
 } from "@/server/queues/scheduleQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// QUEUE-03 FIX: Use DB-based DLQ instead of Redis streams
+import { moveToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const workerLogger = createLogger({ module: "schedule-worker" });
 
@@ -82,20 +83,23 @@ export async function startScheduleWorker(): Promise<
         maxAttempts,
       });
 
-      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      // QUEUE-03 FIX: Use DB-based DLQ instead of Redis streams
       if (job.attemptsMade >= maxAttempts) {
         try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: SCHEDULE_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
+          await moveToDeadLetter({
+            jobId: job.id ?? `unknown-${Date.now()}`,
+            queue: SCHEDULE_QUEUE_NAME,
+            jobName: job.name,
+            data: job.data,
             error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${SCHEDULE_QUEUE_NAME}:${job.id}`, dlqData);
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
+            stackTrace: err.stack,
+            retryCount: job.attemptsMade,
+            metadata: {
+              lastAttemptAt: new Date().toISOString(),
+              originalTimestamp: job.timestamp ? new Date(job.timestamp).toISOString() : undefined,
+            },
+          });
+          jobLogger.info("Job moved to DB-based DLQ", { attemptsMade: job.attemptsMade });
         } catch (dlqErr) {
           jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
         }

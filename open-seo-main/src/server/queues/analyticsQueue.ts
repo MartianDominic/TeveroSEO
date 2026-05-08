@@ -96,11 +96,18 @@ export const analyticsQueue = new Queue<
  * Initialize the nightly analytics sync scheduler.
  * Uses upsertJobScheduler for idempotent cron setup.
  * Call once on worker startup.
+ *
+ * SCRAPE-02/SCRAPE-03 FIX: Moved from 2:00 AM to 3:00 AM to stagger with GSC sync.
+ * GSC sync runs at 2:15 AM, GA4 sync at 2:30 AM, trend calculation at 2:45 AM.
+ * This master job fans out to per-client jobs.
+ *
+ * NOTE: This scheduler is now managed by the centralized queue-scheduler.ts.
+ * This function is kept for backward compatibility but defers to the central scheduler.
  */
 export async function initAnalyticsScheduler(): Promise<void> {
   await analyticsQueue.upsertJobScheduler(
     "nightly-analytics-sync",
-    { pattern: "0 2 * * *" }, // 02:00 UTC daily
+    { pattern: "0 3 * * *" }, // 03:00 UTC daily (SCRAPE-03 fix: staggered from 2 AM)
     {
       name: "sync-all-clients",
       data: { mode: "incremental" },
@@ -110,7 +117,7 @@ export async function initAnalyticsScheduler(): Promise<void> {
       },
     },
   );
-  log.info("Nightly scheduler initialized", { schedule: "02:00 UTC" });
+  log.info("Nightly scheduler initialized", { schedule: "03:00 UTC" });
 }
 
 /**

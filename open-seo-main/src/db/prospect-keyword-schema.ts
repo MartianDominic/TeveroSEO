@@ -43,6 +43,7 @@ export const KEYWORD_TIERS = [
   "should_do", // 0.50-0.749
   "nice_to_have", // 0.25-0.499
   "ignore", // < 0.25
+  "excluded", // Geo-filtered or otherwise excluded
 ] as const;
 export type KeywordTier = (typeof KEYWORD_TIERS)[number];
 

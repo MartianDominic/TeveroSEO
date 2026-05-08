@@ -120,6 +120,31 @@ export const migrationLogger = logger.child({ component: 'migration' });
 export const circuitLogger = logger.child({ component: 'circuit' });
 
 /**
+ * Logger for CamoufoxPool operations.
+ */
+export const camoufoxLogger = logger.child({ component: 'camoufox' });
+
+/**
+ * Logger for CrUX/PSI clients.
+ */
+export const cruxLogger = logger.child({ component: 'crux' });
+
+/**
+ * Logger for RetentionManager operations.
+ */
+export const retentionLogger = logger.child({ component: 'retention' });
+
+/**
+ * Logger for worker operations.
+ */
+export const workerLogger = logger.child({ component: 'worker' });
+
+/**
+ * Logger for DataForSEO budget operations.
+ */
+export const dfsBudgetLogger = logger.child({ component: 'dfs-budget' });
+
+/**
  * Create a child logger for a specific component.
  * Use this for custom components not covered by the predefined loggers.
  */

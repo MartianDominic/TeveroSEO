@@ -17,6 +17,7 @@ import {
 import { scrapingService, type ScrapeOptions, type ScrapeResult } from "../ScrapingService";
 import { runShadow, runShadowAsync } from "./shadow-runner";
 import { compareSingleScrape } from "./comparators";
+import { migrationLogger } from "../logging";
 import type { ConsumerAdapter } from "./adapters/types";
 
 // =============================================================================
@@ -39,22 +40,33 @@ export type ResultTransformer<TLegacy, TNew> = {
 
 /**
  * Options for routing a request.
+ * Supports two patterns:
+ * 1. Standard: url + transformer (explicit transformers)
+ * 2. Adapter: input + adapter (adapter handles transformations)
  */
-export interface RouteOptions<TLegacyResult> {
+export interface RouteOptions<TLegacyResult, TInput = unknown> {
   /** The feature making the request */
   feature: ScrapingFeature;
-  /** URL to scrape */
-  url: string;
   /** Legacy scraper function */
   legacyFn: () => Promise<TLegacyResult>;
-  /** Options passed to ScrapingService */
-  scrapeOptions?: ScrapeOptions;
-  /** Transform functions between legacy and new result formats */
-  transformer: ResultTransformer<TLegacyResult, ScrapeResult>;
-  /** Comparison function for shadow mode */
-  compareFn?: (legacy: TLegacyResult, newResult: TLegacyResult) => { match: boolean; differences: string[] };
   /** Run shadow in non-blocking mode */
   asyncShadow?: boolean;
+
+  // Standard pattern (url + transformer)
+  /** URL to scrape (standard pattern) */
+  url?: string;
+  /** Options passed to ScrapingService (standard pattern) */
+  scrapeOptions?: ScrapeOptions;
+  /** Transform functions between legacy and new result formats (standard pattern) */
+  transformer?: ResultTransformer<TLegacyResult, ScrapeResult>;
+  /** Comparison function for shadow mode (standard pattern) */
+  compareFn?: (legacy: TLegacyResult, newResult: TLegacyResult) => { match: boolean; differences: string[] };
+
+  // Adapter pattern (input + adapter)
+  /** Input data for adapter (adapter pattern) */
+  input?: TInput;
+  /** Consumer adapter for transformations (adapter pattern) */
+  adapter?: ConsumerAdapter<TInput, TLegacyResult>;
 }
 
 // =============================================================================
@@ -62,41 +74,63 @@ export interface RouteOptions<TLegacyResult> {
 // =============================================================================
 
 /**
- * Route a request using a ConsumerAdapter.
- * Simplified API that wraps the adapter's methods into the RouteOptions format.
+ * Resolved options for internal routing functions.
+ * Always has url, scrapeOptions, and transformer resolved from either pattern.
  */
-export async function routeRequest<TInput, TOutput>(params: {
+interface ResolvedRouteOptions<TLegacyResult> {
   feature: ScrapingFeature;
-  input: TInput;
-  legacyFn: () => Promise<TOutput>;
-  adapter: ConsumerAdapter<TInput, TOutput>;
-}): Promise<TOutput> {
-  const { feature, input, legacyFn, adapter } = params;
-  const scrapeOptions = adapter.toScrapeOptions(input);
+  url: string;
+  legacyFn: () => Promise<TLegacyResult>;
+  scrapeOptions: ScrapeOptions;
+  transformer: ResultTransformer<TLegacyResult, ScrapeResult>;
+  compareFn?: (legacy: TLegacyResult, newResult: TLegacyResult) => { match: boolean; differences: string[] };
+  asyncShadow?: boolean;
+}
 
-  // Convert ConsumerAdapter to RouteOptions format
-  const routeOptions: RouteOptions<TOutput> = {
-    feature,
-    url: scrapeOptions.url,
-    legacyFn,
-    scrapeOptions,
-    transformer: {
-      legacyToNew: () => {
-        // Not used in this flow - adapter handles conversion
-        throw new Error("legacyToNew not implemented for ConsumerAdapter");
+/**
+ * Resolve RouteOptions to always have url, scrapeOptions, and transformer.
+ * Handles both standard pattern (url + transformer) and adapter pattern (input + adapter).
+ */
+function resolveOptions<TLegacyResult, TInput>(
+  options: RouteOptions<TLegacyResult, TInput>
+): ResolvedRouteOptions<TLegacyResult> {
+  const { feature, legacyFn, asyncShadow, compareFn } = options;
+
+  if (options.adapter && options.input !== undefined) {
+    const { adapter, input } = options;
+    const scrapeOpts = adapter.toScrapeOptions(input);
+    const { url, ...restOpts } = scrapeOpts;
+
+    return {
+      feature,
+      url,
+      legacyFn,
+      scrapeOptions: restOpts,
+      transformer: {
+        legacyToNew: (legacy) => legacy as unknown as ScrapeResult,
+        newToLegacy: (newResult) => adapter.toConsumerOutput(newResult, input),
       },
-      newToLegacy: (result: ScrapeResult) => adapter.toConsumerOutput(result, input),
-    },
-    compareFn: (legacy: TOutput, adapted: TOutput) => {
-      const comparison = adapter.compareOutputs(legacy, adapted);
-      return {
-        match: comparison.match,
-        differences: comparison.differences.map(d => `${d.field}: ${d.legacy} vs ${d.new}`),
-      };
-    },
-  };
+      compareFn: compareFn ?? ((legacy, adapted) => {
+        const result = adapter.compareOutputs(legacy, adapted);
+        return { match: result.match, differences: result.differences.map(d => d.field) };
+      }),
+      asyncShadow,
+    };
+  }
 
-  return routeRequestInternal(routeOptions);
+  if (!options.url || !options.transformer) {
+    throw new Error('RouteOptions must have either (url + transformer) or (input + adapter)');
+  }
+
+  return {
+    feature,
+    url: options.url,
+    legacyFn,
+    scrapeOptions: options.scrapeOptions ?? {},
+    transformer: options.transformer,
+    compareFn,
+    asyncShadow,
+  };
 }
 
 /**
@@ -107,7 +141,7 @@ export async function routeRequest<TInput, TOutput>(params: {
  *
  * @example
  * ```typescript
- * const result = await routeRequestInternal({
+ * const result = await routeRequest({
  *   feature: 'prospectAnalysis',
  *   url: 'https://example.com',
  *   legacyFn: () => scrapeWithDataForSEO(url),
@@ -120,8 +154,8 @@ export async function routeRequest<TInput, TOutput>(params: {
  * });
  * ```
  */
-export async function routeRequestInternal<TLegacyResult>(
-  options: RouteOptions<TLegacyResult>
+export async function routeRequest<TLegacyResult, TInput = unknown>(
+  options: RouteOptions<TLegacyResult, TInput>
 ): Promise<TLegacyResult> {
   const flags = loadMigrationFlagsCached();
   const state = flags[options.feature];
@@ -131,21 +165,29 @@ export async function routeRequestInternal<TLegacyResult>(
     case "legacy":
       return options.legacyFn();
 
-    case "shadow":
-      return runShadowMode(options);
+    case "shadow": {
+      const resolved = resolveOptions(options);
+      return runShadowMode(resolved);
+    }
 
-    case "canary":
-      return runCanaryMode(options);
+    case "canary": {
+      const resolved = resolveOptions(options);
+      return runCanaryMode(resolved);
+    }
 
-    case "rollout":
-      return runRolloutMode(options);
+    case "rollout": {
+      const resolved = resolveOptions(options);
+      return runRolloutMode(resolved);
+    }
 
-    case "migrated":
-      return runMigratedMode(options);
+    case "migrated": {
+      const resolved = resolveOptions(options);
+      return runMigratedMode(resolved);
+    }
 
     default:
       // Fallback to legacy for unknown states
-      console.warn(`[MigrationRouter] Unknown state "${state}" for ${options.feature}, using legacy`);
+      migrationLogger.warn({ feature: options.feature, state }, 'Unknown migration state, using legacy');
       return options.legacyFn();
   }
 }
@@ -154,7 +196,7 @@ export async function routeRequestInternal<TLegacyResult>(
  * Run in shadow mode: both implementations, return legacy.
  */
 async function runShadowMode<TLegacyResult>(
-  options: RouteOptions<TLegacyResult>
+  options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
   const { feature, url, legacyFn, scrapeOptions, transformer, compareFn, asyncShadow } = options;
 
@@ -167,7 +209,6 @@ async function runShadowMode<TLegacyResult>(
   };
 
   const defaultCompareFn = (legacy: TLegacyResult, newResult: TLegacyResult) => {
-    // Default comparison: convert both to ScrapeResult and compare
     const legacyConverted = transformer.legacyToNew(legacy);
     const newConverted = transformer.legacyToNew(newResult);
     return compareSingleScrape(legacyConverted, newConverted);
@@ -186,12 +227,11 @@ async function runShadowMode<TLegacyResult>(
  * Run in canary mode: 10% new, 90% legacy.
  */
 async function runCanaryMode<TLegacyResult>(
-  options: RouteOptions<TLegacyResult>
+  options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
   const { feature, url, legacyFn, scrapeOptions, transformer } = options;
 
   if (shouldUseNewForCanary()) {
-    // Use new implementation (10% of requests)
     try {
       const newResult = await scrapingService.scrape(url, {
         ...scrapeOptions,
@@ -199,14 +239,13 @@ async function runCanaryMode<TLegacyResult>(
       });
       return transformer.newToLegacy(newResult);
     } catch (error) {
-      // Fallback to legacy on error
-      console.warn(`[MigrationRouter] Canary failed for ${feature}, falling back to legacy:`, error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      migrationLogger.warn({ feature, error: err.message }, 'Canary failed, falling back to legacy');
       scrapingService.recordFallback();
       return legacyFn();
     }
   }
 
-  // Use legacy implementation (90% of requests)
   return legacyFn();
 }
 
@@ -214,7 +253,7 @@ async function runCanaryMode<TLegacyResult>(
  * Run in rollout mode: 100% new with legacy fallback.
  */
 async function runRolloutMode<TLegacyResult>(
-  options: RouteOptions<TLegacyResult>
+  options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
   const { feature, url, legacyFn, scrapeOptions, transformer } = options;
 
@@ -225,8 +264,8 @@ async function runRolloutMode<TLegacyResult>(
     });
     return transformer.newToLegacy(newResult);
   } catch (error) {
-    // Fallback to legacy on error
-    console.warn(`[MigrationRouter] Rollout failed for ${feature}, falling back to legacy:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    migrationLogger.warn({ feature, error: err.message }, 'Rollout failed, falling back to legacy');
     scrapingService.recordFallback();
     return legacyFn();
   }
@@ -236,7 +275,7 @@ async function runRolloutMode<TLegacyResult>(
  * Run in migrated mode: new only, no fallback.
  */
 async function runMigratedMode<TLegacyResult>(
-  options: RouteOptions<TLegacyResult>
+  options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
   const { feature, url, scrapeOptions, transformer } = options;
 
@@ -293,7 +332,8 @@ export async function routeBatchRequest<TLegacyResult>(
       return legacyResults;
     } catch (error) {
       if (hasLegacyFallback(state)) {
-        console.warn(`[MigrationRouter] Batch ${options.feature} failed, falling back to legacy:`, error);
+        const err = error instanceof Error ? error : new Error(String(error));
+        migrationLogger.warn({ feature: options.feature, error: err.message }, 'Batch failed, falling back to legacy');
         scrapingService.recordFallback();
         return options.legacyBatchFn(options.urls);
       }

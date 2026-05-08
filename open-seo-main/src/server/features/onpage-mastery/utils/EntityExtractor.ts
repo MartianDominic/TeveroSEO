@@ -18,6 +18,12 @@ import dates from "compromise-dates";
 // Extend nlp with dates plugin
 nlp.plugin(dates);
 
+// Type for the extended nlp document with dates plugin
+// The dates plugin adds dates(), times(), and durations() methods
+type NlpDocWithDates = ReturnType<typeof nlp> & {
+  dates(): ReturnType<typeof nlp>;
+};
+
 /**
  * Extracted entities from text
  */
@@ -61,7 +67,7 @@ export function extractEntities(text: string): ExtractedEntities {
     };
   }
 
-  const doc = nlp(text);
+  const doc = nlp(text) as NlpDocWithDates;
 
   // Extract people names
   const people = doc
@@ -84,16 +90,16 @@ export function extractEntities(text: string): ExtractedEntities {
     .map((o: string) => cleanEntity(o))
     .filter((o: string) => o.length > 0);
 
-  // Extract dates using compromise's date detection
+  // Extract dates using compromise-dates plugin
   const extractedDates = doc
     .dates()
     .out("array")
     .map((d: string) => cleanEntity(d))
     .filter((d: string) => d.length > 0);
 
-  // Extract numbers/values
+  // Extract numbers (values() is an alias for numbers())
   const numbers = doc
-    .values()
+    .numbers()
     .out("array")
     .map((n: string) => cleanEntity(n))
     .filter((n: string) => n.length > 0);

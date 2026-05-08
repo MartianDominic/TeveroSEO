@@ -21,14 +21,20 @@ export type {
 export { LinkApplyService } from "./services/LinkApplyService";
 export type { ApplyResult, ConnectionService } from "./services/LinkApplyService";
 
+// Re-export unified CannibalizationService from analytics module
+// Phase 35 service is now unified with Phase 96 in analytics/services/CannibalizationService.ts
 export {
   CannibalizationService,
+  getCannibalizationService,
   detectKeywordCannibalization,
-} from "./services/CannibalizationService";
+  isTargetCannibalized,
+} from "@/server/features/analytics/services/CannibalizationService";
 export type {
   CannibalizationIssue,
-  CannibalizationResult,
-} from "./services/CannibalizationService";
+  DetectionResult as CannibalizationResult,
+  DetectionOptions,
+  CannibalizingPage,
+} from "@/server/features/analytics/services/CannibalizationService";
 
 // Repositories
 export { LinkRepository, createLinkRepository } from "./repositories/LinkRepository";

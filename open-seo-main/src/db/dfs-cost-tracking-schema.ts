@@ -38,21 +38,32 @@ export const DFS_QUEUE_TYPES = ["standard", "live"] as const;
 export type DfsQueueType = (typeof DFS_QUEUE_TYPES)[number];
 
 /**
+ * Import centralized pricing from single source of truth.
+ * See: src/server/features/scraping/cost/dfs-pricing.ts
+ */
+import {
+  DFS_STANDARD_COSTS as CENTRAL_STANDARD_COSTS,
+  DFS_LIVE_COSTS as CENTRAL_LIVE_COSTS,
+} from "@/server/features/scraping/cost";
+
+/**
  * Cost per page by mode (Standard Queue pricing).
+ * Imported from centralized pricing constants.
  */
 export const DFS_STANDARD_COSTS: Record<DfsMode, number> = {
-  basic: 0.0005,   // Standard Queue basic
-  js: 0.00125,     // Standard Queue with JS
-  browser: 0.00425, // Standard Queue browser
+  basic: CENTRAL_STANDARD_COSTS.basic,
+  js: CENTRAL_STANDARD_COSTS.js,
+  browser: CENTRAL_STANDARD_COSTS.browser,
 };
 
 /**
  * Cost per page by mode (Live API pricing).
+ * Imported from centralized pricing constants.
  */
 export const DFS_LIVE_COSTS: Record<DfsMode, number> = {
-  basic: 0.000125,  // Live basic (cheaper for single immediate requests)
-  js: 0.00125,      // Live JS
-  browser: 0.00425, // Live browser
+  basic: CENTRAL_LIVE_COSTS.basic,
+  js: CENTRAL_LIVE_COSTS.js,
+  browser: CENTRAL_LIVE_COSTS.browser,
 };
 
 // =============================================================================

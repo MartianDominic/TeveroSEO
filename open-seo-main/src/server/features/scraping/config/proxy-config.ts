@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { createComponentLogger } from "../logging";
 
 // =============================================================================
 // Geonode Configuration Schema
@@ -147,11 +148,15 @@ export function loadProxyConfig(): ProxyConfig {
     } catch (error) {
       if (process.env.NODE_ENV === "production") {
         // In production, log error but don't crash
-        console.error(
-          "[ProxyConfig] Invalid Geonode configuration:",
-          error instanceof z.ZodError
-            ? error.issues.map((e) => `${e.path.join(".")}: ${e.message}`)
-            : error
+        const proxyConfigLogger = createComponentLogger("proxy-config");
+        proxyConfigLogger.error(
+          {
+            error: error instanceof Error ? error.message : String(error),
+            issues: error instanceof z.ZodError
+              ? error.issues.map((e) => `${e.path.join(".")}: ${e.message}`)
+              : undefined,
+          },
+          "Invalid Geonode configuration"
         );
       }
       // In development, allow missing config

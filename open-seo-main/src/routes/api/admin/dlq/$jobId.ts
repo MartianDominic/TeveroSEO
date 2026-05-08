@@ -6,9 +6,11 @@
  * SECURITY: Protected by X-Internal-Api-Key header + rate limiting.
  * These endpoints are NOT exposed to public - internal network only.
  * Phase 72-03: Added 10 req/min rate limit per user.
+ * Phase 95: Added Zod validation for path parameters (P1.G8).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { timingSafeEqual } from "crypto";
+import { z } from "zod";
 import { createLogger } from "@/server/lib/logger";
 import {
   adminRateLimiter,
@@ -20,6 +22,47 @@ import {
   type AnalyticsSyncJobData,
   type SyncAllClientsJobData,
 } from "@/server/queues/analyticsQueue";
+
+// --------------------------------------------------------------------------
+// Zod Schemas for Input Validation (P1.G8)
+// --------------------------------------------------------------------------
+
+/**
+ * Path parameter schema for job ID.
+ * BullMQ job IDs are strings, typically numeric or prefixed (e.g., "dlq:123").
+ * Validates format and prevents injection by limiting characters and length.
+ */
+const jobIdParamSchema = z.object({
+  jobId: z
+    .string()
+    .min(1, "Job ID is required")
+    .max(256, "Job ID too long")
+    .regex(
+      /^[a-zA-Z0-9_:\-]+$/,
+      "Job ID contains invalid characters (allowed: alphanumeric, underscore, colon, hyphen)"
+    ),
+});
+
+/**
+ * Create a standardized validation error response.
+ * Hides internal details while providing useful feedback.
+ */
+function validationErrorResponse(error: z.ZodError): Response {
+  // Zod 4 uses .issues instead of .errors
+  const sanitizedErrors = error.issues.map((e) => ({
+    field: e.path.join(".") || "params",
+    message: e.message,
+  }));
+
+  return Response.json(
+    {
+      success: false,
+      error: "Validation failed",
+      details: sanitizedErrors,
+    },
+    { status: 400, headers: { "Content-Type": "application/json" } },
+  );
+}
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
@@ -84,6 +127,7 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        * Note: TanStack Start routes the POST to this handler, and we check
        * for /replay suffix in the URL to differentiate from other POST actions.
        * Rate limited: 10 req/min per user (72-03).
+       * Phase 95: Added path parameter validation (P1.G8).
        */
       POST: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
         if (!verifyInternalApiKey(request)) {
@@ -100,7 +144,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
           return rateLimitExceededResponse(rateLimitResult);
         }
 
-        const { jobId } = params;
+        // Validate path parameters (P1.G8)
+        const paramsResult = jobIdParamSchema.safeParse(params);
+        if (!paramsResult.success) {
+          return validationErrorResponse(paramsResult.error);
+        }
+
+        const { jobId } = paramsResult.data;
 
         try {
           const job = await analyticsQueue.getJob(jobId);
@@ -164,6 +214,7 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
        * Permanently removes the job from the DLQ.
        * Use when a job should not be retried (e.g., invalid data, obsolete).
        * Rate limited: 10 req/min per user (72-03).
+       * Phase 95: Added path parameter validation (P1.G8).
        */
       DELETE: async ({ request, params }: { request: Request; params: { jobId: string } }) => {
         if (!verifyInternalApiKey(request)) {
@@ -180,7 +231,13 @@ export const Route = createFileRoute("/api/admin/dlq/$jobId")({
           return rateLimitExceededResponse(rateLimitResult);
         }
 
-        const { jobId } = params;
+        // Validate path parameters (P1.G8)
+        const paramsResult = jobIdParamSchema.safeParse(params);
+        if (!paramsResult.success) {
+          return validationErrorResponse(paramsResult.error);
+        }
+
+        const { jobId } = paramsResult.data;
 
         try {
           const job = await analyticsQueue.getJob(jobId);

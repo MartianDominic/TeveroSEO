@@ -1,6 +1,6 @@
 import type { WorkflowStep } from "@/server/workflows/workflow-types";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
-import { discoverUrls, fetchRobotsTxt, type DiscoveryCostOptions } from "@/server/lib/audit/discovery";
+import { discoverUrls, fetchRobotsTxt } from "@/server/lib/audit/discovery";
 import {
   fetchAndStoreLighthouseResult,
   selectLighthouseSample,
@@ -17,9 +17,13 @@ import type {
 import type { SiteContext } from "@/server/lib/audit/checks/types";
 import { captureServerEvent } from "@/server/lib/posthog";
 import { runCrawlPhase, type CrawlPhaseResult } from "@/server/workflows/siteAuditWorkflowCrawl";
-import { runTier2Checks, runTier3Checks, runTier4Checks } from "@/server/lib/audit/checks/runner";
+import { runTier2Checks, runTier3Checks, runTier4Checks, runTier5ChecksWithContext } from "@/server/lib/audit/checks/runner";
 import { FindingsRepository } from "@/server/features/audit/repositories/FindingsRepository";
 import { createLogger } from "@/server/lib/logger";
+import { getVerticalClassifierService } from "@/server/features/onpage-mastery/services/VerticalClassifier";
+import { getQualityGateService } from "@/server/features/onpage-mastery/services/QualityGateService";
+import { getRuleEngineService } from "@/server/features/onpage-mastery/services/RuleEngineService";
+import type { Classification } from "@/server/features/onpage-mastery/types";
 
 const log = createLogger({ module: "audit-phases" });
 
@@ -134,27 +138,14 @@ export async function runAuditPhases(
   const origin = getOrigin(startUrl);
   const maxPages = config.maxPages;
 
-  // GAP-O1/GAP-O3: Pass cost options for tracking discovery phase costs
   const discovery = await runDiscoveryPhase(
     step,
     auditId,
     workflowInstanceId,
     origin,
     maxPages,
-    {
-      auditId,
-      clientId: billingCustomer.organizationId,
-      workspaceId: projectId,
-    },
   );
-  // GAP-O1/GAP-O3: Pass cost options to robots.txt fetch for tracking
-  const robots = await fetchRobotsTxt(origin, {
-    auditId,
-    clientId: billingCustomer.organizationId,
-    workspaceId: projectId,
-    trackCosts: true,
-  });
-  // GAP-O1/GAP-O3: Pass cost attribution for per-audit cost tracking
+  const robots = await fetchRobotsTxt(origin);
   const crawlResult = await runCrawlPhase(step, {
     auditId,
     workflowInstanceId,
@@ -163,9 +154,6 @@ export async function runAuditPhases(
     maxPages,
     robots,
     sitemapUrls: discovery.sitemapUrls,
-    // Cost attribution: organizationId as clientId, projectId as workspaceId
-    clientId: billingCustomer.organizationId,
-    workspaceId: projectId,
   });
   const { allPages, htmlByPageId } = crawlResult;
 
@@ -190,6 +178,10 @@ export async function runAuditPhases(
   // These checks require site-wide context built from crawl data
   await runTier4ChecksPhase(step, auditId, workflowInstanceId, allPages, htmlByPageId);
 
+  // Run Tier 5 checks (content quality intelligence with vertical classification)
+  // These checks use VerticalClassifier, QualityGateService, and RuleEngineService
+  const tier5Results = await runTier5ChecksPhase(step, auditId, workflowInstanceId, allPages, htmlByPageId, origin);
+
   await finalizeAudit({
     step,
     auditId,
@@ -202,29 +194,15 @@ export async function runAuditPhases(
   });
 }
 
-/** GAP-O1/GAP-O3: Discovery phase cost options */
-interface DiscoveryPhaseOptions {
-  auditId: string;
-  clientId?: string;
-  workspaceId?: string;
-}
-
 async function runDiscoveryPhase(
   step: WorkflowStep,
   auditId: string,
   workflowInstanceId: string,
   origin: string,
   maxPages: number,
-  costOptions?: DiscoveryPhaseOptions,
 ) {
   return step.do("discover-urls", async () => {
-    // GAP-O1/GAP-O3: Pass cost options for tracking discovery phase costs
-    const result = await discoverUrls(origin, maxPages, costOptions ? {
-      auditId: costOptions.auditId,
-      clientId: costOptions.clientId,
-      workspaceId: costOptions.workspaceId,
-      trackCosts: true,
-    } : undefined);
+    const result = await discoverUrls(origin, maxPages);
     await AuditRepository.updateAuditProgress(auditId, workflowInstanceId, {
       pagesTotal: Math.min(result.urls.length + 1, maxPages),
       currentPhase: "crawling",
@@ -456,6 +434,184 @@ async function runTier4ChecksPhase(
         }
       }
     }
+  });
+}
+
+/**
+ * Tier 5 checks phase result with quality gate evaluation.
+ */
+interface Tier5PhaseResult {
+  /** Total pages evaluated */
+  pagesEvaluated: number;
+  /** Pages that passed quality gate */
+  pagesPassed: number;
+  /** Pages blocked by quality gate */
+  pagesBlocked: number;
+  /** Classification cache hits (cost savings) */
+  classificationCacheHits: number;
+}
+
+/**
+ * Run Tier 5 checks (content quality intelligence) with vertical classification.
+ *
+ * This phase:
+ * 1. Classifies each page's vertical using VerticalClassifier (heuristic-first, LLM fallback)
+ * 2. Runs T5-01 to T5-13 quality checks with vertical context
+ * 3. Evaluates RuleEngineService scorecard for vertical-specific rules
+ * 4. Reports blocking failures that would prevent publication
+ *
+ * H-AUDIT-02: Fetches HTML from Redis in batches to minimize memory usage.
+ */
+async function runTier5ChecksPhase(
+  step: WorkflowStep,
+  auditId: string,
+  workflowInstanceId: string,
+  allPages: StepPageResult[],
+  htmlByPageId: Map<string, string>,
+  origin: string,
+): Promise<Tier5PhaseResult> {
+  return step.do("run-tier5-checks", async () => {
+    let pagesEvaluated = 0;
+    let pagesPassed = 0;
+    let pagesBlocked = 0;
+    let classificationCacheHits = 0;
+
+    // Initialize services
+    let verticalClassifier: ReturnType<typeof getVerticalClassifierService> | null = null;
+    let qualityGateService: ReturnType<typeof getQualityGateService> | null = null;
+
+    try {
+      verticalClassifier = getVerticalClassifierService();
+    } catch (error) {
+      // XAI_API_KEY not configured - skip Tier 5 checks
+      log.info("Tier 5 checks skipped: VerticalClassifier not configured", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { pagesEvaluated: 0, pagesPassed: 0, pagesBlocked: 0, classificationCacheHits: 0 };
+    }
+
+    try {
+      qualityGateService = getQualityGateService();
+    } catch (error) {
+      log.info("Tier 5 quality gate skipped: QualityGateService not configured", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // Extract domain from origin for classification caching
+    const domain = new URL(origin).hostname;
+    // Use auditId as clientId for classification caching (audit-scoped)
+    const clientId = auditId;
+
+    // H-AUDIT-02: Process pages in batches to limit memory usage
+    const BATCH_SIZE = 25; // Smaller batches for Tier 5 (LLM calls)
+    for (let i = 0; i < allPages.length; i += BATCH_SIZE) {
+      const batch = allPages.slice(i, i + BATCH_SIZE);
+      const pageIds = batch.map((p) => p.id);
+
+      // H-AUDIT-02: Fetch HTML from Redis for this batch
+      const htmlMap = new Map<string, string | null>();
+      const idsToFetch: string[] = [];
+
+      for (const pageId of pageIds) {
+        const inMemoryHtml = htmlByPageId.get(pageId);
+        if (inMemoryHtml) {
+          htmlMap.set(pageId, inMemoryHtml);
+        } else {
+          idsToFetch.push(pageId);
+        }
+      }
+
+      if (idsToFetch.length > 0) {
+        const redisHtml = await HtmlTempStorage.getPageHtmlBatch(auditId, idsToFetch);
+        for (const [pageId, html] of redisHtml) {
+          htmlMap.set(pageId, html);
+        }
+      }
+
+      // Run Tier 5 checks for each page in batch
+      for (const page of batch) {
+        const html = htmlMap.get(page.id);
+
+        // Skip pages without HTML
+        if (!html || page.statusCode !== 200) {
+          continue;
+        }
+
+        try {
+          // 1. Classify the page vertical
+          const path = new URL(page.url).pathname;
+          const classification: Classification = await verticalClassifier.classify(
+            domain,
+            path,
+            html,
+            clientId,
+          );
+
+          // Track cache hits (method !== 'llm' means heuristic or cache hit)
+          if (classification.method !== "llm") {
+            classificationCacheHits++;
+          }
+
+          log.debug("Page classified for Tier 5 checks", {
+            pageId: page.id,
+            url: page.url,
+            vertical: classification.vertical,
+            isYmyl: classification.isYmyl,
+            confidence: classification.confidence,
+            method: classification.method,
+          });
+
+          // 2. Run Tier 5 checks with vertical context
+          const results = await runTier5ChecksWithContext(html, page.url, {
+            vertical: classification.vertical,
+            clientId,
+          });
+
+          pagesEvaluated++;
+
+          // 3. Check for blocking failures
+          const blockingFailures = results.filter((r) => !r.passed && r.blocking);
+          if (blockingFailures.length > 0) {
+            pagesBlocked++;
+            log.info("Page blocked by Tier 5 quality gate", {
+              pageId: page.id,
+              url: page.url,
+              blockingChecks: blockingFailures.map((r) => r.checkId),
+            });
+          } else {
+            pagesPassed++;
+          }
+
+          // 4. Persist findings to database
+          if (results.length > 0) {
+            await FindingsRepository.insertFindings(auditId, page.id, results);
+          }
+        } catch (error) {
+          // Log but don't fail the audit - Tier 5 checks are opt-in
+          log.warn("Tier 5 checks failed for page", {
+            pageId: page.id,
+            url: page.url,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
+
+    log.info("Tier 5 checks phase complete", {
+      auditId,
+      pagesEvaluated,
+      pagesPassed,
+      pagesBlocked,
+      classificationCacheHits,
+    });
+
+    return {
+      pagesEvaluated,
+      pagesPassed,
+      pagesBlocked,
+      classificationCacheHits,
+    };
   });
 }
 

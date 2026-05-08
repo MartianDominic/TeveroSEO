@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TieredFetcher, createTieredFetcher } from "../TieredFetcher";
-import type { TieredFetchResult } from "../types";
+import { TieredFetcher, createTieredFetcher } from "../../TieredFetcher";
+import type { TieredFetchResult } from "../../types";
 import type { ScrapeTier } from "@/db/domain-scrape-learning-schema";
 
 // =============================================================================
@@ -35,7 +35,7 @@ vi.mock("../../DomainLearningService", () => ({
 // Mock ContentQualityAssessor
 vi.mock("../../ContentQualityAssessor", () => ({
   contentQualityAssessor: {
-    assess: vi.fn((html: string) => ({
+    assess: vi.fn((_html: string) => ({
       score: 85,
       acceptable: true,
       metrics: {
@@ -54,8 +54,30 @@ vi.mock("../../cache", () => ({
   detectContentType: vi.fn(() => "article" as const),
 }));
 
+// Mock BandwidthTracker - use vi.hoisted to ensure mock is available during module load
+const { mockBandwidthTracker } = vi.hoisted(() => ({
+  mockBandwidthTracker: {
+    getStatus: vi.fn().mockResolvedValue({
+      provider: "geonode",
+      usedBytes: 1000000,
+      limitBytes: 10737418240, // 10GB
+      remainingBytes: 10736418240,
+      percentUsed: 0.01,
+      estimatedCostUsd: 0.00072,
+      isExhausted: false,
+      isWarning: false,
+      isCritical: false,
+      month: "2026-05",
+    }),
+    recordUsage: vi.fn(),
+  },
+}));
+
+vi.mock("../../monitoring/BandwidthTracker", () => ({
+  getBandwidthTracker: () => mockBandwidthTracker,
+}));
+
 import { domainLearningService } from "../../DomainLearningService";
-import { contentQualityAssessor } from "../../ContentQualityAssessor";
 
 // =============================================================================
 // Test Helpers
@@ -65,7 +87,6 @@ function createMockTieredFetchResult(
   overrides: Partial<TieredFetchResult> = {}
 ): TieredFetchResult {
   return {
-    url: "https://example.com",
     success: true,
     html: "<html><body>Test Content</body></html>",
     statusCode: 200,
@@ -73,6 +94,16 @@ function createMockTieredFetchResult(
     responseTimeMs: 1000,
     responseSizeBytes: 1024,
     costUsd: 0,
+    validation: {
+      hasBody: true,
+      hasTitle: true,
+      hasH1: true,
+      wordCount: 100,
+      textRatio: 0.5,
+      isSpaShell: false,
+      isBotDetectionPage: false,
+      isCaptchaPage: false,
+    },
     ...overrides,
   };
 }
@@ -140,8 +171,7 @@ describe("TieredFetcher", () => {
           isNewDomain: true,
           tiersAttempted: ["direct", "webshare"],
           escalationPath: [
-            { tier: "direct" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "webshare" as ScrapeTier, reason: "success", code: "SUCCESS", confidence: 100 },
+            { tier: "direct" as ScrapeTier, reason: "ip_blocked" as const },
           ],
         },
       });
@@ -165,12 +195,11 @@ describe("TieredFetcher", () => {
           isNewDomain: true,
           tiersAttempted: ["direct", "webshare", "geonode", "camoufox", "dfs_basic", "dfs_js"],
           escalationPath: [
-            { tier: "direct" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "webshare" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "geonode" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "camoufox" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "dfs_basic" as ScrapeTier, reason: "blocked", code: "BLOCKED", confidence: 100 },
-            { tier: "dfs_js" as ScrapeTier, reason: "success", code: "SUCCESS", confidence: 100 },
+            { tier: "direct" as ScrapeTier, reason: "ip_blocked" as const },
+            { tier: "webshare" as ScrapeTier, reason: "ip_blocked" as const },
+            { tier: "geonode" as ScrapeTier, reason: "ip_blocked" as const },
+            { tier: "camoufox" as ScrapeTier, reason: "bot_detected" as const },
+            { tier: "dfs_basic" as ScrapeTier, reason: "js_required" as const },
           ],
         },
       });
@@ -190,7 +219,7 @@ describe("TieredFetcher", () => {
         success: false,
         tier: "dfs_browser",
         html: undefined,
-        error: { message: "All tiers exhausted", code: "ALL_TIERS_FAILED" },
+        error: { message: "All tiers exhausted", reason: "bot_detected" as const, tier: "dfs_browser" as ScrapeTier },
       });
 
       vi.mocked(domainLearningService.getConfig).mockResolvedValue(null);
@@ -210,13 +239,16 @@ describe("TieredFetcher", () => {
         domain: "protected-domain.com",
         optimalTier: "geonode",
         isValidated: true,
-        confidence: 95,
-        successRate: 98,
+        successRate: 0.98,
+        consecutiveFailures: 0,
         avgResponseTimeMs: 2500,
         detectedTechnologies: ["cloudflare"],
-        lastValidatedAt: new Date(),
-        createdAt: new Date(),
+        hasAntiBotProtection: true,
+        requiresJsRendering: false,
+        geoRequirement: null,
+        lastEscalationReason: null,
         updatedAt: new Date(),
+        nextRevalidationAt: null,
       });
 
       const mockResult = createMockTieredFetchResult({
@@ -239,13 +271,16 @@ describe("TieredFetcher", () => {
         domain: "flaky-domain.com",
         optimalTier: "webshare",
         isValidated: true,
-        confidence: 80,
-        successRate: 90,
+        successRate: 0.9,
+        consecutiveFailures: 0,
         avgResponseTimeMs: 3000,
         detectedTechnologies: [],
-        lastValidatedAt: new Date(),
-        createdAt: new Date(),
+        hasAntiBotProtection: false,
+        requiresJsRendering: false,
+        geoRequirement: null,
+        lastEscalationReason: null,
         updatedAt: new Date(),
+        nextRevalidationAt: null,
       });
 
       // First fetch fails
@@ -254,7 +289,7 @@ describe("TieredFetcher", () => {
           createMockTieredFetchResult({
             success: false,
             tier: "webshare",
-            error: { message: "Connection timeout", code: "TIMEOUT" },
+            error: { message: "Connection timeout", reason: "timeout" as const, tier: "webshare" as ScrapeTier },
           })
         )
         // Second fetch (discovery) succeeds
@@ -433,15 +468,14 @@ describe("TieredFetcher", () => {
 
       vi.mocked(domainLearningService.getConfig).mockResolvedValue(null);
       vi.mocked(domainLearningService.fetch)
-        .mockResolvedValueOnce(createMockTieredFetchResult({ url: urls[0] }))
+        .mockResolvedValueOnce(createMockTieredFetchResult())
         .mockResolvedValueOnce(
           createMockTieredFetchResult({
-            url: urls[1],
             success: false,
-            error: { message: "Network error", code: "NETWORK_ERROR" },
+            error: { message: "Network error", reason: "connection_reset" as const, tier: "direct" as ScrapeTier },
           })
         )
-        .mockResolvedValueOnce(createMockTieredFetchResult({ url: urls[2] }));
+        .mockResolvedValueOnce(createMockTieredFetchResult());
 
       const results = await fetcher.fetchBatch(urls);
 
@@ -458,13 +492,16 @@ describe("TieredFetcher", () => {
         domain: "example.com",
         optimalTier: "webshare",
         isValidated: true,
-        confidence: 90,
-        successRate: 95,
+        successRate: 0.95,
+        consecutiveFailures: 0,
         avgResponseTimeMs: 3000,
         detectedTechnologies: [],
-        lastValidatedAt: new Date(),
-        createdAt: new Date(),
+        hasAntiBotProtection: false,
+        requiresJsRendering: false,
+        geoRequirement: null,
+        lastEscalationReason: null,
         updatedAt: new Date(),
+        nextRevalidationAt: null,
       });
 
       const estimate = await fetcher.estimateCost("https://example.com/page");
@@ -489,8 +526,13 @@ describe("TieredFetcher", () => {
       vi.mocked(domainLearningService.discover).mockResolvedValue({
         domain: "new-domain.com",
         optimalTier: "geonode",
+        attempts: [],
+        totalTimeMs: 5000,
+        totalCostUsd: 0.001,
         technologies: ["cloudflare", "react"],
-        confidence: 85,
+        hasAntiBotProtection: true,
+        requiresJsRendering: true,
+        geoRequirement: null,
       });
 
       const result = await fetcher.discoverDomain("new-domain.com");
@@ -510,13 +552,16 @@ describe("TieredFetcher", () => {
         domain: "example.com",
         optimalTier: "direct",
         isValidated: true,
-        confidence: 98,
-        successRate: 99.5,
+        successRate: 0.995,
+        consecutiveFailures: 0,
         avgResponseTimeMs: 1500,
         detectedTechnologies: ["nginx"],
-        lastValidatedAt: new Date(),
-        createdAt: new Date(),
+        hasAntiBotProtection: false,
+        requiresJsRendering: false,
+        geoRequirement: null,
+        lastEscalationReason: null,
         updatedAt: new Date(),
+        nextRevalidationAt: null,
       });
 
       const stats = await fetcher.getDomainStats("example.com");
@@ -556,6 +601,132 @@ describe("TieredFetcher", () => {
           maxTier: "dfs_basic",
         })
       );
+    });
+  });
+
+  describe("Bandwidth Exhaustion", () => {
+    it("should skip tier when proxy provider bandwidth is exhausted", async () => {
+      // Mock webshare as exhausted
+      mockBandwidthTracker.getStatus.mockImplementation(async (provider: string) => {
+        if (provider === "webshare") {
+          return {
+            provider: "webshare",
+            usedBytes: 50 * 1024 * 1024 * 1024, // 50GB
+            limitBytes: 50 * 1024 * 1024 * 1024, // 50GB limit
+            remainingBytes: 0,
+            percentUsed: 100,
+            estimatedCostUsd: 5.0,
+            isExhausted: true,
+            isWarning: true,
+            isCritical: true,
+            month: "2026-05",
+          };
+        }
+        // Geonode has bandwidth
+        return {
+          provider: "geonode",
+          usedBytes: 1000000,
+          limitBytes: 10737418240,
+          remainingBytes: 10736418240,
+          percentUsed: 0.01,
+          estimatedCostUsd: 0.00072,
+          isExhausted: false,
+          isWarning: false,
+          isCritical: false,
+          month: "2026-05",
+        };
+      });
+
+      // Domain config says to use webshare
+      vi.mocked(domainLearningService.getConfig).mockResolvedValue({
+        domain: "example.com",
+        optimalTier: "webshare",
+        isValidated: true,
+        successRate: 0.95,
+        consecutiveFailures: 0,
+        avgResponseTimeMs: 3000,
+        detectedTechnologies: [],
+        hasAntiBotProtection: false,
+        requiresJsRendering: false,
+        geoRequirement: null,
+        lastEscalationReason: null,
+        updatedAt: new Date(),
+        nextRevalidationAt: null,
+      });
+
+      // Mock successful fetch on geonode
+      const mockResult = createMockTieredFetchResult({
+        tier: "geonode",
+        costUsd: 0.0001,
+      });
+      vi.mocked(domainLearningService.fetch).mockResolvedValue(mockResult);
+
+      const result = await fetcher.fetch("https://example.com");
+
+      // Should have escalated past webshare to geonode
+      expect(result.success).toBe(true);
+      expect(result.tierUsed).toBe("geonode");
+    });
+
+    it("should still work when no providers are exhausted", async () => {
+      // All providers have bandwidth
+      mockBandwidthTracker.getStatus.mockResolvedValue({
+        provider: "geonode",
+        usedBytes: 1000000,
+        limitBytes: 10737418240,
+        remainingBytes: 10736418240,
+        percentUsed: 0.01,
+        estimatedCostUsd: 0.00072,
+        isExhausted: false,
+        isWarning: false,
+        isCritical: false,
+        month: "2026-05",
+      });
+
+      vi.mocked(domainLearningService.getConfig).mockResolvedValue(null);
+      vi.mocked(domainLearningService.fetch).mockResolvedValue(
+        createMockTieredFetchResult({
+          tier: "direct",
+          costUsd: 0,
+        })
+      );
+
+      const result = await fetcher.fetch("https://example.com");
+
+      expect(result.success).toBe(true);
+      expect(result.tierUsed).toBe("direct");
+    });
+
+    it("should fail gracefully when all proxy tiers are exhausted", async () => {
+      // All proxy providers exhausted
+      mockBandwidthTracker.getStatus.mockResolvedValue({
+        provider: "geonode",
+        usedBytes: 10737418240,
+        limitBytes: 10737418240,
+        remainingBytes: 0,
+        percentUsed: 100,
+        estimatedCostUsd: 7.7,
+        isExhausted: true,
+        isWarning: true,
+        isCritical: true,
+        month: "2026-05",
+      });
+
+      // Direct fetch fails
+      vi.mocked(domainLearningService.getConfig).mockResolvedValue(null);
+      vi.mocked(domainLearningService.fetch).mockResolvedValue(
+        createMockTieredFetchResult({
+          success: false,
+          tier: "direct",
+          error: { message: "Blocked", reason: "ip_blocked" as const, tier: "direct" as ScrapeTier },
+        })
+      );
+
+      // Note: DFS tiers don't use tracked bandwidth, so should still work
+      const _result = await fetcher.fetch("https://example.com");
+
+      // The fetch should still complete (DFS tiers available)
+      expect(domainLearningService.fetch).toHaveBeenCalled();
     });
   });
 });

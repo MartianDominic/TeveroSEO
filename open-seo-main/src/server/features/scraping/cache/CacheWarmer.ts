@@ -9,9 +9,10 @@
  * - Progress tracking and cost tracking
  */
 
-import type { ScrapingService, ScrapeResult } from '../ScrapingService';
+import type { ScrapingService } from '../ScrapingService';
 import type { CacheManager } from './CacheManager';
 import type { ScrapeTier } from '@/db/domain-scrape-learning-schema';
+import { cacheLogger } from '../logging';
 
 // =============================================================================
 // Types
@@ -415,7 +416,7 @@ export class CacheWarmer {
   private async getAuditUrls(auditId: string): Promise<string[]> {
     // This would query the audit job from the database
     // For now, return empty array (caller can override)
-    console.info(`[CacheWarmer] Getting URLs for audit: ${auditId}`);
+    cacheLogger.info({ auditId }, 'Getting URLs for audit');
 
     // TODO: Implement actual audit URL retrieval
     // const job = await db.query.auditJobs.findFirst({
@@ -438,7 +439,7 @@ export class CacheWarmer {
       });
 
       if (!result.success || !result.html) {
-        console.warn(`[CacheWarmer] Failed to fetch sitemap: ${sitemapUrl}`);
+        cacheLogger.warn({ sitemapUrl }, 'Failed to fetch sitemap');
         return [];
       }
 
@@ -456,7 +457,8 @@ export class CacheWarmer {
 
       return urls;
     } catch (error) {
-      console.error('[CacheWarmer] Error parsing sitemap:', error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      cacheLogger.error({ sitemapUrl, error: err.message, stack: err.stack }, 'Error parsing sitemap');
       return [];
     }
   }

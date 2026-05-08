@@ -133,9 +133,9 @@ export class CruxRateLimiter {
       return currentUsage < this.config.dailyLimit;
     } catch (error) {
       // On Redis error, allow request (fail open)
-      logger.warn("Failed to check rate limit, allowing request", {
+      logger.warn({
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, "Failed to check rate limit, allowing request");
       return true;
     }
   }
@@ -169,9 +169,9 @@ export class CruxRateLimiter {
       // Check thresholds and send alerts
       await this.checkThresholds(newCount);
     } catch (error) {
-      logger.error("Failed to record CrUX request", {
+      logger.error({
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, "Failed to record CrUX request");
     }
   }
 
@@ -183,9 +183,9 @@ export class CruxRateLimiter {
       const count = await redis.get(this.getUsageKey());
       return count ? parseInt(count, 10) : 0;
     } catch (error) {
-      logger.error("Failed to get CrUX usage", {
+      logger.error({
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, "Failed to get CrUX usage");
       return 0;
     }
   }
@@ -265,21 +265,21 @@ export class CruxRateLimiter {
       const message = `CrUX API quota ${level.toUpperCase()}: ${percentUsed.toFixed(1)}% used (${currentCount}/${this.config.dailyLimit})`;
 
       if (level === "critical") {
-        logger.error(message, {
+        logger.error({
           level,
           percentUsed,
           currentCount,
           dailyLimit: this.config.dailyLimit,
           remaining: this.config.dailyLimit - currentCount,
-        });
+        }, message);
       } else {
-        logger.warn(message, {
+        logger.warn({
           level,
           percentUsed,
           currentCount,
           dailyLimit: this.config.dailyLimit,
           remaining: this.config.dailyLimit - currentCount,
-        });
+        }, message);
       }
 
       // Update Prometheus metric

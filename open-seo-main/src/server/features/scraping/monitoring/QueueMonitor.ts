@@ -17,6 +17,7 @@ import { BlockedDomainTracker } from "./BlockedDomainTracker";
 import { ProcessingRateTracker } from "./ProcessingRateTracker";
 import { GlobalConcurrencyLimiter } from "../ratelimit/GlobalConcurrencyLimiter";
 import { ALERT_THRESHOLDS, getSeverity, type Alert, type AlertSeverity } from "./alerts.config";
+import { queueLogger } from "../logging";
 
 /**
  * Collected metrics snapshot.
@@ -115,7 +116,7 @@ export class QueueMonitor {
       void this.collectMetrics();
     }, intervalMs);
 
-    console.log(`[QueueMonitor] Started metrics collection every ${intervalMs}ms`);
+    queueLogger.info({ intervalMs }, 'Queue monitor started metrics collection');
   }
 
   /**
@@ -125,7 +126,7 @@ export class QueueMonitor {
     if (this.collectInterval) {
       clearInterval(this.collectInterval);
       this.collectInterval = undefined;
-      console.log("[QueueMonitor] Stopped metrics collection");
+      queueLogger.info('Queue monitor stopped metrics collection');
     }
   }
 

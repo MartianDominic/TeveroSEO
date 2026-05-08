@@ -3,11 +3,11 @@
  * Phase 95-02: Multi-Level Caching
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { Redis } from "ioredis";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { CacheManager, createCacheManager } from "../CacheManager";
-import type { CachedPage, CacheConfig } from "../types";
+import type { CachedPage } from "../types";
 
 // =============================================================================
 // Mock Dependencies
@@ -105,7 +105,12 @@ import { createL4Cache } from "../L4Cache";
 // =============================================================================
 
 function createMockRedis(): Redis {
-  return {} as Redis;
+  return {
+    sadd: vi.fn().mockResolvedValue(1),
+    smembers: vi.fn().mockResolvedValue([]),
+    expire: vi.fn().mockResolvedValue(1),
+    del: vi.fn().mockResolvedValue(1),
+  } as unknown as Redis;
 }
 
 function createMockDb(): PostgresJsDatabase {
@@ -173,7 +178,12 @@ describe("CacheManager", () => {
         redis: mockRedis,
         db: mockDb,
         config: {
-          l1: { maxSizeBytes: 50 * 1024 * 1024 },
+          l1: {
+            maxSizeBytes: 50 * 1024 * 1024,
+            maxItems: 2000,
+            defaultTtlMs: 5 * 60 * 1000,
+            updateAgeOnGet: true,
+          },
         },
       });
       expect(customManager).toBeInstanceOf(CacheManager);
@@ -403,6 +413,39 @@ describe("CacheManager", () => {
 
       expect(mockL1.set).toHaveBeenCalled();
     });
+
+    it("should track domain-to-hash mapping in Redis", async () => {
+      const mockPage = createMockPage();
+
+      await manager.set("https://example.com/page", mockPage);
+
+      // Should add hash to domain SET
+      expect(mockRedis.sadd).toHaveBeenCalled();
+      const saddCall = (mockRedis.sadd as any).mock.calls[0];
+      expect(saddCall[0]).toBe("cache:domain:example.com");
+
+      // Should set TTL on domain SET (30 days = 2592000 seconds)
+      expect(mockRedis.expire).toHaveBeenCalled();
+      const expireCall = (mockRedis.expire as any).mock.calls[0];
+      expect(expireCall[0]).toBe("cache:domain:example.com");
+      expect(expireCall[1]).toBe(30 * 24 * 60 * 60); // 30 days in seconds
+    });
+
+    it("should handle domain tracking errors gracefully", async () => {
+      const mockPage = createMockPage();
+      (mockRedis.sadd as any).mockRejectedValue(new Error("Redis error"));
+
+      // Should not throw - domain tracking is non-critical
+      await expect(
+        manager.set("https://example.com/page", mockPage)
+      ).resolves.not.toThrow();
+
+      // Cache should still be stored in all levels
+      expect(mockL1.set).toHaveBeenCalled();
+      expect(mockL2.set).toHaveBeenCalled();
+      expect(mockL3.setWithUrl).toHaveBeenCalled();
+      expect(mockL4.set).toHaveBeenCalled();
+    });
   });
 
   describe("invalidate", () => {
@@ -426,6 +469,65 @@ describe("CacheManager", () => {
     it("should clear L1 cache", async () => {
       await manager.invalidateDomain("example.com");
 
+      expect(mockL1.clear).toHaveBeenCalled();
+    });
+
+    it("should query Redis for domain hashes", async () => {
+      await manager.invalidateDomain("example.com");
+
+      expect(mockRedis.smembers).toHaveBeenCalledWith("cache:domain:example.com");
+    });
+
+    it("should clear L2, L3, L4 when domain has tracked hashes", async () => {
+      // Mock Redis to return tracked hashes
+      (mockRedis.smembers as any).mockResolvedValue(["hash1", "hash2", "hash3"]);
+
+      await manager.invalidateDomain("example.com");
+
+      // Should clear L1
+      expect(mockL1.clear).toHaveBeenCalled();
+
+      // Should delete each hash from L2, L3, L4
+      expect(mockL2.delete).toHaveBeenCalledWith("hash1");
+      expect(mockL2.delete).toHaveBeenCalledWith("hash2");
+      expect(mockL2.delete).toHaveBeenCalledWith("hash3");
+      expect(mockL3.delete).toHaveBeenCalledWith("hash1");
+      expect(mockL3.delete).toHaveBeenCalledWith("hash2");
+      expect(mockL3.delete).toHaveBeenCalledWith("hash3");
+      expect(mockL4.delete).toHaveBeenCalledWith("hash1");
+      expect(mockL4.delete).toHaveBeenCalledWith("hash2");
+      expect(mockL4.delete).toHaveBeenCalledWith("hash3");
+
+      // Should delete the domain tracking SET
+      expect(mockRedis.del).toHaveBeenCalledWith("cache:domain:example.com");
+    });
+
+    it("should not call L2-L4 delete when no tracked hashes exist", async () => {
+      // Mock Redis to return empty array
+      (mockRedis.smembers as any).mockResolvedValue([]);
+
+      await manager.invalidateDomain("example.com");
+
+      // Should still clear L1
+      expect(mockL1.clear).toHaveBeenCalled();
+
+      // Should not delete from L2-L4
+      expect(mockL2.delete).not.toHaveBeenCalled();
+      expect(mockL3.delete).not.toHaveBeenCalled();
+      expect(mockL4.delete).not.toHaveBeenCalled();
+
+      // Should not delete domain SET (nothing to clean up)
+      expect(mockRedis.del).not.toHaveBeenCalled();
+    });
+
+    it("should handle Redis errors gracefully", async () => {
+      // Mock Redis to throw an error
+      (mockRedis.smembers as any).mockRejectedValue(new Error("Redis connection error"));
+
+      // Should not throw
+      await expect(manager.invalidateDomain("example.com")).resolves.not.toThrow();
+
+      // L1 should still be cleared (partial success)
       expect(mockL1.clear).toHaveBeenCalled();
     });
   });

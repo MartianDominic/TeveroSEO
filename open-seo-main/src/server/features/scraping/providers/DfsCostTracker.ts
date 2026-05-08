@@ -66,8 +66,6 @@ export class DfsCostTracker {
     workspaceId?: string;
     jobId?: string;
     taskId?: string;
-    /** Correlation ID for request tracing (used in logs, not stored in DB) */
-    correlationId?: string;
   }): Promise<number> {
     const circuitBreaker = getDatabaseCircuitBreaker();
 
@@ -99,12 +97,12 @@ export class DfsCostTracker {
       }, -1);
 
       if (result === -1) {
-        logger.debug({ url: record.url, correlationId: record.correlationId }, "recordCost skipped - circuit open");
+        logger.debug({ url: record.url }, "recordCost skipped - circuit open");
       }
 
       return result;
     } catch (error) {
-      logger.error({ url: record.url, correlationId: record.correlationId, error: error instanceof Error ? error.message : String(error) }, "recordCost error");
+      logger.error({ url: record.url, error: error instanceof Error ? error.message : String(error) }, "recordCost error");
       return -1;
     }
   }
@@ -133,8 +131,6 @@ export class DfsCostTracker {
       workspaceId?: string;
       jobId?: string;
       taskId?: string;
-      /** Correlation ID for request tracing (used in logs, not stored in DB) */
-      correlationId?: string;
     }>
   ): Promise<number[]> {
     if (records.length === 0) return [];
@@ -570,6 +566,103 @@ export class DfsCostTracker {
       .where(lte(dfsCostRecords.createdAt, cutoffDate));
 
     return result.rowCount ?? 0;
+  }
+
+  /**
+   * Get cost report for a time period.
+   * Used by CostVerifier for verification against provider APIs.
+   *
+   * @param period - Start and end dates for the report
+   * @returns Aggregated cost report
+   */
+  async getReport(period: { start: Date; end: Date }): Promise<{
+    totalCost: number;
+    totalRequests: number;
+    costByTier: Record<string, number>;
+    costByConsumer: Record<string, number>;
+  }> {
+    const { start, end } = period;
+
+    try {
+      // Build date conditions
+      const dateConditions = [
+        gte(dfsCostRecords.createdAt, start),
+        lte(dfsCostRecords.createdAt, end),
+      ];
+
+      // Total cost and request count
+      const [totalResult] = await this.db
+        .select({
+          total: sql<number>`COALESCE(SUM(COALESCE(${dfsCostRecords.actualCost}, ${dfsCostRecords.estimatedCost})), 0)`,
+          count: count(),
+        })
+        .from(dfsCostRecords)
+        .where(and(...dateConditions));
+
+      // Cost by tier (mode + queue type combination)
+      const byModeResult = await this.db
+        .select({
+          mode: dfsCostRecords.mode,
+          usedStandardQueue: dfsCostRecords.usedStandardQueue,
+          cost: sql<number>`COALESCE(SUM(COALESCE(${dfsCostRecords.actualCost}, ${dfsCostRecords.estimatedCost})), 0)`,
+        })
+        .from(dfsCostRecords)
+        .where(and(...dateConditions))
+        .groupBy(dfsCostRecords.mode, dfsCostRecords.usedStandardQueue);
+
+      // Build costByTier - using tier naming convention from scraping service
+      const costByTier: Record<string, number> = {
+        direct: 0, // No direct tier in DFS, but keeping for compatibility
+        webshare: 0, // Separate provider, tracked elsewhere
+        geonode: 0, // Separate provider, tracked elsewhere
+        dfs_basic: 0,
+        dfs_js: 0,
+        dfs_browser: 0,
+      };
+
+      for (const row of byModeResult) {
+        const mode = row.mode as DfsMode;
+        const tierKey = `dfs_${mode}`;
+        costByTier[tierKey] = (costByTier[tierKey] || 0) + row.cost;
+      }
+
+      // Cost by consumer (workspace/client)
+      const byConsumerResult = await this.db
+        .select({
+          workspaceId: dfsCostRecords.workspaceId,
+          clientId: dfsCostRecords.clientId,
+          cost: sql<number>`COALESCE(SUM(COALESCE(${dfsCostRecords.actualCost}, ${dfsCostRecords.estimatedCost})), 0)`,
+        })
+        .from(dfsCostRecords)
+        .where(and(...dateConditions))
+        .groupBy(dfsCostRecords.workspaceId, dfsCostRecords.clientId);
+
+      // Build costByConsumer - use workspaceId or clientId as key
+      const costByConsumer: Record<string, number> = {};
+      for (const row of byConsumerResult) {
+        const consumerKey = row.workspaceId || row.clientId || "unknown";
+        costByConsumer[consumerKey] = (costByConsumer[consumerKey] || 0) + row.cost;
+      }
+
+      return {
+        totalCost: totalResult?.total ?? 0,
+        totalRequests: totalResult?.count ?? 0,
+        costByTier,
+        costByConsumer,
+      };
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error), period },
+        "Failed to generate cost report"
+      );
+      // Return empty report instead of throwing
+      return {
+        totalCost: 0,
+        totalRequests: 0,
+        costByTier: {},
+        costByConsumer: {},
+      };
+    }
   }
 }
 

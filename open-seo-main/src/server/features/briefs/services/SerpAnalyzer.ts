@@ -14,11 +14,10 @@ import type { SerpAnalysisData } from "@/db/brief-schema";
 import { analyzeSerpContent } from "./SerpContentAnalyzer";
 import { db } from "@/db/index";
 import {
-  getDfsCostTracker,
-} from "@/server/features/scraping/providers/DfsCostTracker";
-import { createLogger } from "@/server/lib/logger";
-
-const log = createLogger({ module: "SerpAnalyzer" });
+  withBudgetCheck,
+  BudgetExceededError,
+  DFS_API_COSTS,
+} from "@/server/features/scraping";
 
 /**
  * Extract "People Also Ask" questions from SERP items.
@@ -104,84 +103,53 @@ export function calculateMetaLengths(items: SerpLiveItem[]): {
 }
 
 /**
- * Analyze SERP for a keyword with caching.
+ * Analyze SERP for a keyword with caching and budget enforcement.
  * Extracts competitor patterns: PAA questions, meta lengths, H2s, word counts.
  *
  * @param clientId - Client ID for multi-tenant cache isolation
  * @param mappingId - Keyword mapping ID for cache key
  * @param keyword - Target keyword
  * @param locationCode - DataForSEO location code (default: 2840 = United States)
- * @param workspaceId - Workspace ID for cost attribution
- * @param correlationId - Correlation ID for request tracing (propagated to downstream calls)
+ * @param workspaceId - Workspace ID for budget enforcement (optional)
+ * @throws BudgetExceededError if DataForSEO budget is exceeded
  */
+/**
+ * Result of SERP analysis including cost tracking.
+ * P2.G16: Extended to include accumulated scraping costs.
+ */
+export interface SerpAnalysisResult {
+  data: SerpAnalysisData;
+  /** Total cost of SERP fetch + competitor content scraping in USD */
+  totalCostUsd: number;
+}
+
 export async function analyzeSerpForKeyword(
   clientId: string,
   mappingId: string,
   keyword: string,
   locationCode: number = 2840,
-  workspaceId?: string,
-  correlationId?: string
-): Promise<SerpAnalysisData> {
+  workspaceId?: string
+): Promise<SerpAnalysisResult> {
   const cacheKey = buildSerpCacheKey(clientId, mappingId, keyword);
 
   // Check cache first
   const cached = await getCachedSerp(cacheKey);
   if (cached) {
-    return cached;
+    // P2.G16: Cached results have zero cost
+    return { data: cached, totalCostUsd: 0 };
   }
 
-  // Fetch SERP data from DataForSEO with cost tracking
-  const startTime = Date.now();
-  const costTracker = getDfsCostTracker(db);
-  let response;
-
-  try {
-    response = await fetchLiveSerpItemsRaw(keyword, locationCode, "en");
-
-    // Record SERP API cost (fire-and-forget)
-    costTracker
-      .recordCost({
-        url: keyword, // Use keyword as "url" for SERP calls
-        domain: "serp-api",
-        mode: "basic",
-        usedStandardQueue: false,
-        estimatedCost: 0.002, // SERP API cost per query
-        actualCost: response.billing?.costUsd ?? 0.002,
-        success: true,
-        responseTimeMs: Date.now() - startTime,
-        clientId,
-        workspaceId,
-        jobId: mappingId,
-        correlationId,
-      })
-      .catch((err) => {
-        log.warn("Failed to record DFS cost for SERP API", { error: err });
-      });
-  } catch (error) {
-    // Record cost even on failure
-    costTracker
-      .recordCost({
-        url: keyword,
-        domain: "serp-api",
-        mode: "basic",
-        usedStandardQueue: false,
-        estimatedCost: 0.002,
-        actualCost: 0.002,
-        success: false,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        responseTimeMs: Date.now() - startTime,
-        clientId,
-        workspaceId,
-        jobId: mappingId,
-        correlationId,
-      })
-      .catch((err) => {
-        log.warn("Failed to record DFS cost for SERP API failure", { error: err });
-      });
-    throw error;
-  }
-
+  // Fetch SERP data from DataForSEO with budget pre-check (COST-1)
+  const response = await withBudgetCheck(
+    () => fetchLiveSerpItemsRaw(keyword, locationCode, "en"),
+    DFS_API_COSTS.SERP_LIVE,
+    db,
+    { workspaceId }
+  );
   const items = response.data;
+
+  // P2.G16: Track SERP API cost
+  const serpApiCost = response.billing?.costUsd ?? DFS_API_COSTS.SERP_LIVE;
 
   // Get organic URLs for content analysis
   const organicUrls = items
@@ -189,12 +157,8 @@ export async function analyzeSerpForKeyword(
     .slice(0, 5)
     .map((item) => item.url as string);
 
-  // Analyze competitor content (H2s and word counts) with correlation ID propagation
-  const contentAnalysis = await analyzeSerpContent(organicUrls, {
-    clientId,
-    workspaceId,
-    correlationId,
-  });
+  // Analyze competitor content (H2s and word counts)
+  const contentAnalysis = await analyzeSerpContent(organicUrls);
 
   // Extract patterns
   const analysis: SerpAnalysisData = {
@@ -209,7 +173,9 @@ export async function analyzeSerpForKeyword(
   // Cache for 24h
   await setCachedSerp(cacheKey, analysis);
 
-  return analysis;
+  // P2.G16: Return analysis with accumulated cost (SERP API + content scraping)
+  const totalCostUsd = serpApiCost + contentAnalysis.totalCostUsd;
+  return { data: analysis, totalCostUsd };
 }
 
 /**

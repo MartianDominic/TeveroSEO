@@ -152,7 +152,7 @@ describe("GscBridgeService", () => {
   });
 
   describe("caching", () => {
-    it("caches results for 1 hour", async () => {
+    it("caches results using shared analytics TTL (30 minutes)", async () => {
       const { redis } = await import("@/server/lib/redis");
 
       mockFetch.mockResolvedValueOnce({
@@ -181,7 +181,7 @@ describe("GscBridgeService", () => {
         expect.stringContaining("gsc:"),
         expect.any(String),
         "EX",
-        3600 // 1 hour
+        1800 // 30 minutes (ANALYTICS_CACHE_TTL_SECONDS)
       );
     });
 

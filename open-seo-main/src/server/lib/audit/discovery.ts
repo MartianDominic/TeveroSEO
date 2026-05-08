@@ -1,13 +1,10 @@
 /**
  * robots.txt and sitemap.xml discovery for the site audit crawler.
- * GAP-O1/GAP-O3: Added cost attribution for discovery phase tracking.
  */
 import robotsParser from "robots-parser";
 import { XMLParser } from "fast-xml-parser";
 import { isSameOrigin, normalizeUrl } from "./url-utils";
 import { createLogger } from "@/server/lib/logger";
-import { db } from "@/db";
-import { getDfsCostTracker, extractDomainFromUrl } from "@/server/features/scraping/providers/DfsCostTracker";
 
 const log = createLogger({ module: "discovery" });
 
@@ -28,57 +25,16 @@ export interface RobotsResult {
 }
 
 /**
- * GAP-O1/GAP-O3: Cost attribution options for discovery phase.
- * Used to track robots.txt and sitemap fetch costs per audit.
- */
-export interface DiscoveryCostOptions {
-  auditId?: string;
-  clientId?: string;
-  workspaceId?: string;
-  trackCosts?: boolean;
-}
-
-/**
  * Fetch and parse robots.txt for a given origin.
  * Returns a helper to check if URLs are allowed + discovered sitemap URLs.
- * GAP-O1/GAP-O3: Added cost attribution for audit cost tracking.
  */
-export async function fetchRobotsTxt(
-  origin: string,
-  costOptions?: DiscoveryCostOptions,
-): Promise<RobotsResult> {
+export async function fetchRobotsTxt(origin: string): Promise<RobotsResult> {
   const robotsUrl = `${origin}/robots.txt`;
-  const startTime = Date.now();
-  const domain = extractDomainFromUrl(origin);
-
   try {
     const response = await fetch(robotsUrl, {
       headers: { "User-Agent": "OpenSEO-Audit/1.0" },
       signal: AbortSignal.timeout(10_000),
     });
-
-    const responseTimeMs = Date.now() - startTime;
-
-    // GAP-O1/GAP-O3: Track discovery cost (free tier, but useful for monitoring)
-    if (costOptions?.trackCosts && costOptions.clientId) {
-      const costTracker = getDfsCostTracker(db as any);
-      costTracker.recordCost({
-        url: robotsUrl,
-        domain,
-        mode: "basic",
-        usedStandardQueue: false,
-        estimatedCost: 0, // Direct fetch is free
-        actualCost: 0,
-        success: response.ok,
-        statusCode: response.status,
-        responseTimeMs,
-        clientId: costOptions.clientId,
-        workspaceId: costOptions.workspaceId,
-        jobId: costOptions.auditId,
-      }).catch((err) => {
-        log.warn("Failed to record robots.txt cost", { error: err instanceof Error ? err.message : String(err) });
-      });
-    }
 
     if (!response.ok) {
       // No robots.txt = everything allowed
@@ -96,29 +52,6 @@ export async function fetchRobotsTxt(
       sitemapUrls: robots.getSitemaps(),
     };
   } catch (error) {
-    const responseTimeMs = Date.now() - startTime;
-
-    // GAP-O1/GAP-O3: Track failed discovery attempt
-    if (costOptions?.trackCosts && costOptions.clientId) {
-      const costTracker = getDfsCostTracker(db as any);
-      costTracker.recordCost({
-        url: robotsUrl,
-        domain,
-        mode: "basic",
-        usedStandardQueue: false,
-        estimatedCost: 0,
-        actualCost: 0,
-        success: false,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        responseTimeMs,
-        clientId: costOptions.clientId,
-        workspaceId: costOptions.workspaceId,
-        jobId: costOptions.auditId,
-      }).catch((err) => {
-        log.warn("Failed to record robots.txt error cost", { error: err instanceof Error ? err.message : String(err) });
-      });
-    }
-
     log.warn("Failed to fetch robots.txt", { error: error instanceof Error ? error.message : String(error) });
     return {
       isAllowed: () => true,
@@ -269,10 +202,8 @@ export interface SitemapFetchResult {
 export async function discoverUrls(
   origin: string,
   maxPages = 50,
-  costOptions?: DiscoveryCostOptions,
 ): Promise<{ urls: string[]; robots: RobotsResult; sitemapUrls: Set<string>; sitemapFetchResult: SitemapFetchResult }> {
-  // GAP-O1/GAP-O3: Pass cost options for tracking discovery phase costs
-  const robots = await fetchRobotsTxt(origin, costOptions);
+  const robots = await fetchRobotsTxt(origin);
 
   // Collect sitemap URLs: from robots.txt + default location
   const sitemapSources = new Set(robots.sitemapUrls);

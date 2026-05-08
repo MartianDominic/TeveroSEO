@@ -16,7 +16,6 @@ const mockRepo = {
   update: vi.fn(),
   delete: vi.fn(),
   getClusterPages: vi.fn(),
-  getClusterPagesBatch: vi.fn(),
   addPageToCluster: vi.fn(),
   removePageFromCluster: vi.fn(),
   clearClusterPages: vi.fn(),
@@ -33,7 +32,6 @@ vi.mock("../repositories/TopicClusterRepository", () => ({
     update = mockRepo.update;
     delete = mockRepo.delete;
     getClusterPages = mockRepo.getClusterPages;
-    getClusterPagesBatch = mockRepo.getClusterPagesBatch;
     addPageToCluster = mockRepo.addPageToCluster;
     removePageFromCluster = mockRepo.removePageFromCluster;
     clearClusterPages = mockRepo.clearClusterPages;

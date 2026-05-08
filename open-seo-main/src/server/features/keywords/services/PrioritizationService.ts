@@ -147,7 +147,7 @@ export class PrioritizationService {
 
     const result: PrioritizationResult = {
       keywordsProcessed: keywords.length,
-      tierCounts: { must_do: 0, should_do: 0, nice_to_have: 0, ignore: 0 },
+      tierCounts: { must_do: 0, should_do: 0, nice_to_have: 0, ignore: 0, excluded: 0 },
       quickWinCounts: {
         strikingDistance: 0,
         lowHanging: 0,

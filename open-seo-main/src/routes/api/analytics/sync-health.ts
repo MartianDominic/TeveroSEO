@@ -5,6 +5,9 @@
  *
  * Returns queue stats, last sync info, recent errors, DLQ status, and average durations.
  * Requires authentication - exposes internal queue metrics.
+ * Rate limited: 60 requests per minute per workspace (standard analytics).
+ *
+ * Response format: { success: true, data: { status, queue, ... } }
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -12,13 +15,34 @@ import { gscSyncQueue } from "@/server/features/analytics/jobs/gsc-sync.job";
 import { getAnalyticsHealthStats } from "@/server/features/analytics/jobs/analytics-orchestrator";
 import { countDeadLetterJobs, getDeadLetterStats } from "@/server/lib/dead-letter-queue";
 import { authenticateAnalyticsRequest } from "@/server/features/analytics/auth/analytics-auth";
+import { successResponse, unauthorizedResponse, internalErrorResponse } from "@/server/lib/api-response";
+import {
+  analyticsStandardRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
 
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/sync-health")({
   loader: async ({ request }: any) => {
     // Authenticate request - this endpoint exposes queue internals
-    await authenticateAnalyticsRequest(request);
+    let auth;
+    try {
+      auth = await authenticateAnalyticsRequest(request);
+    } catch (error) {
+      return unauthorizedResponse(
+        error instanceof Error ? error.message : "Authentication failed"
+      );
+    }
+
+    // Rate limit check: 60 requests per minute per workspace (standard analytics)
+    const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult);
+    }
+
+    try {
     // Get comprehensive health stats from orchestrator
     const [analyticsStats, dlqStats, gscDlqCount, annotationsDlqCount] = await Promise.all([
       getAnalyticsHealthStats(),
@@ -61,7 +85,7 @@ export const Route = (createFileRoute as any)("/api/analytics/sync-health")({
       status = "degraded"; // Recent failures but nothing running
     }
 
-    return {
+    const response = successResponse({
       status,
       queue: {
         gscSync: {
@@ -96,7 +120,13 @@ export const Route = (createFileRoute as any)("/api/analytics/sync-health")({
       lastSync,
       recentErrors,
       nextScheduled,
-    };
+    });
+    return addRateLimitHeaders(response, rateLimitResult);
+    } catch (error) {
+      return internalErrorResponse(
+        error instanceof Error ? error.message : "Failed to fetch sync health"
+      );
+    }
   },
 });
 

@@ -1,0 +1,2221 @@
+openapi: 3.1.0
+info:
+  title: TeveroSEO Analytics API
+  version: 1.0.0
+  description: |
+    Phase 96 Agency Analytics Platform API
+
+    This API provides analytics data from Google Search Console (GSC) with
+    multi-site aggregation, trend detection, cannibalization analysis, and
+    client portal visibility controls.
+
+    ## Authentication
+
+    All endpoints require session-based authentication via `better-auth` cookie.
+    Additionally, a valid `X-Workspace-ID` header must be provided.
+
+    ## Rate Limiting
+
+    All endpoints are rate limited per workspace:
+    - **Standard (60/min)**: Most read operations
+    - **Expensive (30/min)**: Trend detection, cannibalization analysis
+    - **Batch (100/hour)**: Bulk indexing operations
+    - **Export (10/hour)**: CSV and Sheets exports
+    - **Sync (5/hour)**: Indexing requests to prevent GSC quota exhaustion
+
+    Rate limit headers are included in all responses:
+    - `X-RateLimit-Limit`: Maximum requests allowed
+    - `X-RateLimit-Remaining`: Remaining requests in window
+    - `X-RateLimit-Reset`: Unix timestamp when limit resets
+
+    ## CSRF Protection
+
+    All state-changing operations (POST, PUT, DELETE) require a valid CSRF token
+    in the `X-CSRF-Token` header.
+  contact:
+    name: TeveroSEO Platform Team
+    url: https://teveroseo.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: /api/analytics
+    description: Analytics API endpoints
+
+tags:
+  - name: Dashboard
+    description: Master dashboard and aggregated metrics
+  - name: Trends
+    description: Trend detection and page performance analysis
+  - name: Cannibalization
+    description: Keyword cannibalization detection
+  - name: Content
+    description: Content groups and topic clusters
+  - name: Index
+    description: Index coverage and URL inspection
+  - name: Portfolio
+    description: Portfolio-level metrics across all clients
+  - name: Export
+    description: Data export to CSV and Google Sheets
+  - name: System
+    description: System health and sync status
+
+security:
+  - sessionAuth: []
+    workspaceHeader: []
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Session cookie from better-auth
+    workspaceHeader:
+      type: apiKey
+      in: header
+      name: X-Workspace-ID
+      description: UUID of the workspace to query
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: CSRF token for state-changing operations
+
+  schemas:
+    # --- Error Schemas ---
+    ApiError:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - NOT_FOUND
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - CSRF_INVALID
+                - METHOD_NOT_ALLOWED
+                - SERVICE_NOT_CONNECTED
+                - CONFLICT
+                - FEATURE_UNAVAILABLE
+              description: Machine-readable error code for programmatic handling
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional context (validation errors, etc.)
+
+    # --- Common Schemas ---
+    CacheMetadata:
+      type: object
+      properties:
+        cachedAt:
+          type: string
+          format: date-time
+          description: When the data was cached
+        dataAsOf:
+          type: string
+          format: date-time
+          description: The data freshness timestamp
+        staleAfter:
+          type: string
+          format: date-time
+          description: When the cache entry becomes stale
+
+    PaginationMetadata:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of items
+        page:
+          type: integer
+          description: Current page number (1-indexed)
+        limit:
+          type: integer
+          description: Items per page
+        hasMore:
+          type: boolean
+          description: Whether more pages are available
+
+    DateRange:
+      type: object
+      required: [startDate, endDate]
+      properties:
+        startDate:
+          type: string
+          format: date
+          description: Start date (YYYY-MM-DD)
+        endDate:
+          type: string
+          format: date
+          description: End date (YYYY-MM-DD)
+
+    # --- Dashboard Schemas ---
+    SiteMetrics:
+      type: object
+      properties:
+        siteId:
+          type: string
+          format: uuid
+        siteName:
+          type: string
+        siteUrl:
+          type: string
+          format: uri
+        tags:
+          type: array
+          items:
+            type: string
+        metrics:
+          type: object
+          properties:
+            clicks:
+              type: integer
+            impressions:
+              type: integer
+            ctr:
+              type: number
+              format: float
+            position:
+              type: number
+              format: float
+        comparison:
+          type: object
+          properties:
+            clicksChange:
+              type: number
+              format: float
+              description: Percentage change from comparison period
+            impressionsChange:
+              type: number
+              format: float
+            ctrChange:
+              type: number
+              format: float
+            positionChange:
+              type: number
+              format: float
+              description: Negative = improvement (lower position is better)
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              clicks:
+                type: integer
+
+    DashboardAggregates:
+      type: object
+      properties:
+        totals:
+          type: object
+          properties:
+            clicks:
+              type: integer
+            impressions:
+              type: integer
+            avgPosition:
+              type: number
+              format: float
+            avgCtr:
+              type: number
+              format: float
+        comparison:
+          type: object
+          properties:
+            clicksChange:
+              type: number
+              format: float
+            impressionsChange:
+              type: number
+              format: float
+            positionChange:
+              type: number
+              format: float
+            ctrChange:
+              type: number
+              format: float
+        sites:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteMetrics'
+        meta:
+          type: object
+          properties:
+            siteCount:
+              type: integer
+            dateRange:
+              $ref: '#/components/schemas/DateRange'
+            comparisonPeriod:
+              oneOf:
+                - $ref: '#/components/schemas/DateRange'
+                - type: 'null'
+
+    # --- Trend Schemas ---
+    TrendAnalysis:
+      type: object
+      properties:
+        pageUrl:
+          type: string
+        pageTitle:
+          type: string
+        currentClicks:
+          type: integer
+        previousClicks:
+          type: integer
+        currentImpressions:
+          type: integer
+        previousImpressions:
+          type: integer
+        currentPosition:
+          type: number
+          format: float
+        previousPosition:
+          type: number
+          format: float
+        changePercent:
+          type: number
+          format: float
+        trend:
+          type: string
+          enum: [growing, decaying, stable]
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        topQueries:
+          type: array
+          items:
+            type: string
+
+    TrendResult:
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendAnalysis'
+        meta:
+          type: object
+          properties:
+            totalAnalyzed:
+              type: integer
+            growingCount:
+              type: integer
+            decayingCount:
+              type: integer
+            stableCount:
+              type: integer
+            periodDays:
+              type: integer
+            threshold:
+              type: number
+              format: float
+
+    # --- Cannibalization Schemas ---
+    CannibalizationIssue:
+      type: object
+      properties:
+        query:
+          type: string
+          description: The keyword being cannibalized
+        pages:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              position:
+                type: number
+                format: float
+              clicks:
+                type: integer
+              impressions:
+                type: integer
+              ctr:
+                type: number
+                format: float
+        severity:
+          type: string
+          enum: [high, medium, low]
+        impactEstimate:
+          type: integer
+          description: Estimated clicks being lost
+        recommendation:
+          type: string
+
+    CannibalizationSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        high:
+          type: integer
+        medium:
+          type: integer
+        low:
+          type: integer
+        totalImpactEstimate:
+          type: integer
+
+    # --- Striking Distance Schemas ---
+    StrikingDistancePage:
+      type: object
+      properties:
+        pageUrl:
+          type: string
+        pageTitle:
+          type: string
+        avgPosition:
+          type: number
+          format: float
+        impressions:
+          type: integer
+        currentClicks:
+          type: integer
+        potentialClicks:
+          type: integer
+          description: Estimated clicks if moved to target position
+        clickGain:
+          type: integer
+          description: potentialClicks - currentClicks
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        topQueries:
+          type: array
+          items:
+            type: object
+            properties:
+              query:
+                type: string
+              position:
+                type: number
+                format: float
+              impressions:
+                type: integer
+              clicks:
+                type: integer
+
+    # --- Annotation Schemas ---
+    Annotation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+          nullable: true
+          description: null = global (Google algorithm updates)
+        workspaceId:
+          type: string
+          format: uuid
+        annotationDate:
+          type: string
+          format: date
+        annotationType:
+          type: string
+          enum: [core_update, spam_update, helpful_content, product_reviews, link_spam, site_change, custom]
+        title:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+          enum: [positive, negative, neutral, unknown]
+        autoGenerated:
+          type: boolean
+        sourceUrl:
+          type: string
+          format: uri
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AnnotationCreate:
+      type: object
+      required: [siteId, date, title, impact]
+      properties:
+        siteId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        impact:
+          type: string
+          enum: [positive, negative, neutral]
+
+    # --- Content Group Schemas ---
+    ContentGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        matchType:
+          type: string
+          enum: [folder, regex, manual]
+        matchPattern:
+          type: string
+          nullable: true
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          nullable: true
+        isAutoGenerated:
+          type: boolean
+          nullable: true
+        pageCount:
+          type: integer
+        metrics:
+          type: object
+          properties:
+            totalClicks:
+              type: integer
+            totalImpressions:
+              type: integer
+            avgPosition:
+              type: number
+              format: float
+            clicksChange:
+              type: number
+              format: float
+            impressionsChange:
+              type: number
+              format: float
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ContentGroupCreate:
+      type: object
+      required: [siteId, name, matchType]
+      properties:
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        matchType:
+          type: string
+          enum: [folder, regex, manual]
+        matchPattern:
+          type: string
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+
+    # --- Topic Cluster Schemas ---
+    TopicCluster:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        hubPage:
+          type: object
+          properties:
+            url:
+              type: string
+            topic:
+              type: string
+            title:
+              type: string
+            clicks:
+              type: integer
+            impressions:
+              type: integer
+            position:
+              type: number
+              format: float
+            internalLinks:
+              type: integer
+        spokePages:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+              topic:
+                type: string
+                nullable: true
+              title:
+                type: string
+              linksToHub:
+                type: boolean
+              internalLinkCount:
+                type: integer
+              clicks:
+                type: integer
+              impressions:
+                type: integer
+              position:
+                type: number
+                format: float
+                nullable: true
+        coverage:
+          type: number
+          format: float
+          description: Percentage of topic coverage (0-100)
+        gaps:
+          type: array
+          items:
+            type: string
+          description: Missing subtopics
+        totalClicks:
+          type: integer
+        totalImpressions:
+          type: integer
+        avgPosition:
+          type: number
+          format: float
+        lastAnalyzedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # --- Index Coverage Schemas ---
+    IndexCoverageStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        indexed:
+          type: integer
+        notIndexed:
+          type: integer
+        byState:
+          type: object
+          additionalProperties:
+            type: integer
+        lastUpdated:
+          type: string
+          format: date-time
+
+    IndexingQuota:
+      type: object
+      properties:
+        inspectionsUsed:
+          type: integer
+        inspectionsLimit:
+          type: integer
+        indexingRequestsUsed:
+          type: integer
+        indexingRequestsLimit:
+          type: integer
+        resetsAt:
+          type: string
+          format: date-time
+
+    # --- Sync Health Schemas ---
+    SyncHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, critical]
+        queue:
+          type: object
+          properties:
+            gscSync:
+              type: object
+              properties:
+                waiting:
+                  type: integer
+                active:
+                  type: integer
+                completed:
+                  type: integer
+                failed:
+                  type: integer
+                delayed:
+                  type: integer
+            annotationsImport:
+              type: object
+              properties:
+                waiting:
+                  type: integer
+                active:
+                  type: integer
+                completed:
+                  type: integer
+                failed:
+                  type: integer
+                delayed:
+                  type: integer
+        deadLetterQueue:
+          type: object
+          properties:
+            gscSync:
+              type: integer
+            annotationsImport:
+              type: integer
+            total:
+              type: integer
+            unreplayed:
+              type: integer
+            last24h:
+              type: integer
+        lastSync:
+          type: object
+          nullable: true
+          properties:
+            completedAt:
+              type: integer
+              description: Unix timestamp
+            sitesProcessed:
+              type: integer
+            rowsInserted:
+              type: integer
+        recentErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              failedAt:
+                type: integer
+                nullable: true
+              error:
+                type: string
+              jobId:
+                type: string
+                nullable: true
+        nextScheduled:
+          type: integer
+          nullable: true
+          description: Unix timestamp of next scheduled sync
+
+    # --- Portfolio Schemas ---
+    PortfolioSummary:
+      type: object
+      properties:
+        totalClicks:
+          type: integer
+        totalImpressions:
+          type: integer
+        avgPosition:
+          type: number
+          format: float
+        avgCtr:
+          type: number
+          format: float
+        clientCount:
+          type: integer
+        totalQueries:
+          type: integer
+        totalPages:
+          type: integer
+
+    ClientPerformance:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        clientName:
+          type: string
+        domain:
+          type: string
+        clicks:
+          type: integer
+        impressions:
+          type: integer
+        position:
+          type: number
+          format: float
+        changePercent:
+          type: number
+          format: float
+
+    # --- Visibility Schemas ---
+    VisibilityConfig:
+      type: object
+      properties:
+        showClicks:
+          type: boolean
+        showImpressions:
+          type: boolean
+        showPosition:
+          type: boolean
+        showCtr:
+          type: boolean
+        showQueries:
+          type: boolean
+        showPages:
+          type: boolean
+        showCompetitors:
+          type: boolean
+        canViewGrowing:
+          type: boolean
+        canViewDecaying:
+          type: boolean
+        canViewCannibalization:
+          type: boolean
+        canExport:
+          type: boolean
+
+    # --- Export Schemas ---
+    ExportRequest:
+      type: object
+      required: [clientId, startDate, endDate, type]
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [queries, pages, summary]
+
+    SheetsExportResult:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+        spreadsheetUrl:
+          type: string
+          format: uri
+
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Invalid parameters
+              details:
+                fieldErrors:
+                  siteId: ["Invalid uuid"]
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: Authentication failed
+
+    Forbidden:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: FORBIDDEN
+              message: No access to this workspace
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: Site not found
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until retry is allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: RATE_LIMITED
+              message: "Too many requests. Please retry after 60 seconds."
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: INTERNAL_ERROR
+              message: Internal server error
+
+paths:
+  /master:
+    get:
+      operationId: getMasterDashboard
+      summary: Get master dashboard metrics
+      description: |
+        Returns aggregated metrics for all sites in workspace with optional
+        tag filtering and period comparison (WoW, MoM, YoY).
+      tags: [Dashboard]
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+        - name: comparison
+          in: query
+          schema:
+            type: string
+            enum: [WoW, MoM, YoY]
+          description: Comparison period type
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: Comma-separated tag filter
+        - name: siteIds
+          in: query
+          schema:
+            type: string
+          description: Comma-separated site UUIDs to include
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/DashboardAggregates'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /trends:
+    get:
+      operationId: getTrends
+      summary: Get trending pages
+      description: |
+        Returns pages with significant traffic changes (growing/decaying).
+        Uses 30-day expensive rate limit (30 req/min).
+      tags: [Trends]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: periodDays
+          in: query
+          schema:
+            type: integer
+            minimum: 7
+            maximum: 90
+            default: 21
+          description: Analysis period in days
+        - name: threshold
+          in: query
+          schema:
+            type: number
+            minimum: 0.01
+            maximum: 1
+            default: 0.10
+          description: Change threshold percentage (0.10 = 10%)
+        - name: minImpressions
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 100
+          description: Minimum impressions filter
+        - name: trend
+          in: query
+          schema:
+            type: string
+            enum: [growing, decaying, all]
+            default: all
+          description: Filter by trend direction
+        - name: includeTerms
+          in: query
+          schema:
+            type: string
+          description: Comma-separated terms to include in queries
+        - name: excludeTerms
+          in: query
+          schema:
+            type: string
+          description: Comma-separated terms to exclude from queries
+        - name: queryMode
+          in: query
+          schema:
+            type: string
+            enum: [and, or]
+          description: How to combine include terms
+      responses:
+        '200':
+          description: Trend analysis results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/TrendResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /cannibalization:
+    get:
+      operationId: getCannibalization
+      summary: Get keyword cannibalization issues
+      description: |
+        Detects keywords where multiple pages compete for the same query.
+        Uses expensive rate limit (30 req/min).
+      tags: [Cannibalization]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: query
+          in: query
+          schema:
+            type: string
+          description: Get details for specific query
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: minImpressions
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+        - name: summaryOnly
+          in: query
+          schema:
+            type: boolean
+          description: Return only severity breakdown
+      responses:
+        '200':
+          description: Cannibalization analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      issues:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CannibalizationIssue'
+                      summary:
+                        $ref: '#/components/schemas/CannibalizationSummary'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /striking-distance:
+    get:
+      operationId: getStrikingDistance
+      summary: Get striking distance opportunities
+      description: |
+        Returns pages ranking in positions 11-20 with high click potential
+        if moved to top 10.
+      tags: [Trends]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: minPosition
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 11
+        - name: maxPosition
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: minImpressions
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 50
+        - name: targetPosition
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 3
+          description: Position to estimate potential CTR at
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+      responses:
+        '200':
+          description: Striking distance opportunities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      pages:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StrikingDistancePage'
+                      meta:
+                        type: object
+                        properties:
+                          totalPages:
+                            type: integer
+                          totalPotentialClicks:
+                            type: integer
+                          avgDifficulty:
+                            type: number
+                            format: float
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /annotations:
+    get:
+      operationId: getAnnotations
+      summary: Get timeline annotations
+      description: |
+        Returns annotations for a site including auto-imported Google
+        algorithm updates.
+      tags: [Dashboard]
+      parameters:
+        - name: siteId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: types
+          in: query
+          schema:
+            type: string
+          description: Comma-separated annotation types
+        - name: includeGlobal
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Include global Google algorithm updates
+      responses:
+        '200':
+          description: Annotation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Annotation'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      operationId: createAnnotation
+      summary: Create custom annotation
+      description: Creates a custom annotation for a site.
+      tags: [Dashboard]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnotationCreate'
+      responses:
+        '201':
+          description: Annotation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/Annotation'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /tags:
+    get:
+      operationId: getTags
+      summary: Get all workspace tags
+      description: Returns all unique tags used in the workspace for filtering.
+      tags: [Dashboard]
+      responses:
+        '200':
+          description: Tag list with counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tag:
+                          type: string
+                        count:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /content-groups:
+    get:
+      operationId: getContentGroups
+      summary: List content groups
+      description: Returns all content groups for a site with aggregated metrics.
+      tags: [Content]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Content group list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContentGroup'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      operationId: createContentGroup
+      summary: Create content group
+      description: Creates a new content group with folder or regex matching.
+      tags: [Content]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentGroupCreate'
+      responses:
+        '201':
+          description: Content group created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/ContentGroup'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /topic-clusters:
+    get:
+      operationId: getTopicClusters
+      summary: List topic clusters
+      description: Returns all topic clusters for a site with hub and spoke pages.
+      tags: [Content]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Topic cluster list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopicCluster'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      operationId: createTopicCluster
+      summary: Create topic cluster
+      description: Creates a new topic cluster with a hub page.
+      tags: [Content]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteId, name, hubPageUrl, hubTopic]
+              properties:
+                siteId:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                hubPageUrl:
+                  type: string
+                  format: uri
+                hubTopic:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+      responses:
+        '201':
+          description: Topic cluster created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/TopicCluster'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /index-coverage:
+    get:
+      operationId: getIndexCoverage
+      summary: Get index coverage stats
+      description: Returns index coverage statistics from URL Inspection API.
+      tags: [Index]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Index coverage stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/IndexCoverageStats'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /index-coverage/quota:
+    get:
+      operationId: getIndexingQuota
+      summary: Get indexing quota usage
+      description: Returns current quota usage for URL Inspection API.
+      tags: [Index]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Quota usage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/IndexingQuota'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /index-coverage/inspect:
+    post:
+      operationId: inspectUrl
+      summary: Inspect single URL
+      description: |
+        Submits a URL for inspection via GSC URL Inspection API.
+        Uses batch rate limit (100 req/hour).
+      tags: [Index]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteId, siteUrl, pageUrl]
+              properties:
+                siteId:
+                  type: string
+                  format: uuid
+                siteUrl:
+                  type: string
+                  format: uri
+                pageUrl:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Inspection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: GSC not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /portfolio:
+    get:
+      operationId: getPortfolioSummary
+      summary: Get portfolio summary
+      description: Returns aggregated metrics across all clients in workspace.
+      tags: [Portfolio]
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Portfolio summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/PortfolioSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /portfolio/trends:
+    get:
+      operationId: getPortfolioTrends
+      summary: Get portfolio trends
+      description: Returns time-series data for portfolio metrics.
+      tags: [Portfolio]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: day
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Portfolio trends
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        clicks:
+                          type: integer
+                        impressions:
+                          type: integer
+                        avgPosition:
+                          type: number
+                          format: float
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /portfolio/top-clients:
+    get:
+      operationId: getTopClients
+      summary: Get top performing clients
+      description: Returns clients sorted by performance.
+      tags: [Portfolio]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Top clients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientPerformance'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /export/csv:
+    post:
+      operationId: exportCsv
+      summary: Export data to CSV
+      description: |
+        Generates a CSV download for queries or pages data.
+        Uses export rate limit (10 req/hour).
+      tags: [Export]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '200':
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Attachment filename
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /export/sheets:
+    post:
+      operationId: exportSheets
+      summary: Export data to Google Sheets
+      description: |
+        Creates a new Google Sheet with analytics data.
+        Requires X-Google-OAuth-Token header.
+        Uses export rate limit (10 req/hour).
+      tags: [Export]
+      parameters:
+        - name: X-Google-OAuth-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Google OAuth token for Sheets API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ExportRequest'
+                - type: object
+                  properties:
+                    title:
+                      type: string
+                      description: Custom spreadsheet title
+      responses:
+        '200':
+          description: Spreadsheet created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/SheetsExportResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: OAuth token required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /sync-health:
+    get:
+      operationId: getSyncHealth
+      summary: Get sync health status
+      description: |
+        Returns queue stats, last sync info, recent errors, and DLQ status.
+        For monitoring and debugging sync issues.
+      tags: [System]
+      responses:
+        '200':
+          description: Sync health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/SyncHealthStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /refresh:
+    post:
+      operationId: triggerRefresh
+      summary: Trigger manual data refresh
+      description: |
+        Queues a manual refresh of analytics data for a site.
+        Rate limited to 5 refreshes per hour per site.
+      tags: [System]
+      security:
+        - sessionAuth: []
+          workspaceHeader: []
+          csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteId]
+              properties:
+                siteId:
+                  type: string
+                  format: uuid
+                types:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - dashboard
+                      - trends
+                      - striking
+                      - cannibalization
+                      - clusters
+                      - groups
+                      - portfolio
+                      - ctr-benchmark
+                      - index-coverage
+                  description: Specific types to refresh (default all)
+      responses:
+        '200':
+          description: Refresh job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      jobId:
+                        type: string
+                      estimatedTime:
+                        type: integer
+                        description: Estimated seconds to completion
+                      queuePosition:
+                        type: integer
+                      message:
+                        type: string
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /visibility/{clientId}:
+    get:
+      operationId: getVisibility
+      summary: Get client visibility config
+      description: Returns portal visibility settings for a client.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Visibility config
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/VisibilityConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    put:
+      operationId: updateVisibility
+      summary: Update client visibility config
+      description: Updates portal visibility settings for a client.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisibilityConfig'
+      responses:
+        '200':
+          description: Config updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: '#/components/schemas/VisibilityConfig'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /ctr-benchmark/{clientId}:
+    get:
+      operationId: getCtrBenchmark
+      summary: Get CTR benchmark comparison
+      description: |
+        Returns CTR comparison against industry benchmarks for
+        a client's pages by position.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: CTR benchmark data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      pages:
+                        type: array
+                        items:
+                          type: object
+                      curve:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            position:
+                              type: integer
+                            expectedCtr:
+                              type: number
+                              format: float
+                      opportunities:
+                        type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /branded-split/{clientId}:
+    get:
+      operationId: getBrandedSplit
+      summary: Get branded vs non-branded split
+      description: Returns keyword performance split by branded/non-branded.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Branded split data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      brandedPercent:
+                        type: number
+                        format: float
+                      nonBrandedPercent:
+                        type: number
+                        format: float
+                      brandTerms:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            term:
+                              type: string
+                            isAutoDetected:
+                              type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      operationId: addBrandTerm
+      summary: Add brand term
+      description: Adds a new brand term for branded/non-branded classification.
+      tags: [Portfolio]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [term]
+              properties:
+                term:
+                  type: string
+      responses:
+        '200':
+          description: Brand term added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      term:
+                        type: string
+                      isAutoDetected:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'

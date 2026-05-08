@@ -44,3 +44,36 @@ import "./T5-10-tone";
 import "./T5-11-audience";
 import "./T5-12-sentence-length";
 import "./T5-13-paragraph-length";
+
+import { getChecksByTier } from "../registry";
+
+/** Get all Tier 5 checks */
+export const getTier5Checks = () => getChecksByTier(5);
+
+/** Expected count of Tier 5 checks */
+export const TIER5_CHECK_COUNT = 13;
+
+/** Tier 5 check IDs */
+export const TIER_5_CHECK_IDS = [
+  "T5-01",
+  "T5-02",
+  "T5-03",
+  "T5-04",
+  "T5-05",
+  "T5-06",
+  "T5-07",
+  "T5-08",
+  "T5-09",
+  "T5-10",
+  "T5-11",
+  "T5-12",
+  "T5-13",
+] as const;
+
+/**
+ * Verify all Tier 5 checks are registered.
+ */
+export function verifyTier5Registration(): boolean {
+  const registered = getTier5Checks();
+  return registered.length === TIER5_CHECK_COUNT;
+}

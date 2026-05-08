@@ -6,19 +6,29 @@
  * - Timing-safe comparison to prevent timing attacks
  * - Optional IP allowlist
  * - Admin context injection for audit logging
+ * - Role-based access control (admin vs readonly)
  *
  * Environment variables:
- * - SCRAPING_ADMIN_API_KEY: Required API key for admin endpoints
+ * - SCRAPING_ADMIN_API_KEY: Full admin access (read + write)
+ * - SCRAPING_ADMIN_READONLY_KEY: Read-only access (monitoring only)
  * - SCRAPING_ADMIN_ALLOWED_IPS: Optional comma-separated IP allowlist
  */
 
 // @ts-expect-error - express may not be installed yet
 import type { Request, Response, NextFunction } from "express";
 import { timingSafeEqual } from "crypto";
+import { alertLogger } from "../logging";
 
 // =============================================================================
 // Types
 // =============================================================================
+
+/**
+ * Admin role types for access control.
+ * - 'admin': Full access (read + write operations)
+ * - 'readonly': Read-only access (monitoring, status, metrics)
+ */
+export type AdminRole = 'admin' | 'readonly';
 
 /**
  * Configuration options for admin authentication middleware.
@@ -44,6 +54,8 @@ export interface AdminContext {
   userAgent?: string;
   /** First 8 characters of API key for identification */
   apiKeyPrefix?: string;
+  /** Role determined by which API key was used */
+  role: AdminRole;
 }
 
 /**
@@ -90,16 +102,15 @@ export function createAdminAuthMiddleware(
 ) {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
   const adminApiKey = process.env.SCRAPING_ADMIN_API_KEY;
+  const readonlyApiKey = process.env.SCRAPING_ADMIN_READONLY_KEY;
   const allowedIps =
     process.env.SCRAPING_ADMIN_ALLOWED_IPS?.split(",").map((ip) =>
       ip.trim()
     ) ?? finalConfig.allowedIps;
 
-  // Warn if API key not configured
-  if (finalConfig.requireApiKey && !adminApiKey) {
-    console.warn(
-      "[SECURITY] SCRAPING_ADMIN_API_KEY not set - admin endpoints will reject all requests"
-    );
+  // Warn if API keys not configured
+  if (finalConfig.requireApiKey && !adminApiKey && !readonlyApiKey) {
+    alertLogger.warn('Neither SCRAPING_ADMIN_API_KEY nor SCRAPING_ADMIN_READONLY_KEY set - admin endpoints will reject all requests');
   }
 
   return (req: AdminRequest, res: Response, next: NextFunction) => {
@@ -108,9 +119,7 @@ export function createAdminAuthMiddleware(
     // IP allowlist check (if configured)
     if (allowedIps && allowedIps.length > 0) {
       if (!allowedIps.includes(clientIp)) {
-        console.warn(
-          `[AdminAuth] IP ${clientIp} rejected - not in allowlist`
-        );
+        alertLogger.warn({ clientIp }, 'Admin request rejected - IP not in allowlist');
         return res.status(403).json({
           error: "Forbidden",
           message: "IP not in allowlist",
@@ -133,19 +142,20 @@ export function createAdminAuthMiddleware(
         });
       }
 
-      if (!adminApiKey) {
-        return res.status(503).json({
-          error: "Service Unavailable",
-          message: "Admin authentication not configured",
-          timestamp: new Date().toISOString(),
-        });
+      // Determine role by checking which key matches
+      let role: AdminRole | null = null;
+
+      // Check admin key first (has full access)
+      if (adminApiKey && timingSafeCompare(providedKey, adminApiKey)) {
+        role = 'admin';
+      }
+      // Check readonly key
+      else if (readonlyApiKey && timingSafeCompare(providedKey, readonlyApiKey)) {
+        role = 'readonly';
       }
 
-      // Timing-safe comparison to prevent timing attacks
-      if (!timingSafeCompare(providedKey, adminApiKey)) {
-        console.warn(
-          `[AdminAuth] Invalid API key from ${clientIp}`
-        );
+      if (!role) {
+        alertLogger.warn({ clientIp }, 'Admin request rejected - invalid API key');
         return res.status(401).json({
           error: "Unauthorized",
           message: "Invalid admin API key",
@@ -159,14 +169,58 @@ export function createAdminAuthMiddleware(
         clientIp,
         userAgent: req.headers["user-agent"],
         apiKeyPrefix: providedKey.substring(0, 8),
+        role,
       };
     } else {
-      // No API key required - still attach context
+      // No API key required - still attach context with admin role
       req.adminContext = {
         authenticatedAt: new Date().toISOString(),
         clientIp,
         userAgent: req.headers["user-agent"],
+        role: 'admin',
       };
+    }
+
+    next();
+  };
+}
+
+/**
+ * Create role-checking middleware that requires a specific role level.
+ * Use after authentication middleware to enforce role requirements.
+ *
+ * @example
+ * ```typescript
+ * // Require admin role for write operations
+ * router.post('/emergency-stop', requireAdminAuth, requireRole('admin'), handler);
+ *
+ * // Allow readonly role for monitoring
+ * router.get('/status', requireAdminAuth, requireRole('readonly'), handler);
+ * ```
+ */
+export function requireRole(requiredRole: AdminRole) {
+  return (req: AdminRequest, res: Response, next: NextFunction) => {
+    const context = req.adminContext;
+
+    if (!context) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Admin authentication required",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Admin role has full access, readonly can only access readonly endpoints
+    if (requiredRole === 'admin' && context.role === 'readonly') {
+      alertLogger.warn(
+        { clientIp: context.clientIp, requiredRole, actualRole: context.role },
+        'Admin request rejected - insufficient permissions'
+      );
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Insufficient permissions - admin access required",
+        timestamp: new Date().toISOString(),
+      });
     }
 
     next();
@@ -226,11 +280,24 @@ function getClientIp(req: Request): string {
 }
 
 // =============================================================================
-// Singleton Export
+// Singleton Exports
 // =============================================================================
 
 /**
  * Pre-configured admin auth middleware with default settings.
- * Uses SCRAPING_ADMIN_API_KEY env var and X-Admin-API-Key header.
+ * Uses SCRAPING_ADMIN_API_KEY and SCRAPING_ADMIN_READONLY_KEY env vars.
+ * Accepts X-Admin-API-Key header.
  */
 export const requireAdminAuth = createAdminAuthMiddleware();
+
+/**
+ * Middleware that requires admin role (full access).
+ * Use for write operations: emergency stop, cache invalidate, migration advance.
+ */
+export const requireAdmin = requireRole('admin');
+
+/**
+ * Middleware that allows readonly role (monitoring access).
+ * Use for read operations: status, metrics, health checks.
+ */
+export const requireReadonly = requireRole('readonly');

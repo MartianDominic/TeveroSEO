@@ -377,6 +377,68 @@ export function generateJobId(
   return includeTimestamp ? `${base}-${Date.now()}` : base;
 }
 
+/**
+ * QUEUE-04 FIX: Generate deterministic daily job ID for deduplication.
+ * BullMQ will reject jobs with duplicate IDs, preventing concurrent syncs.
+ *
+ * Format: `{queue}:{workspaceId}:{yyyy-MM-dd}`
+ *
+ * Use this for daily recurring jobs like GSC sync, analytics sync, etc.
+ * The same workspace cannot have multiple jobs queued for the same day.
+ *
+ * @param queue - Queue name (e.g., 'gsc-sync', 'analytics-sync')
+ * @param workspaceId - Workspace/client ID (use 'system' for system-wide jobs)
+ * @param date - Date for the job (defaults to today)
+ * @returns Deterministic job ID
+ *
+ * @example
+ * ```typescript
+ * // System-level daily job (only one per day)
+ * const jobId = generateDailyJobId('gsc-sync', 'system');
+ * // => 'gsc-sync:system:2024-05-08'
+ *
+ * // Per-workspace job (only one per workspace per day)
+ * const jobId = generateDailyJobId('gsc-sync', 'ws_abc123');
+ * // => 'gsc-sync:ws_abc123:2024-05-08'
+ *
+ * // Usage with queue.add():
+ * await gscSyncQueue.add('sync', { workspaceId, siteId }, {
+ *   jobId: generateDailyJobId('gsc-sync', workspaceId),
+ *   // If job with this ID already exists, it won't be added again
+ * });
+ * ```
+ */
+export function generateDailyJobId(
+  queue: string,
+  workspaceId: string,
+  date: Date = new Date(),
+): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+  return `${queue}:${workspaceId}:${dateStr}`;
+}
+
+/**
+ * Generate job ID with hour precision for more frequent jobs.
+ * Use for jobs that run multiple times per day.
+ *
+ * Format: `{queue}:{workspaceId}:{yyyy-MM-dd-HH}`
+ */
+export function generateHourlyJobId(
+  queue: string,
+  workspaceId: string,
+  date: Date = new Date(),
+): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}-${hour}`;
+  return `${queue}:${workspaceId}:${dateStr}`;
+}
+
 // ============================================================================
 // URL Validation Schema (SSRF Prevention)
 // ============================================================================

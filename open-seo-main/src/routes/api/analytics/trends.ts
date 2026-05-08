@@ -2,9 +2,20 @@
  * Trends API Route
  * Phase 96-03: GET /api/analytics/trends
  * Returns growing/decaying pages with trend analysis
+ * Rate limited: 30 requests per minute per workspace (expensive analytics).
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { getTrendDetectionService } from "@/server/features/analytics/services/TrendDetectionService";
+import {
+  authenticateAnalyticsRequest,
+  verifySiteOwnership,
+  siteNotFoundResponse,
+} from "@/server/features/analytics/auth/analytics-auth";
+import {
+  analyticsExpensiveRateLimiter,
+  rateLimitExceededResponse,
+  addRateLimitHeaders,
+} from "@/server/middleware/rate-limit";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -18,21 +29,19 @@ const querySchema = z.object({
   queryMode: z.enum(['and', 'or']).optional(),
 });
 
-// Placeholder auth helpers (would be in @/server/lib/auth in real implementation)
-async function getWorkspaceIdFromRequest(_request: Request): Promise<string | null> {
-  // TODO: Extract from session/JWT
-  return 'workspace-placeholder';
-}
-
-async function verifySiteOwnership(_siteId: string, _workspaceId: string): Promise<boolean> {
-  // TODO: Query database to verify site belongs to workspace
-  return true;
-}
-
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/trends")({
   loader: async ({ request }: any) => {
+    // Authenticate request and get verified workspace context
+    const auth = await authenticateAnalyticsRequest(request);
+
+    // Rate limit check: 30 requests per minute per workspace (expensive analytics)
+    const rateLimitResult = await analyticsExpensiveRateLimiter(auth.workspaceId);
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult);
+    }
+
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams);
 
@@ -44,16 +53,10 @@ export const Route = (createFileRoute as any)("/api/analytics/trends")({
       );
     }
 
-    // Verify workspace membership
-    const workspaceId = await getWorkspaceIdFromRequest(request);
-    if (!workspaceId) {
-      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify site belongs to workspace
-    const siteVerified = await verifySiteOwnership(parsed.data.siteId, workspaceId);
+    // Verify site belongs to authenticated workspace
+    const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
     if (!siteVerified) {
-      return Response.json({ success: false, error: "Site not found" }, { status: 404 });
+      return siteNotFoundResponse();
     }
 
     const service = getTrendDetectionService();
@@ -71,6 +74,7 @@ export const Route = (createFileRoute as any)("/api/analytics/trends")({
 
     const result = await service.analyzePageTrends(parsed.data.siteId, filters);
 
-    return Response.json({ success: true, data: result });
+    const response = Response.json({ success: true, data: result });
+    return addRateLimitHeaders(response, rateLimitResult);
   },
 });

@@ -13,12 +13,12 @@
 import {
   type MigrationState,
   type ScrapingFeature,
-  type ScrapingMigrationFlags,
   MIGRATION_ORDER,
   VALID_MIGRATION_STATES,
   loadMigrationFlagsCached,
 } from '../config';
 import { redis, REDIS_SERVICE_PREFIX } from '@/server/lib/redis';
+import { migrationLogger } from '../logging';
 
 // =============================================================================
 // Types
@@ -236,7 +236,7 @@ export class MigrationRollout {
     const envKey = `${ROLLOUT_KEY_PREFIX}env:${feature}`;
     await redis.set(envKey, state);
 
-    console.info(`[MigrationRollout] ${feature}: ${stateData.previousState} -> ${state}`);
+    migrationLogger.info({ feature, previousState: stateData.previousState, newState: state }, 'Feature state changed');
   }
 
   /**
@@ -351,7 +351,7 @@ export class MigrationRollout {
     // Record rollback in history
     await this.recordStateTransition(feature, currentState, previousState, 'rollback', reason);
 
-    console.warn(`[MigrationRollout] Rolled back ${feature}: ${currentState} -> ${previousState}. Reason: ${reason ?? 'Not specified'}`);
+    migrationLogger.warn({ feature, previousState: currentState, newState: previousState, reason: reason ?? 'Not specified' }, 'Feature rolled back');
 
     return {
       success: true,
@@ -371,7 +371,7 @@ export class MigrationRollout {
     await this.setFeatureState(feature, state);
     await this.recordStateTransition(feature, currentState, state, 'force', reason);
 
-    console.warn(`[MigrationRollout] FORCED ${feature}: ${currentState} -> ${state}. Reason: ${reason}`);
+    migrationLogger.warn({ feature, previousState: currentState, newState: state, reason }, 'Feature state FORCED');
   }
 
   // ===========================================================================
@@ -443,7 +443,7 @@ export class MigrationRollout {
   /**
    * Get metrics for a feature at a given state.
    */
-  async getMetrics(feature: ScrapingFeature, state: MigrationState): Promise<RolloutMetrics> {
+  async getMetrics(feature: ScrapingFeature, _state: MigrationState): Promise<RolloutMetrics> {
     const metricsKey = `${ROLLOUT_KEY_PREFIX}metrics:${feature}`;
     const stateKey = `${ROLLOUT_KEY_PREFIX}state:${feature}`;
 
@@ -513,7 +513,6 @@ export class MigrationRollout {
     error?: string;
     shadowMatch?: boolean;
   }): Promise<void> {
-    const metricsKey = `${ROLLOUT_KEY_PREFIX}metrics:${feature}`;
     const countersKey = `${ROLLOUT_KEY_PREFIX}counters:${feature}`;
 
     // Increment counters atomically

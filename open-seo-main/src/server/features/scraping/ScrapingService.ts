@@ -21,18 +21,16 @@ import { DomainLearningService } from "./DomainLearningService";
 import { CacheManager, createCacheManager, type CacheStats } from "./cache";
 import { QueueManager, getQueueManager, type EnqueueResult } from "./queue";
 import type { ScrapeTier } from "@/db/domain-scrape-learning-schema";
-import type { DfsMode } from "@/db/dfs-cost-tracking-schema";
 import {
   loadMigrationFlagsCached,
   type ScrapingMigrationFlags,
   type ScrapingFeature,
 } from "./config";
-import { getDfsCostTracker, extractDomainFromUrl, type DfsCostTracker } from "./providers/DfsCostTracker";
-import { getDfsBudgetMonitor, type DfsBudgetMonitor } from "./providers/DfsBudgetMonitor";
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
 import { AlertManager } from "./monitoring/AlertManager";
 import { getMetricsCollector, recordScrapeRequest, recordCircuitState } from "./monitoring/MetricsCollector";
+import { getLatencyTracker, type LatencyStats } from "./monitoring/LatencyTracker";
 import {
   logger,
   withRequestContextAsync,
@@ -66,9 +64,6 @@ export interface ScrapeOptions extends FetchOptions {
 
   /** Correlation ID for request tracing (auto-generated if not provided) */
   correlationId?: string;
-
-  /** Workspace ID for cost attribution */
-  workspaceId?: string;
 }
 
 /**
@@ -239,8 +234,6 @@ export class ScrapingService {
   private alertManager: AlertManager | null = null;
   private redis: Redis | null = null;
   private db: PostgresJsDatabase | null = null;
-  private dfsCostTracker: DfsCostTracker | null = null;
-  private dfsBudgetMonitor: DfsBudgetMonitor | null = null;
 
   // Metrics tracking
   private shadowMismatches = 0;
@@ -286,13 +279,6 @@ export class ScrapingService {
     if (deps.cwvService) {
       this.cwvService = deps.cwvService;
     }
-
-    // Initialize DFS cost tracker with database connection
-    // Cast to any to bridge PostgresJsDatabase and NodePgDatabase types
-    this.dfsCostTracker = getDfsCostTracker(deps.db as any);
-
-    // Initialize DFS budget monitor with database and optional Redis
-    this.dfsBudgetMonitor = getDfsBudgetMonitor(deps.db as any, undefined, deps.redis);
   }
 
   /**
@@ -316,29 +302,6 @@ export class ScrapingService {
     return withRequestContextAsync(
       { correlationId, url, clientId: options.clientId },
       async () => {
-        // Check budget before DFS tier requests (GAP-C1 fix)
-        if (this.willUseDfsTier(options) && this.dfsBudgetMonitor) {
-          const estimatedCost = this.estimateDfsCostForBudget(options.forceTier ?? options.startTier ?? 'dfs_basic');
-          const canProceed = await this.dfsBudgetMonitor.shouldAllowRequest(estimatedCost);
-
-          if (!canProceed) {
-            logger.warn({ url, estimatedCost }, 'DFS budget limit exceeded, blocking request');
-            return {
-              url,
-              success: false,
-              error: 'DFS budget limit exceeded',
-              errorCode: 'BUDGET_EXCEEDED',
-              statusCode: 429,
-              tierUsed: (options.forceTier ?? options.startTier ?? 'dfs_basic') as ScrapeTier,
-              fromCache: false,
-              responseTimeMs: Date.now() - startTime,
-              responseSizeBytes: 0,
-              estimatedCostUsd: 0,
-              correlationId,
-            };
-          }
-        }
-
         this.trackRequest(options.feature);
 
         const fetchOptions: FetchOptions = {
@@ -373,6 +336,12 @@ export class ScrapingService {
             clientId: options.clientId,
           });
 
+          // Record latency for P95 alerting (Gap P3.G20)
+          // Only track non-cached requests for accurate performance monitoring
+          if (!result.fromCache) {
+            getLatencyTracker().record(durationMs);
+          }
+
           // Log completion
           logScrapeComplete({
             url,
@@ -382,22 +351,6 @@ export class ScrapingService {
             costUsd: result.estimatedCostUsd,
             statusCode: result.statusCode,
           });
-
-          // Record DFS cost to cost tracker (fire-and-forget)
-          if (this.isDfsTier(result.tierUsed) && !result.fromCache) {
-            this.recordDfsCost({
-              url,
-              tier: result.tierUsed,
-              success: result.success,
-              statusCode: result.statusCode,
-              responseSizeBytes: result.responseSizeBytes,
-              responseTimeMs: durationMs,
-              clientId: options.clientId,
-              workspaceId: options.workspaceId,
-              jobId: options.jobId,
-              actualCost: result.estimatedCostUsd,
-            });
-          }
 
           // Add parsed data if requested
           let parsedData: ParsedPageData | undefined;
@@ -435,21 +388,6 @@ export class ScrapingService {
             error: error instanceof Error ? error.message : String(error),
             durationMs,
           });
-
-          // Record DFS cost even on failure (DFS charges for attempts)
-          const failedTier = options.forceTier ?? options.startTier ?? 'direct';
-          if (this.isDfsTier(failedTier)) {
-            this.recordDfsCost({
-              url,
-              tier: failedTier,
-              success: false,
-              responseTimeMs: durationMs,
-              clientId: options.clientId,
-              workspaceId: options.workspaceId,
-              jobId: options.jobId,
-              errorMessage: error instanceof Error ? error.message : String(error),
-            });
-          }
 
           throw error;
         }
@@ -876,120 +814,6 @@ export class ScrapingService {
     this.costByFeature.set(key, (this.costByFeature.get(key) ?? 0) + costUsd);
   }
 
-  /**
-   * Check if a tier is a DataForSEO tier (requires cost tracking).
-   */
-  private isDfsTier(tier: ScrapeTier): boolean {
-    return tier === "dfs_basic" || tier === "dfs_js" || tier === "dfs_browser";
-  }
-
-  /**
-   * Check if the scrape options will use a DFS tier (for budget checking).
-   */
-  private willUseDfsTier(options: ScrapeOptions): boolean {
-    // Direct DFS tier specification
-    if (options.forceTier && this.isDfsTier(options.forceTier)) return true;
-    if (options.startTier && this.isDfsTier(options.startTier)) return true;
-
-    // Check if max tier allows escalation to DFS
-    const maxTier = options.maxTier;
-    if (maxTier && this.isDfsTier(maxTier)) return true;
-
-    return false;
-  }
-
-  /**
-   * Estimate cost for budget checking (before request).
-   */
-  private estimateDfsCostForBudget(tier: string): number {
-    const costs: Record<string, number> = {
-      dfs_basic: 0.000125,
-      dfs_js: 0.00125,
-      dfs_browser: 0.00425,
-    };
-    return costs[tier] ?? 0.001;
-  }
-
-  /**
-   * Map scrape tier to DFS mode for cost tracking.
-   */
-  private tierToDfsMode(tier: ScrapeTier): DfsMode {
-    switch (tier) {
-      case "dfs_basic":
-        return "basic";
-      case "dfs_js":
-        return "js";
-      case "dfs_browser":
-        return "browser";
-      default:
-        return "basic";
-    }
-  }
-
-  /**
-   * Estimate cost for a DFS tier scrape.
-   */
-  private estimateDfsCost(tier: ScrapeTier): number {
-    const costs: Record<string, number> = {
-      dfs_basic: 0.000125,
-      dfs_js: 0.00125,
-      dfs_browser: 0.00425,
-    };
-    return costs[tier] ?? 0;
-  }
-
-  /**
-   * Record DFS cost to the cost tracker (fire-and-forget).
-   * Does not await - cost tracking should not block scrape response.
-   */
-  private recordDfsCost(params: {
-    url: string;
-    tier: ScrapeTier;
-    success: boolean;
-    statusCode?: number;
-    responseSizeBytes?: number;
-    responseTimeMs: number;
-    clientId?: string;
-    workspaceId?: string;
-    jobId?: string;
-    taskId?: string;
-    errorMessage?: string;
-    dfsErrorCode?: number;
-    actualCost?: number;
-  }): void {
-    if (!this.dfsCostTracker || !this.isDfsTier(params.tier)) {
-      return;
-    }
-
-    const domain = extractDomainFromUrl(params.url);
-    const mode = this.tierToDfsMode(params.tier);
-    const estimatedCost = this.estimateDfsCost(params.tier);
-
-    // Fire-and-forget: don't await, don't block response
-    this.dfsCostTracker
-      .recordCost({
-        url: params.url,
-        domain,
-        mode,
-        usedStandardQueue: false, // Live API for scraping
-        estimatedCost,
-        actualCost: params.actualCost ?? estimatedCost,
-        success: params.success,
-        statusCode: params.statusCode,
-        dfsErrorCode: params.dfsErrorCode,
-        errorMessage: params.errorMessage,
-        responseSizeBytes: params.responseSizeBytes,
-        responseTimeMs: params.responseTimeMs,
-        clientId: params.clientId,
-        workspaceId: params.workspaceId,
-        jobId: params.jobId,
-        taskId: params.taskId,
-      })
-      .catch((err) => {
-        logger.warn({ err, url: params.url }, "Failed to record DFS cost");
-      });
-  }
-
   private parseHtml(html: string, _url: string): ParsedPageData {
     // Simple regex-based parsing for common elements
     // In production, this would use cheerio for robust parsing
@@ -1396,6 +1220,32 @@ export class ScrapingService {
     lines.push(`scraping_latency_percentile_seconds{quantile="0.99"} ${p99.toFixed(6)}`);
     lines.push('');
 
+    // ==========================================================================
+    // Rolling P95 Latency Metrics (Gap P3.G20)
+    // ==========================================================================
+    const latencyStats = this.getLatencyStats();
+    lines.push('# HELP scraping_p95_latency_rolling_ms Rolling P95 latency in milliseconds (last 100 non-cached requests)');
+    lines.push('# TYPE scraping_p95_latency_rolling_ms gauge');
+    lines.push(`scraping_p95_latency_rolling_ms ${latencyStats.p95Ms.toFixed(2)}`);
+    lines.push('');
+
+    lines.push('# HELP scraping_p95_threshold_breach P95 latency threshold breach indicator (1=above, 0=below)');
+    lines.push('# TYPE scraping_p95_threshold_breach gauge');
+    lines.push(`scraping_p95_threshold_breach ${latencyStats.isAboveThreshold ? 1 : 0}`);
+    lines.push('');
+
+    lines.push('# HELP scraping_latency_rolling_stats Rolling latency statistics in milliseconds');
+    lines.push('# TYPE scraping_latency_rolling_stats gauge');
+    lines.push(`scraping_latency_rolling_stats{stat="p50"} ${latencyStats.p50Ms.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="p95"} ${latencyStats.p95Ms.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="p99"} ${latencyStats.p99Ms.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="avg"} ${latencyStats.avgMs.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="min"} ${latencyStats.minMs.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="max"} ${latencyStats.maxMs.toFixed(2)}`);
+    lines.push(`scraping_latency_rolling_stats{stat="samples"} ${latencyStats.sampleCount}`);
+    lines.push(`scraping_latency_rolling_stats{stat="threshold"} ${latencyStats.thresholdMs}`);
+    lines.push('');
+
     return lines.join('\n');
   }
 
@@ -1448,6 +1298,24 @@ export class ScrapingService {
    */
   getCacheStats(): CacheStats {
     return this.cacheManager?.getStats() ?? this.emptyCacheStats();
+  }
+
+  /**
+   * Get P95 latency from rolling window (last 100 non-cached requests).
+   * Gap P3.G20: Exposes P95 metric for external monitoring systems.
+   *
+   * @returns P95 latency in milliseconds
+   */
+  getP95Latency(): number {
+    return getLatencyTracker().getP95Latency();
+  }
+
+  /**
+   * Get comprehensive latency statistics from rolling window.
+   * Gap P3.G20: Provides full latency breakdown for dashboards.
+   */
+  getLatencyStats(): LatencyStats {
+    return getLatencyTracker().getStats();
   }
 
   /**

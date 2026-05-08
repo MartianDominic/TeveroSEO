@@ -178,10 +178,11 @@ export class CategoryRouter {
 
       return tenantCentroids.size;
     } catch (error) {
-      log.error("Failed to build category centroids", {
-        tenantId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      log.error(
+        "Failed to build category centroids",
+        error instanceof Error ? error : new Error(String(error)),
+        { tenantId }
+      );
       throw error;
     }
   }
