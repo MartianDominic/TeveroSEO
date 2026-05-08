@@ -29,7 +29,7 @@
     "ci:check": "prettier --check . && knip && tsc --noEmit && oxlint . --type-aware"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.95.1",
     "@clerk/backend": "^3.4.4",
     "@every-app/sdk": "^0.1.14",
     "@google/generative-ai": "^0.24.1",
