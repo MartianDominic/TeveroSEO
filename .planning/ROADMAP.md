@@ -2759,7 +2759,7 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [ ] 96-01-PLAN.md — GSC Data Foundation: 25K extraction, all dimensions, 5-year retention
   - [ ] 96-02-PLAN.md — Master Dashboard: multi-site aggregation, tagging, comparison mode
   - [ ] 96-03-PLAN.md — Actionable Insights: growing/decaying, striking distance, cannibalization UI
-  - [ ] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting
+  - [x] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting
   - [ ] 96-05-PLAN.md — Client Portal: white-label views, exports, privacy controls
 
 ---
