@@ -54,6 +54,9 @@ export interface ScrapingMigrationFlags {
 
   /** Enable unified scraping for crawl workflow (site audit crawl phase) */
   crawlWorkflow: MigrationState;
+
+  /** Enable unified cost tracking for SERP API calls (SerpAnalyzer) */
+  serpApi: MigrationState;
 }
 
 /**
@@ -68,6 +71,7 @@ export const MIGRATION_ORDER: ScrapingFeature[] = [
   "prospectAnalysis", // Day 1-2: 4 pages/op, low risk
   "contentBriefs", // Day 2-3: 5 pages/op, low risk
   "serpContent", // Day 3: 5 pages/op, low risk
+  "serpApi", // Day 3: SERP API cost tracking, low risk
   "competitorSpy", // Day 3-4: variable, medium risk
   "volumeRefresh", // Day 4: keyword metrics, medium risk
   "hybridCrawler", // Day 4-5: 10K pages, high risk
@@ -82,6 +86,7 @@ export const FLAG_ENV_VARS: Record<ScrapingFeature, string> = {
   prospectAnalysis: "SCRAPING_PROSPECT_ANALYSIS",
   contentBriefs: "SCRAPING_CONTENT_BRIEFS",
   serpContent: "SCRAPING_SERP_CONTENT",
+  serpApi: "SCRAPING_SERP_API",
   competitorSpy: "SCRAPING_COMPETITOR_SPY",
   hybridCrawler: "SCRAPING_HYBRID_CRAWLER",
   siteAudits: "SCRAPING_SITE_AUDITS",
@@ -100,6 +105,7 @@ export const DEFAULT_FLAGS: Readonly<ScrapingMigrationFlags> = {
   prospectAnalysis: "legacy",
   contentBriefs: "legacy",
   serpContent: "legacy",
+  serpApi: "legacy",
   competitorSpy: "legacy",
   hybridCrawler: "legacy",
   siteAudits: "legacy",
