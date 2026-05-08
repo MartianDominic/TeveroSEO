@@ -13,7 +13,7 @@ export const siteTags = pgTable(
   "site_tags",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    siteId: uuid("site_id").notNull().references(() => siteConnections.id, { onDelete: "cascade" }),
+    siteId: text("site_id").notNull().references(() => siteConnections.id, { onDelete: "cascade" }),
     tagName: text("tag_name").notNull(),
     tagColor: text("tag_color"), // Hex color for UI badge (e.g., "#1B6E45")
     tagCategory: text("tag_category"), // Optional: "project", "region", "custom"
@@ -30,7 +30,7 @@ export const clientTags = pgTable(
   "client_tags",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    clientId: uuid("client_id").notNull(),
+    clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
     tagName: text("tag_name").notNull(),
     tagColor: text("tag_color"),
     tagCategory: text("tag_category"),

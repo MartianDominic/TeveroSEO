@@ -17,6 +17,8 @@ import {
   boolean,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
+import { organization } from "./user-schema";
+import { siteConnections } from "./connection-schema";
 
 /**
  * SEO GSC daily aggregate snapshots.
@@ -153,8 +155,8 @@ export const annotations = pgTable(
   "annotations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    siteId: uuid("site_id"), // null = global annotation (Google updates)
-    workspaceId: uuid("workspace_id").notNull(),
+    siteId: text("site_id").references(() => siteConnections.id, { onDelete: "set null" }), // null = global annotation (Google updates)
+    workspaceId: text("workspace_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
     annotationDate: date("annotation_date").notNull(),
     annotationType: text("annotation_type").notNull(), // core_update, spam_update, helpful_content, product_reviews, link_spam, site_change, custom
     title: text("title").notNull(),
