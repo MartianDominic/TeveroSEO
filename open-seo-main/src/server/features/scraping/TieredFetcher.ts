@@ -30,6 +30,8 @@ import type { CacheManager, CacheLevel, CachedPage, ContentType } from "./cache"
 import { getContentHash, detectContentType } from "./cache";
 import { CircuitBreaker, type CircuitState, CircuitOpenError } from "./resilience/CircuitBreaker";
 import type { AlertManager } from "./monitoring/AlertManager";
+import { recordCircuitState } from "./monitoring/MetricsCollector";
+import { fetcherLogger, cacheLogger, logCircuitStateChange, logTierEscalation } from "./logging";
 
 // =============================================================================
 // Types
@@ -194,7 +196,8 @@ export class TieredFetcher {
 
       // Set up state change listener
       breaker.onStateChange((oldState, newState) => {
-        console.warn(`[TieredFetcher] Circuit ${tier}: ${oldState} -> ${newState}`);
+        logCircuitStateChange(tier, oldState, newState);
+        recordCircuitState(tier, newState);
         if (newState === 'open' && this.alertManager) {
           // Fire alert when circuit opens
           this.alertManager.evaluate({
@@ -254,7 +257,7 @@ export class TieredFetcher {
         }
       } catch (error) {
         // Log but continue to network fetch on cache error
-        console.error("[TieredFetcher] Cache lookup failed:", error);
+        cacheLogger.error({ url, error: error instanceof Error ? error.message : String(error) }, 'Cache lookup failed');
       }
     }
 
@@ -296,7 +299,7 @@ export class TieredFetcher {
 
     // Check if circuit is open - escalate immediately
     if (breaker.getState() === 'open') {
-      console.debug(`[TieredFetcher] Circuit open for ${tier}, escalating`);
+      fetcherLogger.debug({ url, tier }, 'Circuit open, escalating');
       return this.escalateToNextTier(url, tier, options, startTime);
     }
 
@@ -352,7 +355,7 @@ export class TieredFetcher {
       };
     }
 
-    console.info(`[TieredFetcher] Escalating ${url} from ${currentTier} to ${nextTier}`);
+    logTierEscalation(url, currentTier, nextTier, 'circuit_open');
     return this.fetchWithCircuitBreaker(url, nextTier, { ...options, startTier: nextTier }, startTime);
   }
 
@@ -406,7 +409,8 @@ export class TieredFetcher {
     const breaker = this.circuitBreakers.get(tier);
     if (breaker) {
       breaker.forceClose();
-      console.info(`[TieredFetcher] Circuit ${tier} manually reset`);
+      fetcherLogger.info({ tier }, 'Circuit manually reset');
+      recordCircuitState(tier, 'closed');
     }
   }
 
@@ -417,7 +421,8 @@ export class TieredFetcher {
     const breaker = this.circuitBreakers.get(tier);
     if (breaker) {
       breaker.forceOpen();
-      console.warn(`[TieredFetcher] Circuit ${tier} manually opened`);
+      fetcherLogger.warn({ tier }, 'Circuit manually opened');
+      recordCircuitState(tier, 'open');
     }
   }
 
@@ -481,7 +486,7 @@ export class TieredFetcher {
       await this.cacheManager.set(url, cachedPage, { contentType });
     } catch (error) {
       // Log but don't fail the request
-      console.error("[TieredFetcher] Failed to cache result:", error);
+      cacheLogger.error({ url, error: error instanceof Error ? error.message : String(error) }, 'Failed to cache result');
     }
   }
 
