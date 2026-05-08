@@ -20,6 +20,7 @@ export * from "./schema";
 export * from "./webhook-schema";
 export * from "./oauth-state-schema"; // MED-VAL-02 FIX: OAuth state for CSRF protection
 export * from "./onpage-mastery-schema"; // Phase 92: On-Page SEO Mastery
+export * from "./scraping-audit-schema"; // Phase 95-14: Scraping Admin Audit Logs
 
 // Dual-write exports for database consolidation (Phase 67-03)
 export {
