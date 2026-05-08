@@ -33,6 +33,8 @@ import { closeRedis } from "@/server/lib/redis";
 import { closeWebhookQueue } from "@/server/queues/webhookQueue";
 import { closeOnboardingQueue } from "@/server/queues/onboardingQueue";
 import { closePipelineFlowProducer } from "@/server/queues/pipelineQueue";
+// SCR-01: Legacy Redis DLQ cleanup - still needed to process/migrate any remaining legacy jobs
+// Once Redis DLQ is fully drained, this import and related shutdown calls can be removed
 import { closeDLQQueue, stopDLQCleanupScheduler } from "@/server/queues/dlq";
 import { closeAlertQueue } from "@/server/queues/alertQueue";
 import { closeDashboardMetricsQueue } from "@/server/queues/dashboardMetricsQueue";
@@ -40,6 +42,11 @@ import { closeDashboardMetricsQueue } from "@/server/queues/dashboardMetricsQueu
 import { removeLegacySchedulers, closeAllQueues as closeSchedulerQueues } from "@/server/queues/queue-scheduler";
 import { pool } from "@/db";
 import { createLogger } from "@/server/lib/logger";
+// SVC-01 FIX: Event consumers for analytics event handling
+import {
+  initAnalyticsEventConsumers,
+  shutdownAnalyticsEventConsumers,
+} from "@/server/features/analytics/events";
 
 const log = createLogger({ module: "worker-entry" });
 
@@ -121,6 +128,17 @@ export async function startAllWorkers(): Promise<void> {
   if (failed > 0) {
     log.warn("Some workers failed to start", { failedCount: failed });
   }
+
+  // SVC-01 FIX: Initialize event consumers after workers are ready
+  // This ensures events emitted by workers (CannibalizationWorker, TrendCalculationWorker)
+  // have registered handlers to process them
+  try {
+    initAnalyticsEventConsumers();
+    log.info("Analytics event consumers initialized");
+  } catch (err) {
+    log.error("Failed to initialize analytics event consumers", err instanceof Error ? err : new Error(String(err)));
+    // Non-fatal: continue but log the error
+  }
 }
 
 // Start all workers with proper error handling
@@ -134,6 +152,10 @@ async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info("Shutdown signal received", { signal });
+
+  // SVC-01 FIX: Shutdown event consumers first to stop processing new events
+  try { shutdownAnalyticsEventConsumers(); } catch (err) { log.error("shutdownAnalyticsEventConsumers failed", err instanceof Error ? err : new Error(String(err))); }
+
   try { await stopAuditWorker(); } catch (err) { log.error("stopAuditWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopReportWorker(); } catch (err) { log.error("stopReportWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopScheduleWorker(); } catch (err) { log.error("stopScheduleWorker failed", err instanceof Error ? err : new Error(String(err))); }

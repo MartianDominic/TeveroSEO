@@ -815,6 +815,12 @@ export const PORTAL_RATE_LIMITS = {
     window: 60,
     keyPrefix: "ratelimit:portal:batch:",
   },
+  /** Portal export operations - 5 req/hour per client (strict limit for file downloads) */
+  EXPORT: {
+    limit: 5,
+    window: 3600, // 1 hour in seconds
+    keyPrefix: "ratelimit:portal:export:",
+  },
 } as const;
 
 /**
@@ -842,6 +848,15 @@ export const portalExpensiveRateLimiter = createEndpointRateLimiter(
  */
 export const portalBatchRateLimiter = createEndpointRateLimiter(
   PORTAL_RATE_LIMITS.BATCH
+);
+
+/**
+ * Rate limiter for portal file export operations.
+ * 5 requests per hour per client.
+ * Phase 96-05: Portal analytics export (CSV/PDF download).
+ */
+export const portalExportRateLimiter = createEndpointRateLimiter(
+  PORTAL_RATE_LIMITS.EXPORT
 );
 
 // --- Phase 96: Analytics Rate Limiters ---

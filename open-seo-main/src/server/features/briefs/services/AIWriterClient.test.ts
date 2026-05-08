@@ -60,6 +60,9 @@ describe("AIWriterClient", () => {
         location: "US",
       },
       articleId: null,
+      isDeleted: false,
+      deletedAt: null,
+      scrapingCostUsd: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -160,6 +163,58 @@ describe("AIWriterClient", () => {
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(body.suggested_h2s).toEqual([]);
       expect(body.paa_questions).toEqual([]);
+    });
+
+    it("BRIEF-02: forwards scraping cost to AI-Writer when available", async () => {
+      const briefWithCost: ContentBriefSelect = {
+        ...mockBrief,
+        scrapingCostUsd: "0.012345",
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "article_abc",
+          client_id: "client_xyz",
+          title: "Test",
+          keyword: "best seo practices",
+          status: "draft",
+          meta_description: null,
+          created_at: "2026-04-23T10:00:00Z",
+          updated_at: "2026-04-23T10:00:00Z",
+        }),
+      });
+
+      await createArticleFromBrief(briefWithCost, "client_xyz");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.scraping_cost_usd).toBe(0.012345);
+    });
+
+    it("BRIEF-02: omits scraping cost when not available", async () => {
+      const briefNoCost: ContentBriefSelect = {
+        ...mockBrief,
+        scrapingCostUsd: null,
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "article_abc",
+          client_id: "client_xyz",
+          title: "Test",
+          keyword: "best seo practices",
+          status: "draft",
+          meta_description: null,
+          created_at: "2026-04-23T10:00:00Z",
+          updated_at: "2026-04-23T10:00:00Z",
+        }),
+      });
+
+      await createArticleFromBrief(briefNoCost, "client_xyz");
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.scraping_cost_usd).toBeUndefined();
     });
   });
 

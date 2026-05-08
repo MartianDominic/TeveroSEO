@@ -14,7 +14,8 @@ import {
   closeDashboardMetricsQueue,
   type DashboardMetricsJobData,
 } from "@/server/queues/dashboardMetricsQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 import { processDashboardMetrics } from "./dashboard-metrics-processor";
 
 const workerLogger = createLogger({ module: "dashboard-metrics-worker" });
@@ -75,23 +76,9 @@ export async function startDashboardMetricsWorker(): Promise<
         maxAttempts,
       });
 
-      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: DASHBOARD_METRICS_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${DASHBOARD_METRICS_QUEUE_NAME}:${job.id}`, dlqData);
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, DASHBOARD_METRICS_QUEUE_NAME);
       }
     },
   );

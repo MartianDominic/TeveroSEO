@@ -1,10 +1,18 @@
 /**
  * Content Briefs Adapter
  * Phase 95-06: Consumer Migration Wiring
+ * ADAPT-02: Wired to routeRequest for single-URL scraping
+ *
+ * Adapts content brief page scraping to use unified ScrapingService.
+ *
+ * Usage:
+ * - For single URLs: use scrapeBriefPage() helper
+ * - For batch URLs: Use routeBatchRequest with custom transformer
  */
 
 import type { ConsumerAdapter, ComparisonResult } from "./types";
 import type { ScrapeResult, ScrapeOptions } from "../../ScrapingService";
+import { routeRequest } from "../MigrationRouter";
 
 export interface BriefPageInput {
   url: string;
@@ -64,3 +72,36 @@ export const contentBriefsAdapter: ConsumerAdapter<BriefPageInput, BriefPageOutp
     return { match: differences.length === 0, differences };
   },
 };
+
+// =============================================================================
+// ADAPT-02: Helper function for single-URL scraping via adapter pattern
+// =============================================================================
+
+/**
+ * Scrape a single brief page URL using the adapter pattern.
+ * Routes through MigrationRouter for gradual rollout.
+ *
+ * @param input - URL, keyword, and SERP rank to scrape
+ * @param legacyFn - Legacy scraper function for fallback
+ * @returns Scraped page in BriefPageOutput format
+ *
+ * @example
+ * ```typescript
+ * const page = await scrapeBriefPage(
+ *   { url: 'https://example.com', keyword: 'seo tips', serpRank: 1 },
+ *   async () => legacyFetcher.fetch(url)
+ * );
+ * ```
+ */
+export async function scrapeBriefPage(
+  input: BriefPageInput,
+  legacyFn: () => Promise<BriefPageOutput>
+): Promise<BriefPageOutput> {
+  return routeRequest<BriefPageOutput, BriefPageInput>({
+    feature: "contentBriefs",
+    input,
+    adapter: contentBriefsAdapter,
+    legacyFn,
+    asyncShadow: true, // Non-blocking shadow mode for performance
+  });
+}

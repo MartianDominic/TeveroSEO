@@ -22,7 +22,9 @@ import { eq, inArray } from "drizzle-orm";
 import {
   withBudgetCheck,
   BudgetExceededError,
+  getDfsCostTracker,
 } from "@/server/features/scraping";
+import { createLogger } from "@/server/lib/logger";
 
 // Constants - exported for testing
 export const CACHE_PREFIX = CACHE_NS.KEYWORD;
@@ -55,6 +57,8 @@ interface CachedMetrics {
 
 // DataForSEO Labs API cost per keyword (in dollars)
 const DFS_COST_PER_KEYWORD = 0.005;
+
+const log = createLogger({ module: 'keywords/enrichment' });
 
 export class KeywordEnrichmentService {
   private locationCode: number;
@@ -200,6 +204,23 @@ export class KeywordEnrichmentService {
           { workspaceId: options.workspaceId }
         );
 
+        // Track cost after successful API call (fire and forget)
+        const costTracker = getDfsCostTracker(this.dbClient);
+        const actualCost = batch.length * DFS_COST_PER_KEYWORD;
+        void costTracker.recordCost({
+          url: `labs://keyword-metrics/${batch.length}-keywords`,
+          domain: 'dataforseo.com',
+          mode: 'basic',
+          usedStandardQueue: false,
+          estimatedCost,
+          actualCost,
+          success: true,
+          clientId: undefined,
+          workspaceId: options.workspaceId,
+        }).catch((err: unknown) => {
+          log.warn('Failed to record keyword enrichment cost', { error: String(err) });
+        });
+
         // Map metrics to keywords
         const metricsMap = new Map(
           metrics.map((m) => [m.keyword.toLowerCase(), m])
@@ -286,8 +307,7 @@ export class KeywordEnrichmentService {
       } catch (error) {
         // Handle budget exceeded error - stop processing remaining batches
         if (error instanceof BudgetExceededError) {
-          // eslint-disable-next-line no-console
-          console.warn("[KeywordEnrichmentService] Budget exceeded, stopping enrichment", {
+          log.warn('Budget exceeded, stopping enrichment', {
             budgetType: error.budgetType,
             currentSpend: error.currentSpend,
             budgetLimit: error.budgetLimit,
@@ -307,11 +327,28 @@ export class KeywordEnrichmentService {
         }
 
         // Log the error for debugging before marking batch as failed
-        // eslint-disable-next-line no-console
-        console.error("[KeywordEnrichmentService] Batch enrichment failed", {
-          batchSize: batch.length,
-          error: error instanceof Error ? error.message : String(error),
+        log.error(
+          'Batch enrichment failed',
+          error instanceof Error ? error : undefined,
+          { batchSize: batch.length }
+        );
+
+        // Track failed request cost (fire and forget)
+        const failedCostTracker = getDfsCostTracker(this.dbClient);
+        void failedCostTracker.recordCost({
+          url: `labs://keyword-metrics/${batch.length}-keywords`,
+          domain: 'dataforseo.com',
+          mode: 'basic',
+          usedStandardQueue: false,
+          estimatedCost,
+          success: false,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          clientId: undefined,
+          workspaceId: options.workspaceId,
+        }).catch(() => {
+          // Silently ignore cost tracking errors for failed requests
         });
+
         // Mark entire batch as failed on error
         await this.dbClient
           .update(prospectKeywords)
@@ -324,6 +361,18 @@ export class KeywordEnrichmentService {
           );
         result.failed += batch.length;
       }
+    }
+
+    // Log cost summary
+    if (result.enriched > 0 || result.failed > 0) {
+      log.info('Keyword enrichment complete', {
+        enriched: result.enriched,
+        cached: result.cached,
+        skipped: result.skipped,
+        failed: result.failed,
+        totalCostUsd: (result.totalCostCents / 100).toFixed(4),
+        workspaceId: options.workspaceId,
+      });
     }
 
     return result;

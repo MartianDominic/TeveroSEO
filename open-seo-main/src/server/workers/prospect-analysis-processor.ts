@@ -11,14 +11,13 @@ import { db } from "@/db/index";
 import { eq } from "drizzle-orm";
 import { prospects } from "@/db/prospect-schema";
 import {
-  fetchKeywordsForSiteRaw,
-  fetchCompetitorsDomainRaw,
-} from "@/server/lib/dataforseoProspect";
-import { fetchDomainRankOverviewRaw } from "@/server/lib/dataforseo";
-import {
-  fetchDomainIntersectionRaw,
-  enrichGapsWithAchievability,
-} from "@/server/lib/dataforseoKeywordGap";
+  fetchKeywordsForSiteTracked,
+  fetchCompetitorsDomainTracked,
+  fetchDomainRankOverviewTracked,
+  fetchDomainIntersectionTracked,
+  type CostTrackingOptions,
+} from "@/server/features/scraping/providers/DfsApiWrapper";
+import { enrichGapsWithAchievability } from "@/server/lib/dataforseoKeywordGap";
 import {
   AnalysisService,
   LOCATION_CODES,
@@ -119,20 +118,32 @@ export default async function processProspectAnalysis(
     const languageCode = targetLanguage ?? "en";
     const limits = ANALYSIS_LIMITS[analysisType];
 
+    // Cost tracking options for DFS API calls
+    const baseTrackingOptions: Partial<CostTrackingOptions> = {
+      clientId: prospectId,
+      workspaceId: validatedData.workspaceId,
+      jobId: job.id,
+    };
+
+    // Track DFS API call counts and costs for summary logging
+    let dfsApiCallCount = 0;
     let totalCostCents = 0;
 
     // Step 1: Fetch domain rank overview
     log.info("Fetching domain rank overview", { domain });
-    const domainOverview = await fetchDomainRankOverviewRaw(
+    const domainOverviewData = await fetchDomainRankOverviewTracked(
       domain,
       locationCode,
       languageCode,
+      { ...baseTrackingOptions, domain },
     );
-    totalCostCents += Math.round(domainOverview.billing.costUsd * 100);
+    dfsApiCallCount++;
+    // Note: Costs are now tracked via DfsCostTracker, but we still estimate for local totalCostCents
+    totalCostCents += 5; // Estimate ~$0.05 for domain rank overview
     await sleep(API_RATE_LIMIT_MS);
 
     // Extract domain metrics from the overview
-    const overviewItem = domainOverview.data[0];
+    const overviewItem = domainOverviewData[0];
     const domainMetrics = overviewItem
       ? {
           domainRank: undefined, // Not directly available in this endpoint
@@ -145,16 +156,20 @@ export default async function processProspectAnalysis(
 
     // Step 2: Fetch keywords the domain ranks for
     log.info("Fetching keywords for site", { domain, limit: limits.keywords });
-    const keywordsResult = await fetchKeywordsForSiteRaw({
-      target: domain,
-      locationCode,
-      languageCode,
-      limit: limits.keywords,
-    });
-    totalCostCents += Math.round(keywordsResult.billing.costUsd * 100);
+    const keywordsData = await fetchKeywordsForSiteTracked(
+      {
+        target: domain,
+        locationCode,
+        languageCode,
+        limit: limits.keywords,
+      },
+      { ...baseTrackingOptions, domain },
+    );
+    dfsApiCallCount++;
+    totalCostCents += 5; // Estimate ~$0.05 for keywords for site
     await sleep(API_RATE_LIMIT_MS);
 
-    const organicKeywords = keywordsResult.data.map((item) => ({
+    const organicKeywords = keywordsData.map((item) => ({
       keyword: item.keyword,
       position: item.ranked_serp_element?.serp_item?.rank_absolute ?? 0,
       searchVolume: item.keyword_info?.search_volume ?? 0,
@@ -164,34 +179,42 @@ export default async function processProspectAnalysis(
 
     // Step 3: Fetch competitor domains
     log.info("Fetching competitor domains", { domain, limit: limits.competitors });
-    const competitorsResult = await fetchCompetitorsDomainRaw({
-      target: domain,
-      locationCode,
-      languageCode,
-      limit: limits.competitors,
-    });
-    totalCostCents += Math.round(competitorsResult.billing.costUsd * 100);
+    const competitorsData = await fetchCompetitorsDomainTracked(
+      {
+        target: domain,
+        locationCode,
+        languageCode,
+        limit: limits.competitors,
+      },
+      { ...baseTrackingOptions, domain },
+    );
+    dfsApiCallCount++;
+    totalCostCents += 5; // Estimate ~$0.05 for competitors domain
 
-    const competitorDomains = competitorsResult.data.map((item) => item.domain);
+    const competitorDomains = competitorsData.map((item) => item.domain);
 
     // Step 4: Fetch keyword gaps from top competitor (if available)
-    let keywordGaps: Awaited<ReturnType<typeof fetchDomainIntersectionRaw>>["data"] = [];
+    let keywordGaps: Array<ReturnType<typeof enrichGapsWithAchievability>[number]> = [];
     if (competitorDomains.length > 0) {
       log.info("Fetching keyword gaps", { domain, competitor: competitorDomains[0] });
       await sleep(API_RATE_LIMIT_MS);
 
-      const gapsResult = await fetchDomainIntersectionRaw({
-        target1: competitorDomains[0], // Competitor has keywords
-        target2: domain, // Prospect is missing them
-        locationCode,
-        languageCode,
-        limit: limits.keywords,
-      });
-      totalCostCents += Math.round(gapsResult.billing.costUsd * 100);
+      const gapsData = await fetchDomainIntersectionTracked(
+        {
+          target1: competitorDomains[0], // Competitor has keywords
+          target2: domain, // Prospect is missing them
+          locationCode,
+          languageCode,
+          limit: limits.keywords,
+        },
+        { ...baseTrackingOptions, domain },
+      );
+      dfsApiCallCount++;
+      totalCostCents += 2; // Estimate ~$0.02 for domain intersection
 
       // Get DA from domain metrics and enrich gaps with achievability
       const domainAuthority = domainMetrics?.domainRank ?? 0;
-      keywordGaps = enrichGapsWithAchievability(gapsResult.data, domainAuthority);
+      keywordGaps = enrichGapsWithAchievability(gapsData, domainAuthority);
 
       log.info("Keyword gaps enriched with achievability", {
         domain,
@@ -319,6 +342,21 @@ export default async function processProspectAnalysis(
       });
     }
 
+    // Log DFS cost summary for monitoring
+    log.info("DFS cost tracking summary", {
+      jobId: job.id,
+      prospectId,
+      workspaceId: validatedData.workspaceId,
+      dfsApiCallCount,
+      estimatedCostCents: totalCostCents,
+      endpoints: [
+        "labs/domain_rank",
+        "labs/keywords_for_site",
+        "labs/competitors_domain",
+        ...(competitorDomains.length > 0 ? ["labs/domain_intersection"] : []),
+      ],
+    });
+
     log.info("Prospect analysis completed", {
       jobId: job.id,
       prospectId,
@@ -326,6 +364,7 @@ export default async function processProspectAnalysis(
       keywordCount: organicKeywords.length,
       competitorCount: competitorDomains.length,
       totalCostCents,
+      dfsApiCallCount,
     });
   } catch (error) {
     const errorMessage =

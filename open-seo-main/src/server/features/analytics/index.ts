@@ -24,6 +24,13 @@ export { MasterDashboardService, getMasterDashboardService } from "./services/Ma
 export { TrendDetectionService, getTrendDetectionService, analyzePageTrends } from "./services/TrendDetectionService";
 export { StrikingDistanceService, getStrikingDistanceService } from "./services/StrikingDistanceService";
 export { AnnotationImportService, importGoogleUpdates } from "./services/AnnotationImportService";
+
+// Services (96-04: Topic Clusters, Content Groups, Index Coverage)
+export { TopicClusterService } from "./services/TopicClusterService";
+export type { CoverageAnalysis } from "./services/TopicClusterService";
+export { ContentGroupService } from "./services/ContentGroupService";
+export { IndexCoverageService } from "./services/IndexCoverageService";
+export type { IndexingResult, BatchInspectResult } from "./services/IndexCoverageService";
 export {
   CannibalizationService,
   getCannibalizationService,

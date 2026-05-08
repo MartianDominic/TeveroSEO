@@ -17,7 +17,8 @@ import {
   initInstallmentReminderQueue,
   type InstallmentReminderJobData,
 } from "@/server/queues/installmentReminderQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const workerLogger = createLogger({ module: "installment-reminder-worker" });
 
@@ -80,23 +81,9 @@ export async function startInstallmentReminderWorker(): Promise<
         maxAttempts,
       });
 
-      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: INSTALLMENT_REMINDER_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${INSTALLMENT_REMINDER_QUEUE_NAME}:${job.id}`, dlqData);
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, INSTALLMENT_REMINDER_QUEUE_NAME);
       }
     }
   );

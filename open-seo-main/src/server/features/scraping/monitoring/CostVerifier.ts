@@ -1,5 +1,6 @@
 import type { DfsCostTracker } from '../providers/DfsCostTracker';
 import type { Pool } from 'pg';
+import { costLogger } from '../logging/Logger';
 
 export interface CostVerificationReport {
   period: { start: Date; end: Date };
@@ -66,8 +67,8 @@ export class CostVerifier {
     this.pg = config.pg;
     this.alertManager = config.alertManager;
     this.logger = config.logger || {
-      info: (msg, meta) => console.log(msg, meta),
-      error: (msg, meta) => console.error(msg, meta),
+      info: (msg, meta) => costLogger.info(meta, msg),
+      error: (msg, meta) => costLogger.error(meta, msg),
     };
   }
 

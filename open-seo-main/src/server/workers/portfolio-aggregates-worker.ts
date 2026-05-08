@@ -13,7 +13,8 @@ import {
   initPortfolioAggregatesScheduler,
   type PortfolioAggregatesJobData,
 } from "@/server/queues/portfolioAggregatesQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 import { processPortfolioAggregates } from "./portfolio-aggregates-processor";
 
 const workerLogger = createLogger({ module: "portfolio-aggregates-worker" });
@@ -74,23 +75,9 @@ export async function startPortfolioAggregatesWorker(): Promise<
         maxAttempts,
       });
 
-      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: PORTFOLIO_AGGREGATES_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${PORTFOLIO_AGGREGATES_QUEUE_NAME}:${job.id}`, dlqData);
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, PORTFOLIO_AGGREGATES_QUEUE_NAME);
       }
     },
   );

@@ -16,7 +16,8 @@ import {
   type OnboardingJobData,
   type OnboardingJobResult,
 } from "@/server/queues/onboardingQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "OnboardingWorker" });
 
@@ -118,29 +119,9 @@ export function startOnboardingWorker(): Worker<
       maxAttempts: MAX_ATTEMPTS,
     });
 
-    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job.attemptsMade >= MAX_ATTEMPTS) {
-      try {
-        const dlqQueue = getDLQQueue();
-        const dlqData: DLQJobData = {
-          originalQueue: QUEUE_NAME,
-          jobId: job.id,
-          jobData: job.data,
-          error: error?.message || "Unknown error",
-          stack: error?.stack,
-          failedAt: new Date().toISOString(),
-        };
-        await dlqQueue.add(`dlq:${QUEUE_NAME}:${job.id}`, dlqData);
-        jobLogger.info("Job moved to centralized DLQ", {
-          proposalId: job.data.proposalId,
-          attemptsMade: job.attemptsMade,
-        });
-      } catch (dlqErr) {
-        jobLogger.error(
-          "Failed to move job to DLQ",
-          dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr))
-        );
-      }
+      await moveJobToDeadLetter(job, error ?? new Error("Unknown error"), QUEUE_NAME);
     }
   });
 

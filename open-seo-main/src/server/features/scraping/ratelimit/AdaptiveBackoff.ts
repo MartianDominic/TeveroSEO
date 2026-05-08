@@ -13,9 +13,67 @@
  * | 3                    | 4x         | 0.5 req/s      | 240s     |
  * | 4                    | 8x         | 0.25 req/s     | 480s     |
  * | 5+                   | 16x        | 0.125 req/s    | 960s     |
+ *
+ * Retry-After Header Support:
+ * When a 429 response includes a Retry-After header, the system parses it
+ * and uses the server-specified duration instead of the default backoff.
+ * Supports both delta-seconds (e.g., "120") and HTTP-date formats
+ * (e.g., "Wed, 21 Oct 2025 07:28:00 GMT").
  */
 
 import type Redis from "ioredis";
+
+/**
+ * Maximum backoff duration in milliseconds (30 minutes).
+ * Prevents servers from specifying unreasonably long waits.
+ */
+const MAX_BACKOFF_MS = 30 * 60 * 1000;
+
+/**
+ * Minimum backoff duration in milliseconds (1 second).
+ * Ensures we always wait at least a bit even if server says 0.
+ */
+const MIN_BACKOFF_MS = 1000;
+
+/**
+ * Parse the Retry-After header from HTTP 429 responses.
+ *
+ * Supports two formats per RFC 7231:
+ * - Delta-seconds: A non-negative integer representing seconds to wait
+ * - HTTP-date: A date string in IMF-fixdate format
+ *
+ * @param headerValue - The Retry-After header value
+ * @returns Backoff duration in milliseconds, or null if invalid/missing
+ */
+export function parseRetryAfter(headerValue: string | null | undefined): number | null {
+  if (!headerValue || headerValue.trim() === "") {
+    return null;
+  }
+
+  const trimmed = headerValue.trim();
+
+  // Try delta-seconds first (most common for 429 responses)
+  // Must be a non-negative integer
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = parseInt(trimmed, 10);
+    if (!isNaN(seconds) && seconds >= 0) {
+      const ms = seconds * 1000;
+      // Clamp to reasonable bounds
+      return Math.max(MIN_BACKOFF_MS, Math.min(ms, MAX_BACKOFF_MS));
+    }
+  }
+
+  // Try HTTP-date format
+  // Valid formats include: "Wed, 21 Oct 2025 07:28:00 GMT"
+  const date = new Date(trimmed);
+  if (!isNaN(date.getTime())) {
+    const deltaMs = date.getTime() - Date.now();
+    // Clamp to reasonable bounds (negative values become MIN_BACKOFF_MS)
+    return Math.max(MIN_BACKOFF_MS, Math.min(deltaMs, MAX_BACKOFF_MS));
+  }
+
+  return null;
+}
 
 /**
  * Backoff state stored in Redis.
@@ -113,11 +171,20 @@ export class AdaptiveBackoff {
    *
    * @param domain - The domain that failed
    * @param statusCode - HTTP status code (429, 503, etc.)
+   * @param retryAfterHeader - Optional Retry-After header value from the response
    */
-  async recordFailure(domain: string, statusCode: number): Promise<BackoffState> {
+  async recordFailure(
+    domain: string,
+    statusCode: number,
+    retryAfterHeader?: string | null
+  ): Promise<BackoffState> {
     const key = `backoff:domain:${this.normalizeDomain(domain)}`;
     const currentData = await this.redis.get(key);
     const now = Date.now();
+
+    // Parse Retry-After header if provided (only for 429 responses)
+    const retryAfterMs =
+      statusCode === 429 ? parseRetryAfter(retryAfterHeader) : null;
 
     let state: BackoffState;
 
@@ -127,19 +194,23 @@ export class AdaptiveBackoff {
         // Double the multiplier on each failure, up to max
         const newMultiplier = Math.min(current.multiplier * 2, this.config.maxMultiplier);
 
+        // Use Retry-After duration if available, otherwise use calculated backoff
+        const backoffDuration =
+          retryAfterMs ?? this.getBackoffDuration(statusCode, newMultiplier);
+
         state = {
           multiplier: newMultiplier,
-          until: now + this.getBackoffDuration(statusCode, newMultiplier),
+          until: now + backoffDuration,
           lastError: statusCode,
           consecutiveFailures: current.consecutiveFailures + 1,
           firstFailureAt: current.firstFailureAt,
         };
       } catch {
         // Parse error, start fresh
-        state = this.createInitialState(statusCode, now);
+        state = this.createInitialState(statusCode, now, retryAfterMs);
       }
     } else {
-      state = this.createInitialState(statusCode, now);
+      state = this.createInitialState(statusCode, now, retryAfterMs);
     }
 
     // Store with TTL based on backoff duration
@@ -298,12 +369,22 @@ export class AdaptiveBackoff {
 
   /**
    * Create initial backoff state for a new failure.
+   *
+   * @param statusCode - HTTP status code that triggered backoff
+   * @param now - Current timestamp in milliseconds
+   * @param retryAfterMs - Optional Retry-After duration in milliseconds (overrides default)
    */
-  private createInitialState(statusCode: number, now: number): BackoffState {
+  private createInitialState(
+    statusCode: number,
+    now: number,
+    retryAfterMs?: number | null
+  ): BackoffState {
     const multiplier = 1;
+    // Use Retry-After duration if available, otherwise use calculated backoff
+    const backoffDuration = retryAfterMs ?? this.getBackoffDuration(statusCode, multiplier);
     return {
       multiplier,
-      until: now + this.getBackoffDuration(statusCode, multiplier),
+      until: now + backoffDuration,
       lastError: statusCode,
       consecutiveFailures: 1,
       firstFailureAt: now,

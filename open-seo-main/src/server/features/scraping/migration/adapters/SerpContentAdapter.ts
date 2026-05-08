@@ -1,12 +1,18 @@
 /**
  * SERP Content Adapter
  * Phase 95-06: Consumer Migration Wiring
+ * ADAPT-01: Wired to routeRequest for single-URL scraping
  *
  * Adapts SerpContentAnalyzer to use unified ScrapingService.
+ *
+ * Usage:
+ * - For single URLs: use scrapeSerpContent() helper
+ * - For batch URLs: SerpContentAnalyzer.analyzeSerpContent() uses routeBatchRequest directly
  */
 
 import type { ConsumerAdapter, ComparisonResult } from "./types";
 import type { ScrapeResult, ScrapeOptions } from "../../ScrapingService";
+import { routeRequest } from "../MigrationRouter";
 
 export interface SerpContentInput {
   url: string;
@@ -78,3 +84,36 @@ export const serpContentAdapter: ConsumerAdapter<SerpContentInput, SerpContentOu
     };
   },
 };
+
+// =============================================================================
+// ADAPT-01: Helper function for single-URL scraping via adapter pattern
+// =============================================================================
+
+/**
+ * Scrape a single SERP content URL using the adapter pattern.
+ * Routes through MigrationRouter for gradual rollout.
+ *
+ * @param input - URL and keyword to scrape
+ * @param legacyFn - Legacy scraper function for fallback
+ * @returns Scraped content in SerpContentOutput format
+ *
+ * @example
+ * ```typescript
+ * const content = await scrapeSerpContent(
+ *   { url: 'https://example.com', keyword: 'seo tips' },
+ *   async () => legacyFetcher.fetch(url)
+ * );
+ * ```
+ */
+export async function scrapeSerpContent(
+  input: SerpContentInput,
+  legacyFn: () => Promise<SerpContentOutput>
+): Promise<SerpContentOutput> {
+  return routeRequest<SerpContentOutput, SerpContentInput>({
+    feature: "serpContent",
+    input,
+    adapter: serpContentAdapter,
+    legacyFn,
+    asyncShadow: true, // Non-blocking shadow mode for performance
+  });
+}

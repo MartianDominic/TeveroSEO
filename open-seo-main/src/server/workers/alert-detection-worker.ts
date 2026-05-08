@@ -15,7 +15,8 @@
 import { Worker, type Job, type Processor } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 import {
   ALERT_DETECTION_QUEUE_NAME,
   type AlertDetectionJobData,
@@ -72,33 +73,9 @@ export function startAlertDetectionWorker(): void {
       attemptsMade: job.attemptsMade,
     });
 
-    // Send to dead-letter queue after all attempts exhausted
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job.attemptsMade >= (job.opts.attempts ?? 2)) {
-      try {
-        const dlqData: DLQJobData = {
-          originalQueue: ALERT_DETECTION_QUEUE_NAME,
-          jobId: job.id,
-          jobData: job.data,
-          error: error.message,
-          stack: error.stack,
-          failedAt: new Date().toISOString(),
-        };
-
-        await getDLQQueue().add("alert-detection-dlq", dlqData, {
-          removeOnComplete: { count: 100 },
-          removeOnFail: { count: 500 },
-        });
-
-        log.info("Failed alert detection job sent to DLQ", {
-          originalJobId: job.id,
-        });
-      } catch (dlqError) {
-        log.error(
-          "Failed to send job to DLQ",
-          dlqError instanceof Error ? dlqError : new Error(String(dlqError)),
-          { jobId: job.id }
-        );
-      }
+      await moveJobToDeadLetter(job, error, ALERT_DETECTION_QUEUE_NAME);
     }
   });
 

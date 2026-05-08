@@ -14,7 +14,8 @@ import { Worker, type Job } from "bullmq";
 import { fileURLToPath } from "node:url";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 import {
   TOKEN_REFRESH_QUEUE_NAME,
   initTokenRefreshScheduler,
@@ -102,35 +103,12 @@ export async function startTokenRefreshWorker(): Promise<
         maxAttempts,
       });
 
-      // JOB-CRIT-01 FIX: Move to DLQ after exhausting retries
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       // Token refresh failures are critical - users lose platform access silently
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: TOKEN_REFRESH_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${TOKEN_REFRESH_QUEUE_NAME}`, dlqData, {
-            removeOnComplete: { age: 604800 }, // 7 days
-            removeOnFail: { age: 604800 },
-            attempts: 1,
-          });
+        const dlqId = await moveJobToDeadLetter(job, err, TOKEN_REFRESH_QUEUE_NAME);
+        if (dlqId) {
           metrics.dlqMoved++;
-          workerLogger.warn("Token refresh job moved to DLQ", {
-            jobId: job.id,
-            attemptsMade: job.attemptsMade,
-          });
-        } catch (dlqErr) {
-          workerLogger.error(
-            "Failed to move token refresh job to DLQ",
-            dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)),
-            { jobId: job.id }
-          );
         }
       }
     }
@@ -190,9 +168,11 @@ export async function stopTokenRefreshWorker(): Promise<void> {
  *
  * This is registered as a handler in the DLQ worker to process
  * token-refresh specific failures and send user notifications.
+ *
+ * SCR-01: Now uses DB-based DLQ - query dead_letter_jobs table for entries
  */
 export async function handleTokenRefreshDLQ(
-  jobData: DLQJobData
+  jobData: { jobId?: string; error?: string; failedAt?: string; originalQueue?: string }
 ): Promise<void> {
   const dlqLogger = createLogger({
     module: "token-refresh-dlq",

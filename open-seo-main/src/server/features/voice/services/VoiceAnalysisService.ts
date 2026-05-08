@@ -1,9 +1,10 @@
 /**
  * VoiceAnalysisService
  * Phase 37-05: Gap Closure - Voice Learning
+ * Phase 40-CORE-01: Migrated to use MigrationRouter for unified scraping
  *
  * Orchestrates multi-page voice analysis:
- * 1. Scrapes 5-10 URLs from client site
+ * 1. Scrapes 5-10 URLs from client site (via MigrationRouter)
  * 2. Uses VoiceAnalyzer to extract 12 dimensions per page
  * 3. Aggregates results with confidence weighting
  * 4. Saves individual analyses to voiceAnalysis table
@@ -12,11 +13,22 @@
  * Security:
  * - T-37-03: Validates URLs belong to expected domain
  * - T-37-04: Limits to 10 pages max, doesn't store full content
+ *
+ * Migration:
+ * - Uses MigrationRouter to route scraping through legacy or unified ScrapingService
+ * - Feature flag: SCRAPING_VOICE_ANALYSIS controls migration state
+ * - States: legacy -> shadow -> canary -> rollout -> migrated
  */
 
 import type { VoiceExtractionResult, ExtractedVoiceDimensions } from "../types";
 import { analyzePageVoice, aggregateVoiceResults } from "./VoiceAnalyzer";
 import { scrapeProspectPage } from "@/server/lib/scraper/dataforseoScraper";
+import { routeRequest } from "@/server/features/scraping/migration/MigrationRouter";
+import {
+  voiceAnalysisAdapter,
+  type VoiceAnalysisInput,
+  type VoiceAnalysisOutput,
+} from "@/server/features/scraping/migration/adapters/VoiceAnalysisAdapter";
 import { createLogger } from "@/server/lib/logger";
 import { db } from "@/db";
 import { voiceAnalysis, voiceProfiles } from "@/db/voice-schema";
@@ -112,10 +124,24 @@ export class VoiceAnalysisService {
           total: pagesToAnalyze.length,
         });
 
-        // Scrape the page
-        const scrapeResult = await scrapeProspectPage(url);
+        // Scrape the page via MigrationRouter
+        // This routes through legacy (scrapeProspectPage) or unified ScrapingService
+        // based on the SCRAPING_VOICE_ANALYSIS feature flag
+        const input: VoiceAnalysisInput = {
+          url,
+          profileId,
+          expectedDomain: domain,
+        };
 
-        if (!scrapeResult.success) {
+        const scrapeResult = await routeRequest<VoiceAnalysisOutput, VoiceAnalysisInput>({
+          feature: "voiceAnalysis",
+          input,
+          adapter: voiceAnalysisAdapter,
+          legacyFn: () => scrapeProspectPage(url),
+          asyncShadow: true, // Non-blocking shadow comparison for voice analysis
+        });
+
+        if (!scrapeResult.success || !scrapeResult.page) {
           log.warn("Failed to scrape page", { url, error: scrapeResult.error });
           errors.push({ url, error: scrapeResult.error || "Scrape failed" });
           continue;

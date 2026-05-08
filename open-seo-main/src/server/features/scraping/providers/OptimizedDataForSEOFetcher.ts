@@ -70,52 +70,10 @@ const apiResponseSchema = z.object({
 });
 
 // =============================================================================
-// SSRF Protection
+// SSRF Protection - Use shared validator
 // =============================================================================
 
-/**
- * Validate URL is safe to scrape (no internal/private addresses).
- */
-function validateScrapableUrl(url: string): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error(`Invalid URL format: ${url}`);
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`Invalid URL scheme: ${parsed.protocol}`);
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  ) {
-    throw new Error("Cannot scrape localhost addresses");
-  }
-
-  const ipv4Match = hostname.match(
-    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-  );
-  if (ipv4Match) {
-    const octets = ipv4Match.slice(1).map(Number);
-    const [a, b] = octets;
-
-    if (a === 10) throw new Error("Cannot scrape private IPs (10.x.x.x)");
-    if (a === 172 && b >= 16 && b <= 31)
-      throw new Error("Cannot scrape private IPs (172.16-31.x.x)");
-    if (a === 192 && b === 168)
-      throw new Error("Cannot scrape private IPs (192.168.x.x)");
-    if (a === 127) throw new Error("Cannot scrape loopback (127.x.x.x)");
-    if (a === 169 && b === 254)
-      throw new Error("Cannot scrape link-local/metadata (169.254.x.x)");
-  }
-}
+import { validateScrapableUrlSimple as validateScrapableUrl } from "@/server/lib/ssrf-validator";
 
 // =============================================================================
 // OptimizedDataForSEOFetcher Class
@@ -637,8 +595,15 @@ export class OptimizedDataForSEOFetcher {
 
   /**
    * POST to DataForSEO API.
+   *
+   * @deprecated The auth header construction in this method is duplicated.
+   * Uses instance apiKey for backward compatibility, but new code should
+   * use createDataForSEOFetch() from @/server/lib/dataforseo-auth instead.
    */
   private async postApi(path: string, payload: unknown): Promise<unknown> {
+    // NOTE: This duplicates auth logic from dataforseo-auth.ts
+    // The instance stores apiKey for constructor injection (testing),
+    // but the canonical auth is in dataforseo-auth.ts
     const authHeader = `Basic ${Buffer.from(this.apiKey).toString("base64")}`;
 
     const response = await fetch(`${API_BASE}${path}`, {

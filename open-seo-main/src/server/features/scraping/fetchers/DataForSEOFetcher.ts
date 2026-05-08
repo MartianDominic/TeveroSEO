@@ -19,6 +19,7 @@ import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
 import { DFS_LIVE_COSTS } from "../cost";
 import { db } from "@/db";
 import { getDfsCostTracker, extractDomainFromUrl } from "../providers/DfsCostTracker";
+import { costLogger } from "../logging/Logger";
 
 // =============================================================================
 // Types
@@ -106,6 +107,10 @@ const API_BASE = "https://api.dataforseo.com";
 
 /**
  * Create authenticated fetch function for DataForSEO API.
+ *
+ * @deprecated This duplicates auth logic from @/server/lib/dataforseo-auth.ts
+ * New code should use createDataForSEOFetch() from dataforseo-auth.ts instead.
+ * This local version is kept for backward compatibility during migration.
  */
 function createAuthenticatedFetch(): typeof fetch {
   const apiKey = process.env.DATAFORSEO_API_KEY?.trim();
@@ -115,6 +120,8 @@ function createAuthenticatedFetch(): typeof fetch {
     );
   }
 
+  // NOTE: This duplicates the auth logic from dataforseo-auth.ts
+  // The canonical implementation is getDataForSEOAuthHeader() in dataforseo-auth.ts
   // API key format is "login:password" encoded in base64
   const authHeader = `Basic ${Buffer.from(apiKey).toString("base64")}`;
 
@@ -186,60 +193,10 @@ function parseApiResponse(
 }
 
 // =============================================================================
-// SSRF Protection
+// SSRF Protection - Use shared validator
 // =============================================================================
 
-/**
- * Validate URL is safe to scrape (no internal/private addresses).
- */
-function validateScrapableUrl(url: string): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error(`Invalid URL format: ${url}`);
-  }
-
-  // Reject non-HTTP(S) schemes
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`Invalid URL scheme: ${parsed.protocol}`);
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  // Reject localhost
-  if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  ) {
-    throw new Error("Cannot scrape localhost addresses");
-  }
-
-  // Check for private IP ranges
-  const ipv4Match = hostname.match(
-    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-  );
-  if (ipv4Match) {
-    const octets = ipv4Match.slice(1).map(Number);
-    const [a, b] = octets;
-
-    // 10.0.0.0/8
-    if (a === 10) throw new Error("Cannot scrape private IPs (10.x.x.x)");
-    // 172.16.0.0/12
-    if (a === 172 && b >= 16 && b <= 31)
-      throw new Error("Cannot scrape private IPs (172.16-31.x.x)");
-    // 192.168.0.0/16
-    if (a === 192 && b === 168)
-      throw new Error("Cannot scrape private IPs (192.168.x.x)");
-    // 127.0.0.0/8
-    if (a === 127) throw new Error("Cannot scrape loopback (127.x.x.x)");
-    // 169.254.0.0/16 (link-local, AWS metadata)
-    if (a === 169 && b === 254)
-      throw new Error("Cannot scrape link-local/metadata (169.254.x.x)");
-  }
-}
+import { validateScrapableUrlSimple as validateScrapableUrl } from "@/server/lib/ssrf-validator";
 
 // =============================================================================
 // Error Classification
@@ -444,9 +401,13 @@ export class DataForSEOFetcher {
       })
       .catch((error) => {
         // Log error but don't fail the fetch
-        console.error(
-          `[DataForSEOFetcher] Failed to record cost for ${record.url}:`,
-          error instanceof Error ? error.message : String(error)
+        costLogger.error(
+          {
+            url: record.url,
+            tier: record.tier,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          'Failed to record DataForSEO cost'
         );
       });
   }

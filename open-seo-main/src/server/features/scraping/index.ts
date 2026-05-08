@@ -580,3 +580,16 @@ export {
   resetDfsCostTracker,
   extractDomainFromUrl,
 } from "./providers/DfsCostTracker";
+
+// =============================================================================
+// TextFetcher - Lightweight fetcher for text/XML files (SEO-01)
+// =============================================================================
+
+export {
+  TextFetcher,
+  textFetcher,
+  createTextFetcher,
+  type TextFileType,
+  type TextFetchOptions,
+  type TextFetchResult,
+} from "./TextFetcher";

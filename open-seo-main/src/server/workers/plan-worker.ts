@@ -24,7 +24,8 @@ import {
   type PlanJobData,
   type PlanStep,
 } from "@/server/queues/pipelineQueue";
-import { getDLQQueue } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "plan-worker" });
 
@@ -178,22 +179,9 @@ export function startPlanWorker(): Worker<PlanJobData> {
   worker.on("failed", async (job, err) => {
     const error = err instanceof Error ? err : new Error(String(err));
 
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
-      // Move to DLQ after all retries exhausted
-      try {
-        const dlq = getDLQQueue();
-        await dlq.add('plan-worker-failed', {
-          originalQueue: 'pipeline-plan',
-          jobId: job.id,
-          jobData: job.data,
-          error: error.message,
-          stack: error.stack,
-          failedAt: new Date().toISOString(),
-        });
-        log.error('Plan job moved to DLQ', error, { jobId: job.id, planId: job.data.planId });
-      } catch (dlqErr) {
-        log.error('Failed to move plan job to DLQ', dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)), { jobId: job.id });
-      }
+      await moveJobToDeadLetter(job, error, PLAN_QUEUE_NAME);
     } else {
       log.warn('Plan job failed, will retry', {
         jobId: job?.id,

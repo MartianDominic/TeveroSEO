@@ -19,7 +19,8 @@
 import { Worker, type Job } from "bullmq";
 import { getSharedBullMQConnection, WORKER_CONCURRENCY_LIMITS } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "alert-dispatch-worker" });
 
@@ -220,22 +221,9 @@ export function startAlertDispatchWorker(): Worker<AlertDispatchJobData, AlertDi
     if (!job) return;
 
     const maxAttempts = job.opts.attempts ?? 3;
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job.attemptsMade >= maxAttempts) {
-      try {
-        const dlqQueue = getDLQQueue();
-        const dlqData: DLQJobData = {
-          originalQueue: "alert-dispatch",
-          jobId: job.id,
-          jobData: job.data,
-          error: err.message,
-          stack: err.stack,
-          failedAt: new Date().toISOString(),
-        };
-        await dlqQueue.add(`dlq:alert-dispatch:${job.id}`, dlqData);
-        log.warn("Alert dispatch job moved to DLQ", { jobId: job.id, alertId: job.data.alertId });
-      } catch (dlqErr) {
-        log.error("Failed to move alert dispatch job to DLQ", dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
-      }
+      await moveJobToDeadLetter(job, err, "alert-dispatch");
     }
   });
 

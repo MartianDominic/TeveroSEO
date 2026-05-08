@@ -50,6 +50,7 @@ describe("SerpContentAdapter", () => {
       contentBriefs: "legacy",
       volumeRefresh: "legacy",
       crawlWorkflow: "legacy",
+      voiceAnalysis: "legacy",
     });
   });
 
@@ -88,6 +89,7 @@ describe("SerpContentAdapter", () => {
       contentBriefs: "legacy",
       volumeRefresh: "legacy",
       crawlWorkflow: "legacy",
+      voiceAnalysis: "legacy",
     });
 
     const legacyFn = vi.fn().mockResolvedValue({

@@ -23,6 +23,11 @@ import { createLogger } from "@/server/lib/logger";
 import type { RankingJobData } from "@/server/queues/rankingQueue";
 import { recordDropEvent } from "@/services/rank-events";
 import { withRetry, fireAndForget } from "./utils/error-handler";
+import {
+  getDfsCostTracker,
+  DFS_API_COSTS,
+  costLogger,
+} from "@/server/features/scraping";
 
 const log = createLogger({ module: "ranking-processor" });
 
@@ -216,6 +221,8 @@ async function upsertRanking(
  * PERFORMANCE FIX: Uses batch queries to avoid N+1 database round-trips.
  * Previously: O(2n) queries per batch (getExistingRanking + getPreviousPosition per keyword)
  * Now: O(2) queries per batch (batchGetExistingRankings + batchGetPreviousPositions once)
+ *
+ * COST-02: All DataForSEO API calls are tracked via DfsCostTracker for billing attribution.
  */
 async function processBatch(
   keywords: Array<{
@@ -229,11 +236,16 @@ async function processBatch(
     dropAlertThreshold: number | null;
   }>,
   today: Date,
-): Promise<{ success: number; failed: number; drops: number; skipped: number }> {
+  jobId?: string,
+): Promise<{ success: number; failed: number; drops: number; skipped: number; totalCostUsd: number }> {
   let success = 0;
   let failed = 0;
   let drops = 0;
   let skipped = 0;
+  let totalCostUsd = 0;
+
+  // Initialize cost tracker for DFS billing attribution
+  const costTracker = getDfsCostTracker(db);
 
   // PERFORMANCE FIX: Batch fetch all existing rankings and previous positions upfront
   const keywordIds = keywords.map((kw) => kw.id);
@@ -243,6 +255,11 @@ async function processBatch(
   ]);
 
   for (const kw of keywords) {
+    const startTime = Date.now();
+    const estimatedCost = DFS_API_COSTS.SERP_LIVE;
+    let apiCallSuccess = false;
+    let errorMessage: string | undefined;
+
     try {
       // Idempotency check: skip if already processed today (lookup from batch-fetched map)
       const existing = existingRankingsMap.get(kw.id);
@@ -273,6 +290,29 @@ async function processBatch(
           },
         },
       );
+
+      // Mark API call as successful for cost tracking
+      apiCallSuccess = true;
+      const actualCost = response.billing?.costUsd ?? estimatedCost;
+      totalCostUsd += actualCost;
+
+      // Track cost (fire and forget - non-blocking)
+      void costTracker.recordCost({
+        url: `serp://${kw.keyword}`,
+        domain: kw.projectDomain || "unknown",
+        mode: "basic",
+        usedStandardQueue: false,
+        estimatedCost,
+        actualCost,
+        success: true,
+        responseTimeMs: Date.now() - startTime,
+        clientId: kw.clientId ?? undefined,
+        workspaceId: undefined,
+        jobId,
+        taskId: kw.id,
+      }).catch((err: unknown) => {
+        costLogger.warn({ error: String(err), keyword: kw.keyword }, "Failed to record SERP cost");
+      });
 
       const items = response.data;
       const { position, url } = extractPosition(items, kw.projectDomain);
@@ -327,9 +367,35 @@ async function processBatch(
         keyword: kw.keyword,
         position,
         previousPosition,
+        costUsd: response.billing?.costUsd ?? estimatedCost,
       });
     } catch (error) {
       failed++;
+      errorMessage = error instanceof Error ? error.message : String(error);
+
+      // COST-02: Track failed API call costs (we still incur cost on failed requests)
+      // Only track if we actually made an API call (not if skipped due to idempotency)
+      if (!apiCallSuccess) {
+        totalCostUsd += estimatedCost;
+
+        void costTracker.recordCost({
+          url: `serp://${kw.keyword}`,
+          domain: kw.projectDomain || "unknown",
+          mode: "basic",
+          usedStandardQueue: false,
+          estimatedCost,
+          success: false,
+          responseTimeMs: Date.now() - startTime,
+          errorMessage,
+          clientId: kw.clientId ?? undefined,
+          workspaceId: undefined,
+          jobId,
+          taskId: kw.id,
+        }).catch((err: unknown) => {
+          costLogger.warn({ error: String(err), keyword: kw.keyword }, "Failed to record failed SERP cost");
+        });
+      }
+
       log.error("Failed to check ranking", error instanceof Error ? error : new Error(String(error)), {
         keywordId: kw.id,
         keyword: kw.keyword,
@@ -341,7 +407,7 @@ async function processBatch(
     await sleep(RATE_LIMIT_DELAY_MS);
   }
 
-  return { success, failed, drops, skipped };
+  return { success, failed, drops, skipped, totalCostUsd };
 }
 
 /**
@@ -374,6 +440,7 @@ export default async function processor(job: Job<RankingJobData>): Promise<void>
   let totalFailed = 0;
   let totalDrops = 0;
   let totalSkipped = 0;
+  let totalCostUsd = 0;
 
   // Process in batches
   while (true) {
@@ -409,11 +476,12 @@ export default async function processor(job: Job<RankingJobData>): Promise<void>
       break;
     }
 
-    const { success, failed, drops, skipped } = await processBatch(keywords, today);
+    const { success, failed, drops, skipped, totalCostUsd: batchCostUsd } = await processBatch(keywords, today, job.id);
     totalSuccess += success;
     totalFailed += failed;
     totalDrops += drops;
     totalSkipped += skipped;
+    totalCostUsd += batchCostUsd;
     offset += BATCH_SIZE;
 
     // Checkpoint progress in job data for resumable processing on retry
@@ -430,19 +498,32 @@ export default async function processor(job: Job<RankingJobData>): Promise<void>
       drops,
       skipped,
       totalProcessed: offset,
+      batchCostUsd,
     });
   }
 
   // Final progress update
   await job.updateProgress(100);
 
+  // Log final completion with cost summary
   jobLogger.info("Ranking check completed", {
     totalSuccess,
     totalFailed,
     totalDrops,
     totalSkipped,
     totalProcessed: totalSuccess + totalFailed + totalSkipped,
+    totalCostUsd,
   });
+
+  // Log cost summary to cost logger for monitoring dashboards
+  costLogger.info({
+    jobId: job.id,
+    operation: "ranking_check",
+    totalCostUsd,
+    requestCount: totalSuccess + totalFailed,
+    successCount: totalSuccess,
+    failedCount: totalFailed,
+  }, "Ranking processor job cost summary");
 
   // If all keywords failed, throw to trigger retry
   if (totalSuccess === 0 && totalFailed > 0 && totalSkipped === 0) {

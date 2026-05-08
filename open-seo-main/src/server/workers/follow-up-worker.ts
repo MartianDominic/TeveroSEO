@@ -18,7 +18,8 @@ import {
   scheduleFollowUpProcessing,
   type FollowUpJobData,
 } from "@/server/queues/followUpQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const workerLogger = createLogger({ module: "follow-up-worker" });
 
@@ -85,23 +86,9 @@ export async function startFollowUpWorker(): Promise<
         maxAttempts,
       });
 
-      // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: FOLLOW_UP_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add(`dlq:${FOLLOW_UP_QUEUE_NAME}:${job.id}`, dlqData);
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, FOLLOW_UP_QUEUE_NAME);
       }
     }
   );

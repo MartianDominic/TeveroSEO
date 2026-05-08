@@ -1,12 +1,13 @@
 /**
  * AI-Writer API client for content generation.
  * Phase 36: Content Brief Generation
+ * BRIEF-01: CorrelationId propagation for distributed tracing
  */
 import { AppError } from "@/server/lib/errors";
 import { createLogger } from "@/server/lib/logger";
 import type { ContentBriefSelect } from "@/db/brief-schema";
 
-const log = createLogger({ module: "AIWriterClient" });
+const baseLog = createLogger({ module: "AIWriterClient" });
 // CFG-CRIT-01 FIX: Standardized to AI_WRITER_URL
 const AI_WRITER_API = process.env.AI_WRITER_URL || "http://localhost:8000";
 
@@ -22,6 +23,8 @@ export interface ArticleCreatePayload {
   voice_mode?: string;
   suggested_h2s?: string[];
   paa_questions?: string[];
+  /** BRIEF-02: Upstream scraping cost for cost attribution in AI-Writer */
+  scraping_cost_usd?: number;
 }
 
 export interface ArticleResponse {
@@ -47,11 +50,26 @@ export function buildArticleTitle(keyword: string): string {
   return `${title} - Complete Guide ${year}`;
 }
 
+/**
+ * Create an article from a content brief via AI-Writer API.
+ *
+ * @param brief - Content brief with SERP analysis data
+ * @param clientId - Client ID for multi-tenant isolation
+ * @param correlationId - Correlation ID for distributed tracing (optional)
+ * @returns Created article response
+ */
 export async function createArticleFromBrief(
   brief: ContentBriefSelect,
-  clientId: string
+  clientId: string,
+  correlationId?: string
 ): Promise<ArticleResponse> {
+  const log = correlationId ? baseLog.child({ correlationId }) : baseLog;
   const title = buildArticleTitle(brief.keyword);
+
+  // BRIEF-02: Parse scraping cost from brief (stored as decimal string in DB)
+  const scrapingCost = brief.scrapingCostUsd
+    ? parseFloat(brief.scrapingCostUsd)
+    : undefined;
 
   const payload: ArticleCreatePayload = {
     client_id: clientId,
@@ -62,13 +80,21 @@ export async function createArticleFromBrief(
     voice_mode: brief.voiceMode,
     suggested_h2s: brief.serpAnalysis?.commonH2s.map((h) => h.heading) ?? [],
     paa_questions: brief.serpAnalysis?.paaQuestions ?? [],
+    // BRIEF-02: Forward scraping cost to AI-Writer for cost attribution
+    ...(scrapingCost !== undefined && !isNaN(scrapingCost) && { scraping_cost_usd: scrapingCost }),
   };
 
   log.info("Creating article from brief", { briefId: brief.id, keyword: brief.keyword });
 
+  // BRIEF-01: Build headers with X-Correlation-ID for distributed tracing
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (correlationId) {
+    headers["X-Correlation-ID"] = correlationId;
+  }
+
   const response = await fetch(`${AI_WRITER_API}/api/articles`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(AI_WRITER_TIMEOUT_MS),
   });
@@ -88,9 +114,20 @@ export async function createArticleFromBrief(
   return article;
 }
 
-export async function getArticleStatus(articleId: string): Promise<string> {
+/**
+ * Get article status by ID.
+ *
+ * @param articleId - Article ID
+ * @param correlationId - Correlation ID for distributed tracing (optional)
+ */
+export async function getArticleStatus(articleId: string, correlationId?: string): Promise<string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (correlationId) {
+    headers["X-Correlation-ID"] = correlationId;
+  }
+
   const response = await fetch(`${AI_WRITER_API}/api/articles/${articleId}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     signal: AbortSignal.timeout(AI_WRITER_TIMEOUT_MS),
   });
 
@@ -102,9 +139,20 @@ export async function getArticleStatus(articleId: string): Promise<string> {
   return article.status;
 }
 
-export async function getArticle(articleId: string): Promise<ArticleResponse> {
+/**
+ * Get full article by ID.
+ *
+ * @param articleId - Article ID
+ * @param correlationId - Correlation ID for distributed tracing (optional)
+ */
+export async function getArticle(articleId: string, correlationId?: string): Promise<ArticleResponse> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (correlationId) {
+    headers["X-Correlation-ID"] = correlationId;
+  }
+
   const response = await fetch(`${AI_WRITER_API}/api/articles/${articleId}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     signal: AbortSignal.timeout(AI_WRITER_TIMEOUT_MS),
   });
 
@@ -115,16 +163,33 @@ export async function getArticle(articleId: string): Promise<ArticleResponse> {
   return (await response.json()) as ArticleResponse;
 }
 
-export async function triggerArticleGeneration(articleId: string): Promise<void> {
+/**
+ * Trigger article generation.
+ *
+ * @param articleId - Article ID
+ * @param correlationId - Correlation ID for distributed tracing (optional)
+ */
+export async function triggerArticleGeneration(articleId: string, correlationId?: string): Promise<void> {
+  const log = correlationId ? baseLog.child({ correlationId }) : baseLog;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (correlationId) {
+    headers["X-Correlation-ID"] = correlationId;
+  }
+
+  log.info("Triggering article generation", { articleId });
+
   const response = await fetch(`${AI_WRITER_API}/api/articles/${articleId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ status: "generating" }),
     signal: AbortSignal.timeout(AI_WRITER_TIMEOUT_MS),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
+    log.error("Failed to trigger article generation", new Error(errorText), { articleId });
     throw new AppError("INTERNAL_ERROR", `Failed to trigger article generation: ${errorText}`);
   }
+
+  log.info("Article generation triggered successfully", { articleId });
 }

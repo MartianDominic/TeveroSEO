@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AdaptiveBackoff, type BackoffState } from "../ratelimit/AdaptiveBackoff";
+import { AdaptiveBackoff, parseRetryAfter, type BackoffState } from "../ratelimit/AdaptiveBackoff";
 
 // Mock Redis client
 function createMockRedis() {
@@ -297,6 +297,137 @@ describe("AdaptiveBackoff", () => {
       await adaptiveBackoff.recordFailure("https://api.example.com/path", 429);
 
       expect(mockRedis._store.has("backoff:domain:example.com")).toBe(true);
+    });
+  });
+
+  describe("Retry-After header support", () => {
+    it("should use Retry-After header duration for 429 responses", async () => {
+      const state = await adaptiveBackoff.recordFailure("example.com", 429, "120");
+
+      // Should use 120 seconds (120000ms) instead of default 60s
+      const duration = state.until - Date.now();
+      expect(duration).toBeGreaterThan(110_000); // Allow some timing slack
+      expect(duration).toBeLessThanOrEqual(120_000);
+    });
+
+    it("should ignore Retry-After header for non-429 responses", async () => {
+      const state = await adaptiveBackoff.recordFailure("example.com", 503, "300");
+
+      // Should use default 503 duration (30s), not 300s from header
+      const duration = state.until - Date.now();
+      expect(duration).toBeLessThan(60_000);
+    });
+
+    it("should fall back to default when Retry-After header is null", async () => {
+      const state = await adaptiveBackoff.recordFailure("example.com", 429, null);
+
+      // Should use default 60s
+      const duration = state.until - Date.now();
+      expect(duration).toBeLessThanOrEqual(60_000);
+    });
+
+    it("should fall back to default when Retry-After header is invalid", async () => {
+      const state = await adaptiveBackoff.recordFailure("example.com", 429, "invalid-value");
+
+      // Should use default 60s
+      const duration = state.until - Date.now();
+      expect(duration).toBeLessThanOrEqual(60_000);
+    });
+
+    it("should cap excessive Retry-After values", async () => {
+      // 1 hour is too long, should be capped at 30 minutes
+      const state = await adaptiveBackoff.recordFailure("example.com", 429, "3600");
+
+      const duration = state.until - Date.now();
+      // Max is 30 minutes (1800000ms)
+      expect(duration).toBeLessThanOrEqual(30 * 60 * 1000 + 1000); // Allow 1s slack
+    });
+  });
+});
+
+describe("parseRetryAfter", () => {
+  describe("delta-seconds format", () => {
+    it("should parse integer seconds", () => {
+      const result = parseRetryAfter("120");
+      expect(result).toBe(120_000); // 120 seconds in ms
+    });
+
+    it("should parse zero seconds as minimum backoff", () => {
+      const result = parseRetryAfter("0");
+      expect(result).toBe(1000); // Min backoff is 1 second
+    });
+
+    it("should cap excessive values at max backoff", () => {
+      const result = parseRetryAfter("7200"); // 2 hours
+      expect(result).toBe(30 * 60 * 1000); // Max is 30 minutes
+    });
+
+    it("should handle whitespace", () => {
+      const result = parseRetryAfter("  60  ");
+      expect(result).toBe(60_000);
+    });
+  });
+
+  describe("HTTP-date format", () => {
+    it("should parse valid HTTP date", () => {
+      const futureDate = new Date(Date.now() + 60_000);
+      const httpDate = futureDate.toUTCString();
+
+      const result = parseRetryAfter(httpDate);
+
+      expect(result).toBeGreaterThan(50_000);
+      expect(result).toBeLessThanOrEqual(60_000);
+    });
+
+    it("should return min backoff for past dates", () => {
+      const pastDate = new Date(Date.now() - 60_000);
+      const httpDate = pastDate.toUTCString();
+
+      const result = parseRetryAfter(httpDate);
+
+      expect(result).toBe(1000); // Min backoff
+    });
+
+    it("should cap future dates at max backoff", () => {
+      const farFuture = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+      const httpDate = farFuture.toUTCString();
+
+      const result = parseRetryAfter(httpDate);
+
+      expect(result).toBe(30 * 60 * 1000); // Max is 30 minutes
+    });
+  });
+
+  describe("invalid values", () => {
+    it("should return null for null input", () => {
+      expect(parseRetryAfter(null)).toBeNull();
+    });
+
+    it("should return null for undefined input", () => {
+      expect(parseRetryAfter(undefined)).toBeNull();
+    });
+
+    it("should return null for empty string", () => {
+      expect(parseRetryAfter("")).toBeNull();
+    });
+
+    it("should return null for whitespace-only string", () => {
+      expect(parseRetryAfter("   ")).toBeNull();
+    });
+
+    it("should return null for non-numeric, non-date strings", () => {
+      expect(parseRetryAfter("abc")).toBeNull();
+      expect(parseRetryAfter("12abc")).toBeNull();
+      // Note: "-5" is parsed as a date (5th of current month) by Date constructor
+      // This is acceptable behavior - we return min backoff for past dates
+    });
+
+    it("should handle floating point numbers as dates", () => {
+      // "3.5" is not a valid delta-seconds (must be integer),
+      // but JavaScript Date() interprets it as a date (3rd of some month)
+      // This results in a past date, returning min backoff
+      const result = parseRetryAfter("3.5");
+      expect(result).toBe(1000); // Min backoff for past date
     });
   });
 });

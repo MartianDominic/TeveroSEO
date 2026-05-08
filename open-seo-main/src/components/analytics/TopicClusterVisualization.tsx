@@ -125,7 +125,7 @@ export function TopicClusterVisualization({
               y1={centerY}
               x2={spoke.x}
               y2={spoke.y}
-              stroke={spoke.linksToHub ? "#22c55e" : "#ef4444"}
+              stroke={spoke.linksToHub ? "hsl(var(--success))" : "hsl(var(--destructive))"}
               strokeWidth={2}
               strokeDasharray={spoke.linksToHub ? undefined : "5,5"}
               opacity={0.6}
@@ -139,8 +139,8 @@ export function TopicClusterVisualization({
             cx={centerX}
             cy={centerY}
             r={hubRadius}
-            fill="#6366f1"
-            stroke="#4f46e5"
+            fill="hsl(var(--chart-1))"
+            stroke="hsl(var(--chart-1) / 0.8)"
             strokeWidth={3}
             className="drop-shadow-lg"
           />
@@ -173,8 +173,8 @@ export function TopicClusterVisualization({
               cx={spoke.x}
               cy={spoke.y}
               r={spokeRadius}
-              fill={spoke.linksToHub ? "#dcfce7" : "#fee2e2"}
-              stroke={spoke.linksToHub ? "#22c55e" : "#ef4444"}
+              fill={spoke.linksToHub ? "hsl(var(--success) / 0.15)" : "hsl(var(--destructive) / 0.15)"}
+              stroke={spoke.linksToHub ? "hsl(var(--success))" : "hsl(var(--destructive))"}
               strokeWidth={2}
             />
             {/* Link icon */}

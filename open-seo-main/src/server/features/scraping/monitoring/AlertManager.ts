@@ -62,6 +62,14 @@ export interface AlertThresholds {
   costDailyWarning: number;
   /** Critical if daily cost > $N */
   costDailyCritical: number;
+  /** OBS-03: Alert if DLQ job count exceeds threshold */
+  dlqCountWarning: number;
+  /** OBS-03: Alert if DLQ growth exceeds percentage in 1 hour */
+  dlqGrowthPercentWarning: number;
+  /** OBS-04: Alert if heap memory usage exceeds percentage */
+  memoryPressureWarning: number;
+  /** OBS-04: Critical if heap memory usage exceeds percentage */
+  memoryPressureCritical: number;
 }
 
 /**
@@ -75,6 +83,12 @@ export const DEFAULT_THRESHOLDS: AlertThresholds = {
   errorRateCritical: 15,
   costDailyWarning: 40,
   costDailyCritical: 80,
+  // OBS-03: DLQ growth thresholds
+  dlqCountWarning: 100,
+  dlqGrowthPercentWarning: 50,
+  // OBS-04: Memory pressure thresholds (percentage of heap)
+  memoryPressureWarning: 85,
+  memoryPressureCritical: 95,
 };
 
 export interface AlertManagerConfig {
@@ -261,6 +275,50 @@ export class AlertManager {
       cooldown: 1800,
       runbook: '#dfs-budget',
     });
+
+    // OBS-03: DLQ growth alerts
+    this.registerAlert({
+      name: 'dlq-count-warning',
+      condition: { metric: 'dlq.job_count', operator: '>', threshold: this.thresholds.dlqCountWarning },
+      severity: 'warning',
+      channels: ['slack'],
+      cooldown: 3600, // 1 hour cooldown to avoid spam
+      runbook: '#dlq-growth',
+    });
+
+    this.registerAlert({
+      name: 'dlq-growth-warning',
+      condition: {
+        metric: 'dlq.growth_percent',
+        operator: '>',
+        threshold: this.thresholds.dlqGrowthPercentWarning,
+        window: 3600, // 1 hour window
+        aggregation: 'max',
+      },
+      severity: 'warning',
+      channels: ['slack'],
+      cooldown: 3600, // 1 hour cooldown
+      runbook: '#dlq-growth',
+    });
+
+    // OBS-04: Memory pressure alerts
+    this.registerAlert({
+      name: 'memory-pressure-warning',
+      condition: { metric: 'memory.heap_used_percent', operator: '>', threshold: this.thresholds.memoryPressureWarning },
+      severity: 'warning',
+      channels: ['slack'],
+      cooldown: 600, // 10 minute cooldown
+      runbook: '#memory-pressure',
+    });
+
+    this.registerAlert({
+      name: 'memory-pressure-critical',
+      condition: { metric: 'memory.heap_used_percent', operator: '>', threshold: this.thresholds.memoryPressureCritical },
+      severity: 'critical',
+      channels: ['slack', 'pagerduty'],
+      cooldown: 300, // 5 minute cooldown for critical
+      runbook: '#memory-pressure',
+    });
   }
 
   async evaluate(metrics: MetricsSnapshot): Promise<void> {
@@ -445,5 +503,94 @@ export class AlertManager {
    */
   getEnvironment(): string {
     return this.environment;
+  }
+
+  // ===========================================================================
+  // OBS-03: DLQ Growth Monitoring
+  // ===========================================================================
+
+  /** Previous DLQ count for growth calculation */
+  private lastDlqCount: number = 0;
+  private lastDlqCheckTime: number = 0;
+
+  /**
+   * Check DLQ job count and growth rate.
+   * OBS-03: Alerts if count > 100 or growth > 50% in 1 hour.
+   *
+   * @param currentCount - Current number of jobs in DLQ
+   */
+  async checkDlqGrowth(currentCount: number): Promise<void> {
+    const now = Date.now();
+    const oneHourMs = 60 * 60 * 1000;
+
+    // Check absolute count threshold
+    if (currentCount >= this.thresholds.dlqCountWarning) {
+      await this.evaluate({
+        'dlq.job_count': currentCount,
+      });
+    }
+
+    // Calculate growth rate if we have a previous measurement within 1-2 hours
+    if (this.lastDlqCheckTime > 0) {
+      const timeDiff = now - this.lastDlqCheckTime;
+
+      // Only calculate growth if previous check was within 2 hours
+      if (timeDiff <= 2 * oneHourMs && this.lastDlqCount > 0) {
+        const growthPercent = ((currentCount - this.lastDlqCount) / this.lastDlqCount) * 100;
+
+        if (growthPercent >= this.thresholds.dlqGrowthPercentWarning) {
+          await this.evaluate({
+            'dlq.growth_percent': growthPercent,
+          });
+        }
+      }
+    }
+
+    // Update tracking for next check
+    this.lastDlqCount = currentCount;
+    this.lastDlqCheckTime = now;
+  }
+
+  // ===========================================================================
+  // OBS-04: Memory Pressure Monitoring
+  // ===========================================================================
+
+  /**
+   * Check heap memory pressure.
+   * OBS-04: Alerts if heap usage > 85% (warning) or > 95% (critical).
+   *
+   * Uses process.memoryUsage() to get current heap statistics.
+   */
+  async checkMemoryPressure(): Promise<void> {
+    const memUsage = process.memoryUsage();
+    const heapUsedPercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+
+    // Log memory stats for observability
+    alertLogger.debug({
+      heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+      heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
+      heapUsedPercent: heapUsedPercent.toFixed(1),
+      rssMB: Math.round(memUsage.rss / 1024 / 1024),
+    }, 'Memory pressure check');
+
+    // Only evaluate if above warning threshold
+    if (heapUsedPercent >= this.thresholds.memoryPressureWarning) {
+      await this.evaluate({
+        'memory.heap_used_percent': heapUsedPercent,
+      });
+    }
+  }
+
+  /**
+   * Check memory pressure with external metrics (for custom monitoring).
+   *
+   * @param heapUsedPercent - Heap usage as percentage (0-100)
+   */
+  async checkMemoryPressureWithMetrics(heapUsedPercent: number): Promise<void> {
+    if (heapUsedPercent >= this.thresholds.memoryPressureWarning) {
+      await this.evaluate({
+        'memory.heap_used_percent': heapUsedPercent,
+      });
+    }
   }
 }

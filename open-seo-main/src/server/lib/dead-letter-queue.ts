@@ -1,13 +1,23 @@
 /**
- * Dead Letter Queue Service
+ * Dead Letter Queue Service (DB-based)
+ *
+ * UNIFIED DLQ: This is the ONLY DLQ implementation for the platform.
+ * The Redis-based DLQ (src/server/queues/dlq.ts) is DEPRECATED.
  *
  * Plan 69-04 Task 4: Manages failed jobs for inspection and replay.
+ * SCR-01 CONSOLIDATION: DB-based DLQ provides:
+ * - Survives Redis restarts/flushes
+ * - Queryable for debugging and reporting
+ * - Audit trail with timestamps
+ * - Can join with other tables for context
+ * - Supports complex retry policies
  *
  * Provides:
  * - moveToDeadLetter: Store failed job with error info
  * - replayFromDeadLetter: Re-queue job and remove from DLQ
  * - listDeadLetterJobs: Query DLQ with filters
  * - purgeDeadLetterJobs: Clean up old entries
+ * - getDeadLetterStats: Statistics for monitoring
  *
  * @module server/lib/dead-letter-queue
  */
@@ -16,6 +26,7 @@ import { db } from "@/db";
 import { deadLetterJobs, type DeadLetterJobInsert } from "@/db/dead-letter-queue-schema";
 import { eq, and, isNull, lt, desc, sql } from "drizzle-orm";
 import { createLogger } from "./logger";
+import type { Job } from "bullmq";
 
 const log = createLogger({ module: "dead-letter-queue" });
 
@@ -413,4 +424,66 @@ export async function getDeadLetterStats(): Promise<{
     byJobName: Object.fromEntries(byJobName.map((r) => [r.jobName, r.count])),
     last24h: recent[0]?.count ?? 0,
   };
+}
+
+// ============================================================================
+// Worker Helper Functions
+// ============================================================================
+
+/**
+ * SCR-01 CONSOLIDATION: Helper function for workers to move failed jobs to DLQ.
+ *
+ * This provides a simple interface for workers migrating from Redis DLQ.
+ * Call this in the worker's "failed" event handler after max retries.
+ *
+ * @param job - The failed BullMQ job
+ * @param error - The error that caused the failure
+ * @param queueName - The queue name (for logging/grouping)
+ * @returns The DLQ entry ID if successful
+ *
+ * @example
+ * worker.on("failed", async (job, err) => {
+ *   if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+ *     await moveJobToDeadLetter(job, err, QUEUE_NAME);
+ *   }
+ * });
+ */
+export async function moveJobToDeadLetter(
+  job: Job,
+  error: Error,
+  queueName: string
+): Promise<string | null> {
+  try {
+    const dlqId = await moveToDeadLetter({
+      jobId: job.id ?? `unknown-${Date.now()}`,
+      queue: queueName,
+      jobName: job.name,
+      data: job.data,
+      error: error.message,
+      stackTrace: error.stack,
+      retryCount: job.attemptsMade,
+      metadata: {
+        lastAttemptAt: new Date().toISOString(),
+        originalTimestamp: job.timestamp
+          ? new Date(job.timestamp).toISOString()
+          : undefined,
+      },
+    });
+
+    log.info("Job moved to DB-based DLQ via helper", {
+      dlqId,
+      jobId: job.id,
+      queueName,
+      attemptsMade: job.attemptsMade,
+    });
+
+    return dlqId;
+  } catch (dlqErr) {
+    log.error(
+      "Failed to move job to DLQ",
+      dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)),
+      { jobId: job.id, queueName }
+    );
+    return null;
+  }
 }

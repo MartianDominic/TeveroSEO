@@ -5,9 +5,13 @@
  * This service acts as a facade that exposes P96 analytics data in a format
  * suitable for P92 audit checks. It handles:
  * - Data transformation from analytics services to audit-friendly structures
- * - Caching during audit runs to avoid repeated queries
+ * - Caching during audit runs to avoid repeated queries (Redis-backed for multi-worker support)
  * - Scoring calculations for audit results
  * - Recommendation generation
+ *
+ * OPS-01 FIX: Migrated from in-memory Map to Redis caching to support multi-worker
+ * audit scenarios where different workers may need to share cached analytics data.
+ * Cache keys are scoped to audit runs: audit:{auditId}:{dataType}:{entityId}
  */
 
 import { TopicClusterService } from "../services/TopicClusterService";
@@ -20,6 +24,7 @@ import {
 import { TrendDetectionService, getTrendDetectionService } from "../services/TrendDetectionService";
 import { createLogger } from "@/server/lib/logger";
 import { ANALYTICS_CACHE_TTL_SECONDS } from "@/server/cache";
+import { redis, isCircuitBreakerClosed } from "@/server/lib/redis";
 import type {
   TopicCoverageAuditData,
   ContentGapAuditData,
@@ -50,7 +55,13 @@ const CLUSTER_SIZE_TARGET = {
 };
 
 /**
- * Cache entry with timestamp for expiration
+ * TTL for audit-scoped Redis cache (1 hour).
+ * Audits should complete within this time; data is shared across workers.
+ */
+const AUDIT_CACHE_TTL_SECONDS = 3600;
+
+/**
+ * Cache entry with timestamp for expiration (in-memory fallback)
  */
 interface CacheEntry<T> {
   data: T;
@@ -60,17 +71,28 @@ interface CacheEntry<T> {
 /**
  * AnalyticsAuditBridge provides audit-friendly access to P96 analytics data.
  *
+ * OPS-01 FIX: Now uses Redis for caching to support multi-worker audit scenarios.
+ * Cache keys are scoped to audit runs: audit:{auditId}:{dataType}:{entityId}
+ * Falls back to in-memory Map if Redis is unavailable.
+ *
  * Usage:
  * ```typescript
  * const bridge = getAnalyticsAuditBridge();
- * const topicData = await bridge.getTopicCoverageData(siteId);
+ * // With audit ID (recommended for multi-worker scenarios)
+ * const topicData = await bridge.getTopicCoverageData(siteId, auditId);
+ * // Without audit ID (uses in-memory fallback)
  * const hubSpokeData = await bridge.getHubSpokeLinkingData(siteId, pageUrl);
+ * // Cleanup after audit completes
+ * await bridge.cleanupAuditCache(auditId);
  * ```
  */
 export class AnalyticsAuditBridge {
-  private cache: Map<string, CacheEntry<unknown>> = new Map();
-  // Use shared analytics cache TTL for consistency (converted to milliseconds)
+  /** In-memory fallback cache for when Redis is unavailable */
+  private memoryCache: Map<string, CacheEntry<unknown>> = new Map();
+  /** Use shared analytics cache TTL for consistency (converted to milliseconds) */
   private cacheTimeoutMs = ANALYTICS_CACHE_TTL_SECONDS * 1000;
+  /** Track if Redis is available for caching */
+  private redisAvailable = true;
 
   constructor(
     private topicClusterService: TopicClusterService,
@@ -82,12 +104,15 @@ export class AnalyticsAuditBridge {
   /**
    * Get topic coverage data for T4 checks.
    * Returns cluster information with coverage scores and recommendations.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async getTopicCoverageData(siteId: string): Promise<TopicCoverageAuditData> {
+  async getTopicCoverageData(siteId: string, auditId?: string): Promise<TopicCoverageAuditData> {
     const cacheKey = `topic:${siteId}`;
-    const cached = this.getFromCache<TopicCoverageAuditData>(cacheKey);
+    const cached = await this.getFromCache<TopicCoverageAuditData>(cacheKey, auditId);
     if (cached) {
-      logger.debug("Topic coverage data served from cache", { siteId });
+      logger.debug("Topic coverage data served from cache", { siteId, auditId });
       return cached;
     }
 
@@ -111,10 +136,10 @@ export class AnalyticsAuditBridge {
         recommendations: this.generateTopicRecommendations(clusterSummaries),
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
-      logger.error("Failed to get topic coverage data", error instanceof Error ? error : undefined, { siteId });
+      logger.error("Failed to get topic coverage data", error instanceof Error ? error : undefined, { siteId, auditId });
       // Return empty data structure rather than throwing
       return {
         totalClusters: 0,
@@ -130,13 +155,18 @@ export class AnalyticsAuditBridge {
   /**
    * Get hub-spoke linking data for a specific page.
    * Used by T4-03 (pillar links to spokes) and T4-04 (spokes link to pillar).
+   *
+   * @param siteId - Site UUID
+   * @param pageUrl - Page URL to analyze
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
   async getHubSpokeLinkingData(
     siteId: string,
-    pageUrl: string
+    pageUrl: string,
+    auditId?: string
   ): Promise<HubSpokeLinkingAuditData> {
     const cacheKey = `hubspoke:${siteId}:${pageUrl}`;
-    const cached = this.getFromCache<HubSpokeLinkingAuditData>(cacheKey);
+    const cached = await this.getFromCache<HubSpokeLinkingAuditData>(cacheKey, auditId);
     if (cached) {
       return cached;
     }
@@ -168,7 +198,7 @@ export class AnalyticsAuditBridge {
             linkingScore: this.calculateHubLinkingScore(linkedSpokes.length, cluster.spokePages.length),
           };
 
-          this.setCache(cacheKey, result);
+          await this.setCache(cacheKey, result, auditId);
           return result;
         }
 
@@ -186,7 +216,7 @@ export class AnalyticsAuditBridge {
             linkingScore: spoke.linksToHub ? 100 : 0,
           };
 
-          this.setCache(cacheKey, result);
+          await this.setCache(cacheKey, result, auditId);
           return result;
         }
       }
@@ -199,7 +229,7 @@ export class AnalyticsAuditBridge {
         linkingScore: 100, // Not applicable, don't penalize
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
       logger.error("Failed to get hub-spoke linking data", error instanceof Error ? error : undefined, {
@@ -218,13 +248,18 @@ export class AnalyticsAuditBridge {
   /**
    * Get cluster size data for T4-05 check.
    * Validates that clusters have 15-25 spokes.
+   *
+   * @param siteId - Site UUID
+   * @param pageUrl - Page URL to analyze
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
   async getClusterSizeData(
     siteId: string,
-    pageUrl: string
+    pageUrl: string,
+    auditId?: string
   ): Promise<ClusterSizeAuditData | null> {
     const cacheKey = `clustersize:${siteId}:${pageUrl}`;
-    const cached = this.getFromCache<ClusterSizeAuditData | null>(cacheKey);
+    const cached = await this.getFromCache<ClusterSizeAuditData | null>(cacheKey, auditId);
     if (cached !== undefined) {
       return cached;
     }
@@ -265,13 +300,13 @@ export class AnalyticsAuditBridge {
             sizeScore: this.calculateClusterSizeScore(spokeCount),
           };
 
-          this.setCache(cacheKey, result);
+          await this.setCache(cacheKey, result, auditId);
           return result;
         }
       }
 
       // Page not in any cluster
-      this.setCache(cacheKey, null);
+      await this.setCache(cacheKey, null, auditId);
       return null;
     } catch (error) {
       logger.error("Failed to get cluster size data", error instanceof Error ? error : undefined, {
@@ -284,12 +319,15 @@ export class AnalyticsAuditBridge {
 
   /**
    * Get content gap data from striking distance analysis.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async getContentGapData(siteId: string): Promise<ContentGapAuditData> {
+  async getContentGapData(siteId: string, auditId?: string): Promise<ContentGapAuditData> {
     const cacheKey = `gap:${siteId}`;
-    const cached = this.getFromCache<ContentGapAuditData>(cacheKey);
+    const cached = await this.getFromCache<ContentGapAuditData>(cacheKey, auditId);
     if (cached) {
-      logger.debug("Content gap data served from cache", { siteId });
+      logger.debug("Content gap data served from cache", { siteId, auditId });
       return cached;
     }
 
@@ -328,10 +366,10 @@ export class AnalyticsAuditBridge {
         recommendations: this.generateGapRecommendations(summaries),
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
-      logger.error("Failed to get content gap data", error instanceof Error ? error : undefined, { siteId });
+      logger.error("Failed to get content gap data", error instanceof Error ? error : undefined, { siteId, auditId });
       return {
         strikingDistanceCount: 0,
         highValueOpportunities: [],
@@ -346,12 +384,15 @@ export class AnalyticsAuditBridge {
   /**
    * Get trend data for T4-08 check.
    * Analyzes growing/decaying pages over 3-week rolling window.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async getTrendData(siteId: string): Promise<TrendAuditData> {
+  async getTrendData(siteId: string, auditId?: string): Promise<TrendAuditData> {
     const cacheKey = `trend:${siteId}`;
-    const cached = this.getFromCache<TrendAuditData>(cacheKey);
+    const cached = await this.getFromCache<TrendAuditData>(cacheKey, auditId);
     if (cached) {
-      logger.debug("Trend data served from cache", { siteId });
+      logger.debug("Trend data served from cache", { siteId, auditId });
       return cached;
     }
 
@@ -397,10 +438,10 @@ export class AnalyticsAuditBridge {
         recommendations: this.generateTrendRecommendations(decayingPages, growingPages),
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
-      logger.error("Failed to get trend data", error instanceof Error ? error : undefined, { siteId });
+      logger.error("Failed to get trend data", error instanceof Error ? error : undefined, { siteId, auditId });
       return {
         decayingPages: [],
         growingPages: [],
@@ -416,12 +457,15 @@ export class AnalyticsAuditBridge {
   /**
    * Get striking distance data for T4-09 check.
    * Identifies pages ranking on page 2 with optimization opportunities.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async getStrikingDistanceData(siteId: string): Promise<StrikingDistanceAuditData> {
+  async getStrikingDistanceData(siteId: string, auditId?: string): Promise<StrikingDistanceAuditData> {
     const cacheKey = `strikingaudit:${siteId}`;
-    const cached = this.getFromCache<StrikingDistanceAuditData>(cacheKey);
+    const cached = await this.getFromCache<StrikingDistanceAuditData>(cacheKey, auditId);
     if (cached) {
-      logger.debug("Striking distance audit data served from cache", { siteId });
+      logger.debug("Striking distance audit data served from cache", { siteId, auditId });
       return cached;
     }
 
@@ -463,10 +507,10 @@ export class AnalyticsAuditBridge {
         recommendations: this.generateStrikingDistanceRecommendations(keywords, quickWins, highValueOpportunities),
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
-      logger.error("Failed to get striking distance data", error instanceof Error ? error : undefined, { siteId });
+      logger.error("Failed to get striking distance data", error instanceof Error ? error : undefined, { siteId, auditId });
       return {
         keywords: [],
         totalOpportunities: 0,
@@ -480,12 +524,15 @@ export class AnalyticsAuditBridge {
 
   /**
    * Get cannibalization data for audit scoring.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async getCannibalizationData(siteId: string): Promise<CannibalizationAuditData> {
+  async getCannibalizationData(siteId: string, auditId?: string): Promise<CannibalizationAuditData> {
     const cacheKey = `cannibal:${siteId}`;
-    const cached = this.getFromCache<CannibalizationAuditData>(cacheKey);
+    const cached = await this.getFromCache<CannibalizationAuditData>(cacheKey, auditId);
     if (cached) {
-      logger.debug("Cannibalization data served from cache", { siteId });
+      logger.debug("Cannibalization data served from cache", { siteId, auditId });
       return cached;
     }
 
@@ -518,10 +565,10 @@ export class AnalyticsAuditBridge {
         recommendations: this.generateCannibalizationRecommendations(summaries),
       };
 
-      this.setCache(cacheKey, result);
+      await this.setCache(cacheKey, result, auditId);
       return result;
     } catch (error) {
-      logger.error("Failed to get cannibalization data", error instanceof Error ? error : undefined, { siteId });
+      logger.error("Failed to get cannibalization data", error instanceof Error ? error : undefined, { siteId, auditId });
       return {
         totalIssues: 0,
         criticalIssues: [],
@@ -537,15 +584,20 @@ export class AnalyticsAuditBridge {
 
   /**
    * Get all analytics data as a combined context for audit checks.
+   *
+   * @param siteId - Site UUID
+   * @param pageUrl - Optional page URL for page-specific data
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
   async getFullAuditContext(
     siteId: string,
-    pageUrl?: string
+    pageUrl?: string,
+    auditId?: string
   ): Promise<AnalyticsAuditContext> {
     const [topicCoverage, contentGaps, cannibalization] = await Promise.all([
-      this.getTopicCoverageData(siteId),
-      this.getContentGapData(siteId),
-      this.getCannibalizationData(siteId),
+      this.getTopicCoverageData(siteId, auditId),
+      this.getContentGapData(siteId, auditId),
+      this.getCannibalizationData(siteId, auditId),
     ]);
 
     let hubSpokeLinking: HubSpokeLinkingAuditData | undefined;
@@ -553,8 +605,8 @@ export class AnalyticsAuditBridge {
 
     if (pageUrl) {
       [hubSpokeLinking, clusterSize] = await Promise.all([
-        this.getHubSpokeLinkingData(siteId, pageUrl),
-        this.getClusterSizeData(siteId, pageUrl),
+        this.getHubSpokeLinkingData(siteId, pageUrl, auditId),
+        this.getClusterSizeData(siteId, pageUrl, auditId),
       ]);
     }
 
@@ -574,12 +626,15 @@ export class AnalyticsAuditBridge {
 
   /**
    * Generate all recommendations from analytics data.
+   *
+   * @param siteId - Site UUID
+   * @param auditId - Optional audit ID for Redis-based cross-worker caching
    */
-  async generateRecommendations(siteId: string): Promise<AuditRecommendation[]> {
+  async generateRecommendations(siteId: string, auditId?: string): Promise<AuditRecommendation[]> {
     const [topicData, gapData, cannibData] = await Promise.all([
-      this.getTopicCoverageData(siteId),
-      this.getContentGapData(siteId),
-      this.getCannibalizationData(siteId),
+      this.getTopicCoverageData(siteId, auditId),
+      this.getContentGapData(siteId, auditId),
+      this.getCannibalizationData(siteId, auditId),
     ]);
 
     return [
@@ -598,31 +653,126 @@ export class AnalyticsAuditBridge {
   }
 
   /**
-   * Clear the cache (useful at the end of an audit run).
+   * Clear the in-memory cache (useful at the end of an audit run).
+   * For Redis-based cache, use cleanupAuditCache(auditId) instead.
    */
   clearCache(): void {
-    this.cache.clear();
-    logger.debug("Analytics audit bridge cache cleared");
+    this.memoryCache.clear();
+    logger.debug("Analytics audit bridge in-memory cache cleared");
+  }
+
+  /**
+   * Clean up Redis cache for a specific audit run.
+   * Call this when an audit completes to free Redis memory.
+   *
+   * @param auditId - The audit ID whose cache entries should be deleted
+   * @returns Number of keys deleted
+   */
+  async cleanupAuditCache(auditId: string): Promise<number> {
+    if (!auditId) {
+      logger.warn("cleanupAuditCache called without auditId");
+      return 0;
+    }
+
+    try {
+      const pattern = `audit:${auditId}:*`;
+      const keys = await redis.keys(pattern);
+
+      if (keys.length > 0) {
+        await redis.del(...keys);
+        logger.info("Audit cache cleaned up", { auditId, keysDeleted: keys.length });
+      }
+
+      return keys.length;
+    } catch (error) {
+      logger.warn("Failed to cleanup audit cache", {
+        auditId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return 0;
+    }
   }
 
   // ============================================================================
-  // Private: Cache Management
+  // Private: Cache Management (Redis with in-memory fallback)
   // ============================================================================
 
-  private getFromCache<T>(key: string): T | undefined {
-    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
+  /**
+   * Build a cache key for Redis or in-memory storage.
+   * If auditId is provided, uses audit-scoped Redis key format.
+   * Otherwise uses the simple key for in-memory fallback.
+   */
+  private buildCacheKey(key: string, auditId?: string): string {
+    if (auditId) {
+      return `audit:${auditId}:${key}`;
+    }
+    return key;
+  }
+
+  /**
+   * Get data from cache (Redis first, then in-memory fallback).
+   */
+  private async getFromCache<T>(key: string, auditId?: string): Promise<T | undefined> {
+    // If auditId provided and Redis is available, try Redis first
+    if (auditId && this.redisAvailable && isCircuitBreakerClosed()) {
+      try {
+        const redisKey = this.buildCacheKey(key, auditId);
+        const cached = await redis.get(redisKey);
+
+        if (cached) {
+          logger.debug("Cache hit (Redis)", { key: redisKey });
+          return JSON.parse(cached) as T;
+        }
+
+        logger.debug("Cache miss (Redis)", { key: redisKey });
+        return undefined;
+      } catch (error) {
+        logger.warn("Redis cache get failed, falling back to in-memory", {
+          key,
+          auditId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.redisAvailable = false;
+        // Fall through to in-memory cache
+      }
+    }
+
+    // In-memory fallback (when no auditId or Redis unavailable)
+    const entry = this.memoryCache.get(key) as CacheEntry<T> | undefined;
     if (!entry) return undefined;
 
     if (Date.now() - entry.timestamp > this.cacheTimeoutMs) {
-      this.cache.delete(key);
+      this.memoryCache.delete(key);
       return undefined;
     }
 
     return entry.data;
   }
 
-  private setCache<T>(key: string, data: T): void {
-    this.cache.set(key, { data, timestamp: Date.now() });
+  /**
+   * Set data in cache (Redis first, then in-memory fallback).
+   */
+  private async setCache<T>(key: string, data: T, auditId?: string): Promise<void> {
+    // If auditId provided and Redis is available, use Redis
+    if (auditId && this.redisAvailable && isCircuitBreakerClosed()) {
+      try {
+        const redisKey = this.buildCacheKey(key, auditId);
+        await redis.setex(redisKey, AUDIT_CACHE_TTL_SECONDS, JSON.stringify(data));
+        logger.debug("Cache set (Redis)", { key: redisKey, ttl: AUDIT_CACHE_TTL_SECONDS });
+        return;
+      } catch (error) {
+        logger.warn("Redis cache set failed, falling back to in-memory", {
+          key,
+          auditId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.redisAvailable = false;
+        // Fall through to in-memory cache
+      }
+    }
+
+    // In-memory fallback (when no auditId or Redis unavailable)
+    this.memoryCache.set(key, { data, timestamp: Date.now() });
   }
 
   // ============================================================================

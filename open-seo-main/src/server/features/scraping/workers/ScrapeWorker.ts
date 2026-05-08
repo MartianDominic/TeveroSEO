@@ -19,7 +19,7 @@ import { RateLimiter, RateLimitExceededError } from "../ratelimit/RateLimiter";
 import { AdaptiveBackoff } from "../ratelimit/AdaptiveBackoff";
 import { GlobalConcurrencyLimiter } from "../ratelimit/GlobalConcurrencyLimiter";
 import type { TieredFetchRequest, TieredFetchResult } from "../types";
-import { workerLogger } from "../logging";
+import { workerLogger, withJobContext, generateCorrelationId } from "../logging";
 import type { QueueManager } from "../queue/QueueManager";
 
 /**
@@ -140,144 +140,211 @@ export function createScrapeWorker(
 
   const adaptiveBackoff = new AdaptiveBackoff(redis);
 
+  // Determine priority label from queue name for context
+  const priorityFromQueue = (queue: ScrapeQueueName): 'priority' | 'standard' | 'background' => {
+    if (queue === SCRAPE_QUEUE_NAMES.PRIORITY) return 'priority';
+    if (queue === SCRAPE_QUEUE_NAMES.STANDARD) return 'standard';
+    return 'background';
+  };
+
   const worker = new Worker<ScrapeJobData, ScrapeJobResult>(
     queueName,
     async (job: Job<ScrapeJobData, ScrapeJobResult>) => {
-      const startTime = Date.now();
-      const requestId = job.data.jobId;
+      // Extract or generate correlationId for distributed tracing
+      const correlationId = job.data.correlationId ?? generateCorrelationId();
 
-      // Report initial progress
-      await job.updateProgress(10);
+      // Wrap entire job processing with context for correlation ID propagation
+      return withJobContext(
+        {
+          id: job.id,
+          data: {
+            url: job.data.url,
+            clientId: job.data.clientId,
+            correlationId,
+          },
+        },
+        async () => {
+          const startTime = Date.now();
+          const requestId = job.data.jobId;
 
-      // Acquire global concurrency slot
-      const acquireResult = await globalLimiter.acquire(requestId, 60_000);
-      if (!acquireResult.acquired) {
-        throw new Error(
-          `Failed to acquire concurrency slot after ${acquireResult.waitedMs}ms`
-        );
-      }
-
-      await job.updateProgress(20);
-
-      try {
-        // Check adaptive backoff before proceeding
-        if (workerConfig.enableAdaptiveBackoff) {
-          const remainingBackoff = await adaptiveBackoff.getRemainingBackoffMs(
-            job.data.domain
+          // Log job start with full context
+          workerLogger.info(
+            {
+              jobId: job.id,
+              correlationId,
+              queueName,
+              priority: priorityFromQueue(queueName),
+              url: job.data.url,
+              domain: job.data.domain,
+              clientId: job.data.clientId,
+              attemptsMade: job.attemptsMade,
+            },
+            "Job processing started"
           );
-          if (remainingBackoff > 0) {
-            // Wait for backoff to expire (up to a reasonable limit)
-            const waitTime = Math.min(remainingBackoff, 30_000);
-            await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+          // Report initial progress
+          await job.updateProgress(10);
+
+          // Acquire global concurrency slot
+          const acquireResult = await globalLimiter.acquire(requestId, 60_000);
+          if (!acquireResult.acquired) {
+            throw new Error(
+              `Failed to acquire concurrency slot after ${acquireResult.waitedMs}ms`
+            );
           }
-        }
 
-        await job.updateProgress(30);
+          await job.updateProgress(20);
 
-        // Acquire per-domain rate limit
-        try {
-          await rateLimiter.acquire(job.data.domain);
-        } catch (error) {
-          if (error instanceof RateLimitExceededError) {
+          try {
+            // Check adaptive backoff before proceeding
+            if (workerConfig.enableAdaptiveBackoff) {
+              const remainingBackoff = await adaptiveBackoff.getRemainingBackoffMs(
+                job.data.domain
+              );
+              if (remainingBackoff > 0) {
+                // Wait for backoff to expire (up to a reasonable limit)
+                const waitTime = Math.min(remainingBackoff, 30_000);
+                await new Promise((resolve) => setTimeout(resolve, waitTime));
+              }
+            }
+
+            await job.updateProgress(30);
+
+            // Acquire per-domain rate limit
+            try {
+              await rateLimiter.acquire(job.data.domain);
+            } catch (error) {
+              if (error instanceof RateLimitExceededError) {
+                return {
+                  success: false,
+                  url: job.data.url,
+                  error: `Rate limit exceeded for ${job.data.domain}`,
+                  errorCode: "RATE_LIMITED" as ScrapeErrorCode,
+                  tierUsed: job.data.options.forceTier ?? "direct",
+                  fromCache: false,
+                  processingTimeMs: Date.now() - startTime,
+                  estimatedCost: 0,
+                };
+              }
+              throw error;
+            }
+
+            await job.updateProgress(50);
+
+            // Perform fetch using TieredFetcher
+            const fetchRequest: TieredFetchRequest = {
+              url: job.data.url,
+              startTier: job.data.options.forceTier,
+              skipCache: job.data.options.skipCache,
+              timeoutMs: job.data.options.timeoutMs,
+              jobId: job.data.jobId,
+              clientId: job.data.clientId,
+            };
+
+            const result = await tieredFetcher.fetch(fetchRequest);
+
+            await job.updateProgress(90);
+
+            // Record success for adaptive backoff
+            if (result.success && workerConfig.enableAdaptiveBackoff) {
+              await adaptiveBackoff.recordSuccess(job.data.domain);
+            }
+
+            await job.updateProgress(100);
+
+            const processingTimeMs = Date.now() - startTime;
+
+            // Log job completion with context
+            workerLogger.info(
+              {
+                jobId: job.id,
+                correlationId,
+                processingTimeMs,
+                tierUsed: result.tier,
+                costUsd: result.costUsd,
+                success: result.success,
+              },
+              "Job processing completed"
+            );
+
+            return {
+              success: result.success,
+              url: job.data.url,
+              fetchResult: job.data.options.includeHtml ? result : {
+                ...result,
+                html: undefined, // Strip HTML unless requested
+              },
+              tierUsed: result.tier,
+              fromCache: false, // TieredFetcher would indicate this
+              processingTimeMs,
+              estimatedCost: result.costUsd,
+            };
+          } catch (error) {
+            const errorCode = mapErrorCode(error);
+            const processingTimeMs = Date.now() - startTime;
+
+            // Record failure for adaptive backoff
+            if (workerConfig.enableAdaptiveBackoff) {
+              const statusCode = isHTTPError(error) ? error.statusCode : 500;
+              await adaptiveBackoff.recordFailure(job.data.domain, statusCode);
+            }
+
+            // Determine if we should retry or escalate
+            const retryPolicy = getRetryPolicy(errorCode);
+            const shouldRetry =
+              !isPermanentError(errorCode) && job.attemptsMade < retryPolicy.attempts;
+
+            if (shouldRetry) {
+              // Calculate delay for next attempt
+              const delay = calculateDelay(
+                job.attemptsMade + 1,
+                retryPolicy.backoff.delay,
+                retryPolicy.backoff.type
+              );
+
+              // Move to delayed state
+              await job.moveToDelayed(Date.now() + delay, job.token);
+            }
+
+            // If error should trigger tier escalation, update job data
+            if (shouldEscalateTier(errorCode)) {
+              // The next retry will use a higher tier
+              // This is handled by TieredFetcher's domain learning
+              workerLogger.info(
+                { domain: job.data.domain, errorCode, correlationId },
+                "Tier escalation triggered"
+              );
+            }
+
+            // Log job failure with context
+            workerLogger.warn(
+              {
+                jobId: job.id,
+                correlationId,
+                processingTimeMs,
+                errorCode,
+                error: error instanceof Error ? error.message : String(error),
+                willRetry: shouldRetry,
+              },
+              "Job processing failed"
+            );
+
             return {
               success: false,
               url: job.data.url,
-              error: `Rate limit exceeded for ${job.data.domain}`,
-              errorCode: "RATE_LIMITED" as ScrapeErrorCode,
+              error: error instanceof Error ? error.message : String(error),
+              errorCode,
               tierUsed: job.data.options.forceTier ?? "direct",
               fromCache: false,
-              processingTimeMs: Date.now() - startTime,
+              processingTimeMs,
               estimatedCost: 0,
             };
+          } finally {
+            // Always release global slot
+            await globalLimiter.release(requestId);
           }
-          throw error;
         }
-
-        await job.updateProgress(50);
-
-        // Perform fetch using TieredFetcher
-        const fetchRequest: TieredFetchRequest = {
-          url: job.data.url,
-          startTier: job.data.options.forceTier,
-          skipCache: job.data.options.skipCache,
-          timeoutMs: job.data.options.timeoutMs,
-          jobId: job.data.jobId,
-          clientId: job.data.clientId,
-        };
-
-        const result = await tieredFetcher.fetch(fetchRequest);
-
-        await job.updateProgress(90);
-
-        // Record success for adaptive backoff
-        if (result.success && workerConfig.enableAdaptiveBackoff) {
-          await adaptiveBackoff.recordSuccess(job.data.domain);
-        }
-
-        await job.updateProgress(100);
-
-        return {
-          success: result.success,
-          url: job.data.url,
-          fetchResult: job.data.options.includeHtml ? result : {
-            ...result,
-            html: undefined, // Strip HTML unless requested
-          },
-          tierUsed: result.tier,
-          fromCache: false, // TieredFetcher would indicate this
-          processingTimeMs: Date.now() - startTime,
-          estimatedCost: result.costUsd,
-        };
-      } catch (error) {
-        const errorCode = mapErrorCode(error);
-
-        // Record failure for adaptive backoff
-        if (workerConfig.enableAdaptiveBackoff) {
-          const statusCode = isHTTPError(error) ? error.statusCode : 500;
-          await adaptiveBackoff.recordFailure(job.data.domain, statusCode);
-        }
-
-        // Determine if we should retry or escalate
-        const retryPolicy = getRetryPolicy(errorCode);
-        const shouldRetry =
-          !isPermanentError(errorCode) && job.attemptsMade < retryPolicy.attempts;
-
-        if (shouldRetry) {
-          // Calculate delay for next attempt
-          const delay = calculateDelay(
-            job.attemptsMade + 1,
-            retryPolicy.backoff.delay,
-            retryPolicy.backoff.type
-          );
-
-          // Move to delayed state
-          await job.moveToDelayed(Date.now() + delay, job.token);
-        }
-
-        // If error should trigger tier escalation, update job data
-        if (shouldEscalateTier(errorCode)) {
-          // The next retry will use a higher tier
-          // This is handled by TieredFetcher's domain learning
-          workerLogger.info(
-            { domain: job.data.domain, errorCode },
-            "Tier escalation triggered"
-          );
-        }
-
-        return {
-          success: false,
-          url: job.data.url,
-          error: error instanceof Error ? error.message : String(error),
-          errorCode,
-          tierUsed: job.data.options.forceTier ?? "direct",
-          fromCache: false,
-          processingTimeMs: Date.now() - startTime,
-          estimatedCost: 0,
-        };
-      } finally {
-        // Always release global slot
-        await globalLimiter.release(requestId);
-      }
+      );
     },
     {
       connection: getSharedBullMQConnection(`worker:${queueName}`),

@@ -2,6 +2,7 @@
  * SERP Content Analyzer
  * Phase 36: Content Brief Generation - T-40-02-03
  * Phase 95-10: Consumer Integration Completion
+ * BRIEF-01: CorrelationId propagation for distributed tracing
  *
  * Fetches and analyzes competitor content to extract:
  * - Common H2 headings across top-ranking pages
@@ -15,7 +16,7 @@ import { routeBatchRequest, type ScrapeResult } from "@/server/features/scraping
 import { getSerpCost } from "@/server/features/scraping/cost";
 import { createLogger } from "@/server/lib/logger";
 
-const log = createLogger({ module: "SerpContentAnalyzer" });
+const baseLog = createLogger({ module: "SerpContentAnalyzer" });
 
 export interface H2Frequency {
   heading: string;
@@ -76,16 +77,20 @@ const serpContentTransformer = {
  * Routes through unified ScrapingService when feature flag is active.
  *
  * @param urls - Competitor URLs from SERP results
+ * @param correlationId - Correlation ID for distributed tracing (optional)
  * @returns Analysis with common H2s and word count stats
  */
 export async function analyzeSerpContent(
-  urls: string[]
+  urls: string[],
+  correlationId?: string
 ): Promise<SerpContentAnalysis> {
+  const log = correlationId ? baseLog.child({ correlationId }) : baseLog;
   const h2Counts = new Map<string, number>();
   const wordCounts: number[] = [];
   let analyzedUrls = 0;
 
   if (urls.length === 0) {
+    log.debug("No URLs to analyze, returning defaults");
     return {
       commonH2s: [],
       wordCountStats: { min: 1500, max: 2500, avg: 2000 },
@@ -97,6 +102,8 @@ export async function analyzeSerpContent(
 
   // P2.G16: Track cumulative scraping costs
   let totalCostUsd = 0;
+
+  log.info("Starting SERP content analysis", { urlCount: urls.length });
 
   try {
     // Route through MigrationRouter for gradual rollout
@@ -142,6 +149,7 @@ export async function analyzeSerpContent(
       totalCostUsd += resultCost;
 
       if (!result.success || !result.html || result.statusCode !== 200) {
+        log.debug("Skipping failed scrape result", { url: result.url, statusCode: result.statusCode });
         continue;
       }
 
@@ -173,6 +181,7 @@ export async function analyzeSerpContent(
       analyzedUrls,
       h2Count: h2Counts.size,
       wordCountSamples: wordCounts.length,
+      totalCostUsd,
     });
   } catch (error) {
     log.error(

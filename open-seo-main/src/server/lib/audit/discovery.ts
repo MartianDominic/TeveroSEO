@@ -1,10 +1,15 @@
 /**
  * robots.txt and sitemap.xml discovery for the site audit crawler.
+ *
+ * SEO-01: Uses TextFetcher for cached, rate-limited fetching of text files.
+ * - robots.txt: 10 min TTL (changes frequently with SEO updates)
+ * - sitemap.xml: 2 hour TTL (more stable)
  */
 import robotsParser from "robots-parser";
 import { XMLParser } from "fast-xml-parser";
 import { isSameOrigin, normalizeUrl } from "./url-utils";
 import { createLogger } from "@/server/lib/logger";
+import { textFetcher } from "@/server/features/scraping/TextFetcher";
 
 const log = createLogger({ module: "discovery" });
 
@@ -27,25 +32,28 @@ export interface RobotsResult {
 /**
  * Fetch and parse robots.txt for a given origin.
  * Returns a helper to check if URLs are allowed + discovered sitemap URLs.
+ *
+ * SEO-01: Uses TextFetcher for caching (10 min TTL) and consistent rate limiting.
  */
 export async function fetchRobotsTxt(origin: string): Promise<RobotsResult> {
   const robotsUrl = `${origin}/robots.txt`;
   try {
-    const response = await fetch(robotsUrl, {
-      headers: { "User-Agent": "OpenSEO-Audit/1.0" },
-      signal: AbortSignal.timeout(10_000),
+    // SEO-01: Use TextFetcher for cached, rate-limited fetching
+    const result = await textFetcher.fetchRobotsTxt(origin, {
+      timeoutMs: 10_000,
     });
 
-    if (!response.ok) {
+    if (!result.success || !result.content) {
       // No robots.txt = everything allowed
+      log.debug(`robots.txt not available: ${origin} fromCache=${result.fromCache} error=${result.error}`);
       return {
         isAllowed: () => true,
         sitemapUrls: [],
       };
     }
 
-    const text = await response.text();
-    const robots = robotsParser(robotsUrl, text);
+    const robots = robotsParser(robotsUrl, result.content);
+    log.debug(`robots.txt parsed successfully: ${origin} fromCache=${result.fromCache} time=${result.responseTimeMs}ms sitemaps=${robots.getSitemaps().length}`);
 
     return {
       isAllowed: (url: string) => robots.isAllowed(url) ?? true,
@@ -126,6 +134,11 @@ function parseXmlDocument(body: string): unknown {
   return xmlParser.parse(body) as unknown;
 }
 
+/**
+ * Fetch and parse a sitemap document with caching and retry support.
+ *
+ * SEO-01: Uses TextFetcher for caching (2 hour TTL) and consistent rate limiting.
+ */
 async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
   nestedSitemaps: string[];
   pageUrls: string[];
@@ -140,33 +153,35 @@ async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
 
   for (let attempt = 0; attempt <= SITEMAP_RETRIES; attempt++) {
     try {
-      const response = await fetch(normalizedSitemapUrl, {
-        headers: { "User-Agent": "OpenSEO-Audit/1.0" },
-        signal: AbortSignal.timeout(SITEMAP_FETCH_TIMEOUT_MS),
+      // SEO-01: Use TextFetcher for cached, rate-limited fetching
+      const result = await textFetcher.fetchSitemapXml(normalizedSitemapUrl, {
+        timeoutMs: SITEMAP_FETCH_TIMEOUT_MS,
       });
 
-      const finalUrl = normalizeUrl(response.url, normalizedSitemapUrl);
-      if (!finalUrl || !isSameOrigin(finalUrl, normalizedSitemapUrl)) {
-        return { nestedSitemaps: [], pageUrls: [], timedOut: false };
+      if (!result.success || !result.content) {
+        // Log cache info for debugging
+        log.debug(`Sitemap fetch failed: ${normalizedSitemapUrl} fromCache=${result.fromCache} status=${result.statusCode} error=${result.error}`);
+        return { nestedSitemaps: [], pageUrls: [], timedOut: result.error === "Timeout" };
       }
 
-      if (!response.ok) {
-        return { nestedSitemaps: [], pageUrls: [], timedOut: false };
-      }
+      const body = result.content;
 
-      const body = await response.text();
-      if (!isProbablySitemapXml(response.headers.get("content-type"), body)) {
+      // Validate content type (use "application/xml" as placeholder since we have raw content)
+      if (!isProbablySitemapXml("application/xml", body)) {
+        log.debug(`Content is not valid sitemap XML: ${normalizedSitemapUrl}`);
         return { nestedSitemaps: [], pageUrls: [], timedOut: false };
       }
 
       const parsed = parseXmlDocument(body);
       const sections = getParsedSitemapSections(parsed);
       const nestedSitemaps = getSitemapLocations(sections.sitemap)
-        .map((loc) => normalizeUrl(loc, finalUrl))
+        .map((loc) => normalizeUrl(loc, normalizedSitemapUrl))
         .filter((loc): loc is string => loc !== null);
       const pageUrls = getSitemapLocations(sections.url)
-        .map((loc) => normalizeUrl(loc, finalUrl))
+        .map((loc) => normalizeUrl(loc, normalizedSitemapUrl))
         .filter((loc): loc is string => loc !== null);
+
+      log.debug(`Sitemap parsed successfully: ${normalizedSitemapUrl} fromCache=${result.fromCache} time=${result.responseTimeMs}ms nested=${nestedSitemaps.length} urls=${pageUrls.length}`);
 
       return { nestedSitemaps, pageUrls, timedOut: false };
     } catch (error) {

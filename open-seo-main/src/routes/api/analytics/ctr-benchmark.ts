@@ -169,20 +169,38 @@ export const Route = (createFileRoute as any)("/api/analytics/ctr-benchmark/$cli
   },
 });
 
-// GET handler for CTR curve only (no client context needed)
+// GET handler for CTR curve only (requires authentication)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const CurveRoute = (createFileRoute as any)("/api/analytics/ctr-curve")({
-  loader: async () => {
-    const ctrService = getCtrBenchmarkService();
-    const curve = ctrService.generateCtrCurve();
-    const benchmarks = ctrService.getIndustryBenchmarks();
+  loader: async ({ request }: any) => {
+    try {
+      // Authenticate request - CTR benchmark data should not be public
+      const auth = await authenticateAnalyticsRequest(request);
 
-    return Response.json({
-      success: true,
-      data: {
-        curve,
-        benchmarks,
-      },
-    });
+      // Rate limit check: 60 requests per minute per workspace (standard analytics)
+      const rateLimitResult = await analyticsStandardRateLimiter(auth.workspaceId);
+      if (!rateLimitResult.allowed) {
+        return rateLimitExceededResponse(rateLimitResult);
+      }
+
+      const ctrService = getCtrBenchmarkService();
+      const curve = ctrService.generateCtrCurve();
+      const benchmarks = ctrService.getIndustryBenchmarks();
+
+      const response = Response.json({
+        success: true,
+        data: {
+          curve,
+          benchmarks,
+        },
+      });
+      return addRateLimitHeaders(response, rateLimitResult);
+    } catch (error) {
+      console.error("[ctr-curve] GET error:", error);
+      return Response.json(
+        { success: false, error: error instanceof Error ? error.message : "Internal server error" },
+        { status: 500 }
+      );
+    }
   },
 });

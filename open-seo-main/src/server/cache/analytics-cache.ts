@@ -3,6 +3,7 @@
  * DATA-01, DATA-02, DATA-07 FIX: Single source of truth for analytics caching
  *
  * @see docs/architecture/gsc-data-flow.md for the complete GSC data architecture
+ * @see .planning/phases/96-agency-analytics/CACHING-STRATEGY.md for TTL rationale
  *
  * Features:
  * - Single Redis cache for all analytics data (eliminates double caching)

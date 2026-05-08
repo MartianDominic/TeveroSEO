@@ -18,7 +18,8 @@ import {
   PHASE_QUEUE_NAME,
   type PhaseJobData,
 } from "@/server/queues/pipelineQueue";
-import { getDLQQueue } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "phase-worker" });
 
@@ -97,22 +98,9 @@ export function startPhaseWorker(): Worker<PhaseJobData> {
   worker.on("failed", async (job, err) => {
     const error = err instanceof Error ? err : new Error(String(err));
 
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
-      // Move to DLQ after all retries exhausted
-      try {
-        const dlq = getDLQQueue();
-        await dlq.add('phase-worker-failed', {
-          originalQueue: 'pipeline-phase',
-          jobId: job.id,
-          jobData: job.data,
-          error: error.message,
-          stack: error.stack,
-          failedAt: new Date().toISOString(),
-        });
-        log.error('Phase job moved to DLQ', error, { jobId: job.id, phaseNumber: job.data.phaseNumber });
-      } catch (dlqErr) {
-        log.error('Failed to move phase job to DLQ', dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)), { jobId: job.id });
-      }
+      await moveJobToDeadLetter(job, error, PHASE_QUEUE_NAME);
     } else {
       log.warn('Phase job failed, will retry', {
         jobId: job?.id,

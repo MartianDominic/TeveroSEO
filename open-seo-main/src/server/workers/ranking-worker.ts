@@ -19,7 +19,8 @@ import {
   initRankingScheduler,
   type RankingJobData,
 } from "@/server/queues/rankingQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const workerLogger = createLogger({ module: "ranking-worker" });
 
@@ -80,25 +81,9 @@ export async function startRankingWorker(): Promise<Worker<RankingJobData>> {
         maxAttempts,
       });
 
-      // HIGH-QUEUE-01 FIX: Use centralized DLQ infrastructure instead of custom dlq: prefix
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts) {
-        try {
-          const dlqQueue = getDLQQueue();
-          const dlqData: DLQJobData = {
-            originalQueue: RANKING_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          await dlqQueue.add("ranking-worker-failed", dlqData, {
-            // DLQ retention is handled by dlq.ts default job options
-          });
-          jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, RANKING_QUEUE_NAME);
       }
     },
   );

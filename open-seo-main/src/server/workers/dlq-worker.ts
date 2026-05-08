@@ -1,29 +1,32 @@
 /**
- * Dead Letter Queue (DLQ) Worker
+ * Dead Letter Queue (DLQ) Worker - LEGACY MIGRATION ONLY
  *
- * Processes jobs that have been moved to the DLQ after exhausting retries.
- * This worker provides:
- * - Logging and alerting for failed jobs
- * - Optional retry logic for recoverable failures
- * - Cleanup of very old DLQ jobs
+ * SCR-01 CONSOLIDATION: This worker is now DEPRECATED for new jobs.
+ * All workers have been migrated to use the DB-based DLQ directly
+ * (see src/server/lib/dead-letter-queue.ts).
+ *
+ * This worker remains active ONLY to:
+ * 1. Process any legacy jobs still in the Redis DLQ
+ * 2. Migrate legacy jobs to the DB-based DLQ
+ * 3. Alert on any remaining Redis DLQ entries
+ *
+ * Once Redis DLQ is drained (check with getDLQHealth()), this worker
+ * and src/server/queues/dlq.ts can be safely removed.
  *
  * Jobs are NOT automatically retried by this worker. They are processed for:
  * 1. Logging/alerting - ensuring ops knows about persistent failures
- * 2. Investigation - preserving context for debugging
+ * 2. Migration - moving legacy Redis entries to DB
  * 3. Manual intervention - allowing ops to replay or discard
  *
- * QUEUE-03 MIGRATION NOTE:
- * This worker processes the LEGACY Redis-based DLQ. New jobs are written
- * directly to the DB-based DLQ (see src/server/lib/dead-letter-queue.ts).
- * This worker remains active to process any legacy jobs still in Redis.
- * Once Redis DLQ is drained, this worker can be deprecated.
- *
  * @module dlq-worker
+ * @deprecated Use DB-based DLQ (src/server/lib/dead-letter-queue.ts) instead
  */
 import { Worker, type Job } from "bullmq";
 import { getSharedBullMQConnection, WORKER_CONCURRENCY_LIMITS } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { DLQ_QUEUE_NAME, type DLQJobData, getDLQQueue } from "@/server/queues/dlq";
+// SCR-01: Import DB-based DLQ for migration
+import { moveToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 // QUEUE-H01: Optional Sentry integration for external alerting
 // Type uses a minimal interface to avoid requiring @sentry/node as a dependency
@@ -188,8 +191,11 @@ async function sendExternalAlert(
 /**
  * Process a DLQ job.
  *
- * DLQ jobs are logged for investigation and optionally trigger alerts.
- * The job data contains the original failure context.
+ * SCR-01 CONSOLIDATION: Legacy Redis DLQ jobs are now migrated to DB-based DLQ.
+ * This ensures all failed jobs are persisted in the database for:
+ * - Survival across Redis restarts
+ * - Queryable debugging and reporting
+ * - Audit trail with timestamps
  */
 async function processDLQJob(job: Job<DLQJobData>): Promise<void> {
   const { originalQueue, jobId, jobData, error, stack, failedAt } = job.data;
@@ -201,7 +207,7 @@ async function processDLQJob(job: Job<DLQJobData>): Promise<void> {
     originalJobId: jobId,
   });
 
-  jobLog.warn("Processing DLQ job", {
+  jobLog.warn("Processing legacy Redis DLQ job - migrating to DB", {
     originalQueue,
     originalJobId: jobId,
     error,
@@ -210,6 +216,32 @@ async function processDLQJob(job: Job<DLQJobData>): Promise<void> {
       ? Object.keys(jobData as Record<string, unknown>).join(", ")
       : typeof jobData,
   });
+
+  // SCR-01: Migrate legacy Redis DLQ job to DB-based DLQ
+  try {
+    await moveToDeadLetter({
+      jobId: jobId ?? `legacy-${job.id}`,
+      queue: originalQueue,
+      jobName: `legacy-${originalQueue}`,
+      data: jobData,
+      error: error,
+      stackTrace: stack,
+      retryCount: 0, // Unknown for legacy jobs
+      metadata: {
+        lastAttemptAt: failedAt,
+        originalTimestamp: failedAt,
+        failureHistory: [{ error, timestamp: failedAt }],
+        workerInfo: "dlq-worker-migration",
+      },
+    });
+    jobLog.info("Legacy DLQ job migrated to DB", { originalQueue, originalJobId: jobId });
+  } catch (migrationErr) {
+    jobLog.error(
+      "Failed to migrate legacy DLQ job to DB",
+      migrationErr instanceof Error ? migrationErr : new Error(String(migrationErr))
+    );
+    // Don't throw - we still want to process and alert on this job
+  }
 
   // Log stack trace at debug level to avoid noise
   if (stack) {

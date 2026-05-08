@@ -59,6 +59,8 @@ async function fetchKeywordMetrics(
   }
 
   // Real implementation:
+  // NOTE: This auth header construction duplicates logic from dataforseo-auth.ts
+  // TODO: Migrate to use createDataForSEOFetch() from @/server/lib/dataforseo-auth
   const response = await fetch(
     "https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live",
     {

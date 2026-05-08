@@ -12,7 +12,8 @@ import { Worker, Queue } from 'bullmq';
 import { fileURLToPath } from 'node:url';
 import { getSharedBullMQConnection } from '@/server/lib/redis';
 import { createLogger } from '@/server/lib/logger';
-import { getDLQQueue } from '@/server/queues/dlq';
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from '@/server/lib/dead-letter-queue';
 
 const workerLogger = createLogger({ module: 'auto-revert-worker' });
 
@@ -121,22 +122,9 @@ export async function startAutoRevertWorker(): Promise<Worker<AutoRevertJobData,
       jobId: job?.id,
     });
 
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
-      // Move to DLQ after all retries exhausted
-      try {
-        const dlq = getDLQQueue();
-        await dlq.add('auto-revert-failed', {
-          originalQueue: 'auto-revert',
-          jobId: job.id,
-          jobData: job.data,
-          error: error.message,
-          stack: error.stack,
-          failedAt: new Date().toISOString(),
-        });
-        jobLogger.error('Auto-revert job moved to DLQ', error);
-      } catch (dlqErr) {
-        jobLogger.error('Failed to move auto-revert job to DLQ', dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
-      }
+      await moveJobToDeadLetter(job, error, 'auto-revert');
     } else {
       jobLogger.warn('Job failed, will retry', {
         attempt: job?.attemptsMade,

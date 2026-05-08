@@ -18,7 +18,8 @@ import {
   initMaintenanceQueue,
   type CacheCleanupJobData,
 } from "@/server/queues/maintenanceQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const workerLogger = createLogger({ module: "maintenance-worker" });
 
@@ -76,26 +77,9 @@ export async function startMaintenanceWorker(): Promise<Worker<CacheCleanupJobDa
         maxAttempts,
       });
 
-      // Move to DLQ after max retries, skip DLQ jobs (HIGH-BQ-01 fix)
+      // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
       if (job.attemptsMade >= maxAttempts && !job.name.startsWith("dlq:")) {
-        try {
-          const dlqPayload: DLQJobData = {
-            originalQueue: MAINTENANCE_QUEUE_NAME,
-            jobId: job.id,
-            jobData: job.data,
-            error: err.message,
-            stack: err.stack,
-            failedAt: new Date().toISOString(),
-          };
-          const dlqQueue = getDLQQueue();
-          await dlqQueue.add(`dlq:maintenance:${job.id}`, dlqPayload, {
-            removeOnComplete: { age: 604800 }, // 7 days
-            removeOnFail: { age: 604800 }, // 7 days
-          });
-          jobLogger.info("Job moved to DLQ", { attemptsMade: job.attemptsMade });
-        } catch (dlqErr) {
-          jobLogger.error("Failed to move job to DLQ", dlqErr as Error);
-        }
+        await moveJobToDeadLetter(job, err, MAINTENANCE_QUEUE_NAME);
       }
     },
   );

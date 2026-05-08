@@ -40,6 +40,8 @@ export interface ScrapeJobData {
   jobId: string;
   /** Groups related jobs (e.g., full audit) */
   batchId?: string;
+  /** Correlation ID for distributed tracing */
+  correlationId?: string;
 
   // Target
   /** URL to fetch */

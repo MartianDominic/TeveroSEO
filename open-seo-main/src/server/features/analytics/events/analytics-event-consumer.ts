@@ -5,15 +5,18 @@
  * Current consumers:
  * - cannibalization:detected -> Log for alerting (NotificationService integration ready)
  * - trends:analyzed -> Log for alerting (NotificationService integration ready)
- * - analytics:sync-completed -> Log for monitoring
+ * - analytics:sync-completed -> Cache warming + monitoring (CACHE-02 FIX)
  *
  * Future consumers can subscribe to events without modifying emitting services.
+ *
+ * @see .planning/phases/96-agency-analytics/CACHING-STRATEGY.md for cache design
  */
 import { createLogger } from '@/server/lib/logger';
 import {
   getAnalyticsEventBus,
   type AnalyticsEventPayload,
 } from './analytics-event-bus';
+import { warmAnalyticsCacheForSite } from '@/server/cache';
 
 const log = createLogger({ module: 'analytics-event-consumer' });
 
@@ -137,7 +140,11 @@ async function handleTrendsAnalyzed(
 
 /**
  * Handle sync completion events.
- * Logs sync metrics for monitoring.
+ * CACHE-02 FIX: Triggers cache warming after GSC sync completes.
+ *
+ * Cache warming runs asynchronously and does not block the event handler.
+ * This ensures the first user to load the dashboard after overnight sync
+ * gets warm cache hits instead of cold database queries.
  */
 async function handleSyncCompleted(
   payload: AnalyticsEventPayload<'analytics:sync-completed'>
@@ -149,6 +156,33 @@ async function handleSyncCompleted(
     recordCount,
     dateRange: `${startDate} to ${endDate}`,
     timestamp: timestamp.toISOString(),
+  });
+
+  // CACHE-02 FIX: Trigger cache warming asynchronously (non-blocking)
+  // Use setImmediate to not block the event handler completion
+  setImmediate(() => {
+    warmAnalyticsCacheForSite(siteId)
+      .then((result) => {
+        if (result.success) {
+          log.info('Cache warming triggered after sync', {
+            siteId,
+            warmedCount: result.warmedCount,
+            durationMs: result.durationMs,
+          });
+        } else {
+          log.warn('Cache warming had partial failures', {
+            siteId,
+            warmedCount: result.warmedCount,
+            failedCount: result.failedCount,
+            durationMs: result.durationMs,
+          });
+        }
+      })
+      .catch((error) => {
+        log.error('Cache warming failed', error instanceof Error ? error : undefined, {
+          siteId,
+        });
+      });
   });
 
   // Could emit metrics to observability platform

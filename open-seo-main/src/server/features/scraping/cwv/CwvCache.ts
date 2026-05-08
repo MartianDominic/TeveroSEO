@@ -13,8 +13,8 @@
  */
 
 import type { Redis } from 'ioredis';
-import { createHash } from 'crypto';
 import type { CwvMetrics } from './types';
+import { getCacheKey } from '../cache/urlNormalization';
 
 // =============================================================================
 // Types
@@ -164,12 +164,10 @@ export class CwvCache {
   }
 
   private urlKey(url: string): string {
-    const hash = this.hashUrl(url);
+    // Use centralized hashing utility (SHA-256/16)
+    // Note: Raw URL is used intentionally - CWV metrics can differ by query params
+    const hash = getCacheKey(url);
     return `cwv:url:${hash}`;
-  }
-
-  private hashUrl(url: string): string {
-    return createHash('sha256').update(url).digest('hex').slice(0, 16);
   }
 
   private extractOrigin(url: string): string {

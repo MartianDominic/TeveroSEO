@@ -21,6 +21,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 import { siteConnections } from "./connection-schema";
+import { organization } from "./user-schema";
 
 // ===== Content Groups =====
 
@@ -207,7 +208,9 @@ export const annotations = pgTable(
     siteId: text("site_id").references(() => siteConnections.id, {
       onDelete: "cascade",
     }), // null = workspace-wide annotation
-    workspaceId: text("workspace_id").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     annotationDate: text("annotation_date").notNull(), // YYYY-MM-DD format
     annotationType: text("annotation_type").notNull(), // 'algorithm_update', 'site_change', 'marketing_campaign', 'technical_issue', 'other'
     title: text("title").notNull(),

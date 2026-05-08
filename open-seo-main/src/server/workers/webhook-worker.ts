@@ -6,7 +6,8 @@ import { Worker, type Processor, type Job } from "bullmq";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { type WebhookDeliveryJobData } from "@/server/queues/webhookQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "webhook-worker" });
 
@@ -83,7 +84,7 @@ export async function startWebhookWorker(): Promise<void> {
       error: err.message,
     });
 
-    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job.attemptsMade >= maxAttempts) {
       try {
         // SECURITY: Sanitize job data before storing in DLQ - remove any secrets
@@ -96,18 +97,17 @@ export async function startWebhookWorker(): Promise<void> {
           attempt: job.data.attempt,
           // Note: secret field is intentionally NOT included
         };
-        const dlqQueue = getDLQQueue();
-        const dlqData: DLQJobData = {
-          originalQueue: WEBHOOK_QUEUE_NAME,
-          jobId: job.id,
-          jobData: sanitizedData, // Use sanitized data, not raw job.data
+        await moveToDeadLetter({
+          jobId: job.id ?? `unknown-${Date.now()}`,
+          queue: WEBHOOK_QUEUE_NAME,
+          jobName: job.name,
+          data: sanitizedData, // Use sanitized data, not raw job.data
           error: err.message,
           // Only include stack in non-production to prevent info leakage
-          stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-          failedAt: new Date().toISOString(),
-        };
-        await dlqQueue.add(`dlq:${WEBHOOK_QUEUE_NAME}:${job.id}`, dlqData);
-        jobLogger.info("Webhook job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
+          stackTrace: process.env.NODE_ENV === "development" ? err.stack : undefined,
+          retryCount: job.attemptsMade,
+        });
+        jobLogger.info("Webhook job moved to DB-based DLQ", { attemptsMade: job.attemptsMade });
       } catch (dlqErr) {
         jobLogger.error("Failed to move webhook job to DLQ", dlqErr as Error);
       }

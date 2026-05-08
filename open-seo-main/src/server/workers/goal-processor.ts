@@ -25,7 +25,8 @@ import { computationMethods } from "./goal-computations";
 import { getSharedBullMQConnection } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
 import { GOAL_QUEUE_NAME, initGoalProcessingScheduler, type GoalProcessorJobData } from "@/server/queues/goalQueue";
-import { getDLQQueue, type DLQJobData } from "@/server/queues/dlq";
+// SCR-01 CONSOLIDATION: Use DB-based DLQ instead of Redis
+import { moveJobToDeadLetter } from "@/server/lib/dead-letter-queue";
 
 const log = createLogger({ module: "goal-processor" });
 
@@ -254,23 +255,9 @@ export async function startGoalWorker(): Promise<void> {
       jobId: job.id,
     });
 
-    // H-BULL-01 FIX: Use centralized DLQ instead of same-queue dlq: prefix
+    // SCR-01 CONSOLIDATION: Use DB-based DLQ for persistence across restarts
     if (job.attemptsMade >= maxAttempts) {
-      try {
-        const dlqQueue = getDLQQueue();
-        const dlqData: DLQJobData = {
-          originalQueue: GOAL_QUEUE_NAME,
-          jobId: job.id,
-          jobData: job.data,
-          error: error.message,
-          stack: error.stack,
-          failedAt: new Date().toISOString(),
-        };
-        await dlqQueue.add(`dlq:${GOAL_QUEUE_NAME}:${job.id}`, dlqData);
-        jobLogger.info("Job moved to centralized DLQ", { attemptsMade: job.attemptsMade });
-      } catch (dlqErr) {
-        jobLogger.error("Failed to move job to DLQ", dlqErr instanceof Error ? dlqErr : new Error(String(dlqErr)));
-      }
+      await moveJobToDeadLetter(job, error, GOAL_QUEUE_NAME);
     } else {
       log.warn("Goal job failed, will retry", {
         jobId: job.id,

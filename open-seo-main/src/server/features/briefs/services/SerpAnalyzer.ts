@@ -1,6 +1,7 @@
 /**
  * SERP analyzer service for extracting competitor patterns.
  * Phase 36: Content Brief Generation
+ * BRIEF-01: CorrelationId propagation for distributed tracing
  */
 
 import { fetchLiveSerpItemsRaw } from "@/server/lib/dataforseo";
@@ -18,6 +19,9 @@ import {
   BudgetExceededError,
   DFS_API_COSTS,
 } from "@/server/features/scraping";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "SerpAnalyzer" });
 
 /**
  * Extract "People Also Ask" questions from SERP items.
@@ -111,6 +115,7 @@ export function calculateMetaLengths(items: SerpLiveItem[]): {
  * @param keyword - Target keyword
  * @param locationCode - DataForSEO location code (default: 2840 = United States)
  * @param workspaceId - Workspace ID for budget enforcement (optional)
+ * @param correlationId - Correlation ID for distributed tracing (optional)
  * @throws BudgetExceededError if DataForSEO budget is exceeded
  */
 /**
@@ -128,16 +133,21 @@ export async function analyzeSerpForKeyword(
   mappingId: string,
   keyword: string,
   locationCode: number = 2840,
-  workspaceId?: string
+  workspaceId?: string,
+  correlationId?: string
 ): Promise<SerpAnalysisResult> {
+  const reqLog = correlationId ? log.child({ correlationId }) : log;
   const cacheKey = buildSerpCacheKey(clientId, mappingId, keyword);
 
   // Check cache first
   const cached = await getCachedSerp(cacheKey);
   if (cached) {
+    reqLog.debug("SERP cache hit", { keyword, cacheKey });
     // P2.G16: Cached results have zero cost
     return { data: cached, totalCostUsd: 0 };
   }
+
+  reqLog.info("Fetching SERP data from DataForSEO", { keyword, locationCode });
 
   // Fetch SERP data from DataForSEO with budget pre-check (COST-1)
   const response = await withBudgetCheck(
@@ -150,6 +160,7 @@ export async function analyzeSerpForKeyword(
 
   // P2.G16: Track SERP API cost
   const serpApiCost = response.billing?.costUsd ?? DFS_API_COSTS.SERP_LIVE;
+  reqLog.debug("SERP API response received", { itemCount: items.length, costUsd: serpApiCost });
 
   // Get organic URLs for content analysis
   const organicUrls = items
@@ -157,8 +168,10 @@ export async function analyzeSerpForKeyword(
     .slice(0, 5)
     .map((item) => item.url as string);
 
+  reqLog.info("Analyzing competitor content", { urlCount: organicUrls.length });
+
   // Analyze competitor content (H2s and word counts)
-  const contentAnalysis = await analyzeSerpContent(organicUrls);
+  const contentAnalysis = await analyzeSerpContent(organicUrls, correlationId);
 
   // Extract patterns
   const analysis: SerpAnalysisData = {
@@ -175,6 +188,12 @@ export async function analyzeSerpForKeyword(
 
   // P2.G16: Return analysis with accumulated cost (SERP API + content scraping)
   const totalCostUsd = serpApiCost + contentAnalysis.totalCostUsd;
+  reqLog.info("SERP analysis complete", {
+    keyword,
+    h2Count: analysis.commonH2s.length,
+    paaCount: analysis.paaQuestions.length,
+    totalCostUsd,
+  });
   return { data: analysis, totalCostUsd };
 }
 

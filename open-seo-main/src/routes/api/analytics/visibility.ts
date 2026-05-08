@@ -14,6 +14,7 @@ import {
   rateLimitExceededResponse,
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
+import { csrfProtect } from "@/server/middleware/csrf";
 
 const visibilitySchema = z.object({
   showClicks: z.boolean().optional(),
@@ -75,6 +76,10 @@ export const Route = (createFileRoute as any)("/api/analytics/visibility/$client
 export const PUT = async (request: Request, { params }: { params: { clientId: string } }) => {
   try {
     const { clientId } = params;
+
+    // CSRF protection for state-changing request
+    const csrfError = csrfProtect(request);
+    if (csrfError) return csrfError;
 
     // Authenticate request and get verified workspace context
     const auth = await authenticateAnalyticsRequest(request);

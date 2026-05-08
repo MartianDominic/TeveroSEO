@@ -22,10 +22,11 @@ during concurrent article status updates. Updates fail if version doesn't match.
 """
 
 import asyncio
+import json
 import os
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import List, Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -43,6 +44,11 @@ from services.publishing_exceptions import (
     GSCSubmissionError,
     LinkGraphUpdateError,
 )
+from services.analytics.open_seo_client import (
+    get_open_seo_client,
+    OpenSeoClientError,
+)
+from services.analytics.open_seo_types import RiskLevel
 from urllib.parse import urlparse
 
 
@@ -69,15 +75,16 @@ async def _update_link_graph(client_id: str, url: str, html: str) -> None:
 
     try:
         client = await get_client()
-        # HIGH-01 FIX: Add internal auth headers for cross-service calls
-        headers = get_internal_auth_headers()
+        # AIW-01 FIX: Use HMAC auth with payload for cross-service calls
+        payload = json.dumps({
+            "clientId": client_id,
+            "url": url,
+            "html": html,
+        })
+        headers = get_internal_auth_headers(payload=payload)
         response = await client.post(
             f"{open_seo_url}/api/seo/links/graph/update",
-            json={
-                "clientId": client_id,
-                "url": url,
-                "html": html,
-            },
+            content=payload,
             headers=headers,
             timeout=30.0,
         )
@@ -273,6 +280,7 @@ def _publish_single_article(article_id: str) -> None:
     article_title: str = ""
     content_html: str = ""
     meta_description: str = ""
+    article_keyword: Optional[str] = None
     attempt_number: int = 1
 
     try:
@@ -296,6 +304,7 @@ def _publish_single_article(article_id: str) -> None:
         article_title = article.title
         content_html = article.content_html or ""
         meta_description = article.meta_description or ""
+        article_keyword = article.keyword
         attempt_number = (article.retry_count or 0) + 1
 
         # Plan 69-04 Task 1: Optimistic locking claim with version check
@@ -464,6 +473,34 @@ def _publish_single_article(article_id: str) -> None:
         )
         return
 
+    # --- AIW-02 FIX: Pre-publish cannibalization check ---
+    # Check for keyword cannibalization risks before publishing.
+    # Uses fail-open approach: warnings logged but don't block publish.
+    # CRITICAL risk level blocks publish to prevent SEO damage.
+    cannibalization_blocked = asyncio.run(
+        _check_cannibalization_risk(
+            article_id=article_id,
+            client_id=client_id,
+            article_keyword=article_keyword,
+            article_title=article_title,
+        )
+    )
+    if cannibalization_blocked:
+        result = PublishResult(
+            success=False,
+            error="Blocked by cannibalization check: CRITICAL risk detected"
+        )
+        cms_type = getattr(client_settings, "cms_type", None) or "unknown"
+        _save_result(
+            article_id=article_id,
+            client_id=client_id,
+            attempt_number=attempt_number,
+            cms_type=cms_type,
+            result=result,
+            now_utc=now_utc,
+        )
+        return
+
     # --- No session open during publish() call ---
     try:
         publisher = get_publisher(client_settings)
@@ -488,6 +525,149 @@ def _publish_single_article(article_id: str) -> None:
         result=result,
         now_utc=now_utc,
     )
+
+
+async def _check_cannibalization_risk(
+    article_id: str,
+    client_id: str,
+    article_keyword: Optional[str],
+    article_title: str,
+) -> bool:
+    """
+    AIW-02: Pre-publish cannibalization check.
+
+    Calls open-seo-main's content-insights API with type=check to verify
+    the article's target keywords don't conflict with existing content.
+
+    Risk levels and actions:
+    - NONE/LOW: Proceed without warning
+    - MEDIUM/HIGH: Log warning, proceed (non-blocking)
+    - CRITICAL: Block publish, return True
+
+    Fail-open approach: Network errors or missing site_id result in
+    warnings but don't block publishing.
+
+    Args:
+        article_id: Article identifier for logging
+        client_id: Client UUID
+        article_keyword: Primary keyword from article (may be None)
+        article_title: Article title (used as fallback keyword)
+
+    Returns:
+        True if publish should be blocked (CRITICAL risk), False otherwise
+    """
+    # Build target keywords list
+    target_keywords: List[str] = []
+    if article_keyword:
+        target_keywords.append(article_keyword)
+    # Use title words as secondary keywords if no primary keyword
+    if not target_keywords and article_title:
+        # Extract meaningful words from title (simple approach)
+        title_words = [w for w in article_title.split() if len(w) > 3]
+        target_keywords.extend(title_words[:3])
+
+    if not target_keywords:
+        logger.info(
+            "Cannibalization check skipped - no target keywords available",
+            extra={"article_id": article_id, "client_id": client_id},
+        )
+        return False
+
+    # Get site_id from environment or skip
+    # In production, this should be resolved from client's GSC connection
+    site_id = os.getenv("DEFAULT_GSC_SITE_ID")
+    if not site_id:
+        logger.info(
+            "Cannibalization check skipped - no GSC site configured",
+            extra={
+                "article_id": article_id,
+                "client_id": client_id,
+                "hint": "Set DEFAULT_GSC_SITE_ID env var or integrate site lookup",
+            },
+        )
+        return False
+
+    try:
+        client = get_open_seo_client()
+        check_result = await client.get_prepublish_check(
+            client_id=client_id,
+            site_id=site_id,
+            target_keywords=target_keywords,
+        )
+
+        risk = check_result.cannibalization_risk
+        if risk is None:
+            logger.debug(
+                "Cannibalization check: no risk data returned",
+                extra={"article_id": article_id},
+            )
+            return False
+
+        risk_level = risk.risk_level
+
+        if risk_level == RiskLevel.CRITICAL:
+            logger.warning(
+                "Cannibalization check CRITICAL - blocking publish",
+                extra={
+                    "article_id": article_id,
+                    "client_id": client_id,
+                    "target_keywords": target_keywords,
+                    "risk_level": risk_level.value,
+                    "conflicting_pages": [c.url for c in risk.conflicting_pages[:3]],
+                    "recommendation": risk.recommendation,
+                },
+            )
+            return True  # Block publish
+
+        if risk_level in (RiskLevel.HIGH, RiskLevel.MEDIUM):
+            logger.warning(
+                f"Cannibalization check {risk_level.value.upper()} risk - proceeding with warning",
+                extra={
+                    "article_id": article_id,
+                    "client_id": client_id,
+                    "target_keywords": target_keywords,
+                    "risk_level": risk_level.value,
+                    "conflicting_pages": [c.url for c in risk.conflicting_pages[:3]],
+                    "recommendation": risk.recommendation,
+                },
+            )
+            return False  # Warn but don't block
+
+        logger.info(
+            "Cannibalization check passed",
+            extra={
+                "article_id": article_id,
+                "risk_level": risk_level.value,
+                "safe_to_publish": check_result.safe_to_publish,
+            },
+        )
+        return False
+
+    except OpenSeoClientError as e:
+        # Fail-open: log error but don't block publish
+        logger.warning(
+            "Cannibalization check failed (non-blocking)",
+            extra={
+                "article_id": article_id,
+                "client_id": client_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+        )
+        return False
+    except Exception as e:
+        # Unexpected error - fail-open with warning
+        logger.error(
+            "Cannibalization check unexpected error (non-blocking)",
+            extra={
+                "article_id": article_id,
+                "client_id": client_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        return False
 
 
 def _save_result(

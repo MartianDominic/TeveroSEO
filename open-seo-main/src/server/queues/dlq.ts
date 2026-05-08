@@ -1,8 +1,19 @@
 /**
  * Dead Letter Queue (DLQ) for failed jobs across all workers.
  *
- * Jobs are moved here after exhausting all retries, preserving
- * original job data for investigation and manual replay.
+ * @deprecated SCR-01 CONSOLIDATION: This Redis-based DLQ is DEPRECATED.
+ * All workers have been migrated to use the DB-based DLQ instead.
+ * See src/server/lib/dead-letter-queue.ts for the new implementation.
+ *
+ * This file remains ONLY for:
+ * 1. Processing legacy jobs still in Redis (via dlq-worker.ts)
+ * 2. Backward compatibility during transition
+ *
+ * DO NOT add new jobs to this queue. Use moveToDeadLetter() from
+ * src/server/lib/dead-letter-queue.ts instead.
+ *
+ * Once all legacy jobs are migrated (check getDLQQueue().getJobCounts()),
+ * this file and dlq-worker.ts can be safely removed.
  *
  * DLQ entries are retained for 7 days or up to 10,000 jobs to prevent
  * unbounded Redis memory growth. A scheduled cleanup runs daily.

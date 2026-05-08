@@ -1,12 +1,17 @@
 /**
  * CacheManager - Multi-Level Cache Orchestration
  * Phase 95-02: Multi-Level Caching
+ * Phase 96: Cross-Instance Cache Invalidation (CACHE-01)
  *
  * Orchestrates the 4-tier caching system:
  * L1: Memory LRU (~100MB) - Sub-millisecond access
  * L2: Redis (~2GB) - Cross-worker sharing
  * L3: PostgreSQL (compressed) - Persistent storage
  * L4: Cloudflare R2 (archive) - Long-term archive
+ *
+ * Cross-instance coordination:
+ * - Uses Redis pub/sub to coordinate L1 invalidation across instances
+ * - When one instance invalidates a domain, all instances clear their L1 caches
  */
 
 import type { Redis } from "ioredis";
@@ -39,6 +44,28 @@ const DOMAIN_TRACKING_PREFIX = "cache:domain:";
 
 /** TTL for domain tracking SETs (30 days in seconds) */
 const DOMAIN_TRACKING_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+// =============================================================================
+// Cross-Instance Invalidation Constants (CACHE-01)
+// =============================================================================
+
+/** Redis pub/sub channel for cache invalidation events */
+const INVALIDATION_CHANNEL = "scraping:cache:invalidate";
+
+/** Invalidation message types */
+type InvalidationMessageType = "domain" | "url" | "all";
+
+/** Structure of invalidation messages published via Redis pub/sub */
+interface InvalidationMessage {
+  type: InvalidationMessageType;
+  pattern: string;
+  timestamp: number;
+  /** Instance ID to prevent echo (processing own messages) */
+  instanceId: string;
+}
+
+/** Unique instance ID for this process */
+const INSTANCE_ID = `${process.pid}-${Date.now()}`;
 
 // =============================================================================
 // Default Configuration
@@ -96,6 +123,12 @@ export class CacheManager implements ICacheManager {
   private totalLatencyMs = 0;
   private lastResetAt = new Date();
 
+  // Cross-instance invalidation (CACHE-01)
+  private subscriber: Redis | null = null;
+  private isSubscribed = false;
+  private invalidationEventsReceived = 0;
+  private invalidationEventsPublished = 0;
+
   constructor(deps: {
     redis: Redis;
     db: PostgresJsDatabase;
@@ -115,6 +148,9 @@ export class CacheManager implements ICacheManager {
     this.l2 = createL2Cache(deps.redis, this.config.l2);
     this.l3 = createL3Cache(deps.db, this.config.l3);
     this.l4 = createL4Cache(this.config.l4);
+
+    // Initialize cross-instance invalidation subscription
+    this.initializeInvalidationSubscription();
   }
 
   // ===========================================================================
@@ -269,6 +305,9 @@ export class CacheManager implements ICacheManager {
         // Clear the domain tracking SET
         await this.redis.del(domainKey);
       }
+
+      // CACHE-01: Publish invalidation event to notify other instances
+      await this.publishInvalidationEvent("domain", domain);
     } catch (error) {
       // Log error but don't throw - L1 was already cleared, so partial success
       cacheLogger.error(
@@ -573,6 +612,195 @@ export class CacheManager implements ICacheManager {
       return null;
     }
   }
+
+  // ===========================================================================
+  // Cross-Instance Invalidation Methods (CACHE-01)
+  // ===========================================================================
+
+  /**
+   * Initialize Redis pub/sub subscription for cross-instance cache invalidation.
+   * Creates a duplicate connection for subscribing (ioredis requirement).
+   */
+  private initializeInvalidationSubscription(): void {
+    try {
+      // Create a dedicated subscriber connection (ioredis requires separate connection for subscribe)
+      this.subscriber = this.redis.duplicate();
+
+      // Handle subscription messages
+      this.subscriber.on("message", (channel: string, message: string) => {
+        if (channel === INVALIDATION_CHANNEL) {
+          this.handleInvalidationMessage(message).catch((error) => {
+            cacheLogger.error(
+              { error: error instanceof Error ? error.message : String(error) },
+              "Error handling invalidation message"
+            );
+          });
+        }
+      });
+
+      // Handle reconnection - resubscribe after Redis reconnect
+      this.subscriber.on("ready", () => {
+        if (!this.isSubscribed) {
+          this.subscribeToInvalidationChannel();
+        }
+      });
+
+      // Handle connection errors gracefully
+      this.subscriber.on("error", (error) => {
+        cacheLogger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          "Cache invalidation subscriber error (will retry)"
+        );
+      });
+
+      // Handle disconnect
+      this.subscriber.on("close", () => {
+        this.isSubscribed = false;
+        cacheLogger.debug({}, "Cache invalidation subscriber disconnected");
+      });
+
+      // Initial subscription
+      this.subscribeToInvalidationChannel();
+    } catch (error) {
+      // Non-fatal - log and continue without cross-instance invalidation
+      cacheLogger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        "Failed to initialize cache invalidation subscription"
+      );
+    }
+  }
+
+  /**
+   * Subscribe to the invalidation channel.
+   */
+  private subscribeToInvalidationChannel(): void {
+    if (!this.subscriber || this.isSubscribed) return;
+
+    this.subscriber
+      .subscribe(INVALIDATION_CHANNEL)
+      .then(() => {
+        this.isSubscribed = true;
+        cacheLogger.debug(
+          { channel: INVALIDATION_CHANNEL, instanceId: INSTANCE_ID },
+          "Subscribed to cache invalidation channel"
+        );
+      })
+      .catch((error) => {
+        cacheLogger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          "Failed to subscribe to invalidation channel"
+        );
+      });
+  }
+
+  /**
+   * Publish an invalidation event to notify other instances.
+   */
+  private async publishInvalidationEvent(
+    type: InvalidationMessageType,
+    pattern: string
+  ): Promise<void> {
+    try {
+      const message: InvalidationMessage = {
+        type,
+        pattern,
+        timestamp: Date.now(),
+        instanceId: INSTANCE_ID,
+      };
+
+      await this.redis.publish(INVALIDATION_CHANNEL, JSON.stringify(message));
+      this.invalidationEventsPublished++;
+
+      cacheLogger.debug(
+        { type, pattern, instanceId: INSTANCE_ID },
+        "Published cache invalidation event"
+      );
+    } catch (error) {
+      // Non-fatal - local invalidation already succeeded
+      cacheLogger.warn(
+        { type, pattern, error: error instanceof Error ? error.message : String(error) },
+        "Failed to publish cache invalidation event"
+      );
+    }
+  }
+
+  /**
+   * Handle an incoming invalidation message from another instance.
+   */
+  private async handleInvalidationMessage(messageStr: string): Promise<void> {
+    try {
+      const message = JSON.parse(messageStr) as InvalidationMessage;
+
+      // Skip messages from this instance (we already invalidated locally)
+      if (message.instanceId === INSTANCE_ID) {
+        return;
+      }
+
+      this.invalidationEventsReceived++;
+
+      cacheLogger.debug(
+        { type: message.type, pattern: message.pattern, fromInstance: message.instanceId },
+        "Received cache invalidation event"
+      );
+
+      // Clear L1 based on message type
+      // L2/L3/L4 are already cleared by the originating instance (they're shared)
+      switch (message.type) {
+        case "domain":
+        case "all":
+          // For domain or all invalidation, clear entire L1 (conservative, safe)
+          await this.l1.clear();
+          break;
+
+        case "url":
+          // For single URL invalidation, only clear that specific entry
+          // (Note: We don't have the hash, so we clear L1 entirely to be safe)
+          await this.l1.clear();
+          break;
+      }
+    } catch (error) {
+      cacheLogger.warn(
+        { message: messageStr, error: error instanceof Error ? error.message : String(error) },
+        "Failed to parse invalidation message"
+      );
+    }
+  }
+
+  /**
+   * Get invalidation metrics for monitoring.
+   */
+  getInvalidationMetrics(): {
+    eventsPublished: number;
+    eventsReceived: number;
+    isSubscribed: boolean;
+  } {
+    return {
+      eventsPublished: this.invalidationEventsPublished,
+      eventsReceived: this.invalidationEventsReceived,
+      isSubscribed: this.isSubscribed,
+    };
+  }
+
+  /**
+   * Cleanup method for graceful shutdown.
+   * Should be called when the application is shutting down.
+   */
+  async shutdown(): Promise<void> {
+    if (this.subscriber) {
+      try {
+        await this.subscriber.unsubscribe(INVALIDATION_CHANNEL);
+        this.subscriber.disconnect();
+        this.subscriber = null;
+        this.isSubscribed = false;
+        cacheLogger.debug({}, "Cache invalidation subscriber shutdown complete");
+      } catch (error) {
+        cacheLogger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          "Error during cache invalidation subscriber shutdown"
+        );
+      }
+    }
+  }
 }
 
 // =============================================================================
@@ -581,6 +809,10 @@ export class CacheManager implements ICacheManager {
 
 /**
  * Create a new CacheManager instance.
+ *
+ * The returned CacheManager automatically subscribes to Redis pub/sub
+ * for cross-instance L1 cache invalidation. Call shutdown() on the
+ * instance during application shutdown to clean up the subscriber connection.
  */
 export function createCacheManager(deps: {
   redis: Redis;

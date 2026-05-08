@@ -14,6 +14,10 @@ import {
 } from "@/server/workers/analytics-worker";
 import { startAllWorkers } from "./worker-entry";
 import { closeRedis, validateRedisConnection } from "@/server/lib/redis";
+import {
+  initAnalyticsEventConsumers,
+  shutdownAnalyticsEventConsumers,
+} from "@/server/features/analytics/events";
 import { pool } from "@/db";
 import { createLogger } from "@/server/lib/logger";
 import { createServer } from "http";
@@ -66,6 +70,16 @@ validateEnv(requiredEnvVars);
       "For full queue processing, ensure open-seo-worker container is running (worker-entry.ts)."
     );
   }
+
+  // Initialize analytics event consumers after workers are ready.
+  // This ensures event handlers are registered before any analytics events are emitted.
+  try {
+    initAnalyticsEventConsumers();
+    log.info("Analytics event consumers initialized at startup");
+  } catch (err) {
+    log.error("Failed to initialize analytics event consumers", err instanceof Error ? err : new Error(String(err)));
+    // Non-fatal: continue startup but log the error
+  }
 })();
 
 // Start WebSocket server on separate port for real-time dashboard updates
@@ -92,6 +106,15 @@ async function shutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info("Shutdown signal received", { signal });
+
+  // Shutdown event consumers first to stop processing new events
+  try {
+    shutdownAnalyticsEventConsumers();
+    log.info("Analytics event consumers shutdown");
+  } catch (err) {
+    log.error("shutdownAnalyticsEventConsumers failed", err instanceof Error ? err : new Error(String(err)));
+  }
+
   try {
     await stopAuditWorker();
   } catch (err) {

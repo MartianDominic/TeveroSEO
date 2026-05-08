@@ -287,10 +287,15 @@ export class LatencyTracker {
 
     this.lastAlertTime = now;
 
-    // Console warning for immediate visibility
-    console.warn(
-      `[ScrapingService] P95 latency alert: ${p95.toFixed(0)}ms exceeds threshold of ${this.thresholdMs}ms ` +
-      `(window: ${this.sampleCount} samples, consecutive breaches: ${this.consecutiveBreaches})`
+    // Debug-level log for immediate visibility (structured logging preferred)
+    alertLogger.debug(
+      {
+        p95Ms: p95,
+        thresholdMs: this.thresholdMs,
+        sampleCount: this.sampleCount,
+        consecutiveBreaches: this.consecutiveBreaches,
+      },
+      'ScrapingService P95 latency alert triggered'
     );
 
     // Structured logging for observability

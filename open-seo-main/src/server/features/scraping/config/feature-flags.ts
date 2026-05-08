@@ -14,6 +14,15 @@
  */
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Default canary percentage (10%) for backward compatibility.
+ */
+const DEFAULT_CANARY_PERCENT = 10;
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -54,6 +63,9 @@ export interface ScrapingMigrationFlags {
 
   /** Enable unified scraping for crawl workflow (site audit crawl phase) */
   crawlWorkflow: MigrationState;
+
+  /** Enable unified scraping for voice analysis (5-10 pages/op) */
+  voiceAnalysis: MigrationState;
 }
 
 /**
@@ -68,6 +80,7 @@ export const MIGRATION_ORDER: ScrapingFeature[] = [
   "prospectAnalysis", // Day 1-2: 4 pages/op, low risk
   "contentBriefs", // Day 2-3: 5 pages/op, low risk
   "serpContent", // Day 3: 5 pages/op, low risk
+  "voiceAnalysis", // Day 3: 5-10 pages/op, low risk (similar to contentBriefs)
   "competitorSpy", // Day 3-4: variable, medium risk
   "volumeRefresh", // Day 4: keyword metrics, medium risk
   "hybridCrawler", // Day 4-5: 10K pages, high risk
@@ -87,6 +100,7 @@ export const FLAG_ENV_VARS: Record<ScrapingFeature, string> = {
   siteAudits: "SCRAPING_SITE_AUDITS",
   volumeRefresh: "SCRAPING_VOLUME_REFRESH",
   crawlWorkflow: "SCRAPING_CRAWL_WORKFLOW",
+  voiceAnalysis: "SCRAPING_VOICE_ANALYSIS",
 };
 
 // =============================================================================
@@ -105,6 +119,7 @@ export const DEFAULT_FLAGS: Readonly<ScrapingMigrationFlags> = {
   siteAudits: "legacy",
   volumeRefresh: "legacy",
   crawlWorkflow: "legacy",
+  voiceAnalysis: "legacy",
 };
 
 /**
@@ -168,16 +183,98 @@ export function hasLegacyFallback(state: MigrationState): boolean {
 }
 
 /**
- * Get the percentage of requests that should use the new implementation.
+ * Get the canary percentage for a feature.
+ *
+ * Supports two levels of configuration:
+ * 1. Per-feature override: SCRAPING_CANARY_PERCENT_<FEATURE> (e.g., SCRAPING_CANARY_PERCENT_VOICE_ANALYSIS=20)
+ * 2. Global setting: SCRAPING_CANARY_PERCENT (e.g., SCRAPING_CANARY_PERCENT=15)
+ * 3. Default: 10% (backward compatible)
+ *
+ * @param feature - Optional feature name for feature-specific override
+ * @returns Canary percentage (0-100)
  */
-export function getNewImplementationPercentage(state: MigrationState): number {
+export function getCanaryPercent(feature?: ScrapingFeature): number {
+  // Try feature-specific override first
+  if (feature) {
+    const featureEnvKey = `SCRAPING_CANARY_PERCENT_${feature.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
+    const featurePercent = process.env[featureEnvKey];
+    if (featurePercent !== undefined && featurePercent !== "") {
+      const parsed = parseInt(featurePercent, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+        return parsed;
+      }
+      // Log warning for invalid per-feature value but continue to global fallback
+      console.warn(
+        `[feature-flags] Invalid ${featureEnvKey}="${featurePercent}" (must be 0-100), falling back to global/default`
+      );
+    }
+  }
+
+  // Fall back to global setting
+  const globalPercent = process.env.SCRAPING_CANARY_PERCENT;
+  if (globalPercent !== undefined && globalPercent !== "") {
+    const parsed = parseInt(globalPercent, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      return parsed;
+    }
+    // Log warning for invalid global value but continue to default
+    console.warn(
+      `[feature-flags] Invalid SCRAPING_CANARY_PERCENT="${globalPercent}" (must be 0-100), using default ${DEFAULT_CANARY_PERCENT}%`
+    );
+  }
+
+  return DEFAULT_CANARY_PERCENT;
+}
+
+/**
+ * Validate canary configuration at startup.
+ * Logs warnings for any invalid values but does not throw.
+ */
+export function validateCanaryConfig(): void {
+  const globalPercent = process.env.SCRAPING_CANARY_PERCENT;
+  if (globalPercent !== undefined && globalPercent !== "") {
+    const parsed = parseInt(globalPercent, 10);
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      console.warn(
+        `[feature-flags] SCRAPING_CANARY_PERCENT="${globalPercent}" is invalid (must be 0-100). Using default ${DEFAULT_CANARY_PERCENT}%.`
+      );
+    }
+  }
+
+  // Check all feature-specific overrides
+  const features: ScrapingFeature[] = Object.keys(FLAG_ENV_VARS) as ScrapingFeature[];
+  for (const feature of features) {
+    const featureEnvKey = `SCRAPING_CANARY_PERCENT_${feature.replace(/([A-Z])/g, "_$1").toUpperCase()}`;
+    const featurePercent = process.env[featureEnvKey];
+    if (featurePercent !== undefined && featurePercent !== "") {
+      const parsed = parseInt(featurePercent, 10);
+      if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+        console.warn(
+          `[feature-flags] ${featureEnvKey}="${featurePercent}" is invalid (must be 0-100). Will use global/default.`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Get the percentage of requests that should use the new implementation.
+ *
+ * @param state - The migration state of the feature
+ * @param feature - Optional feature name for feature-specific canary percentage
+ * @returns Percentage (0-100) of requests to route to new implementation
+ */
+export function getNewImplementationPercentage(
+  state: MigrationState,
+  feature?: ScrapingFeature
+): number {
   switch (state) {
     case "legacy":
       return 0;
     case "shadow":
       return 0; // Shadow runs both but returns legacy
     case "canary":
-      return 10;
+      return getCanaryPercent(feature);
     case "rollout":
     case "migrated":
       return 100;
@@ -186,7 +283,11 @@ export function getNewImplementationPercentage(state: MigrationState): number {
 
 /**
  * Determine if this request should use new implementation based on canary percentage.
+ *
+ * @param feature - Optional feature name for feature-specific canary percentage
+ * @returns true if this request should use the new implementation
  */
-export function shouldUseNewForCanary(): boolean {
-  return Math.random() < 0.1; // 10% canary
+export function shouldUseNewForCanary(feature?: ScrapingFeature): boolean {
+  const percent = getCanaryPercent(feature);
+  return Math.random() < percent / 100;
 }

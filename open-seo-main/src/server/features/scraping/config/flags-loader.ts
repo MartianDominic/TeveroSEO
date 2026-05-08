@@ -67,6 +67,10 @@ export function loadMigrationFlags(): ScrapingMigrationFlags {
       FLAG_ENV_VARS.crawlWorkflow,
       DEFAULT_FLAGS.crawlWorkflow
     ),
+    voiceAnalysis: getEnvFlag(
+      FLAG_ENV_VARS.voiceAnalysis,
+      DEFAULT_FLAGS.voiceAnalysis
+    ),
   };
 }
 

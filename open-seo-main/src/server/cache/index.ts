@@ -3,6 +3,8 @@
  *
  * Unified caching infrastructure for analytics data.
  * Resolves DATA-01, DATA-02, DATA-05, DATA-07 issues.
+ *
+ * @see .planning/phases/96-agency-analytics/CACHING-STRATEGY.md for TTL rationale
  */
 
 // Analytics cache
@@ -42,3 +44,10 @@ export {
   type InvalidationReason,
   type InvalidationHandler,
 } from './cache-invalidation';
+
+// Cache warming (CACHE-02 FIX)
+export {
+  warmAnalyticsCache,
+  warmAnalyticsCacheForSite,
+  type CacheWarmingResult,
+} from './cache-warming';

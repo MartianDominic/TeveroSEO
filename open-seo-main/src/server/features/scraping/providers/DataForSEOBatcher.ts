@@ -27,6 +27,7 @@ import { mapDfsResultToParsedData } from "./DfsDataMapper";
 import { DFS_STANDARD_COSTS } from "@/db/dfs-cost-tracking-schema";
 import { db } from "@/db";
 import { getDfsCostTracker, extractDomainFromUrl } from "./DfsCostTracker";
+import { costLogger } from "../logging/Logger";
 
 // =============================================================================
 // Constants
@@ -469,9 +470,13 @@ export class DataForSEOBatcher {
       const costTracker = getDfsCostTracker(db);
       costTracker.recordCostBatch(costRecords).catch((err) => {
         // Log but don't fail - cost tracking is non-critical
-        console.warn(
-          `[DataForSEOBatcher] Failed to track batch costs for ${costRecords.length} URLs:`,
-          err instanceof Error ? err.message : String(err)
+        costLogger.warn(
+          {
+            batchId: batch.id,
+            urlCount: costRecords.length,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          'Failed to track batch costs'
         );
       });
     }
@@ -516,8 +521,13 @@ export class DataForSEOBatcher {
 
   /**
    * POST to DataForSEO API.
+   *
+   * @deprecated The auth header construction duplicates logic from dataforseo-auth.ts.
+   * Uses instance apiKey for backward compatibility, but new code should
+   * use createDataForSEOFetch() from @/server/lib/dataforseo-auth instead.
    */
   private async postApi(path: string, payload: unknown): Promise<unknown> {
+    // NOTE: Duplicates auth logic from dataforseo-auth.ts - kept for DI testing
     const authHeader = `Basic ${Buffer.from(this.apiKey).toString("base64")}`;
 
     const response = await fetch(`${API_BASE}${path}`, {
@@ -540,8 +550,13 @@ export class DataForSEOBatcher {
 
   /**
    * GET from DataForSEO API.
+   *
+   * @deprecated The auth header construction duplicates logic from dataforseo-auth.ts.
+   * Uses instance apiKey for backward compatibility, but new code should
+   * use createDataForSEOFetch() from @/server/lib/dataforseo-auth instead.
    */
   private async getApi(path: string): Promise<unknown> {
+    // NOTE: Duplicates auth logic from dataforseo-auth.ts - kept for DI testing
     const authHeader = `Basic ${Buffer.from(this.apiKey).toString("base64")}`;
 
     const response = await fetch(`${API_BASE}${path}`, {

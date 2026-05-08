@@ -2,6 +2,7 @@
  * Brief generator service for creating content briefs from SERP analysis.
  * Phase 36: Content Brief Generation
  * Phase 37-04: Voice constraints integration
+ * BRIEF-01: CorrelationId propagation for distributed tracing
  */
 
 import { db } from "@/db";
@@ -14,11 +15,24 @@ import type {
 } from "@/db/brief-schema";
 import { eq } from "drizzle-orm";
 import { AppError } from "@/server/lib/errors";
+import { createLogger } from "@/server/lib/logger";
 import { analyzeSerpForKeyword, type SerpAnalysisResult } from "./SerpAnalyzer";
 import type { BriefRepository } from "./BriefRepository";
 import { voiceProfileService } from "@/server/features/voice/services/VoiceProfileService";
 import { buildVoiceConstraints } from "@/server/features/voice/services/VoiceConstraintBuilder";
 import { voiceComplianceService, type ComplianceScore } from "@/server/features/voice/services/VoiceComplianceService";
+
+const log = createLogger({ module: "BriefGenerator" });
+
+/**
+ * Generate a unique correlation ID for tracing requests across services.
+ * Format: brief-{timestamp}-{random}
+ */
+export function generateCorrelationId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 9);
+  return `brief-${timestamp}-${random}`;
+}
 
 export interface BriefGeneratorInput {
   mappingId: string;
@@ -30,6 +44,8 @@ export interface BriefGeneratorInput {
   templateBlend?: number;
   /** Template ID for blending */
   templateId?: string;
+  /** Correlation ID for distributed tracing (auto-generated if not provided) */
+  correlationId?: string;
 }
 
 export interface GeneratedBrief {
@@ -51,14 +67,18 @@ export interface GeneratedBriefWithCompliance extends GeneratedBrief {
  * @throws AppError NOT_FOUND if mapping doesn't exist
  */
 export async function validateMapping(
-  mappingId: string
+  mappingId: string,
+  correlationId?: string
 ): Promise<KeywordPageMappingSelect> {
+  const reqLog = correlationId ? log.child({ correlationId }) : log;
+
   const [mapping] = await db
     .select()
     .from(keywordPageMapping)
     .where(eq(keywordPageMapping.id, mappingId));
 
   if (!mapping) {
+    reqLog.warn("Keyword mapping not found", { mappingId });
     throw new AppError("NOT_FOUND", `Keyword mapping ${mappingId} not found`);
   }
 
@@ -72,14 +92,23 @@ export async function validateMapping(
  * @param clientId - Client ID for multi-tenant cache isolation
  * @param mappingId - Keyword mapping ID
  * @param locationCode - DataForSEO location code (default: 2840 = United States)
+ * @param correlationId - Correlation ID for tracing (auto-generated if not provided)
  */
 export async function previewSerp(
   clientId: string,
   mappingId: string,
-  locationCode: number = 2840
+  locationCode: number = 2840,
+  correlationId?: string
 ): Promise<SerpAnalysisData> {
-  const mapping = await validateMapping(mappingId);
-  const result = await analyzeSerpForKeyword(clientId, mappingId, mapping.keyword, locationCode);
+  const corrId = correlationId ?? generateCorrelationId();
+  const reqLog = log.child({ correlationId: corrId });
+
+  reqLog.info("Previewing SERP analysis", { clientId, mappingId, locationCode });
+
+  const mapping = await validateMapping(mappingId, corrId);
+  const result = await analyzeSerpForKeyword(clientId, mappingId, mapping.keyword, locationCode, undefined, corrId);
+
+  reqLog.info("SERP preview complete", { keyword: mapping.keyword });
   return result.data;
 }
 
@@ -96,13 +125,26 @@ export async function generateBrief(
   input: BriefGeneratorInput,
   repository: BriefRepository
 ): Promise<GeneratedBrief> {
-  const mapping = await validateMapping(input.mappingId);
+  // BRIEF-01: Generate or use provided correlationId for distributed tracing
+  const correlationId = input.correlationId ?? generateCorrelationId();
+  const reqLog = log.child({ correlationId });
 
+  reqLog.info("Starting brief generation", {
+    mappingId: input.mappingId,
+    clientId: input.clientId,
+    voiceMode: input.voiceMode,
+  });
+
+  const mapping = await validateMapping(input.mappingId, correlationId);
+
+  reqLog.info("Analyzing SERP for keyword", { keyword: mapping.keyword });
   const serpResult = await analyzeSerpForKeyword(
     input.clientId,
     input.mappingId,
     mapping.keyword,
-    input.locationCode ?? 2840
+    input.locationCode ?? 2840,
+    undefined,
+    correlationId
   );
   const serpAnalysis = serpResult.data;
 
@@ -123,6 +165,7 @@ export async function generateBrief(
   let voiceConstraints: string | undefined;
   const voiceProfile = await voiceProfileService.getByClientId(input.clientId);
   if (voiceProfile) {
+    reqLog.debug("Building voice constraints", { hasProfile: true });
     voiceConstraints = buildVoiceConstraints({
       profile: voiceProfile,
       templateBlend: input.templateBlend,
@@ -138,6 +181,13 @@ export async function generateBrief(
     serpAnalysis,
     // P2.G16: Persist scraping cost for cost attribution
     scrapingCostUsd: scrapingCostUsd > 0 ? scrapingCostUsd.toFixed(6) : null,
+  });
+
+  reqLog.info("Brief generation complete", {
+    briefId: brief.id,
+    keyword: mapping.keyword,
+    targetWordCount,
+    scrapingCostUsd,
   });
 
   return {
