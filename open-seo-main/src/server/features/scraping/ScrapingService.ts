@@ -21,11 +21,13 @@ import { DomainLearningService } from "./DomainLearningService";
 import { CacheManager, createCacheManager, type CacheStats } from "./cache";
 import { QueueManager, getQueueManager, type EnqueueResult } from "./queue";
 import type { ScrapeTier } from "@/db/domain-scrape-learning-schema";
+import type { DfsMode } from "@/db/dfs-cost-tracking-schema";
 import {
   loadMigrationFlagsCached,
   type ScrapingMigrationFlags,
   type ScrapingFeature,
 } from "./config";
+import { getDfsCostTracker, extractDomainFromUrl, type DfsCostTracker } from "./providers/DfsCostTracker";
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
 import { AlertManager } from "./monitoring/AlertManager";
@@ -63,6 +65,9 @@ export interface ScrapeOptions extends FetchOptions {
 
   /** Correlation ID for request tracing (auto-generated if not provided) */
   correlationId?: string;
+
+  /** Workspace ID for cost attribution */
+  workspaceId?: string;
 }
 
 /**
@@ -233,6 +238,7 @@ export class ScrapingService {
   private alertManager: AlertManager | null = null;
   private redis: Redis | null = null;
   private db: PostgresJsDatabase | null = null;
+  private dfsCostTracker: DfsCostTracker | null = null;
 
   // Metrics tracking
   private shadowMismatches = 0;
@@ -278,6 +284,10 @@ export class ScrapingService {
     if (deps.cwvService) {
       this.cwvService = deps.cwvService;
     }
+
+    // Initialize DFS cost tracker with database connection
+    // Cast to any to bridge PostgresJsDatabase and NodePgDatabase types
+    this.dfsCostTracker = getDfsCostTracker(deps.db as any);
   }
 
   /**
@@ -345,6 +355,22 @@ export class ScrapingService {
             statusCode: result.statusCode,
           });
 
+          // Record DFS cost to cost tracker (fire-and-forget)
+          if (this.isDfsTier(result.tierUsed) && !result.fromCache) {
+            this.recordDfsCost({
+              url,
+              tier: result.tierUsed,
+              success: result.success,
+              statusCode: result.statusCode,
+              responseSizeBytes: result.responseSizeBytes,
+              responseTimeMs: durationMs,
+              clientId: options.clientId,
+              workspaceId: options.workspaceId,
+              jobId: options.jobId,
+              actualCost: result.estimatedCostUsd,
+            });
+          }
+
           // Add parsed data if requested
           let parsedData: ParsedPageData | undefined;
           if (options.includeParsedData && result.html) {
@@ -381,6 +407,21 @@ export class ScrapingService {
             error: error instanceof Error ? error.message : String(error),
             durationMs,
           });
+
+          // Record DFS cost even on failure (DFS charges for attempts)
+          const failedTier = options.forceTier ?? options.startTier ?? 'direct';
+          if (this.isDfsTier(failedTier)) {
+            this.recordDfsCost({
+              url,
+              tier: failedTier,
+              success: false,
+              responseTimeMs: durationMs,
+              clientId: options.clientId,
+              workspaceId: options.workspaceId,
+              jobId: options.jobId,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            });
+          }
 
           throw error;
         }
@@ -805,6 +846,93 @@ export class ScrapingService {
   private trackCost(feature: ScrapingFeature | undefined, costUsd: number): void {
     const key = feature ?? "unknown";
     this.costByFeature.set(key, (this.costByFeature.get(key) ?? 0) + costUsd);
+  }
+
+  /**
+   * Check if a tier is a DataForSEO tier (requires cost tracking).
+   */
+  private isDfsTier(tier: ScrapeTier): boolean {
+    return tier === "dfs_basic" || tier === "dfs_js" || tier === "dfs_browser";
+  }
+
+  /**
+   * Map scrape tier to DFS mode for cost tracking.
+   */
+  private tierToDfsMode(tier: ScrapeTier): DfsMode {
+    switch (tier) {
+      case "dfs_basic":
+        return "basic";
+      case "dfs_js":
+        return "js";
+      case "dfs_browser":
+        return "browser";
+      default:
+        return "basic";
+    }
+  }
+
+  /**
+   * Estimate cost for a DFS tier scrape.
+   */
+  private estimateDfsCost(tier: ScrapeTier): number {
+    const costs: Record<string, number> = {
+      dfs_basic: 0.000125,
+      dfs_js: 0.00125,
+      dfs_browser: 0.00425,
+    };
+    return costs[tier] ?? 0;
+  }
+
+  /**
+   * Record DFS cost to the cost tracker (fire-and-forget).
+   * Does not await - cost tracking should not block scrape response.
+   */
+  private recordDfsCost(params: {
+    url: string;
+    tier: ScrapeTier;
+    success: boolean;
+    statusCode?: number;
+    responseSizeBytes?: number;
+    responseTimeMs: number;
+    clientId?: string;
+    workspaceId?: string;
+    jobId?: string;
+    taskId?: string;
+    errorMessage?: string;
+    dfsErrorCode?: number;
+    actualCost?: number;
+  }): void {
+    if (!this.dfsCostTracker || !this.isDfsTier(params.tier)) {
+      return;
+    }
+
+    const domain = extractDomainFromUrl(params.url);
+    const mode = this.tierToDfsMode(params.tier);
+    const estimatedCost = this.estimateDfsCost(params.tier);
+
+    // Fire-and-forget: don't await, don't block response
+    this.dfsCostTracker
+      .recordCost({
+        url: params.url,
+        domain,
+        mode,
+        usedStandardQueue: false, // Live API for scraping
+        estimatedCost,
+        actualCost: params.actualCost ?? estimatedCost,
+        success: params.success,
+        statusCode: params.statusCode,
+        dfsErrorCode: params.dfsErrorCode,
+        errorMessage: params.errorMessage,
+        responseSizeBytes: params.responseSizeBytes,
+        responseTimeMs: params.responseTimeMs,
+        clientId: params.clientId,
+        workspaceId: params.workspaceId,
+        jobId: params.jobId,
+        taskId: params.taskId,
+      })
+      .catch((err) => {
+        logger.warn({ err, url: params.url }, "Failed to record DFS cost");
+      });
   }
 
   private parseHtml(html: string, _url: string): ParsedPageData {
