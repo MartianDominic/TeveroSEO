@@ -652,6 +652,16 @@ Key deliverables:
 | 95-13 | E2E Testing & Migration Rollout | 0.5 day | ✓ Complete |
 | 95-14 | Admin Security | 0.5 day | ✓ Complete |
 | 95-16 | Metrics & Observability | 0.5 day | ✓ Complete |
+| 95-17 | Consumer Integration Completion | 0.5 day | ✓ Complete |
+
+**95-17 Key Deliverables:**
+
+- DfsCostTracker wired into ScrapingService with fire-and-forget cost recording
+- ProspectAnalysisService cost tracking for competitors_domain and domain_intersection APIs
+- SerpAnalyzer SERP API cost tracking with domain='serp-api' distinction
+- SerpContentAnalyzer clientId/workspaceId propagation through scrapeOptions
+- serpApi migration flag added to feature flags system
+- 5 commits, all TypeScript compilation passing
 
 **95-16 Key Deliverables:**
 
