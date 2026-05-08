@@ -68,15 +68,27 @@ const serpContentTransformer = {
 };
 
 /**
+ * Options for SERP content analysis.
+ */
+export interface AnalyzeSerpContentOptions {
+  /** Client ID for cost attribution */
+  clientId?: string;
+  /** Workspace ID for cost attribution */
+  workspaceId?: string;
+}
+
+/**
  * Analyze SERP competitor content for H2s and word counts.
  * Fetches HTML for up to 5 URLs via MigrationRouter.
  * Routes through unified ScrapingService when feature flag is active.
  *
  * @param urls - Competitor URLs from SERP results
+ * @param options - Options including clientId for cost tracking
  * @returns Analysis with common H2s and word count stats
  */
 export async function analyzeSerpContent(
-  urls: string[]
+  urls: string[],
+  options: AnalyzeSerpContentOptions = {}
 ): Promise<SerpContentAnalysis> {
   const h2Counts = new Map<string, number>();
   const wordCounts: number[] = [];
@@ -123,6 +135,8 @@ export async function analyzeSerpContent(
         feature: "serpContent",
         includeHtml: true,
         includeParsedData: true,
+        clientId: options.clientId,
+        workspaceId: options.workspaceId,
       },
       transformer: serpContentTransformer,
       concurrency: 5,
