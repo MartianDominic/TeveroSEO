@@ -588,7 +588,6 @@ function isBlockedHostname(hostname: string): boolean {
  * ```
  */
 export const safeUrlSchema = z
-  .string()
   .url("Invalid URL format")
   .refine(
     (url) => {
@@ -613,17 +612,19 @@ export const safeUrlSchema = z
 
 /**
  * Base schema for jobs that target a specific client.
+ * Note: Uses z.uuid() instead of deprecated z.string().uuid() in Zod 4.x
  */
 export const clientJobBaseSchema = z.object({
-  clientId: z.string().uuid("Invalid client ID format"),
+  clientId: z.uuid("Invalid client ID format"),
 });
 
 /**
  * Base schema for jobs that target a specific project.
+ * Note: Uses z.uuid() instead of deprecated z.string().uuid() in Zod 4.x
  */
 export const projectJobBaseSchema = z.object({
-  projectId: z.string().uuid("Invalid project ID format"),
-  clientId: z.string().uuid("Invalid client ID format").optional(),
+  projectId: z.uuid("Invalid project ID format"),
+  clientId: z.uuid("Invalid client ID format").optional(),
 });
 
 /**

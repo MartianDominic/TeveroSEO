@@ -133,7 +133,10 @@ export const Route = (createFileRoute as any)("/api/portal/analytics/$clientId")
               {
                 success: false,
                 error: "Invalid parameters",
-                details: parsed.error.flatten(),
+                details: parsed.error.issues.map((i) => ({
+                  path: i.path.join("."),
+                  message: i.message,
+                })),
               },
               { status: 400 }
             );

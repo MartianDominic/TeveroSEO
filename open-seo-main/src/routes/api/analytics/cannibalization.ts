@@ -19,7 +19,7 @@ import {
 import { z } from "zod";
 
 const querySchema = z.object({
-  siteId: z.string().uuid(),
+  siteId: z.uuid(),
   query: z.string().optional(), // If provided, get details for specific query
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),

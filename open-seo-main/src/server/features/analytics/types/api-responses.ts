@@ -99,11 +99,12 @@ export const PaginationMetaSchema = z.object({
 
 /**
  * Cache metadata schema for cached responses.
+ * Note: Uses z.iso.datetime() instead of deprecated z.string().datetime() in Zod 4.x
  */
 export const CacheMetaSchema = z.object({
-  cachedAt: z.string().datetime().optional(),
-  dataAsOf: z.string().datetime().optional(),
-  staleAfter: z.string().datetime().optional(),
+  cachedAt: z.iso.datetime().optional(),
+  dataAsOf: z.iso.datetime().optional(),
+  staleAfter: z.iso.datetime().optional(),
 });
 
 /**
@@ -112,7 +113,7 @@ export const CacheMetaSchema = z.object({
 export const RateLimitMetaSchema = z.object({
   limit: z.number(),
   remaining: z.number(),
-  resetAt: z.string().datetime().optional(),
+  resetAt: z.iso.datetime().optional(),
 });
 
 /**

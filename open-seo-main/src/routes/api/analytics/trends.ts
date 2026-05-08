@@ -20,7 +20,7 @@ import { validationErrorResponse } from "@/server/lib/api-response";
 import { z } from "zod";
 
 const querySchema = z.object({
-  siteId: z.string().uuid(),
+  siteId: z.uuid(),
   periodDays: z.coerce.number().min(7).max(90).optional(),
   threshold: z.coerce.number().min(0.01).max(1).optional(),
   minImpressions: z.coerce.number().min(0).optional(),

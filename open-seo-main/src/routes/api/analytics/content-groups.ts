@@ -21,7 +21,6 @@ import {
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
 import { csrfProtect } from "@/server/middleware/csrf";
-import { validationErrorResponse } from "@/server/lib/api-response";
 
 const listQuerySchema = z.object({
   siteId: z.string(),

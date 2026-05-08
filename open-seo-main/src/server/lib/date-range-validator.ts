@@ -16,7 +16,7 @@
  */
 
 import { z } from "zod";
-import { subDays, isAfter, isBefore, differenceInDays, format } from "date-fns";
+import { subDays, isAfter, differenceInDays, format } from "date-fns";
 
 /**
  * Maximum allowed date range (365 days by default).
@@ -46,12 +46,12 @@ export interface DateRangeValidationResult {
 export const dateRangeSchema = z
   .object({
     startDate: z.union([
-      z.string().datetime({ offset: true }),
+      z.iso.datetime({ offset: true }),
       z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
       z.date(),
     ]),
     endDate: z.union([
-      z.string().datetime({ offset: true }),
+      z.iso.datetime({ offset: true }),
       z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       z.date(),
     ]),

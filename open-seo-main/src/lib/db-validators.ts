@@ -137,8 +137,9 @@ export function validateRowsFiltered<T extends z.ZodType>(
 
 /**
  * UUID string schema.
+ * Note: Uses z.uuid() instead of deprecated z.string().uuid() in Zod 4.x
  */
-export const IdSchema = z.string().uuid();
+export const IdSchema = z.uuid();
 
 /**
  * Timestamp schema with date coercion.
@@ -189,8 +190,9 @@ export const DomainSchema = z
 
 /**
  * Email schema.
+ * Note: Uses z.email() instead of deprecated z.string().email() in Zod 4.x
  */
-export const EmailSchema = z.string().email();
+export const EmailSchema = z.email();
 
 // ---------------------------------------------------------------------------
 // Trigger Config Schemas (for TriggerService)
