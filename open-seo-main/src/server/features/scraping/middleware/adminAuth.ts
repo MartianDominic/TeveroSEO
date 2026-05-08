@@ -48,10 +48,12 @@ export interface AdminContext {
 
 /**
  * Extended request type with admin context.
+ * Note: We use 'any' here because express Request type conflicts
+ * with the @ts-expect-error directive at the import level.
  */
-export interface AdminRequest extends Request {
+export type AdminRequest = Request & {
   adminContext?: AdminContext;
-}
+};
 
 // =============================================================================
 // Constants

@@ -23,6 +23,7 @@ import type { CacheWarmer, WarmingResult, WarmingProgress } from '../cache/Cache
 import type { DomainFeedbackService } from '../DomainFeedback';
 import type { ScrapingFeature, MigrationState } from '../config';
 import { requireAdminAuth, type AdminRequest } from '../middleware/adminAuth';
+import { getAuditLogger, createAuditContext, type AuditEntry } from '../monitoring/AuditLogger';
 
 // =============================================================================
 // Types
@@ -236,6 +237,12 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Advance a feature to the next migration state.
    */
   router.post('/migration/:feature/advance', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
+    const feature = req.params.feature as ScrapingFeature;
+    const { force = false, reason } = req.body;
+
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -243,9 +250,6 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       });
       return;
     }
-
-    const feature = req.params.feature as ScrapingFeature;
-    const { force = false, reason } = req.body;
 
     try {
       // First check readiness unless forced
@@ -267,6 +271,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       const result = await migrationRollout.advanceFeature(feature);
 
       if (result.success) {
+        await auditLogger.log({
+          action: 'migration_advance',
+          actor,
+          target: { type: 'migration', id: feature },
+          parameters: { fromState: result.previousState, toState: result.newState, forced: force, reason },
+          result: 'success',
+          durationMs: Date.now() - startTime,
+        });
+
         res.json({
           success: true,
           feature,
@@ -277,6 +290,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
           timestamp: new Date().toISOString(),
         });
       } else {
+        await auditLogger.log({
+          action: 'migration_advance',
+          actor,
+          target: { type: 'migration', id: feature },
+          parameters: { forced: force, reason },
+          result: 'failure',
+          errorMessage: result.message,
+          durationMs: Date.now() - startTime,
+        });
+
         res.status(400).json({
           success: false,
           feature,
@@ -286,6 +309,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         });
       }
     } catch (error) {
+      await auditLogger.log({
+        action: 'migration_advance',
+        actor,
+        target: { type: 'migration', id: feature },
+        parameters: { forced: force, reason },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         feature,
@@ -299,6 +332,12 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Rollback a feature to a previous migration state.
    */
   router.post('/migration/:feature/rollback', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
+    const feature = req.params.feature as ScrapingFeature;
+    const { targetState, reason } = req.body;
+
     if (!migrationRollout) {
       res.status(503).json({
         error: 'Migration rollout service not available',
@@ -307,13 +346,19 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       return;
     }
 
-    const feature = req.params.feature as ScrapingFeature;
-    const { targetState, reason } = req.body;
-
     try {
       const result = await migrationRollout.rollbackFeature(feature, reason);
 
       if (result.success) {
+        await auditLogger.log({
+          action: 'migration_rollback',
+          actor,
+          target: { type: 'migration', id: feature },
+          parameters: { fromState: result.previousState, toState: result.newState, reason },
+          result: 'success',
+          durationMs: Date.now() - startTime,
+        });
+
         res.json({
           success: true,
           feature,
@@ -323,6 +368,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
           timestamp: new Date().toISOString(),
         });
       } else {
+        await auditLogger.log({
+          action: 'migration_rollback',
+          actor,
+          target: { type: 'migration', id: feature },
+          parameters: { reason },
+          result: 'failure',
+          errorMessage: result.reason,
+          durationMs: Date.now() - startTime,
+        });
+
         res.status(400).json({
           success: false,
           feature,
@@ -332,6 +387,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         });
       }
     } catch (error) {
+      await auditLogger.log({
+        action: 'migration_rollback',
+        actor,
+        target: { type: 'migration', id: feature },
+        parameters: { reason },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         feature,
@@ -349,6 +414,10 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Warm cache with provided URLs.
    */
   router.post('/cache/warm', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
+
     if (!cacheWarmer) {
       res.status(503).json({
         error: 'Cache warmer service not available',
@@ -391,12 +460,31 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         },
       });
 
+      await auditLogger.log({
+        action: 'cache_warm',
+        actor,
+        target: { type: 'cache', id: 'urls' },
+        parameters: { urlCount: urls.length, priority, concurrency, clientId },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
+
       res.json({
         success: true,
         ...result,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'cache_warm',
+        actor,
+        target: { type: 'cache', id: 'urls' },
+        parameters: { urlCount: urls.length, priority, concurrency, clientId },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -571,7 +659,11 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * POST /admin/feedback/flush
    * Manually flush feedback buffer.
    */
-  router.post('/feedback/flush', async (_req: Request, res: Response) => {
+  router.post('/feedback/flush', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
+
     if (!feedbackService) {
       res.status(503).json({
         error: 'Feedback service not available',
@@ -583,12 +675,29 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
     try {
       const result = await feedbackService.flush();
 
+      await auditLogger.log({
+        action: 'feedback_flush',
+        actor,
+        target: { type: 'feedback', id: 'buffer' },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
+
       res.json({
         success: true,
         ...result,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'feedback_flush',
+        actor,
+        target: { type: 'feedback', id: 'buffer' },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -600,7 +709,11 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * POST /admin/feedback/clear
    * Clear feedback buffer without processing.
    */
-  router.post('/feedback/clear', (_req: Request, res: Response) => {
+  router.post('/feedback/clear', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
+
     if (!feedbackService) {
       res.status(503).json({
         error: 'Feedback service not available',
@@ -614,6 +727,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
       feedbackService.clearBuffer();
       const afterSize = feedbackService.getBufferSize();
 
+      await auditLogger.log({
+        action: 'feedback_clear',
+        actor,
+        target: { type: 'feedback', id: 'buffer' },
+        parameters: { clearedDomains: beforeSize.domains, clearedFeedback: beforeSize.totalFeedback },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
+
       res.json({
         success: true,
         cleared: {
@@ -624,6 +746,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'feedback_clear',
+        actor,
+        target: { type: 'feedback', id: 'buffer' },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -674,12 +805,24 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Reset domain configuration to default (invalidate cache to trigger re-discovery).
    */
   router.post('/domains/:domain/reset', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
     const { domain } = req.params;
     const { reason } = req.body;
 
     try {
       // Invalidate cache forces re-discovery on next request
       await domainLearningService.invalidateCache(domain);
+
+      await auditLogger.log({
+        action: 'domain_reset',
+        actor,
+        target: { type: 'domain', id: domain },
+        parameters: { reason },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
 
       res.json({
         success: true,
@@ -689,6 +832,16 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'domain_reset',
+        actor,
+        target: { type: 'domain', id: domain },
+        parameters: { reason },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         domain,
@@ -763,6 +916,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Emergency stop all scraping operations.
    */
   router.post('/system/emergency-stop', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
     const { reason } = req.body;
 
     try {
@@ -773,6 +929,14 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         feedbackService.stop();
       }
 
+      await auditLogger.log({
+        action: 'emergency_stop',
+        actor,
+        parameters: { reason },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
+
       res.json({
         success: true,
         message: 'All scraping operations stopped',
@@ -780,6 +944,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'emergency_stop',
+        actor,
+        parameters: { reason },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -792,6 +965,9 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
    * Resume scraping operations after emergency stop.
    */
   router.post('/system/resume', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const auditLogger = getAuditLogger();
+    const actor = createAuditContext(req);
     const { reason } = req.body;
 
     try {
@@ -802,6 +978,14 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         feedbackService.startAutoFlush();
       }
 
+      await auditLogger.log({
+        action: 'resume',
+        actor,
+        parameters: { reason },
+        result: 'success',
+        durationMs: Date.now() - startTime,
+      });
+
       res.json({
         success: true,
         message: 'Scraping operations resumed',
@@ -809,6 +993,15 @@ export function createAdminRoutes(deps: AdminRouteDependencies): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      await auditLogger.log({
+        action: 'resume',
+        actor,
+        parameters: { reason },
+        result: 'failure',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs: Date.now() - startTime,
+      });
+
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
