@@ -1,6 +1,7 @@
 /**
  * Per-Domain Learning Service
  * Phase 92: On-Page SEO Mastery - Tiered Scraping Architecture
+ * Phase 95-18: Resilience Hardening - Circuit Breaker Integration
  *
  * Learns and remembers which scraping tier works best for each domain
  * to avoid wasting money re-discovering on every fetch.
@@ -11,10 +12,13 @@
  * - Automatic revalidation for stale or failing configs
  * - Cost tracking per client and job
  * - Technology and anti-bot detection
+ * - Circuit breaker protection for database operations (95-18)
  */
 
 import { eq, lt, and, or, sql, desc } from "drizzle-orm";
 import { db } from "@/db";
+import { getDatabaseCircuitBreaker, CircuitOpenError } from "./resilience/DatabaseCircuitBreaker";
+import { createComponentLogger } from "./logging";
 import {
   domainScrapeConfigs,
   domainScrapeHistory,
@@ -60,6 +64,12 @@ import {
 
 const CACHE_KEY_PREFIX = `${REDIS_SERVICE_PREFIX}domain_tier:`;
 const COST_KEY_PREFIX = `${REDIS_SERVICE_PREFIX}crawl_cost:`;
+
+// =============================================================================
+// Logger
+// =============================================================================
+
+const logger = createComponentLogger("domain-learning");
 
 /**
  * Content validation thresholds.
@@ -195,6 +205,7 @@ export class DomainLearningService implements IDomainLearningService {
   /**
    * Get the optimal configuration for a domain.
    * Checks Redis cache first, then falls back to database.
+   * Uses circuit breaker for database operations (95-18).
    */
   async getConfig(domain: string): Promise<DomainConfig | null> {
     const normalizedDomain = normalizeDomain(domain);
@@ -210,43 +221,56 @@ export class DomainLearningService implements IDomainLearningService {
       }
     }
 
-    // Query database
-    const result = await db
-      .select()
-      .from(domainScrapeConfigs)
-      .where(eq(domainScrapeConfigs.domain, normalizedDomain))
-      .limit(1);
+    // Query database with circuit breaker protection
+    const circuitBreaker = getDatabaseCircuitBreaker();
 
-    if (result.length === 0) {
+    try {
+      const result = await circuitBreaker.executeOrNull(async () => {
+        return db
+          .select()
+          .from(domainScrapeConfigs)
+          .where(eq(domainScrapeConfigs.domain, normalizedDomain))
+          .limit(1);
+      });
+
+      if (!result || result.length === 0) {
+        return null;
+      }
+
+      const row = result[0];
+      const config: DomainConfig = {
+        domain: row.domain,
+        optimalTier: row.optimalTier as ScrapeTier,
+        isValidated: row.isValidated,
+        successRate: row.successRate,
+        consecutiveFailures: row.consecutiveFailures,
+        avgResponseTimeMs: row.avgResponseTimeMs,
+        detectedTechnologies: (row.detectedTechnologies ?? []) as DetectedTechnology[],
+        hasAntiBotProtection: row.hasAntiBotProtection ?? false,
+        requiresJsRendering: row.requiresJsRendering ?? false,
+        geoRequirement: row.geoRequirement,
+        lastEscalationReason: row.lastEscalationReason as EscalationReason | null,
+        updatedAt: row.updatedAt,
+        nextRevalidationAt: row.nextRevalidationAt,
+      };
+
+      // Cache in Redis
+      await redis.set(
+        cacheKey,
+        JSON.stringify(config),
+        "EX",
+        DOMAIN_CONFIG_CACHE_TTL_SECONDS
+      );
+
+      return config;
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        logger.debug("getConfig skipped - circuit open", { domain: normalizedDomain });
+      } else {
+        logger.error("getConfig error", { domain: normalizedDomain, error: error instanceof Error ? error.message : String(error) });
+      }
       return null;
     }
-
-    const row = result[0];
-    const config: DomainConfig = {
-      domain: row.domain,
-      optimalTier: row.optimalTier as ScrapeTier,
-      isValidated: row.isValidated,
-      successRate: row.successRate,
-      consecutiveFailures: row.consecutiveFailures,
-      avgResponseTimeMs: row.avgResponseTimeMs,
-      detectedTechnologies: (row.detectedTechnologies ?? []) as DetectedTechnology[],
-      hasAntiBotProtection: row.hasAntiBotProtection ?? false,
-      requiresJsRendering: row.requiresJsRendering ?? false,
-      geoRequirement: row.geoRequirement,
-      lastEscalationReason: row.lastEscalationReason as EscalationReason | null,
-      updatedAt: row.updatedAt,
-      nextRevalidationAt: row.nextRevalidationAt,
-    };
-
-    // Cache in Redis
-    await redis.set(
-      cacheKey,
-      JSON.stringify(config),
-      "EX",
-      DOMAIN_CONFIG_CACHE_TTL_SECONDS
-    );
-
-    return config;
   }
 
   // ===========================================================================

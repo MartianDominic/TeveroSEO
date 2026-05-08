@@ -1,11 +1,13 @@
 /**
  * L3 PostgreSQL Cache
  * Phase 95-02: Multi-Level Caching
+ * Phase 95-18: Resilience Hardening - Circuit Breaker Integration
  *
  * Persistent PostgreSQL cache for HTML content.
  * - TTL: 7-30 days (content-type dependent)
  * - Compression: gzip
  * - Supports content deduplication via aliases
+ * - Circuit breaker protection for database operations
  */
 
 import { eq, and, gt, lt, sql } from "drizzle-orm";
@@ -23,6 +25,8 @@ import {
   decompressFromBase64,
   shouldCompress,
 } from "./compression";
+import { getDatabaseCircuitBreaker, CircuitOpenError } from "../resilience/DatabaseCircuitBreaker";
+import { createComponentLogger } from "../logging";
 
 // =============================================================================
 // Default Configuration
@@ -33,6 +37,12 @@ const DEFAULT_CONFIG: L3CacheConfig = {
   compressionAlgo: "lz4", // Using gzip as equivalent
   batchSize: 100,
 };
+
+// =============================================================================
+// Logger
+// =============================================================================
+
+const logger = createComponentLogger("l3-cache");
 
 // =============================================================================
 // L3Cache Implementation
@@ -73,55 +83,65 @@ export class L3Cache implements ICacheLevel {
   async get(hash: string): Promise<CachedPage | null> {
     const startTime = performance.now();
     this.requestCount++;
+    const circuitBreaker = getDatabaseCircuitBreaker();
 
     try {
-      // First check if this is an alias
-      const alias = await this.db
-        .select({ canonicalId: htmlCacheAliases.canonicalId })
-        .from(htmlCacheAliases)
-        .where(eq(htmlCacheAliases.aliasUrlHash, hash))
-        .limit(1);
-
-      let row;
-
-      if (alias.length > 0) {
-        // Fetch by canonical ID
-        const results = await this.db
-          .select()
-          .from(htmlCache)
-          .where(
-            and(
-              eq(htmlCache.id, alias[0].canonicalId),
-              gt(htmlCache.expiresAt, new Date())
-            )
-          )
+      // Use circuit breaker for database operations
+      const result = await circuitBreaker.executeOrNull(async () => {
+        // First check if this is an alias
+        const alias = await this.db
+          .select({ canonicalId: htmlCacheAliases.canonicalId })
+          .from(htmlCacheAliases)
+          .where(eq(htmlCacheAliases.aliasUrlHash, hash))
           .limit(1);
-        row = results[0];
-      } else {
-        // Fetch by URL hash directly
-        const results = await this.db
-          .select()
-          .from(htmlCache)
-          .where(
-            and(
-              eq(htmlCache.urlHash, hash),
-              gt(htmlCache.expiresAt, new Date())
-            )
-          )
-          .limit(1);
-        row = results[0];
-      }
 
-      if (row) {
+        let row;
+
+        if (alias.length > 0) {
+          // Fetch by canonical ID
+          const results = await this.db
+            .select()
+            .from(htmlCache)
+            .where(
+              and(
+                eq(htmlCache.id, alias[0].canonicalId),
+                gt(htmlCache.expiresAt, new Date())
+              )
+            )
+            .limit(1);
+          row = results[0];
+        } else {
+          // Fetch by URL hash directly
+          const results = await this.db
+            .select()
+            .from(htmlCache)
+            .where(
+              and(
+                eq(htmlCache.urlHash, hash),
+                gt(htmlCache.expiresAt, new Date())
+              )
+            )
+            .limit(1);
+          row = results[0];
+        }
+
+        return row;
+      });
+
+      if (result) {
         this.hits++;
-        return this.rowToCachedPage(row);
+        return this.rowToCachedPage(result);
       }
 
       this.misses++;
       return null;
     } catch (error) {
       this.misses++;
-      console.error("[L3Cache] Get error:", error);
+      if (error instanceof CircuitOpenError) {
+        logger.debug("L3Cache get skipped - circuit open", { hash });
+      } else {
+        logger.error("L3Cache get error", { error: error instanceof Error ? error.message : String(error) });
+      }
       return null;
     } finally {
       this.totalLatencyMs += performance.now() - startTime;
@@ -129,54 +149,41 @@ export class L3Cache implements ICacheLevel {
   }
 
   async set(hash: string, page: CachedPage, ttlMs: number): Promise<void> {
+    const circuitBreaker = getDatabaseCircuitBreaker();
+
     try {
-      const compressedHtml = shouldCompress(page.html)
-        ? compressToBase64(page.html)
-        : page.html;
+      await circuitBreaker.executeOrNull(async () => {
+        const compressedHtml = shouldCompress(page.html)
+          ? compressToBase64(page.html)
+          : page.html;
 
-      const expiresAt = new Date(Date.now() + ttlMs);
+        const expiresAt = new Date(Date.now() + ttlMs);
 
-      // Check for content deduplication
-      const existingContent = await this.db
-        .select({ id: htmlCache.id, urlHash: htmlCache.urlHash })
-        .from(htmlCache)
-        .where(eq(htmlCache.contentHash, page.contentHash))
-        .limit(1);
+        // Check for content deduplication
+        const existingContent = await this.db
+          .select({ id: htmlCache.id, urlHash: htmlCache.urlHash })
+          .from(htmlCache)
+          .where(eq(htmlCache.contentHash, page.contentHash))
+          .limit(1);
 
-      if (existingContent.length > 0 && existingContent[0].urlHash !== hash) {
-        // Same content, different URL - create alias
+        if (existingContent.length > 0 && existingContent[0].urlHash !== hash) {
+          // Same content, different URL - create alias
+          await this.db
+            .insert(htmlCacheAliases)
+            .values({
+              aliasUrlHash: hash,
+              canonicalId: existingContent[0].id,
+            })
+            .onConflictDoNothing();
+          return;
+        }
+
+        // Insert or update the cache entry
         await this.db
-          .insert(htmlCacheAliases)
+          .insert(htmlCache)
           .values({
-            aliasUrlHash: hash,
-            canonicalId: existingContent[0].id,
-          })
-          .onConflictDoNothing();
-        return;
-      }
-
-      // Insert or update the cache entry
-      await this.db
-        .insert(htmlCache)
-        .values({
-          urlHash: hash,
-          url: page.etag ? `[hash:${hash}]` : `[hash:${hash}]`, // Placeholder URL
-          contentHash: page.contentHash,
-          htmlCompressed: compressedHtml,
-          compressionAlgo: shouldCompress(page.html) ? "gzip" : "none",
-          statusCode: page.statusCode,
-          pageSizeBytes: page.pageSizeBytes,
-          tierUsed: page.tierUsed,
-          fetchedAt: page.fetchedAt,
-          expiresAt,
-          etag: page.etag,
-          lastModified: page.lastModified,
-          contentType: page.contentType,
-          parsedData: page.parsedData,
-        })
-        .onConflictDoUpdate({
-          target: htmlCache.urlHash,
-          set: {
+            urlHash: hash,
+            url: page.etag ? `[hash:${hash}]` : `[hash:${hash}]`, // Placeholder URL
             contentHash: page.contentHash,
             htmlCompressed: compressedHtml,
             compressionAlgo: shouldCompress(page.html) ? "gzip" : "none",
@@ -189,10 +196,31 @@ export class L3Cache implements ICacheLevel {
             lastModified: page.lastModified,
             contentType: page.contentType,
             parsedData: page.parsedData,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: htmlCache.urlHash,
+            set: {
+              contentHash: page.contentHash,
+              htmlCompressed: compressedHtml,
+              compressionAlgo: shouldCompress(page.html) ? "gzip" : "none",
+              statusCode: page.statusCode,
+              pageSizeBytes: page.pageSizeBytes,
+              tierUsed: page.tierUsed,
+              fetchedAt: page.fetchedAt,
+              expiresAt,
+              etag: page.etag,
+              lastModified: page.lastModified,
+              contentType: page.contentType,
+              parsedData: page.parsedData,
+            },
+          });
+      });
     } catch (error) {
-      console.error("[L3Cache] Set error:", error);
+      if (error instanceof CircuitOpenError) {
+        logger.debug("L3Cache set skipped - circuit open", { hash });
+      } else {
+        logger.error("L3Cache set error", { error: error instanceof Error ? error.message : String(error) });
+      }
     }
   }
 

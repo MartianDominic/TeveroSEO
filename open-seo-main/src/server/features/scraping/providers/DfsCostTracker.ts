@@ -1,12 +1,14 @@
 /**
  * DataForSEO Cost Tracker
  * Phase 95: Unified Scraping Infrastructure - DataForSEO Optimization
+ * Phase 95-18: Resilience Hardening - Circuit Breaker Integration
  *
  * Tracks DataForSEO API costs for:
  * - Real-time cost monitoring
  * - Per-client/workspace attribution
  * - Daily aggregation for dashboard
  * - Budget enforcement
+ * - Circuit breaker protection for database operations (95-18)
  */
 
 import { eq, sql, and, gte, lte, sum, count, avg } from "drizzle-orm";
@@ -21,6 +23,14 @@ import {
   DFS_LIVE_COSTS,
 } from "@/db/dfs-cost-tracking-schema";
 import type { DfsUsageStats } from "./DataForSEOFetcher.types";
+import { getDatabaseCircuitBreaker, CircuitOpenError } from "../resilience/DatabaseCircuitBreaker";
+import { createComponentLogger } from "../logging";
+
+// =============================================================================
+// Logger
+// =============================================================================
+
+const logger = createComponentLogger("dfs-cost-tracker");
 
 // =============================================================================
 // Cost Tracker Service
@@ -34,9 +44,10 @@ export class DfsCostTracker {
 
   /**
    * Record a single API request cost.
+   * Uses circuit breaker for database operations (95-18).
    *
    * @param record - Cost record details
-   * @returns Inserted record ID
+   * @returns Inserted record ID, or -1 if circuit is open
    */
   async recordCost(record: {
     url: string;
@@ -56,29 +67,44 @@ export class DfsCostTracker {
     jobId?: string;
     taskId?: string;
   }): Promise<number> {
-    const [inserted] = await this.db
-      .insert(dfsCostRecords)
-      .values({
-        url: record.url,
-        domain: record.domain,
-        mode: record.mode,
-        usedStandardQueue: record.usedStandardQueue,
-        estimatedCost: record.estimatedCost,
-        actualCost: record.actualCost,
-        success: record.success,
-        statusCode: record.statusCode,
-        dfsErrorCode: record.dfsErrorCode,
-        errorMessage: record.errorMessage,
-        responseSizeBytes: record.responseSizeBytes,
-        responseTimeMs: record.responseTimeMs,
-        clientId: record.clientId,
-        workspaceId: record.workspaceId,
-        jobId: record.jobId,
-        taskId: record.taskId,
-      })
-      .returning({ id: dfsCostRecords.id });
+    const circuitBreaker = getDatabaseCircuitBreaker();
 
-    return inserted.id;
+    try {
+      const result = await circuitBreaker.executeOrDefault(async () => {
+        const [inserted] = await this.db
+          .insert(dfsCostRecords)
+          .values({
+            url: record.url,
+            domain: record.domain,
+            mode: record.mode,
+            usedStandardQueue: record.usedStandardQueue,
+            estimatedCost: record.estimatedCost,
+            actualCost: record.actualCost,
+            success: record.success,
+            statusCode: record.statusCode,
+            dfsErrorCode: record.dfsErrorCode,
+            errorMessage: record.errorMessage,
+            responseSizeBytes: record.responseSizeBytes,
+            responseTimeMs: record.responseTimeMs,
+            clientId: record.clientId,
+            workspaceId: record.workspaceId,
+            jobId: record.jobId,
+            taskId: record.taskId,
+          })
+          .returning({ id: dfsCostRecords.id });
+
+        return inserted.id;
+      }, -1);
+
+      if (result === -1) {
+        logger.debug("recordCost skipped - circuit open", { url: record.url });
+      }
+
+      return result;
+    } catch (error) {
+      logger.error("recordCost error", { url: record.url, error: error instanceof Error ? error.message : String(error) });
+      return -1;
+    }
   }
 
   /**
