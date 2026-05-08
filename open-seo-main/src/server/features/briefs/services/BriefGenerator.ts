@@ -2,6 +2,7 @@
  * Brief generator service for creating content briefs from SERP analysis.
  * Phase 36: Content Brief Generation
  * Phase 37-04: Voice constraints integration
+ * Phase 95 Gap Closure: Correlation ID propagation (GAP-B1, GAP-B3)
  */
 
 import { db } from "@/db";
@@ -19,6 +20,17 @@ import type { BriefRepository } from "./BriefRepository";
 import { voiceProfileService } from "@/server/features/voice/services/VoiceProfileService";
 import { buildVoiceConstraints } from "@/server/features/voice/services/VoiceConstraintBuilder";
 import { voiceComplianceService, type ComplianceScore } from "@/server/features/voice/services/VoiceComplianceService";
+import {
+  generateCorrelationId,
+  createComponentLogger,
+} from "@/server/features/scraping/logging";
+import {
+  loadMigrationFlagsCached,
+  shouldUseUnified,
+} from "@/server/features/scraping/config";
+import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
+
+const log = createComponentLogger("brief-generator");
 
 export interface BriefGeneratorInput {
   mappingId: string;
@@ -26,6 +38,10 @@ export interface BriefGeneratorInput {
   locationCode?: number;
   /** Client ID for voice profile lookup and cache isolation (required) */
   clientId: string;
+  /** Workspace ID for cost attribution */
+  workspaceId?: string;
+  /** Correlation ID for request tracing (auto-generated if not provided) */
+  correlationId?: string;
   /** Blend ratio with template (0.0 = pure client, 1.0 = pure template) */
   templateBlend?: number;
   /** Template ID for blending */
@@ -39,6 +55,10 @@ export interface GeneratedBrief {
   competitorAvgWordCount: number;
   /** Voice constraints for AI prompt injection */
   voiceConstraints?: string;
+  /** Correlation ID for end-to-end request tracing */
+  correlationId: string;
+  /** Total scraping cost in USD for this brief generation (GAP-B2) */
+  scrapingCostUsd: number;
 }
 
 export interface GeneratedBriefWithCompliance extends GeneratedBrief {
@@ -90,18 +110,35 @@ export async function previewSerp(
  * 3. Calculates target word count (avg + 20%)
  * 4. Loads voice profile and builds constraints (Phase 37-04)
  * 5. Creates brief in draft status
+ *
+ * Phase 95 Gap Closure: Added correlation ID propagation (GAP-B1, GAP-B3)
  */
 export async function generateBrief(
   input: BriefGeneratorInput,
   repository: BriefRepository
 ): Promise<GeneratedBrief> {
+  // Generate or use provided correlation ID for end-to-end tracing
+  const correlationId = input.correlationId ?? generateCorrelationId();
+
+  // Check migration flag for future unified brief generation routing
+  const flags = loadMigrationFlagsCached();
+  if (shouldUseUnified(flags.contentBriefs)) {
+    log.info(
+      { correlationId, mappingId: input.mappingId },
+      "Using unified brief generation path"
+    );
+  }
+
   const mapping = await validateMapping(input.mappingId);
 
+  // Propagate correlation ID to SERP analysis
   const serpAnalysis = await analyzeSerpForKeyword(
     input.clientId,
     input.mappingId,
     mapping.keyword,
-    input.locationCode ?? 2840
+    input.locationCode ?? 2840,
+    input.workspaceId,
+    correlationId
   );
 
   const avgWordCount =
@@ -133,12 +170,23 @@ export async function generateBrief(
     serpAnalysis,
   });
 
+  // GAP-B2: Query total scraping cost for this brief generation using mappingId as jobId
+  const costTracker = getDfsCostTracker(db);
+  const scrapingCostUsd = await costTracker.getJobTotalCost(input.mappingId);
+
+  log.info(
+    { correlationId, mappingId: input.mappingId, scrapingCostUsd },
+    "Brief generated with scraping cost"
+  );
+
   return {
     brief,
     suggestedH2s: serpAnalysis.commonH2s.map((h) => h.heading),
     paaQuestions: serpAnalysis.paaQuestions,
     competitorAvgWordCount: avgWordCount,
     voiceConstraints,
+    correlationId,
+    scrapingCostUsd,
   };
 }
 
