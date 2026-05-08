@@ -10,10 +10,7 @@ import {
   getClientIdFromSite,
   siteNotFoundResponse,
 } from "@/server/features/analytics/auth/analytics-auth";
-import {
-  getCannibalizationService,
-  getSeverityBreakdown,
-} from "@/server/features/analytics";
+import { getCannibalizationService } from "@/server/features/analytics";
 import {
   analyticsExpensiveRateLimiter,
   rateLimitExceededResponse,
@@ -50,7 +47,7 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
     const parsed = querySchema.safeParse(params);
     if (!parsed.success) {
       return Response.json(
-        { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+        { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
         { status: 400 }
       );
     }
@@ -64,22 +61,39 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
     const service = getCannibalizationService();
     const { siteId, query, startDate, endDate, minImpressions, limit, summaryOnly } = parsed.data;
 
+    // Use the unified detect() method with appropriate options
+    const detectionResult = await service.detect(siteId, {
+      startDate,
+      endDate,
+      minImpressions,
+      limit: summaryOnly ? 1000 : limit, // Use higher limit for summary-only mode
+      mode: 'stored',
+      persist: false,
+    });
+
     // Summary-only mode: just return severity breakdown
     if (summaryOnly) {
-      const breakdown = await getSeverityBreakdown(siteId);
       const response = Response.json({
         success: true,
         data: {
-          summary: breakdown,
+          summary: {
+            total: detectionResult.summary.total,
+            high: detectionResult.summary.bySeverity.high,
+            medium: detectionResult.summary.bySeverity.medium,
+            low: detectionResult.summary.bySeverity.low,
+            critical: detectionResult.summary.bySeverity.critical,
+          },
         },
       });
       return addRateLimitHeaders(response, rateLimitResult);
     }
 
-    // Specific query mode: get cannibalization details for one query
+    // Specific query mode: filter results for the specific query
     if (query) {
-      const result = await service.getCannibalizationForQuery(siteId, query);
-      if (!result) {
+      const matchingIssue = detectionResult.issues.find(
+        issue => issue.query.toLowerCase() === query.toLowerCase()
+      );
+      if (!matchingIssue) {
         const response = Response.json({
           success: true,
           data: {
@@ -92,34 +106,38 @@ export const Route = (createFileRoute as any)("/api/analytics/cannibalization")(
       const response = Response.json({
         success: true,
         data: {
-          issue: result,
+          issue: {
+            query: matchingIssue.query,
+            pages: matchingIssue.pages,
+            severity: matchingIssue.severity,
+            impactEstimate: matchingIssue.impactEstimate.dailyLostClicks,
+            recommendation: matchingIssue.recommendation.rationale,
+          },
         },
       });
       return addRateLimitHeaders(response, rateLimitResult);
     }
 
-    // Default mode: detect all cannibalization issues
-    const issues = await service.detectCannibalization(siteId, {
-      startDate,
-      endDate,
-      minImpressions,
-      limit,
-    });
-
-    // Calculate summary stats
-    const summary = {
-      total: issues.length,
-      high: issues.filter(i => i.severity === 'high').length,
-      medium: issues.filter(i => i.severity === 'medium').length,
-      low: issues.filter(i => i.severity === 'low').length,
-      totalImpactEstimate: issues.reduce((sum, i) => sum + i.impactEstimate, 0),
-    };
+    // Default mode: return all cannibalization issues
+    const issues = detectionResult.issues.map(issue => ({
+      query: issue.query,
+      pages: issue.pages,
+      severity: issue.severity,
+      impactEstimate: issue.impactEstimate.dailyLostClicks,
+      recommendation: issue.recommendation.rationale,
+    }));
 
     const response = Response.json({
       success: true,
       data: {
         issues,
-        summary,
+        summary: {
+          total: detectionResult.summary.total,
+          high: detectionResult.summary.bySeverity.high,
+          medium: detectionResult.summary.bySeverity.medium,
+          low: detectionResult.summary.bySeverity.low,
+          totalImpactEstimate: detectionResult.summary.totalMonthlyImpact,
+        },
       },
     });
     return addRateLimitHeaders(response, rateLimitResult);

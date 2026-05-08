@@ -6,7 +6,6 @@
 import { Folder, Hash, Settings, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import type { ContentGroupWithMetrics } from "@/server/features/analytics/types";
 import { Skeleton } from "@/client/components/ui/skeleton";
-import { CHART_COLORS } from "@/components/charts/chart-theme";
 
 interface ContentGroupCardProps {
   group: ContentGroupWithMetrics;

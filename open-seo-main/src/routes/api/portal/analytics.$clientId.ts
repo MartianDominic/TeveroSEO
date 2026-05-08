@@ -235,17 +235,19 @@ export const Route = (createFileRoute as any)("/api/portal/analytics/$clientId")
               }
 
               const cannibService = getCannibalizationService();
-              const issues = await cannibService.detectCannibalization(siteId, {
+              const detectionResult = await cannibService.detect(siteId, {
                 limit,
+                mode: 'stored',
+                persist: false,
               });
 
               rawData = {
-                issues: issues.slice(0, limit),
+                issues: detectionResult.issues.slice(0, limit),
                 summary: {
-                  total: issues.length,
-                  high: issues.filter((i) => i.severity === "high").length,
-                  medium: issues.filter((i) => i.severity === "medium").length,
-                  low: issues.filter((i) => i.severity === "low").length,
+                  total: detectionResult.summary.total,
+                  high: detectionResult.summary.bySeverity.high,
+                  medium: detectionResult.summary.bySeverity.medium,
+                  low: detectionResult.summary.bySeverity.low,
                 },
               };
               break;
@@ -278,12 +280,12 @@ export const Route = (createFileRoute as any)("/api/portal/analytics/$clientId")
               // Use backward-compatible functions that return raw data directly
               const cannibService = getCannibalizationService();
 
-              const [trendResult, cannibIssues, strikingResult] =
+              const [trendResult, cannibResult, strikingResult] =
                 await Promise.all([
                   analyzePageTrends(siteId, { periodDays }),
                   visibility.canViewCannibalization
-                    ? cannibService.detectCannibalization(siteId, { limit: 100 })
-                    : Promise.resolve([]),
+                    ? cannibService.detect(siteId, { limit: 100, mode: 'stored', persist: false })
+                    : Promise.resolve({ issues: [], summary: { total: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0 }, totalMonthlyImpact: 0, topPriorityIssues: [] }, metadata: { mode: 'stored' as const, dateRange: { start: '', end: '' }, queryCount: 0, executionTimeMs: 0 } }),
                   getStrikingDistancePages(siteId, {
                     minPosition: 11,
                     maxPosition: 20,
@@ -304,10 +306,8 @@ export const Route = (createFileRoute as any)("/api/portal/analytics/$clientId")
                 },
                 cannibalization: visibility.canViewCannibalization
                   ? {
-                      total: cannibIssues.length,
-                      highSeverity: cannibIssues.filter(
-                        (i) => i.severity === "high"
-                      ).length,
+                      total: cannibResult.summary.total,
+                      highSeverity: cannibResult.summary.bySeverity.high,
                     }
                   : null,
                 strikingDistance: {

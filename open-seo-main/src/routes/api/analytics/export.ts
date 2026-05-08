@@ -85,7 +85,7 @@ export const CsvRoute = (createFileRoute as any)("/api/analytics/export/csv")({
 
       if (!parsed.success) {
         return Response.json(
-          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))),
           { status: 400 }
         );
       }
@@ -257,7 +257,7 @@ export const SheetsRoute = (createFileRoute as any)("/api/analytics/export/sheet
 
       if (!parsed.success) {
         return Response.json(
-          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))),
           { status: 400 }
         );
       }

@@ -6,7 +6,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TopicClusterService } from "./TopicClusterService";
-import type { TopicClusterWithPages, ClusterGapAnalysis } from "../types";
 
 // Mock repository instance methods
 const mockRepo = {

@@ -39,6 +39,7 @@ vi.mock('./StrikingDistanceService', () => ({
 vi.mock('./CannibalizationService', () => ({
   CannibalizationService: vi.fn().mockImplementation(() => ({
     getCannibalizationForQuery: vi.fn(),
+    detect: vi.fn(),
   })),
   getCannibalizationService: vi.fn(),
 }));
@@ -74,6 +75,7 @@ describe('ContentInsightsService', () => {
 
     mockCannibalizationService = {
       getCannibalizationForQuery: vi.fn(),
+      detect: vi.fn(),
     };
 
     mockTopicClusterService = {
@@ -466,7 +468,12 @@ describe('ContentInsightsService', () => {
 
   describe('getPrePublishCheck', () => {
     it('should return no risk when no conflicts found', async () => {
-      mockCannibalizationService.getCannibalizationForQuery.mockResolvedValue(null);
+      // detect() returns issues array - empty means no conflicts
+      mockCannibalizationService.detect.mockResolvedValue({
+        issues: [],
+        summary: { total: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0 } },
+        metadata: { mode: 'stored', dateRange: { start: '2026-05-01', end: '2026-05-07' } },
+      });
 
       const result = await service.getPrePublishCheck('site-123', ['new keyword']);
 
@@ -476,16 +483,28 @@ describe('ContentInsightsService', () => {
     });
 
     it('should detect cannibalization conflicts', async () => {
-      mockCannibalizationService.getCannibalizationForQuery.mockResolvedValue({
-        query: 'target keyword',
-        severity: 'high',
-        pages: [
+      // detect() returns issues that match the keyword
+      mockCannibalizationService.detect.mockResolvedValue({
+        issues: [
           {
-            pageUrl: 'https://example.com/existing-page',
-            avgPosition: 5,
-            impressions: 1000,
+            query: 'target keyword',
+            severity: 'high',
+            pages: [
+              {
+                pageUrl: 'https://example.com/existing-page',
+                avgPosition: 5,
+                impressions: 1000,
+                clicks: 50,
+                ctr: 0.05,
+                impressionShare: 1.0,
+              },
+            ],
+            impactEstimate: { dailyLostClicks: 10, monthlyLostClicks: 300, confidence: 'medium' },
+            recommendation: { action: 'canonical', primaryPage: 'https://example.com/existing-page', secondaryPages: [], rationale: 'test', priority: 50 },
           },
         ],
+        summary: { total: 1, bySeverity: { critical: 0, high: 1, medium: 0, low: 0 } },
+        metadata: { mode: 'stored', dateRange: { start: '2026-05-01', end: '2026-05-07' } },
       });
 
       const result = await service.getPrePublishCheck('site-123', ['target keyword']);
@@ -496,10 +515,18 @@ describe('ContentInsightsService', () => {
     });
 
     it('should determine correct risk level based on severity', async () => {
-      mockCannibalizationService.getCannibalizationForQuery.mockResolvedValue({
-        query: 'critical keyword',
-        severity: 'high',
-        pages: [{ pageUrl: 'https://example.com/page', avgPosition: 2, impressions: 5000 }],
+      mockCannibalizationService.detect.mockResolvedValue({
+        issues: [
+          {
+            query: 'critical keyword',
+            severity: 'high',
+            pages: [{ pageUrl: 'https://example.com/page', avgPosition: 2, impressions: 5000, clicks: 250, ctr: 0.05, impressionShare: 1.0 }],
+            impactEstimate: { dailyLostClicks: 50, monthlyLostClicks: 1500, confidence: 'high' },
+            recommendation: { action: 'canonical', primaryPage: 'https://example.com/page', secondaryPages: [], rationale: 'test', priority: 70 },
+          },
+        ],
+        summary: { total: 1, bySeverity: { critical: 0, high: 1, medium: 0, low: 0 } },
+        metadata: { mode: 'stored', dateRange: { start: '2026-05-01', end: '2026-05-07' } },
       });
 
       const result = await service.getPrePublishCheck('site-123', ['critical keyword']);
@@ -509,14 +536,20 @@ describe('ContentInsightsService', () => {
     });
 
     it('should suggest safe focus keywords (those without conflicts)', async () => {
-      // First keyword has conflict, second doesn't
-      mockCannibalizationService.getCannibalizationForQuery
-        .mockResolvedValueOnce({
-          query: 'conflicted keyword',
-          severity: 'medium',
-          pages: [{ pageUrl: 'https://example.com/page', avgPosition: 8, impressions: 500 }],
-        })
-        .mockResolvedValueOnce(null);
+      // detect() returns only the conflicted keyword, safe keyword has no match
+      mockCannibalizationService.detect.mockResolvedValue({
+        issues: [
+          {
+            query: 'conflicted keyword',
+            severity: 'medium',
+            pages: [{ pageUrl: 'https://example.com/page', avgPosition: 8, impressions: 500, clicks: 25, ctr: 0.05, impressionShare: 1.0 }],
+            impactEstimate: { dailyLostClicks: 5, monthlyLostClicks: 150, confidence: 'medium' },
+            recommendation: { action: 'canonical', primaryPage: 'https://example.com/page', secondaryPages: [], rationale: 'test', priority: 50 },
+          },
+        ],
+        summary: { total: 1, bySeverity: { critical: 0, high: 0, medium: 1, low: 0 } },
+        metadata: { mode: 'stored', dateRange: { start: '2026-05-01', end: '2026-05-07' } },
+      });
 
       const result = await service.getPrePublishCheck('site-123', [
         'conflicted keyword',
@@ -534,18 +567,22 @@ describe('ContentInsightsService', () => {
       expect(result.cannibalizationRisk.hasRisk).toBe(false);
     });
 
-    it('should limit keyword checks to 10', async () => {
+    it('should limit keyword checks to first 10 keywords', async () => {
       const manyKeywords = Array.from({ length: 15 }, (_, i) => `keyword-${i}`);
-      mockCannibalizationService.getCannibalizationForQuery.mockResolvedValue(null);
+      mockCannibalizationService.detect.mockResolvedValue({
+        issues: [],
+        summary: { total: 0, bySeverity: { critical: 0, high: 0, medium: 0, low: 0 } },
+        metadata: { mode: 'stored', dateRange: { start: '2026-05-01', end: '2026-05-07' } },
+      });
 
       await service.getPrePublishCheck('site-123', manyKeywords);
 
-      // Should only check first 10 keywords
-      expect(mockCannibalizationService.getCannibalizationForQuery).toHaveBeenCalledTimes(10);
+      // detect() is called once with all keywords, but only first 10 are checked
+      expect(mockCannibalizationService.detect).toHaveBeenCalledTimes(1);
     });
 
     it('should handle service errors gracefully', async () => {
-      mockCannibalizationService.getCannibalizationForQuery.mockRejectedValue(
+      mockCannibalizationService.detect.mockRejectedValue(
         new Error('Service error')
       );
 

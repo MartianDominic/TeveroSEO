@@ -25,6 +25,7 @@ import {
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
 import { csrfProtect } from "@/server/middleware/csrf";
+import { validationErrorResponse } from "@/server/lib/api-response";
 
 const statsQuerySchema = z.object({
   siteId: z.string(),
@@ -32,19 +33,19 @@ const statsQuerySchema = z.object({
 
 const inspectBodySchema = z.object({
   siteId: z.string(),
-  siteUrl: z.string().url(),
-  pageUrl: z.string().url(),
+  siteUrl: z.url(),
+  pageUrl: z.url(),
 });
 
 const batchInspectBodySchema = z.object({
   siteId: z.string(),
-  siteUrl: z.string().url(),
-  urls: z.array(z.string().url()).min(1).max(100),
+  siteUrl: z.url(),
+  urls: z.array(z.url()).min(1).max(100),
 });
 
 const requestIndexingBodySchema = z.object({
   siteId: z.string(),
-  pageUrl: z.string().url(),
+  pageUrl: z.url(),
   requestType: z.enum(["URL_UPDATED", "URL_DELETED"]),
 });
 
@@ -84,10 +85,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
       if (url.pathname.endsWith("/quota")) {
         const parsed = statsQuerySchema.safeParse(params);
         if (!parsed.success) {
-          return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-            { status: 400 }
-          );
+          return validationErrorResponse(parsed.error);
         }
 
         const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
@@ -104,10 +102,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
       if (url.pathname.endsWith("/priority")) {
         const parsed = priorityQuerySchema.safeParse(params);
         if (!parsed.success) {
-          return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-            { status: 400 }
-          );
+          return validationErrorResponse(parsed.error);
         }
 
         const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
@@ -126,10 +121,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
       // Coverage stats
       const parsed = statsQuerySchema.safeParse(params);
       if (!parsed.success) {
-        return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-          { status: 400 }
-        );
+        return validationErrorResponse(parsed.error);
       }
 
       const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
@@ -160,10 +152,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
 
         const parsed = inspectBodySchema.safeParse(body);
         if (!parsed.success) {
-          return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-            { status: 400 }
-          );
+          return validationErrorResponse(parsed.error);
         }
 
         const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
@@ -206,10 +195,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
 
         const parsed = batchInspectBodySchema.safeParse(body);
         if (!parsed.success) {
-          return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-            { status: 400 }
-          );
+          return validationErrorResponse(parsed.error);
         }
 
         const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);
@@ -246,10 +232,7 @@ export const Route = (createFileRoute as any)("/api/analytics/index-coverage")({
 
         const parsed = requestIndexingBodySchema.safeParse(body);
         if (!parsed.success) {
-          return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-            { status: 400 }
-          );
+          return validationErrorResponse(parsed.error);
         }
 
         const siteVerified = await verifySiteOwnership(parsed.data.siteId, auth.workspaceId);

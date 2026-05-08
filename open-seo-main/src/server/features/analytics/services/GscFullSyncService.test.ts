@@ -160,7 +160,8 @@ describe("GscFullSyncService", () => {
         siteId: "site-123",
         rowsInserted: 0,
       });
-      expect(result.durationMs).toBeGreaterThan(0);
+      // durationMs can be 0 in fast test environments
+      expect(result.durationMs).toBeGreaterThanOrEqual(0);
     });
 
     it("should increment Redis quota counter per site per day", async () => {

@@ -28,8 +28,11 @@ export type ContentType =
   | "dynamic"
   | "generic";
 
-/** Compression algorithm */
-export type CompressionAlgo = "lz4" | "zstd" | "none";
+/**
+ * Compression algorithm.
+ * Note: Only 'gzip' and 'none' are implemented. Uses fflate for gzip compression.
+ */
+export type CompressionAlgo = "gzip" | "none";
 
 // =============================================================================
 // Cached Page Types
@@ -187,7 +190,7 @@ export interface L2CacheConfig {
   /** Whether to enable compression (default: true) */
   compressionEnabled: boolean;
 
-  /** Compression algorithm (default: 'lz4') */
+  /** Compression algorithm (default: 'gzip') */
   compressionAlgo: CompressionAlgo;
 
   /** Key prefix (default: 'cache:') */
@@ -201,7 +204,7 @@ export interface L3CacheConfig {
   /** Retention period in days (default: 30) */
   retentionDays: number;
 
-  /** Compression algorithm (default: 'lz4') */
+  /** Compression algorithm (default: 'gzip') */
   compressionAlgo: CompressionAlgo;
 
   /** Batch size for bulk operations (default: 100) */
@@ -218,7 +221,7 @@ export interface L4CacheConfig {
   /** Retention period in days (default: 90) */
   retentionDays: number;
 
-  /** Compression algorithm (default: 'zstd') */
+  /** Compression algorithm (default: 'gzip') */
   compressionAlgo: CompressionAlgo;
 
   /** Cloudflare account ID */

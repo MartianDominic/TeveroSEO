@@ -38,6 +38,7 @@ const geminiCircuitBreaker = new CircuitBreaker({
   timeout: 120000, // 2 minutes
   successThreshold: 1,
   volumeThreshold: 1,
+  halfOpenMaxRequests: 3,
 });
 
 // --- Lithuanian Terminology ---

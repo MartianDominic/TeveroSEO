@@ -21,11 +21,13 @@ import { DomainLearningService } from "./DomainLearningService";
 import { CacheManager, createCacheManager, type CacheStats } from "./cache";
 import { QueueManager, getQueueManager, type EnqueueResult } from "./queue";
 import type { ScrapeTier } from "@/db/domain-scrape-learning-schema";
+import { domainScrapeHistory, SCRAPE_TIERS, TIER_COSTS } from "@/db/domain-scrape-learning-schema";
 import {
   loadMigrationFlagsCached,
   type ScrapingMigrationFlags,
   type ScrapingFeature,
 } from "./config";
+import { and, gte, lte, sql, desc } from "drizzle-orm";
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
 import { AlertManager } from "./monitoring/AlertManager";
@@ -38,6 +40,31 @@ import {
   logScrapeComplete,
   logScrapeError,
 } from "./logging";
+import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
+import { AppError } from "@/server/lib/errors";
+
+// =============================================================================
+// SSRF Protection Error
+// =============================================================================
+
+/**
+ * Error thrown when a URL is blocked due to SSRF protection.
+ * This prevents scraping of internal network resources, localhost,
+ * cloud metadata endpoints, and DNS rebinding attacks.
+ */
+export class SSRFBlockedError extends Error {
+  public readonly url: string;
+  public readonly code = "SSRF_BLOCKED";
+
+  constructor(url: string, reason?: string) {
+    const message = reason
+      ? `SSRF protection: URL blocked - ${reason}`
+      : `SSRF protection: URL "${url}" targets a blocked address (private IP, localhost, or metadata endpoint)`;
+    super(message);
+    this.name = "SSRFBlockedError";
+    this.url = url;
+  }
+}
 
 // =============================================================================
 // Types
@@ -294,8 +321,31 @@ export class ScrapingService {
 
   /**
    * Scrape a single URL using the optimal strategy.
+   *
+   * SECURITY: URL is validated against SSRF attacks before any network request.
+   * Blocks private IPs (10.x, 172.16-31.x, 192.168.x), localhost, metadata endpoints,
+   * and DNS rebinding attacks via DoH resolution.
    */
   async scrape(url: string, options: ScrapeOptions = {}): Promise<ScrapeResult> {
+    if (!this.isInitialized()) {
+      throw new Error('ScrapingService not initialized. Call initialize() first before scraping.');
+    }
+
+    // SSRF Protection: Validate URL before any network request
+    // This blocks private IPs, localhost, cloud metadata endpoints, and DNS rebinding
+    try {
+      await normalizeAndValidateStartUrl(url);
+    } catch (error) {
+      if (error instanceof AppError && error.code === 'CRAWL_TARGET_BLOCKED') {
+        logger.warn({ url }, 'SSRF protection: blocked URL targeting internal/private address');
+        throw new SSRFBlockedError(url, 'URL targets a blocked internal address');
+      }
+      if (error instanceof AppError && error.code === 'VALIDATION_ERROR') {
+        throw new SSRFBlockedError(url, 'Invalid URL format');
+      }
+      throw error;
+    }
+
     const correlationId = options.correlationId ?? generateCorrelationId();
     const startTime = Date.now();
 
@@ -402,6 +452,10 @@ export class ScrapingService {
     urls: string[],
     options: BatchScrapeOptions = {}
   ): Promise<BatchScrapeResult> {
+    if (!this.isInitialized()) {
+      throw new Error('ScrapingService not initialized. Call initialize() first before scraping.');
+    }
+
     const startTime = Date.now();
     const concurrency = options.concurrency ?? 10;
     const results: ScrapeResult[] = [];
@@ -474,6 +528,10 @@ export class ScrapingService {
     urls: string[],
     options: CrawlOptions = {}
   ): Promise<BatchScrapeResult> {
+    if (!this.isInitialized()) {
+      throw new Error('ScrapingService not initialized. Call initialize() first before scraping.');
+    }
+
     const maxPages = options.maxPages ?? 10000;
     const limitedUrls = urls.slice(0, maxPages);
 
@@ -486,19 +544,39 @@ export class ScrapingService {
 
   /**
    * Warm the cache with URLs (pre-fetch without immediate need).
+   *
+   * SECURITY: All URLs are validated against SSRF attacks before any network request.
    */
   async warmCache(urls: string[]): Promise<{
     warmed: number;
     alreadyCached: number;
     failed: number;
+    blocked: number;
   }> {
     let warmed = 0;
     let alreadyCached = 0;
     let failed = 0;
+    let blocked = 0;
 
-    // Check which URLs are already cached
-    const uncachedUrls: string[] = [];
+    // SSRF Protection: Pre-validate all URLs before any network request
+    const validUrls: string[] = [];
     for (const url of urls) {
+      try {
+        await normalizeAndValidateStartUrl(url);
+        validUrls.push(url);
+      } catch (error) {
+        if (error instanceof AppError && (error.code === 'CRAWL_TARGET_BLOCKED' || error.code === 'VALIDATION_ERROR')) {
+          logger.warn({ url }, 'SSRF protection: blocked URL in cache warming');
+          blocked++;
+        } else {
+          failed++;
+        }
+      }
+    }
+
+    // Check which validated URLs are already cached
+    const uncachedUrls: string[] = [];
+    for (const url of validUrls) {
       if (this.cacheManager) {
         const cached = await this.cacheManager.get(url);
         if (cached.hit) {
@@ -526,7 +604,7 @@ export class ScrapingService {
       }
     }
 
-    return { warmed, alreadyCached, failed };
+    return { warmed, alreadyCached, failed, blocked };
   }
 
   /**
@@ -642,54 +720,196 @@ export class ScrapingService {
 
   /**
    * Get cost report for a time period or date range.
+   * Aggregates actual cost data from domainScrapeHistory table.
    */
   async getCostReport(periodOrOptions: "day" | "week" | "month" | { start?: Date; end?: Date }): Promise<CostReport> {
-    // Handle overloaded signature
-    if (typeof periodOrOptions === 'object') {
-      // For now, default to 'day' when called with date range
-      const period = 'day';
-      periodOrOptions = period;
-    }
-    const period = periodOrOptions as "day" | "week" | "month";
     const now = new Date();
     let startDate: Date;
+    let period: "day" | "week" | "month";
 
-    switch (period) {
-      case "day":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "week":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
+    // Handle overloaded signature
+    if (typeof periodOrOptions === 'object') {
+      startDate = periodOrOptions.start ?? new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      period = 'day'; // Default period label for custom range
+    } else {
+      period = periodOrOptions;
+      switch (period) {
+        case "day":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "week":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+      }
     }
 
-    // This would query from domain_scrape_history table
-    // For now, return placeholder
-    return {
-      period,
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: now.toISOString().split("T")[0],
-      totalCostUsd: 0,
-      totalRequests: 0,
-      avgCostPerRequest: 0,
-      byTier: {
-        direct: { requests: 0, costUsd: 0 },
-        webshare: { requests: 0, costUsd: 0 },
-        geonode: { requests: 0, costUsd: 0 },
-        camoufox: { requests: 0, costUsd: 0 },
-        dfs_basic: { requests: 0, costUsd: 0 },
-        dfs_js: { requests: 0, costUsd: 0 },
-        dfs_browser: { requests: 0, costUsd: 0 },
-      },
-      byFeature: {},
-      byClient: {},
-      topDomains: [],
-      savingsVsLegacy: 0,
-      savingsPercent: 0,
+    const endDate = typeof periodOrOptions === 'object' && periodOrOptions.end
+      ? periodOrOptions.end
+      : now;
+
+    // Initialize empty result structure
+    const byTier: Record<ScrapeTier, { requests: number; costUsd: number }> = {
+      direct: { requests: 0, costUsd: 0 },
+      webshare: { requests: 0, costUsd: 0 },
+      geonode: { requests: 0, costUsd: 0 },
+      camoufox: { requests: 0, costUsd: 0 },
+      dfs_basic: { requests: 0, costUsd: 0 },
+      dfs_js: { requests: 0, costUsd: 0 },
+      dfs_browser: { requests: 0, costUsd: 0 },
     };
+    const byClient: Record<string, { requests: number; costUsd: number }> = {};
+    const topDomains: Array<{ domain: string; requests: number; costUsd: number }> = [];
+
+    // If database is not initialized, return empty report
+    if (!this.db) {
+      logger.warn({}, 'getCostReport: Database not initialized, returning empty report');
+      return {
+        period,
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        totalCostUsd: 0,
+        totalRequests: 0,
+        avgCostPerRequest: 0,
+        byTier,
+        byFeature: {},
+        byClient,
+        topDomains,
+        savingsVsLegacy: 0,
+        savingsPercent: 0,
+      };
+    }
+
+    try {
+      // Query 1: Aggregate by tier
+      const tierResults = await this.db
+        .select({
+          tier: domainScrapeHistory.tier,
+          totalCost: sql<string>`COALESCE(SUM(${domainScrapeHistory.costUsd}), 0)`,
+          totalRequests: sql<string>`COUNT(*)`,
+        })
+        .from(domainScrapeHistory)
+        .where(
+          and(
+            gte(domainScrapeHistory.attemptedAt, startDate),
+            lte(domainScrapeHistory.attemptedAt, endDate)
+          )
+        )
+        .groupBy(domainScrapeHistory.tier);
+
+      // Populate byTier from results
+      for (const row of tierResults) {
+        const tier = row.tier as ScrapeTier;
+        if (tier in byTier) {
+          byTier[tier] = {
+            requests: Number(row.totalRequests),
+            costUsd: Number(row.totalCost),
+          };
+        }
+      }
+
+      // Query 2: Aggregate by client
+      const clientResults = await this.db
+        .select({
+          clientId: domainScrapeHistory.clientId,
+          totalCost: sql<string>`COALESCE(SUM(${domainScrapeHistory.costUsd}), 0)`,
+          totalRequests: sql<string>`COUNT(*)`,
+        })
+        .from(domainScrapeHistory)
+        .where(
+          and(
+            gte(domainScrapeHistory.attemptedAt, startDate),
+            lte(domainScrapeHistory.attemptedAt, endDate)
+          )
+        )
+        .groupBy(domainScrapeHistory.clientId);
+
+      // Populate byClient from results
+      for (const row of clientResults) {
+        if (row.clientId) {
+          byClient[row.clientId] = {
+            requests: Number(row.totalRequests),
+            costUsd: Number(row.totalCost),
+          };
+        }
+      }
+
+      // Query 3: Top domains by cost
+      const domainResults = await this.db
+        .select({
+          domain: domainScrapeHistory.domain,
+          totalCost: sql<string>`COALESCE(SUM(${domainScrapeHistory.costUsd}), 0)`,
+          totalRequests: sql<string>`COUNT(*)`,
+        })
+        .from(domainScrapeHistory)
+        .where(
+          and(
+            gte(domainScrapeHistory.attemptedAt, startDate),
+            lte(domainScrapeHistory.attemptedAt, endDate)
+          )
+        )
+        .groupBy(domainScrapeHistory.domain)
+        .orderBy(desc(sql`SUM(${domainScrapeHistory.costUsd})`))
+        .limit(10);
+
+      // Populate topDomains from results
+      for (const row of domainResults) {
+        topDomains.push({
+          domain: row.domain,
+          requests: Number(row.totalRequests),
+          costUsd: Number(row.totalCost),
+        });
+      }
+
+      // Calculate totals
+      const totalCostUsd = Object.values(byTier).reduce((sum, t) => sum + t.costUsd, 0);
+      const totalRequests = Object.values(byTier).reduce((sum, t) => sum + t.requests, 0);
+      const avgCostPerRequest = totalRequests > 0 ? totalCostUsd / totalRequests : 0;
+
+      // Calculate savings vs legacy (assuming legacy used dfs_browser for everything)
+      // Legacy cost = totalRequests * dfs_browser cost per request
+      const legacyCost = totalRequests * TIER_COSTS.dfs_browser;
+      const savingsVsLegacy = legacyCost - totalCostUsd;
+      const savingsPercent = legacyCost > 0 ? (savingsVsLegacy / legacyCost) * 100 : 0;
+
+      return {
+        period,
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        totalCostUsd,
+        totalRequests,
+        avgCostPerRequest,
+        byTier,
+        byFeature: {}, // Feature tracking not stored in history table currently
+        byClient,
+        topDomains,
+        savingsVsLegacy,
+        savingsPercent,
+      };
+    } catch (error) {
+      logger.error(
+        { error: error instanceof Error ? error.message : String(error) },
+        'getCostReport: Failed to aggregate cost data'
+      );
+
+      // Return empty report on error
+      return {
+        period,
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        totalCostUsd: 0,
+        totalRequests: 0,
+        avgCostPerRequest: 0,
+        byTier,
+        byFeature: {},
+        byClient,
+        topDomains,
+        savingsVsLegacy: 0,
+        savingsPercent: 0,
+      };
+    }
   }
 
   /**

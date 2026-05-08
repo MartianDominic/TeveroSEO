@@ -45,6 +45,18 @@ export interface AlertChannelHandler {
 }
 
 /**
+ * Cache hit rate metrics for tier-specific alerting.
+ */
+export interface CacheHitRateMetrics {
+  /** L1 (in-memory) cache hit rate (0-1) */
+  l1HitRate?: number;
+  /** L2 (Redis) cache hit rate (0-1) */
+  l2HitRate?: number;
+  /** Total cache hit rate (0-1) - combined L1 + L2 */
+  totalHitRate?: number;
+}
+
+/**
  * Alert thresholds for threshold-based alert methods.
  */
 export interface AlertThresholds {
@@ -64,12 +76,22 @@ export interface AlertThresholds {
   costDailyCritical: number;
   /** OBS-03: Alert if DLQ job count exceeds threshold */
   dlqCountWarning: number;
+  /** OBS-03: Critical alert if DLQ job count exceeds threshold */
+  dlqCountCritical: number;
   /** OBS-03: Alert if DLQ growth exceeds percentage in 1 hour */
   dlqGrowthPercentWarning: number;
   /** OBS-04: Alert if heap memory usage exceeds percentage */
   memoryPressureWarning: number;
   /** OBS-04: Critical if heap memory usage exceeds percentage */
   memoryPressureCritical: number;
+  /** L1 cache (in-memory) hit rate warning threshold (0-1) */
+  cacheL1HitRateWarning: number;
+  /** L2 cache (Redis) hit rate warning threshold (0-1) */
+  cacheL2HitRateWarning: number;
+  /** Total cache hit rate warning threshold (0-1) */
+  cacheTotalHitRateWarning: number;
+  /** Total cache hit rate critical threshold (0-1) - significant cost impact */
+  cacheTotalHitRateCritical: number;
 }
 
 /**
@@ -85,10 +107,16 @@ export const DEFAULT_THRESHOLDS: AlertThresholds = {
   costDailyCritical: 80,
   // OBS-03: DLQ growth thresholds
   dlqCountWarning: 100,
+  dlqCountCritical: 500,
   dlqGrowthPercentWarning: 50,
   // OBS-04: Memory pressure thresholds (percentage of heap)
   memoryPressureWarning: 85,
   memoryPressureCritical: 95,
+  // Cache hit rate thresholds (0-1 range)
+  cacheL1HitRateWarning: 0.60,
+  cacheL2HitRateWarning: 0.50,
+  cacheTotalHitRateWarning: 0.50,
+  cacheTotalHitRateCritical: 0.30,
 };
 
 export interface AlertManagerConfig {
@@ -222,20 +250,69 @@ export class AlertManager {
       runbook: '#circuit-breaker-open',
     });
 
-    // Cache health alerts
+    // Cache health alerts - Tier-specific with trend detection
+    // L1 (in-memory) cache - fastest, should maintain high hit rate
     this.registerAlert({
-      name: 'cache-hit-rate-low',
+      name: 'cache-l1-hit-rate-low',
       condition: {
-        metric: 'cache.hit_rate',
+        metric: 'cache.l1_hit_rate',
         operator: '<',
-        threshold: 0.5,
-        window: 3600,
+        threshold: this.thresholds.cacheL1HitRateWarning,
+        window: 1800, // 30 min window for sustained low hit rate
         aggregation: 'avg',
       },
       severity: 'warning',
       channels: ['slack'],
-      cooldown: 3600,
-      runbook: '#low-cache-hit-rate',
+      cooldown: 1800, // 30 min cooldown
+      runbook: '#cache-optimization',
+    });
+
+    // L2 (Redis) cache - shared across instances
+    this.registerAlert({
+      name: 'cache-l2-hit-rate-low',
+      condition: {
+        metric: 'cache.l2_hit_rate',
+        operator: '<',
+        threshold: this.thresholds.cacheL2HitRateWarning,
+        window: 1800, // 30 min window for sustained low hit rate
+        aggregation: 'avg',
+      },
+      severity: 'warning',
+      channels: ['slack'],
+      cooldown: 1800, // 30 min cooldown
+      runbook: '#cache-optimization',
+    });
+
+    // Total cache hit rate warning - combined L1 + L2
+    this.registerAlert({
+      name: 'cache-total-hit-rate-warning',
+      condition: {
+        metric: 'cache.total_hit_rate',
+        operator: '<',
+        threshold: this.thresholds.cacheTotalHitRateWarning,
+        window: 3600, // 1 hour window
+        aggregation: 'avg',
+      },
+      severity: 'warning',
+      channels: ['slack'],
+      cooldown: 3600, // 1 hour cooldown
+      runbook: '#cache-optimization',
+    });
+
+    // Total cache hit rate critical - significant cost impact
+    this.registerAlert({
+      name: 'cache-total-hit-rate-critical',
+      condition: {
+        metric: 'cache.total_hit_rate',
+        operator: '<',
+        threshold: this.thresholds.cacheTotalHitRateCritical,
+        window: 900, // 15 min window - faster detection for critical
+        aggregation: 'avg',
+      },
+      severity: 'critical',
+      channels: ['slack', 'pagerduty'],
+      cooldown: 900, // 15 min cooldown for critical
+      runbook: '#cache-emergency',
     });
 
     // Queue health alerts
@@ -283,7 +360,16 @@ export class AlertManager {
       severity: 'warning',
       channels: ['slack'],
       cooldown: 3600, // 1 hour cooldown to avoid spam
-      runbook: '#dlq-growth',
+      runbook: '#dlq-remediation',
+    });
+
+    this.registerAlert({
+      name: 'dlq-count-critical',
+      condition: { metric: 'dlq.job_count', operator: '>', threshold: this.thresholds.dlqCountCritical },
+      severity: 'critical',
+      channels: ['slack', 'pagerduty'],
+      cooldown: 1800, // 30 minute cooldown for critical
+      runbook: '#dlq-remediation',
     });
 
     this.registerAlert({
@@ -523,7 +609,7 @@ export class AlertManager {
     const now = Date.now();
     const oneHourMs = 60 * 60 * 1000;
 
-    // Check absolute count threshold
+    // Check absolute count thresholds (warning at 100, critical at 500)
     if (currentCount >= this.thresholds.dlqCountWarning) {
       await this.evaluate({
         'dlq.job_count': currentCount,
@@ -591,6 +677,67 @@ export class AlertManager {
       await this.evaluate({
         'memory.heap_used_percent': heapUsedPercent,
       });
+    }
+  }
+
+  // ===========================================================================
+  // Cache Hit Rate Monitoring
+  // ===========================================================================
+
+  /**
+   * Check cache hit rates with tier-specific thresholds.
+   * Alerts on sustained low hit rates to detect memory pressure (L1),
+   * Redis capacity issues (L2), or general cache inefficiency (total).
+   *
+   * @param metrics - Cache hit rate metrics by tier
+   */
+  async checkCacheHitRates(metrics: CacheHitRateMetrics): Promise<void> {
+    const metricsSnapshot: MetricsSnapshot = {};
+
+    // L1 cache (in-memory) - alert if below 60%
+    if (metrics.l1HitRate !== undefined) {
+      metricsSnapshot['cache.l1_hit_rate'] = metrics.l1HitRate;
+
+      if (metrics.l1HitRate < this.thresholds.cacheL1HitRateWarning) {
+        alertLogger.debug({
+          l1HitRate: (metrics.l1HitRate * 100).toFixed(1),
+          threshold: (this.thresholds.cacheL1HitRateWarning * 100).toFixed(1),
+        }, 'L1 cache hit rate below threshold - check memory pressure');
+      }
+    }
+
+    // L2 cache (Redis) - alert if below 50%
+    if (metrics.l2HitRate !== undefined) {
+      metricsSnapshot['cache.l2_hit_rate'] = metrics.l2HitRate;
+
+      if (metrics.l2HitRate < this.thresholds.cacheL2HitRateWarning) {
+        alertLogger.debug({
+          l2HitRate: (metrics.l2HitRate * 100).toFixed(1),
+          threshold: (this.thresholds.cacheL2HitRateWarning * 100).toFixed(1),
+        }, 'L2 cache hit rate below threshold - check Redis capacity');
+      }
+    }
+
+    // Total cache hit rate - combined metric
+    if (metrics.totalHitRate !== undefined) {
+      metricsSnapshot['cache.total_hit_rate'] = metrics.totalHitRate;
+
+      if (metrics.totalHitRate < this.thresholds.cacheTotalHitRateCritical) {
+        alertLogger.warn({
+          totalHitRate: (metrics.totalHitRate * 100).toFixed(1),
+          threshold: (this.thresholds.cacheTotalHitRateCritical * 100).toFixed(1),
+        }, 'Total cache hit rate critically low - significant cost impact');
+      } else if (metrics.totalHitRate < this.thresholds.cacheTotalHitRateWarning) {
+        alertLogger.debug({
+          totalHitRate: (metrics.totalHitRate * 100).toFixed(1),
+          threshold: (this.thresholds.cacheTotalHitRateWarning * 100).toFixed(1),
+        }, 'Total cache hit rate below threshold');
+      }
+    }
+
+    // Only evaluate if any metric is below threshold
+    if (Object.keys(metricsSnapshot).length > 0) {
+      await this.evaluate(metricsSnapshot);
     }
   }
 }

@@ -529,7 +529,7 @@ describe("CircuitBreaker", () => {
       customBreaker.recordFailure();
 
       // Allow microtask to run
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       expect(onStateChange).toHaveBeenCalledOnce();
       expect(onStateChange).toHaveBeenCalledWith(
@@ -553,7 +553,7 @@ describe("CircuitBreaker", () => {
       customBreaker.recordFailure();
       customBreaker.recordFailure();
 
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       const transition = onStateChange.mock.calls[0][0];
       expect(transition.stats).toBeDefined();
@@ -571,13 +571,13 @@ describe("CircuitBreaker", () => {
 
       // Open circuit
       customBreaker.recordFailure();
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       // Advance time and transition to half_open
       vi.advanceTimersByTime(5000);
       customBreaker.state; // Trigger state check
 
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       // Should have two transitions: closed->open, open->half_open
       expect(onStateChange).toHaveBeenCalledTimes(2);
@@ -684,7 +684,7 @@ describe("CircuitBreaker", () => {
       expect(() => customBreaker.recordFailure()).not.toThrow();
 
       // Allow microtask to run
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       expect(throwingCallback).toHaveBeenCalled();
       // Circuit should still be open
@@ -701,28 +701,28 @@ describe("CircuitBreaker", () => {
 
       // threshold_reached
       customBreaker.recordFailure();
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
       expect(onStateChange.mock.calls[0][0].reason).toBe("threshold_reached");
 
       // timeout_elapsed
       vi.advanceTimersByTime(1000);
       customBreaker.state;
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
       expect(onStateChange.mock.calls[1][0].reason).toBe("timeout_elapsed");
 
       // recovery_success
       await customBreaker.execute(vi.fn().mockResolvedValue("ok"));
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
       expect(onStateChange.mock.calls[2][0].reason).toBe("recovery_success");
 
       // manual_trip
       customBreaker.trip();
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
       expect(onStateChange.mock.calls[3][0].reason).toBe("manual_trip");
 
       // manual_reset
       customBreaker.reset();
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
       expect(onStateChange.mock.calls[4][0].reason).toBe("manual_reset");
     });
 
@@ -746,15 +746,15 @@ describe("CircuitBreaker", () => {
         customBreaker.execute(vi.fn().mockRejectedValue(new Error("fail")))
       ).rejects.toThrow();
 
-      await new Promise((resolve) => queueMicrotask(resolve));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 
       // Find the recovery_failure transition
       const recoveryFailureCall = onStateChange.mock.calls.find(
         (call) => call[0].reason === "recovery_failure"
       );
       expect(recoveryFailureCall).toBeDefined();
-      expect(recoveryFailureCall[0].fromState).toBe("half_open");
-      expect(recoveryFailureCall[0].toState).toBe("open");
+      expect(recoveryFailureCall![0].fromState).toBe("half_open");
+      expect(recoveryFailureCall![0].toState).toBe("open");
     });
   });
 });

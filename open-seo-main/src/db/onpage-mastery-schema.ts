@@ -181,6 +181,12 @@ export const pageQualityScores = pgTable(
     passedChecks: jsonb("passed_checks").$type<string[]>().default([]),
     failedChecks: jsonb("failed_checks").$type<string[]>().default([]),
 
+    // Scraping metadata for traceability
+    scrapeTier: text("scrape_tier"), // 'direct', 'webshare', 'geonode', 'dfs_basic', etc.
+    scrapeFromCache: boolean("scrape_from_cache"),
+    scrapeCostUsd: real("scrape_cost_usd"),
+    scrapeResponseTimeMs: integer("scrape_response_time_ms"),
+
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()

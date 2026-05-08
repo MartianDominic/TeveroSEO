@@ -33,7 +33,7 @@ const updateBodySchema = z.object({
 });
 
 const addPageBodySchema = z.object({
-  pageUrl: z.string().url(),
+  pageUrl: z.url(),
 });
 
 // Route types regenerated on build - suppress until then
@@ -86,7 +86,7 @@ export const Route = (createFileRoute as any)("/api/analytics/content-groups/$gr
       const parsed = updateBodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }
@@ -151,7 +151,7 @@ export const Route = (createFileRoute as any)("/api/analytics/content-groups/$gr
       const parsed = addPageBodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }

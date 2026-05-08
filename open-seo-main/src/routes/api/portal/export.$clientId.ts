@@ -489,11 +489,11 @@ export const Route = (createFileRoute as any)("/api/portal/export/$clientId")({
                 case "cannibalization": {
                   if (!sheetsVisibility.canViewCannibalization) continue;
                   const cannibService = getCannibalizationService();
-                  const issues = await cannibService.detectCannibalization(sheetsSiteId, { limit: 100 });
+                  const detectionResult = await cannibService.detect(sheetsSiteId, { limit: 100, mode: 'stored', persist: false });
                   sheetsSections.push({
                     name: "Cannibalization",
                     headers: ["Keyword", "Pages", "Severity", "Primary Page", "Secondary Pages"],
-                    rows: issues.map((issue) => [
+                    rows: detectionResult.issues.map((issue) => [
                       issue.query,
                       String(issue.pages.length),
                       issue.severity,
@@ -689,12 +689,14 @@ export const Route = (createFileRoute as any)("/api/portal/export/$clientId")({
                 }
 
                 const cannibService = getCannibalizationService();
-                const issues = await cannibService.detectCannibalization(siteId, {
+                const detectionResult = await cannibService.detect(siteId, {
                   limit: 100,
+                  mode: 'stored',
+                  persist: false,
                 });
 
                 const headers = ["keyword", "competing_pages", "severity", "primary_page", "secondary_pages"];
-                const rows = issues.map((issue) => [
+                const rows = detectionResult.issues.map((issue) => [
                   issue.query,
                   String(issue.pages.length),
                   issue.severity,

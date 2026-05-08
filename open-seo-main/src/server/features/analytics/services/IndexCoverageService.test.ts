@@ -6,11 +6,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IndexCoverageService } from "./IndexCoverageService";
-import type {
-  UrlInspectionResult,
-  IndexCoverageStats,
-  IndexingQuota,
-} from "../types";
 
 // Mock repository instance methods
 const mockRepo = {

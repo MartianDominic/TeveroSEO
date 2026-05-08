@@ -18,7 +18,7 @@
  */
 
 import type { ScrapeTier, EscalationReason } from "@/db/domain-scrape-learning-schema";
-import { TIER_COSTS, TIER_INDEX } from "@/db/domain-scrape-learning-schema";
+import { TIER_COSTS, TIER_INDEX, SCRAPE_TIERS } from "@/db/domain-scrape-learning-schema";
 import { domainLearningService, normalizeDomain } from "./DomainLearningService";
 import { contentQualityAssessor } from "./ContentQualityAssessor";
 import type {
@@ -30,7 +30,7 @@ import type { CacheManager, CacheLevel, CachedPage, ContentType } from "./cache"
 import { getContentHash, detectContentType } from "./cache";
 import { CircuitBreaker, type CircuitState, CircuitOpenError } from "./resilience/CircuitBreaker";
 import type { AlertManager } from "./monitoring/AlertManager";
-import { recordCircuitState } from "./monitoring/MetricsCollector";
+import { recordCircuitState, recordTierUsage } from "./monitoring/MetricsCollector";
 import { fetcherLogger, cacheLogger, logCircuitStateChange, logTierEscalation } from "./logging";
 import { getBandwidthTracker, type BandwidthTracker, type ProxyProvider } from "./monitoring/BandwidthTracker";
 
@@ -152,16 +152,9 @@ const TIER_RESET_TIMEOUTS: Record<ScrapeTier, number> = {
 
 /**
  * Tier escalation order for when a circuit opens.
+ * Uses SCRAPE_TIERS from schema as single source of truth.
  */
-const TIER_ORDER: ScrapeTier[] = [
-  'direct',
-  'webshare',
-  'geonode',
-  'camoufox',
-  'dfs_basic',
-  'dfs_js',
-  'dfs_browser',
-];
+const TIER_ORDER: readonly ScrapeTier[] = SCRAPE_TIERS;
 
 /**
  * Mapping of tiers to their proxy providers for bandwidth tracking.
@@ -203,6 +196,7 @@ export class TieredFetcher {
         successThreshold: 2,
         timeout: TIER_RESET_TIMEOUTS[tier],
         volumeThreshold: 5,
+        halfOpenMaxRequests: 3,
         errorFilter: (error) => {
           // Don't count 4xx client errors as failures (except 429 rate limit)
           if (error.message.includes('429')) return true;
@@ -602,6 +596,9 @@ export class TieredFetcher {
     result: TieredFetchResult,
     startTime: number
   ): FetchResult {
+    // Record tier usage for distribution tracking (Phase 95 cost optimization)
+    recordTierUsage(result.tier);
+
     // Assess content quality if we have HTML
     let quality: FetchResult["quality"] | undefined;
     if (result.html) {

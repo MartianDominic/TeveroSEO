@@ -80,8 +80,8 @@ describe("CtrBenchmarkService", () => {
     });
 
     it("should return 'at' status when actual is within 10% of benchmark", () => {
-      // Position 10 benchmark is ~2.4%, so 2.4% should be 'at'
-      const result = service.compareActualToBenchmark(10, 0.024);
+      // Position 10 benchmark is ~2.07%, so 2.07% should be 'at'
+      const result = service.compareActualToBenchmark(10, 0.0207);
 
       expect(result.status).toBe("at");
     });

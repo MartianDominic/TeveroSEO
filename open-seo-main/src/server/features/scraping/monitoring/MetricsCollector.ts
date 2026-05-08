@@ -195,6 +195,72 @@ export class MetricsCollector {
       'gauge',
       'Number of consecutive P95 threshold breaches'
     );
+
+    // ==========================================================================
+    // Circuit Breaker State Transitions
+    // ==========================================================================
+
+    this.registerMetric(
+      'scraping_circuit_transitions_total',
+      'counter',
+      'Total circuit breaker state transitions'
+    );
+
+    this.registerMetric(
+      'scraping_circuit_time_in_state_seconds',
+      'counter',
+      'Cumulative time spent in each circuit breaker state'
+    );
+
+    // ==========================================================================
+    // Phase 95: Tier Distribution Metrics (Cost Optimization Tracking)
+    // ==========================================================================
+
+    this.registerMetric(
+      'scraping_tier_usage_total',
+      'counter',
+      'Total requests per tier'
+    );
+
+    this.registerMetric(
+      'scraping_cheap_tier_percentage',
+      'gauge',
+      'Percentage of requests using cheap tiers (T0-T2.5) - target 65%'
+    );
+
+    // ==========================================================================
+    // Phase 95: Rate Limiter Metrics (Gap P3.G21)
+    // ==========================================================================
+
+    this.registerMetric(
+      'scraping_ratelimit_wait_seconds',
+      'histogram',
+      'Time spent waiting for rate limit slot in seconds'
+    );
+
+    this.registerMetric(
+      'scraping_ratelimit_rejections_total',
+      'counter',
+      'Total rate limit rejections (timeout exceeded)'
+    );
+
+    this.registerMetric(
+      'scraping_ratelimit_active_domains',
+      'gauge',
+      'Number of domains with active rate limit state'
+    );
+
+    this.registerMetric(
+      'scraping_ratelimit_backoff_multiplier',
+      'gauge',
+      'Current adaptive backoff multiplier by domain'
+    );
+
+    this.registerMetric(
+      'scraping_ratelimit_acquires_total',
+      'counter',
+      'Total rate limit acquire attempts by status'
+    );
   }
 
   /**
@@ -698,4 +764,296 @@ export function recordProxyBandwidthStatus(
   const collector = getMetricsCollector();
   collector.setGauge('scraping_proxy_bandwidth_cost_usd', estimatedCostUsd, { provider });
   collector.setGauge('scraping_proxy_bandwidth_used_percent', (usedBytes / limitBytes) * 100, { provider });
+}
+
+// =============================================================================
+// Circuit Breaker Transition Metrics
+// =============================================================================
+
+/**
+ * Record a circuit breaker state transition.
+ * Tracks transitions for historical analysis and alerting.
+ *
+ * @param tier - The tier/service name (e.g., 'direct', 'webshare', 'geonode', 'dataforseo')
+ * @param fromState - Previous circuit state
+ * @param toState - New circuit state
+ */
+export function recordCircuitTransition(
+  tier: string,
+  fromState: 'closed' | 'half-open' | 'open',
+  toState: 'closed' | 'half-open' | 'open'
+): void {
+  const collector = getMetricsCollector();
+  collector.incrementCounter('scraping_circuit_transitions_total', {
+    tier,
+    from: fromState,
+    to: toState,
+  });
+}
+
+/**
+ * Record time spent in a circuit breaker state.
+ * Call this when transitioning out of a state.
+ *
+ * @param tier - The tier/service name
+ * @param state - The state that was exited
+ * @param durationSeconds - Time spent in that state
+ */
+export function recordCircuitTimeInState(
+  tier: string,
+  state: 'closed' | 'half-open' | 'open',
+  durationSeconds: number
+): void {
+  const collector = getMetricsCollector();
+  collector.addCounter('scraping_circuit_time_in_state_seconds', durationSeconds, {
+    tier,
+    state,
+  });
+}
+
+// =============================================================================
+// Phase 95: Tier Distribution Metrics (Cost Optimization Tracking)
+// =============================================================================
+
+/**
+ * Cheap tiers (T0-T2.5) that count toward the 65% target.
+ * These are low-cost or free options that should handle the majority of requests.
+ */
+const CHEAP_TIERS = ['direct', 'webshare', 'geonode', 'camoufox'] as const;
+
+/**
+ * Record tier usage and update the cheap tier percentage gauge.
+ * Call this every time a tier is used for a scraping request.
+ *
+ * @param tier - The tier that was used (e.g., 'direct', 'webshare', 'dfs_basic')
+ */
+export function recordTierUsage(tier: string): void {
+  const collector = getMetricsCollector();
+
+  // Increment the counter for this specific tier
+  collector.incrementCounter('scraping_tier_usage_total', { tier });
+
+  // Recalculate cheap tier percentage
+  updateCheapTierPercentage();
+}
+
+/**
+ * Update the cheap tier percentage gauge based on current tier distribution.
+ * Iterates through all tier counters to calculate the percentage.
+ */
+function updateCheapTierPercentage(): void {
+  const collector = getMetricsCollector();
+
+  // All possible tiers
+  const allTiers = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
+
+  // Sum up total requests and cheap tier requests
+  let totalRequests = 0;
+  let cheapRequests = 0;
+
+  for (const tier of allTiers) {
+    const count = collector.getCounter('scraping_tier_usage_total', { tier });
+    totalRequests += count;
+    if (CHEAP_TIERS.includes(tier as typeof CHEAP_TIERS[number])) {
+      cheapRequests += count;
+    }
+  }
+
+  // Calculate and set the percentage gauge
+  const percentage = totalRequests > 0 ? (cheapRequests / totalRequests) * 100 : 0;
+  collector.setGauge('scraping_cheap_tier_percentage', percentage);
+}
+
+/**
+ * Get the current tier distribution statistics.
+ * Useful for dashboards and cost analysis.
+ *
+ * @returns Object with tier counts, percentages, and target compliance
+ */
+export function getTierDistribution(): {
+  tiers: Record<string, { count: number; percentage: number }>;
+  total: number;
+  cheapTierPercentage: number;
+  targetMet: boolean;
+  targetPercentage: number;
+} {
+  const collector = getMetricsCollector();
+  const allTiers = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
+  const TARGET_PERCENTAGE = 65;
+
+  let totalRequests = 0;
+  const tierCounts: Record<string, number> = {};
+
+  // Gather counts
+  for (const tier of allTiers) {
+    const count = collector.getCounter('scraping_tier_usage_total', { tier });
+    tierCounts[tier] = count;
+    totalRequests += count;
+  }
+
+  // Calculate percentages
+  const tiers: Record<string, { count: number; percentage: number }> = {};
+  let cheapRequests = 0;
+
+  for (const tier of allTiers) {
+    const count = tierCounts[tier];
+    const percentage = totalRequests > 0 ? (count / totalRequests) * 100 : 0;
+    tiers[tier] = { count, percentage };
+    if (CHEAP_TIERS.includes(tier as typeof CHEAP_TIERS[number])) {
+      cheapRequests += count;
+    }
+  }
+
+  const cheapTierPercentage = totalRequests > 0 ? (cheapRequests / totalRequests) * 100 : 0;
+
+  return {
+    tiers,
+    total: totalRequests,
+    cheapTierPercentage,
+    targetMet: cheapTierPercentage >= TARGET_PERCENTAGE,
+    targetPercentage: TARGET_PERCENTAGE,
+  };
+}
+
+// =============================================================================
+// Phase 95: Rate Limiter Metrics Helpers (Gap P3.G21)
+// =============================================================================
+
+/**
+ * Rate limiter metrics interface for getMetrics() export.
+ */
+export interface RateLimiterMetrics {
+  /** P50 wait time in milliseconds */
+  waitTimeP50Ms: number;
+  /** P95 wait time in milliseconds */
+  waitTimeP95Ms: number;
+  /** P99 wait time in milliseconds */
+  waitTimeP99Ms: number;
+  /** Total rejections (timeout exceeded) */
+  rejections: number;
+  /** Number of active domains being rate limited */
+  activeDomains: number;
+  /** Total successful acquires */
+  successfulAcquires: number;
+  /** Total acquire attempts */
+  totalAttempts: number;
+}
+
+/**
+ * Record a successful rate limit acquire with wait time.
+ *
+ * @param domain - The domain that was rate limited
+ * @param waitTimeMs - Time spent waiting in milliseconds (0 if no wait)
+ */
+export function recordRateLimitAcquire(
+  domain: string,
+  waitTimeMs: number
+): void {
+  const collector = getMetricsCollector();
+
+  // Record wait time histogram (convert to seconds for Prometheus convention)
+  collector.recordDuration('scraping_ratelimit_wait_seconds', waitTimeMs / 1000, {
+    domain,
+  });
+
+  // Increment successful acquire counter
+  collector.incrementCounter('scraping_ratelimit_acquires_total', {
+    status: 'success',
+  });
+}
+
+/**
+ * Record a rate limit rejection (timeout exceeded).
+ *
+ * @param domain - The domain that was rejected
+ * @param waitedMs - Time spent waiting before rejection
+ */
+export function recordRateLimitRejection(
+  domain: string,
+  waitedMs: number
+): void {
+  const collector = getMetricsCollector();
+
+  // Increment rejection counter
+  collector.incrementCounter('scraping_ratelimit_rejections_total', {
+    domain,
+  });
+
+  // Also track in acquires counter with rejection status
+  collector.incrementCounter('scraping_ratelimit_acquires_total', {
+    status: 'rejected',
+  });
+
+  // Record the wait time that led to rejection
+  collector.recordDuration('scraping_ratelimit_wait_seconds', waitedMs / 1000, {
+    domain,
+    status: 'rejected',
+  });
+}
+
+/**
+ * Update the active domains gauge.
+ * Call this periodically or after domain state changes.
+ *
+ * @param count - Number of domains with active rate limit state
+ */
+export function recordRateLimitActiveDomains(count: number): void {
+  const collector = getMetricsCollector();
+  collector.setGauge('scraping_ratelimit_active_domains', count);
+}
+
+/**
+ * Record backoff multiplier for a domain.
+ * Useful for tracking adaptive backoff behavior.
+ *
+ * @param domain - The domain with backoff applied
+ * @param multiplier - Current backoff multiplier (1 = no backoff)
+ */
+export function recordRateLimitBackoff(
+  domain: string,
+  multiplier: number
+): void {
+  const collector = getMetricsCollector();
+  collector.setGauge('scraping_ratelimit_backoff_multiplier', multiplier, {
+    domain,
+  });
+}
+
+/**
+ * Get rate limiter metrics for external monitoring.
+ * Returns computed percentiles and aggregate counts.
+ */
+export function getRateLimiterMetrics(): RateLimiterMetrics {
+  const collector = getMetricsCollector();
+
+  // Get percentiles from the wait time histogram
+  const waitTimeP50Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 50) * 1000;
+  const waitTimeP95Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 95) * 1000;
+  const waitTimeP99Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 99) * 1000;
+
+  // Get counters
+  const successfulAcquires = collector.getCounter('scraping_ratelimit_acquires_total', {
+    status: 'success',
+  });
+  const rejectedAcquires = collector.getCounter('scraping_ratelimit_acquires_total', {
+    status: 'rejected',
+  });
+  const totalAttempts = successfulAcquires + rejectedAcquires;
+
+  // Get rejections (separate counter for domain-level tracking)
+  // Sum all domain-specific rejections
+  const rejections = rejectedAcquires;
+
+  // Get active domains gauge
+  const activeDomains = collector.getGauge('scraping_ratelimit_active_domains');
+
+  return {
+    waitTimeP50Ms,
+    waitTimeP95Ms,
+    waitTimeP99Ms,
+    rejections,
+    activeDomains,
+    successfulAcquires,
+    totalAttempts,
+  };
 }

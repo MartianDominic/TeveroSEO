@@ -280,3 +280,30 @@ export {
   type ClientTag,
   type ClientTagInsert,
 } from "./analytics-tags-schema";
+
+// Analytics extended schema (Phase 96: Client visibility)
+export * from "./analytics-extended-schema";
+
+// GSC analytics schema (Phase 96: Query analytics)
+export * from "./gsc-analytics-schema";
+
+// Cache schema (HTML cache for scraping)
+export * from "./cache-schema";
+
+// DFS cost tracking schema (Phase 92: DataForSEO optimization)
+export * from "./dfs-cost-tracking-schema";
+
+// Discount code schema
+export * from "./discount-code-schema";
+
+// Domain scrape learning schema (Phase 92: Tiered scraping)
+export * from "./domain-scrape-learning-schema";
+
+// Follow-up schema (Phase 62: Command Center)
+export * from "./follow-up-schema";
+
+// Payment schedule schema (Phase 54: Payment installments)
+export * from "./payment-schedule-schema";
+
+// Scraping audit schema (Phase 92: Audit logging)
+export * from "./scraping-audit-schema";

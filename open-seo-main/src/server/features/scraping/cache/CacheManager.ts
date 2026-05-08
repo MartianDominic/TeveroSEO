@@ -33,6 +33,7 @@ import type {
   RevalidationHeaders,
 } from "./types";
 import { normalizeUrl, getCacheKey } from "./urlNormalization";
+import { shouldProactivelyRefresh, shouldServeStale } from "./index";
 import { cacheLogger } from "../logging";
 
 // =============================================================================
@@ -81,18 +82,18 @@ const DEFAULT_CONFIG: CacheConfig = {
   l2: {
     maxMemory: "2gb",
     compressionEnabled: true,
-    compressionAlgo: "lz4",
+    compressionAlgo: "gzip",
     keyPrefix: "cache:",
   },
   l3: {
     retentionDays: 30,
-    compressionAlgo: "lz4",
+    compressionAlgo: "gzip",
     batchSize: 100,
   },
   l4: {
     bucket: process.env.R2_BUCKET ?? "scrape-archive",
     retentionDays: 90,
-    compressionAlgo: "zstd",
+    compressionAlgo: "gzip",
     accountId: process.env.CF_ACCOUNT_ID ?? "",
   },
 };
@@ -128,6 +129,11 @@ export class CacheManager implements ICacheManager {
   private isSubscribed = false;
   private invalidationEventsReceived = 0;
   private invalidationEventsPublished = 0;
+
+  // Stale-while-revalidate tracking
+  private pendingRefreshes = new Set<string>();
+  private backgroundRefreshCount = 0;
+  private backgroundRefreshFailures = 0;
 
   constructor(deps: {
     redis: Redis;
@@ -174,6 +180,12 @@ export class CacheManager implements ICacheManager {
     if (!skipLevels.has("L1")) {
       const l1Result = await this.l1.get(hash);
       if (l1Result && this.isValid(l1Result, options.acceptStale)) {
+        // Stale-while-revalidate: trigger background refresh if needed
+        if (options.acceptStale && this.shouldTriggerBackgroundRefresh(l1Result)) {
+          this.triggerBackgroundRefresh(url, hash).catch(err =>
+            cacheLogger.error({ url, error: err instanceof Error ? err.message : String(err) }, "Background refresh failed")
+          );
+        }
         return this.hit("L1", l1Result, startTime);
       }
     }
@@ -185,6 +197,12 @@ export class CacheManager implements ICacheManager {
       if (l2Result && this.isValid(l2Result, options.acceptStale)) {
         // Promote to L1
         await this.promoteToL1(hash, l2Result);
+        // Stale-while-revalidate: trigger background refresh if needed
+        if (options.acceptStale && this.shouldTriggerBackgroundRefresh(l2Result)) {
+          this.triggerBackgroundRefresh(url, hash).catch(err =>
+            cacheLogger.error({ url, error: err instanceof Error ? err.message : String(err) }, "Background refresh failed")
+          );
+        }
         return this.hit("L2", l2Result, startTime);
       }
     }
@@ -199,6 +217,12 @@ export class CacheManager implements ICacheManager {
           this.promoteToL1(hash, l3Result),
           this.promoteToL2(hash, l3Result),
         ]);
+        // Stale-while-revalidate: trigger background refresh if needed
+        if (options.acceptStale && this.shouldTriggerBackgroundRefresh(l3Result)) {
+          this.triggerBackgroundRefresh(url, hash).catch(err =>
+            cacheLogger.error({ url, error: err instanceof Error ? err.message : String(err) }, "Background refresh failed")
+          );
+        }
         return this.hit("L3", l3Result, startTime);
       }
     }
@@ -214,6 +238,12 @@ export class CacheManager implements ICacheManager {
           this.promoteToL2(hash, l4Result),
           this.promoteToL3(hash, url, l4Result),
         ]);
+        // Stale-while-revalidate: trigger background refresh if needed
+        if (options.acceptStale && this.shouldTriggerBackgroundRefresh(l4Result)) {
+          this.triggerBackgroundRefresh(url, hash).catch(err =>
+            cacheLogger.error({ url, error: err instanceof Error ? err.message : String(err) }, "Background refresh failed")
+          );
+        }
         return this.hit("L4", l4Result, startTime);
       }
     }
@@ -615,6 +645,95 @@ export class CacheManager implements ICacheManager {
     } catch {
       return null;
     }
+  }
+
+  // ===========================================================================
+  // Stale-While-Revalidate Methods
+  // ===========================================================================
+
+  /**
+   * Determine if a cached page should trigger a background refresh.
+   * Uses both proactive refresh (freshness < 20%) and stale-while-revalidate logic.
+   */
+  private shouldTriggerBackgroundRefresh(page: CachedPage): boolean {
+    // Check if content is stale but within acceptable stale window
+    const isStaleButServable = shouldServeStale(page.expiresAt, page.fetchedAt);
+
+    // Check if content should be proactively refreshed (< 20% fresh)
+    const needsProactiveRefresh = shouldProactivelyRefresh(page.fetchedAt, page.expiresAt);
+
+    return isStaleButServable || needsProactiveRefresh;
+  }
+
+  /**
+   * Trigger a non-blocking background refresh for a URL.
+   * Uses Redis pub/sub to queue a low-priority refresh job.
+   * Deduplicates requests to prevent multiple refreshes for the same URL.
+   */
+  private async triggerBackgroundRefresh(url: string, hash: string): Promise<void> {
+    // Skip if refresh is already pending for this hash
+    if (this.pendingRefreshes.has(hash)) {
+      cacheLogger.debug({ url, hash }, "Background refresh already pending, skipping");
+      return;
+    }
+
+    // Mark as pending to prevent duplicate refreshes
+    this.pendingRefreshes.add(hash);
+
+    try {
+      // Publish a refresh request via Redis pub/sub
+      // This allows any worker to pick up the refresh job
+      const refreshMessage = JSON.stringify({
+        type: "cache_refresh",
+        url,
+        hash,
+        timestamp: Date.now(),
+        priority: "low",
+      });
+
+      await this.redis.publish("scraping:cache:refresh", refreshMessage);
+      this.backgroundRefreshCount++;
+
+      cacheLogger.debug(
+        { url, hash, refreshCount: this.backgroundRefreshCount },
+        "Background refresh triggered"
+      );
+
+      // Auto-clear pending status after 5 minutes (in case refresh never completes)
+      setTimeout(() => {
+        this.pendingRefreshes.delete(hash);
+      }, 5 * 60 * 1000);
+    } catch (error) {
+      this.backgroundRefreshFailures++;
+      this.pendingRefreshes.delete(hash);
+
+      cacheLogger.warn(
+        { url, hash, error: error instanceof Error ? error.message : String(error) },
+        "Failed to trigger background refresh"
+      );
+    }
+  }
+
+  /**
+   * Get stale-while-revalidate metrics for monitoring.
+   */
+  getSwrMetrics(): {
+    pendingRefreshes: number;
+    totalRefreshesTriggered: number;
+    refreshFailures: number;
+  } {
+    return {
+      pendingRefreshes: this.pendingRefreshes.size,
+      totalRefreshesTriggered: this.backgroundRefreshCount,
+      refreshFailures: this.backgroundRefreshFailures,
+    };
+  }
+
+  /**
+   * Clear a pending refresh (called when refresh completes externally).
+   */
+  clearPendingRefresh(hash: string): void {
+    this.pendingRefreshes.delete(hash);
   }
 
   // ===========================================================================

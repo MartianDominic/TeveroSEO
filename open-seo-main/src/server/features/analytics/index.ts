@@ -49,6 +49,7 @@ export type {
   CannibalizationIssue,
   DetectionOptions,
   DetectionResult,
+  DetectionResultInternal,
   DetectionSummary,
   DetectionMetadata,
   ImpactEstimate,
@@ -114,13 +115,27 @@ export {
   resetAnalyticsAuditBridge,
 } from "./bridge/AnalyticsAuditBridge";
 export type {
+  // Core audit data types
   TopicCoverageAuditData,
   ContentGapAuditData,
   CannibalizationAuditData,
   HubSpokeLinkingAuditData,
   ClusterSizeAuditData,
-  AuditRecommendation,
+  TrendAuditData,
+  StrikingDistanceAuditData,
   AnalyticsAuditContext,
+  // Recommendation types
+  AuditRecommendation,
+  RecommendationPriority,
+  RecommendationCategory,
+  ImpactLevel,
+  EffortLevel,
+  // Summary types
+  TopicClusterSummary,
+  StrikingKeywordSummary,
+  CannibalizationSummary,
+  TrendingPageSummary,
+  StrikingDistanceKeywordSummary,
   // OPS-004/005/006 types
   PositionHistoryData,
   PositionHistoryDataPoint,

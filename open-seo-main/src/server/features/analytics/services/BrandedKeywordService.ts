@@ -109,7 +109,7 @@ export class BrandedKeywordService {
     // Convert to BrandTerm objects
     const now = new Date();
     return Array.from(termsSet).map((term) => ({
-      id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `auto-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       clientId,
       term,
       isAutoDetected: true,

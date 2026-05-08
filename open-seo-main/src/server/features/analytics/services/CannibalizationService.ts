@@ -14,7 +14,7 @@ import type { CannibalizationSeverity } from '@/db/link-schema';
 import { format, subDays } from 'date-fns';
 import { createLogger } from '@/server/lib/logger';
 import { getAnalyticsEventBus } from '../events/analytics-event-bus';
-import { CannibalizationDetector, type DetectionOptions } from './CannibalizationDetector';
+import { CannibalizationDetector, type DetectionOptions, type DetectionResultInternal } from './CannibalizationDetector';
 import {
   CannibalizationScorer,
   type CannibalizingPage,
@@ -43,6 +43,7 @@ export type {
   Recommendation,
   DetectionSummary,
   DetectionOptions,
+  DetectionResultInternal,
   CannibalizationResult,
   SeverityBreakdown,
   CannibalizationFilters,
@@ -291,11 +292,11 @@ export class CannibalizationService {
   // Delegate Access to Sub-modules (for advanced usage)
   // ===========================================================================
 
-  async detectFromStoredData(siteId: string, options: DetectionOptions = {}) {
+  async detectFromStoredData(siteId: string, options: DetectionOptions = {}): Promise<DetectionResultInternal> {
     return this.detector.detectFromStoredData(siteId, options);
   }
 
-  async detectLive(siteId: string, options: DetectionOptions = {}) {
+  async detectLive(siteId: string, options: DetectionOptions = {}): Promise<DetectionResultInternal> {
     return this.detector.detectLive(siteId, options);
   }
 }

@@ -11,6 +11,14 @@
 
 import type Redis from "ioredis";
 import type { IRateLimiter, RateLimitStatus, RateLimiterConfig } from "../interfaces/IRateLimiter";
+import {
+  recordRateLimitAcquire,
+  recordRateLimitRejection,
+  recordRateLimitActiveDomains,
+  recordRateLimitBackoff,
+  type RateLimiterMetrics,
+  getRateLimiterMetrics,
+} from "../monitoring/MetricsCollector";
 
 /**
  * Error thrown when rate limit wait time exceeds maxWaitMs.
@@ -30,6 +38,19 @@ export class RateLimitExceededError extends Error {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Add jitter to a wait time to prevent thundering herd.
+ * Multiple workers waiting on the same domain will wake at slightly different times.
+ *
+ * @param baseMs - Base wait time in milliseconds
+ * @param jitterPercent - Jitter range as a fraction (0.25 = +/-25%)
+ * @returns Wait time with jitter applied, minimum 1ms
+ */
+function addJitter(baseMs: number, jitterPercent: number = 0.25): number {
+  const jitter = baseMs * jitterPercent * (Math.random() - 0.5) * 2;
+  return Math.max(1, Math.floor(baseMs + jitter));
 }
 
 /**
@@ -160,17 +181,24 @@ export class RateLimiter implements IRateLimiter {
       )) as number;
 
       if (waitMs === 0) {
-        // Request allowed
+        // Request allowed - record metrics
+        const totalWaitMs = Date.now() - startTime;
+        recordRateLimitAcquire(normalizedDomain, totalWaitMs);
         return;
       }
 
       // Check if we've waited too long
-      if (Date.now() - startTime > this.config.maxWaitMs) {
-        throw new RateLimitExceededError(normalizedDomain, Date.now() - startTime);
+      const waitedMs = Date.now() - startTime;
+      if (waitedMs > this.config.maxWaitMs) {
+        // Record rejection metrics before throwing
+        recordRateLimitRejection(normalizedDomain, waitedMs);
+        throw new RateLimitExceededError(normalizedDomain, waitedMs);
       }
 
-      // Wait and retry (cap wait at 1s to allow checking timeout)
-      await sleep(Math.min(waitMs, 1000));
+      // Wait and retry with jitter to prevent thundering herd
+      // Cap wait at 1s to allow checking timeout, add +/-25% jitter
+      const waitWithJitter = addJitter(Math.min(waitMs, 1000), 0.25);
+      await sleep(waitWithJitter);
     }
   }
 
@@ -204,6 +232,11 @@ export class RateLimiter implements IRateLimiter {
       } catch {
         // Ignore parse errors
       }
+    }
+
+    // Record backoff metrics if there's an active backoff
+    if (backoffMultiplier > 1) {
+      recordRateLimitBackoff(normalizedDomain, backoffMultiplier);
     }
 
     const effectiveLimit = Math.max(0.1, this.config.requestsPerWindow / backoffMultiplier);
@@ -244,10 +277,38 @@ export class RateLimiter implements IRateLimiter {
 
   /**
    * Get all domains currently being rate limited.
+   * Uses SCAN instead of KEYS to avoid blocking Redis in production.
+   * Also updates the active domains gauge metric.
    */
   async getActiveDomains(): Promise<string[]> {
-    const keys = await this.redis.keys("ratelimit:domain:*");
-    return keys.map((key) => key.replace("ratelimit:domain:", ""));
+    const keys = await this.scanKeys("ratelimit:domain:*");
+    const domains = keys.map((key) => key.replace("ratelimit:domain:", ""));
+
+    // Update the active domains gauge
+    recordRateLimitActiveDomains(domains.length);
+
+    return domains;
+  }
+
+  /**
+   * Scan Redis keys matching a pattern using cursor-based iteration.
+   * This is O(1) per call and doesn't block the server, unlike KEYS which is O(N).
+   *
+   * @param pattern - Glob-style pattern to match (e.g., "ratelimit:domain:*")
+   * @param count - Hint for how many keys to return per iteration (default: 100)
+   * @returns Array of all matching keys
+   */
+  private async scanKeys(pattern: string, count = 100): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = "0";
+
+    do {
+      const [nextCursor, batch] = await this.redis.scan(cursor, "MATCH", pattern, "COUNT", count);
+      cursor = nextCursor;
+      keys.push(...batch);
+    } while (cursor !== "0");
+
+    return keys;
   }
 
   /**
@@ -302,5 +363,16 @@ export class RateLimiter implements IRateLimiter {
    */
   updateConfig(updates: Partial<RateLimiterConfig>): void {
     Object.assign(this.config, updates);
+  }
+
+  /**
+   * Get rate limiter metrics for Prometheus export.
+   * Returns aggregated metrics including wait time percentiles,
+   * rejection counts, and active domain counts.
+   *
+   * @returns RateLimiterMetrics object with all collected metrics
+   */
+  getMetrics(): RateLimiterMetrics {
+    return getRateLimiterMetrics();
   }
 }

@@ -353,7 +353,7 @@ export class AdaptiveBackoff {
    * Get all domains currently in backoff.
    */
   async getBackoffDomains(): Promise<Array<{ domain: string; state: BackoffState }>> {
-    const keys = await this.redis.keys("backoff:domain:*");
+    const keys = await this.scanKeys("backoff:domain:*");
     const results: Array<{ domain: string; state: BackoffState }> = [];
 
     for (const key of keys) {
@@ -365,6 +365,24 @@ export class AdaptiveBackoff {
     }
 
     return results.sort((a, b) => b.state.until - a.state.until);
+  }
+
+  /**
+   * Scan for keys matching a pattern using cursor-based iteration.
+   * This is O(1) per call and doesn't block Redis, unlike KEYS which is O(N).
+   *
+   * @param pattern - Redis key pattern (e.g., "backoff:domain:*")
+   * @returns Array of matching keys
+   */
+  private async scanKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = "0";
+    do {
+      const [nextCursor, batch] = await this.redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = nextCursor;
+      keys.push(...batch);
+    } while (cursor !== "0");
+    return keys;
   }
 
   /**

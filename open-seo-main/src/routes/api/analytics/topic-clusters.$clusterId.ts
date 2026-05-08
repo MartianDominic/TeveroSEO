@@ -25,7 +25,7 @@ import {
 import { csrfProtect } from "@/server/middleware/csrf";
 
 const addSpokeBodySchema = z.object({
-  pageUrl: z.string().url(),
+  pageUrl: z.url(),
   topic: z.string().optional(),
   linksToHub: z.boolean().optional(),
 });
@@ -101,7 +101,7 @@ export const Route = (createFileRoute as any)("/api/analytics/topic-clusters/$cl
         const parsed = addSpokeBodySchema.safeParse(body);
         if (!parsed.success) {
           return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+            { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
             { status: 400 }
           );
         }
@@ -123,7 +123,7 @@ export const Route = (createFileRoute as any)("/api/analytics/topic-clusters/$cl
         const parsed = updateGapsBodySchema.safeParse(body);
         if (!parsed.success) {
           return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+            { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
             { status: 400 }
           );
         }

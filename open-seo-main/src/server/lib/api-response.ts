@@ -79,6 +79,18 @@ export function errorResponse(
 }
 
 /**
+ * Format ZodError issues into a consistent details structure.
+ * Zod 4+ deprecated the parameterless .flatten() signature.
+ * Use .issues directly for forward compatibility.
+ */
+export function formatZodErrors(zodError: ZodError): Array<{ path: string; message: string }> {
+  return zodError.issues.map((issue) => ({
+    path: issue.path.join(".") || "body",
+    message: issue.message,
+  }));
+}
+
+/**
  * Create a validation error response from Zod error
  */
 export function validationErrorResponse(zodError: ZodError): Response {
@@ -86,7 +98,7 @@ export function validationErrorResponse(zodError: ZodError): Response {
     {
       success: false,
       error: "Validation failed",
-      details: zodError.flatten(),
+      details: formatZodErrors(zodError),
     },
     { status: 400 }
   );
@@ -265,20 +277,11 @@ export function formatZodValidationError(
   zodError: ZodError,
   requestId?: string
 ): Response {
-  // Zod 4 uses .issues, but we support both for backwards compatibility
-  const issues = "issues" in zodError ? zodError.issues : (zodError as { errors?: unknown[] }).errors ?? [];
-  const details = Array.isArray(issues)
-    ? issues.map((e: { path?: (string | number)[]; message?: string }) => ({
-        path: e.path?.join(".") || "body",
-        message: e.message || "Invalid value",
-      }))
-    : zodError.flatten();
-
   return apiErrorResponse(
     ErrorCodes.VALIDATION_ERROR,
     "Request validation failed",
     requestId,
-    details
+    formatZodErrors(zodError)
   );
 }
 

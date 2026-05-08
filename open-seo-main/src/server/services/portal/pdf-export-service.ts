@@ -232,11 +232,11 @@ export async function renderPortalExportPDF(params: PortalPdfRenderParams): Prom
         if (!visibility.canViewCannibalization) continue;
 
         const cannibService = getCannibalizationService();
-        const issues = await cannibService.detectCannibalization(siteId, { limit: 20 });
+        const detectionResult = await cannibService.detect(siteId, { limit: 20, mode: 'stored', persist: false });
 
-        if (issues.length === 0) continue;
+        if (detectionResult.issues.length === 0) continue;
 
-        const rows = issues
+        const rows = detectionResult.issues
           .map(
             (issue) => `
           <tr>

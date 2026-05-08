@@ -490,6 +490,27 @@ export {
 } from "./routes/admin";
 
 // =============================================================================
+// Internal API Routes (AI-Writer HTTP Bridge)
+// =============================================================================
+
+export {
+  createInternalRoutes,
+  getInternalRoutes,
+  initInternalRoutes,
+  type InternalScrapeResponse,
+  type InternalBatchScrapeResponse,
+} from "./routes/internal";
+
+// =============================================================================
+// Health Routes
+// =============================================================================
+
+export {
+  createHealthRoutes,
+  type StatusResult,
+} from "./routes/health";
+
+// =============================================================================
 // Middleware (Plan 95-14)
 // =============================================================================
 

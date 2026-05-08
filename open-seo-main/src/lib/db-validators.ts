@@ -173,8 +173,9 @@ export const PercentageSchema = z.number().min(0).max(100);
 
 /**
  * URL schema.
+ * Note: Uses z.url() instead of deprecated z.string().url() in Zod 4.x
  */
-export const UrlSchema = z.string().url();
+export const UrlSchema = z.url();
 
 /**
  * Domain schema (without protocol).

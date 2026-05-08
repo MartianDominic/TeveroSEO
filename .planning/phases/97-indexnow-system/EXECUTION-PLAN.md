@@ -1,9 +1,19 @@
 # Phase 97: IndexNow System - 9-Day Execution Plan
 
 > **Created:** 2026-05-08
+> **Updated:** 2026-05-08
 > **Status:** Ready for Execution
 > **Total Duration:** 9 days
 > **Cost:** $0 (IndexNow is free protocol)
+
+---
+
+## Related Documents
+
+- [SPEC.md](./SPEC.md) - Technical specification
+- [ONBOARDING-INTEGRATION.md](./ONBOARDING-INTEGRATION.md) - CMS onboarding integration (NEW)
+- [VIBE-CODED-PLATFORM-INTEGRATION.md](./VIBE-CODED-PLATFORM-INTEGRATION.md) - Vercel/Netlify integration
+- [INDEXNOW-CMS-INTEGRATION-MATRIX.md](../../research/INDEXNOW-CMS-INTEGRATION-MATRIX.md) - Top 15 CMS analysis
 
 ---
 
@@ -11,11 +21,12 @@
 
 This execution plan sequences the implementation of the IndexNow Multi-Tenant Indexing System with emphasis on:
 
-1. **TeveroSEO-owned API key as fallback** - Clients who cannot deploy key files still get indexing via our hosted domain
-2. **Auto-deploy for WordPress** - REST API integration for automatic key deployment
-3. **Vibe-coded platform detection** - Identify and support modern frameworks (Vercel, Netlify, etc.)
-4. **Graceful degradation cascade** - Client key > TeveroSEO fallback > Manual instructions
-5. **Parallel workstreams** - Infrastructure, WordPress, and Sitemap tracks run concurrently
+1. **Zero Extra Steps** - IndexNow auto-configures during existing CMS connection onboarding
+2. **Top 15 CMS Support** - WordPress, Shopify, Wix, Drupal, Joomla, Magento, and 9 more platforms
+3. **IndexNowCapableAdapter Interface** - Platform adapters extended with IndexNow methods
+4. **Native Plugin Detection** - Auto-detect Rank Math, SEOPress, Yoast for WordPress
+5. **Graceful Degradation** - Native plugin > Auto-deploy > Cloudflare bypass > Manual instructions > TeveroSEO fallback
+6. **Parallel workstreams** - Infrastructure, Platform Adapters, and Sitemap tracks run concurrently
 
 ---
 
@@ -31,12 +42,16 @@ This execution plan sequences the implementation of the IndexNow Multi-Tenant In
 1. Create Drizzle schema (`open-seo-main/src/db/indexnow-schema.ts`)
    - `indexnow_config` table with domains, verification status, statistics
    - `indexnow_submissions` table for audit trail
-   - Add `fallback_mode` enum: `client_key`, `tevero_fallback`, `manual_pending`
+   - **Link to site_connections table** for onboarding integration
+   - Add `key_source` enum: `client_key`, `tevero_fallback`, `plugin_native`, `manual_pending`
 
-2. Add TeveroSEO fallback key infrastructure:
+2. Schema fields for onboarding integration:
    ```typescript
    // New fields in indexnow_config
-   keySource: enum("client_key", "tevero_fallback", "manual_pending")
+   connectionId: uuid("connection_id").references(() => siteConnections.id)
+   keySource: enum("client_key", "tevero_fallback", "plugin_native", "manual_pending")
+   detectedPlugin: text("detected_plugin")  // e.g., "rankmath", "seopress"
+   platformMetadata: jsonb("platform_metadata")  // automation score, method
    teveroFallbackEnabled: boolean  // Client opted into fallback
    ```
 
@@ -226,114 +241,111 @@ IndexNow has no official rate limits, but we should monitor for any throttling w
 
 ---
 
-## Day 5: WordPress Auto-Deployment
+## Day 5: Platform Adapter IndexNow Integration
 
 ### Objectives
-- Automatically deploy IndexNow key to WordPress sites via REST API
-- Handle verification flow after deployment
+- Extend existing platform adapters with IndexNowCapableAdapter interface
+- Implement WordPress, Shopify, and base adapter IndexNow methods
+- Integrate with existing CMS connection onboarding flow
 
 ### Deliverables
 
 **Morning (4 hours):**
-1. Create WordPress deployer (`src/server/features/indexing/wordpress/WordPressIndexNowDeployer.ts`)
-   - Store key via `wp_options` REST endpoint
-   - Requires WordPress Application Password or JWT auth
-
-2. Generate PHP snippet for `functions.php`:
-   ```php
-   add_action('init', function() {
-       $key = get_option('tevero_indexnow_key');
-       if ($key && $_SERVER['REQUEST_URI'] === "/{$key}.txt") {
-           header('Content-Type: text/plain');
-           echo $key;
-           exit;
-       }
-   }, 1);
-   ```
-
-**Afternoon (4 hours):**
-3. WordPress detection in setup flow:
+1. Create IndexNowCapableAdapter interface (`src/server/features/connections/adapters/types.ts`):
    ```typescript
-   async detectPlatform(domain) {
-     // Check for wp-json endpoint
-     // Check for wp-content paths
-     // Check for WordPress meta tags
-     return { platform: "wordpress", version: "6.x" };
+   interface IndexNowCapableAdapter extends PlatformAdapter {
+     getIndexNowCapabilities(): IndexNowCapabilities;
+     detectExistingIndexNow(connectionId: string): Promise<DetectionResult>;
+     deployIndexNowKey(connectionId: string, apiKey: string): Promise<DeployResult>;
+     verifyIndexNowKey(domain: string, apiKey: string): Promise<VerifyResult>;
    }
    ```
 
-4. Auto-verification after deployment:
-   - Deploy key to wp_options
-   - Wait 5 seconds
-   - Attempt verification
-   - If fails, show PHP snippet instructions
+2. Extend BaseAdapter with default IndexNow methods:
+   - Generic manual instructions
+   - Key verification via HTTP fetch
+   - Cloudflare detection helper
+
+**Afternoon (4 hours):**
+3. WordPress adapter IndexNow methods:
+   - SEO plugin detection (Rank Math, SEOPress, Yoast, AIOSEO)
+   - REST API namespace checking (`/wp-json/rankmath/v1/`)
+   - Native plugin = auto-handled, no key deployment needed
+   - Fallback to wp_options storage + PHP snippet
+
+4. Shopify adapter IndexNow methods:
+   - GraphQL `fileCreate` mutation for key file
+   - `urlRedirectCreate` mutation for `/{key}.txt` redirect
+   - Fallback to TinyIMG app recommendation
 
 ### Success Criteria
-- [x] WordPress sites detected with >90% accuracy
-- [x] Key stored in wp_options via REST API
-- [x] Auto-verification passes when endpoint active
+- [x] IndexNowCapableAdapter interface defined and documented
+- [x] WordPress SEO plugins detected via REST API namespaces
+- [x] Shopify key file + redirect created via GraphQL
+- [x] Base adapter provides Cloudflare detection
 
 ### Testing Checkpoint
-Test against staging WordPress site (e.g., dev.clientsite.com):
-1. Store key via REST API
-2. Verify endpoint works
-3. Submit test URL to IndexNow
+Test against staging sites:
+1. WordPress with Rank Math → should detect native handling
+2. WordPress without SEO plugin → should deploy key
+3. Shopify store → should create file + redirect
 
 ### Rollback Point
-If WordPress REST API fails: Fall back to showing manual instructions.
+If adapter methods fail: Connection still works, IndexNow shows manual instructions.
 
 ---
 
-## Day 6: Platform Detection and Vibe-Coded Support
+## Day 6: Onboarding Integration and Additional Adapters
 
 ### Objectives
-- Detect modern platforms (Vercel, Netlify, Cloudflare Pages)
-- Provide platform-specific deployment instructions
+- Integrate IndexNow into ConnectionOnboardingService
+- Implement remaining platform adapters (Wix, Joomla, Drupal, Magento)
+- Add Cloudflare Crawler Hints detection for fallback platforms
 
 ### Deliverables
 
 **Morning (4 hours):**
-1. Platform detection system:
+1. ConnectionOnboardingService.onConnectionEstablished() hook:
    ```typescript
-   interface PlatformInfo {
-     platform: "wordpress" | "vercel" | "netlify" | "cloudflare" | "custom" | "unknown";
-     canAutoKey: boolean;  // Can we auto-deploy?
-     instructions?: string;
-   }
-   
-   async detectPlatform(domain) {
-     // Headers analysis: x-vercel-id, x-nf-request-id, cf-ray
-     // DNS CNAME analysis
-     // Response patterns
+   async onConnectionEstablished(clientId, connectionId, platform) {
+     const adapter = getAdapterForPlatform(platform);
+     
+     // 1. Check native support (SEO plugins)
+     const existing = await adapter.detectExistingIndexNow(connectionId);
+     if (existing.configured) {
+       return { status: "native_handled", plugin: existing.plugin };
+     }
+     
+     // 2. Attempt auto-deployment
+     const result = await adapter.deployIndexNowKey(connectionId, apiKey);
+     
+     // 3. Return status for success screen
+     return { status: result.success ? "configured" : "manual_required" };
    }
    ```
 
-2. Platform-specific instructions:
-   - **Vercel**: Add `public/{key}.txt` file, redeploy
-   - **Netlify**: Add `static/{key}.txt` or `_redirects` rule
-   - **Cloudflare Pages**: Add `public/{key}.txt`
-   - **Custom/VPS**: Upload file to web root
+2. Update Connection Success Screen component:
+   - Show IndexNow status inline (not separate wizard)
+   - Collapsible manual instructions for unsupported platforms
+   - TeveroSEO fallback mode toggle
 
 **Afternoon (4 hours):**
-3. Instruction generator component:
-   ```typescript
-   function generateInstructions(platform, apiKey) {
-     switch (platform) {
-       case "vercel":
-         return `Create file: public/${apiKey}.txt with content: ${apiKey}`;
-       case "netlify":
-         return `Create file: static/${apiKey}.txt with content: ${apiKey}`;
-       // ...
-     }
-   }
-   ```
+3. Additional platform adapters:
+   - **Wix**: Check Premium plan, native IndexNow enabled
+   - **Joomla**: Detect Aimy IndexNow extension via REST API
+   - **Drupal**: Detect Index Now module via JSON:API
+   - **Magento**: Detect Webkul extension via REST API
 
-4. Dashboard UI for platform-specific setup wizard
+4. Cloudflare Crawler Hints detection:
+   - Check CF-Ray header for Cloudflare presence
+   - Provide dashboard deep link for Crawler Hints toggle
+   - Used as fallback for Squarespace, Webflow, Weebly, etc.
 
 ### Success Criteria
-- [x] Platform detected for 80%+ of sites
-- [x] Platform-specific instructions displayed
-- [x] TeveroSEO fallback offered when manual setup required
+- [x] Connection success screen shows IndexNow status
+- [x] No separate IndexNow wizard needed
+- [x] Cloudflare detected and Crawler Hints offered
+- [x] 6+ platform adapters with IndexNow support
 
 ### Parallel Workstream
 **Sitemap Track (continues from Day 1):**
@@ -515,7 +527,7 @@ Manual walkthrough of complete user journey:
 ## Dependencies Graph
 
 ```
-Day 1 (Schema + Service)
+Day 1 (Schema + Service + connection_id linkage)
     |
     +---> Day 2 (Queue + Worker)
     |         |
@@ -525,13 +537,15 @@ Day 1 (Schema + Service)
     |
     +---> Day 4 (TeveroSEO Fallback)
     |
-    +---> Day 5 (WordPress) ---> Day 6 (Platform Detection)
+    +---> Day 5 (IndexNowCapableAdapter + WordPress/Shopify)
+    |         |
+    |         +---> Day 6 (Onboarding Integration + More Adapters)
     |
     +---> Day 6 (Sitemap lastmod) [parallel track]
               |
-              +---> Day 8 (Dashboard)
+              +---> Day 8 (Dashboard - simplified, inline status)
                         |
-                        +---> Day 9 (Testing)
+                        +---> Day 9 (Testing + Migration Service)
 ```
 
 ---
@@ -587,13 +601,16 @@ INDEXNOW_DEFAULT_DELAY_SEO_FIX=3600
 
 This 9-day execution plan delivers a complete IndexNow system with:
 
-1. **Core value:** Free, instant indexing for Bing, Yandex, Naver, Seznam
-2. **Graceful degradation:** Client key > TeveroSEO fallback > Manual
-3. **Automation:** WordPress auto-deploy, platform-specific instructions
-4. **Observability:** Dashboard, history, statistics
-5. **Resilience:** Dual endpoints, retry logic, circuit breakers
+1. **Zero Extra Steps:** IndexNow auto-configures during CMS connection onboarding
+2. **Top 15 CMS Support:** WordPress, Shopify, Wix, Drupal, Joomla, Magento, and more
+3. **Native Plugin Detection:** Auto-detect Rank Math, SEOPress, Yoast (WordPress handles IndexNow)
+4. **Graceful Degradation:** Native plugin > Auto-deploy > Cloudflare bypass > Manual > TeveroSEO fallback
+5. **Observability:** Inline status in connection screen, history table, statistics
+6. **Resilience:** Dual endpoints, retry logic, circuit breakers
 
 The critical path runs through Days 1-3 (infrastructure). Days 4-6 can be parallelized with multiple developers. Days 7-9 integrate and validate the complete system.
+
+**Key Integration:** IndexNowCapableAdapter interface extends existing platform adapters, ensuring IndexNow is configured automatically when users connect their CMS.
 
 **Total estimated effort:** 9 developer-days (72 hours)
 **Potential parallel speedup:** 6-7 days with 2 developers

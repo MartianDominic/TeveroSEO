@@ -34,7 +34,7 @@ import { createComponentLogger } from "../logging";
 
 const DEFAULT_CONFIG: L3CacheConfig = {
   retentionDays: 30,
-  compressionAlgo: "lz4", // Using gzip as equivalent
+  compressionAlgo: "gzip",
   batchSize: 100,
 };
 

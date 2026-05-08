@@ -69,7 +69,7 @@ describe('CannibalizationService', () => {
     service = new CannibalizationService(mockDb);
   });
 
-  describe('detectCannibalization', () => {
+  describe('detect', () => {
     it('should detect cannibalization when 2+ pages rank for same query', async () => {
       // Mock data: 2 pages competing for "seo tips"
       mockDb.execute.mockResolvedValueOnce({
@@ -93,11 +93,13 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].query).toBe('seo tips');
-      expect(result[0].pages).toHaveLength(2);
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].query).toBe('seo tips');
+      expect(result.issues[0].pages).toHaveLength(2);
+      expect(result.summary).toBeDefined();
+      expect(result.metadata).toBeDefined();
     });
 
     it('should calculate correct severity based on page count and positions', async () => {
@@ -111,20 +113,21 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].severity).toBe('high');
+      expect(result.issues[0].severity).toBe('high');
     });
 
-    it('should return empty array when no cannibalization exists', async () => {
+    it('should return empty issues array when no cannibalization exists', async () => {
       // No rows = no queries with multiple pages
       mockDb.execute.mockResolvedValueOnce({
         rows: [],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result).toHaveLength(0);
+      expect(result.issues).toHaveLength(0);
+      expect(result.summary.total).toBe(0);
     });
 
     it('should filter by date range correctly', async () => {
@@ -149,9 +152,11 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      await service.detectCannibalization('site-123', {
+      await service.detect('site-123', {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
+        mode: 'stored',
+        persist: false,
       });
 
       // Verify the SQL was called with the date parameters
@@ -182,11 +187,11 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123', { minImpressions: 1000 });
+      const result = await service.detect('site-123', { minImpressions: 1000, mode: 'stored', persist: false });
 
       // Both pages meet the threshold, so we should see the cannibalization
-      expect(result).toHaveLength(1);
-      expect(result[0].pages.every((p: { impressions: number }) => p.impressions >= 1000)).toBe(true);
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].pages.every((p: { impressions: number }) => p.impressions >= 1000)).toBe(true);
     });
 
     it('should limit results when limit is specified', async () => {
@@ -202,9 +207,9 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123', { limit: 2 });
+      const result = await service.detect('site-123', { limit: 2, mode: 'stored', persist: false });
 
-      expect(result).toHaveLength(2);
+      expect(result.issues).toHaveLength(2);
     });
 
     it('should calculate impact estimate correctly', async () => {
@@ -230,7 +235,7 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
       // Total impressions: 8000
       // Total clicks: 150
@@ -238,8 +243,8 @@ describe('CannibalizationService', () => {
       // Potential clicks at position 8 = 8000 * 0.0295 = 236
       // Impact = 236 - 150 = 86
       // The new algorithm uses position-specific CTR (more accurate than fixed position 3)
-      expect(result[0].impactEstimate).toBeGreaterThan(0);
-      expect(result[0].impactEstimate).toBeLessThan(200);
+      expect(result.issues[0].impactEstimate.dailyLostClicks).toBeGreaterThan(0);
+      expect(result.issues[0].impactEstimate.dailyLostClicks).toBeLessThan(200);
     });
 
     it('should generate appropriate recommendations', async () => {
@@ -264,12 +269,13 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
       // With 2000/10000 = 20% impression share, the secondary page has minimal traffic
       // The improved algorithm recommends redirect (more aggressive) for low traffic pages
-      expect(result[0].recommendation.toLowerCase()).toMatch(/redirect|canonical/);
-      expect(result[0].recommendation.toLowerCase()).toContain('seo-');
+      const rationale = result.issues[0].recommendation.rationale;
+      expect(rationale.toLowerCase()).toMatch(/redirect|canonical/);
+      expect(rationale.toLowerCase()).toContain('seo-');
     });
 
     it('should sort results by impact descending', async () => {
@@ -284,14 +290,14 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].query).toBe('high impact');
-      expect(result[0].impactEstimate).toBeGreaterThan(result[1].impactEstimate);
+      expect(result.issues[0].query).toBe('high impact');
+      expect(result.issues[0].impactEstimate.dailyLostClicks).toBeGreaterThan(result.issues[1].impactEstimate.dailyLostClicks);
     });
   });
 
-  describe('calculateSeverity', () => {
+  describe('severity calculation', () => {
     it('should return HIGH severity when >3 pages compete', async () => {
       mockDb.execute.mockResolvedValueOnce({
         rows: [
@@ -302,9 +308,9 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].severity).toBe('high');
+      expect(result.issues[0].severity).toBe('high');
     });
 
     it('should return HIGH severity when top 2 pages both in top 10 positions', async () => {
@@ -315,9 +321,9 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].severity).toBe('high');
+      expect(result.issues[0].severity).toBe('high');
     });
 
     it('should return MEDIUM severity for 2-3 pages with distributed traffic', async () => {
@@ -329,9 +335,9 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].severity).toBe('medium');
+      expect(result.issues[0].severity).toBe('medium');
     });
 
     it('should return LOW severity when one page dominates (>80% impressions)', async () => {
@@ -342,54 +348,58 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
       // 9000 / 9500 = 94.7% > 80%
-      expect(result[0].severity).toBe('low');
+      expect(result.issues[0].severity).toBe('low');
     });
   });
 
-  describe('getCannibalizationForQuery', () => {
-    it('should return cannibalization data for a specific query', async () => {
+  describe('query-specific detection', () => {
+    it('should find cannibalization for a specific query in results', async () => {
       mockDb.execute.mockResolvedValueOnce({
         rows: [
-          { page_url: 'https://example.com/page1', total_clicks: 100, total_impressions: 3000, avg_position: 8, avg_ctr: 0.033 },
-          { page_url: 'https://example.com/page2', total_clicks: 50, total_impressions: 1500, avg_position: 14, avg_ctr: 0.033 },
+          { query: 'target keyword', page_url: 'https://example.com/page1', total_clicks: 100, total_impressions: 3000, avg_position: 8, avg_ctr: 0.033 },
+          { query: 'target keyword', page_url: 'https://example.com/page2', total_clicks: 50, total_impressions: 1500, avg_position: 14, avg_ctr: 0.033 },
         ],
       });
 
-      const result = await service.getCannibalizationForQuery('site-123', 'target keyword');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
+      const targetIssue = result.issues.find(i => i.query === 'target keyword');
 
-      expect(result).not.toBeNull();
-      expect(result?.query).toBe('target keyword');
-      expect(result?.pages).toHaveLength(2);
+      expect(targetIssue).not.toBeUndefined();
+      expect(targetIssue?.query).toBe('target keyword');
+      expect(targetIssue?.pages).toHaveLength(2);
     });
 
-    it('should return null when query has only one page', async () => {
+    it('should include single-page queries in results but with only one page', async () => {
       mockDb.execute.mockResolvedValueOnce({
         rows: [
-          { page_url: 'https://example.com/only-page', total_clicks: 100, total_impressions: 3000, avg_position: 5, avg_ctr: 0.033 },
+          { query: 'unique query', page_url: 'https://example.com/only-page', total_clicks: 100, total_impressions: 3000, avg_position: 5, avg_ctr: 0.033 },
         ],
       });
 
-      const result = await service.getCannibalizationForQuery('site-123', 'unique query');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result).toBeNull();
+      // Single page queries are included in results (no cannibalization but still tracked)
+      // The detector groups by query - single page queries have 1 page in the issue
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].pages).toHaveLength(1);
     });
 
-    it('should return null when query has no data', async () => {
+    it('should return empty issues when no data exists', async () => {
       mockDb.execute.mockResolvedValueOnce({
         rows: [],
       });
 
-      const result = await service.getCannibalizationForQuery('site-123', 'nonexistent query');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result).toBeNull();
+      expect(result.issues).toHaveLength(0);
     });
   });
 
-  describe('getSeverityBreakdown', () => {
-    it('should return correct breakdown of severities', async () => {
+  describe('summary statistics', () => {
+    it('should return correct breakdown of severities in summary', async () => {
       // Mock to return multiple issues with different severities
       mockDb.execute.mockResolvedValueOnce({
         rows: [
@@ -407,25 +417,25 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.getSeverityBreakdown('site-123');
+      const result = await service.detect('site-123', { limit: 1000, mode: 'stored', persist: false });
 
-      expect(result.high).toBe(1);
-      expect(result.medium).toBe(1);
-      expect(result.low).toBe(1);
-      expect(result.total).toBe(3);
+      expect(result.summary.bySeverity.high).toBe(1);
+      expect(result.summary.bySeverity.medium).toBe(1);
+      expect(result.summary.bySeverity.low).toBe(1);
+      expect(result.summary.total).toBe(3);
     });
 
-    it('should return zeros when no cannibalization exists', async () => {
+    it('should return zeros in summary when no cannibalization exists', async () => {
       mockDb.execute.mockResolvedValueOnce({
         rows: [],
       });
 
-      const result = await service.getSeverityBreakdown('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result.high).toBe(0);
-      expect(result.medium).toBe(0);
-      expect(result.low).toBe(0);
-      expect(result.total).toBe(0);
+      expect(result.summary.bySeverity.high).toBe(0);
+      expect(result.summary.bySeverity.medium).toBe(0);
+      expect(result.summary.bySeverity.low).toBe(0);
+      expect(result.summary.total).toBe(0);
     });
   });
 
@@ -440,10 +450,11 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].recommendation.toLowerCase()).toContain('consolidate');
-      expect(result[0].recommendation).toContain('4 pages');
+      const rationale = result.issues[0].recommendation.rationale;
+      expect(rationale.toLowerCase()).toContain('consolidate');
+      expect(rationale).toContain('4 pages');
     });
 
     it('should recommend canonical/redirect for 2 pages', async () => {
@@ -454,9 +465,10 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
-      expect(result[0].recommendation.toLowerCase()).toMatch(/canonical|redirect/);
+      const rationale = result.issues[0].recommendation.rationale;
+      expect(rationale.toLowerCase()).toMatch(/canonical|redirect/);
     });
 
     it('should suggest evaluation when secondary ranks higher than primary', async () => {
@@ -473,11 +485,12 @@ describe('CannibalizationService', () => {
         ],
       });
 
-      const result = await service.detectCannibalization('site-123');
+      const result = await service.detect('site-123', { mode: 'stored', persist: false });
 
       // The secondary (better-rank) ranks higher (position 5) than primary (position 15)
       // So recommendation should suggest evaluation
-      expect(result[0].recommendation.toLowerCase()).toContain('evaluat');
+      const rationale = result.issues[0].recommendation.rationale;
+      expect(rationale.toLowerCase()).toContain('evaluat');
     });
   });
 });

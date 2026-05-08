@@ -12,6 +12,11 @@
  */
 
 import { circuitLogger } from "../logging";
+import {
+  recordCircuitState,
+  recordCircuitTransition,
+  recordCircuitTimeInState,
+} from "../monitoring/MetricsCollector";
 
 export type CircuitState = "closed" | "open" | "half-open";
 
@@ -31,6 +36,9 @@ export interface CircuitBreakerConfig {
   /** Minimum requests before evaluating failure rate */
   volumeThreshold: number;
 
+  /** Maximum requests allowed in half-open state for faster recovery detection (default: 3) */
+  halfOpenMaxRequests?: number;
+
   /** Optional filter to determine which errors count as failures */
   errorFilter?: (error: Error) => boolean;
 }
@@ -46,6 +54,8 @@ export interface CircuitStats {
   openedAt?: Date;
   halfOpenedAt?: Date;
   closedAt?: Date;
+  /** Current number of requests in half-open state */
+  halfOpenRequestCount: number;
 }
 
 /**
@@ -69,6 +79,7 @@ export class CircuitBreaker<_T = unknown> {
   private state: CircuitState = "closed";
   private failures = 0;
   private successes = 0;
+  private halfOpenRequestCount = 0;
   private lastStateChange = Date.now();
   private stats: CircuitStats;
   private stateChangeListeners: Array<(oldState: CircuitState, newState: CircuitState) => void> =
@@ -88,6 +99,16 @@ export class CircuitBreaker<_T = unknown> {
       } else {
         throw new CircuitOpenError(this.config.name, this.getTimeUntilRetry());
       }
+    }
+
+    // In half-open state, limit concurrent requests for faster recovery detection
+    if (this.state === "half-open") {
+      const maxRequests = this.config.halfOpenMaxRequests ?? 3;
+      if (this.halfOpenRequestCount >= maxRequests) {
+        throw new CircuitOpenError(this.config.name, 0);
+      }
+      this.halfOpenRequestCount++;
+      this.stats.halfOpenRequestCount = this.halfOpenRequestCount;
     }
 
     try {
@@ -116,6 +137,7 @@ export class CircuitBreaker<_T = unknown> {
       state: this.state,
       failures: this.failures,
       successes: this.successes,
+      halfOpenRequestCount: this.halfOpenRequestCount,
     };
   }
 
@@ -151,6 +173,7 @@ export class CircuitBreaker<_T = unknown> {
       successes: 0,
       totalRequests: 0,
       totalFailures: 0,
+      halfOpenRequestCount: 0,
     };
   }
 
@@ -202,8 +225,12 @@ export class CircuitBreaker<_T = unknown> {
       return;
     }
 
+    // Calculate time spent in previous state for metrics
+    const now = Date.now();
+    const timeInPreviousState = (now - this.lastStateChange) / 1000; // Convert to seconds
+
     this.state = newState;
-    this.lastStateChange = Date.now();
+    this.lastStateChange = now;
 
     // Update stats based on new state
     switch (newState) {
@@ -217,9 +244,17 @@ export class CircuitBreaker<_T = unknown> {
         break;
       case "half-open":
         this.successes = 0;
+        this.halfOpenRequestCount = 0;
+        this.stats.halfOpenRequestCount = 0;
         this.stats.halfOpenedAt = new Date();
         break;
     }
+
+    // Record Prometheus metrics for the transition
+    const tier = this.config.name;
+    recordCircuitTransition(tier, oldState, newState);
+    recordCircuitTimeInState(tier, oldState, timeInPreviousState);
+    recordCircuitState(tier, newState);
 
     // Notify listeners
     this.emitStateChange(oldState, newState);
@@ -261,6 +296,7 @@ export function createCircuitBreaker(
     successThreshold: 2,
     timeout: 30000, // 30 seconds
     volumeThreshold: 10,
+    halfOpenMaxRequests: 3,
     ...overrides,
   });
 }

@@ -15,6 +15,22 @@ vi.mock('@/db', () => ({
   },
 }));
 
+// Mock the cache module to bypass caching in tests
+vi.mock('@/server/cache', () => ({
+  getAnalyticsCache: () => ({
+    get: vi.fn().mockResolvedValue(null), // Always return cache miss
+    set: vi.fn().mockResolvedValue(undefined),
+  }),
+  wrapWithMetadata: (data: any, dataAsOf: Date) => ({
+    data,
+    metadata: {
+      dataAsOf,
+      ttl: 3600,
+      refreshAvailable: false,
+    },
+  }),
+}));
+
 // Now import after mocking
 const { MasterDashboardService } = await import('./MasterDashboardService');
 

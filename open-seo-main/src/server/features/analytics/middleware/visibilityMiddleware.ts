@@ -9,7 +9,7 @@
  * 4. Attaches config to request for downstream use
  * 5. Wraps res.json to filter response data automatically
  */
-import { getClientVisibilityService, getClientVisibilityServiceSync } from "../services/ClientVisibilityService";
+import { getClientVisibilityService } from "../services/ClientVisibilityService";
 import {
   DEFAULT_VISIBILITY,
   type VisibilityConfig,

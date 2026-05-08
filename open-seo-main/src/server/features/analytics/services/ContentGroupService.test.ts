@@ -6,7 +6,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ContentGroupService } from "./ContentGroupService";
-import type { ContentGroupWithMetrics } from "../types";
 
 // Mock repository instance methods
 const mockRepo = {

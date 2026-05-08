@@ -95,7 +95,7 @@ export const PUT = async (request: Request, { params }: { params: { clientId: st
 
     if (!parsed.success) {
       return Response.json(
-        { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+        { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
         { status: 400 }
       );
     }

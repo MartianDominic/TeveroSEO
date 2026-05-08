@@ -79,7 +79,7 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
       if (!parsed.success) {
         // API-002 FIX: Use standardized error format
         return Response.json(
-          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.flatten()),
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid parameters", parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))),
           { status: 400 }
         );
       }
@@ -121,7 +121,7 @@ export const Route = (createFileRoute as any)("/api/analytics/annotations")({
       if (!parsed.success) {
         // API-002 FIX: Use standardized error format
         return Response.json(
-          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid body", parsed.error.flatten()),
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, "Invalid body", parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))),
           { status: 400 }
         );
       }

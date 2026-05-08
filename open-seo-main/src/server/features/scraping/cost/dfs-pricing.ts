@@ -65,6 +65,9 @@ export const DFS_LABS_PRICING = {
   serpCompetitors: 0.001,      // SERP Competitors - per query
   domainRank: 0.002,           // Domain Rank Overview - per query
   rankedKeywords: 0.002,       // Ranked Keywords - per query
+  // Composite pricing for Keywords For Domain endpoint
+  keywordsForDomainBase: 0.01,     // Base cost per request
+  keywordsForDomainPerItem: 0.0001, // Per keyword returned
 } as const;
 
 export type DfsLabsOperation = keyof typeof DFS_LABS_PRICING;
@@ -79,6 +82,9 @@ export type DfsLabsOperation = keyof typeof DFS_LABS_PRICING;
 export const DFS_BACKLINKS_PRICING = {
   summary: 0.002,  // Backlinks Summary
   history: 0.003,  // Backlinks History (includes timeline)
+  // Composite pricing for detailed backlinks endpoint
+  detailedBase: 0.02,        // Base cost per request
+  detailedPerRow: 0.00003,   // Per backlink row returned
 } as const;
 
 export type DfsBacklinksOperation = keyof typeof DFS_BACKLINKS_PRICING;

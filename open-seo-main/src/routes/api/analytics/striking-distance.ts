@@ -16,6 +16,7 @@ import {
   rateLimitExceededResponse,
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
+import { validationErrorResponse } from "@/server/lib/api-response";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -45,10 +46,7 @@ export const Route = (createFileRoute as any)("/api/analytics/striking-distance"
 
     const parsed = querySchema.safeParse(params);
     if (!parsed.success) {
-      return Response.json(
-        { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return validationErrorResponse(parsed.error);
     }
 
     // Verify site belongs to authenticated workspace

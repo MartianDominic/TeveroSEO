@@ -20,7 +20,19 @@
  * ```
  */
 
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
+
+/**
+ * Format Zod validation errors into a consistent array structure.
+ * Zod 4+ deprecated the parameterless .flatten() signature.
+ * Use .issues directly for forward compatibility.
+ */
+export function formatZodErrors(zodError: ZodError): Array<{ path: string; message: string }> {
+  return zodError.issues.map((issue) => ({
+    path: issue.path.join('.') || 'body',
+    message: issue.message,
+  }));
+}
 
 // --- Error Codes ---
 
@@ -153,7 +165,7 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
  * @example
  * ```ts
  * return Response.json(
- *   createErrorResponse('VALIDATION_ERROR', 'Invalid parameters', zodError.flatten()),
+ *   createErrorResponse('VALIDATION_ERROR', 'Invalid parameters', formatZodErrors(zodError)),
  *   { status: 400 }
  * );
  * ```

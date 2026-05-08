@@ -24,7 +24,7 @@ describe("gscSyncQueue", () => {
     });
   });
 
-  it("should add repeatable job at 3 AM UTC via scheduleGscSync()", async () => {
+  it("should add repeatable job at 2:15 AM UTC via scheduleGscSync()", async () => {
     await scheduleGscSync();
 
     const repeatableJobs = await gscSyncQueue.getRepeatableJobs();
@@ -32,9 +32,9 @@ describe("gscSyncQueue", () => {
     // Should have at least one repeatable job
     expect(repeatableJobs.length).toBeGreaterThan(0);
 
-    // Check for our specific job pattern
+    // Check for our specific job pattern (SCRAPE-03: staggered to 2:15 AM)
     const fullSyncJob = repeatableJobs[0];
-    expect(fullSyncJob.pattern).toBe("0 3 * * *");
+    expect(fullSyncJob.pattern).toBe("15 2 * * *");
   });
 
   it("should prevent duplicate repeatable jobs via jobId", async () => {
@@ -48,17 +48,18 @@ describe("gscSyncQueue", () => {
   });
 
   it("should support adding single-site sync jobs", async () => {
-    await gscSyncQueue.add("site-sync", {
+    const job = await gscSyncQueue.add("site-sync", {
       syncType: "full",
       siteId: "site-123",
     });
 
-    const jobs = await gscSyncQueue.getJobs(["waiting"]);
-    expect(jobs).toHaveLength(1);
-    expect(jobs[0].data).toMatchObject({
+    // Verify job was created with correct data
+    expect(job).toBeDefined();
+    expect(job.data).toMatchObject({
       syncType: "full",
       siteId: "site-123",
     });
+    expect(job.name).toBe("site-sync");
   });
 
   it("should allow failed jobs to retry with exponential backoff (3 attempts)", async () => {

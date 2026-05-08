@@ -32,7 +32,7 @@ import { cacheLogger } from "../logging";
 const DEFAULT_CONFIG: L2CacheConfig = {
   maxMemory: "2gb",
   compressionEnabled: true,
-  compressionAlgo: "lz4", // Using gzip as LZ4 equivalent
+  compressionAlgo: "gzip",
   keyPrefix: "cache:",
 };
 

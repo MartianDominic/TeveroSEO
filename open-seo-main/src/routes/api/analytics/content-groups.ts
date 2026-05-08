@@ -21,6 +21,7 @@ import {
   addRateLimitHeaders,
 } from "@/server/middleware/rate-limit";
 import { csrfProtect } from "@/server/middleware/csrf";
+import { validationErrorResponse } from "@/server/lib/api-response";
 
 const listQuerySchema = z.object({
   siteId: z.string(),
@@ -63,7 +64,7 @@ export const Route = (createFileRoute as any)("/api/analytics/content-groups")({
       const parsed = listQuerySchema.safeParse(params);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }
@@ -91,7 +92,7 @@ export const Route = (createFileRoute as any)("/api/analytics/content-groups")({
         const parsed = autoGenerateBodySchema.safeParse(body);
         if (!parsed.success) {
           return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+            { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
             { status: 400 }
           );
         }
@@ -110,7 +111,7 @@ export const Route = (createFileRoute as any)("/api/analytics/content-groups")({
       const parsed = createBodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }

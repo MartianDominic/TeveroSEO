@@ -5,6 +5,18 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+// Mock database module before any imports that use it
+vi.mock("@/db", () => ({
+  db: {
+    execute: vi.fn(),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve([])),
+      })),
+    })),
+  },
+}));
+
 // Mock the dead-letter-queue module before importing orchestrator
 vi.mock("@/server/lib/dead-letter-queue", () => ({
   moveToDeadLetter: vi.fn().mockResolvedValue("dlq-123"),

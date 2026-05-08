@@ -130,7 +130,7 @@ export const Route = (createFileRoute as any)('/api/analytics/refresh')({
       const parsed = bodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid parameters', parsed.error.flatten()),
+          createErrorResponse(ERROR_CODES.VALIDATION_ERROR, 'Invalid parameters', parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message }))),
           { status: 400 }
         );
       }

@@ -4,7 +4,7 @@
  *
  * Long-term HTML archive storage using Cloudflare R2.
  * - TTL: 90 days (configurable via R2_RETENTION_DAYS env var)
- * - Compression: zstd/gzip
+ * - Compression: gzip
  * - Cost: $0.015/GB/mo + FREE egress
  *
  * ## R2 Bucket Lifecycle Configuration (Cloudflare Dashboard)
@@ -63,7 +63,7 @@ import { cacheLogger } from "../logging";
 const DEFAULT_CONFIG: L4CacheConfig = {
   bucket: process.env.R2_BUCKET ?? "scrape-archive",
   retentionDays: parseInt(process.env.R2_RETENTION_DAYS ?? "90", 10),
-  compressionAlgo: "zstd", // Using gzip as equivalent
+  compressionAlgo: "gzip",
   accountId: process.env.CF_ACCOUNT_ID ?? "",
 };
 
@@ -87,7 +87,7 @@ const CACHE_VERSION = "1";
  * L4 Cloudflare R2 Archive Cache implementation.
  *
  * Provides long-term HTML archival with:
- * - zstd/gzip compression for storage efficiency
+ * - gzip compression for storage efficiency
  * - Object key structure: html/{year}/{month}/{day}/{hash}.html.gz
  * - Metadata sidecar files for fast lookups
  */

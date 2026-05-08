@@ -15,6 +15,11 @@ import {
   type CostTable,
   type CacheTTLTable,
 } from '../types/tasks';
+import {
+  DFS_SERP_PRICING,
+  DFS_LABS_PRICING,
+  DFS_BACKLINKS_PRICING,
+} from '@/server/features/scraping/cost';
 
 // Re-export types for consumers
 export type { RoutingTable, CostTable, CacheTTLTable };
@@ -67,19 +72,19 @@ export const COST_PER_SOURCE: CostTable = {
 
 /**
  * Detailed cost breakdown for reporting.
- * These are per-unit costs from DataForSEO pricing.
+ * Derived from canonical DFS pricing in scraping/cost/dfs-pricing.ts.
  */
 export const DATAFORSEO_PRICING = {
   /** SERP API standard queue: $0.0006/SERP */
-  serp_per_result: 0.0006,
+  serp_per_result: DFS_SERP_PRICING.standard,
   /** Keywords Data: $0.05 per request covering up to 1000 keywords */
   keywords_per_request: 0.05,
   /** Labs API: $0.01 base + $0.0001 per item */
-  labs_base: 0.01,
-  labs_per_item: 0.0001,
+  labs_base: DFS_LABS_PRICING.keywordsForDomainBase,
+  labs_per_item: DFS_LABS_PRICING.keywordsForDomainPerItem,
   /** Backlinks: $0.02/req + $0.00003/row */
-  backlinks_base: 0.02,
-  backlinks_per_row: 0.00003,
+  backlinks_base: DFS_BACKLINKS_PRICING.detailedBase,
+  backlinks_per_row: DFS_BACKLINKS_PRICING.detailedPerRow,
 } as const;
 
 // ============================================================================

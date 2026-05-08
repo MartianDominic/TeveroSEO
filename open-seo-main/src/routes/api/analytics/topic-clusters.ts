@@ -29,7 +29,7 @@ const listQuerySchema = z.object({
 const createBodySchema = z.object({
   siteId: z.string(),
   name: z.string().min(1).max(100),
-  hubPageUrl: z.string().url(),
+  hubPageUrl: z.url(),
   hubTopic: z.string().min(1).max(100),
 });
 
@@ -65,7 +65,7 @@ export const Route = (createFileRoute as any)("/api/analytics/topic-clusters")({
         const parsed = detectHubsQuerySchema.safeParse(params);
         if (!parsed.success) {
           return Response.json(
-            { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+            { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
             { status: 400 }
           );
         }
@@ -86,7 +86,7 @@ export const Route = (createFileRoute as any)("/api/analytics/topic-clusters")({
       const parsed = listQuerySchema.safeParse(params);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }
@@ -111,7 +111,7 @@ export const Route = (createFileRoute as any)("/api/analytics/topic-clusters")({
       const parsed = createBodySchema.safeParse(body);
       if (!parsed.success) {
         return Response.json(
-          { success: false, error: "Invalid parameters", details: parsed.error.flatten() },
+          { success: false, error: "Invalid parameters", details: parsed.error.issues.map(i => ({ path: i.path.join('.'), message: i.message })) },
           { status: 400 }
         );
       }

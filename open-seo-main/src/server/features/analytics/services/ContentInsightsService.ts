@@ -475,19 +475,24 @@ export class ContentInsightsService {
       // Check each keyword for existing ranking pages
       const conflicts: CannibalizationConflict[] = [];
 
+      // Fetch all cannibalization issues once
+      const detectionResult = await this.cannibalizationService.detect(siteId, { mode: 'stored', persist: false });
+
       for (const keyword of targetKeywords.slice(0, 10)) {
         // Limit to 10 keywords
-        const result = await this.cannibalizationService.getCannibalizationForQuery(siteId, keyword);
+        const issue = detectionResult.issues.find(
+          i => i.query.toLowerCase() === keyword.toLowerCase()
+        );
 
-        if (result && result.pages.length > 0) {
+        if (issue && issue.pages.length > 0) {
           // There's at least one existing page ranking for this keyword
-          for (const page of result.pages) {
+          for (const page of issue.pages) {
             conflicts.push({
               url: page.pageUrl,
               keyword,
               position: page.avgPosition,
               impressions: page.impressions,
-              severity: this.mapCannibalizationSeverity(result.severity),
+              severity: this.mapCannibalizationSeverity(issue.severity),
             });
           }
         }
@@ -656,12 +661,10 @@ export class ContentInsightsService {
   }
 
   private mapCannibalizationSeverity(
-    severity: "high" | "medium" | "low"
+    severity: "critical" | "high" | "medium" | "low"
   ): "critical" | "high" | "medium" | "low" {
-    // Map 3-tier to 4-tier severity
-    if (severity === "high") return "high";
-    if (severity === "medium") return "medium";
-    return "low";
+    // Pass through 4-tier severity (critical is a valid value now)
+    return severity;
   }
 }
 
