@@ -11,9 +11,9 @@
 
 import { scrapeProspectPage } from "./dataforseoScraper";
 import { detectBusinessLinks } from "./linkDetector";
-import type { MultiPageScrapeResult } from "./types";
+import type { MultiPageScrapeResult, ScrapeResponse } from "./types";
 import { AppError } from "@/server/lib/errors";
-import { routeBatchRequest } from "@/server/features/scraping/migration/MigrationRouter";
+import { routeBatchRequest, routeRequest } from "@/server/features/scraping/migration/MigrationRouter";
 import {
   batchResultToMultiPageResult,
   scrapeResultToPageAnalysis,
@@ -120,6 +120,74 @@ async function scrapeProspectSiteLegacy(
 }
 
 /**
+ * Single page transformer for MigrationRouter.
+ * Converts between legacy ScrapeResponse and unified ScrapeResult formats.
+ */
+const singlePageTransformer = {
+  /**
+   * Convert legacy ScrapeResponse to unified format.
+   */
+  legacyToNew: (legacy: ScrapeResponse): UnifiedScrapeResult => {
+    if (!legacy.success) {
+      return {
+        url: "",
+        success: false,
+        statusCode: 0,
+        tierUsed: "dfs_js" as const,
+        fromCache: false,
+        responseTimeMs: 0,
+        responseSizeBytes: 0,
+        estimatedCostUsd: legacy.costCents / 100,
+        error: legacy.error,
+      };
+    }
+    return {
+      url: legacy.page.url,
+      success: true,
+      statusCode: legacy.page.statusCode,
+      tierUsed: "dfs_js" as const,
+      fromCache: false,
+      responseTimeMs: legacy.page.responseTimeMs,
+      responseSizeBytes: 0,
+      estimatedCostUsd: legacy.costCents / 100,
+      html: undefined,
+      parsedData: {
+        title: legacy.page.title,
+        metaDescription: legacy.page.metaDescription,
+        h1: legacy.page.h1s,
+        h2: [],
+        canonical: legacy.page.canonical ?? undefined,
+        internalLinks: legacy.page.internalLinks.map((url) => ({ url, text: "" })),
+        externalLinks: legacy.page.externalLinks.map((url) => ({ url, text: "" })),
+        wordCount: legacy.page.wordCount,
+        images: legacy.page.images.map((img) => ({
+          src: img.src ?? "",
+          alt: img.alt ?? "",
+        })),
+      },
+    };
+  },
+
+  /**
+   * Convert unified ScrapeResult to legacy ScrapeResponse format.
+   */
+  newToLegacy: (newResult: UnifiedScrapeResult): ScrapeResponse => {
+    if (!newResult.success) {
+      return {
+        success: false,
+        error: newResult.error ?? "Unknown error",
+        costCents: Math.round(newResult.estimatedCostUsd * 100),
+      };
+    }
+    return {
+      success: true,
+      page: scrapeResultToPageAnalysis(newResult),
+      costCents: Math.round(newResult.estimatedCostUsd * 100),
+    };
+  },
+};
+
+/**
  * Result transformer for MigrationRouter.
  * Converts between legacy MultiPageScrapeResult and unified ScrapeResult formats.
  */
@@ -204,9 +272,18 @@ export async function scrapeProspectSite(
 ): Promise<MultiPageScrapeResult> {
   const homepageUrl = normalizeDomain(domain);
 
-  // Step 1: Always scrape homepage first (needed for link detection)
-  // For legacy mode, this is the full flow. For unified, we need the links first.
-  const homepageResult = await scrapeProspectPage(homepageUrl);
+  // Step 1: Scrape homepage through MigrationRouter (routes to legacy or unified based on feature flag)
+  const homepageResult = await routeRequest<ScrapeResponse>({
+    feature: "prospectAnalysis",
+    url: homepageUrl,
+    legacyFn: () => scrapeProspectPage(homepageUrl),
+    scrapeOptions: {
+      feature: "prospectAnalysis",
+      includeHtml: true,
+      includeParsedData: true,
+    },
+    transformer: singlePageTransformer,
+  });
 
   if (!homepageResult.success) {
     throw new AppError(
@@ -251,7 +328,7 @@ export async function scrapeProspectSite(
     feature: "prospectAnalysis",
     urls: urlsToScrape,
     legacyBatchFn: async (urls: string[]) => {
-      // Legacy: sequential scraping with delays
+      // Legacy: sequential scraping with delays (only called when migration state is "legacy")
       const results = new Map<string, MultiPageScrapeResult>();
       let totalCost = homepageResult.costCents;
       const additionalPages = [];

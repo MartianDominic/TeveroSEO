@@ -23,6 +23,10 @@ import {
 } from "@/server/features/scraping/config";
 import { routeRequest } from "@/server/features/scraping/migration/adapters";
 import type { ScrapeResult, ScrapeOptions } from "@/server/features/scraping/ScrapingService";
+import { db } from "@/db";
+import { getDfsCostTracker, extractDomainFromUrl } from "@/server/features/scraping/providers/DfsCostTracker";
+import { DFS_LIVE_COSTS } from "@/server/features/scraping/cost";
+import { costLogger } from "@/server/features/scraping/logging/Logger";
 
 export interface CrawlOptions {
   /** Maximum pages to crawl (default: 100) */
@@ -418,7 +422,7 @@ export class UniversalCrawler {
    */
   private async crawlWithDataForSeo(
     url: string,
-    opts: typeof this.options,
+    opts: typeof this.options & CrawlOptions,
     sitemapUrls?: string[]
   ): Promise<CrawlResult> {
     if (!opts.dataForSeo?.login || !opts.dataForSeo?.password) {
@@ -484,6 +488,21 @@ export class UniversalCrawler {
     const meta = item.meta ?? {};
     // Note: onpage_score is available in item.onpage_score but not used yet
 
+    // Track DataForSEO cost (fire-and-forget pattern)
+    // Browser rendering is enabled by default, so use browser tier cost
+    const useBrowserRendering = opts.dataForSeo?.enableBrowserRendering ?? true;
+    const mode = useBrowserRendering ? "browser" : "basic";
+    const estimatedCost = DFS_LIVE_COSTS[mode as keyof typeof DFS_LIVE_COSTS];
+
+    this.recordDfsCostFireAndForget({
+      url,
+      mode: mode as "basic" | "js" | "browser",
+      success: true,
+      estimatedCost,
+      clientId: opts.clientId,
+      jobId: opts.jobId,
+    });
+
     // Map DataForSEO response to our PageData format
     const data: PageData = {
       title: meta.title ?? "",
@@ -504,6 +523,47 @@ export class UniversalCrawler {
       data,
       sitemapUrls,
     };
+  }
+
+  /**
+   * Record DataForSEO cost (fire-and-forget pattern).
+   * Does not block crawl completion - errors are logged but don't fail the request.
+   */
+  private recordDfsCostFireAndForget(record: {
+    url: string;
+    mode: "basic" | "js" | "browser";
+    success: boolean;
+    estimatedCost: number;
+    statusCode?: number;
+    errorMessage?: string;
+    clientId?: string;
+    jobId?: string;
+  }): void {
+    // Fire and forget - don't await, don't block
+    getDfsCostTracker(db)
+      .recordCost({
+        url: record.url,
+        domain: extractDomainFromUrl(record.url),
+        mode: record.mode,
+        usedStandardQueue: false, // Live API via instant_pages
+        estimatedCost: record.estimatedCost,
+        success: record.success,
+        statusCode: record.statusCode,
+        errorMessage: record.errorMessage,
+        clientId: record.clientId,
+        jobId: record.jobId,
+      })
+      .catch((error) => {
+        // Log error but don't fail the crawl
+        costLogger.error(
+          {
+            url: record.url,
+            mode: record.mode,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to record DataForSEO cost in UniversalCrawler"
+        );
+      });
   }
 
   /**

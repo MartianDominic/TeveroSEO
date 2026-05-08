@@ -1,13 +1,17 @@
 /**
  * Redis health check endpoint.
  * Phase 72-03: SaaS Readiness - Production health checks.
+ * Phase 95: Security hardening - requires admin API key authentication.
  *
  * GET /api/health/redis - Returns Redis connection health.
- * Used for targeted health monitoring and debugging.
+ * Protected: exposes Redis version, memory usage, and client count.
+ *
+ * Authentication: x-admin-api-key header (SCRAPING_ADMIN_API_KEY or SCRAPING_ADMIN_READONLY_KEY)
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { redis, checkRedisHealth } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { validateAdminApiKey } from "@/server/features/scraping/middleware";
 
 const log = createLogger({ module: "health/redis" });
 
@@ -17,6 +21,8 @@ export const Route = createFileRoute("/api/health/redis")({
       /**
        * GET /api/health/redis - Redis health check.
        *
+       * Requires: x-admin-api-key header with valid admin or readonly key.
+       *
        * Performs:
        * 1. PING command to test connection
        * 2. Measures round-trip latency
@@ -24,9 +30,22 @@ export const Route = createFileRoute("/api/health/redis")({
        *
        * Returns:
        * - 200 OK: Redis is healthy
+       * - 401 Unauthorized: Missing or invalid API key
        * - 503 Service Unavailable: Redis is unreachable
        */
-      GET: async () => {
+      GET: async ({ request }) => {
+        // Authenticate - this endpoint exposes Redis version and memory info
+        const auth = validateAdminApiKey(request);
+        if (!auth.success) {
+          return new Response(
+            JSON.stringify({ error: auth.error }),
+            {
+              status: auth.statusCode,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+
         const startTime = Date.now();
 
         try {

@@ -281,9 +281,6 @@ export class CacheManager implements ICacheManager {
   }
 
   async invalidateDomain(domain: string): Promise<void> {
-    // Clear L1 entirely for domain invalidation (conservative approach - L1 is small)
-    await this.l1.clear();
-
     // Get all hashes for this domain from Redis SET
     const domainKey = `${DOMAIN_TRACKING_PREFIX}${domain}`;
 
@@ -291,10 +288,12 @@ export class CacheManager implements ICacheManager {
       const hashes = await this.redis.smembers(domainKey);
 
       if (hashes.length > 0) {
-        // Clear L2-L4 using the tracked hashes (parallel for performance)
+        // Clear L1-L4 using the tracked hashes (parallel for performance)
+        // This avoids clearing ALL L1 entries - only the domain's entries are removed
         await Promise.all(
           hashes.map((hash) =>
             Promise.all([
+              this.l1.delete(hash),
               this.l2.delete(hash),
               this.l3.delete(hash),
               this.l4.delete(hash),
@@ -304,12 +303,17 @@ export class CacheManager implements ICacheManager {
 
         // Clear the domain tracking SET
         await this.redis.del(domainKey);
+
+        cacheLogger.debug(
+          { domain, hashCount: hashes.length },
+          "Domain invalidation completed with targeted L1 eviction"
+        );
       }
 
       // CACHE-01: Publish invalidation event to notify other instances
       await this.publishInvalidationEvent("domain", domain);
     } catch (error) {
-      // Log error but don't throw - L1 was already cleared, so partial success
+      // Log error but don't throw - partial success is acceptable
       cacheLogger.error(
         { domain, error: error instanceof Error ? error.message : String(error) },
         "Domain invalidation error"
@@ -747,14 +751,18 @@ export class CacheManager implements ICacheManager {
       // L2/L3/L4 are already cleared by the originating instance (they're shared)
       switch (message.type) {
         case "domain":
-        case "all":
-          // For domain or all invalidation, clear entire L1 (conservative, safe)
-          await this.l1.clear();
+          // For domain invalidation, use domain tracking to clear only specific entries
+          await this.invalidateL1ForDomain(message.pattern);
           break;
 
         case "url":
-          // For single URL invalidation, only clear that specific entry
-          // (Note: We don't have the hash, so we clear L1 entirely to be safe)
+          // For single URL invalidation, compute hash and delete specific entry
+          const hash = getCacheKey(normalizeUrl(message.pattern));
+          await this.l1.delete(hash);
+          break;
+
+        case "all":
+          // For full invalidation, clear entire L1
           await this.l1.clear();
           break;
       }
@@ -763,6 +771,35 @@ export class CacheManager implements ICacheManager {
         { message: messageStr, error: error instanceof Error ? error.message : String(error) },
         "Failed to parse invalidation message"
       );
+    }
+  }
+
+  /**
+   * Invalidate L1 cache entries for a specific domain using Redis domain tracking.
+   * Used for cross-instance domain invalidation where only L1 needs clearing.
+   */
+  private async invalidateL1ForDomain(domain: string): Promise<void> {
+    const domainKey = `${DOMAIN_TRACKING_PREFIX}${domain}`;
+
+    try {
+      const hashes = await this.redis.smembers(domainKey);
+
+      if (hashes.length > 0) {
+        // Delete only the domain's entries from L1
+        await Promise.all(hashes.map((hash) => this.l1.delete(hash)));
+
+        cacheLogger.debug(
+          { domain, hashCount: hashes.length },
+          "Cross-instance L1 invalidation completed"
+        );
+      }
+    } catch (error) {
+      // Fallback to clearing all L1 if domain tracking fails
+      cacheLogger.warn(
+        { domain, error: error instanceof Error ? error.message : String(error) },
+        "Domain tracking lookup failed, falling back to full L1 clear"
+      );
+      await this.l1.clear();
     }
   }
 

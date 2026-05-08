@@ -20,6 +20,7 @@ import {
   mapStatusCodeToEscalationReason,
 } from "./ErrorClassifier";
 import { getBandwidthTracker } from "../monitoring/BandwidthTracker";
+import { validateScrapableUrlSimple } from "../../../lib/ssrf-validator";
 
 // =============================================================================
 // Types
@@ -192,6 +193,24 @@ export class WebshareFetcher {
     const startTime = Date.now();
     const maxRetries = options.maxRetries ?? 2;
     const timeoutMs = options.timeoutMs ?? 20000;
+
+    // SSRF Protection: Validate URL before any proxy setup
+    try {
+      validateScrapableUrlSimple(options.url);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[WebshareFetcher] SSRF blocked URL: ${options.url} - Reason: ${errorMessage}`
+      );
+      return {
+        success: false,
+        tier: TIER_TO_NUMBER.webshare,
+        error: `SSRF validation failed: ${errorMessage}`,
+        errorType: "ssrf_blocked",
+        latencyMs: Date.now() - startTime,
+        bytesTransferred: 0,
+      };
+    }
 
     // Ensure we have proxies
     try {

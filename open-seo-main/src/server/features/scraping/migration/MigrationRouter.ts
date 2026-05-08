@@ -17,7 +17,7 @@ import {
 import { scrapingService, type ScrapeOptions, type ScrapeResult } from "../ScrapingService";
 import { runShadow, runShadowAsync } from "./shadow-runner";
 import { compareSingleScrape } from "./comparators";
-import { migrationLogger } from "../logging";
+import { migrationLogger, generateCorrelationId } from "../logging";
 import type { ConsumerAdapter } from "./adapters/types";
 
 // =============================================================================
@@ -51,6 +51,8 @@ export interface RouteOptions<TLegacyResult, TInput = unknown> {
   legacyFn: () => Promise<TLegacyResult>;
   /** Run shadow in non-blocking mode */
   asyncShadow?: boolean;
+  /** Correlation ID for end-to-end request tracing (auto-generated if not provided) */
+  correlationId?: string;
 
   // Standard pattern (url + transformer)
   /** URL to scrape (standard pattern) */
@@ -85,16 +87,20 @@ interface ResolvedRouteOptions<TLegacyResult> {
   transformer: ResultTransformer<TLegacyResult, ScrapeResult>;
   compareFn?: (legacy: TLegacyResult, newResult: TLegacyResult) => { match: boolean; differences: string[] };
   asyncShadow?: boolean;
+  /** Correlation ID for end-to-end request tracing */
+  correlationId: string;
 }
 
 /**
  * Resolve RouteOptions to always have url, scrapeOptions, and transformer.
  * Handles both standard pattern (url + transformer) and adapter pattern (input + adapter).
+ * Generates correlationId if not provided.
  */
 function resolveOptions<TLegacyResult, TInput>(
   options: RouteOptions<TLegacyResult, TInput>
 ): ResolvedRouteOptions<TLegacyResult> {
   const { feature, legacyFn, asyncShadow, compareFn } = options;
+  const correlationId = options.correlationId ?? generateCorrelationId();
 
   if (options.adapter && options.input !== undefined) {
     const { adapter, input } = options;
@@ -115,6 +121,7 @@ function resolveOptions<TLegacyResult, TInput>(
         return { match: result.match, differences: result.differences.map(d => d.field) };
       }),
       asyncShadow,
+      correlationId,
     };
   }
 
@@ -130,6 +137,7 @@ function resolveOptions<TLegacyResult, TInput>(
     transformer: options.transformer,
     compareFn,
     asyncShadow,
+    correlationId,
   };
 }
 
@@ -198,12 +206,13 @@ export async function routeRequest<TLegacyResult, TInput = unknown>(
 async function runShadowMode<TLegacyResult>(
   options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
-  const { feature, url, legacyFn, scrapeOptions, transformer, compareFn, asyncShadow } = options;
+  const { feature, url, legacyFn, scrapeOptions, transformer, compareFn, asyncShadow, correlationId } = options;
 
   const newFn = async (): Promise<TLegacyResult> => {
     const newResult = await scrapingService.scrape(url, {
       ...scrapeOptions,
       feature,
+      correlationId,
     });
     return transformer.newToLegacy(newResult);
   };
@@ -229,18 +238,19 @@ async function runShadowMode<TLegacyResult>(
 async function runCanaryMode<TLegacyResult>(
   options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
-  const { feature, url, legacyFn, scrapeOptions, transformer } = options;
+  const { feature, url, legacyFn, scrapeOptions, transformer, correlationId } = options;
 
   if (shouldUseNewForCanary()) {
     try {
       const newResult = await scrapingService.scrape(url, {
         ...scrapeOptions,
         feature,
+        correlationId,
       });
       return transformer.newToLegacy(newResult);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      migrationLogger.warn({ feature, error: err.message }, 'Canary failed, falling back to legacy');
+      migrationLogger.warn({ feature, correlationId, error: err.message }, 'Canary failed, falling back to legacy');
       scrapingService.recordFallback();
       return legacyFn();
     }
@@ -255,17 +265,18 @@ async function runCanaryMode<TLegacyResult>(
 async function runRolloutMode<TLegacyResult>(
   options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
-  const { feature, url, legacyFn, scrapeOptions, transformer } = options;
+  const { feature, url, legacyFn, scrapeOptions, transformer, correlationId } = options;
 
   try {
     const newResult = await scrapingService.scrape(url, {
       ...scrapeOptions,
       feature,
+      correlationId,
     });
     return transformer.newToLegacy(newResult);
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    migrationLogger.warn({ feature, error: err.message }, 'Rollout failed, falling back to legacy');
+    migrationLogger.warn({ feature, correlationId, error: err.message }, 'Rollout failed, falling back to legacy');
     scrapingService.recordFallback();
     return legacyFn();
   }
@@ -277,11 +288,12 @@ async function runRolloutMode<TLegacyResult>(
 async function runMigratedMode<TLegacyResult>(
   options: ResolvedRouteOptions<TLegacyResult>
 ): Promise<TLegacyResult> {
-  const { feature, url, scrapeOptions, transformer } = options;
+  const { feature, url, scrapeOptions, transformer, correlationId } = options;
 
   const newResult = await scrapingService.scrape(url, {
     ...scrapeOptions,
     feature,
+    correlationId,
   });
   return transformer.newToLegacy(newResult);
 }
@@ -300,6 +312,8 @@ export interface BatchRouteOptions<TLegacyResult> {
   scrapeOptions?: ScrapeOptions;
   transformer: ResultTransformer<TLegacyResult, ScrapeResult>;
   concurrency?: number;
+  /** Correlation ID for end-to-end batch request tracing (auto-generated if not provided) */
+  correlationId?: string;
 }
 
 /**
@@ -310,6 +324,7 @@ export async function routeBatchRequest<TLegacyResult>(
 ): Promise<Map<string, TLegacyResult>> {
   const flags = loadMigrationFlagsCached();
   const state = flags[options.feature];
+  const correlationId = options.correlationId ?? generateCorrelationId();
 
   // For batch operations, use simplified routing (no shadow mode)
   if (state === "legacy") {
@@ -322,6 +337,7 @@ export async function routeBatchRequest<TLegacyResult>(
         ...options.scrapeOptions,
         feature: options.feature,
         concurrency: options.concurrency,
+        correlationId,
       });
 
       // Convert results to legacy format
@@ -333,7 +349,7 @@ export async function routeBatchRequest<TLegacyResult>(
     } catch (error) {
       if (hasLegacyFallback(state)) {
         const err = error instanceof Error ? error : new Error(String(error));
-        migrationLogger.warn({ feature: options.feature, error: err.message }, 'Batch failed, falling back to legacy');
+        migrationLogger.warn({ feature: options.feature, correlationId, error: err.message }, 'Batch failed, falling back to legacy');
         scrapingService.recordFallback();
         return options.legacyBatchFn(options.urls);
       }

@@ -1,14 +1,19 @@
 /**
  * Health check endpoint for service status.
  * Phase 72-03: SaaS Readiness - Production health checks.
+ * Phase 95: Security hardening - requires admin API key authentication.
  *
  * GET /api/health - Returns overall service health status.
- * Used by load balancers, monitoring systems, and orchestration tools.
+ * Protected: exposes internal system state (database/redis status, latency, versions).
+ * Use /healthz for unauthenticated load balancer probes.
+ *
+ * Authentication: x-admin-api-key header (SCRAPING_ADMIN_API_KEY or SCRAPING_ADMIN_READONLY_KEY)
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { checkDatabaseHealth } from "@/db";
 import { checkRedisHealth } from "@/server/lib/redis";
 import { createLogger } from "@/server/lib/logger";
+import { validateAdminApiKey } from "@/server/features/scraping/middleware";
 
 const log = createLogger({ module: "health" });
 
@@ -28,8 +33,11 @@ export const Route = createFileRoute("/api/health/")({
       /**
        * GET /api/health - Overall service health check.
        *
+       * Requires: x-admin-api-key header with valid admin or readonly key.
+       *
        * Returns:
        * - 200 OK: All systems operational
+       * - 401 Unauthorized: Missing or invalid API key
        * - 503 Service Unavailable: One or more systems degraded
        *
        * Response includes:
@@ -39,7 +47,19 @@ export const Route = createFileRoute("/api/health/")({
        * - timestamp: ISO timestamp of check
        * - checks: Individual component status
        */
-      GET: async () => {
+      GET: async ({ request }) => {
+        // Authenticate - this endpoint exposes internal system state
+        const auth = validateAdminApiKey(request);
+        if (!auth.success) {
+          return new Response(
+            JSON.stringify({ error: auth.error }),
+            {
+              status: auth.statusCode,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+
         const startTime = Date.now();
         const checks: {
           database: "up" | "down";

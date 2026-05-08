@@ -94,6 +94,7 @@ export const ESCALATION_REASONS = [
   "connection_reset",    // Connection reset by peer
   "circuit_open",        // Circuit breaker is open for tier
   "bandwidth_exhausted", // Proxy provider bandwidth quota exhausted
+  "ssrf_blocked",        // SSRF protection - blocked private IP/localhost/metadata
 ] as const;
 export type EscalationReason = (typeof ESCALATION_REASONS)[number];
 

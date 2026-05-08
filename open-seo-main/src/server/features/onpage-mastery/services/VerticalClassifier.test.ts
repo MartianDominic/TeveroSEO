@@ -8,7 +8,7 @@ import {
   VerticalClassifier,
   resetVerticalClassifierService,
 } from "./VerticalClassifier";
-import { CircuitOpenError } from "@/server/features/keywords/services/CircuitBreaker";
+import { CircuitOpenError } from "@/server/features/scraping/resilience/CircuitBreaker";
 
 // Mock database
 vi.mock("@/db", () => ({

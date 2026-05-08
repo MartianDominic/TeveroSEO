@@ -18,6 +18,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { timingSafeEqual } from "crypto";
 import { alertLogger } from "../logging";
+// DUP-003 FIX: Use consolidated IP extractor
+import { getClientIp } from "@/server/lib/ip-extractor";
 
 // =============================================================================
 // Types
@@ -256,28 +258,8 @@ function timingSafeCompare(provided: string, expected: string): boolean {
   );
 }
 
-/**
- * Extract client IP from request, handling proxies.
- */
-function getClientIp(req: Request): string {
-  // Check X-Forwarded-For header (nginx, load balancers)
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (forwardedFor) {
-    const ips = Array.isArray(forwardedFor)
-      ? forwardedFor[0]
-      : forwardedFor.split(",")[0];
-    return ips.trim();
-  }
-
-  // Check X-Real-IP header (nginx)
-  const realIp = req.headers["x-real-ip"];
-  if (realIp) {
-    return Array.isArray(realIp) ? realIp[0] : realIp;
-  }
-
-  // Fall back to socket remote address
-  return req.ip || req.socket?.remoteAddress || "unknown";
-}
+// DUP-003 FIX: getClientIp function moved to @/server/lib/ip-extractor.ts
+// Import is at the top of the file
 
 // =============================================================================
 // Singleton Exports
@@ -301,3 +283,107 @@ export const requireAdmin = requireRole('admin');
  * Use for read operations: status, metrics, health checks.
  */
 export const requireReadonly = requireRole('readonly');
+
+// =============================================================================
+// TanStack Start / Fetch API Compatible Auth Helper
+// =============================================================================
+
+/**
+ * Result of admin API key authentication for TanStack routes.
+ */
+export interface AdminAuthResult {
+  success: true;
+  role: AdminRole;
+  apiKeyPrefix?: string;
+}
+
+/**
+ * Failure result for admin API key authentication.
+ */
+export interface AdminAuthFailure {
+  success: false;
+  error: string;
+  statusCode: 401 | 403;
+}
+
+/**
+ * Union type for admin auth result.
+ */
+export type AdminAuthResponse = AdminAuthResult | AdminAuthFailure;
+
+/**
+ * Validate admin API key from a standard Request object.
+ * Use this for TanStack Start routes and other non-Express handlers.
+ *
+ * @example
+ * ```typescript
+ * // In a TanStack Start route handler
+ * const auth = validateAdminApiKey(request);
+ * if (!auth.success) {
+ *   return Response.json({ error: auth.error }, { status: auth.statusCode });
+ * }
+ * // auth.role is 'admin' or 'readonly'
+ * ```
+ */
+export function validateAdminApiKey(
+  request: Request,
+  options: { requireAdmin?: boolean } = {}
+): AdminAuthResponse {
+  const adminApiKey = process.env.SCRAPING_ADMIN_API_KEY;
+  const readonlyApiKey = process.env.SCRAPING_ADMIN_READONLY_KEY;
+
+  // Check if any API keys are configured
+  if (!adminApiKey && !readonlyApiKey) {
+    alertLogger.warn('No admin API keys configured - rejecting request');
+    return {
+      success: false,
+      error: 'Admin API authentication not configured',
+      statusCode: 401,
+    };
+  }
+
+  // Get API key from header
+  const providedKey = request.headers.get('x-admin-api-key');
+
+  if (!providedKey) {
+    return {
+      success: false,
+      error: 'Missing admin API key',
+      statusCode: 401,
+    };
+  }
+
+  // Check which key matches
+  let role: AdminRole | null = null;
+
+  if (adminApiKey && timingSafeCompare(providedKey, adminApiKey)) {
+    role = 'admin';
+  } else if (readonlyApiKey && timingSafeCompare(providedKey, readonlyApiKey)) {
+    role = 'readonly';
+  }
+
+  if (!role) {
+    alertLogger.warn('Invalid admin API key attempted');
+    return {
+      success: false,
+      error: 'Invalid admin API key',
+      statusCode: 401,
+    };
+  }
+
+  // Check if admin role is required
+  if (options.requireAdmin && role === 'readonly') {
+    alertLogger.warn('Readonly key used for admin-only endpoint');
+    return {
+      success: false,
+      error: 'Insufficient permissions - admin access required',
+      statusCode: 403,
+    };
+  }
+
+  return {
+    success: true,
+    role,
+    apiKeyPrefix: providedKey.substring(0, 8),
+  };
+}

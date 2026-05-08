@@ -23,6 +23,20 @@ import { Redis } from "ioredis";
 import { dfsBudgetLogger } from "../logging";
 
 // =============================================================================
+// Environment Configuration
+// =============================================================================
+
+/**
+ * Check if hard limit enforcement is enabled.
+ * Defaults to true for production safety - only returns false if explicitly set to 'false'.
+ */
+function isHardLimitEnforced(): boolean {
+  const envValue = process.env.DFS_ENFORCE_HARD_LIMIT;
+  // Default to true if not explicitly set to 'false'
+  return envValue !== "false";
+}
+
+// =============================================================================
 // Configuration Types
 // =============================================================================
 
@@ -92,7 +106,7 @@ export class DfsBudgetMonitor {
       alertThresholds: config?.alertThresholds ?? DEFAULT_DFS_BUDGET_CONFIG.alertThresholds,
       alertWebhookUrl: config?.alertWebhookUrl ?? process.env.DFS_ALERT_WEBHOOK_URL,
       alertEmails: config?.alertEmails ?? parseAlertEmails(process.env.DFS_ALERT_EMAILS),
-      enforceHardLimit: config?.enforceHardLimit ?? false,
+      enforceHardLimit: config?.enforceHardLimit ?? isHardLimitEnforced(),
       workspaceId: config?.workspaceId,
     };
   }

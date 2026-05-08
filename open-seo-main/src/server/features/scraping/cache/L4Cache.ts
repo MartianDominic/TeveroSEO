@@ -44,6 +44,7 @@ import {
   DeleteObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  type GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import type {
   CachedPage,
@@ -132,17 +133,21 @@ export class L4Cache implements ICacheLevel {
     this.requestCount++;
 
     try {
+      // Try new hash-prefix key format first
       const key = this.getObjectKey(hash);
+      let response = await this.tryGetObject(key);
 
-      // Get the object
-      const command = new GetObjectCommand({
-        Bucket: this.config.bucket,
-        Key: key,
-      });
+      // Fallback to legacy date-based keys for backward compatibility
+      // Check past 7 days to find entries stored with old key format
+      if (!response) {
+        response = await this.tryLegacyKeys(hash);
+        if (response) {
+          // Migrate entry to new key format (fire-and-forget)
+          this.migrateToNewKey(hash, response).catch(() => {});
+        }
+      }
 
-      const response = await this.client.send(command);
-
-      if (!response.Body) {
+      if (!response || !response.Body) {
         this.misses++;
         return null;
       }
@@ -211,6 +216,93 @@ export class L4Cache implements ICacheLevel {
       return null;
     } finally {
       this.totalLatencyMs += performance.now() - startTime;
+    }
+  }
+
+  /**
+   * Try to get an object from R2, returns null on 404/not found.
+   */
+  private async tryGetObject(key: string): Promise<GetObjectCommandOutput | null> {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+      });
+      return await this.client.send(command);
+    } catch (error: any) {
+      if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Try legacy date-based keys for backward compatibility.
+   * Checks past 7 days for entries stored with old format.
+   */
+  private async tryLegacyKeys(hash: string): Promise<GetObjectCommandOutput | null> {
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    // Check past 7 days (most likely to have recent cached entries)
+    for (let daysAgo = 0; daysAgo <= 7; daysAgo++) {
+      const checkDate = new Date(now - daysAgo * dayMs);
+      const legacyKey = this.getLegacyObjectKey(hash, checkDate);
+
+      const response = await this.tryGetObject(legacyKey);
+      if (response) {
+        cacheLogger.debug(
+          { hash, legacyKey, daysAgo },
+          "Found entry with legacy date-based key"
+        );
+        return response;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Migrate an entry from legacy date-based key to new hash-prefix key.
+   * Also deletes the old key after successful migration.
+   */
+  private async migrateToNewKey(
+    hash: string,
+    response: GetObjectCommandOutput
+  ): Promise<void> {
+    try {
+      if (!response.Body) return;
+
+      const bodyBytes = await response.Body.transformToByteArray();
+      const newKey = this.getObjectKey(hash);
+
+      // Copy to new key location
+      const putCommand = new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: newKey,
+        Body: Buffer.from(bodyBytes),
+        ContentType: response.ContentType,
+        ContentEncoding: response.ContentEncoding,
+        Metadata: response.Metadata,
+      });
+
+      await this.client.send(putCommand);
+
+      cacheLogger.info(
+        { hash, newKey },
+        "Migrated L4 cache entry to new key format"
+      );
+
+      // Note: We don't delete the old key here because:
+      // 1. We don't know which date it was stored under without checking again
+      // 2. R2 lifecycle rules will clean up old entries
+      // 3. Avoiding extra API calls for migration
+    } catch (error) {
+      cacheLogger.warn(
+        { hash, error: error instanceof Error ? error.message : String(error) },
+        "Failed to migrate L4 cache entry to new key format"
+      );
     }
   }
 
@@ -691,14 +783,33 @@ export class L4Cache implements ICacheLevel {
   /**
    * Get object key for a hash.
    *
-   * Format: html/{year}/{month}/{day}/{hash}.html.gz
+   * Format: html/{hash-prefix}/{hash}.html.gz
+   *
+   * Uses first 2 characters of hash as prefix for distribution across
+   * virtual directories. This avoids date-based paths which cause cache
+   * misses after midnight (the key would change daily).
+   *
+   * Note: The original fetch timestamp is stored in x-cache-timestamp
+   * metadata for lifecycle rules and age calculations.
    */
   private getObjectKey(hash: string): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+    // Use first 2 chars of hash as prefix for S3 distribution
+    const prefix = hash.substring(0, 2);
+    return `html/${prefix}/${hash}.html.gz`;
+  }
 
+  /**
+   * Get legacy object key for migration/backward compatibility.
+   * Tries to find entries stored with the old date-based key format.
+   *
+   * @param hash - The cache key hash
+   * @param fetchDate - The date the content was originally fetched
+   * @returns Legacy key in format html/{year}/{month}/{day}/{hash}.html.gz
+   */
+  private getLegacyObjectKey(hash: string, fetchDate: Date): string {
+    const year = fetchDate.getFullYear();
+    const month = String(fetchDate.getMonth() + 1).padStart(2, "0");
+    const day = String(fetchDate.getDate()).padStart(2, "0");
     return `html/${year}/${month}/${day}/${hash}.html.gz`;
   }
 

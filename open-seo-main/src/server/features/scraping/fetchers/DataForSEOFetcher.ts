@@ -20,6 +20,7 @@ import { DFS_LIVE_COSTS } from "../cost";
 import { db } from "@/db";
 import { getDfsCostTracker, extractDomainFromUrl } from "../providers/DfsCostTracker";
 import { costLogger } from "../logging/Logger";
+import { getDataForSEOAuthHeader } from "@/server/lib/dataforseo-auth";
 
 // =============================================================================
 // Types
@@ -107,27 +108,12 @@ const API_BASE = "https://api.dataforseo.com";
 
 /**
  * Create authenticated fetch function for DataForSEO API.
- *
- * @deprecated This duplicates auth logic from @/server/lib/dataforseo-auth.ts
- * New code should use createDataForSEOFetch() from dataforseo-auth.ts instead.
- * This local version is kept for backward compatibility during migration.
+ * Uses the canonical auth module from @/server/lib/dataforseo-auth.
  */
 function createAuthenticatedFetch(): typeof fetch {
-  const apiKey = process.env.DATAFORSEO_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error(
-      "DATAFORSEO_API_KEY not configured. Set in environment variables."
-    );
-  }
-
-  // NOTE: This duplicates the auth logic from dataforseo-auth.ts
-  // The canonical implementation is getDataForSEOAuthHeader() in dataforseo-auth.ts
-  // API key format is "login:password" encoded in base64
-  const authHeader = `Basic ${Buffer.from(apiKey).toString("base64")}`;
-
   return async (url: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
-    headers.set("Authorization", authHeader);
+    headers.set("Authorization", getDataForSEOAuthHeader());
     return fetch(url, { ...init, headers });
   };
 }

@@ -7,12 +7,23 @@
  * - Processor wrapper with automatic error handling
  * - Transaction wrapper with auto-rollback
  * - Safe fire-and-forget pattern for background tasks
+ * - SEC-005 FIX: Sanitized error responses for API handlers
+ *
+ * NOTE: Retry logic is consolidated in @/server/lib/retry.
+ * This module re-exports withRetry for backward compatibility.
  *
  * @module workers/utils/error-handler
  */
 
 import type { Job } from "bullmq";
 import { createLogger, type Logger } from "@/server/lib/logger";
+import { randomUUID } from "crypto";
+import {
+  withRetry as canonicalWithRetry,
+  adaptWorkerOptions,
+  type RetryOptions,
+  type WorkerRetryOptions,
+} from "@/server/lib/retry";
 
 const log = createLogger({ module: "worker-error-handler" });
 
@@ -267,8 +278,11 @@ export function createFireAndForget(
 /**
  * Retry an async operation with exponential backoff.
  *
+ * NOTE: This is a compatibility wrapper around the canonical implementation
+ * in @/server/lib/retry. New code should import directly from lib/retry.
+ *
  * @param operation - Async operation to retry
- * @param options - Retry configuration
+ * @param options - Retry configuration (worker-style)
  * @returns Result of the operation
  *
  * @example
@@ -276,54 +290,225 @@ export function createFireAndForget(
  *   () => fetchExternalApi(),
  *   { maxAttempts: 3, initialDelayMs: 1000 }
  * );
+ *
+ * @deprecated Import { withRetry } from '@/server/lib/retry' instead
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
-  options: {
-    maxAttempts?: number;
-    initialDelayMs?: number;
-    maxDelayMs?: number;
-    backoffMultiplier?: number;
-    shouldRetry?: (error: unknown) => boolean;
-  } = {}
+  options: WorkerRetryOptions = {}
 ): Promise<T> {
-  const {
-    maxAttempts = 3,
-    initialDelayMs = 1000,
-    maxDelayMs = 30000,
-    backoffMultiplier = 2,
-    shouldRetry = () => true,
-  } = options;
+  const canonicalOpts: RetryOptions = {
+    ...adaptWorkerOptions(options),
+    logRetries: true,
+    operationName: "worker operation",
+  };
 
-  let lastError: unknown;
-  let delay = initialDelayMs;
+  return canonicalWithRetry(operation, canonicalOpts);
+}
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
+// --- SEC-005 FIX: Sanitized Error Responses ---
 
-      if (attempt === maxAttempts || !shouldRetry(error)) {
-        throw error;
-      }
+/**
+ * Error codes for client-facing error responses.
+ * Maps internal error types to safe, generic codes.
+ */
+export const ERROR_CODES = {
+  INTERNAL_ERROR: "INTERNAL_ERROR",
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  NOT_FOUND: "NOT_FOUND",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  RATE_LIMITED: "RATE_LIMITED",
+  BAD_REQUEST: "BAD_REQUEST",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
+} as const;
 
-      log.warn(`Retry attempt ${attempt}/${maxAttempts}`, {
-        error: error instanceof Error ? error.message : String(error),
-        nextDelayMs: delay,
-      });
+export type ErrorCode = keyof typeof ERROR_CODES;
 
-      await sleep(delay);
-      delay = Math.min(delay * backoffMultiplier, maxDelayMs);
-    }
-  }
+/**
+ * Generic error messages that are safe to expose to clients.
+ * These do NOT leak internal details like file paths, stack traces, or database info.
+ */
+const SAFE_ERROR_MESSAGES: Record<ErrorCode, string> = {
+  INTERNAL_ERROR: "An unexpected error occurred. Please try again later.",
+  VALIDATION_ERROR: "The request contains invalid data.",
+  NOT_FOUND: "The requested resource was not found.",
+  UNAUTHORIZED: "Authentication is required to access this resource.",
+  FORBIDDEN: "You do not have permission to access this resource.",
+  RATE_LIMITED: "Too many requests. Please try again later.",
+  BAD_REQUEST: "The request could not be processed.",
+  SERVICE_UNAVAILABLE: "The service is temporarily unavailable.",
+};
 
-  throw lastError;
+/**
+ * Sanitized error response for API handlers.
+ * SEC-005 FIX: Never exposes internal paths, stack traces, or sensitive details.
+ */
+export interface SanitizedErrorResponse {
+  success: false;
+  error: {
+    code: ErrorCode;
+    message: string;
+    requestId: string;
+  };
 }
 
 /**
- * Sleep for a specified duration.
+ * Create a sanitized error response for API handlers.
+ *
+ * SEC-005 FIX: This function ensures that:
+ * - Internal error details are logged server-side
+ * - Only generic, safe messages are returned to clients
+ * - A requestId is included for correlation without exposing internals
+ *
+ * @param error - The actual error (for logging)
+ * @param code - The error code to return
+ * @param context - Additional context for logging
+ * @returns Sanitized error response object
  */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function createSanitizedErrorResponse(
+  error: unknown,
+  code: ErrorCode = "INTERNAL_ERROR",
+  context: Record<string, unknown> = {}
+): SanitizedErrorResponse {
+  const requestId = randomUUID();
+  const err = error instanceof Error ? error : new Error(String(error));
+
+  // Log full error details server-side
+  log.error(`API error [${code}]: ${err.message}`, err, {
+    requestId,
+    code,
+    ...context,
+  });
+
+  // Return sanitized response
+  return {
+    success: false,
+    error: {
+      code,
+      message: SAFE_ERROR_MESSAGES[code],
+      requestId,
+    },
+  };
+}
+
+/**
+ * Handle an API error and return a Response object.
+ *
+ * SEC-005 FIX: Centralizes error handling to prevent accidental exposure
+ * of internal details in API responses.
+ *
+ * @param error - The actual error
+ * @param request - The request (optional, for logging context)
+ * @param code - The error code
+ * @param status - HTTP status code
+ * @returns Response object with sanitized error
+ */
+export function handleApiError(
+  error: unknown,
+  request?: Request,
+  code: ErrorCode = "INTERNAL_ERROR",
+  status: number = 500
+): Response {
+  const context: Record<string, unknown> = {};
+
+  if (request) {
+    try {
+      const url = new URL(request.url);
+      context.path = url.pathname;
+      context.method = request.method;
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }
+
+  const sanitizedResponse = createSanitizedErrorResponse(error, code, context);
+
+  return Response.json(sanitizedResponse, { status });
+}
+
+/**
+ * Determine the appropriate error code from an error object.
+ * Useful for mapping domain errors to API error codes.
+ *
+ * @param error - The error to analyze
+ * @returns Appropriate error code
+ */
+export function getErrorCode(error: unknown): ErrorCode {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    const name = error.name.toLowerCase();
+
+    // Map common error patterns to codes
+    if (name.includes("validation") || message.includes("invalid")) {
+      return "VALIDATION_ERROR";
+    }
+    if (name.includes("notfound") || message.includes("not found")) {
+      return "NOT_FOUND";
+    }
+    if (name.includes("unauthorized") || message.includes("unauthorized")) {
+      return "UNAUTHORIZED";
+    }
+    if (name.includes("forbidden") || message.includes("permission denied")) {
+      return "FORBIDDEN";
+    }
+    if (message.includes("rate limit") || message.includes("too many")) {
+      return "RATE_LIMITED";
+    }
+  }
+
+  return "INTERNAL_ERROR";
+}
+
+/**
+ * Wrap an async API handler with automatic error handling.
+ * Ensures all errors are properly sanitized before returning to clients.
+ *
+ * @param handler - The async handler function
+ * @returns Wrapped handler with error handling
+ *
+ * @example
+ * ```typescript
+ * export const POST = withApiErrorHandler(async (request) => {
+ *   const data = await processRequest(request);
+ *   return Response.json({ success: true, data });
+ * });
+ * ```
+ */
+export function withApiErrorHandler(
+  handler: (request: Request) => Promise<Response>
+): (request: Request) => Promise<Response> {
+  return async (request: Request): Promise<Response> => {
+    try {
+      return await handler(request);
+    } catch (error) {
+      const code = getErrorCode(error);
+      const status = getStatusForCode(code);
+      return handleApiError(error, request, code, status);
+    }
+  };
+}
+
+/**
+ * Get HTTP status code for an error code.
+ */
+function getStatusForCode(code: ErrorCode): number {
+  switch (code) {
+    case "VALIDATION_ERROR":
+    case "BAD_REQUEST":
+      return 400;
+    case "UNAUTHORIZED":
+      return 401;
+    case "FORBIDDEN":
+      return 403;
+    case "NOT_FOUND":
+      return 404;
+    case "RATE_LIMITED":
+      return 429;
+    case "SERVICE_UNAVAILABLE":
+      return 503;
+    case "INTERNAL_ERROR":
+    default:
+      return 500;
+  }
 }

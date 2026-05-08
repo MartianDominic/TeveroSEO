@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import { TIER_TO_NUMBER } from "./types";
 import { getBandwidthTracker } from "../monitoring/BandwidthTracker";
+import { validateScrapableUrlSimple } from "../../../lib/ssrf-validator";
 
 // =============================================================================
 // Types
@@ -146,6 +147,28 @@ export class GeonodeFetcher {
    */
   async fetch(options: GeonodeFetchOptions): Promise<FetchResult> {
     const startTime = Date.now();
+
+    // SSRF Protection: Validate URL before any proxy request
+    // This prevents attacks targeting internal infrastructure via residential proxies
+    try {
+      validateScrapableUrlSimple(options.url);
+    } catch (ssrfError) {
+      const errorMessage =
+        ssrfError instanceof Error ? ssrfError.message : String(ssrfError);
+      console.error(
+        `[SECURITY] SSRF blocked in GeonodeFetcher: url="${options.url}" reason="${errorMessage}"`
+      );
+      return {
+        success: false,
+        tier: TIER_TO_NUMBER.geonode,
+        error: `SSRF protection: ${errorMessage}`,
+        errorType: undefined,
+        latencyMs: Date.now() - startTime,
+        bytesTransferred: 0,
+        proxyUsed: "geonode:blocked",
+      };
+    }
+
     const maxRetries = options.maxRetries ?? 2;
     const timeoutMs = options.timeoutMs ?? 25000;
 

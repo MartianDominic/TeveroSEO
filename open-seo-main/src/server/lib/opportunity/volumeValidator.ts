@@ -10,6 +10,8 @@ import type { OpportunityKeyword } from "@/db/prospect-schema";
 import type { GeneratedKeyword } from "./keywordGenerator";
 import { fetchSearchVolumeRaw, type SearchVolumeItem } from "./dataforseoVolume";
 import { createLogger } from "@/server/lib/logger";
+import { db } from "@/db";
+import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
 
 const log = createLogger({ module: "volume-validator" });
 
@@ -107,6 +109,45 @@ export function enrichKeywordsWithMetrics(
 const DEFAULT_CONCURRENCY_LIMIT = 5;
 
 /**
+ * Record DataForSEO search volume API cost (fire-and-forget pattern).
+ * Non-blocking - errors are caught silently to avoid disrupting the main flow.
+ *
+ * @param keywordCount - Number of keywords in the batch
+ * @param costUsd - Cost returned by DataForSEO API
+ * @param success - Whether the API call succeeded
+ * @param responseTimeMs - Response time in milliseconds
+ * @param clientId - Optional client ID for attribution
+ */
+function recordVolumeApiCostFireAndForget(
+  keywordCount: number,
+  costUsd: number,
+  success: boolean,
+  responseTimeMs: number,
+  clientId?: string,
+  errorMessage?: string,
+): void {
+  const costTracker = getDfsCostTracker(db);
+
+  // Fire-and-forget: don't await, catch errors silently
+  costTracker
+    .recordCost({
+      url: `volume-validator:keywords:${keywordCount}`,
+      domain: "keywords-data-api",
+      mode: "basic",
+      usedStandardQueue: false,
+      estimatedCost: costUsd,
+      actualCost: success ? costUsd : undefined,
+      success,
+      responseTimeMs,
+      clientId,
+      errorMessage,
+    })
+    .catch(() => {
+      // Silently ignore - cost tracking is non-blocking
+    });
+}
+
+/**
  * Validate keywords by fetching search volume data from DataForSEO.
  * Batches keywords in groups of 1000 (API limit) and processes batches
  * concurrently with configurable concurrency limit.
@@ -145,6 +186,7 @@ export async function validateKeywordVolumes(
 
     const batchPromises = batchChunk.map(async (batch, chunkIndex) => {
       const batchIndex = i + chunkIndex;
+      const startTime = Date.now();
       try {
         const response = await fetchSearchVolumeRaw({
           keywords: batch,
@@ -152,11 +194,33 @@ export async function validateKeywordVolumes(
           languageCode,
         });
 
+        const responseTimeMs = Date.now() - startTime;
+
+        // Track cost via DfsCostTracker (fire-and-forget)
+        recordVolumeApiCostFireAndForget(
+          batch.length,
+          response.billing.costUsd,
+          true,
+          responseTimeMs,
+        );
+
         return {
           volumeData: response.data.map(transformVolumeItem),
           costUsd: response.billing.costUsd,
         };
       } catch (error) {
+        const responseTimeMs = Date.now() - startTime;
+
+        // Track failed request cost (fire-and-forget)
+        recordVolumeApiCostFireAndForget(
+          batch.length,
+          0,
+          false,
+          responseTimeMs,
+          undefined,
+          error instanceof Error ? error.message : String(error),
+        );
+
         log.error(
           "Failed to fetch search volume batch",
           error instanceof Error ? error : new Error(String(error)),

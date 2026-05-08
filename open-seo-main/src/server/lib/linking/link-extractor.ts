@@ -12,6 +12,10 @@ import type {
   ExtractLinksOptions,
   ExtractLinksResult,
 } from "./types";
+import {
+  normalizeUrlWithBase,
+  isSameOrigin,
+} from "@/server/features/scraping/cache/urlNormalization";
 
 /**
  * Extract all internal links from HTML with detailed metadata.
@@ -69,8 +73,8 @@ export function extractDetailedLinks(
       return;
     }
 
-    // Normalize URL (remove trailing slash, hash)
-    const normalizedUrl = normalizeUrl(resolvedUrl);
+    // Normalize URL using canonical implementation
+    const normalizedUrl = normalizeUrlWithBase(resolvedUrl.toString()) || resolvedUrl.toString();
 
     // Extract link attributes
     const anchorText = $link.text().trim();
@@ -127,33 +131,6 @@ function isInvalidLink(href: string): boolean {
   return false;
 }
 
-/**
- * Check if two origins are the same (ignoring protocol).
- */
-function isSameOrigin(origin1: string, origin2: string): boolean {
-  const normalize = (o: string) =>
-    o.replace(/^https?:\/\//, "").replace(/^www\./, "");
-  return normalize(origin1) === normalize(origin2);
-}
-
-/**
- * Normalize URL: remove trailing slash and hash fragment.
- */
-function normalizeUrl(url: URL): string {
-  let normalized = `${url.origin}${url.pathname}`;
-
-  // Remove trailing slash (except for root)
-  if (normalized.endsWith("/") && normalized !== url.origin + "/") {
-    normalized = normalized.slice(0, -1);
-  }
-
-  // Handle root URL: keep it as origin without trailing slash
-  if (normalized === url.origin + "/") {
-    normalized = url.origin;
-  }
-
-  return normalized;
-}
 
 /**
  * Detect link type based on content and position.

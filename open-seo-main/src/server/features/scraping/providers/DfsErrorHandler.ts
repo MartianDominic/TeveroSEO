@@ -3,9 +3,12 @@
  * Phase 95: Unified Scraping Infrastructure - DataForSEO Optimization
  *
  * Handles DFS-specific error codes and implements:
- * - Retry strategy with exponential backoff
+ * - Retry strategy with exponential backoff (via canonical lib/retry)
  * - Tier escalation on specific error types
  * - Circuit breaker for DFS service health
+ *
+ * NOTE: Core retry logic is consolidated in @/server/lib/retry.
+ * This module provides DFS-specific wrappers and error classification.
  */
 
 import type {
@@ -23,6 +26,12 @@ import {
 import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
 import { DFS_LIVE_COSTS } from "../cost";
 import { dfsBudgetLogger } from "../logging";
+import {
+  withRetry as canonicalWithRetry,
+  calculateBackoffDelay as canonicalCalculateBackoff,
+  sleep,
+  type RetryOptions,
+} from "@/server/lib/retry";
 
 // =============================================================================
 // Error Classification
@@ -176,6 +185,7 @@ export function escalateTier(currentMode: DfsMode): {
 
 /**
  * Calculate delay for exponential backoff with jitter.
+ * Delegates to canonical implementation in lib/retry.
  *
  * @param attempt - Current attempt number (0-indexed)
  * @param config - Retry configuration
@@ -185,18 +195,17 @@ export function calculateBackoffDelay(
   attempt: number,
   config: DfsRetryConfig = DEFAULT_DFS_RETRY_CONFIG
 ): number {
-  // Exponential backoff: baseDelay * 2^attempt
-  const exponentialDelay = config.baseDelayMs * Math.pow(2, attempt);
-
-  // Add jitter (0-1000ms)
-  const jitter = Math.random() * 1000;
-
-  // Cap at maxDelay
-  return Math.min(exponentialDelay + jitter, config.maxDelayMs);
+  return canonicalCalculateBackoff(
+    attempt,
+    config.baseDelayMs,
+    config.maxDelayMs,
+    2 // exponential multiplier
+  );
 }
 
 /**
  * Execute a function with retry and backoff.
+ * Uses the canonical retry implementation with DFS-specific error checking.
  *
  * @param fn - Function to execute
  * @param config - Retry configuration
@@ -208,33 +217,25 @@ export async function withRetry<T>(
   config: DfsRetryConfig = DEFAULT_DFS_RETRY_CONFIG,
   onRetry?: (attempt: number, error: Error, delay: number) => void
 ): Promise<T> {
-  let lastError: Error | null = null;
+  // Create DFS-specific error checker
+  const isDfsRetryable = (error: Error): boolean => {
+    const errorCodeMatch = error.message.match(/error code[:\s]*(\d+)/i);
+    const errorCode = errorCodeMatch ? parseInt(errorCodeMatch[1], 10) : undefined;
+    return isRetryableError(errorCode, config);
+  };
 
-  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+  const canonicalOpts: RetryOptions = {
+    maxRetries: config.maxRetries,
+    baseDelayMs: config.baseDelayMs,
+    maxDelayMs: config.maxDelayMs,
+    backoffMultiplier: 2,
+    isRetryable: isDfsRetryable,
+    onRetry,
+    logRetries: true,
+    operationName: "DataForSEO request",
+  };
 
-      // Extract error code from error message if available
-      const errorCodeMatch = lastError.message.match(/error code[:\s]*(\d+)/i);
-      const errorCode = errorCodeMatch ? parseInt(errorCodeMatch[1], 10) : undefined;
-
-      // Check if retryable
-      if (!isRetryableError(errorCode, config)) {
-        throw lastError;
-      }
-
-      // Don't delay after last attempt
-      if (attempt < config.maxRetries) {
-        const delay = calculateBackoffDelay(attempt, config);
-        onRetry?.(attempt + 1, lastError, delay);
-        await sleep(delay);
-      }
-    }
-  }
-
-  throw lastError ?? new Error("Max retries exceeded");
+  return canonicalWithRetry(fn, canonicalOpts);
 }
 
 // =============================================================================
@@ -392,17 +393,6 @@ export function resetDfsCircuitBreaker(): void {
     _circuitBreaker.reset();
   }
   _circuitBreaker = null;
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Sleep for a given duration.
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // =============================================================================

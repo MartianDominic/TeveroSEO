@@ -25,7 +25,8 @@ import { z } from "zod";
 import {
   CircuitBreaker,
   CircuitOpenError,
-} from "@/server/features/keywords/services/CircuitBreaker";
+  createCircuitBreaker,
+} from "@/server/features/scraping/resilience/CircuitBreaker";
 import {
   getEmbeddingService,
   cosineSimilarity,
@@ -180,10 +181,11 @@ export class QualityGateService {
       baseURL: "https://api.x.ai/v1",
     });
 
-    this.circuit = new CircuitBreaker({
-      name: "quality-gate",
+    this.circuit = createCircuitBreaker("quality-gate", {
       failureThreshold: 3,
-      resetTimeout: 60000,
+      timeout: 60000,
+      successThreshold: 1,
+      volumeThreshold: 1,
     });
 
     this.config = {
@@ -303,12 +305,7 @@ export class QualityGateService {
     content: string,
     vertical: Vertical
   ): Promise<GateResult> {
-    if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("quality-gate");
-    }
-
-    try {
-      const prompt = `Evaluate if this ${vertical} content would survive scrutiny on r/${vertical} without being criticized for vagueness or lack of expertise. Score 0-100.
+    const prompt = `Evaluate if this ${vertical} content would survive scrutiny on r/${vertical} without being criticized for vagueness or lack of expertise. Score 0-100.
 
 Content (first 2000 chars):
 ${content.slice(0, 2000)}
@@ -322,6 +319,8 @@ Criteria:
 
 Return JSON: { "score": number, "passed": boolean, "reasoning": string, "specificExamples": string[] }`;
 
+    // Use circuit breaker execute() which handles success/failure tracking
+    return this.circuit.execute(async () => {
       const response = await this.client.chat.completions.create({
         model: "grok-4-1-fast-reasoning",
         messages: [
@@ -343,37 +342,23 @@ Return JSON: { "score": number, "passed": boolean, "reasoning": string, "specifi
       try {
         jsonData = JSON.parse(text);
       } catch {
-        this.circuit.recordFailure();
         throw new Error(`Invalid JSON response from LLM: ${text.slice(0, 100)}`);
       }
 
       const parsed = RedditTestResponseSchema.safeParse(jsonData);
 
       if (!parsed.success) {
-        this.circuit.recordFailure();
         throw new Error(`Invalid LLM response: ${parsed.error.message}`);
       }
-
-      this.circuit.recordSuccess();
 
       return {
         passed: parsed.data.passed,
         score: parsed.data.score,
         message: parsed.data.reasoning,
-        method: "llm",
-        confidence: "medium",
+        method: "llm" as const,
+        confidence: "medium" as const,
       };
-    } catch (error) {
-      // Don't double-count failures already recorded
-      if (
-        error instanceof Error &&
-        !error.message.startsWith("Invalid") &&
-        !(error instanceof CircuitOpenError)
-      ) {
-        this.circuit.recordFailure();
-      }
-      throw error;
-    }
+    });
   }
 
   // ==========================================================================
@@ -498,12 +483,7 @@ Return JSON: { "score": number, "passed": boolean, "reasoning": string, "specifi
     content: string,
     vertical: Vertical
   ): Promise<GateResult> {
-    if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("quality-gate");
-    }
-
-    try {
-      const prompt = `Analyze this ${vertical} content for claim-evidence pairing. Identify claims without proof.
+    const prompt = `Analyze this ${vertical} content for claim-evidence pairing. Identify claims without proof.
 
 Content (first 2000 chars):
 ${content.slice(0, 2000)}
@@ -513,6 +493,8 @@ Proof types: statistics, sources, examples, data, citations.
 
 Return JSON: { "score": number (0-100), "claimCount": number, "provenClaims": number, "unprovenClaims": string[], "reasoning": string }`;
 
+    // Use circuit breaker execute() which handles success/failure tracking
+    return this.circuit.execute(async () => {
       const response = await this.client.chat.completions.create({
         model: "grok-4-1-fast-reasoning",
         messages: [
@@ -534,36 +516,23 @@ Return JSON: { "score": number (0-100), "claimCount": number, "provenClaims": nu
       try {
         jsonData = JSON.parse(text);
       } catch {
-        this.circuit.recordFailure();
         throw new Error(`Invalid JSON response from LLM: ${text.slice(0, 100)}`);
       }
 
       const parsed = ProveItResponseSchema.safeParse(jsonData);
 
       if (!parsed.success) {
-        this.circuit.recordFailure();
         throw new Error(`Invalid LLM response: ${parsed.error.message}`);
       }
-
-      this.circuit.recordSuccess();
 
       return {
         passed: parsed.data.score >= 70,
         score: parsed.data.score,
         message: `${parsed.data.provenClaims}/${parsed.data.claimCount} claims backed by evidence`,
-        method: "llm",
-        confidence: "medium",
+        method: "llm" as const,
+        confidence: "medium" as const,
       };
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        !error.message.startsWith("Invalid") &&
-        !(error instanceof CircuitOpenError)
-      ) {
-        this.circuit.recordFailure();
-      }
-      throw error;
-    }
+    });
   }
 
   // ==========================================================================
@@ -838,14 +807,14 @@ Return JSON: { "score": number (0-100), "claimCount": number, "provenClaims": nu
    * Check if circuit breaker is open.
    */
   get isCircuitOpen(): boolean {
-    return !this.circuit.allowsRequest;
+    return this.circuit.getState() === "open";
   }
 
   /**
    * Reset circuit breaker to closed state.
    */
   resetCircuit(): void {
-    this.circuit.reset();
+    this.circuit.forceClose();
   }
 }
 

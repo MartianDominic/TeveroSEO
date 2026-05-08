@@ -13,7 +13,7 @@ import { AppError } from "@/server/lib/errors";
 import type { ProspectWithAnalyses } from "@/server/features/prospects/services/ProspectService";
 import type { OpportunityKeyword } from "@/db/prospect-schema";
 import { sanitizeUserInput, validateOutput, sanitizeForLogging } from "@/lib/llm/safety";
-import { CircuitBreaker, CircuitBreakerOpenError } from "@/server/features/keywords/utils/CircuitBreaker";
+import { CircuitBreaker, CircuitOpenError as CircuitBreakerOpenError } from "@/server/features/scraping/resilience/CircuitBreaker";
 
 const log = createLogger({ module: "gemini" });
 
@@ -33,9 +33,11 @@ const RETRY_DELAY_MS = 1000;
  * Opens after 5 consecutive failures, recovers after 2 minutes.
  */
 const geminiCircuitBreaker = new CircuitBreaker({
+  name: "gemini-api",
   failureThreshold: 5,
-  resetTimeout: 120000, // 2 minutes
-  halfOpenMaxAttempts: 1,
+  timeout: 120000, // 2 minutes
+  successThreshold: 1,
+  volumeThreshold: 1,
 });
 
 // --- Lithuanian Terminology ---
@@ -536,11 +538,11 @@ export async function generateProposalSegment(
   let lastError: Error | null = null;
 
   // Check circuit breaker state before attempting
-  if (geminiCircuitBreaker.isOpen) {
-    const stats = geminiCircuitBreaker.stats;
+  if (geminiCircuitBreaker.getState() === "open") {
+    const stats = geminiCircuitBreaker.getStats();
     throw new AppError(
       "SERVICE_UNAVAILABLE",
-      `Gemini API circuit breaker is open. Will recover in ${Math.ceil((stats.lastOpened ? 120000 - (Date.now() - stats.lastOpened) : 120000) / 1000)}s`,
+      `Gemini API circuit breaker is open. Will recover in ${Math.ceil((stats.openedAt ? 120000 - (Date.now() - stats.openedAt.getTime()) : 120000) / 1000)}s`,
     );
   }
 
@@ -573,7 +575,7 @@ export async function generateProposalSegment(
         segment,
         attempt,
         error: lastError.message,
-        circuitState: geminiCircuitBreaker.stats.state,
+        circuitState: geminiCircuitBreaker.getState(),
       });
 
       if (attempt < MAX_RETRIES) {

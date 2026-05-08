@@ -32,9 +32,59 @@ interface FailureHistoryEntry {
 }
 
 /**
- * Map to track failure history per job for DLQ.
+ * Redis key prefix for job failure history.
+ * Uses service prefix for namespace isolation per QUEUE-C01.
  */
-const jobFailureHistory = new Map<string, FailureHistoryEntry[]>();
+const FAILURE_HISTORY_KEY_PREFIX = "openseo:job-failure-history:";
+
+/**
+ * TTL for failure history records in seconds (24 hours).
+ * Auto-cleanup prevents unbounded memory growth.
+ */
+const FAILURE_HISTORY_TTL_SECONDS = 86400;
+
+/**
+ * Add a failure entry to Redis-backed failure history.
+ * Uses LPUSH for O(1) append and sets TTL on first entry.
+ *
+ * @param jobId - Unique job identifier
+ * @param entry - Failure history entry to add
+ */
+async function addFailureHistory(jobId: string, entry: FailureHistoryEntry): Promise<void> {
+  const key = `${FAILURE_HISTORY_KEY_PREFIX}${jobId}`;
+  const entryJson = JSON.stringify(entry);
+
+  // Use multi/exec for atomic LPUSH + EXPIRE
+  await redis.multi()
+    .lpush(key, entryJson)
+    .expire(key, FAILURE_HISTORY_TTL_SECONDS)
+    .exec();
+}
+
+/**
+ * Get failure history from Redis.
+ * Returns entries in reverse chronological order (newest first).
+ *
+ * @param jobId - Unique job identifier
+ * @returns Array of failure history entries
+ */
+async function getFailureHistory(jobId: string): Promise<FailureHistoryEntry[]> {
+  const key = `${FAILURE_HISTORY_KEY_PREFIX}${jobId}`;
+  const entries = await redis.lrange(key, 0, -1);
+
+  return entries.map((entry) => JSON.parse(entry) as FailureHistoryEntry);
+}
+
+/**
+ * Delete failure history from Redis.
+ * Called on successful job completion or after moving to DLQ.
+ *
+ * @param jobId - Unique job identifier
+ */
+async function deleteFailureHistory(jobId: string): Promise<void> {
+  const key = `${FAILURE_HISTORY_KEY_PREFIX}${jobId}`;
+  await redis.del(key);
+}
 
 /**
  * Worker configuration.
@@ -356,8 +406,13 @@ export function createScrapeWorker(
 
   // Event handlers for monitoring
   worker.on("completed", (job) => {
-    // Clean up failure history on successful completion
-    jobFailureHistory.delete(job.data.jobId);
+    // Clean up failure history on successful completion (async, fire-and-forget)
+    deleteFailureHistory(job.data.jobId).catch((err) => {
+      workerLogger.warn(
+        { jobId: job.data.jobId, error: err instanceof Error ? err.message : String(err) },
+        "Failed to clean up failure history from Redis"
+      );
+    });
 
     workerLogger.info(
       { queueName, jobId: job.id, url: job.data.url, processingTimeMs: job.returnvalue?.processingTimeMs },
@@ -371,15 +426,22 @@ export function createScrapeWorker(
       return;
     }
 
-    // Track failure history for this job
+    // Track failure history for this job in Redis
     const jobId = job.data.jobId;
-    const history = jobFailureHistory.get(jobId) || [];
-    history.push({
+    const failureEntry: FailureHistoryEntry = {
       error: error.message,
       timestamp: Date.now(),
       attemptNumber: job.attemptsMade,
-    });
-    jobFailureHistory.set(jobId, history);
+    };
+
+    try {
+      await addFailureHistory(jobId, failureEntry);
+    } catch (redisErr) {
+      workerLogger.warn(
+        { jobId, error: redisErr instanceof Error ? redisErr.message : String(redisErr) },
+        "Failed to record failure history in Redis"
+      );
+    }
 
     // Determine max attempts for this job based on error type
     const errorCode = mapErrorCode(error);
@@ -402,11 +464,12 @@ export function createScrapeWorker(
     // Check if retries are exhausted - move to DLQ
     if (job.attemptsMade >= maxAttempts && workerConfig.queueManager) {
       try {
-        const failureHistory = jobFailureHistory.get(jobId) || [];
+        // Retrieve failure history from Redis for DLQ metadata
+        const failureHistory = await getFailureHistory(jobId);
         await workerConfig.queueManager.moveToDlq(job, error, failureHistory);
 
         // Clean up failure history after moving to DLQ
-        jobFailureHistory.delete(jobId);
+        await deleteFailureHistory(jobId);
       } catch (dlqError) {
         workerLogger.error(
           {

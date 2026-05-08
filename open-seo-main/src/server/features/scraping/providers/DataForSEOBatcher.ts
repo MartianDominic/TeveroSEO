@@ -28,6 +28,7 @@ import { DFS_STANDARD_COSTS } from "@/db/dfs-cost-tracking-schema";
 import { db } from "@/db";
 import { getDfsCostTracker, extractDomainFromUrl } from "./DfsCostTracker";
 import { costLogger } from "../logging/Logger";
+import { getDataForSEOAuthHeader } from "@/server/lib/dataforseo-auth";
 
 // =============================================================================
 // Constants
@@ -520,20 +521,26 @@ export class DataForSEOBatcher {
   // ===========================================================================
 
   /**
+   * Get the auth header - uses canonical module or instance override for testing.
+   */
+  private getAuthHeader(): string {
+    // If custom apiKey was provided (for testing), use it directly
+    if (this.apiKey && this.apiKey !== process.env.DATAFORSEO_API_KEY) {
+      return `Basic ${this.apiKey}`;
+    }
+    // Otherwise use canonical auth module
+    return getDataForSEOAuthHeader();
+  }
+
+  /**
    * POST to DataForSEO API.
-   *
-   * @deprecated The auth header construction duplicates logic from dataforseo-auth.ts.
-   * Uses instance apiKey for backward compatibility, but new code should
-   * use createDataForSEOFetch() from @/server/lib/dataforseo-auth instead.
+   * Uses canonical auth from @/server/lib/dataforseo-auth.
    */
   private async postApi(path: string, payload: unknown): Promise<unknown> {
-    // NOTE: Duplicates auth logic from dataforseo-auth.ts - kept for DI testing
-    const authHeader = `Basic ${Buffer.from(this.apiKey).toString("base64")}`;
-
     const response = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: {
-        Authorization: authHeader,
+        Authorization: this.getAuthHeader(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -550,19 +557,13 @@ export class DataForSEOBatcher {
 
   /**
    * GET from DataForSEO API.
-   *
-   * @deprecated The auth header construction duplicates logic from dataforseo-auth.ts.
-   * Uses instance apiKey for backward compatibility, but new code should
-   * use createDataForSEOFetch() from @/server/lib/dataforseo-auth instead.
+   * Uses canonical auth from @/server/lib/dataforseo-auth.
    */
   private async getApi(path: string): Promise<unknown> {
-    // NOTE: Duplicates auth logic from dataforseo-auth.ts - kept for DI testing
-    const authHeader = `Basic ${Buffer.from(this.apiKey).toString("base64")}`;
-
     const response = await fetch(`${API_BASE}${path}`, {
       method: "GET",
       headers: {
-        Authorization: authHeader,
+        Authorization: this.getAuthHeader(),
       },
     });
 

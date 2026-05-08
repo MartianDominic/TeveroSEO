@@ -1,7 +1,7 @@
 // @ts-expect-error - express may not be installed yet
 import { Router, type Request, type Response } from 'express';
 import type { ScrapingService, HealthCheckResult } from '../ScrapingService';
-import { requireAdmin, requireReadonly } from '../middleware';
+import { requireAdminAuth, requireAdmin, requireReadonly } from '../middleware';
 import {
   expressScrapingCriticalRateLimit,
   expressScrapingResourceIntensiveRateLimit,
@@ -40,7 +40,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   // Readiness probe (is the service ready to handle requests?)
   // Returns 503 if any critical component is unhealthy
-  router.get('/health/ready', async (req: Request, res: Response) => {
+  // Protected: exposes latency and component health details
+  router.get('/health/ready', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const health = await scrapingService.healthCheck();
 
@@ -70,8 +71,10 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Basic health check (for load balancers) - legacy endpoint
-  router.get('/health', async (req: Request, res: Response) => {
+  // Basic health check - legacy endpoint
+  // Protected: exposes component status details
+  // NOTE: Use /health/live for unauthenticated load balancer probes
+  router.get('/health', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const health = await scrapingService.healthCheck();
 
@@ -101,7 +104,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Detailed health check (for debugging)
-  router.get('/health/detailed', async (req: Request, res: Response) => {
+  // Protected: exposes full internal health state
+  router.get('/health/detailed', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const health = await scrapingService.healthCheck();
       res.status(health.healthy ? 200 : 503).json(health);
@@ -115,7 +119,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Detailed status (for debugging)
-  router.get('/status', async (req: Request, res: Response) => {
+  // Protected: exposes metrics, circuit states, queue stats
+  router.get('/status', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const [health, metrics, circuits, queue] = await Promise.all([
         scrapingService.healthCheck(),
@@ -150,7 +155,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Prometheus metrics
-  router.get('/metrics', async (req: Request, res: Response) => {
+  // Protected: exposes detailed performance and error metrics
+  router.get('/metrics', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const metrics = await scrapingService.getPrometheusMetrics();
       res.set('Content-Type', scrapingService.getMetricsContentType());
@@ -161,7 +167,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Cost report
-  router.get('/cost-report', async (req: Request, res: Response) => {
+  // Protected: exposes cost and usage data
+  router.get('/cost-report', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const { start, end } = req.query;
       const report = await scrapingService.getCostReport({
@@ -177,7 +184,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Circuit breaker status
-  router.get('/health/circuits', async (req: Request, res: Response) => {
+  // Protected: exposes circuit breaker internal state
+  router.get('/health/circuits', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const states = scrapingService.getCircuitStates();
       const openCircuits = Object.entries(states)
@@ -198,7 +206,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Legacy circuits endpoint
-  router.get('/circuits', async (req: Request, res: Response) => {
+  // Protected: exposes circuit breaker state
+  router.get('/circuits', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const states = scrapingService.getCircuitStates();
       res.json(states);
@@ -211,7 +220,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   // Reset circuit breaker (admin only)
   // Rate limit: 5 req/min (circuit operations)
-  router.post('/health/circuits/:tier/reset', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/health/circuits/:tier/reset', expressScrapingCircuitOpsRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     const { tier } = req.params;
 
     try {
@@ -227,9 +236,9 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
     }
   });
 
-  // Manual circuit control (protected by requireAdmin middleware)
+  // Manual circuit control (protected by requireAdminAuth + requireAdmin middleware)
   // Rate limit: 5 req/min (circuit operations)
-  router.post('/circuits/:tier/close', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/circuits/:tier/close', expressScrapingCircuitOpsRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       scrapingService.forceCloseCircuit(req.params.tier);
       res.json({ success: true });
@@ -242,7 +251,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Rate limit: 5 req/min (circuit operations)
-  router.post('/circuits/:tier/open', expressScrapingCircuitOpsRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/circuits/:tier/open', expressScrapingCircuitOpsRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       scrapingService.forceOpenCircuit(req.params.tier);
       res.json({ success: true });
@@ -255,7 +264,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Queue health endpoint
-  router.get('/health/queues', async (req: Request, res: Response) => {
+  // Protected: exposes queue statistics and health status
+  router.get('/health/queues', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const stats = await scrapingService.getQueueStats();
       const healthy = stats.failed < 100 && stats.waiting < 1000;
@@ -273,7 +283,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Queue management
-  router.get('/queue/stats', async (req: Request, res: Response) => {
+  // Protected: exposes queue statistics
+  router.get('/queue/stats', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const stats = await scrapingService.getQueueStats();
       res.json(stats);
@@ -285,7 +296,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Rate limit: 10 req/min (resource intensive)
-  router.post('/queue/drain', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/queue/drain', expressScrapingResourceIntensiveRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       const { older_than } = req.query;
       const count = await scrapingService.drainQueue(
@@ -300,7 +311,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Cache management
-  router.get('/cache/stats', async (req: Request, res: Response) => {
+  // Protected: exposes cache statistics
+  router.get('/cache/stats', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
     try {
       const stats = scrapingService.getCacheStats();
       res.json(stats);
@@ -312,7 +324,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Rate limit: 10 req/min (resource intensive)
-  router.post('/cache/warm', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/cache/warm', expressScrapingResourceIntensiveRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       const { urls } = req.body;
       if (!Array.isArray(urls)) {
@@ -330,7 +342,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Rate limit: 10 req/min (resource intensive)
-  router.post('/cache/invalidate', expressScrapingResourceIntensiveRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/cache/invalidate', expressScrapingResourceIntensiveRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       const { pattern } = req.body;
       if (!pattern || typeof pattern !== 'string') {
@@ -348,7 +360,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
   // Emergency controls
   // Rate limit: 2 req/min (critical operation)
-  router.post('/emergency-stop', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/emergency-stop', expressScrapingCriticalRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       await scrapingService.emergencyStop();
       res.json({ success: true, message: 'All scraping stopped' });
@@ -361,7 +373,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   });
 
   // Rate limit: 2 req/min (critical operation)
-  router.post('/resume', expressScrapingCriticalRateLimit, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/resume', expressScrapingCriticalRateLimit, requireAdminAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       await scrapingService.resume();
       res.json({ success: true, message: 'Scraping resumed' });

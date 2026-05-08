@@ -15,6 +15,7 @@ import {
   detectBotProtection as sharedDetectBotProtection,
   mapStatusCodeToEscalationReason,
 } from "./ErrorClassifier";
+import { validateScrapableUrlSimple } from "../../../lib/ssrf-validator";
 
 // =============================================================================
 // Types
@@ -146,6 +147,24 @@ export class DirectFetcher {
    */
   async fetch(options: DirectFetchOptions): Promise<FetchResult> {
     const startTime = Date.now();
+
+    // SSRF Protection: Validate URL before any network request
+    // Blocks private IPs, localhost, cloud metadata endpoints, and non-HTTP(S) schemes
+    try {
+      validateScrapableUrlSimple(options.url);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[DirectFetcher] SSRF blocked: ${options.url} - ${errorMessage}`);
+      return {
+        success: false,
+        tier: TIER_TO_NUMBER.direct,
+        error: `SSRF protection: ${errorMessage}`,
+        errorType: "ssrf_blocked",
+        latencyMs: Date.now() - startTime,
+        bytesTransferred: 0,
+      };
+    }
+
     const timeoutMs = options.timeoutMs ?? this.defaultTimeout;
     const maxRetries = options.maxRetries ?? this.maxRetries;
 

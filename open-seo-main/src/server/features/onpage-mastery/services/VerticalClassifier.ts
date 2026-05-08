@@ -19,7 +19,8 @@ import * as cheerio from "cheerio";
 import {
   CircuitBreaker,
   CircuitOpenError,
-} from "@/server/features/keywords/services/CircuitBreaker";
+  createCircuitBreaker,
+} from "@/server/features/scraping/resilience/CircuitBreaker";
 import { createLogger } from "@/server/lib/logger";
 import { db, verticalClassifications } from "@/db";
 import { eq, and, gt } from "drizzle-orm";
@@ -71,10 +72,11 @@ export class VerticalClassifier {
       baseURL: GROK_CONFIG.baseURL,
     });
 
-    this.circuit = new CircuitBreaker({
-      name: "vertical-classifier",
+    this.circuit = createCircuitBreaker("vertical-classifier", {
       failureThreshold: 3,
-      resetTimeout: 60000,
+      timeout: 60000,
+      successThreshold: 1,
+      volumeThreshold: 1,
     });
   }
 
@@ -165,19 +167,16 @@ export class VerticalClassifier {
    * @throws CircuitOpenError if circuit breaker is open
    */
   async classifyLLM(html: string, url: string): Promise<Classification> {
-    if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("vertical-classifier");
-    }
+    const $ = cheerio.load(html);
 
-    try {
-      const $ = cheerio.load(html);
+    // Extract key page signals for classification
+    const title = $("title").text().trim().slice(0, 200);
+    const h1 = $("h1").first().text().trim().slice(0, 200);
+    const metaDesc = $('meta[name="description"]').attr("content")?.slice(0, 300) || "";
+    const bodyText = this.extractBodyText($).slice(0, 500);
 
-      // Extract key page signals for classification
-      const title = $("title").text().trim().slice(0, 200);
-      const h1 = $("h1").first().text().trim().slice(0, 200);
-      const metaDesc = $('meta[name="description"]').attr("content")?.slice(0, 300) || "";
-      const bodyText = this.extractBodyText($).slice(0, 500);
-
+    // Use circuit breaker execute() which handles success/failure tracking
+    return this.circuit.execute(async () => {
       const response = await this.client.chat.completions.create({
         model: GROK_CONFIG.model,
         messages: [
@@ -199,7 +198,6 @@ export class VerticalClassifier {
         jsonData = JSON.parse(text);
       } catch {
         log.warn("Failed to parse Grok JSON response", { text: text.slice(0, 200) });
-        this.circuit.recordFailure();
         throw new Error("Invalid JSON response from Grok");
       }
 
@@ -207,11 +205,8 @@ export class VerticalClassifier {
 
       if (!parsed.success) {
         log.warn("Invalid Grok response schema", { error: parsed.error.message });
-        this.circuit.recordFailure();
         throw new Error(`Invalid Grok response: ${parsed.error.message}`);
       }
-
-      this.circuit.recordSuccess();
 
       const vertical = parsed.data.vertical;
       return {
@@ -220,13 +215,7 @@ export class VerticalClassifier {
         isYmyl: isYmylVertical(vertical),
         method: "llm" as ClassificationMethod,
       };
-    } catch (error) {
-      // Don't double-count failures already recorded above
-      if (error instanceof Error && !error.message.startsWith("Invalid")) {
-        this.circuit.recordFailure();
-      }
-      throw error;
-    }
+    });
   }
 
   /**
@@ -520,14 +509,14 @@ Return the classification JSON.`;
    * Check if circuit breaker is currently open.
    */
   get isCircuitOpen(): boolean {
-    return !this.circuit.allowsRequest;
+    return this.circuit.getState() === "open";
   }
 
   /**
    * Reset circuit breaker to closed state.
    */
   resetCircuit(): void {
-    this.circuit.reset();
+    this.circuit.forceClose();
   }
 }
 

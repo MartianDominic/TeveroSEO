@@ -56,6 +56,8 @@ export { L4Cache, createL4Cache } from "./L4Cache";
 export {
   normalizeUrl,
   normalizeUrlSafe,
+  normalizeUrlWithBase,
+  normalizeUrlForClickDepth,
   getCacheKey,
   getContentHash,
   getQuickHash,
@@ -64,6 +66,10 @@ export {
   isValidUrl,
   getPathSegments,
   isHomepage,
+  isSameOrigin,
+  getOrigin,
+  detectUrlTemplate,
+  buildClickDepthMap,
 } from "./urlNormalization";
 
 // =============================================================================

@@ -40,6 +40,11 @@ import type { RawHtmlResult, ScrapeResponse } from "./types";
 
 import { createDataForSEOFetch } from "@/server/lib/dataforseo-auth";
 import { dataForSeoRateLimiter } from "@/server/lib/dataforseo";
+import { db } from "@/db";
+import {
+  getDfsCostTracker,
+  extractDomainFromUrl,
+} from "@/server/features/scraping/providers/DfsCostTracker";
 
 const API_BASE = "https://api.dataforseo.com";
 
@@ -136,6 +141,49 @@ function buildTaskBilling(task: {
 }
 
 // ---------------------------------------------------------------------------
+// Cost Tracking (Phase 95 Integration)
+// ---------------------------------------------------------------------------
+
+/**
+ * Track DataForSEO API call cost to DfsCostTracker.
+ * Fire-and-forget pattern - errors are logged but don't propagate.
+ *
+ * @param url - URL being scraped
+ * @param endpoint - DFS endpoint name (content_parsing, raw_html)
+ * @param costUsd - Actual cost from DFS response
+ * @param success - Whether the call succeeded
+ */
+function trackDfsCost(
+  url: string,
+  endpoint: string,
+  costUsd: number,
+  success: boolean
+): void {
+  void (async () => {
+    try {
+      const costTracker = getDfsCostTracker(db);
+      await costTracker.recordCost({
+        url,
+        domain: extractDomainFromUrl(url),
+        // content_parsing with JS rendering uses 'js' mode
+        mode: "js",
+        usedStandardQueue: false, // Live API calls
+        estimatedCost: costUsd,
+        actualCost: costUsd,
+        success,
+        // Metadata for debugging
+        jobId: undefined,
+        taskId: undefined,
+        clientId: undefined,
+        workspaceId: undefined,
+      });
+    } catch {
+      // Fire-and-forget - don't log to avoid noise in scraper
+    }
+  })();
+}
+
+// ---------------------------------------------------------------------------
 // Raw HTML Fetching (Two-Step API Flow)
 // ---------------------------------------------------------------------------
 
@@ -157,6 +205,9 @@ async function triggerContentParsing(
   );
 
   const task = assertOk(responseRaw);
+
+  // Track cost for content_parsing API call (Phase 95)
+  trackDfsCost(url, "content_parsing", task.cost, true);
 
   // Parse task ID from result
   const firstResult = task.result[0];
@@ -194,6 +245,7 @@ async function triggerContentParsing(
  */
 async function fetchRawHtmlByTaskId(
   taskId: string,
+  originalUrl: string,
 ): Promise<DataforseoApiResponse<OnPageRawHtmlItem>> {
   const responseRaw = await postDataforseo("/v3/on_page/raw_html", [
     {
@@ -202,6 +254,9 @@ async function fetchRawHtmlByTaskId(
   ]);
 
   const task = assertOk(responseRaw);
+
+  // Track cost for raw_html API call (Phase 95)
+  trackDfsCost(originalUrl, "raw_html", task.cost, true);
 
   // Parse HTML from result
   const firstResult = task.result[0];
@@ -250,8 +305,8 @@ export async function fetchRawHtml(
   // Step 1: Trigger content parsing
   const parsingResult = await triggerContentParsing(url);
 
-  // Step 2: Fetch raw HTML
-  const htmlResult = await fetchRawHtmlByTaskId(parsingResult.data.id);
+  // Step 2: Fetch raw HTML (pass original URL for cost tracking)
+  const htmlResult = await fetchRawHtmlByTaskId(parsingResult.data.id, url);
 
   return {
     data: {

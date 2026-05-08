@@ -1,4 +1,13 @@
 /**
+ * @deprecated Use `@/server/features/scraping/resilience/CircuitBreaker` instead.
+ * This implementation is kept for backward compatibility only.
+ * The canonical CircuitBreaker is in scraping/resilience/ with additional features:
+ * - volumeThreshold (prevents premature trips)
+ * - successThreshold (configurable recovery)
+ * - errorFilter (selective failure counting)
+ * - State change listeners
+ * - Manual overrides (forceOpen/forceClose)
+ *
  * Circuit Breaker Pattern Implementation
  *
  * Prevents cascade failures when external services fail by:
