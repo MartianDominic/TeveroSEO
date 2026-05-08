@@ -1,6 +1,6 @@
 /**
  * Monitoring Module Exports.
- * Phase 95: Unified Scraping Infrastructure - Plan 03, 05, 16
+ * Phase 95: Unified Scraping Infrastructure - Plan 03, 05, 14, 16
  */
 
 // =============================================================================
@@ -31,6 +31,20 @@ export {
 export { BlockedDomainTracker, type BlockedDomainInfo, type BlockedDomainStats, type BlockReason } from "./BlockedDomainTracker";
 export { ProcessingRateTracker, type ProcessingRateStats, type GlobalProcessingStats } from "./ProcessingRateTracker";
 export { QueueMonitor, type MetricsSnapshot } from "./QueueMonitor";
+
+// =============================================================================
+// Audit Logger (Plan 95-14)
+// =============================================================================
+
+export {
+  AuditLogger,
+  getAuditLogger,
+  shutdownAuditLogger,
+  createAuditContext,
+  withAuditLog,
+  type AuditEntry,
+  type AuditTarget,
+} from "./AuditLogger";
 
 // =============================================================================
 // Dashboard Types (Plan 95-05)
