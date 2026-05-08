@@ -4,17 +4,21 @@
  * Phase 96-Queue: Enhanced with DLQ stats and flow status
  *
  * Returns queue stats, last sync info, recent errors, DLQ status, and average durations.
+ * Requires authentication - exposes internal queue metrics.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { gscSyncQueue } from "@/server/features/analytics/jobs/gsc-sync.job";
 import { getAnalyticsHealthStats } from "@/server/features/analytics/jobs/analytics-orchestrator";
 import { countDeadLetterJobs, getDeadLetterStats } from "@/server/lib/dead-letter-queue";
+import { authenticateAnalyticsRequest } from "@/server/features/analytics/auth/analytics-auth";
 
 // Route types regenerated on build - suppress until then
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = (createFileRoute as any)("/api/analytics/sync-health")({
-  loader: async () => {
+  loader: async ({ request }: any) => {
+    // Authenticate request - this endpoint exposes queue internals
+    await authenticateAnalyticsRequest(request);
     // Get comprehensive health stats from orchestrator
     const [analyticsStats, dlqStats, gscDlqCount, annotationsDlqCount] = await Promise.all([
       getAnalyticsHealthStats(),
