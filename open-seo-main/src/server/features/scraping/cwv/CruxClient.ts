@@ -1,6 +1,7 @@
 /**
  * CruxClient - Chrome UX Report API Client
  * Phase 95-07: Core Web Vitals Integration
+ * Phase 95-18: Resilience Hardening - Rate Limit Integration
  *
  * Fetches real-user Core Web Vitals data from the Chrome UX Report API.
  * Provides origin-level and URL-level queries with P75 metric extraction.
@@ -11,9 +12,11 @@
  * - P75 metric extraction from histogram data
  * - Exponential backoff retry logic
  * - Rate limit handling (25,000/day free tier)
+ * - Integrated rate limit tracking (95-18)
  */
 
 import type { CwvMetrics } from './types';
+import { getCruxRateLimiter } from './CruxRateLimiter';
 
 // =============================================================================
 // Types
@@ -118,6 +121,15 @@ export class CruxClient {
   private async query(
     key: { origin?: string; url?: string }
   ): Promise<CruxResponse | null> {
+    // Check rate limit before making request
+    const rateLimiter = getCruxRateLimiter();
+    const canProceed = await rateLimiter.canMakeRequest();
+
+    if (!canProceed) {
+      // Quota exhausted - return null to trigger PSI fallback
+      return null;
+    }
+
     let attempt = 0;
 
     while (attempt <= this.retries) {
@@ -136,6 +148,9 @@ export class CruxClient {
 
         clearTimeout(timeoutId);
 
+        // Record request even on failure (counts against quota)
+        await rateLimiter.recordRequest();
+
         // 404 means not in dataset - not an error
         if (response.status === 404) {
           return null;
@@ -148,6 +163,9 @@ export class CruxClient {
         const data = await response.json();
         return data as CruxResponse;
       } catch (error) {
+        // Record request on error too (request was made)
+        await rateLimiter.recordRequest();
+
         attempt++;
 
         if (attempt > this.retries) {
