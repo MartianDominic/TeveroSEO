@@ -488,3 +488,29 @@ export {
   type CacheWarmRequest,
   type FeedbackStatusResponse,
 } from "./routes/admin";
+
+// =============================================================================
+// Middleware (Plan 95-14)
+// =============================================================================
+
+export {
+  createAdminAuthMiddleware,
+  requireAdminAuth,
+  type AdminAuthConfig,
+  type AdminContext,
+  type AdminRequest,
+} from "./middleware";
+
+// =============================================================================
+// Audit Logging (Plan 95-14)
+// =============================================================================
+
+export {
+  AuditLogger,
+  getAuditLogger,
+  shutdownAuditLogger,
+  createAuditContext,
+  withAuditLog,
+  type AuditEntry,
+  type AuditTarget,
+} from "./monitoring";
