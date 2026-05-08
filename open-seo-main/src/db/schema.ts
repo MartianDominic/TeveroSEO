@@ -244,3 +244,6 @@ export * from "./analytics-tags-schema";
 
 // Content intelligence schema (Phase 96-04)
 export * from "./content-intelligence-schema";
+
+// Analytics extended schema (Phase 96-05 - Client Portal)
+export * from "./analytics-extended-schema";
