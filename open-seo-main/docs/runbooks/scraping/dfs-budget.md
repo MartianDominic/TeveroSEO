@@ -425,3 +425,26 @@ curl -H "x-scraping-admin-key: $ADMIN_KEY" \
 - [ ] Monthly budget review scheduled
 - [ ] Client notification process documented
 - [ ] Emergency budget increase process known
+
+---
+
+## Security Note: HTTPS Requirement
+
+**CRITICAL:** All admin API endpoints used in this runbook MUST be accessed over HTTPS.
+
+The `X-Admin-API-Key` header is transmitted with every admin request. Without HTTPS:
+- API keys can be intercepted via network sniffing
+- Budget controls can be bypassed by unauthorized parties
+- Cost limits can be manipulated
+
+**Before using any admin endpoint:**
+1. Verify the endpoint URL starts with `https://`
+2. Ensure TLS certificate is valid (not expired, not self-signed in production)
+3. Check that HTTP requests are redirected to HTTPS
+
+**If you suspect API key compromise:**
+1. Rotate `SCRAPING_ADMIN_API_KEY` immediately
+2. Review audit logs for unauthorized actions
+3. Check for unexpected budget increases or config changes
+
+See [SCRAPING-ENV-VARS.md](../../configuration/SCRAPING-ENV-VARS.md#security-requirements) for full HTTPS deployment requirements.

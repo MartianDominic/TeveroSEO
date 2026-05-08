@@ -49,6 +49,56 @@ These variables must be set for the scraping infrastructure to function.
 
 ---
 
+## Security Requirements
+
+### HTTPS Requirement (CRITICAL)
+
+All scraping admin endpoints MUST be accessed over HTTPS in production.
+
+**Why:** The `SCRAPING_ADMIN_API_KEY` is transmitted in the `X-Admin-API-Key` header. Without HTTPS, this key is visible to anyone who can observe network traffic (MITM attacks, packet sniffing).
+
+**Deployment Checklist:**
+- [ ] TLS certificate configured on load balancer or reverse proxy
+- [ ] HTTP to HTTPS redirect enabled (301 redirect)
+- [ ] HSTS header configured (`Strict-Transport-Security: max-age=31536000; includeSubDomains`)
+- [ ] API endpoints only accessible via HTTPS
+- [ ] No mixed content (all resources loaded over HTTPS)
+
+**Detection:** If you see `X-Admin-API-Key` in plaintext logs or network captures, HTTPS is not configured correctly.
+
+**Consequences of HTTP deployment:**
+- API keys can be stolen via network sniffing
+- Admin actions can be forged or replayed
+- Audit logs can be tampered with before reaching server
+- Budget controls can be bypassed
+- Scraping infrastructure can be weaponized
+
+**Recommended nginx configuration:**
+```nginx
+server {
+    listen 80;
+    server_name api.tevero.io;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.tevero.io;
+    
+    ssl_certificate /etc/letsencrypt/live/api.tevero.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.tevero.io/privkey.pem;
+    
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    location /scraping/ {
+        proxy_pass http://localhost:3001;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
 ## DataForSEO Configuration
 
 ### Budget Controls
