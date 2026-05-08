@@ -28,6 +28,7 @@ import {
   type ScrapingFeature,
 } from "./config";
 import { getDfsCostTracker, extractDomainFromUrl, type DfsCostTracker } from "./providers/DfsCostTracker";
+import { getDfsBudgetMonitor, type DfsBudgetMonitor } from "./providers/DfsBudgetMonitor";
 import type { CwvService } from "./cwv/CwvService";
 import type { CwvMetrics } from "./cwv/types";
 import { AlertManager } from "./monitoring/AlertManager";
@@ -239,6 +240,7 @@ export class ScrapingService {
   private redis: Redis | null = null;
   private db: PostgresJsDatabase | null = null;
   private dfsCostTracker: DfsCostTracker | null = null;
+  private dfsBudgetMonitor: DfsBudgetMonitor | null = null;
 
   // Metrics tracking
   private shadowMismatches = 0;
@@ -288,6 +290,9 @@ export class ScrapingService {
     // Initialize DFS cost tracker with database connection
     // Cast to any to bridge PostgresJsDatabase and NodePgDatabase types
     this.dfsCostTracker = getDfsCostTracker(deps.db as any);
+
+    // Initialize DFS budget monitor with database and optional Redis
+    this.dfsBudgetMonitor = getDfsBudgetMonitor(deps.db as any, undefined, deps.redis);
   }
 
   /**
@@ -311,6 +316,29 @@ export class ScrapingService {
     return withRequestContextAsync(
       { correlationId, url, clientId: options.clientId },
       async () => {
+        // Check budget before DFS tier requests (GAP-C1 fix)
+        if (this.willUseDfsTier(options) && this.dfsBudgetMonitor) {
+          const estimatedCost = this.estimateDfsCostForBudget(options.forceTier ?? options.startTier ?? 'dfs_basic');
+          const canProceed = await this.dfsBudgetMonitor.shouldAllowRequest(estimatedCost);
+
+          if (!canProceed) {
+            logger.warn({ url, estimatedCost }, 'DFS budget limit exceeded, blocking request');
+            return {
+              url,
+              success: false,
+              error: 'DFS budget limit exceeded',
+              errorCode: 'BUDGET_EXCEEDED',
+              statusCode: 429,
+              tierUsed: (options.forceTier ?? options.startTier ?? 'dfs_basic') as ScrapeTier,
+              fromCache: false,
+              responseTimeMs: Date.now() - startTime,
+              responseSizeBytes: 0,
+              estimatedCostUsd: 0,
+              correlationId,
+            };
+          }
+        }
+
         this.trackRequest(options.feature);
 
         const fetchOptions: FetchOptions = {
@@ -853,6 +881,33 @@ export class ScrapingService {
    */
   private isDfsTier(tier: ScrapeTier): boolean {
     return tier === "dfs_basic" || tier === "dfs_js" || tier === "dfs_browser";
+  }
+
+  /**
+   * Check if the scrape options will use a DFS tier (for budget checking).
+   */
+  private willUseDfsTier(options: ScrapeOptions): boolean {
+    // Direct DFS tier specification
+    if (options.forceTier && this.isDfsTier(options.forceTier)) return true;
+    if (options.startTier && this.isDfsTier(options.startTier)) return true;
+
+    // Check if max tier allows escalation to DFS
+    const maxTier = options.maxTier;
+    if (maxTier && this.isDfsTier(maxTier)) return true;
+
+    return false;
+  }
+
+  /**
+   * Estimate cost for budget checking (before request).
+   */
+  private estimateDfsCostForBudget(tier: string): number {
+    const costs: Record<string, number> = {
+      dfs_basic: 0.000125,
+      dfs_js: 0.00125,
+      dfs_browser: 0.00425,
+    };
+    return costs[tier] ?? 0.001;
   }
 
   /**
