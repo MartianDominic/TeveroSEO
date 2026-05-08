@@ -16,7 +16,7 @@
 - 📋 **v9.1 Keyword Coverage Intelligence** — Phase 93 (planned)
 - ✅ **v9.2 Premium Agency Experience** — Phase 94 (complete 2026-05-06)
 - ✅ **v10.0 Unified Scraping** — Phase 95 (complete 2026-05-07)
-- 📋 **v11.0 Agency Analytics** — Phase 96 (planned)
+- ✅ **v11.0 Agency Analytics** — Phase 96 (complete 2026-05-08)
 
 ## Phases
 
@@ -2756,10 +2756,10 @@ Transform the platform into a complete agency CRM with v6 design system complian
   5. Annotations timeline auto-imports Google core updates
   6. Client portal with per-metric visibility controls
 **Plans**: 5 plans
-  - [ ] 96-01-PLAN.md — GSC Data Foundation: 25K extraction, all dimensions, 5-year retention
-  - [ ] 96-02-PLAN.md — Master Dashboard: multi-site aggregation, tagging, comparison mode
-  - [ ] 96-03-PLAN.md — Actionable Insights: growing/decaying, striking distance, cannibalization UI
-  - [x] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting
-  - [ ] 96-05-PLAN.md — Client Portal: white-label views, exports, privacy controls
+  - [x] 96-01-PLAN.md — GSC Data Foundation: 25K extraction, all dimensions, 5-year retention [Complete 2026-05-08]
+  - [x] 96-02-PLAN.md — Master Dashboard: multi-site aggregation, tagging, comparison mode [Complete 2026-05-08]
+  - [x] 96-03-PLAN.md — Actionable Insights: growing/decaying, striking distance, cannibalization UI [Complete 2026-05-08]
+  - [x] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting [Complete 2026-05-08]
+  - [x] 96-05-PLAN.md — Client Portal: white-label views, exports, privacy controls [Complete 2026-05-08]
 
 ---

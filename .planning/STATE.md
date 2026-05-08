@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Unified Product
+milestone: v11.0
+milestone_name: Agency Analytics
 status: completed
-last_updated: "2026-05-08T12:15:00.000Z"
-last_activity: 2026-05-08 -- Phase 96 Plan 04 complete (Content Intelligence Layer)
+last_updated: "2026-05-08T12:45:00.000Z"
+last_activity: 2026-05-08 -- Phase 96 COMPLETE (Agency Analytics Platform)
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 58
-  completed_plans: 58
+  total_phases: 15
+  completed_phases: 15
+  total_plans: 63
+  completed_plans: 63
   percent: 100
 ---
 
@@ -26,13 +26,13 @@ See: .planning/PHASE-WORK-SUMMARY.md (updated 2026-04-24) — comprehensive phas
 
 ## Current Position
 
-Phase: 96 (Agency Analytics Platform) — IN PROGRESS
-Plan: 96-04 complete, 96-05 pending
+Phase: 96 (Agency Analytics Platform) — COMPLETE
+Plan: 96-05 complete
 Milestone: v11.0 Agency Analytics
-Status: Content Intelligence Layer complete
-Last activity: 2026-05-08 -- Phase 96 Plan 04 complete (Content Intelligence Layer)
+Status: Phase 96 COMPLETE
+Last activity: 2026-05-08 -- Phase 96 Plan 05 complete (Client Portal)
 
-### Phase 96 Progress (2026-05-08)
+### Phase 96 Progress (2026-05-08) — COMPLETE
 
 | Plan | Name | Status | Commit |
 |------|------|--------|--------|
@@ -40,7 +40,19 @@ Last activity: 2026-05-08 -- Phase 96 Plan 04 complete (Content Intelligence Lay
 | 96-02 | Master Dashboard | Complete | 23c29f0 |
 | 96-03 | Actionable Insights & Annotations | Complete | 407c8b5 |
 | 96-04 | Content Intelligence Layer | Complete | 8f9c1f0 |
-| 96-05 | Client Portal | Pending | - |
+| 96-05 | Client Portal | Complete | f05cd6a |
+
+**Key Deliverables (96-05):**
+
+- ClientVisibilityService with API-layer enforcement (403 on unauthorized access)
+- BrandedKeywordService with auto-detection from domain/site name
+- CtrBenchmarkService with Advanced Web Rankings 2024 position-based CTR curves
+- PortfolioMetricsService for cross-client workspace aggregation
+- AnalyticsExportService with CSV (formula injection protection) and Google Sheets
+- 5 API routes: visibility, branded-split, ctr-benchmark, portfolio, export
+- Client Portal UI: Dashboard, BrandedSplitCard, CtrBenchmarkChart, PortfolioMetrics
+- Admin UI: VisibilityConfigPanel, ExportMenu, ReportScheduleModal
+- 95 tests passing across all services (TDD)
 
 **Key Deliverables (96-04):**
 
