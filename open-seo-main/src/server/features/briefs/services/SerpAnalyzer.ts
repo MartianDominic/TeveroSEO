@@ -12,6 +12,13 @@ import {
 } from "@/server/lib/cache/serp-cache";
 import type { SerpAnalysisData } from "@/db/brief-schema";
 import { analyzeSerpContent } from "./SerpContentAnalyzer";
+import { db } from "@/db/index";
+import {
+  getDfsCostTracker,
+} from "@/server/features/scraping/providers/DfsCostTracker";
+import { createLogger } from "@/server/lib/logger";
+
+const log = createLogger({ module: "SerpAnalyzer" });
 
 /**
  * Extract "People Also Ask" questions from SERP items.
@@ -109,7 +116,8 @@ export async function analyzeSerpForKeyword(
   clientId: string,
   mappingId: string,
   keyword: string,
-  locationCode: number = 2840
+  locationCode: number = 2840,
+  workspaceId?: string
 ): Promise<SerpAnalysisData> {
   const cacheKey = buildSerpCacheKey(clientId, mappingId, keyword);
 
@@ -119,8 +127,55 @@ export async function analyzeSerpForKeyword(
     return cached;
   }
 
-  // Fetch SERP data from DataForSEO
-  const response = await fetchLiveSerpItemsRaw(keyword, locationCode, "en");
+  // Fetch SERP data from DataForSEO with cost tracking
+  const startTime = Date.now();
+  const costTracker = getDfsCostTracker(db);
+  let response;
+
+  try {
+    response = await fetchLiveSerpItemsRaw(keyword, locationCode, "en");
+
+    // Record SERP API cost (fire-and-forget)
+    costTracker
+      .recordCost({
+        url: keyword, // Use keyword as "url" for SERP calls
+        domain: "serp-api",
+        mode: "basic",
+        usedStandardQueue: false,
+        estimatedCost: 0.002, // SERP API cost per query
+        actualCost: response.billing?.costUsd ?? 0.002,
+        success: true,
+        responseTimeMs: Date.now() - startTime,
+        clientId,
+        workspaceId,
+        jobId: mappingId,
+      })
+      .catch((err) => {
+        log.warn("Failed to record DFS cost for SERP API", { error: err });
+      });
+  } catch (error) {
+    // Record cost even on failure
+    costTracker
+      .recordCost({
+        url: keyword,
+        domain: "serp-api",
+        mode: "basic",
+        usedStandardQueue: false,
+        estimatedCost: 0.002,
+        actualCost: 0.002,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        responseTimeMs: Date.now() - startTime,
+        clientId,
+        workspaceId,
+        jobId: mappingId,
+      })
+      .catch((err) => {
+        log.warn("Failed to record DFS cost for SERP API failure", { error: err });
+      });
+    throw error;
+  }
+
   const items = response.data;
 
   // Get organic URLs for content analysis
