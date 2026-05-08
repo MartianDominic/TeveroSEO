@@ -241,3 +241,6 @@ export * from "./gsc-analytics-schema";
 
 // Analytics tags schema (Phase 96-02)
 export * from "./analytics-tags-schema";
+
+// Content intelligence schema (Phase 96-04)
+export * from "./content-intelligence-schema";
