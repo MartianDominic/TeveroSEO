@@ -50,6 +50,9 @@ type CrawlPhaseParams = {
   maxPages: number;
   robots: RobotsResult;
   sitemapUrls: string[];
+  // GAP-O1/GAP-O3: Cost attribution parameters
+  clientId?: string;
+  workspaceId?: string;
 };
 
 export async function runCrawlPhase(
@@ -64,6 +67,8 @@ export async function runCrawlPhase(
     maxPages,
     robots,
     sitemapUrls,
+    clientId,
+    workspaceId,
   } = params;
   const visited = new Set<string>();
   const queue: string[] = [];
@@ -99,6 +104,7 @@ export async function runCrawlPhase(
       crawlBatchIndex,
       urlsToCrawl,
       origin,
+      { auditId, clientId, workspaceId },
     );
     allPages.push(...crawledBatch);
 
@@ -236,11 +242,19 @@ export interface CrawlPhaseResult {
   htmlByPageId: Map<string, string>;
 }
 
+/** GAP-O1/GAP-O3: Cost attribution options for crawl batch */
+interface CrawlBatchCostOptions {
+  auditId: string;
+  clientId?: string;
+  workspaceId?: string;
+}
+
 async function runCrawlBatch(
   step: WorkflowStep,
   crawlBatchIndex: number,
   urlsToCrawl: string[],
   origin: string,
+  costOptions: CrawlBatchCostOptions,
 ): Promise<CrawlBatchResult> {
   return step.do(`crawl-batch-${crawlBatchIndex}`, async () => {
     // Phase 95-10: Check migration flag for unified scraping
@@ -248,7 +262,8 @@ async function runCrawlBatch(
 
     if (shouldUseUnified(flags.crawlWorkflow)) {
       // Use unified ScrapingService for crawl workflow
-      return runCrawlBatchUnified(urlsToCrawl, origin);
+      // GAP-O1/GAP-O3: Pass cost attribution parameters
+      return runCrawlBatchUnified(urlsToCrawl, origin, costOptions);
     }
 
     // Legacy path: direct fetch
@@ -275,19 +290,27 @@ async function runCrawlBatch(
 /**
  * Phase 95-10: Unified crawl batch using ScrapingService.
  * Routes through TieredFetcher with caching and cost tracking.
+ * GAP-O1/GAP-O3: Added cost attribution parameters for per-audit cost reporting.
  */
 async function runCrawlBatchUnified(
   urlsToCrawl: string[],
   origin: string,
+  costOptions: CrawlBatchCostOptions,
 ): Promise<CrawlBatchResult> {
   const pages: StepPageResult[] = [];
   const htmlByPageId = new Map<string, string>();
 
   try {
+    // GAP-O1/GAP-O3: Pass cost attribution for per-audit cost tracking
     const batchResult = await scrapingService.scrapeBatch(urlsToCrawl, {
       feature: "crawlWorkflow",
       includeHtml: true,
       concurrency: CRAWL_CONCURRENCY,
+      // Cost attribution: enables "cost per audit" reporting
+      jobId: costOptions.auditId,
+      workspaceId: costOptions.workspaceId,
+      clientId: costOptions.clientId,
+      correlationId: `audit-${costOptions.auditId}`,
     });
 
     for (let i = 0; i < batchResult.results.length; i++) {
