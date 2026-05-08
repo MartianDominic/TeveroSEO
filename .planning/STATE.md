@@ -631,6 +631,18 @@ Key deliverables:
 | 95-10 | Consumer Integration Completion | 0.5 day | ✓ Complete |
 | 95-11 | Health & Metrics | 0.5 day | ✓ Complete |
 | 95-13 | E2E Testing & Migration Rollout | 0.5 day | ✓ Complete |
+| 95-14 | Admin Security | 0.5 day | ✓ Complete |
+| 95-16 | Metrics & Observability | 0.5 day | ✓ Complete |
+
+**95-16 Key Deliverables:**
+
+- MetricsCollector with Prometheus histogram/counter/gauge support
+- Standard latency buckets (0.01s to 60s) with percentile calculation
+- Pino structured JSON logging with AsyncLocalStorage correlation IDs
+- 8 component loggers (fetcher, cache, queue, cost, domain, alert, migration, circuit)
+- Request context propagation for full request tracing
+- 25 unit tests for MetricsCollector
+- Console.log replacement in 7 modules
 
 **95-13 Key Deliverables:**
 
