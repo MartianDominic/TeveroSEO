@@ -136,10 +136,10 @@ export class DatabaseCircuitBreaker {
       // Check for slow query
       if (latencyMs > this.config.slowQueryThresholdMs) {
         this.slowQueries++;
-        logger.warn(`Slow database query detected: ${latencyMs.toFixed(0)}ms`, {
+        logger.warn({
           latencyMs,
           threshold: this.config.slowQueryThresholdMs,
-        });
+        }, `Slow database query detected: ${latencyMs.toFixed(0)}ms`);
       }
 
       return result;
@@ -165,9 +165,9 @@ export class DatabaseCircuitBreaker {
       return await this.execute(operation);
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        logger.debug('Database circuit open, returning null', {
+        logger.debug({
           retryAfter: error.retryAfter,
-        });
+        }, 'Database circuit open, returning null');
         return null;
       }
       throw error;
@@ -189,9 +189,9 @@ export class DatabaseCircuitBreaker {
       return await this.execute(operation);
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        logger.debug('Database circuit open, returning default', {
+        logger.debug({
           retryAfter: error.retryAfter,
-        });
+        }, 'Database circuit open, returning default');
         return defaultValue;
       }
       throw error;
@@ -215,9 +215,9 @@ export class DatabaseCircuitBreaker {
       await this.runHealthCheck();
     }, this.config.healthCheckIntervalMs);
 
-    logger.info('Database health checks started', {
+    logger.info({
       intervalMs: this.config.healthCheckIntervalMs,
-    });
+    }, 'Database health checks started');
   }
 
   /**
@@ -249,9 +249,9 @@ export class DatabaseCircuitBreaker {
       this.lastHealthCheckSuccess = healthy;
 
       if (healthy) {
-        logger.debug('Database health check passed', { latencyMs });
+        logger.debug({ latencyMs }, 'Database health check passed');
       } else {
-        logger.warn('Database health check failed', { latencyMs });
+        logger.warn({ latencyMs }, 'Database health check failed');
       }
 
       // Update metrics
@@ -264,9 +264,9 @@ export class DatabaseCircuitBreaker {
       this.lastHealthCheck = new Date();
       this.lastHealthCheckSuccess = false;
 
-      logger.error('Database health check error', {
+      logger.error({
         error: error instanceof Error ? error.message : String(error),
-      });
+      }, 'Database health check error');
 
       return false;
     }
@@ -383,25 +383,57 @@ export class DatabaseCircuitBreaker {
 // =============================================================================
 
 let _dbCircuitBreaker: DatabaseCircuitBreaker | null = null;
+let _healthChecksStarted = false;
+
+/**
+ * Default health check function that tests database connectivity.
+ * Uses the shared checkDatabaseHealth from the db module.
+ */
+async function defaultHealthCheck(): Promise<boolean> {
+  try {
+    // Dynamically import to avoid circular dependencies
+    const { checkDatabaseHealth } = await import('../../../../db');
+    return await checkDatabaseHealth();
+  } catch (error) {
+    logger.error({
+      error: error instanceof Error ? error.message : String(error),
+    }, 'Default health check failed');
+    return false;
+  }
+}
 
 /**
  * Get the global DatabaseCircuitBreaker singleton.
+ *
+ * On first call, automatically starts health checks with the default
+ * database health check function. Health checks run every 10 seconds
+ * (configurable via healthCheckIntervalMs) and help detect database
+ * recovery when the circuit is open.
  */
 export function getDatabaseCircuitBreaker(): DatabaseCircuitBreaker {
   if (!_dbCircuitBreaker) {
     _dbCircuitBreaker = new DatabaseCircuitBreaker();
+
+    // Auto-start health checks on singleton creation
+    if (!_healthChecksStarted) {
+      _dbCircuitBreaker.startHealthChecks(defaultHealthCheck);
+      _healthChecksStarted = true;
+      logger.info('Database circuit breaker initialized with auto-health checks');
+    }
   }
   return _dbCircuitBreaker;
 }
 
 /**
  * Reset the global DatabaseCircuitBreaker (for testing).
+ * Stops health checks and clears the singleton instance.
  */
 export function resetDatabaseCircuitBreaker(): void {
   if (_dbCircuitBreaker) {
     _dbCircuitBreaker.stopHealthChecks();
   }
   _dbCircuitBreaker = null;
+  _healthChecksStarted = false;
 }
 
 /**
