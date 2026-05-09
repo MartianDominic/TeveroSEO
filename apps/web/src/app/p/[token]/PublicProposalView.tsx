@@ -314,7 +314,7 @@ export function PublicProposalView({ proposal, token }: PublicProposalViewProps)
                 <div className="flex items-center gap-4">
                   <span
                     className={cn(
-                      "px-3 py-1 rounded-full text-xs font-medium",
+                      "px-3 py-1 rounded-full text-xs-safe font-medium",
                       getDifficultyColor(opp.difficulty)
                     )}
                   >
@@ -496,7 +496,7 @@ export function PublicProposalView({ proposal, token }: PublicProposalViewProps)
           contact us.
         </p>
         {proposal.expiresAt && (
-          <p className="text-text-4 text-xs mt-2">
+          <p className="text-text-4 text-xs-safe mt-2">
             Valid until {new Date(proposal.expiresAt).toLocaleDateString()}
           </p>
         )}

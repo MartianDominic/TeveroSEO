@@ -107,12 +107,12 @@ export function NeedsAttentionSection({ items }: NeedsAttentionSectionProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium truncate">{item.clientName}</span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs-safe">
                     {item.type === "goal_gap" ? "goal" : item.type}
                   </Badge>
                 </div>
                 <p className="text-sm mt-1">{item.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                <p className="text-xs-safe text-muted-foreground mt-1 line-clamp-2">
                   {item.message}
                 </p>
                 {/* Goal gap indicator */}

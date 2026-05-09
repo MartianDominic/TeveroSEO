@@ -219,7 +219,7 @@ function SummaryStatsGrid({
         <div className="grid grid-cols-2 gap-x-6 gap-y-5 xl:gap-y-6">
           {summaryStats.map((item) => (
             <div key={item.label}>
-              <div className="text-xs uppercase tracking-wide text-foreground/55">
+              <div className="text-xs-safe uppercase tracking-wide text-foreground/55">
                 <HeaderHelpLabel
                   label={item.label}
                   helpText={item.description}
@@ -267,7 +267,7 @@ function TrendCard({
       <CardContent className="gap-2 p-4">
         <div>
           <h2 className="text-sm font-medium">{title}</h2>
-          <p className="text-xs text-foreground/55">{description}</p>
+          <p className="text-xs-safe text-foreground/55">{description}</p>
         </div>
         {children}
       </CardContent>
@@ -290,7 +290,7 @@ function TabButton({
     <button
       type="button"
       onClick={() => onClick(tab)}
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === tab ? "bg-background text-foreground shadow-sm" : "hover:bg-background/50"}`}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === tab ? "bg-background text-foreground shadow-[var(--shadow-card)]" : "hover:bg-background/50"}`}
     >
       {children}
     </button>

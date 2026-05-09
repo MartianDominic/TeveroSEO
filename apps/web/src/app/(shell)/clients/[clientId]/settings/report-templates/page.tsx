@@ -46,7 +46,7 @@ function TemplatesLoading() {
  */
 function TemplateCard({ template }: { template: ReportTemplateResponse }) {
   return (
-    <Card className="hover:shadow-md transition-shadow border-[var(--hairline)]">
+    <Card className="hover:shadow-[var(--shadow-elevated)] transition-shadow border-[var(--hairline)]">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ function TemplateCard({ template }: { template: ReportTemplateResponse }) {
             );
           })}
         </div>
-        <p className="text-xs text-[var(--text-3)] mt-3">
+        <p className="text-xs-safe text-[var(--text-3)] mt-3">
           Created {new Date(template.createdAt).toLocaleDateString()}
         </p>
       </CardContent>

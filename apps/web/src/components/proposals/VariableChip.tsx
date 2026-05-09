@@ -107,7 +107,7 @@ export function VariableChip({ node, selected }: NodeViewProps) {
           >
             <div className="space-y-1">
               {/* Variable key syntax */}
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="font-mono text-xs-safe text-muted-foreground">
                 {`{{${key}}}`}
               </p>
 
@@ -208,7 +208,7 @@ export function VariableChipDisplay({
 
         <TooltipContent side="top" align="center" className="max-w-xs">
           <div className="space-y-1">
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-mono text-xs-safe text-muted-foreground">
               {`{{${variableKey}}}`}
             </p>
             <p

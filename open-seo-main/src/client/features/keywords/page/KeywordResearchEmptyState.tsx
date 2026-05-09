@@ -92,7 +92,7 @@ function SearchHistoryState({ controller }: Props) {
                   </div>
                 </button>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs text-foreground/40">
+                  <span className="text-xs-safe text-foreground/40">
                     {new Date(item.timestamp).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",

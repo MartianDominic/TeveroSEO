@@ -434,7 +434,7 @@ function ProgressCard({
             <div className="flex items-center gap-3">
               {/* H-AUDIT-01: Estimated time remaining */}
               {estimatedTime && (
-                <span className="text-muted-foreground text-xs flex items-center gap-1">
+                <span className="text-muted-foreground text-xs-safe flex items-center gap-1">
                   <Clock className="size-3" />
                   {estimatedTime}
                 </span>
@@ -451,7 +451,7 @@ function ProgressCard({
             <h3 className="text-sm font-medium text-foreground/70">
               Crawled Pages ({crawledUrls.length})
             </h3>
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs-safe text-foreground/50">
               Updated {new Date(crawledUrls[0].crawledAt).toLocaleTimeString()}
             </p>
             <div className="max-h-[400px] overflow-y-auto -mx-1">
@@ -501,7 +501,7 @@ function ProgressRow({
       <div className="flex items-center gap-3 shrink-0">
         {entry.title && (
           <span
-            className="text-xs text-foreground/40 truncate max-w-[260px] hidden md:block"
+            className="text-xs-safe text-foreground/40 truncate max-w-[260px] hidden md:block"
             title={entry.title}
           >
             {entry.title}

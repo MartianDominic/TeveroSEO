@@ -151,7 +151,7 @@ export default async function DashboardPage() {
             <h2 className="text-lg font-semibold text-foreground">
               Client Portfolio ({metrics.length})
             </h2>
-            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-2 text-xs-safe text-muted-foreground">
               <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono">Cmd+K</kbd>
               <span>Search</span>
               <span className="mx-1">|</span>

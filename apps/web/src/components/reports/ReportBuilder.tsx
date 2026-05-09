@@ -145,7 +145,7 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
                 <div className="space-y-1">
                   <Label
                     htmlFor="date-start"
-                    className="text-xs text-[var(--text-3)]"
+                    className="text-xs-safe text-[var(--text-3)]"
                   >
                     Start Date
                   </Label>
@@ -162,7 +162,7 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
                 <div className="space-y-1">
                   <Label
                     htmlFor="date-end"
-                    className="text-xs text-[var(--text-3)]"
+                    className="text-xs-safe text-[var(--text-3)]"
                   >
                     End Date
                   </Label>
@@ -177,7 +177,7 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
                   />
                 </div>
               </div>
-              <p className="text-xs text-[var(--text-3)]">
+              <p className="text-xs-safe text-[var(--text-3)]">
                 Maximum range: 365 days
               </p>
             </div>
@@ -269,7 +269,7 @@ export const ReportBuilder: FC<ReportBuilderProps> = ({
         </Button>
 
         {/* Help Text */}
-        <p className="text-xs text-[var(--text-3)] text-center">
+        <p className="text-xs-safe text-[var(--text-3)] text-center">
           Report generation typically takes 10-30 seconds depending on data volume.
         </p>
       </div>

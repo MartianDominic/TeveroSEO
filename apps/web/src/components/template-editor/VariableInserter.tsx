@@ -54,7 +54,7 @@ export function VariableInserter({ variable }: VariableInserterProps) {
     >
       <div className="flex items-center gap-2">
         <GripHorizontal className="w-3 h-3 text-muted-foreground opacity-50 group-hover:opacity-100" />
-        <Badge variant="secondary" className="font-mono text-xs">
+        <Badge variant="secondary" className="font-mono text-xs-safe">
           {variable}
         </Badge>
       </div>

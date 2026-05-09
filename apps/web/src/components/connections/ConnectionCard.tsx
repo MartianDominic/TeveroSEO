@@ -97,14 +97,14 @@ export function ConnectionCard({
         </div>
 
         {parsedLastSync && (
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs-safe text-muted-foreground mt-1">
             Last sync:{" "}
             {formatDistanceToNow(parsedLastSync, { addSuffix: true })}
           </div>
         )}
 
         {lastError && status === "error" && (
-          <div className="text-xs text-destructive mt-1">Error: {lastError}</div>
+          <div className="text-xs-safe text-destructive mt-1">Error: {lastError}</div>
         )}
 
         <div className="flex gap-2 mt-4">

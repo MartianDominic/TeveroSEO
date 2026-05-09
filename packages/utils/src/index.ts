@@ -55,3 +55,39 @@ export type {
   PaginatedResponse,
   FilterParams,
 } from "./pagination";
+
+// Rate limit configuration (centralized source of truth)
+export {
+  AUTH_RATE_LIMITS,
+  API_RATE_LIMITS,
+  SEO_RATE_LIMITS,
+  CONTENT_RATE_LIMITS,
+  ANALYTICS_RATE_LIMITS,
+  PORTAL_RATE_LIMITS,
+  SCRAPING_ADMIN_RATE_LIMITS,
+  RESOURCE_RATE_LIMITS,
+  FALLBACK_PERCENTAGES,
+  toSecondsConfig,
+  getFallbackLimit,
+  getAllRateLimitConfigs,
+} from "./rate-limit-config";
+export type {
+  RateLimitConfig,
+  RateLimitTier,
+  TieredRateLimitConfig,
+} from "./rate-limit-config";
+
+// Bounded cache utilities (consolidated from open-seo-main and apps/web)
+export {
+  BoundedCache,
+  createBoundedCache,
+  startPeriodicPruning,
+  createApiResponseCache,
+  createUserProfileCache,
+  createSerpMemoryCache,
+} from "./bounded-cache";
+export type {
+  BoundedCacheOptions,
+  CacheEntry,
+  CacheStats,
+} from "./bounded-cache";

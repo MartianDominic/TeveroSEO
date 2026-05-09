@@ -19,16 +19,17 @@ import {
   type DealOutcomeInsert,
 } from "@/db";
 
+// Import unified types
+import type { DateRangeFromTo } from "@tevero/types/common";
+
 // Type for the Drizzle database client
 type DrizzleClient = typeof db;
 
 /**
  * Date range filter for queries.
+ * @deprecated Use DateRangeFromTo from @tevero/types/common
  */
-export interface DateRange {
-  from: Date;
-  to: Date;
-}
+export type DateRange = DateRangeFromTo;
 
 /**
  * Win/loss count result.

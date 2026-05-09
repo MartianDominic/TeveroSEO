@@ -112,7 +112,7 @@ export const RecentActivitySection: React.FC<RecentActivitySectionProps> = ({
           <TableBody>
             {logs.slice(0, 10).map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="font-mono text-xs-safe">
                   {log.article_id.slice(0, 8)}&hellip;
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">

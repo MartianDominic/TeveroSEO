@@ -105,12 +105,12 @@ export function PageErrorBoundary({
           </p>
         )}
         {error.digest && (
-          <p className="text-xs text-muted-foreground mb-4 font-mono">
+          <p className="text-xs-safe text-muted-foreground mb-4 font-mono">
             Error ID: {error.digest}
           </p>
         )}
         {isDev && (
-          <pre className="text-xs text-muted-foreground mb-4 max-w-md overflow-auto p-2 bg-muted rounded text-left">
+          <pre className="text-xs-safe text-muted-foreground mb-4 max-w-md overflow-auto p-2 bg-muted rounded text-left">
             {error.stack || error.message}
           </pre>
         )}

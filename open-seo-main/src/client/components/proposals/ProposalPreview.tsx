@@ -108,7 +108,7 @@ export function ProposalPreview({
             viewMode === "mobile" ? "max-w-[375px]" : "max-w-4xl"
           }`}
         >
-          <Card className="overflow-hidden shadow-lg">
+          <Card className="overflow-hidden shadow-[var(--shadow-overlay)]">
             {/* Hero Section */}
             <section
               id="preview-hero"
@@ -166,7 +166,7 @@ export function ProposalPreview({
                           opacity: 0.7 + (i * 0.05),
                         }}
                       />
-                      <span className="text-xs text-muted-foreground mt-1">
+                      <span className="text-xs-safe text-muted-foreground mt-1">
                         {point.month}
                       </span>
                     </div>
@@ -291,7 +291,7 @@ export function ProposalPreview({
                   {content.investment.inclusions.map((item, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <span
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs"
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs-safe"
                         style={{ backgroundColor: primaryColor }}
                       >
                         ✓
@@ -362,7 +362,7 @@ function DifficultyBadge({ difficulty }: { difficulty: "easy" | "medium" | "hard
   };
 
   return (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${colors[difficulty]}`}>
+    <span className={`px-2 py-1 rounded text-xs-safe font-medium ${colors[difficulty]}`}>
       {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
     </span>
   );

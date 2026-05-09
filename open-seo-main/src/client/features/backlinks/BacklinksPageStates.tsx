@@ -41,7 +41,7 @@ export function BacklinksSetupGate({
               Backlinks is not enabled for your DataForSEO account yet. Turn it
               on in DataForSEO, then test access here.
             </p>
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs-safe text-foreground/50">
               DataForSEO offers a free 14-day trial for Backlinks. Then, it's
               $100/month. We're gauging interest in building out a lower-cost
               alternative, <InlineMailingListLink /> if you're interested.

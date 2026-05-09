@@ -106,7 +106,7 @@ export function UrlInput({
       </form>
 
       {/* Reassurance text */}
-      <p className="text-[var(--text-4)] text-xs mt-8 text-center max-w-sm">
+      <p className="text-[var(--text-4)] text-xs-safe mt-8 text-center max-w-sm">
         This is completely safe. We just need to check what platform your
         website uses so we can give you the right instructions.
       </p>

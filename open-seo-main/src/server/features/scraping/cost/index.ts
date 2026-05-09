@@ -24,6 +24,9 @@ export {
   estimateOnPageBatchCost,
   estimateSerpBatchCost,
   estimateKeywordMetricsCost,
+  estimateSearchVolumeCost,
+  getKeywordMetricsCostCents,
+  getRankedKeywordsCostCents,
 
   // Legacy compatibility exports
   DFS_STANDARD_COSTS,

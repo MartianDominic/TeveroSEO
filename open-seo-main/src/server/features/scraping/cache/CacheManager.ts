@@ -35,13 +35,27 @@ import type {
 import { normalizeUrl, getCacheKey } from "./urlNormalization";
 import { shouldProactivelyRefresh, shouldServeStale } from "./index";
 import { cacheLogger } from "../logging";
+import {
+  UNIFIED_INVALIDATION_CHANNEL,
+  generateInstanceId,
+  type CacheType,
+  type UnifiedInvalidationMessage,
+} from "@tevero/shared-cache";
 
 // =============================================================================
 // Domain Tracking Constants
 // =============================================================================
 
-/** Key prefix for domain-to-hash tracking SETs in Redis */
-const DOMAIN_TRACKING_PREFIX = "cache:domain:";
+/**
+ * Key prefix for domain-to-hash tracking SETs in Redis.
+ *
+ * Namespace convention for Redis keys in TeveroSEO:
+ * - osm:scrape:* - open-seo-main scraping/caching (this module)
+ * - serp:* - SERP cache
+ * - analytics:* - Analytics cache
+ * - tevero:* - apps/web cache
+ */
+const DOMAIN_TRACKING_PREFIX = "osm:scrape:domain:";
 
 /** TTL for domain tracking SETs (30 days in seconds) */
 const DOMAIN_TRACKING_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -50,23 +64,14 @@ const DOMAIN_TRACKING_TTL_SECONDS = 30 * 24 * 60 * 60;
 // Cross-Instance Invalidation Constants (CACHE-01)
 // =============================================================================
 
-/** Redis pub/sub channel for cache invalidation events */
-const INVALIDATION_CHANNEL = "scraping:cache:invalidate";
+/** Cache type for this module - handles scraping cache invalidation */
+const SCRAPING_CACHE_TYPE: CacheType = "scraping";
 
-/** Invalidation message types */
+/** Invalidation message types (for internal routing within scraping cache) */
 type InvalidationMessageType = "domain" | "url" | "all";
 
-/** Structure of invalidation messages published via Redis pub/sub */
-interface InvalidationMessage {
-  type: InvalidationMessageType;
-  pattern: string;
-  timestamp: number;
-  /** Instance ID to prevent echo (processing own messages) */
-  instanceId: string;
-}
-
 /** Unique instance ID for this process */
-const INSTANCE_ID = `${process.pid}-${Date.now()}`;
+const INSTANCE_ID = generateInstanceId("scraping");
 
 // =============================================================================
 // Default Configuration
@@ -83,7 +88,7 @@ const DEFAULT_CONFIG: CacheConfig = {
     maxMemory: "2gb",
     compressionEnabled: true,
     compressionAlgo: "gzip",
-    keyPrefix: "cache:",
+    keyPrefix: "osm:scrape:",
   },
   l3: {
     retentionDays: 30,
@@ -110,13 +115,15 @@ const DEFAULT_CONFIG: CacheConfig = {
  * - Level promotion: Promote L4 hits to L1/L2/L3 for faster subsequent access
  * - TTL propagation: Content-type based TTL with level multipliers
  * - Cascade invalidation: Upstream invalidation on cache eviction
+ * - Tenant isolation: L3 operations scoped to clientId via per-client cache instances (Phase 97)
  */
 export class CacheManager implements ICacheManager {
   private l1: L1Cache;
   private l2: L2Cache;
-  private l3: L3Cache;
+  private l3Caches: Map<string, L3Cache> = new Map();
   private l4: L4Cache;
   private redis: Redis;
+  private db: PostgresJsDatabase;
   private config: CacheConfig;
 
   // Aggregate stats
@@ -135,6 +142,12 @@ export class CacheManager implements ICacheManager {
   private backgroundRefreshCount = 0;
   private backgroundRefreshFailures = 0;
 
+  /**
+   * Create a new CacheManager instance.
+   * @param deps.redis - Redis connection
+   * @param deps.db - PostgreSQL database connection
+   * @param deps.config - Optional cache configuration
+   */
   constructor(deps: {
     redis: Redis;
     db: PostgresJsDatabase;
@@ -150,13 +163,28 @@ export class CacheManager implements ICacheManager {
     };
 
     this.redis = deps.redis;
+    this.db = deps.db;
     this.l1 = createL1Cache(this.config.l1);
     this.l2 = createL2Cache(deps.redis, this.config.l2);
-    this.l3 = createL3Cache(deps.db, this.config.l3);
+    // L3 caches are created per-client lazily via getL3Cache()
     this.l4 = createL4Cache(this.config.l4);
 
     // Initialize cross-instance invalidation subscription
     this.initializeInvalidationSubscription();
+  }
+
+  /**
+   * Get or create L3 cache for a specific client.
+   * Phase 97: Tenant isolation - each client has its own L3 cache instance.
+   */
+  private getL3Cache(clientId: string): L3Cache {
+    let cache = this.l3Caches.get(clientId);
+    if (!cache) {
+      cache = createL3Cache(this.db, clientId, this.config.l3);
+      this.l3Caches.set(clientId, cache);
+      cacheLogger.debug({ clientId }, "Created new L3 cache instance for client");
+    }
+    return cache;
   }
 
   // ===========================================================================
@@ -208,9 +236,10 @@ export class CacheManager implements ICacheManager {
     }
     if (maxLevel === "L2") return this.miss(startTime);
 
-    // L3: PostgreSQL
-    if (!skipLevels.has("L3")) {
-      const l3Result = await this.l3.get(hash);
+    // L3: PostgreSQL (requires clientId for tenant isolation)
+    if (!skipLevels.has("L3") && options.clientId) {
+      const l3Cache = this.getL3Cache(options.clientId);
+      const l3Result = await l3Cache.get(hash);
       if (l3Result && this.isValid(l3Result, options.acceptStale)) {
         // Promote to L1 and L2
         await Promise.all([
@@ -225,6 +254,8 @@ export class CacheManager implements ICacheManager {
         }
         return this.hit("L3", l3Result, startTime);
       }
+    } else if (!skipLevels.has("L3") && !options.clientId) {
+      cacheLogger.warn({ url }, "L3 cache skipped: clientId not provided for tenant isolation");
     }
     if (maxLevel === "L3") return this.miss(startTime);
 
@@ -232,11 +263,11 @@ export class CacheManager implements ICacheManager {
     if (!skipLevels.has("L4")) {
       const l4Result = await this.l4.get(hash);
       if (l4Result) {
-        // Promote to all levels
+        // Promote to all levels (L3 requires clientId for tenant isolation)
         await Promise.all([
           this.promoteToL1(hash, l4Result),
           this.promoteToL2(hash, l4Result),
-          this.promoteToL3(hash, url, l4Result),
+          this.promoteToL3(hash, url, l4Result, options.clientId),
         ]);
         // Stale-while-revalidate: trigger background refresh if needed
         if (options.acceptStale && this.shouldTriggerBackgroundRefresh(l4Result)) {
@@ -283,10 +314,13 @@ export class CacheManager implements ICacheManager {
       );
     }
 
-    if (!skipLevels.has("L3")) {
+    if (!skipLevels.has("L3") && options.clientId) {
+      const l3Cache = this.getL3Cache(options.clientId);
       promises.push(
-        this.l3.setWithUrl(hash, url, page, this.getTtlForLevel(baseTtlMs, "L3"))
+        l3Cache.setWithUrl(hash, url, page, this.getTtlForLevel(baseTtlMs, "L3"))
       );
+    } else if (!skipLevels.has("L3") && !options.clientId) {
+      cacheLogger.warn({ url }, "L3 cache set skipped: clientId not provided for tenant isolation");
     }
 
     if (!skipLevels.has("L4")) {
@@ -298,15 +332,39 @@ export class CacheManager implements ICacheManager {
     await Promise.all(promises);
   }
 
+  /**
+   * Invalidate a URL from all cache levels.
+   * Note: For L3, this invalidates across ALL tenants for the URL.
+   * Use invalidateForClient() for tenant-scoped invalidation.
+   */
   async invalidate(url: string): Promise<void> {
     const hash = getCacheKey(normalizeUrl(url));
 
-    // Invalidate from all levels (parallel)
+    // Invalidate from L1, L2 (shared across tenants)
+    // L3 invalidation across all tenants
+    const l3Deletions = Array.from(this.l3Caches.values()).map(cache => cache.delete(hash));
+
     await Promise.all([
       this.l1.delete(hash),
       this.l2.delete(hash),
-      this.l3.delete(hash),
+      ...l3Deletions,
       // L4 is archive - don't delete, just let it expire
+    ]);
+  }
+
+  /**
+   * Invalidate a URL from cache for a specific client.
+   * Phase 97: Tenant-scoped invalidation.
+   */
+  async invalidateForClient(url: string, clientId: string): Promise<void> {
+    const hash = getCacheKey(normalizeUrl(url));
+
+    const l3Cache = this.l3Caches.get(clientId);
+
+    await Promise.all([
+      this.l1.delete(hash),
+      this.l2.delete(hash),
+      l3Cache?.delete(hash),
     ]);
   }
 
@@ -320,12 +378,15 @@ export class CacheManager implements ICacheManager {
       if (hashes.length > 0) {
         // Clear L1-L4 using the tracked hashes (parallel for performance)
         // This avoids clearing ALL L1 entries - only the domain's entries are removed
+        // L3: Delete from all tenant caches
+        const l3Caches = Array.from(this.l3Caches.values());
+
         await Promise.all(
           hashes.map((hash) =>
             Promise.all([
               this.l1.delete(hash),
               this.l2.delete(hash),
-              this.l3.delete(hash),
+              ...l3Caches.map(cache => cache.delete(hash)),
               this.l4.delete(hash),
             ])
           )
@@ -351,27 +412,38 @@ export class CacheManager implements ICacheManager {
     }
   }
 
-  async prewarm(urls: string[]): Promise<void> {
+  /**
+   * Pre-warm cache for a list of URLs.
+   * Note: L3 prewarm requires clientId in options for tenant isolation.
+   * Without clientId, only L4 results will be used.
+   */
+  async prewarm(urls: string[], clientId?: string): Promise<void> {
     // Batch fetch from L3/L4 and promote to L1/L2
     const hashes = urls.map((url) => getCacheKey(normalizeUrl(url)));
 
-    // Try L3 first (faster)
-    const l3Results = await this.l3.mget(hashes);
+    // Try L3 first (faster) - only if clientId provided
+    if (clientId) {
+      const l3Cache = this.getL3Cache(clientId);
+      const l3Results = await l3Cache.mget(hashes);
 
-    // For any misses in L3, don't fetch from L4 during prewarm (too slow)
-    // Just promote L3 hits to L1/L2
-    for (const [hash, page] of l3Results) {
-      await Promise.all([
-        this.promoteToL1(hash, page),
-        this.promoteToL2(hash, page),
-      ]);
+      // For any misses in L3, don't fetch from L4 during prewarm (too slow)
+      // Just promote L3 hits to L1/L2
+      for (const [hash, page] of l3Results) {
+        await Promise.all([
+          this.promoteToL1(hash, page),
+          this.promoteToL2(hash, page),
+        ]);
+      }
+    } else {
+      cacheLogger.warn({}, "L3 prewarm skipped: clientId not provided for tenant isolation");
     }
   }
 
   getStats(): CacheStats {
     const l1Stats = this.l1.getStats();
     const l2Stats = this.l2.getStats();
-    const l3Stats = this.l3.getStats();
+    // Aggregate L3 stats across all tenant caches
+    const l3Stats = this.getAggregatedL3Stats();
     const l4Stats = this.l4.getStats();
 
     const totalHits =
@@ -393,10 +465,39 @@ export class CacheManager implements ICacheManager {
     };
   }
 
+  /**
+   * Get aggregated L3 stats across all tenant caches.
+   */
+  private getAggregatedL3Stats(): { hits: number; misses: number; hitRate: number; avgLatencyMs: number } {
+    let totalHits = 0;
+    let totalMisses = 0;
+    let totalLatency = 0;
+    let cacheCount = 0;
+
+    for (const cache of this.l3Caches.values()) {
+      const stats = cache.getStats();
+      totalHits += stats.hits;
+      totalMisses += stats.misses;
+      totalLatency += stats.avgLatencyMs;
+      cacheCount++;
+    }
+
+    const total = totalHits + totalMisses;
+    return {
+      hits: totalHits,
+      misses: totalMisses,
+      hitRate: total > 0 ? totalHits / total : 0,
+      avgLatencyMs: cacheCount > 0 ? totalLatency / cacheCount : 0,
+    };
+  }
+
   resetStats(): void {
     this.l1.resetStats();
     this.l2.resetStats();
-    this.l3.resetStats();
+    // Reset all tenant L3 caches
+    for (const cache of this.l3Caches.values()) {
+      cache.resetStats();
+    }
     this.l4.resetStats();
     this.totalRequests = 0;
     this.totalLatencyMs = 0;
@@ -453,15 +554,16 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Get individual cache level instance (for testing/debugging).
+   * Note: For L3, returns the cache for the specified clientId, or undefined if not found.
    */
-  getLevel(level: CacheLevel): L1Cache | L2Cache | L3Cache | L4Cache {
+  getLevel(level: CacheLevel, clientId?: string): L1Cache | L2Cache | L3Cache | L4Cache | undefined {
     switch (level) {
       case "L1":
         return this.l1;
       case "L2":
         return this.l2;
       case "L3":
-        return this.l3;
+        return clientId ? this.l3Caches.get(clientId) : undefined;
       case "L4":
         return this.l4;
     }
@@ -469,16 +571,45 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Get storage statistics from all levels.
+   * Note: L3 stats are aggregated across all tenant caches.
    */
-  async getStorageStats(): Promise<{
+  async getStorageStats(clientId?: string): Promise<{
     l1: { sizeBytes: number; itemCount: number };
     l3: Awaited<ReturnType<L3Cache["getStorageStats"]>>;
     l4: Awaited<ReturnType<L4Cache["getStorageStats"]>>;
   }> {
-    const [l3Stats, l4Stats] = await Promise.all([
-      this.l3.getStorageStats(),
-      this.l4.getStorageStats(),
-    ]);
+    // Get L3 stats for specific client or aggregate
+    let l3Stats: Awaited<ReturnType<L3Cache["getStorageStats"]>>;
+    if (clientId && this.l3Caches.has(clientId)) {
+      l3Stats = await this.l3Caches.get(clientId)!.getStorageStats();
+    } else {
+      // Aggregate across all tenant caches
+      l3Stats = {
+        totalEntries: 0,
+        totalAliases: 0,
+        totalSizeBytes: 0,
+        avgSizeBytes: 0,
+        oldestEntry: null,
+        newestEntry: null,
+      };
+      for (const cache of this.l3Caches.values()) {
+        const stats = await cache.getStorageStats();
+        l3Stats.totalEntries += stats.totalEntries;
+        l3Stats.totalAliases += stats.totalAliases;
+        l3Stats.totalSizeBytes += stats.totalSizeBytes;
+        if (stats.oldestEntry && (!l3Stats.oldestEntry || stats.oldestEntry < l3Stats.oldestEntry)) {
+          l3Stats.oldestEntry = stats.oldestEntry;
+        }
+        if (stats.newestEntry && (!l3Stats.newestEntry || stats.newestEntry > l3Stats.newestEntry)) {
+          l3Stats.newestEntry = stats.newestEntry;
+        }
+      }
+      if (l3Stats.totalEntries > 0) {
+        l3Stats.avgSizeBytes = l3Stats.totalSizeBytes / l3Stats.totalEntries;
+      }
+    }
+
+    const l4Stats = await this.l4.getStorageStats();
 
     return {
       l1: {
@@ -492,11 +623,15 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Run maintenance tasks (cleanup expired entries).
+   * Runs across all tenant L3 caches.
    */
   async runMaintenance(): Promise<{
     l3DeletedCount: number;
   }> {
-    const l3DeletedCount = await this.l3.deleteExpired();
+    let l3DeletedCount = 0;
+    for (const cache of this.l3Caches.values()) {
+      l3DeletedCount += await cache.deleteExpired();
+    }
 
     return { l3DeletedCount };
   }
@@ -563,15 +698,22 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Promote page to L3 cache.
+   * Requires clientId for tenant isolation.
    */
   private async promoteToL3(
     hash: string,
     url: string,
-    page: CachedPage
+    page: CachedPage,
+    clientId?: string
   ): Promise<void> {
+    if (!clientId) {
+      cacheLogger.warn({ url }, "L3 promotion skipped: clientId not provided for tenant isolation");
+      return;
+    }
     const ttlMs = this.getRemainingTtl(page.expiresAt);
     if (ttlMs > 0) {
-      await this.l3.setWithUrl(hash, url, page, ttlMs);
+      const l3Cache = this.getL3Cache(clientId);
+      await l3Cache.setWithUrl(hash, url, page, ttlMs);
     }
   }
 
@@ -751,7 +893,7 @@ export class CacheManager implements ICacheManager {
 
       // Handle subscription messages
       this.subscriber.on("message", (channel: string, message: string) => {
-        if (channel === INVALIDATION_CHANNEL) {
+        if (channel === UNIFIED_INVALIDATION_CHANNEL) {
           this.handleInvalidationMessage(message).catch((error) => {
             cacheLogger.error(
               { error: error instanceof Error ? error.message : String(error) },
@@ -800,12 +942,12 @@ export class CacheManager implements ICacheManager {
     if (!this.subscriber || this.isSubscribed) return;
 
     this.subscriber
-      .subscribe(INVALIDATION_CHANNEL)
+      .subscribe(UNIFIED_INVALIDATION_CHANNEL)
       .then(() => {
         this.isSubscribed = true;
         cacheLogger.debug(
-          { channel: INVALIDATION_CHANNEL, instanceId: INSTANCE_ID },
-          "Subscribed to cache invalidation channel"
+          { channel: UNIFIED_INVALIDATION_CHANNEL, instanceId: INSTANCE_ID, cacheType: SCRAPING_CACHE_TYPE },
+          "Subscribed to unified cache invalidation channel"
         );
       })
       .catch((error) => {
@@ -818,30 +960,34 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Publish an invalidation event to notify other instances.
+   * Uses unified message format with type="scraping".
    */
   private async publishInvalidationEvent(
-    type: InvalidationMessageType,
+    invalidationType: InvalidationMessageType,
     pattern: string
   ): Promise<void> {
     try {
-      const message: InvalidationMessage = {
-        type,
-        pattern,
+      // Use unified message format
+      const message: UnifiedInvalidationMessage = {
+        type: SCRAPING_CACHE_TYPE,
+        keys: invalidationType === "url" ? [pattern] : [],
+        patterns: invalidationType === "domain" ? [`osm:scrape:${pattern}:*`] : [],
+        source: INSTANCE_ID,
         timestamp: Date.now(),
-        instanceId: INSTANCE_ID,
+        reason: `scraping_${invalidationType}_invalidate`,
       };
 
-      await this.redis.publish(INVALIDATION_CHANNEL, JSON.stringify(message));
+      await this.redis.publish(UNIFIED_INVALIDATION_CHANNEL, JSON.stringify(message));
       this.invalidationEventsPublished++;
 
       cacheLogger.debug(
-        { type, pattern, instanceId: INSTANCE_ID },
+        { cacheType: SCRAPING_CACHE_TYPE, invalidationType, pattern, instanceId: INSTANCE_ID },
         "Published cache invalidation event"
       );
     } catch (error) {
       // Non-fatal - local invalidation already succeeded
       cacheLogger.warn(
-        { type, pattern, error: error instanceof Error ? error.message : String(error) },
+        { invalidationType, pattern, error: error instanceof Error ? error.message : String(error) },
         "Failed to publish cache invalidation event"
       );
     }
@@ -849,41 +995,54 @@ export class CacheManager implements ICacheManager {
 
   /**
    * Handle an incoming invalidation message from another instance.
+   * Only processes messages with type="scraping".
    */
   private async handleInvalidationMessage(messageStr: string): Promise<void> {
     try {
-      const message = JSON.parse(messageStr) as InvalidationMessage;
+      const message = JSON.parse(messageStr) as UnifiedInvalidationMessage;
 
       // Skip messages from this instance (we already invalidated locally)
-      if (message.instanceId === INSTANCE_ID) {
+      if (message.source === INSTANCE_ID) {
+        return;
+      }
+
+      // Filter by cache type - only process scraping invalidations
+      if (message.type !== SCRAPING_CACHE_TYPE) {
+        cacheLogger.debug(
+          { messageType: message.type, ourType: SCRAPING_CACHE_TYPE },
+          "Ignoring invalidation for different cache type"
+        );
         return;
       }
 
       this.invalidationEventsReceived++;
 
       cacheLogger.debug(
-        { type: message.type, pattern: message.pattern, fromInstance: message.instanceId },
+        { type: message.type, keys: message.keys.length, patterns: message.patterns.length, fromInstance: message.source },
         "Received cache invalidation event"
       );
 
-      // Clear L1 based on message type
+      // Clear L1 based on message content
       // L2/L3/L4 are already cleared by the originating instance (they're shared)
-      switch (message.type) {
-        case "domain":
-          // For domain invalidation, use domain tracking to clear only specific entries
-          await this.invalidateL1ForDomain(message.pattern);
-          break;
 
-        case "url":
-          // For single URL invalidation, compute hash and delete specific entry
-          const hash = getCacheKey(normalizeUrl(message.pattern));
-          await this.l1.delete(hash);
-          break;
+      // Handle exact key invalidation
+      for (const key of message.keys) {
+        const hash = getCacheKey(normalizeUrl(key));
+        await this.l1.delete(hash);
+      }
 
-        case "all":
-          // For full invalidation, clear entire L1
-          await this.l1.clear();
-          break;
+      // Handle pattern invalidation (extract domain from pattern)
+      for (const pattern of message.patterns) {
+        // Pattern format: osm:scrape:{domain}:*
+        const domainMatch = pattern.match(/^osm:scrape:([^:]+):\*$/);
+        if (domainMatch) {
+          await this.invalidateL1ForDomain(domainMatch[1]);
+        }
+      }
+
+      // If reason indicates full clear
+      if (message.reason === "scraping_all_invalidate") {
+        await this.l1.clear();
       }
     } catch (error) {
       cacheLogger.warn(
@@ -944,7 +1103,7 @@ export class CacheManager implements ICacheManager {
   async shutdown(): Promise<void> {
     if (this.subscriber) {
       try {
-        await this.subscriber.unsubscribe(INVALIDATION_CHANNEL);
+        await this.subscriber.unsubscribe(UNIFIED_INVALIDATION_CHANNEL);
         this.subscriber.disconnect();
         this.subscriber = null;
         this.isSubscribed = false;
@@ -969,6 +1128,13 @@ export class CacheManager implements ICacheManager {
  * The returned CacheManager automatically subscribes to Redis pub/sub
  * for cross-instance L1 cache invalidation. Call shutdown() on the
  * instance during application shutdown to clean up the subscriber connection.
+ *
+ * Phase 97: Tenant isolation is enforced at operation time via clientId in
+ * GetOptions/SetOptions. L3 cache instances are created per-client lazily.
+ *
+ * @param deps.redis - Redis connection
+ * @param deps.db - PostgreSQL database connection
+ * @param deps.config - Optional cache configuration
  */
 export function createCacheManager(deps: {
   redis: Redis;

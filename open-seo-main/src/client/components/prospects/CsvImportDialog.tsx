@@ -230,7 +230,7 @@ export function CsvImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col bg-card rounded-lg border shadow-lg">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col bg-card rounded-lg border shadow-[var(--shadow-modal)]">
         <DialogHeader>
           <DialogTitle>Import Prospects from CSV</DialogTitle>
           <DialogDescription>
@@ -290,7 +290,7 @@ export function CsvImportDialog({
                     <div className="font-medium mb-1">
                       Invalid rows will be skipped:
                     </div>
-                    <ul className="text-xs space-y-1 max-h-20 overflow-auto">
+                    <ul className="text-xs-safe space-y-1 max-h-20 overflow-auto">
                       {parsedData.invalid.slice(0, 5).map((inv) => (
                         <li key={inv.rowIndex}>
                           Row {inv.rowIndex}: {inv.errors.join(", ")}

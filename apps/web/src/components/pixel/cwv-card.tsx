@@ -142,7 +142,7 @@ export function CwvCard({
       <CardContent className="p-4">
         {/* Header with metric name and info tooltip */}
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wider">
             {config.name}
           </span>
           <TooltipProvider>
@@ -155,7 +155,7 @@ export function CwvCard({
               <TooltipContent side="top" className="max-w-xs">
                 <p className="font-semibold mb-1">{config.fullName}</p>
                 <p className="text-sm text-muted-foreground">{config.description}</p>
-                <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs-safe">
                   <p>
                     <span className="text-success font-medium">Good:</span>{" "}
                     {metric === "lcp"
@@ -200,7 +200,7 @@ export function CwvCard({
         <div className="flex items-center justify-between mt-2">
           <span
             className={cn(
-              "px-2 py-0.5 rounded-full text-xs font-medium",
+              "px-2 py-0.5 rounded-full text-xs-safe font-medium",
               styles.badge
             )}
           >
@@ -210,7 +210,7 @@ export function CwvCard({
           {trend && trend.value > 0.5 && (
             <div
               className={cn(
-                "flex items-center gap-0.5 text-xs",
+                "flex items-center gap-0.5 text-xs-safe",
                 trend.isPositive ? "text-success" : "text-error"
               )}
             >

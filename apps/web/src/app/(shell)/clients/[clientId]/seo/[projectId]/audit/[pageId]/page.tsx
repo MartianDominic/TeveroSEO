@@ -150,7 +150,7 @@ export default function PageFindingsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                 Total Checks
               </p>
               <p className="text-2xl font-semibold">{findings.length}</p>
@@ -160,7 +160,7 @@ export default function PageFindingsPage() {
             <CardContent className="p-4 flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                   Passed
                 </p>
                 <p className="text-2xl font-semibold text-green-600">
@@ -173,7 +173,7 @@ export default function PageFindingsPage() {
             <CardContent className="p-4 flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                   Failed
                 </p>
                 <p className="text-2xl font-semibold text-red-600">
@@ -186,7 +186,7 @@ export default function PageFindingsPage() {
             <CardContent className="p-4 flex items-center gap-2">
               <Wrench className="h-5 w-5 text-yellow-600" />
               <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                   Auto-Fixable
                 </p>
                 <p className="text-2xl font-semibold text-yellow-600">

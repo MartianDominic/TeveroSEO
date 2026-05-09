@@ -199,10 +199,9 @@ AUTH rate limits defined in **4 places with DIFFERENT values**:
 - API: `api.requests` (dot notation)
 - Queue: `scrape_queue_depth` (different prefix)
 
-### Dashboard Issues
-- `/docs/monitoring/grafana-dashboard.json` (282 lines) - **OUTDATED**
-- `/src/.../monitoring/grafana-dashboard.json` (2,315 lines) - **CURRENT**
-- Outdated dashboard references undefined metrics: `scraping_errors_total`, `scraping_cache_requests_total`
+### Dashboard
+- **Current**: `/src/server/features/scraping/monitoring/grafana-dashboard.json` (2,315 lines)
+- Outdated `/docs/monitoring/grafana-dashboard.json` deleted (referenced undefined metrics)
 
 ---
 
@@ -392,9 +391,9 @@ Server uses TanStack Start's `createStartHandler` which does not integrate Expre
 | `keywords/utils/CircuitBreaker.ts` | 384 | Deprecated |
 | `keywords/services/CircuitBreaker.ts` | 159 | Deprecated |
 | `keywords/types/circuit-breaker.ts` | 174 | Deprecated |
-| `docs/monitoring/grafana-dashboard.json` | 282 | Outdated |
+| ~~`docs/monitoring/grafana-dashboard.json`~~ | ~~282~~ | ~~Outdated~~ DELETED |
 
-**Total deletable**: 999 lines
+**Total deletable**: 717 lines (282 already deleted)
 
 ---
 

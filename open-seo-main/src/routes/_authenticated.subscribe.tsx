@@ -168,7 +168,7 @@ function SubscribePageContent() {
         {isAttaching ? "Redirecting..." : "Subscribe"}
       </Button>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-center text-xs-safe text-muted-foreground">
         Cancel anytime — no commitment. Powered by Stripe.
       </p>
     </div>
@@ -194,7 +194,7 @@ function SubscribePageAccountMenu({ email }: { email: string | undefined }) {
         </Button>
         <ul
           tabIndex={0}
-          className="dropdown-content z-20 menu mt-3 min-w-56 rounded-lg border border-border bg-background p-2 shadow-lg"
+          className="dropdown-content z-20 menu mt-3 min-w-56 rounded-lg border border-border bg-background p-2 shadow-[var(--shadow-dropdown)]"
         >
           <li className="menu-title max-w-full">
             <span className="truncate text-foreground">{email}</span>

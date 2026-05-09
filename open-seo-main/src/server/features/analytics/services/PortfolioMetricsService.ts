@@ -14,35 +14,22 @@
 import { sql } from "drizzle-orm";
 import type { DbClient } from "@/db";
 
+// Import shared types from @tevero/types
+import type {
+  PortfolioSummary,
+  PortfolioTrend,
+} from "@tevero/types/analytics";
+
+// Re-export types for backward compatibility
+export type { PortfolioSummary, PortfolioTrend };
+
 /**
- * Date range filter
+ * Date range filter with Date objects.
+ * Note: Uses startDate/endDate naming convention for SQL date queries.
  */
 export interface DateRange {
   startDate: Date;
   endDate: Date;
-}
-
-/**
- * Portfolio summary metrics
- */
-export interface PortfolioSummary {
-  totalClicks: number;
-  totalImpressions: number;
-  avgPosition: number;
-  avgCtr: number;
-  clientCount: number;
-  totalQueries: number;
-  totalPages: number;
-}
-
-/**
- * Portfolio trend data point
- */
-export interface PortfolioTrend {
-  date: string;
-  clicks: number;
-  impressions: number;
-  avgPosition: number;
 }
 
 /**

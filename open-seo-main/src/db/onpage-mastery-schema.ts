@@ -19,6 +19,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { clients } from "./client-schema";
+import { audits } from "./app.schema";
+import type { ScrapeTier } from "./domain-scrape-learning-schema";
 
 // 12 primary verticals from CONTEXT.md
 export const VERTICALS = [
@@ -159,7 +161,7 @@ export const pageQualityScores = pgTable(
     // Page identification
     pageId: text("page_id").notNull(),
     pageUrl: text("page_url").notNull(),
-    auditId: uuid("audit_id"),
+    auditId: text("audit_id").references(() => audits.id, { onDelete: "set null" }),
 
     // Classification context
     vertical: text("vertical").notNull(),
@@ -182,7 +184,7 @@ export const pageQualityScores = pgTable(
     failedChecks: jsonb("failed_checks").$type<string[]>().default([]),
 
     // Scraping metadata for traceability
-    scrapeTier: text("scrape_tier"), // 'direct', 'webshare', 'geonode', 'dfs_basic', etc.
+    scrapeTier: text("scrape_tier").$type<ScrapeTier>(),
     scrapeFromCache: boolean("scrape_from_cache"),
     scrapeCostUsd: real("scrape_cost_usd"),
     scrapeResponseTimeMs: integer("scrape_response_time_ms"),
@@ -414,6 +416,10 @@ export const pageQualityScoresRelations = relations(pageQualityScores, ({ one })
   client: one(clients, {
     fields: [pageQualityScores.clientId],
     references: [clients.id],
+  }),
+  audit: one(audits, {
+    fields: [pageQualityScores.auditId],
+    references: [audits.id],
   }),
 }));
 

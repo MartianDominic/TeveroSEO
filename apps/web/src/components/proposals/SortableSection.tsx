@@ -119,9 +119,9 @@ export const SortableSection: FC<SortableSectionProps> = ({
         // Active/focused state
         isActive && "ring-2 ring-ring ring-offset-2",
         // Dragging state
-        isDragging && "opacity-50 shadow-lg z-50",
+        isDragging && "opacity-50 shadow-[var(--shadow-overlay)] z-50",
         // Drag overlay state (the preview that follows cursor)
-        isDragOverlay && "shadow-2xl opacity-95 rotate-1 scale-[1.02]",
+        isDragOverlay && "shadow-[var(--shadow-modal)] opacity-95 rotate-1 scale-[1.02]",
         // Required section indicator
         section.isRequired && "border-l-4 border-l-amber-500",
         // Non-editable state
@@ -152,7 +152,7 @@ export const SortableSection: FC<SortableSectionProps> = ({
             {getSectionTitle()}
           </h3>
           {section.isRequired && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs-safe text-muted-foreground">
               {locale === "lt" ? "Privaloma" : "Required"}
             </span>
           )}

@@ -112,19 +112,19 @@ function OpportunityItem({ opportunity }: OpportunityItemProps) {
         </span>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm">{opportunity.title}</p>
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+          <p className="text-xs-safe text-muted-foreground line-clamp-2 mt-1">
             {opportunity.description}
           </p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge className={cn("text-xs", impactColors[opportunity.impact])}>
+            <Badge className={cn("text-xs-safe", impactColors[opportunity.impact])}>
               {opportunity.impact} impact
             </Badge>
-            <Badge className={cn("text-xs", effortColors[opportunity.effort])}>
+            <Badge className={cn("text-xs-safe", effortColors[opportunity.effort])}>
               {opportunity.effort} effort
             </Badge>
             {opportunity.metrics.estimatedGain != null &&
               opportunity.metrics.estimatedGain > 0 && (
-                <span className="text-xs text-green-600 dark:text-green-400">
+                <span className="text-xs-safe text-green-600 dark:text-green-400">
                   +{opportunity.metrics.estimatedGain.toLocaleString()} potential
                 </span>
               )}

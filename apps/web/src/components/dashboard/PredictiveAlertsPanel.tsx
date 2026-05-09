@@ -125,16 +125,16 @@ function AlertRow({ alert }: { alert: PredictiveAlert }) {
         </div>
 
         {alert.clientName && (
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs-safe text-muted-foreground truncate">
             {alert.clientName}
           </p>
         )}
 
-        <p className="text-xs text-muted-foreground line-clamp-2">
+        <p className="text-xs-safe text-muted-foreground line-clamp-2">
           {alert.description}
         </p>
 
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-3 text-xs-safe">
           <span className="text-muted-foreground">
             Timeframe: <span className="font-medium">{alert.timeframe}</span>
           </span>
@@ -144,7 +144,7 @@ function AlertRow({ alert }: { alert: PredictiveAlert }) {
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground italic">
+        <p className="text-xs-safe text-muted-foreground italic">
           Suggestion: {getActionSuggestion(alert)}
         </p>
       </div>
@@ -152,7 +152,7 @@ function AlertRow({ alert }: { alert: PredictiveAlert }) {
       <div className="flex flex-col items-end gap-2 shrink-0">
         <Badge
           variant={alert.severity === "critical" ? "destructive" : "secondary"}
-          className="text-xs"
+          className="text-xs-safe"
         >
           {alert.severity}
         </Badge>
@@ -200,7 +200,7 @@ function EmptyState() {
       <CardContent className="py-8 text-center">
         <AlertTriangle className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
         <p className="text-sm text-muted-foreground">No predictive alerts</p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs-safe text-muted-foreground mt-1">
           All clients are performing as expected
         </p>
       </CardContent>
@@ -251,12 +251,12 @@ export function PredictiveAlertsPanel({
             <AlertTriangle className="h-5 w-5" />
             Predictive Alerts
             {criticalCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
+              <Badge variant="destructive" className="text-xs-safe">
                 {criticalCount} critical
               </Badge>
             )}
             {warningCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs-safe">
                 {warningCount} warning
               </Badge>
             )}
@@ -283,7 +283,7 @@ export function PredictiveAlertsPanel({
           ))}
 
           {hasMore && (
-            <p className="text-xs text-center text-muted-foreground pt-2">
+            <p className="text-xs-safe text-center text-muted-foreground pt-2">
               +{alertsToShow.length - maxItems} more alerts
             </p>
           )}

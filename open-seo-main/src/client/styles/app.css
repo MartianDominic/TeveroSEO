@@ -231,3 +231,12 @@ select {
   html { touch-action: none; }
   body { touch-action: pan-x pan-y; }
 }
+
+/* ===== Typography Utility: text-xs-safe ===== */
+/* WCAG-compliant 12px minimum floor.
+ * Use this instead of text-xs, text-[10px], or text-[11px].
+ * This ensures accessibility compliance per Design System v6. */
+.text-xs-safe {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem;  /* 16px */
+}

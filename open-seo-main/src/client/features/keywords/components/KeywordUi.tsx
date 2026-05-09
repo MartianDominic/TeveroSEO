@@ -136,7 +136,7 @@ export function KeywordCard({
         <ScoreBadge value={row.keywordDifficulty} size="sm" />
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-2 text-xs-safe">
         <div className="text-center">
           <p className="text-foreground/50">Volume</p>
           <p className="font-medium tabular-nums">

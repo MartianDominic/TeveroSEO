@@ -156,7 +156,7 @@ export function ModelDefaultsTab() {
     <div className="mt-6">
       <div className="rounded-lg border border-border bg-card p-6 max-w-md">
         <h3 className="text-sm font-medium text-foreground mb-1">Model Defaults</h3>
-        <p className="text-xs text-muted-foreground mb-5">
+        <p className="text-xs-safe text-muted-foreground mb-5">
           Default AI models used for article generation and image creation. These are workspace-wide defaults and can be overridden per client.
         </p>
 
@@ -204,11 +204,11 @@ export function ModelDefaultsTab() {
           </div>
 
           {saveError && (
-            <p className="text-xs text-destructive">{saveError}</p>
+            <p className="text-xs-safe text-destructive">{saveError}</p>
           )}
 
           {savedOk && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <p className="text-xs-safe text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5" />
               Model defaults saved.
             </p>

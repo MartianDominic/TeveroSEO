@@ -88,9 +88,9 @@ function EditHistoryItem({ edit, isLatest }: EditHistoryItemProps) {
           <p className="text-sm font-medium text-foreground truncate">
             {typeLabel}
           </p>
-          <p className="text-xs text-muted-foreground line-clamp-2">{summary}</p>
+          <p className="text-xs-safe text-muted-foreground line-clamp-2">{summary}</p>
         </div>
-        <span className="text-xs text-muted-foreground shrink-0">
+        <span className="text-xs-safe text-muted-foreground shrink-0">
           {formatDistanceToNow(new Date(edit.timestamp), { addSuffix: true })}
         </span>
       </div>
@@ -209,7 +209,7 @@ export function EditHistory({
               <History className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Edit History</span>
               {hasEdits && (
-                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                <span className="text-xs-safe text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   {edits.length}
                 </span>
               )}

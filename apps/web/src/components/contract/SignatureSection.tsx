@@ -93,7 +93,7 @@ export function SignatureSection({
         <SigningButtons token={token} disabled={!hasConsented} />
 
         {/* Help text */}
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs-safe text-gray-500 text-center">
           {t("needHelp", { email: "support@tevero.lt" })}
         </p>
       </CardContent>

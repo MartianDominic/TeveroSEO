@@ -8,7 +8,11 @@
  * These utilities help tests handle the wrapper consistently.
  */
 
-import type { CachedData, CacheMetadata } from '@/server/cache';
+// Import from unified types package
+import type { CachedData, CacheMetadata } from '@tevero/types/cache';
+
+// Re-export for backward compatibility
+export type { CachedData, CacheMetadata };
 
 /**
  * Create a CachedData wrapper for test data.

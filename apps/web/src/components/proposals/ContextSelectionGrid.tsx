@@ -85,7 +85,7 @@ export const ContextSelectionGrid: FC<ContextSelectionGridProps> = ({
                   {getLocalizedLabel(item, locale)}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              <p className="text-xs-safe text-muted-foreground mt-0.5 line-clamp-1">
                 {item.available
                   ? item.summary || getLocalizedDescription(item, locale)
                   : notAvailableLabel}

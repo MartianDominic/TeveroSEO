@@ -111,7 +111,7 @@ export class DatabaseCircuitBreaker {
       // Update Prometheus gauge
       const metrics = getMetricsCollector();
       const stateValue = { closed: 0, 'half-open': 0.5, open: 1 }[newState];
-      metrics.setGauge('scraping_db_circuit_state', stateValue, { component: 'database' });
+      metrics.setGauge('osm_scraping_db_circuit_state', stateValue, { component: 'database' });
     });
   }
 
@@ -256,8 +256,8 @@ export class DatabaseCircuitBreaker {
 
       // Update metrics
       const metrics = getMetricsCollector();
-      metrics.setGauge('scraping_db_health_check_status', healthy ? 1 : 0);
-      metrics.recordDuration('scraping_db_health_check_duration_seconds', latencyMs / 1000);
+      metrics.setGauge('osm_scraping_db_health_check_status', healthy ? 1 : 0);
+      metrics.recordDuration('osm_scraping_db_health_check_duration_seconds', latencyMs / 1000);
 
       return healthy;
     } catch (error) {

@@ -6,11 +6,11 @@
  * Supports labeled metrics with automatic key generation.
  *
  * Key metrics:
- * - scraping_request_duration_seconds (histogram) - Request latency by tier/status
- * - scraping_requests_total (counter) - Request counts by tier/status
- * - scraping_cost_usd_total (counter) - Cost by tier/client
- * - scraping_cache_hits_total (counter) - Cache hits by level
- * - scraping_circuit_state (gauge) - Circuit breaker states
+ * - osm_scraping_request_duration_seconds (histogram) - Request latency by tier/status
+ * - osm_scraping_requests_total (counter) - Request counts by tier/status
+ * - osm_scraping_cost_usd_total (counter) - Cost by tier/client
+ * - osm_scraping_cache_hits_total (counter) - Cache hits by level
+ * - osm_scraping_circuit_state (gauge) - Circuit breaker states
  */
 
 // =============================================================================
@@ -66,49 +66,49 @@ export class MetricsCollector {
   private registerDefaultMetrics(): void {
     // Request duration histogram
     this.registerMetric(
-      'scraping_request_duration_seconds',
+      'osm_scraping_request_duration_seconds',
       'histogram',
       'Duration of scraping requests in seconds'
     );
 
     // Request counters
     this.registerMetric(
-      'scraping_requests_total',
+      'osm_scraping_requests_total',
       'counter',
       'Total number of scraping requests'
     );
 
     // Cost counter
     this.registerMetric(
-      'scraping_cost_usd_total',
+      'osm_scraping_cost_usd_total',
       'counter',
       'Total cost in USD'
     );
 
     // Cache hit counters
     this.registerMetric(
-      'scraping_cache_hits_total',
+      'osm_scraping_cache_hits_total',
       'counter',
       'Total cache hits by level'
     );
 
     // Circuit state gauge
     this.registerMetric(
-      'scraping_circuit_state',
+      'osm_scraping_circuit_state',
       'gauge',
       'Circuit breaker state (0=closed, 0.5=half-open, 1=open)'
     );
 
     // Budget gauge
     this.registerMetric(
-      'scraping_dfs_budget_used_percent',
+      'osm_scraping_dfs_budget_used_percent',
       'gauge',
       'DataForSEO daily budget utilization percentage'
     );
 
     // Savings counter
     this.registerMetric(
-      'scraping_dfs_savings_usd',
+      'osm_scraping_dfs_savings_usd',
       'counter',
       'Savings from using Standard Queue over Live'
     );
@@ -119,57 +119,57 @@ export class MetricsCollector {
 
     // CrUX Rate Limiter metrics
     this.registerMetric(
-      'scraping_crux_requests_total',
+      'osm_scraping_crux_requests_total',
       'counter',
       'Total CrUX API requests'
     );
 
     this.registerMetric(
-      'scraping_crux_quota_remaining',
+      'osm_scraping_crux_quota_remaining',
       'gauge',
       'Remaining CrUX API quota for today'
     );
 
     this.registerMetric(
-      'scraping_crux_alerts_total',
+      'osm_scraping_crux_alerts_total',
       'counter',
       'Total CrUX quota alerts by level'
     );
 
     // Database Circuit Breaker metrics
     this.registerMetric(
-      'scraping_db_circuit_state',
+      'osm_scraping_db_circuit_state',
       'gauge',
       'Database circuit breaker state (0=closed, 0.5=half-open, 1=open)'
     );
 
     this.registerMetric(
-      'scraping_db_health_check_status',
+      'osm_scraping_db_health_check_status',
       'gauge',
       'Database health check status (0=unhealthy, 1=healthy)'
     );
 
     this.registerMetric(
-      'scraping_db_health_check_duration_seconds',
+      'osm_scraping_db_health_check_duration_seconds',
       'histogram',
       'Database health check duration in seconds'
     );
 
     // Proxy Bandwidth Tracking metrics
     this.registerMetric(
-      'scraping_proxy_bandwidth_bytes',
+      'osm_scraping_proxy_bandwidth_bytes',
       'counter',
       'Total proxy bandwidth usage in bytes'
     );
 
     this.registerMetric(
-      'scraping_proxy_bandwidth_cost_usd',
+      'osm_scraping_proxy_bandwidth_cost_usd',
       'gauge',
       'Estimated proxy bandwidth cost in USD'
     );
 
     this.registerMetric(
-      'scraping_proxy_bandwidth_alerts_total',
+      'osm_scraping_proxy_bandwidth_alerts_total',
       'counter',
       'Total proxy bandwidth alerts by provider and level'
     );
@@ -179,19 +179,19 @@ export class MetricsCollector {
     // ==========================================================================
 
     this.registerMetric(
-      'scraping_p95_latency_rolling_ms',
+      'osm_scraping_p95_latency_rolling_ms',
       'gauge',
       'Rolling P95 latency in milliseconds (last 100 requests)'
     );
 
     this.registerMetric(
-      'scraping_p95_threshold_breach',
+      'osm_scraping_p95_threshold_breach',
       'gauge',
       'P95 latency threshold breach indicator (1=above, 0=below)'
     );
 
     this.registerMetric(
-      'scraping_p95_consecutive_breaches',
+      'osm_scraping_p95_consecutive_breaches',
       'gauge',
       'Number of consecutive P95 threshold breaches'
     );
@@ -201,13 +201,13 @@ export class MetricsCollector {
     // ==========================================================================
 
     this.registerMetric(
-      'scraping_circuit_transitions_total',
+      'osm_scraping_circuit_transitions_total',
       'counter',
       'Total circuit breaker state transitions'
     );
 
     this.registerMetric(
-      'scraping_circuit_time_in_state_seconds',
+      'osm_scraping_circuit_time_in_state_seconds',
       'counter',
       'Cumulative time spent in each circuit breaker state'
     );
@@ -217,13 +217,13 @@ export class MetricsCollector {
     // ==========================================================================
 
     this.registerMetric(
-      'scraping_tier_usage_total',
+      'osm_scraping_tier_usage_total',
       'counter',
       'Total requests per tier'
     );
 
     this.registerMetric(
-      'scraping_cheap_tier_percentage',
+      'osm_scraping_cheap_tier_percentage',
       'gauge',
       'Percentage of requests using cheap tiers (T0-T2.5) - target 65%'
     );
@@ -233,31 +233,31 @@ export class MetricsCollector {
     // ==========================================================================
 
     this.registerMetric(
-      'scraping_ratelimit_wait_seconds',
+      'osm_scraping_ratelimit_wait_seconds',
       'histogram',
       'Time spent waiting for rate limit slot in seconds'
     );
 
     this.registerMetric(
-      'scraping_ratelimit_rejections_total',
+      'osm_scraping_ratelimit_rejections_total',
       'counter',
       'Total rate limit rejections (timeout exceeded)'
     );
 
     this.registerMetric(
-      'scraping_ratelimit_active_domains',
+      'osm_scraping_ratelimit_active_domains',
       'gauge',
       'Number of domains with active rate limit state'
     );
 
     this.registerMetric(
-      'scraping_ratelimit_backoff_multiplier',
+      'osm_scraping_ratelimit_backoff_multiplier',
       'gauge',
       'Current adaptive backoff multiplier by domain'
     );
 
     this.registerMetric(
-      'scraping_ratelimit_acquires_total',
+      'osm_scraping_ratelimit_acquires_total',
       'counter',
       'Total rate limit acquire attempts by status'
     );
@@ -680,13 +680,13 @@ export function recordScrapeRequest(params: {
   const collector = getMetricsCollector();
 
   // Record duration
-  collector.recordDuration('scraping_request_duration_seconds', params.durationSeconds, {
+  collector.recordDuration('osm_scraping_request_duration_seconds', params.durationSeconds, {
     tier: params.tier,
     status: params.status,
   });
 
   // Increment request counter
-  collector.incrementCounter('scraping_requests_total', {
+  collector.incrementCounter('osm_scraping_requests_total', {
     tier: params.tier,
     status: params.status,
   });
@@ -697,12 +697,12 @@ export function recordScrapeRequest(params: {
     if (params.clientId) {
       costLabels.client = params.clientId;
     }
-    collector.addCounter('scraping_cost_usd_total', params.costUsd, costLabels);
+    collector.addCounter('osm_scraping_cost_usd_total', params.costUsd, costLabels);
   }
 
   // Record cache hit
   if (params.cached && params.cacheLevel) {
-    collector.incrementCounter('scraping_cache_hits_total', {
+    collector.incrementCounter('osm_scraping_cache_hits_total', {
       level: params.cacheLevel,
     });
   }
@@ -717,7 +717,7 @@ export function recordCircuitState(
 ): void {
   const collector = getMetricsCollector();
   const stateValue = { closed: 0, 'half-open': 0.5, open: 1 }[state];
-  collector.setGauge('scraping_circuit_state', stateValue, { tier });
+  collector.setGauge('osm_scraping_circuit_state', stateValue, { tier });
 }
 
 /**
@@ -731,8 +731,8 @@ export function recordDfsBudgetUsage(
   const collector = getMetricsCollector();
   const usedPercent = budgetUsd > 0 ? (usedUsd / budgetUsd) * 100 : 0;
 
-  collector.setGauge('scraping_dfs_budget_used_percent', usedPercent);
-  collector.addCounter('scraping_dfs_savings_usd', savingsUsd);
+  collector.setGauge('osm_scraping_dfs_budget_used_percent', usedPercent);
+  collector.addCounter('osm_scraping_dfs_savings_usd', savingsUsd);
 }
 
 // =============================================================================
@@ -748,8 +748,8 @@ export function recordCruxQuotaStatus(
   dailyLimit: number
 ): void {
   const collector = getMetricsCollector();
-  collector.setGauge('scraping_crux_quota_remaining', quotaRemaining);
-  collector.setGauge('scraping_crux_usage_percent', (requestsToday / dailyLimit) * 100);
+  collector.setGauge('osm_scraping_crux_quota_remaining', quotaRemaining);
+  collector.setGauge('osm_scraping_crux_usage_percent', (requestsToday / dailyLimit) * 100);
 }
 
 /**
@@ -762,8 +762,8 @@ export function recordProxyBandwidthStatus(
   estimatedCostUsd: number
 ): void {
   const collector = getMetricsCollector();
-  collector.setGauge('scraping_proxy_bandwidth_cost_usd', estimatedCostUsd, { provider });
-  collector.setGauge('scraping_proxy_bandwidth_used_percent', (usedBytes / limitBytes) * 100, { provider });
+  collector.setGauge('osm_scraping_proxy_bandwidth_cost_usd', estimatedCostUsd, { provider });
+  collector.setGauge('osm_scraping_proxy_bandwidth_used_percent', (usedBytes / limitBytes) * 100, { provider });
 }
 
 // =============================================================================
@@ -784,7 +784,7 @@ export function recordCircuitTransition(
   toState: 'closed' | 'half-open' | 'open'
 ): void {
   const collector = getMetricsCollector();
-  collector.incrementCounter('scraping_circuit_transitions_total', {
+  collector.incrementCounter('osm_scraping_circuit_transitions_total', {
     tier,
     from: fromState,
     to: toState,
@@ -805,7 +805,7 @@ export function recordCircuitTimeInState(
   durationSeconds: number
 ): void {
   const collector = getMetricsCollector();
-  collector.addCounter('scraping_circuit_time_in_state_seconds', durationSeconds, {
+  collector.addCounter('osm_scraping_circuit_time_in_state_seconds', durationSeconds, {
     tier,
     state,
   });
@@ -831,7 +831,7 @@ export function recordTierUsage(tier: string): void {
   const collector = getMetricsCollector();
 
   // Increment the counter for this specific tier
-  collector.incrementCounter('scraping_tier_usage_total', { tier });
+  collector.incrementCounter('osm_scraping_tier_usage_total', { tier });
 
   // Recalculate cheap tier percentage
   updateCheapTierPercentage();
@@ -852,7 +852,7 @@ function updateCheapTierPercentage(): void {
   let cheapRequests = 0;
 
   for (const tier of allTiers) {
-    const count = collector.getCounter('scraping_tier_usage_total', { tier });
+    const count = collector.getCounter('osm_scraping_tier_usage_total', { tier });
     totalRequests += count;
     if (CHEAP_TIERS.includes(tier as typeof CHEAP_TIERS[number])) {
       cheapRequests += count;
@@ -861,7 +861,7 @@ function updateCheapTierPercentage(): void {
 
   // Calculate and set the percentage gauge
   const percentage = totalRequests > 0 ? (cheapRequests / totalRequests) * 100 : 0;
-  collector.setGauge('scraping_cheap_tier_percentage', percentage);
+  collector.setGauge('osm_scraping_cheap_tier_percentage', percentage);
 }
 
 /**
@@ -886,7 +886,7 @@ export function getTierDistribution(): {
 
   // Gather counts
   for (const tier of allTiers) {
-    const count = collector.getCounter('scraping_tier_usage_total', { tier });
+    const count = collector.getCounter('osm_scraping_tier_usage_total', { tier });
     tierCounts[tier] = count;
     totalRequests += count;
   }
@@ -952,12 +952,12 @@ export function recordRateLimitAcquire(
   const collector = getMetricsCollector();
 
   // Record wait time histogram (convert to seconds for Prometheus convention)
-  collector.recordDuration('scraping_ratelimit_wait_seconds', waitTimeMs / 1000, {
+  collector.recordDuration('osm_scraping_ratelimit_wait_seconds', waitTimeMs / 1000, {
     domain,
   });
 
   // Increment successful acquire counter
-  collector.incrementCounter('scraping_ratelimit_acquires_total', {
+  collector.incrementCounter('osm_scraping_ratelimit_acquires_total', {
     status: 'success',
   });
 }
@@ -975,17 +975,17 @@ export function recordRateLimitRejection(
   const collector = getMetricsCollector();
 
   // Increment rejection counter
-  collector.incrementCounter('scraping_ratelimit_rejections_total', {
+  collector.incrementCounter('osm_scraping_ratelimit_rejections_total', {
     domain,
   });
 
   // Also track in acquires counter with rejection status
-  collector.incrementCounter('scraping_ratelimit_acquires_total', {
+  collector.incrementCounter('osm_scraping_ratelimit_acquires_total', {
     status: 'rejected',
   });
 
   // Record the wait time that led to rejection
-  collector.recordDuration('scraping_ratelimit_wait_seconds', waitedMs / 1000, {
+  collector.recordDuration('osm_scraping_ratelimit_wait_seconds', waitedMs / 1000, {
     domain,
     status: 'rejected',
   });
@@ -999,7 +999,7 @@ export function recordRateLimitRejection(
  */
 export function recordRateLimitActiveDomains(count: number): void {
   const collector = getMetricsCollector();
-  collector.setGauge('scraping_ratelimit_active_domains', count);
+  collector.setGauge('osm_scraping_ratelimit_active_domains', count);
 }
 
 /**
@@ -1014,7 +1014,7 @@ export function recordRateLimitBackoff(
   multiplier: number
 ): void {
   const collector = getMetricsCollector();
-  collector.setGauge('scraping_ratelimit_backoff_multiplier', multiplier, {
+  collector.setGauge('osm_scraping_ratelimit_backoff_multiplier', multiplier, {
     domain,
   });
 }
@@ -1027,15 +1027,15 @@ export function getRateLimiterMetrics(): RateLimiterMetrics {
   const collector = getMetricsCollector();
 
   // Get percentiles from the wait time histogram
-  const waitTimeP50Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 50) * 1000;
-  const waitTimeP95Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 95) * 1000;
-  const waitTimeP99Ms = collector.getPercentile('scraping_ratelimit_wait_seconds', 99) * 1000;
+  const waitTimeP50Ms = collector.getPercentile('osm_scraping_ratelimit_wait_seconds', 50) * 1000;
+  const waitTimeP95Ms = collector.getPercentile('osm_scraping_ratelimit_wait_seconds', 95) * 1000;
+  const waitTimeP99Ms = collector.getPercentile('osm_scraping_ratelimit_wait_seconds', 99) * 1000;
 
   // Get counters
-  const successfulAcquires = collector.getCounter('scraping_ratelimit_acquires_total', {
+  const successfulAcquires = collector.getCounter('osm_scraping_ratelimit_acquires_total', {
     status: 'success',
   });
-  const rejectedAcquires = collector.getCounter('scraping_ratelimit_acquires_total', {
+  const rejectedAcquires = collector.getCounter('osm_scraping_ratelimit_acquires_total', {
     status: 'rejected',
   });
   const totalAttempts = successfulAcquires + rejectedAcquires;
@@ -1045,7 +1045,7 @@ export function getRateLimiterMetrics(): RateLimiterMetrics {
   const rejections = rejectedAcquires;
 
   // Get active domains gauge
-  const activeDomains = collector.getGauge('scraping_ratelimit_active_domains');
+  const activeDomains = collector.getGauge('osm_scraping_ratelimit_active_domains');
 
   return {
     waitTimeP50Ms,

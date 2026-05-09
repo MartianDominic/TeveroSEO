@@ -652,7 +652,7 @@ export default function ClientSettingsPage() {
                   Reset to default
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">
+              <p className="text-xs-safe text-muted-foreground mb-3">
                 Injected into AI system prompts when this client is active
               </p>
               <Textarea
@@ -670,7 +670,7 @@ export default function ClientSettingsPage() {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 Voice Template
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Apply a named style template to blend with this client&apos;s
                 brand voice
               </p>
@@ -701,7 +701,7 @@ export default function ClientSettingsPage() {
                     </SelectContent>
                   </Select>
                   {selectedTemplate?.description && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs-safe text-muted-foreground">
                       {selectedTemplate.description}
                     </p>
                   )}
@@ -739,15 +739,15 @@ export default function ClientSettingsPage() {
                           step={0.05}
                         />
                         <div className="flex justify-between mt-1">
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs-safe text-muted-foreground">
                             Client voice
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs-safe text-muted-foreground">
                             Template style
                           </span>
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs-safe text-muted-foreground">
                         Current: {blendWeightDraft[0].toFixed(2)} — 0.0 = pure
                         client voice, 1.0 = pure template style
                       </p>
@@ -760,7 +760,7 @@ export default function ClientSettingsPage() {
                       <Label className="text-sm font-medium text-foreground">
                         Custom Voice Instructions
                       </Label>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs-safe text-muted-foreground">
                         Plain-language description of the desired voice —
                         injected at highest priority, overrides template
                         defaults
@@ -795,7 +795,7 @@ export default function ClientSettingsPage() {
                   Reset to default
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Default image generation style applied to this client&apos;s
                 images
               </p>
@@ -814,7 +814,7 @@ export default function ClientSettingsPage() {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 Model Overrides
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Override the global default models for this client. Select
                 &quot;None&quot; to use the global default.
               </p>
@@ -905,7 +905,7 @@ export default function ClientSettingsPage() {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 WordPress
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Publish articles directly to your WordPress site
               </p>
               <div className="space-y-4">
@@ -955,7 +955,7 @@ export default function ClientSettingsPage() {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs-safe text-muted-foreground mt-1">
                     Leave blank to keep current password
                   </p>
                 </div>
@@ -975,7 +975,7 @@ export default function ClientSettingsPage() {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 Shopify
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Publish blog articles to your Shopify store
               </p>
               <div className="space-y-4">
@@ -1014,7 +1014,7 @@ export default function ClientSettingsPage() {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs-safe text-muted-foreground mt-1">
                     Leave blank to keep current key
                   </p>
                 </div>
@@ -1032,7 +1032,7 @@ export default function ClientSettingsPage() {
             {/* ── Wix (OAuth) ───────────────────────────────────────────── */}
             <div className="rounded-lg border border-border bg-card p-6">
               <h3 className="text-sm font-medium text-foreground mb-1">Wix</h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Connect your Wix site via OAuth
               </p>
               {isWixConnected ? (
@@ -1054,7 +1054,7 @@ export default function ClientSettingsPage() {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 Webhook
               </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs-safe text-muted-foreground mb-4">
                 Receive notifications when articles are published
               </p>
               <div>
@@ -1067,7 +1067,7 @@ export default function ClientSettingsPage() {
                   onChange={(e) => setWebhookUrlDraft(e.target.value)}
                   placeholder="https://yoursite.com/webhook"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   POST request sent after each successful publish
                 </p>
               </div>
@@ -1193,7 +1193,7 @@ export default function ClientSettingsPage() {
                     Auto-publish approved articles
                   </label>
                 </div>
-                <p className="text-xs text-muted-foreground pl-[52px]">
+                <p className="text-xs-safe text-muted-foreground pl-[52px]">
                   When enabled, approved articles publish immediately. When
                   disabled, they queue for manual publishing.
                 </p>
@@ -1220,7 +1220,7 @@ export default function ClientSettingsPage() {
                     }))
                   }
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   Hours before auto-publishing after approval (0 = immediate)
                 </p>
               </div>
@@ -1398,7 +1398,7 @@ export default function ClientSettingsPage() {
             <h3 className="text-sm font-medium text-foreground mb-1">
               Goals
             </h3>
-            <p className="text-xs text-muted-foreground mb-6">
+            <p className="text-xs-safe text-muted-foreground mb-6">
               Track progress toward specific targets for this client. Goals help measure SEO success and identify areas needing attention.
             </p>
             {clientId && (
@@ -1413,7 +1413,7 @@ export default function ClientSettingsPage() {
 
       {/* ── Toast notification ──────────────────────────────────────── */}
       {toast.open && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border transition-opacity">
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-[var(--shadow-overlay)] bg-card border border-border transition-opacity">
           <div className="flex items-center gap-2">
             <StatusChip
               status={toast.severity === "success" ? "published" : "failed"}

@@ -127,7 +127,7 @@ export function KeyboardShortcutsDialog({
                     <span className="text-sm text-foreground">
                       {shortcut.description}
                     </span>
-                    <kbd className="inline-flex items-center gap-1 rounded border bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                    <kbd className="inline-flex items-center gap-1 rounded border bg-muted px-2 py-0.5 font-mono text-xs-safe text-muted-foreground">
                       {shortcut.key}
                     </kbd>
                   </div>
@@ -136,7 +136,7 @@ export function KeyboardShortcutsDialog({
             </div>
           ))}
         </div>
-        <div className="pt-4 border-t text-center text-xs text-muted-foreground">
+        <div className="pt-4 border-t text-center text-xs-safe text-muted-foreground">
           Press <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono">?</kbd> anytime to toggle this dialog
         </div>
       </DialogContent>

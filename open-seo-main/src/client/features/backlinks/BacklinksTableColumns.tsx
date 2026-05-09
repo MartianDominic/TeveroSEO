@@ -14,18 +14,18 @@ function BacklinkFlags({ row }: { row: BacklinksRow }) {
   return (
     <div className="flex flex-wrap gap-1">
       {row.isLost ? (
-        <Badge variant="destructive" className="text-xs">Lost</Badge>
+        <Badge variant="destructive" className="text-xs-safe">Lost</Badge>
       ) : null}
       {row.isBroken ? (
-        <Badge variant="outline" className="text-yellow-600 text-xs">
+        <Badge variant="outline" className="text-yellow-600 text-xs-safe">
           Broken
         </Badge>
       ) : null}
       {row.isDofollow === false ? (
-        <Badge variant="outline" className="text-xs">Nofollow</Badge>
+        <Badge variant="outline" className="text-xs-safe">Nofollow</Badge>
       ) : null}
       {row.linksCount != null && row.linksCount > 1 ? (
-        <Badge variant="outline" className="text-xs inline-flex min-w-fit items-center whitespace-nowrap">
+        <Badge variant="outline" className="text-xs-safe inline-flex min-w-fit items-center whitespace-nowrap">
           {row.linksCount} links
         </Badge>
       ) : null}
@@ -39,21 +39,21 @@ function DomainFlagBadges({ group }: { group: GroupedBacklinkDomain }) {
     badges.push({
       label: `${group.lostCount} Lost`,
       variant: "destructive",
-      className: "text-xs",
+      className: "text-xs-safe",
     });
   }
   if (group.brokenCount > 0) {
     badges.push({
       label: `${group.brokenCount} Broken`,
       variant: "outline",
-      className: "text-yellow-600 text-xs",
+      className: "text-yellow-600 text-xs-safe",
     });
   }
   if (group.nofollowCount > 0) {
     badges.push({
       label: `${group.nofollowCount} Nofollow`,
       variant: "outline",
-      className: "text-xs",
+      className: "text-xs-safe",
     });
   }
   if (badges.length === 0) return null;
@@ -143,7 +143,7 @@ export const backlinksColumns: ColumnDef<GroupedBacklinkDomain>[] = [
           />
           <div>
             <div className="font-semibold">{group.domain}</div>
-            <div className="text-xs text-foreground/55">
+            <div className="text-xs-safe text-foreground/55">
               {group.backlinkCount}{" "}
               {group.backlinkCount === 1 ? "backlink" : "backlinks"} &middot;{" "}
               {group.targetCount} {group.targetCount === 1 ? "page" : "pages"}
@@ -200,7 +200,7 @@ export const backlinksColumns: ColumnDef<GroupedBacklinkDomain>[] = [
           <div className="space-y-0.5 break-words">
             <span className="text-sm">{child?.anchor || "No anchor text"}</span>
             {child?.itemType ? (
-              <div className="text-xs text-foreground/55">
+              <div className="text-xs-safe text-foreground/55">
                 {child.itemType}
               </div>
             ) : null}
@@ -344,7 +344,7 @@ export const backlinksColumns: ColumnDef<GroupedBacklinkDomain>[] = [
           <div className="whitespace-nowrap text-sm">
             <div>{formatCompactDate(child?.firstSeen)}</div>
             {child?.lastSeen ? (
-              <div className="text-xs text-foreground/55">
+              <div className="text-xs-safe text-foreground/55">
                 Last {formatCompactDate(child.lastSeen)}
               </div>
             ) : null}

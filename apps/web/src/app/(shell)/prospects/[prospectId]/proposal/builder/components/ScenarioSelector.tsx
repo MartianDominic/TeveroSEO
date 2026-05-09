@@ -76,7 +76,7 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
         return (
           <Card
             key={scenario.id}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+            className={`cursor-pointer transition-all duration-200 hover:shadow-[var(--shadow-elevated)] ${
               isSelected
                 ? "ring-2 ring-[#0f4f3d] bg-[#eaf1ed]"
                 : "hover:bg-[#f8f8f3]"
@@ -105,7 +105,7 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {scenario.recommended && (
-                    <span className="text-xs font-medium text-[#0f4f3d] bg-[#eaf1ed] px-2 py-0.5 rounded">
+                    <span className="text-xs-safe font-medium text-[#0f4f3d] bg-[#eaf1ed] px-2 py-0.5 rounded">
                       Rekomenduojama
                     </span>
                   )}
@@ -131,7 +131,7 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
               {/* Sections list with v6 styling */}
               <div className="pt-4 border-t" style={{ borderColor: "#f2f1eb" }}>
                 <p
-                  className="text-xs font-medium uppercase tracking-wider mb-2"
+                  className="text-xs-safe font-medium uppercase tracking-wider mb-2"
                   style={{ color: "#93939a" }}
                 >
                   Iskeltos sekcijos
@@ -140,7 +140,7 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
                   {scenario.sections.slice(0, 4).map((section, i) => (
                     <li
                       key={i}
-                      className="text-xs flex items-center gap-1.5"
+                      className="text-xs-safe flex items-center gap-1.5"
                       style={{ color: "#54545a" }}
                     >
                       <span
@@ -151,7 +151,7 @@ export function ScenarioSelector({ value, onChange }: ScenarioSelectorProps) {
                     </li>
                   ))}
                   {scenario.sections.length > 4 && (
-                    <li className="text-xs" style={{ color: "#93939a" }}>
+                    <li className="text-xs-safe" style={{ color: "#93939a" }}>
                       +{scenario.sections.length - 4} daugiau...
                     </li>
                   )}

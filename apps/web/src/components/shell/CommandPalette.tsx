@@ -129,7 +129,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     >
       <DialogContent
         className={cn(
-          "max-w-lg w-full rounded-xl border border-border bg-popover p-0 shadow-xl"
+          "max-w-lg w-full rounded-xl border border-border bg-popover p-0 shadow-[var(--shadow-modal)]"
         )}
       >
         <Command className="rounded-xl">
@@ -138,17 +138,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             {activeClient ? (
               <>
                 <Building2 className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium text-foreground">
+                <span className="text-xs-safe font-medium text-foreground">
                   {activeClient.name}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs-safe text-muted-foreground">
                   - Client scope
                 </span>
               </>
             ) : (
               <>
                 <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs-safe text-muted-foreground">
                   No client selected - Global scope
                 </span>
               </>
@@ -197,7 +197,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     <Icon className="mr-2 h-4 w-4 shrink-0" />
                     <span className="flex-1">{link.label}</span>
                     {disabled && (
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-xs-safe text-muted-foreground ml-2">
                         Select client
                       </span>
                     )}

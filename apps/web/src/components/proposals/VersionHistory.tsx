@@ -202,7 +202,7 @@ export function VersionHistory({
         {isCurrent && (
           <Badge
             variant="secondary"
-            className="absolute -top-2 right-2 text-xs-safe"
+            className="absolute -top-2 right-2 text-xs-safe-safe"
           >
             {t("current")}
           </Badge>
@@ -220,7 +220,7 @@ export function VersionHistory({
               <span className="font-medium text-sm">
                 {t("version")} {version.versionNumber}
               </span>
-              <span className="text-xs-safe text-text-3">{relativeTime}</span>
+              <span className="text-xs-safe-safe text-text-3">{relativeTime}</span>
             </div>
 
             <p className="text-sm text-text-2 truncate mt-0.5">{description}</p>
@@ -232,7 +232,7 @@ export function VersionHistory({
                   <Badge
                     key={section}
                     variant="outline"
-                    className="text-xs-safe px-1.5 py-0"
+                    className="text-xs-safe-safe px-1.5 py-0"
                   >
                     {section}
                   </Badge>
@@ -240,7 +240,7 @@ export function VersionHistory({
                 {version.changedSections.length > 3 && (
                   <Badge
                     variant="outline"
-                    className="text-xs-safe px-1.5 py-0"
+                    className="text-xs-safe-safe px-1.5 py-0"
                   >
                     +{version.changedSections.length - 3}
                   </Badge>
@@ -327,7 +327,7 @@ export function VersionHistory({
               <div className="flex flex-col items-center justify-center h-48 text-center p-4">
                 <History className="h-10 w-10 text-text-3 mb-2" />
                 <p className="text-sm text-text-2">{t("empty")}</p>
-                <p className="text-xs-safe text-text-3 mt-1">{t("emptyHint")}</p>
+                <p className="text-xs-safe-safe text-text-3 mt-1">{t("emptyHint")}</p>
               </div>
             ) : (
               <div className="space-y-2 p-4">

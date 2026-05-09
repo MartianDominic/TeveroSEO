@@ -28,7 +28,7 @@ export default function SigningSuccessError({
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-sm p-8 text-center">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-[var(--shadow-card)] p-8 text-center">
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-amber-600" />

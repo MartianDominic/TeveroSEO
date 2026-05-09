@@ -84,7 +84,7 @@ function CategoryCount({
   return (
     <div className="text-center">
       <div className={`text-xl font-semibold ${color}`}>{count}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-xs-safe text-muted-foreground">{label}</div>
     </div>
   );
 }

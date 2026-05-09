@@ -144,7 +144,7 @@ export function ActivityFeed({ workspaceId }: ActivityFeedProps) {
                       {EVENT_TYPE_LABELS[event.type as ActivityEventType] ?? event.type}
                     </span>
                     {event.clientName && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs-safe">
                         {event.clientName}
                       </Badge>
                     )}
@@ -155,7 +155,7 @@ export function ActivityFeed({ workspaceId }: ActivityFeedProps) {
                     </p>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                <span className="text-xs-safe text-muted-foreground whitespace-nowrap">
                   {formatTime(event.timestamp)}
                 </span>
               </div>

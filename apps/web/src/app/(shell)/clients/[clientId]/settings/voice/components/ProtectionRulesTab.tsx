@@ -157,12 +157,12 @@ export function ProtectionRulesTab({ clientId }: ProtectionRulesTabProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{rule.ruleType}</Badge>
-                  <code className="text-xs bg-muted px-2 py-0.5 rounded">
+                  <code className="text-xs-safe bg-muted px-2 py-0.5 rounded">
                     {rule.target}
                   </code>
                 </div>
                 {rule.reason && (
-                  <p className="text-xs text-muted-foreground">{rule.reason}</p>
+                  <p className="text-xs-safe text-muted-foreground">{rule.reason}</p>
                 )}
               </div>
               <Button

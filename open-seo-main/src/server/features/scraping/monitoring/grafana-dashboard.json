@@ -95,7 +95,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(scraping_cost_usd_total[24h]))",
+          "expr": "sum(increase(osm_scraping_cost_usd_total[24h]))",
           "legendFormat": "Today's Cost",
           "refId": "A"
         }
@@ -163,7 +163,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(scraping_cost_usd_total[30d]))",
+          "expr": "sum(increase(osm_scraping_cost_usd_total[30d]))",
           "legendFormat": "Monthly Cost",
           "refId": "A"
         }
@@ -231,7 +231,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_cache_hits_total[5m])) / (sum(rate(scraping_cache_hits_total[5m])) + sum(rate(scraping_requests_total{status=\"success\"}[5m]))) * 100",
+          "expr": "sum(rate(osm_scraping_cache_hits_total[5m])) / (sum(rate(osm_scraping_cache_hits_total[5m])) + sum(rate(osm_scraping_requests_total{status=\"success\"}[5m]))) * 100",
           "legendFormat": "Cache Hit Rate",
           "refId": "A"
         }
@@ -299,7 +299,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_p95_latency_rolling_ms",
+          "expr": "osm_scraping_p95_latency_rolling_ms",
           "legendFormat": "P95 Latency",
           "refId": "A"
         }
@@ -367,7 +367,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_requests_total{status=\"error\"}[5m])) / sum(rate(scraping_requests_total[5m])) * 100",
+          "expr": "sum(rate(osm_scraping_requests_total{status=\"error\"}[5m])) / sum(rate(osm_scraping_requests_total[5m])) * 100",
           "legendFormat": "Error Rate",
           "refId": "A"
         }
@@ -435,7 +435,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_dfs_budget_used_percent",
+          "expr": "osm_scraping_dfs_budget_used_percent",
           "legendFormat": "Budget Used",
           "refId": "A"
         }
@@ -541,7 +541,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(scraping_cost_usd_total[1h])) by (tier)",
+          "expr": "sum(increase(osm_scraping_cost_usd_total[1h])) by (tier)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -608,7 +608,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(scraping_cost_usd_total[24h])) by (tier)",
+          "expr": "sum(increase(osm_scraping_cost_usd_total[24h])) by (tier)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -675,7 +675,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(increase(scraping_requests_total[24h])) by (tier)",
+          "expr": "sum(increase(osm_scraping_requests_total[24h])) by (tier)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -763,7 +763,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_p95_latency_rolling_ms",
+          "expr": "osm_scraping_p95_latency_rolling_ms",
           "legendFormat": "P95",
           "refId": "A"
         }
@@ -860,7 +860,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(scraping_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(osm_scraping_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "P50",
           "refId": "A"
         },
@@ -869,7 +869,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.90, sum(rate(scraping_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.90, sum(rate(osm_scraping_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "P90",
           "refId": "B"
         },
@@ -878,7 +878,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(scraping_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(osm_scraping_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "P95",
           "refId": "C"
         },
@@ -887,7 +887,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(scraping_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(osm_scraping_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "P99",
           "refId": "D"
         }
@@ -1010,7 +1010,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_requests_total[5m])) by (status)",
+          "expr": "sum(rate(osm_scraping_requests_total[5m])) by (status)",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -1162,7 +1162,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scrape_queue_depth{state=\"waiting\"}",
+          "expr": "osm_queue_depth_jobs{state=\"waiting\"}",
           "legendFormat": "{{queue}} - waiting",
           "refId": "A"
         },
@@ -1171,7 +1171,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scrape_queue_depth{state=\"active\"}",
+          "expr": "osm_queue_depth_jobs{state=\"active\"}",
           "legendFormat": "{{queue}} - active",
           "refId": "B"
         },
@@ -1180,7 +1180,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scrape_queue_depth{state=\"delayed\"}",
+          "expr": "osm_queue_depth_jobs{state=\"delayed\"}",
           "legendFormat": "{{queue}} - delayed",
           "refId": "C"
         }
@@ -1251,7 +1251,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scrape_concurrency_utilization * 100",
+          "expr": "osm_queue_concurrency_utilization * 100",
           "legendFormat": "Utilization",
           "refId": "A"
         }
@@ -1319,7 +1319,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scrape_blocked_domains",
+          "expr": "osm_queue_blocked_domains",
           "legendFormat": "Blocked Domains",
           "refId": "A"
         }
@@ -1412,7 +1412,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scrape_jobs_processed_total[5m]))",
+          "expr": "sum(rate(osm_queue_jobs_processed_total[5m]))",
           "legendFormat": "Processing Rate",
           "refId": "A"
         }
@@ -1496,7 +1496,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_cache_hits_total[5m])) / (sum(rate(scraping_cache_hits_total[5m])) + sum(rate(scraping_requests_total{status=\"success\"}[5m]))) * 100",
+          "expr": "sum(rate(osm_scraping_cache_hits_total[5m])) / (sum(rate(osm_scraping_cache_hits_total[5m])) + sum(rate(osm_scraping_requests_total{status=\"success\"}[5m]))) * 100",
           "legendFormat": "Hit Rate",
           "refId": "A"
         }
@@ -1588,7 +1588,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_cache_hits_total[5m])) by (level)",
+          "expr": "sum(rate(osm_scraping_cache_hits_total[5m])) by (level)",
           "legendFormat": "{{level}}",
           "refId": "A"
         }
@@ -1688,7 +1688,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_circuit_state",
+          "expr": "osm_scraping_circuit_state",
           "legendFormat": "{{tier}}",
           "refId": "A"
         },
@@ -1697,7 +1697,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_db_circuit_state",
+          "expr": "osm_scraping_db_circuit_state",
           "legendFormat": "database",
           "refId": "B"
         }
@@ -1807,7 +1807,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_crux_quota_remaining",
+          "expr": "osm_scraping_crux_quota_remaining",
           "legendFormat": "CrUX Quota Remaining",
           "refId": "A"
         }
@@ -1899,7 +1899,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "increase(scraping_proxy_bandwidth_bytes[1h])",
+          "expr": "increase(osm_scraping_proxy_bandwidth_bytes[1h])",
           "legendFormat": "{{provider}}",
           "refId": "A"
         }
@@ -1979,7 +1979,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "1 - scraping_db_health_check_status",
+          "expr": "1 - osm_scraping_db_health_check_status",
           "legendFormat": "Database Health",
           "refId": "A"
         }
@@ -2047,7 +2047,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "scraping_p95_consecutive_breaches",
+          "expr": "osm_scraping_p95_consecutive_breaches",
           "legendFormat": "Consecutive Breaches",
           "refId": "A"
         }
@@ -2152,7 +2152,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_requests_total{status=\"error\"}[5m])) by (tier)",
+          "expr": "sum(rate(osm_scraping_requests_total{status=\"error\"}[5m])) by (tier)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -2249,7 +2249,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(scraping_requests_total{status=\"error\"}[5m])) / sum(rate(scraping_requests_total[5m])) * 100",
+          "expr": "sum(rate(osm_scraping_requests_total{status=\"error\"}[5m])) / sum(rate(osm_scraping_requests_total[5m])) * 100",
           "legendFormat": "Error Rate %",
           "refId": "A"
         }

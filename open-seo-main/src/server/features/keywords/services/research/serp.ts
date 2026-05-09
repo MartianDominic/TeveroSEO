@@ -1,5 +1,5 @@
 import { type SerpLiveItem } from "@/server/lib/dataforseoClient";
-import { buildCacheKey, getCached, setCached } from "@/server/lib/r2-cache";
+import { buildCacheKey, getCached, setCached, CACHE_TTL } from "@/server/lib/cache/redis-kv-cache";
 import type { SerpResultItem } from "@/types/keywords";
 import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
@@ -14,7 +14,7 @@ import {
 
 const log = createLogger({ module: "keywords/serp" });
 
-const SERP_CACHE_TTL_SECONDS = 12 * 60 * 60;
+// Uses CACHE_TTL.serpAnalysis from redis-kv-cache (12 hours)
 
 type SerpAnalysisReason = "no_organic_results";
 
@@ -118,7 +118,7 @@ async function getSerpLiveAnalysis(
     result.reason = "no_organic_results";
   }
 
-  void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS).catch((error) => {
+  void setCached(cacheKey, result, CACHE_TTL.serpAnalysis).catch((error) => {
     log.error("Cache write failed", error instanceof Error ? error : new Error(String(error)));
   });
 

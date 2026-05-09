@@ -218,7 +218,7 @@ export default async function ConnectPage({ params }: PageProps) {
           Connect with Google
         </a>
 
-        <p className="mt-6 text-xs text-muted-foreground">
+        <p className="mt-6 text-xs-safe text-muted-foreground">
           By connecting, you authorize read-only access to your Google Search
           Console, Analytics, and Business Profile data.
         </p>

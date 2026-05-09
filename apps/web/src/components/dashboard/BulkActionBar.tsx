@@ -99,7 +99,7 @@ export function BulkActionBar({
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="flex items-center gap-4 bg-background border border-border rounded-lg shadow-lg px-4 py-3">
+      <div className="flex items-center gap-4 bg-background border border-border rounded-lg shadow-[var(--shadow-overlay)] px-4 py-3">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="px-2 py-1 font-semibold">
             {selectedCount}

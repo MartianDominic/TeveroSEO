@@ -105,7 +105,7 @@ function DifficultyBadge({ difficulty }: { difficulty: number }) {
     difficulty <= 30 ? "Easy" : difficulty <= 60 ? "Medium" : "Hard";
 
   return (
-    <Badge variant={variant} className="text-xs">
+    <Badge variant={variant} className="text-xs-safe">
       {label} ({difficulty})
     </Badge>
   );
@@ -282,7 +282,7 @@ export function OpportunityKeywordsSection({
         <Card className="p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Target className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase">
+            <span className="text-xs-safe font-medium uppercase">
               Total Keywords
             </span>
           </div>
@@ -291,7 +291,7 @@ export function OpportunityKeywordsSection({
         <Card className="p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <TrendingUp className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase">Total Volume</span>
+            <span className="text-xs-safe font-medium uppercase">Total Volume</span>
           </div>
           <div className="text-2xl font-bold">
             {summary.totalVolume.toLocaleString()}
@@ -300,7 +300,7 @@ export function OpportunityKeywordsSection({
         <Card className="p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Zap className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase">
+            <span className="text-xs-safe font-medium uppercase">
               Avg Opportunity
             </span>
           </div>

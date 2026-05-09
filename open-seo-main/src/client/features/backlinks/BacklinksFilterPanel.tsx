@@ -95,7 +95,7 @@ function CompactRangeInput({
         handleChange: (v: string) => void;
       }) => (
         <Input
-          className="h-6 text-xs bg-background px-2"
+          className="h-6 text-xs-safe bg-background px-2"
           placeholder={placeholder}
           type="number"
           step={step}
@@ -194,7 +194,7 @@ function BacklinksTabFilters({
                       field.handleChange(checked ? "true" : "")
                     }
                   />
-                  <span className="text-xs">Hide lost</span>
+                  <span className="text-xs-safe">Hide lost</span>
                 </label>
               )}
             </form.Field>
@@ -208,7 +208,7 @@ function BacklinksTabFilters({
                       field.handleChange(checked ? "true" : "")
                     }
                   />
-                  <span className="text-xs">Hide broken</span>
+                  <span className="text-xs-safe">Hide broken</span>
                 </label>
               )}
             </form.Field>

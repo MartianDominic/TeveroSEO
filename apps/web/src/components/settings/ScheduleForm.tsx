@@ -499,7 +499,7 @@ export function ScheduleForm({ clientId, initialSchedules }: ScheduleFormProps) 
 
       {/* Toast notification */}
       {toast.open && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border transition-opacity">
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-[var(--shadow-overlay)] bg-card border border-border transition-opacity">
           <div className="flex items-center gap-2">
             <StatusChip
               status={toast.severity === "success" ? "published" : "failed"}

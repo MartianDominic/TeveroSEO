@@ -104,15 +104,15 @@ function ActivityItem({ activity }: { activity: ActivityEvent }) {
       <div className="flex-1 min-w-0 space-y-0.5">
         <p className="text-sm font-medium truncate">{title}</p>
         {description && (
-          <p className="text-xs text-muted-foreground truncate">{description}</p>
+          <p className="text-xs-safe text-muted-foreground truncate">{description}</p>
         )}
         {activity.clientName && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             {activity.clientName}
           </p>
         )}
       </div>
-      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+      <span className="text-xs-safe text-muted-foreground whitespace-nowrap flex-shrink-0">
         {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
       </span>
     </div>
@@ -153,7 +153,7 @@ function NoActivities() {
     <div className="flex flex-col items-center justify-center py-8 text-center">
       <Activity className="h-8 w-8 text-muted-foreground/50 mb-2" />
       <p className="text-sm text-muted-foreground">No recent activity</p>
-      <p className="text-xs text-muted-foreground/70 mt-1">
+      <p className="text-xs-safe text-muted-foreground/70 mt-1">
         Activity will appear here in real-time
       </p>
     </div>
@@ -176,7 +176,7 @@ function ConnectionStatus({
     return (
       <div className="flex items-center gap-1.5" title="Connecting...">
         <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
-        <span className="text-xs text-muted-foreground">Connecting</span>
+        <span className="text-xs-safe text-muted-foreground">Connecting</span>
       </div>
     );
   }
@@ -185,7 +185,7 @@ function ConnectionStatus({
     return (
       <div className="flex items-center gap-1.5" title={error}>
         <WifiOff className="h-4 w-4 text-red-500" />
-        <span className="text-xs text-red-500">Error</span>
+        <span className="text-xs-safe text-red-500">Error</span>
       </div>
     );
   }
@@ -194,7 +194,7 @@ function ConnectionStatus({
     return (
       <div className="flex items-center gap-1.5" title="Connected">
         <Wifi className="h-4 w-4 text-green-500" />
-        <span className="text-xs text-green-600 dark:text-green-400">Live</span>
+        <span className="text-xs-safe text-green-600 dark:text-green-400">Live</span>
       </div>
     );
   }
@@ -202,7 +202,7 @@ function ConnectionStatus({
   return (
     <div className="flex items-center gap-1.5" title="Disconnected">
       <WifiOff className="h-4 w-4 text-muted-foreground" />
-      <span className="text-xs text-muted-foreground">Offline</span>
+      <span className="text-xs-safe text-muted-foreground">Offline</span>
     </div>
   );
 }

@@ -115,7 +115,7 @@ export function ServiceLineItems({
               </div>
             )}
             {service.quantity > 1 && (
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs-safe text-muted-foreground">
                 x{service.quantity}
               </div>
             )}

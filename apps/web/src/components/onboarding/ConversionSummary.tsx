@@ -111,7 +111,7 @@ export function ConversionSummary({
           <ol className="space-y-3">
             {nextSteps.map((step, index) => (
               <li key={index} className="flex items-start gap-3">
-                <span className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-medium flex items-center justify-center">
+                <span className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs-safe font-medium flex items-center justify-center">
                   {index + 1}
                 </span>
                 <span className="text-sm text-muted-foreground">{step}</span>

@@ -233,7 +233,7 @@ export function ApiIntegrationsTab() {
 
         return (
           <div key={groupName}>
-            <h3 className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
+            <h3 className="text-xs-safe font-medium uppercase tracking-widest text-muted-foreground mb-3">
               {groupName}
             </h3>
             {groupName === "SEO Intelligence" && (
@@ -242,9 +242,9 @@ export function ApiIntegrationsTab() {
                   <button
                     onClick={() => setDataforseoMethod("credentials")}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                      "rounded-md px-3 py-1.5 text-xs-safe font-medium transition-colors",
                       dataforseoMethod === "credentials"
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground shadow-[var(--shadow-card)]"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -253,16 +253,16 @@ export function ApiIntegrationsTab() {
                   <button
                     onClick={() => setDataforseoMethod("basecode")}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                      "rounded-md px-3 py-1.5 text-xs-safe font-medium transition-colors",
                       dataforseoMethod === "basecode"
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground shadow-[var(--shadow-card)]"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Base Code
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
+                <p className="text-xs-safe text-muted-foreground mb-3">
                   {dataforseoMethod === "credentials"
                     ? "Enter the email and password from your DataForSEO account."
                     : "Enter the base64 auth string DataForSEO sent to your email (single credential)."}
@@ -281,7 +281,7 @@ export function ApiIntegrationsTab() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-foreground">{s.label}</span>
                         {s.source === "env" && (
-                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs-safe font-medium uppercase tracking-wide bg-muted text-muted-foreground border border-border">
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs-safe-safe font-medium uppercase tracking-wide bg-muted text-muted-foreground border border-border">
                             ENV
                           </span>
                         )}
@@ -290,7 +290,7 @@ export function ApiIntegrationsTab() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="flex-1 text-xs text-muted-foreground font-mono">
+                      <span className="flex-1 text-xs-safe text-muted-foreground font-mono">
                         {s.configured && s.masked ? s.masked : "Not configured"}
                       </span>
 
@@ -298,7 +298,7 @@ export function ApiIntegrationsTab() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs-safe"
                           onClick={() => handleStartEdit(s.key_name)}
                         >
                           Update
@@ -309,7 +309,7 @@ export function ApiIntegrationsTab() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs-safe"
                           onClick={() => handleVerify(s.key_name)}
                           disabled={isVerifying}
                         >
@@ -325,7 +325,7 @@ export function ApiIntegrationsTab() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-destructive hover:text-destructive"
+                          className="h-7 text-xs-safe text-destructive hover:text-destructive"
                           onClick={() => handleDelete(s.key_name, s.label)}
                           disabled={s.source === "env" || !s.configured}
                           title={
@@ -389,7 +389,7 @@ export function ApiIntegrationsTab() {
                           </Button>
                         </div>
                         {saveError && (
-                          <p className="text-xs text-destructive">{saveError}</p>
+                          <p className="text-xs-safe text-destructive">{saveError}</p>
                         )}
                       </div>
                     )}
@@ -397,7 +397,7 @@ export function ApiIntegrationsTab() {
                     {!isEditing && vr && (
                       <div
                         className={cn(
-                          "mt-2 flex items-center gap-1.5 text-xs",
+                          "mt-2 flex items-center gap-1.5 text-xs-safe",
                           vr.ok ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
                         )}
                       >

@@ -1,6 +1,9 @@
 /**
  * Queue Module Exports.
  * Phase 95: Unified Scraping Infrastructure - Plan 03
+ *
+ * DLQ: Uses platform PostgreSQL-based DLQ (dead_letter_jobs table).
+ * See SCR-01 CONSOLIDATION in @/server/lib/dead-letter-queue.ts.
  */
 
 // Types (includes DLQ types)
@@ -24,12 +27,9 @@ export {
   BULLMQ_PRIORITY_VALUES,
 } from "./PriorityAssigner";
 
-// Re-export DLQ types and constants explicitly for clarity
+// Re-export DLQ types explicitly for clarity
+// NOTE: DLQ now uses PostgreSQL (dead_letter_jobs table) instead of Redis queue
 export type {
-  DlqJobData,
   DlqEnqueueResult,
   DlqJobStatus,
-  AllQueueName,
 } from "./queue.types";
-
-export { DLQ_QUEUE_NAME } from "./queue.types";

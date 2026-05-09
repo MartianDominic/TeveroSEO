@@ -237,7 +237,7 @@ function DesktopTableHeader({ controller }: Props) {
   const { filteredRows, selectedRows } = controller;
 
   return (
-    <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-border bg-background text-xs text-muted-foreground font-medium">
+    <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-border bg-background text-xs-safe text-muted-foreground font-medium">
       <Checkbox
         className="h-3 w-3 shrink-0"
         checked={

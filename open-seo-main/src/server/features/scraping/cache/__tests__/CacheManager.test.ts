@@ -422,12 +422,12 @@ describe("CacheManager", () => {
       // Should add hash to domain SET
       expect(mockRedis.sadd).toHaveBeenCalled();
       const saddCall = (mockRedis.sadd as any).mock.calls[0];
-      expect(saddCall[0]).toBe("cache:domain:example.com");
+      expect(saddCall[0]).toBe("osm:scrape:domain:example.com");
 
       // Should set TTL on domain SET (30 days = 2592000 seconds)
       expect(mockRedis.expire).toHaveBeenCalled();
       const expireCall = (mockRedis.expire as any).mock.calls[0];
-      expect(expireCall[0]).toBe("cache:domain:example.com");
+      expect(expireCall[0]).toBe("osm:scrape:domain:example.com");
       expect(expireCall[1]).toBe(30 * 24 * 60 * 60); // 30 days in seconds
     });
 
@@ -475,7 +475,7 @@ describe("CacheManager", () => {
     it("should query Redis for domain hashes", async () => {
       await manager.invalidateDomain("example.com");
 
-      expect(mockRedis.smembers).toHaveBeenCalledWith("cache:domain:example.com");
+      expect(mockRedis.smembers).toHaveBeenCalledWith("osm:scrape:domain:example.com");
     });
 
     it("should clear L2, L3, L4 when domain has tracked hashes", async () => {
@@ -499,7 +499,7 @@ describe("CacheManager", () => {
       expect(mockL4.delete).toHaveBeenCalledWith("hash3");
 
       // Should delete the domain tracking SET
-      expect(mockRedis.del).toHaveBeenCalledWith("cache:domain:example.com");
+      expect(mockRedis.del).toHaveBeenCalledWith("osm:scrape:domain:example.com");
     });
 
     it("should not call L2-L4 delete when no tracked hashes exist", async () => {

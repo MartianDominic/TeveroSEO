@@ -77,7 +77,7 @@ export function SectionEditor({
           <div className="flex items-center gap-2">
             <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardTitle className="text-base">{section.title}</CardTitle>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+            <span className="text-xs-safe text-muted-foreground bg-muted px-2 py-0.5 rounded">
               {section.language === "lt" ? "LT" : "EN"}
             </span>
           </div>

@@ -25,7 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({ className, onOpen }) => {
       <button
         className={cn(
           "flex items-center gap-2 rounded-md border border-border",
-          "px-3 py-1.5 text-xs text-muted-foreground bg-muted/50",
+          "px-3 py-1.5 text-xs-safe text-muted-foreground bg-muted/50",
           "transition-colors hover:bg-muted hover:text-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         )}
@@ -34,7 +34,7 @@ export const TopBar: React.FC<TopBarProps> = ({ className, onOpen }) => {
         onClick={() => onOpen?.()}
       >
         <span>Search...</span>
-        <kbd className="pointer-events-none hidden select-none rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs-safe sm:inline-block">
+        <kbd className="pointer-events-none hidden select-none rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs-safe-safe sm:inline-block">
           ⌘K
         </kbd>
       </button>

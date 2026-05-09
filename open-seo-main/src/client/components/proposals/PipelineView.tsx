@@ -185,8 +185,8 @@ export function PipelineView({
                     onDragStart={(e) => handleDragStart(e, proposal.id, stage.id)}
                     onDragEnd={handleDragEnd}
                     onClick={() => onProposalClick?.(proposal)}
-                    className={`bg-white rounded-lg p-3 shadow-sm border cursor-pointer transition-shadow hover:shadow-md ${
-                      isDragging ? "opacity-50 shadow-lg ring-2 ring-primary" : ""
+                    className={`bg-white rounded-lg p-3 shadow-[var(--shadow-card)] border cursor-pointer transition-shadow hover:shadow-[var(--shadow-elevated)] ${
+                      isDragging ? "opacity-50 shadow-[var(--shadow-overlay)] ring-2 ring-primary" : ""
                     } ${isMoving ? "opacity-50" : ""}`}
                   >
                     <ProposalCard proposal={proposal} />
@@ -254,7 +254,7 @@ function ProposalCard({ proposal }: { proposal: PipelineProposal }) {
       )}
 
       {/* Time in stage */}
-      <div className="text-xs text-muted-foreground mt-2">
+      <div className="text-xs-safe text-muted-foreground mt-2">
         {formatTimeInStage(proposal.updatedAt)}
       </div>
     </>

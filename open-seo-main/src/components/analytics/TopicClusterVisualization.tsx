@@ -101,7 +101,7 @@ export function TopicClusterVisualization({
     <ChartErrorBoundary fallbackHeight={height + 200}>
     <div className="relative">
       {/* Coverage indicator */}
-      <div className="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-background/90 px-3 py-2 shadow-sm">
+      <div className="absolute right-4 top-4 flex items-center gap-2 rounded-lg bg-background/90 px-3 py-2 shadow-[var(--shadow-card)]">
         <div className="text-sm text-muted-foreground">Coverage</div>
         <div
           className={`text-lg font-bold ${

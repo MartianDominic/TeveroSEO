@@ -140,7 +140,7 @@ export default async function ContractDetailPage({
                           ? "Sutartis sukurta"
                           : activity.activityType}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs-safe text-muted-foreground">
                         {formatDate(activity.createdAt)}
                       </p>
                     </div>

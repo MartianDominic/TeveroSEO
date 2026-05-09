@@ -176,7 +176,7 @@ export function ProspectCard({
             </div>
           )}
           {prospect.industry && (
-            <div className="text-xs mt-2">
+            <div className="text-xs-safe mt-2">
               <Badge variant="outline" className="font-normal">
                 {prospect.industry}
               </Badge>

@@ -60,7 +60,7 @@ export function SparklineChart({
   if (data.length === 0) {
     return (
       <div
-        className={cn("flex items-center justify-center text-muted-foreground text-xs", className)}
+        className={cn("flex items-center justify-center text-muted-foreground text-xs-safe", className)}
         style={{ width, height }}
       >
         No data
@@ -78,7 +78,7 @@ export function SparklineChart({
                 if (!active || !payload?.[0]) return null;
                 const point = payload[0].payload as SparklineDataPoint;
                 return (
-                  <div className="bg-popover border rounded px-2 py-1 text-xs shadow-[var(--shadow-tooltip)]">
+                  <div className="bg-popover border rounded px-2 py-1 text-xs-safe shadow-[var(--shadow-tooltip)]">
                     {point.label && <div className="text-muted-foreground">{point.label}</div>}
                     <div className="font-medium">{point.value.toLocaleString()}</div>
                   </div>

@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { CircuitBreaker, CircuitState, CircuitOpenError } from "./CircuitBreaker";
+import { createCircuitBreaker, CircuitStateCompat as CircuitState, CircuitOpenError } from "@/server/features/scraping/resilience/CircuitBreaker";
 import {
   ResilientClassifier,
   RuleBasedClassifier,
@@ -42,21 +42,21 @@ vi.mock("@/server/lib/logger", () => ({
 describe("CircuitBreaker", () => {
   describe("initial state", () => {
     it("starts in CLOSED state", () => {
-      const cb = new CircuitBreaker({ name: "test" });
+      const cb = createCircuitBreaker("test");
       expect(cb.currentState).toBe(CircuitState.CLOSED);
       expect(cb.isOpen).toBe(false);
       expect(cb.allowsRequest).toBe(true);
     });
 
     it("has zero failure count initially", () => {
-      const cb = new CircuitBreaker({ name: "test" });
+      const cb = createCircuitBreaker("test");
       expect(cb.failureCount).toBe(0);
     });
   });
 
   describe("failure handling", () => {
     it("increments failure count on recordFailure", () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 5 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 5 });
       cb.recordFailure();
       expect(cb.failureCount).toBe(1);
       cb.recordFailure();
@@ -64,7 +64,7 @@ describe("CircuitBreaker", () => {
     });
 
     it("opens circuit after reaching failure threshold", () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 3 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 3 });
 
       cb.recordFailure();
       expect(cb.currentState).toBe(CircuitState.CLOSED);
@@ -81,7 +81,7 @@ describe("CircuitBreaker", () => {
 
   describe("success handling", () => {
     it("resets failure count on success", () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 5 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 5 });
       cb.recordFailure();
       cb.recordFailure();
       expect(cb.failureCount).toBe(2);
@@ -91,7 +91,7 @@ describe("CircuitBreaker", () => {
     });
 
     it("closes circuit on success after being open", () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 2, resetTimeout: 10 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 2, timeout: 10 });
 
       // Open the circuit
       cb.recordFailure();
@@ -118,7 +118,7 @@ describe("CircuitBreaker", () => {
     it("transitions from OPEN to HALF_OPEN after timeout", () => {
       vi.useFakeTimers();
 
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 2, resetTimeout: 100 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 2, timeout: 100 });
 
       // Open the circuit
       cb.recordFailure();
@@ -140,7 +140,7 @@ describe("CircuitBreaker", () => {
     it("reopens on failure in HALF_OPEN state", () => {
       vi.useFakeTimers();
 
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 2, resetTimeout: 50 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 2, timeout: 50 });
 
       // Open circuit
       cb.recordFailure();
@@ -160,7 +160,7 @@ describe("CircuitBreaker", () => {
 
   describe("execute method", () => {
     it("executes function when circuit is closed", async () => {
-      const cb = new CircuitBreaker({ name: "test" });
+      const cb = createCircuitBreaker("test");
       const fn = vi.fn().mockResolvedValue("success");
 
       const result = await cb.execute(fn);
@@ -170,7 +170,7 @@ describe("CircuitBreaker", () => {
     });
 
     it("throws CircuitOpenError when circuit is open", async () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 1 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 1 });
       cb.recordFailure(); // Opens circuit
 
       const fn = vi.fn().mockResolvedValue("success");
@@ -180,7 +180,7 @@ describe("CircuitBreaker", () => {
     });
 
     it("records failure when function throws", async () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 5 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 5 });
       const fn = vi.fn().mockRejectedValue(new Error("failure"));
 
       await expect(cb.execute(fn)).rejects.toThrow("failure");
@@ -188,7 +188,7 @@ describe("CircuitBreaker", () => {
     });
 
     it("records success when function succeeds", async () => {
-      const cb = new CircuitBreaker({ name: "test" });
+      const cb = createCircuitBreaker("test");
       cb.recordFailure(); // Add a failure
       expect(cb.failureCount).toBe(1);
 
@@ -201,7 +201,7 @@ describe("CircuitBreaker", () => {
 
   describe("reset", () => {
     it("resets circuit to CLOSED state", () => {
-      const cb = new CircuitBreaker({ name: "test", failureThreshold: 2 });
+      const cb = createCircuitBreaker("test", { failureThreshold: 2 });
 
       cb.recordFailure();
       cb.recordFailure();

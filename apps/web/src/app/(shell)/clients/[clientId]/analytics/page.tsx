@@ -276,7 +276,7 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-foreground">
                   Run a technical SEO audit to identify issues
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   Crawl pages, check Core Web Vitals, and find optimization opportunities
                 </p>
               </div>

@@ -7,7 +7,7 @@
 
 import OpenAI from "openai";
 import { z } from "zod";
-import { CircuitBreaker, CircuitOpenError } from "../services/CircuitBreaker";
+import { createCircuitBreaker, CircuitOpenError, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import { createLogger } from "@/server/lib/logger";
 import type { FunnelStage, FunnelClassification } from "./types";
 
@@ -55,10 +55,9 @@ export class FunnelLLMClassifier {
       baseURL: CONFIG.baseURL,
     });
 
-    this.circuit = new CircuitBreaker({
-      name: "funnel-llm-classifier",
+    this.circuit = createCircuitBreaker("funnel-llm-classifier", {
       failureThreshold: 3,
-      resetTimeout: 60000,
+      timeout: 60000,
     });
   }
 
@@ -68,7 +67,7 @@ export class FunnelLLMClassifier {
    */
   async classifyBatch(keywords: string[]): Promise<FunnelClassification[]> {
     if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("funnel-llm-classifier");
+      throw new CircuitOpenError("funnel-llm-classifier", 0);
     }
 
     if (keywords.length === 0) {

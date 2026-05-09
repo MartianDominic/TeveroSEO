@@ -85,6 +85,7 @@ type EndpointCategory = "labs" | "backlinks" | "serp" | "onpage";
 
 /**
  * Endpoint pricing map for cost estimation.
+ * All costs derived from canonical DFS_LABS_PRICING constants.
  */
 const ENDPOINT_PRICING: Record<string, { category: EndpointCategory; costUsd: number }> = {
   // Labs API endpoints
@@ -94,9 +95,9 @@ const ENDPOINT_PRICING: Record<string, { category: EndpointCategory; costUsd: nu
   "labs/keyword_ideas": { category: "labs", costUsd: DFS_LABS_PRICING.keywordIdeas },
   "labs/related_keywords": { category: "labs", costUsd: DFS_LABS_PRICING.relatedKeywords },
   "labs/keyword_suggestions": { category: "labs", costUsd: DFS_LABS_PRICING.keywordSuggestions },
-  "labs/keywords_for_site": { category: "labs", costUsd: 0.05 }, // Estimate based on docs
-  "labs/competitors_domain": { category: "labs", costUsd: 0.05 }, // Estimate based on docs
-  "labs/domain_intersection": { category: "labs", costUsd: 0.02 }, // Estimate based on docs
+  "labs/keywords_for_site": { category: "labs", costUsd: DFS_LABS_PRICING.keywordsForSite },
+  "labs/competitors_domain": { category: "labs", costUsd: DFS_LABS_PRICING.competitorsDomain },
+  "labs/domain_intersection": { category: "labs", costUsd: DFS_LABS_PRICING.domainIntersection },
   "labs/serp_competitors": { category: "labs", costUsd: DFS_LABS_PRICING.serpCompetitors },
 
   // Backlinks API endpoints

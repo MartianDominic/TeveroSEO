@@ -12,7 +12,7 @@
  */
 
 import OpenAI from "openai";
-import { CircuitBreaker, CircuitOpenError } from "../services/CircuitBreaker";
+import { createCircuitBreaker, CircuitOpenError, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import {
   ClassificationResponseSchema,
   type BusinessContext,
@@ -40,10 +40,9 @@ export class GrokClassifier {
       baseURL: GROK_CONFIG.baseURL,
     });
 
-    this.circuit = new CircuitBreaker({
-      name: "grok-classifier",
+    this.circuit = createCircuitBreaker("grok-classifier", {
       failureThreshold: 3,
-      resetTimeout: 60000,
+      timeout: 60000,
     });
   }
 
@@ -59,7 +58,7 @@ export class GrokClassifier {
     context: BusinessContext
   ): Promise<ClassificationItem[]> {
     if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("grok-classifier");
+      throw new CircuitOpenError("grok-classifier", 0);
     }
 
     // Handle empty input

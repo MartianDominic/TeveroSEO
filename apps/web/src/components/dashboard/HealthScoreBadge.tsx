@@ -28,7 +28,7 @@ export function HealthScoreBadge({ score, showLabel = true, size = "md" }: Healt
   };
 
   const sizeClasses = {
-    sm: "px-1.5 py-0.5 text-xs",
+    sm: "px-1.5 py-0.5 text-xs-safe",
     md: "px-2 py-1 text-sm",
     lg: "px-3 py-1.5 text-base",
   };

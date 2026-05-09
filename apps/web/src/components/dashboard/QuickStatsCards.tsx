@@ -155,7 +155,7 @@ export function QuickStatsCards({ summary, initialLayout }: QuickStatsCardsProps
             <DraggableCard key={card.id} id={card.id} title={card.title} icon={card.icon}>
               <div className="text-2xl font-bold">{card.value}</div>
               {card.subtitle && (
-                <p className="text-xs text-muted-foreground">{card.subtitle}</p>
+                <p className="text-xs-safe text-muted-foreground">{card.subtitle}</p>
               )}
             </DraggableCard>
           ))}

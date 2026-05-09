@@ -42,7 +42,7 @@ export function GoalAttainmentBadge({
       <span
         className={cn(
           "inline-flex items-center gap-1 rounded border bg-muted text-muted-foreground",
-          size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-xs",
+          size === "sm" ? "px-1.5 py-0.5 text-xs-safe" : "px-2 py-1 text-xs-safe",
         )}
       >
         <Target className="h-3 w-3" />
@@ -56,7 +56,7 @@ export function GoalAttainmentBadge({
       className={cn(
         "inline-flex items-center gap-1.5 font-medium rounded border",
         getColorClass(pct),
-        size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-xs",
+        size === "sm" ? "px-1.5 py-0.5 text-xs-safe" : "px-2 py-1 text-xs-safe",
       )}
       title={
         showDetails
@@ -80,7 +80,7 @@ export function GoalAttainmentBadge({
         </span>
       )}
       {showDetails && goalsTotal > 0 && (
-        <span className="text-xs-safe opacity-70">
+        <span className="text-xs-safe-safe opacity-70">
           ({goalsMet}/{goalsTotal})
         </span>
       )}

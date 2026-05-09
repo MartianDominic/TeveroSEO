@@ -91,7 +91,7 @@ export function SaveIndicator({
                   <Check className="h-3.5 w-3.5" />
                   <span className="text-sm">{t("saved")}</span>
                   {relativeTime && (
-                    <span className="text-text-3 text-xs">
+                    <span className="text-text-3 text-xs-safe">
                       ({relativeTime})
                     </span>
                   )}
@@ -119,7 +119,7 @@ export function SaveIndicator({
                 variant="ghost"
                 size="sm"
                 onClick={onRetry}
-                className="h-6 px-2 text-xs"
+                className="h-6 px-2 text-xs-safe"
               >
                 {t("retry")}
               </Button>
@@ -149,7 +149,7 @@ export function SaveIndicator({
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1 text-warning">
                 <CloudOff className="h-3.5 w-3.5" />
-                <span className="text-xs">
+                <span className="text-xs-safe">
                   {t("offline", { count: offlineQueueCount })}
                 </span>
               </div>

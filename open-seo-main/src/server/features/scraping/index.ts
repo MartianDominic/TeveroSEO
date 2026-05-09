@@ -237,6 +237,8 @@ export {
 export {
   createScrapeWorker,
   createAllScrapeWorkers,
+  startScrapeWorkers,
+  stopScrapeWorkers,
   type ScrapeWorkerConfig,
 } from "./workers";
 

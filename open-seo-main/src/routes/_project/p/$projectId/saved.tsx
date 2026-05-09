@@ -256,7 +256,7 @@ function SavedKeywordsTable({
                   {kw.intent ?? "?"}
                 </Badge>
               </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              <TableCell className="text-xs-safe text-muted-foreground">
                 {kw.fetchedAt
                   ? new Date(kw.fetchedAt).toLocaleDateString()
                   : "-"}
@@ -289,10 +289,10 @@ function DifficultyBadge({ value }: { value: number | null }) {
   if (value == null)
     return <Badge variant="secondary">-</Badge>;
   if (value < 30)
-    return <Badge className="bg-success/20 text-green-700 dark:text-green-400 text-xs border-success/30">{value}</Badge>;
+    return <Badge className="bg-success/20 text-green-700 dark:text-green-400 text-xs-safe border-success/30">{value}</Badge>;
   if (value <= 60)
-    return <Badge variant="outline" className="text-yellow-600 text-xs">{value}</Badge>;
-  return <Badge variant="destructive" className="text-xs">{value}</Badge>;
+    return <Badge variant="outline" className="text-yellow-600 text-xs-safe">{value}</Badge>;
+  return <Badge variant="destructive" className="text-xs-safe">{value}</Badge>;
 }
 
 function formatNumber(value: number | null | undefined) {

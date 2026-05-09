@@ -100,7 +100,7 @@ export function CtaSection({
             onClick={onAccept}
             disabled={isAccepting}
             size="lg"
-            className="bg-white text-foreground hover:bg-white/90 px-8 py-6 text-lg font-semibold shadow-lg transition-transform hover:scale-105 active:scale-95"
+            className="bg-white text-foreground hover:bg-white/90 px-8 py-6 text-lg font-semibold shadow-[var(--shadow-overlay)] transition-transform hover:scale-105 active:scale-95"
           >
             {isAccepting ? (
               <span className="flex items-center gap-2">

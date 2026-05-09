@@ -307,3 +307,6 @@ export * from "./payment-schedule-schema";
 
 // Scraping audit schema (Phase 92: Audit logging)
 export * from "./scraping-audit-schema";
+
+// On-Page SEO Mastery schema (Phase 92: Tier 5 Content Quality)
+export * from "./onpage-mastery-schema";

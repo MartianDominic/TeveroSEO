@@ -126,6 +126,9 @@ export interface ScrapeJobResult {
 
 /**
  * Error codes for categorizing scrape failures.
+ *
+ * CONSOLIDATION: Now includes retry behavior classification
+ * (merged from ErrorClassifier.ErrorType).
  */
 export type ScrapeErrorCode =
   | "RATE_LIMITED"
@@ -140,6 +143,60 @@ export type ScrapeErrorCode =
   | "BOT_DETECTION"
   | "UNKNOWN";
 
+/**
+ * High-level retry behavior classification.
+ * Merged from ErrorClassifier.ErrorType for unified retry logic.
+ */
+export type ScrapeRetryBehavior =
+  /** Error can be retried with backoff (5xx, timeouts, network issues) */
+  | "retryable"
+  /** Error is permanent and should not be retried (4xx except 429/403) */
+  | "permanent"
+  /** Rate limited - wait for backoff then retry (429) */
+  | "rate_limited"
+  /** Blocked by target (403, 451) - escalate tier */
+  | "blocked";
+
+/**
+ * Get retry behavior for a scrape error code.
+ */
+export function getScrapeRetryBehavior(code: ScrapeErrorCode): ScrapeRetryBehavior {
+  switch (code) {
+    case "RATE_LIMITED":
+      return "rate_limited";
+    case "BLOCKED":
+    case "CAPTCHA":
+    case "BOT_DETECTION":
+      return "blocked";
+    case "INVALID_URL":
+    case "SSL_ERROR":
+    case "PARSE_ERROR":
+    case "DNS_FAILURE":
+      return "permanent";
+    case "TIMEOUT":
+    case "CONNECTION_REFUSED":
+    case "UNKNOWN":
+    default:
+      return "retryable";
+  }
+}
+
+/**
+ * Check if a scrape error should be retried.
+ */
+export function isScrapeErrorRetryable(code: ScrapeErrorCode): boolean {
+  const behavior = getScrapeRetryBehavior(code);
+  return behavior === "retryable" || behavior === "rate_limited";
+}
+
+/**
+ * Check if a scrape error should trigger tier escalation.
+ */
+export function shouldScrapeEscalateTier(code: ScrapeErrorCode): boolean {
+  const behavior = getScrapeRetryBehavior(code);
+  return behavior === "blocked" || behavior === "rate_limited";
+}
+
 // =============================================================================
 // Queue Names and Configuration
 // =============================================================================
@@ -153,47 +210,14 @@ export const SCRAPE_QUEUE_NAMES = {
   BACKGROUND: "scrape:background",
 } as const;
 
-/**
- * Dead Letter Queue name (separate from main queues).
- */
-export const DLQ_QUEUE_NAME = "scraping-dlq" as const;
-
 export type ScrapeQueueName = (typeof SCRAPE_QUEUE_NAMES)[keyof typeof SCRAPE_QUEUE_NAMES];
 
-/**
- * All queue names including DLQ.
- */
-export type AllQueueName = ScrapeQueueName | typeof DLQ_QUEUE_NAME;
-
 // =============================================================================
-// Dead Letter Queue Types
+// Dead Letter Queue Types (PostgreSQL-based - SCR-01 CONSOLIDATION)
 // =============================================================================
-
-/**
- * Data stored in DLQ for failed jobs.
- */
-export interface DlqJobData {
-  /** Original job ID */
-  originalJobId: string;
-  /** Source queue where job failed */
-  sourceQueue: ScrapeQueueName;
-  /** Original job data */
-  jobData: ScrapeJobData;
-  /** Final error message */
-  error: string;
-  /** Error stack trace */
-  stackTrace?: string;
-  /** Number of attempts made before DLQ */
-  attemptsMade: number;
-  /** Timestamp when moved to DLQ */
-  failedAt: number;
-  /** History of all failures */
-  failureHistory: Array<{
-    error: string;
-    timestamp: number;
-    attemptNumber: number;
-  }>;
-}
+// NOTE: DLQ now uses the platform's PostgreSQL dead_letter_jobs table.
+// The DlqJobData interface below is kept for backward compatibility but
+// the actual storage uses FailedJobInfo from @/server/lib/dead-letter-queue.
 
 /**
  * Result of adding a job to the DLQ.

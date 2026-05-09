@@ -236,7 +236,7 @@ export function ExportDialog({
                   variant="link"
                   size="sm"
                   onClick={() => setSelectedColumns(ALL_COLUMNS)}
-                  className="p-0 h-auto text-xs"
+                  className="p-0 h-auto text-xs-safe"
                 >
                   Select All
                 </Button>
@@ -246,7 +246,7 @@ export function ExportDialog({
                   variant="link"
                   size="sm"
                   onClick={() => setSelectedColumns(DEFAULT_COLUMNS)}
-                  className="p-0 h-auto text-xs"
+                  className="p-0 h-auto text-xs-safe"
                 >
                   Reset
                 </Button>
@@ -269,7 +269,7 @@ export function ExportDialog({
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               {selectedColumns.length} of {ALL_COLUMNS.length} columns selected
             </p>
           </div>

@@ -538,3 +538,102 @@ export function createAllScrapeWorkersWithDlq(
     backgroundWorker: createScrapeWorker(SCRAPE_QUEUE_NAMES.BACKGROUND, tieredFetcher, configWithDlq),
   };
 }
+
+// =============================================================================
+// Worker Entry Integration (worker-entry.ts compatibility)
+// =============================================================================
+
+// Cached DomainLearningService instance for lazy loading
+// Uses DomainLearningService.fetch() which matches TieredFetchRequest interface
+let cachedFetcher: { fetch: (request: TieredFetchRequest) => Promise<TieredFetchResult> } | null = null;
+
+const SHUTDOWN_TIMEOUT_MS = 25_000;
+
+/**
+ * Active worker instances for graceful shutdown.
+ * Managed by startScrapeWorkers/stopScrapeWorkers.
+ */
+let activeWorkers: {
+  priorityWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+  standardWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+  backgroundWorker: Worker<ScrapeJobData, ScrapeJobResult>;
+} | null = null;
+
+/**
+ * Start all scrape workers for worker-entry.ts integration.
+ * Uses the singleton domainLearningService instance.
+ *
+ * Pattern matches other workers in open-seo-main:
+ * - audit-worker.ts
+ * - analytics-worker.ts
+ * - webhook-worker.ts
+ */
+export async function startScrapeWorkers(): Promise<void> {
+  if (activeWorkers) {
+    workerLogger.warn("Scrape workers already started, skipping");
+    return;
+  }
+
+  // Lazy import to avoid circular dependency
+  // Uses DomainLearningService which has the correct fetch(TieredFetchRequest) signature
+  if (!cachedFetcher) {
+    const module = await import("../DomainLearningService");
+    cachedFetcher = module.domainLearningService;
+  }
+
+  activeWorkers = createAllScrapeWorkers(cachedFetcher);
+
+  // Log worker readiness
+  activeWorkers.priorityWorker.on("ready", () => {
+    workerLogger.info({ queue: SCRAPE_QUEUE_NAMES.PRIORITY }, "Priority scrape worker ready");
+  });
+  activeWorkers.standardWorker.on("ready", () => {
+    workerLogger.info({ queue: SCRAPE_QUEUE_NAMES.STANDARD }, "Standard scrape worker ready");
+  });
+  activeWorkers.backgroundWorker.on("ready", () => {
+    workerLogger.info({ queue: SCRAPE_QUEUE_NAMES.BACKGROUND }, "Background scrape worker ready");
+  });
+
+  workerLogger.info("All scrape workers started (priority, standard, background)");
+}
+
+/**
+ * Stop all scrape workers with graceful shutdown.
+ * Waits up to SHUTDOWN_TIMEOUT_MS for in-flight jobs to complete.
+ */
+export async function stopScrapeWorkers(): Promise<void> {
+  if (!activeWorkers) {
+    return;
+  }
+
+  const workers = activeWorkers;
+  activeWorkers = null;
+
+  const closeWithTimeout = async (
+    worker: Worker<ScrapeJobData, ScrapeJobResult>,
+    name: string
+  ): Promise<void> => {
+    const timeout = new Promise<"timeout">((resolve) =>
+      setTimeout(() => resolve("timeout"), SHUTDOWN_TIMEOUT_MS)
+    );
+    const closed = worker.close().then(() => "closed" as const);
+    const result = await Promise.race([closed, timeout]);
+
+    if (result === "timeout") {
+      workerLogger.warn(
+        { worker: name, timeoutMs: SHUTDOWN_TIMEOUT_MS },
+        "Graceful shutdown timeout exceeded, forcing close"
+      );
+      await worker.close(true); // force
+    }
+  };
+
+  // Close all workers in parallel
+  await Promise.all([
+    closeWithTimeout(workers.priorityWorker, "scrape-priority"),
+    closeWithTimeout(workers.standardWorker, "scrape-standard"),
+    closeWithTimeout(workers.backgroundWorker, "scrape-background"),
+  ]);
+
+  workerLogger.info("All scrape workers stopped");
+}

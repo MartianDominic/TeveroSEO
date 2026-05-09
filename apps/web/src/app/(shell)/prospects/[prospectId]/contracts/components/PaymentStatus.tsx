@@ -84,7 +84,7 @@ export function PaymentStatus({
       )}
 
       {status === "paid" && paidAt && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           {new Date(paidAt).toLocaleDateString("lt-LT")}
         </span>
       )}

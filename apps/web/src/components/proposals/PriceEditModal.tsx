@@ -171,7 +171,7 @@ export function PriceEditModal({
                 onChange={(e) => setCustomPrice(e.target.value)}
                 className="pr-16"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs-safe text-muted-foreground">
                 was {originalPrice}
               </div>
             </div>
@@ -195,7 +195,7 @@ export function PriceEditModal({
                     onChange={(e) => setCustomSetup(e.target.value)}
                     className="pr-16"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs-safe text-muted-foreground">
                     was {originalSetup}
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export function PriceEditModal({
               variant="ghost"
               size="sm"
               onClick={handleReset}
-              className="text-xs"
+              className="text-xs-safe"
             >
               Reset to template prices
             </Button>

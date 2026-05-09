@@ -130,7 +130,7 @@ function ArticleDetailSheet({
         />
         <DialogPrimitive.Content
           className={cn(
-            "fixed right-0 top-0 z-50 h-full w-[380px] bg-card border-l border-border p-6 shadow-xl",
+            "fixed right-0 top-0 z-50 h-full w-[380px] bg-card border-l border-border p-6 shadow-[var(--shadow-modal)]",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
             "duration-300 overflow-y-auto focus:outline-none"
@@ -159,7 +159,7 @@ function ArticleDetailSheet({
             <div className="space-y-4">
               {/* Title */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   Title
                 </p>
                 <p className="text-sm text-foreground leading-snug">
@@ -169,7 +169,7 @@ function ArticleDetailSheet({
 
               {/* Status */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                   Status
                 </p>
                 <StatusChip
@@ -181,7 +181,7 @@ function ArticleDetailSheet({
               {/* Keyword */}
               {article.keyword && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Keyword
                   </p>
                   <p className="text-sm text-foreground">{article.keyword}</p>
@@ -191,7 +191,7 @@ function ArticleDetailSheet({
               {/* Publish Date */}
               {article.publish_date && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Scheduled Publish Date
                   </p>
                   <p className="text-sm text-foreground">
@@ -203,7 +203,7 @@ function ArticleDetailSheet({
               {/* Published At */}
               {article.published_at && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Published At
                   </p>
                   <p className="text-sm text-foreground">
@@ -215,7 +215,7 @@ function ArticleDetailSheet({
               {/* CMS Post URL */}
               {article.cms_post_url && isSafeUrl(article.cms_post_url) && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Published URL
                   </p>
                   <a
@@ -232,7 +232,7 @@ function ArticleDetailSheet({
               {/* Error Detail */}
               {article.error_detail && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Error
                   </p>
                   <p className="text-sm text-muted-foreground break-words">
@@ -244,7 +244,7 @@ function ArticleDetailSheet({
               {/* Retry Count */}
               {article.retry_count > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide mb-1">
                     Retry Count
                   </p>
                   <p className="text-sm text-foreground">
@@ -465,13 +465,13 @@ function CsvImportDialog({
           {result && (
             <div className="flex items-center gap-2">
               <StatusChip status="success" label="Import complete" />
-              <span className="text-xs text-muted-foreground">{result}</span>
+              <span className="text-xs-safe text-muted-foreground">{result}</span>
             </div>
           )}
           {error && (
             <div className="flex items-center gap-2">
               <StatusChip status="error" label="Import failed" />
-              <span className="text-xs text-muted-foreground">{error}</span>
+              <span className="text-xs-safe text-muted-foreground">{error}</span>
             </div>
           )}
 
@@ -686,7 +686,7 @@ export default function ContentCalendarPage() {
                 <p className="text-sm font-medium text-foreground">
                   No articles scheduled
                 </p>
-                <p className="text-xs text-muted-foreground max-w-xs">
+                <p className="text-xs-safe text-muted-foreground max-w-xs">
                   Add articles to the calendar by importing a CSV or creating
                   new articles.
                 </p>

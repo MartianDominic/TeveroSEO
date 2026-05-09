@@ -65,7 +65,7 @@ export function SignatureStatus({ status, signedAt, signerName }: SignatureStatu
         {config.label}
       </Badge>
       {status === "signed" && signerName && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           {signerName} - {signedAt ? new Date(signedAt).toLocaleDateString("lt-LT") : ""}
         </span>
       )}

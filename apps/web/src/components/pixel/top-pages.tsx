@@ -144,7 +144,7 @@ export function TopPages({
       </CardHeader>
       <CardContent>
         {/* Header row */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground uppercase tracking-wider mb-3 px-1">
+        <div className="flex items-center justify-between text-xs-safe text-muted-foreground uppercase tracking-wider mb-3 px-1">
           <span>Page</span>
           <div className="flex items-center gap-6">
             <span className="w-16 text-right">Views</span>
@@ -174,7 +174,7 @@ export function TopPages({
                 {/* Content */}
                 <div className="relative flex items-center gap-3 flex-1 min-w-0">
                   {/* Rank */}
-                  <span className="flex-shrink-0 w-6 h-6 rounded bg-muted text-xs font-medium flex items-center justify-center">
+                  <span className="flex-shrink-0 w-6 h-6 rounded bg-muted text-xs-safe font-medium flex items-center justify-center">
                     {index + 1}
                   </span>
 

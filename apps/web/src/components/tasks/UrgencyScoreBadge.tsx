@@ -62,7 +62,7 @@ export function UrgencyScoreBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium tabular-nums",
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs-safe font-medium tabular-nums",
         variant === "overdue" && "bg-red-500/10 text-red-600 dark:text-red-400",
         variant === "due-today" &&
           "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",

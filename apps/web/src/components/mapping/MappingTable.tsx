@@ -101,7 +101,7 @@ export function MappingTable({
                   {mapping.action}
                 </Badge>
                 {mapping.isManualOverride && (
-                  <Badge variant="outline" className="ml-1 text-xs">
+                  <Badge variant="outline" className="ml-1 text-xs-safe">
                     manual
                   </Badge>
                 )}

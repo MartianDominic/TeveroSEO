@@ -1,4 +1,4 @@
-import { buildCacheKey, getCached, setCached } from "@/server/lib/r2-cache";
+import { buildCacheKey, getCached, setCached } from "@/server/lib/cache/redis-kv-cache";
 import { normalizeBacklinksTarget } from "@/server/lib/dataforseoBacklinks";
 import {
   normalizeBacklinksSpamFilterOptions,

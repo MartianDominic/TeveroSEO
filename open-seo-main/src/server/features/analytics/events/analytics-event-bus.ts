@@ -94,6 +94,87 @@ export interface AnalyticsSyncCompletedEvent {
 }
 
 /**
+ * Event payload for trend computation completion (EC-001).
+ * Emitted when trend analysis completes with full result data.
+ */
+export interface TrendsComputedEvent {
+  type: 'analytics.trends.computed';
+  payload: {
+    siteId: string;
+    clientId: string;
+    workspaceId: string;
+    result: {
+      pages: Array<{
+        pageUrl: string;
+        currentClicks: number;
+        previousClicks: number;
+        currentImpressions: number;
+        previousImpressions: number;
+        currentPosition: number;
+        previousPosition: number;
+        changePercent: number;
+        trend: 'growing' | 'decaying' | 'stable';
+        confidence: 'high' | 'medium' | 'low';
+        topQueries: string[];
+      }>;
+      meta: {
+        totalAnalyzed: number;
+        growingCount: number;
+        decayingCount: number;
+        stableCount: number;
+        periodDays: number;
+        threshold: number;
+      };
+    };
+    timestamp: Date;
+  };
+}
+
+/**
+ * Anomaly types that can be detected.
+ */
+export type AnomalyType =
+  | 'traffic_drop'
+  | 'ranking_loss'
+  | 'crawl_error_spike'
+  | 'cwv_degradation'
+  | 'impression_drop'
+  | 'ctr_anomaly';
+
+/**
+ * Event payload for anomaly detection (EC-002).
+ * Emitted when an SEO anomaly is detected.
+ */
+export interface AnomalyDetectedEvent {
+  type: 'analytics.anomaly.detected';
+  payload: {
+    siteId: string;
+    clientId: string;
+    workspaceId: string;
+    anomalyType: AnomalyType;
+    /** Affected URL or keyword */
+    subject: string;
+    /** Current metric value */
+    currentValue: number;
+    /** Previous/baseline metric value */
+    previousValue: number;
+    /** Percentage change (negative for drops) */
+    changePercent: number;
+    /** Additional context */
+    metadata: {
+      keyword?: string;
+      previousPosition?: number;
+      currentPosition?: number;
+      cwvMetric?: 'LCP' | 'FID' | 'CLS' | 'INP';
+      errorTypes?: string[];
+      periodDays?: number;
+      confidence?: 'high' | 'medium' | 'low';
+    };
+    timestamp: Date;
+  };
+}
+
+/**
  * Union type of all analytics events.
  */
 export type AnalyticsEvent =
@@ -101,7 +182,9 @@ export type AnalyticsEvent =
   | TrendsAnalyzedEvent
   | ClusterMetricsUpdatedEvent
   | ContentGroupChangedEvent
-  | AnalyticsSyncCompletedEvent;
+  | AnalyticsSyncCompletedEvent
+  | TrendsComputedEvent
+  | AnomalyDetectedEvent;
 
 /**
  * Event type string literals for type-safe subscription.

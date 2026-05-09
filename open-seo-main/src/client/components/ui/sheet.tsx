@@ -41,7 +41,7 @@ const SheetContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed inset-y-0 right-0 z-50 w-[480px] max-w-full",
-        "bg-background border-l border-border shadow-xl p-6",
+        "bg-background border-l border-border shadow-[var(--shadow-modal)] p-6",
         "flex flex-col",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",

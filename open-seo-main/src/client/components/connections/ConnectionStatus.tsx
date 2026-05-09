@@ -66,19 +66,19 @@ export function ConnectionStatus({
       </div>
 
       {lastVerifiedAt && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           Verified {formatRelativeTime(lastVerifiedAt)}
         </span>
       )}
 
       {status === "error" && lastErrorMessage && (
-        <span className="text-xs text-red-600">{lastErrorMessage}</span>
+        <span className="text-xs-safe text-red-600">{lastErrorMessage}</span>
       )}
 
       {showCapabilities && capabilities && capabilities.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1">
           {capabilities.map((cap) => (
-            <Badge key={cap} variant="outline" className="text-xs">
+            <Badge key={cap} variant="outline" className="text-xs-safe">
               {formatCapability(cap)}
             </Badge>
           ))}

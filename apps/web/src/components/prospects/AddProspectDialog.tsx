@@ -150,7 +150,7 @@ export function AddProspectDialog({
                 }
                 disabled={loading}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 Enter the domain without https:// or www.
               </p>
             </div>

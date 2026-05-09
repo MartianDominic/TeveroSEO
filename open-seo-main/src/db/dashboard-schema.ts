@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
 import { audits, auditPages } from "./app.schema";
+import { organization } from "./user-schema";
 
 /**
  * Pre-computed dashboard metrics for each client.
@@ -72,7 +73,10 @@ export const portfolioActivity = pgTable(
   "portfolio_activity",
   {
     id: text("id").primaryKey(),
-    workspaceId: text("workspace_id").notNull(),
+    // SCHEMA-FK: Added FK constraint to organization
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }), // nullable for workspace-level events
     eventType: text("event_type").notNull(),
     eventData: jsonb("event_data").$type<Record<string, unknown>>().notNull(),
@@ -91,7 +95,10 @@ export const dashboardViews = pgTable(
   "dashboard_views",
   {
     id: text("id").primaryKey(),
-    workspaceId: text("workspace_id").notNull(),
+    // SCHEMA-FK: Added FK constraint to organization
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     userId: text("user_id"), // nullable for shared views
     name: text("name").notNull(),
     filters: jsonb("filters").$type<Record<string, unknown>>().notNull(),
@@ -122,7 +129,11 @@ export const portfolioAggregates = pgTable(
   "portfolio_aggregates",
   {
     id: text("id").primaryKey(),
-    workspaceId: text("workspace_id").notNull().unique(),
+    // SCHEMA-FK: Added FK constraint to organization
+    workspaceId: text("workspace_id")
+      .notNull()
+      .unique()
+      .references(() => organization.id, { onDelete: "cascade" }),
 
     // Client counts
     totalClients: integer("total_clients").default(0),

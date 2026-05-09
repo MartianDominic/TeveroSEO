@@ -44,12 +44,12 @@ export default function GlobalError({
         <h2 className="text-xl font-semibold">Something went wrong!</h2>
         <p className="text-muted-foreground mt-2">{USER_FRIENDLY_MESSAGE}</p>
         {error.digest && (
-          <p className="text-muted-foreground text-xs mt-1">
+          <p className="text-muted-foreground text-xs-safe mt-1">
             Error ID: {error.digest}
           </p>
         )}
         {process.env.NODE_ENV === "development" && (
-          <pre className="text-xs text-muted-foreground mt-2 max-w-md overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded">
+          <pre className="text-xs-safe text-muted-foreground mt-2 max-w-md overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded">
             {error.message}
           </pre>
         )}

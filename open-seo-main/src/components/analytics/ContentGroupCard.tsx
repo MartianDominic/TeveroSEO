@@ -20,7 +20,7 @@ interface ContentGroupCardProps {
  */
 export function ContentGroupCardSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-sm animate-pulse">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-card)] animate-pulse">
       <div className="mb-3 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <Skeleton className="h-8 w-8 rounded-md" />
@@ -73,7 +73,7 @@ export function ContentGroupCard({
 
   return (
     <div
-      className="group relative rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="group relative rounded-lg border border-border bg-card p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-elevated)]"
       onClick={() => onClick?.(group)}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}

@@ -240,7 +240,7 @@ export function InstallmentTable({
                     <div className="flex flex-col">
                       <span>{installment.invoiceNumber}</span>
                       {installment.totalInstallments > 1 && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs-safe text-muted-foreground">
                           {installment.installmentNumber} of{" "}
                           {installment.totalInstallments}
                         </span>

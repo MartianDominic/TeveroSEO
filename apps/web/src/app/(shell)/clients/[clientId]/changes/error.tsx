@@ -36,7 +36,7 @@ export default function ChangesError({
         We encountered an error loading the changes section. Please try again.
       </p>
       {error.digest && (
-        <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
+        <p className="text-muted-foreground text-xs-safe">Error ID: {error.digest}</p>
       )}
       <div className="flex gap-3 mt-2">
         {clientId && (

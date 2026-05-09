@@ -135,11 +135,13 @@ const FORMAT_SIGNATURES: Array<{format: Exclude<DetectedFormat, "generic" | "key
   },
 ];
 
+import { getKeywordMetricsCostCents } from "@/server/features/scraping/cost";
+
 /**
  * Cost per keyword for enrichment (in cents).
- * DataForSEO charges approximately $0.005 per keyword lookup.
+ * From canonical DFS pricing: $0.0005 per keyword = 0.05 cents
  */
-const COST_PER_KEYWORD_CENTS = 0.5;
+const COST_PER_KEYWORD_CENTS = getKeywordMetricsCostCents();
 
 export class ColumnDetector {
   /**

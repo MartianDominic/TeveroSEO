@@ -15,10 +15,12 @@ import { prospects } from "@/db/prospect-schema";
 import { eq, and } from "drizzle-orm";
 import { requireApiAuth } from "@/routes/api/seo/-middleware";
 import { createLogger } from "@/server/lib/logger";
+import { DFS_LABS_PRICING } from "@/server/features/scraping/cost";
 
 const log = createLogger({ module: "api:keywords:research" });
 
-const COST_PER_REQUEST_USD = 0.15; // DataForSEO pricing
+// Cost per request from canonical pricing module
+const COST_PER_REQUEST_USD = DFS_LABS_PRICING.searchVolumeBase;
 
 const bodySchema = z.object({
   prospectId: z.string().min(1),

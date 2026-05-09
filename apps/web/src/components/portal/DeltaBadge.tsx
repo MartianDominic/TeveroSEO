@@ -55,8 +55,8 @@ export function DeltaBadge({
         "inline-flex items-center gap-1 rounded-[--radius-pill] font-sans font-medium",
         // V6 type scale
         size === "sm"
-          ? "px-1.5 py-0.5 text-xs-safe"
-          : "px-2 py-1 text-xs-safe tracking-[0.02em]",
+          ? "px-1.5 py-0.5 text-xs-safe-safe"
+          : "px-2 py-1 text-xs-safe-safe tracking-[0.02em]",
         // Color variants (V6 semantic colors)
         isPositive && [
           "bg-success-soft text-success",

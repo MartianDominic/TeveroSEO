@@ -21,7 +21,7 @@ export function AuthConfigErrorCard({
   onRetry,
 }: AuthConfigErrorCardProps) {
   return (
-    <Card className="w-full max-w-2xl shadow-xl">
+    <Card className="w-full max-w-2xl shadow-[var(--shadow-modal)]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldAlert className="size-5 text-destructive" />

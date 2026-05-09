@@ -223,7 +223,7 @@ export default function LinksPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Total Pages
                   </p>
                   <p className="text-2xl font-semibold">
@@ -233,7 +233,7 @@ export default function LinksPage() {
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Orphan Pages
                   </p>
                   <div className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export default function LinksPage() {
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Avg Links/Page
                   </p>
                   <div className="flex items-center gap-2">
@@ -263,7 +263,7 @@ export default function LinksPage() {
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Deep Pages (&gt;3 clicks)
                   </p>
                   <div className="flex items-center gap-2">
@@ -304,10 +304,10 @@ export default function LinksPage() {
                           }`}
                           style={{ height: `${height}%` }}
                         />
-                        <span className="text-xs mt-1 text-muted-foreground">
+                        <span className="text-xs-safe mt-1 text-muted-foreground">
                           {bucket.bucket}
                         </span>
-                        <span className="text-xs font-medium">{bucket.count}</span>
+                        <span className="text-xs-safe font-medium">{bucket.count}</span>
                       </div>
                     );
                   })}
@@ -404,7 +404,7 @@ export default function LinksPage() {
 
         {/* Toast notification */}
         {toast.open && (
-          <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border bg-background px-4 py-3 shadow-lg">
+          <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border bg-background px-4 py-3 shadow-[var(--shadow-overlay)]">
             <StatusChip status={toast.type === "success" ? "published" : "failed"} />
             <span className="text-foreground font-medium">{toast.message}</span>
           </div>

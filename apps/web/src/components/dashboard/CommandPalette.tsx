@@ -145,7 +145,7 @@ export function CommandPalette({ clients = [], onOpenShortcuts }: CommandPalette
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-lg">
+      <DialogContent className="overflow-hidden p-0 shadow-[var(--shadow-modal)] max-w-lg">
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -177,7 +177,7 @@ export function CommandPalette({ clients = [], onOpenShortcuts }: CommandPalette
                   >
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span>{client.clientName}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="ml-auto text-xs-safe text-muted-foreground">
                       Health: {client.healthScore}%
                     </span>
                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
@@ -198,7 +198,7 @@ export function CommandPalette({ clients = [], onOpenShortcuts }: CommandPalette
                   {action.icon}
                   <span>{action.label}</span>
                   {action.shortcut && (
-                    <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs-safe font-medium text-muted-foreground">
+                    <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs-safe-safe font-medium text-muted-foreground">
                       {action.shortcut}
                     </kbd>
                   )}
@@ -218,7 +218,7 @@ export function CommandPalette({ clients = [], onOpenShortcuts }: CommandPalette
                   {action.icon}
                   <span>{action.label}</span>
                   {action.shortcut && (
-                    <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs-safe font-medium text-muted-foreground">
+                    <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs-safe-safe font-medium text-muted-foreground">
                       {action.shortcut}
                     </kbd>
                   )}
@@ -227,21 +227,21 @@ export function CommandPalette({ clients = [], onOpenShortcuts }: CommandPalette
             </Command.Group>
           </Command.List>
 
-          <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between border-t px-3 py-2 text-xs-safe text-muted-foreground">
             <div className="flex items-center gap-2">
-              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe">
+              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe-safe">
                 ↑↓
               </kbd>
               <span>Navigate</span>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe">
+              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe-safe">
                 Enter
               </kbd>
               <span>Select</span>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe">
+              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe-safe">
                 Esc
               </kbd>
               <span>Close</span>

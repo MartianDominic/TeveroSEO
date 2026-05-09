@@ -24,6 +24,12 @@ import {
 import { warmAnalyticsCacheForSite } from '@/server/cache';
 import { getSharedBullMQConnection } from '@/server/lib/redis';
 import type { TrendCalculationJobData } from '@/server/workers/trend-calculation-worker';
+import {
+  createTrendNotificationHandler,
+  createAnomalyAlertHandler,
+  type TrendsComputedEventPayload,
+  type AnomalyDetectedEventPayload,
+} from './consumers';
 
 const log = createLogger({ module: 'analytics-event-consumer' });
 
@@ -69,16 +75,43 @@ export function initAnalyticsEventConsumers(): void {
   // Cannibalization detection consumer
   const unsubCannibalization = eventBus.on('cannibalization:detected', handleCannibalizationDetected);
 
-  // Trends analysis consumer
+  // Trends analysis consumer (legacy - summary only)
   const unsubTrends = eventBus.on('trends:analyzed', handleTrendsAnalyzed);
 
   // Sync completion consumer
   const unsubSync = eventBus.on('analytics:sync-completed', handleSyncCompleted);
 
-  unsubscribers = [unsubCannibalization, unsubTrends, unsubSync];
+  // EC-001: Trends computed consumer (full result with notifications)
+  const trendNotificationHandler = createTrendNotificationHandler();
+  const unsubTrendsComputed = eventBus.on(
+    'analytics.trends.computed',
+    trendNotificationHandler as (payload: AnalyticsEventPayload<'analytics.trends.computed'>) => Promise<void>
+  );
+
+  // EC-002: Anomaly detection consumer
+  const anomalyAlertHandler = createAnomalyAlertHandler();
+  const unsubAnomalyDetected = eventBus.on(
+    'analytics.anomaly.detected',
+    anomalyAlertHandler as (payload: AnalyticsEventPayload<'analytics.anomaly.detected'>) => Promise<void>
+  );
+
+  unsubscribers = [
+    unsubCannibalization,
+    unsubTrends,
+    unsubSync,
+    unsubTrendsComputed,
+    unsubAnomalyDetected,
+  ];
 
   log.info('Analytics event consumers initialized', {
     consumerCount: unsubscribers.length,
+    consumers: [
+      'cannibalization:detected',
+      'trends:analyzed',
+      'analytics:sync-completed',
+      'analytics.trends.computed',
+      'analytics.anomaly.detected',
+    ],
   });
 }
 

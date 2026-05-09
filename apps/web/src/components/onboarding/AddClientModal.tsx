@@ -352,7 +352,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
                 onChange={(e) => setName(e.target.value)}
               />
               {nameError && (
-                <p className="text-xs text-destructive">{nameError}</p>
+                <p className="text-xs-safe text-destructive">{nameError}</p>
               )}
             </div>
 
@@ -369,13 +369,13 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
                 onChange={(e) => setUrl(e.target.value)}
               />
               {urlError && (
-                <p className="text-xs text-destructive">{urlError}</p>
+                <p className="text-xs-safe text-destructive">{urlError}</p>
               )}
             </div>
 
             {/* Submit error */}
             {submitError && (
-              <p className="text-xs text-destructive">{submitError}</p>
+              <p className="text-xs-safe text-destructive">{submitError}</p>
             )}
 
             {/* Actions */}
@@ -400,7 +400,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
               <p className="text-sm font-medium text-foreground">
                 Creating client...
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs-safe text-muted-foreground">
                 Step 1 of 2: Setting up client record
               </p>
             </div>
@@ -425,7 +425,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
               <p className="text-sm font-medium text-foreground">
                 Finalizing setup...
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs-safe text-muted-foreground">
                 Step 2 of 2: Confirming client is ready
               </p>
             </div>

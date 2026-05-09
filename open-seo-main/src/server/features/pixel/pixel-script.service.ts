@@ -67,6 +67,11 @@ export function generatePixelScript(
  *
  * IMPORTANT: Keep this under 5KB uncompressed for fast loading.
  *
+ * NOTE: The empty catch block in observe() is intentional for browser compatibility.
+ * PerformanceObserver.observe() throws on unsupported entry types in older browsers.
+ * Silent failure is the correct behavior - we don't want to break client sites or
+ * expose internal errors to end users. This is standard practice for browser analytics.
+ *
  * @returns Minified JavaScript string
  */
 export function generatePixelLoader(): string {

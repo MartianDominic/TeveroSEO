@@ -37,7 +37,7 @@ export default function KeywordMappingError({
         We encountered an error loading the keyword mapping section. Please try again.
       </p>
       {error.digest && (
-        <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
+        <p className="text-muted-foreground text-xs-safe">Error ID: {error.digest}</p>
       )}
       <div className="flex gap-3 mt-2">
         {clientId && projectId && (

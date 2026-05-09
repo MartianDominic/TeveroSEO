@@ -117,7 +117,7 @@ function PaymentSuccessPage() {
                 </li>
               </ul>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               Turite klausimu?{" "}
               <a
                 href="mailto:info@tevero.io"

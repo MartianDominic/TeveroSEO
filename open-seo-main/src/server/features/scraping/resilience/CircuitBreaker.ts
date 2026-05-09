@@ -20,6 +20,16 @@ import {
 
 export type CircuitState = "closed" | "open" | "half-open";
 
+/**
+ * Alias for CircuitState with underscore format (backward compatibility).
+ * @deprecated Use CircuitState with hyphen format instead.
+ */
+export const CircuitStateCompat = {
+  CLOSED: "closed" as const,
+  OPEN: "open" as const,
+  HALF_OPEN: "half-open" as const,
+} as const;
+
 export interface CircuitBreakerConfig {
   /** Name for logging and metrics */
   name: string;
@@ -33,11 +43,23 @@ export interface CircuitBreakerConfig {
   /** Time (ms) before transitioning from open to half-open */
   timeout: number;
 
+  /**
+   * Alias for timeout (backward compatibility).
+   * @deprecated Use timeout instead.
+   */
+  resetTimeout?: number;
+
   /** Minimum requests before evaluating failure rate */
   volumeThreshold: number;
 
   /** Maximum requests allowed in half-open state for faster recovery detection (default: 3) */
   halfOpenMaxRequests?: number;
+
+  /**
+   * Alias for halfOpenMaxRequests (backward compatibility).
+   * @deprecated Use halfOpenMaxRequests instead.
+   */
+  halfOpenMaxAttempts?: number;
 
   /** Optional filter to determine which errors count as failures */
   errorFilter?: (error: Error) => boolean;
@@ -86,6 +108,13 @@ export class CircuitBreaker<_T = unknown> {
     [];
 
   constructor(private config: CircuitBreakerConfig) {
+    // Handle backward compatibility aliases
+    if (config.resetTimeout !== undefined && config.timeout === undefined) {
+      (this.config as CircuitBreakerConfig).timeout = config.resetTimeout;
+    }
+    if (config.halfOpenMaxAttempts !== undefined && config.halfOpenMaxRequests === undefined) {
+      (this.config as CircuitBreakerConfig).halfOpenMaxRequests = config.halfOpenMaxAttempts;
+    }
     this.stats = this.initStats();
   }
 
@@ -153,6 +182,85 @@ export class CircuitBreaker<_T = unknown> {
    */
   forceClose(): void {
     this.transitionTo("closed");
+  }
+
+  /**
+   * Reset circuit to initial closed state.
+   * Alias for forceClose() for backward compatibility.
+   */
+  reset(): void {
+    this.failures = 0;
+    this.successes = 0;
+    this.halfOpenRequestCount = 0;
+    this.stats = this.initStats();
+    this.transitionTo("closed");
+  }
+
+  /**
+   * Check if circuit allows requests (not open).
+   * @deprecated Use getState() !== "open" or wrap with execute() instead.
+   */
+  get allowsRequest(): boolean {
+    // Check if we should transition from open to half-open
+    if (this.state === "open" && this.shouldAttemptReset()) {
+      this.transitionTo("half-open");
+    }
+    return this.state !== "open";
+  }
+
+  /**
+   * Check if circuit is currently open.
+   * @deprecated Use getState() === "open" or wrap with execute() instead.
+   */
+  get isOpen(): boolean {
+    // Check if we should transition from open to half-open
+    if (this.state === "open" && this.shouldAttemptReset()) {
+      this.transitionTo("half-open");
+    }
+    return this.state === "open";
+  }
+
+  /**
+   * Get current state as string.
+   * @deprecated Use getState() instead.
+   */
+  get currentState(): CircuitState {
+    // Check if we should transition from open to half-open
+    if (this.state === "open" && this.shouldAttemptReset()) {
+      this.transitionTo("half-open");
+    }
+    return this.state;
+  }
+
+  /**
+   * Record a successful operation manually.
+   * @deprecated Prefer using execute() which auto-records success/failure.
+   */
+  recordSuccess(): void {
+    this.onSuccess();
+  }
+
+  /**
+   * Record a failed operation manually.
+   * @deprecated Prefer using execute() which auto-records success/failure.
+   */
+  recordFailure(): void {
+    this.onFailure(new Error("Manual failure recorded"));
+  }
+
+  /**
+   * Get current failure count.
+   * @deprecated Use getStats().failures instead.
+   */
+  get failureCount(): number {
+    return this.failures;
+  }
+
+  /**
+   * Get circuit breaker name.
+   */
+  get name(): string {
+    return this.config.name;
   }
 
   /**
@@ -285,18 +393,29 @@ export class CircuitBreaker<_T = unknown> {
 
 /**
  * Create a circuit breaker with sensible defaults.
+ *
+ * @param name - Unique name for the circuit breaker
+ * @param overrides - Configuration overrides. Supports both new (timeout, halfOpenMaxRequests)
+ *                    and legacy (resetTimeout, halfOpenMaxAttempts) config options.
  */
 export function createCircuitBreaker(
   name: string,
   overrides: Partial<Omit<CircuitBreakerConfig, "name">> = {}
 ): CircuitBreaker {
+  // Support deprecated resetTimeout alias
+  const timeout = overrides.resetTimeout ?? overrides.timeout ?? 30000;
+  // Support deprecated halfOpenMaxAttempts alias
+  const halfOpenMaxRequests = overrides.halfOpenMaxAttempts ?? overrides.halfOpenMaxRequests ?? 3;
+  // Use volumeThreshold of 1 by default to match legacy behavior (no minimum volume required)
+  const volumeThreshold = overrides.volumeThreshold ?? 1;
+
   return new CircuitBreaker({
     name,
-    failureThreshold: 5,
-    successThreshold: 2,
-    timeout: 30000, // 30 seconds
-    volumeThreshold: 10,
-    halfOpenMaxRequests: 3,
-    ...overrides,
+    failureThreshold: overrides.failureThreshold ?? 5,
+    successThreshold: overrides.successThreshold ?? 1, // Close on first success in half-open (legacy behavior)
+    timeout,
+    volumeThreshold,
+    halfOpenMaxRequests,
+    errorFilter: overrides.errorFilter,
   });
 }

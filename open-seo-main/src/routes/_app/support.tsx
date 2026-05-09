@@ -46,7 +46,7 @@ function SupportPage() {
               onClick={handleCopy}
               className="mt-3 inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
-              <span className="font-mono text-xs">{SUPPORT_EMAIL}</span>
+              <span className="font-mono text-xs-safe">{SUPPORT_EMAIL}</span>
               {copied ? (
                 <Check className="size-3.5 text-success" />
               ) : (

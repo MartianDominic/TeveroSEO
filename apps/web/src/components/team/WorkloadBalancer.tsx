@@ -193,7 +193,7 @@ function MemberColumn({
     >
       <div className="mb-3">
         <h4 className="font-medium text-sm">{member.name}</h4>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           {member.clientCount} / {member.capacity} clients ({member.utilizationPct}%)
         </p>
       </div>
@@ -219,12 +219,12 @@ function SuggestionCard({
       <Lightbulb className="h-5 w-5 text-yellow-500 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{suggestion.clientName}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           {suggestion.fromMemberName}
           <ArrowRight className="inline h-3 w-3 mx-1" />
           {suggestion.toMemberName}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">{suggestion.reason}</p>
+        <p className="text-xs-safe text-muted-foreground mt-1">{suggestion.reason}</p>
       </div>
       <Button
         size="sm"
@@ -276,7 +276,7 @@ function CapacityComparison({
           const newCount = member.clientCount + delta;
           const newPct = Math.round((newCount / member.capacity) * 100);
           return (
-            <div key={memberId} className="flex items-center gap-2 text-xs">
+            <div key={memberId} className="flex items-center gap-2 text-xs-safe">
               <span className="font-medium">{member.name}:</span>
               <span className="text-muted-foreground">
                 {member.utilizationPct}%
@@ -458,7 +458,7 @@ export function WorkloadBalancer({
                       />
                     ))}
                     {member.assignments.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-4">
+                      <p className="text-xs-safe text-muted-foreground text-center py-4">
                         No clients assigned
                       </p>
                     )}
@@ -468,7 +468,7 @@ export function WorkloadBalancer({
             </div>
             <DragOverlay>
               {activeAssignment && (
-                <div className="flex items-center gap-2 px-2 py-1.5 bg-background border rounded text-sm shadow-lg">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-background border rounded text-sm shadow-[var(--shadow-overlay)]">
                   <GripVertical className="h-3 w-3 text-muted-foreground" />
                   <span className="truncate">{activeAssignment.clientName}</span>
                 </div>

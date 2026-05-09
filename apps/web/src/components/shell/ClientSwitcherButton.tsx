@@ -73,7 +73,7 @@ const ClientSwitcherPopoverContent: React.FC<PopoverBodyProps> = ({
             className="flex items-center gap-2"
           >
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs-safe font-bold text-white"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs-safe-safe font-bold text-white"
               style={{ backgroundColor: seedColor(client.name) }}
             >
               {clientInitial(client.name)}
@@ -159,7 +159,7 @@ export const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
             title={triggerLabel}
             disabled={isSwitching}
             className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white",
+              "flex h-8 w-8 items-center justify-center rounded-lg text-xs-safe font-bold text-white",
               "transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isSwitching && "opacity-70"
             )}
@@ -211,7 +211,7 @@ export const ClientSwitcherButton: React.FC<ClientSwitcherButtonProps> = ({
             </span>
           ) : (
             <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs-safe font-bold text-white"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs-safe-safe font-bold text-white"
               style={
                 name
                   ? { backgroundColor: seedColor(name) }

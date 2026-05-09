@@ -96,7 +96,7 @@ export function ChecklistItemRow({
           {label}
         </p>
         {isCredentialItem && !completed && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs-safe text-muted-foreground mt-0.5">
             Requires OAuth connection
           </p>
         )}
@@ -110,7 +110,7 @@ export function ChecklistItemRow({
               variant="ghost"
               onClick={handleManualComplete}
               disabled={loading}
-              className="h-7 text-xs"
+              className="h-7 text-xs-safe"
             >
               <Check className="mr-1 h-3 w-3" />
               Mark Complete
@@ -124,7 +124,7 @@ export function ChecklistItemRow({
                   variant="outline"
                   onClick={handleSendLink}
                   disabled={loading}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs-safe"
                 >
                   <Send className="mr-1 h-3 w-3" />
                   {copied ? "Link Copied!" : "Send to Client"}
@@ -134,7 +134,7 @@ export function ChecklistItemRow({
                   variant="default"
                   onClick={() => onConnectDirectly(itemId)}
                   disabled={loading}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs-safe"
                 >
                   <Link2 className="mr-1 h-3 w-3" />
                   Connect Myself

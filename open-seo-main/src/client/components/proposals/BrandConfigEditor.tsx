@@ -113,7 +113,7 @@ export function BrandConfigEditor({ config, onChange }: BrandConfigEditorProps) 
           ) : (
             <label className="w-32 h-16 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors">
               <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground mt-1">Upload</span>
+              <span className="text-xs-safe text-muted-foreground mt-1">Upload</span>
               <input
                 type="file"
                 accept="image/*"

@@ -240,7 +240,7 @@ export function VocabularyTab({ profile, clientId }: Props) {
             }
             rows={4}
           />
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs-safe text-muted-foreground mt-2">
             {signaturePhrases.filter((p) => p.trim()).length} phrase(s) defined
           </p>
         </CardContent>
@@ -263,7 +263,7 @@ export function VocabularyTab({ profile, clientId }: Props) {
             }
             rows={4}
           />
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs-safe text-muted-foreground mt-2">
             {forbiddenPhrases.filter((p) => p.trim()).length} phrase(s) blocked
           </p>
         </CardContent>

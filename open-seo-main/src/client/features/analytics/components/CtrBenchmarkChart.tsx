@@ -58,7 +58,7 @@ export function CtrBenchmarkChart({
   const yDomain = [0, Math.ceil(maxCtr * 100) / 100 + 0.05];
 
   return (
-    <Card className="bg-card shadow-sm">
+    <Card className="bg-card shadow-[var(--shadow-card)]">
       <CardHeader className="pb-2">
         <CardTitle className="text-[15px] font-medium text-foreground">{title}</CardTitle>
       </CardHeader>
@@ -109,7 +109,7 @@ export function CtrBenchmarkChart({
                     if (active && payload && payload.length) {
                       const dataPoint = payload[0].payload as CtrDataPoint;
                       return (
-                        <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
+                        <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-[var(--shadow-elevated)]">
                           <p className="text-[13px] font-medium text-popover-foreground">
                             Position {dataPoint.position}
                           </p>

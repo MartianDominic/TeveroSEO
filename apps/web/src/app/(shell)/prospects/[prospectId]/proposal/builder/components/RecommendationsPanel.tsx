@@ -122,7 +122,7 @@ export function RecommendationsPanel({
             <span style={{ color: "#14141a" }}>AI Rekomendacijos</span>
           </CardTitle>
           <div
-            className={`px-2 py-1 rounded text-xs font-medium ${colors.bg} ${colors.text}`}
+            className={`px-2 py-1 rounded text-xs-safe font-medium ${colors.bg} ${colors.text}`}
           >
             {AWARENESS_LABELS[awarenessLevel]}
           </div>
@@ -142,7 +142,7 @@ export function RecommendationsPanel({
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-[#93939a]" />
             <span
-              className="text-xs font-medium uppercase tracking-wider"
+              className="text-xs-safe font-medium uppercase tracking-wider"
               style={{ color: "#93939a" }}
             >
               Pradinis kampas
@@ -158,7 +158,7 @@ export function RecommendationsPanel({
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-[#93939a]" />
             <span
-              className="text-xs font-medium uppercase tracking-wider"
+              className="text-xs-safe font-medium uppercase tracking-wider"
               style={{ color: "#93939a" }}
             >
               Priestaravimai, kuriuos reikia adresuoti
@@ -166,7 +166,7 @@ export function RecommendationsPanel({
           </div>
           <div className="flex flex-wrap gap-1">
             {recommendedApproach.objectionsToAddress.map((objection, i) => (
-              <Badge key={i} variant="outline" className="text-xs">
+              <Badge key={i} variant="outline" className="text-xs-safe">
                 {objection}
               </Badge>
             ))}
@@ -179,7 +179,7 @@ export function RecommendationsPanel({
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="h-4 w-4 text-[#93939a]" />
               <span
-                className="text-xs font-medium uppercase tracking-wider"
+                className="text-xs-safe font-medium uppercase tracking-wider"
                 style={{ color: "#93939a" }}
               >
                 Raktazodziu apzvalga
@@ -197,7 +197,7 @@ export function RecommendationsPanel({
                 >
                   {keywordHighlights.totalKeywords}
                 </div>
-                <div className="text-xs" style={{ color: "#93939a" }}>
+                <div className="text-xs-safe" style={{ color: "#93939a" }}>
                   Viso
                 </div>
               </div>
@@ -212,7 +212,7 @@ export function RecommendationsPanel({
                 >
                   {keywordHighlights.quickWins}
                 </div>
-                <div className="text-xs" style={{ color: "#93939a" }}>
+                <div className="text-xs-safe" style={{ color: "#93939a" }}>
                   Greiti laimejimai
                 </div>
               </div>
@@ -227,7 +227,7 @@ export function RecommendationsPanel({
                 >
                   +{keywordHighlights.estimatedTrafficGain.toLocaleString()}
                 </div>
-                <div className="text-xs" style={{ color: "#93939a" }}>
+                <div className="text-xs-safe" style={{ color: "#93939a" }}>
                   Lankytoju/men.
                 </div>
               </div>

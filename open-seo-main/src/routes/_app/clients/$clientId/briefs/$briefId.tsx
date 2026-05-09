@@ -209,7 +209,7 @@ function BriefDetailPage() {
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Competitor Avg</p>
                 <p className="text-2xl font-bold">{avgWordCount.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">words</p>
+                <p className="text-xs-safe text-muted-foreground">words</p>
               </div>
             </div>
           </CardContent>
@@ -274,7 +274,7 @@ function BriefDetailPage() {
                     <p className="text-lg font-medium">{analysis.metaLengths.description} characters</p>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">
+                <p className="text-xs-safe text-muted-foreground mt-4">
                   Analyzed: {new Date(analysis.analyzedAt).toLocaleDateString()} • {analysis.location}
                 </p>
               </CardContent>

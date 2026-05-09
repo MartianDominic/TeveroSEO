@@ -22,7 +22,7 @@ export function ThemePreferenceMenuItems() {
 
   return (
     <>
-      <p className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <p className="px-2 pt-2 pb-1 text-xs-safe font-semibold text-muted-foreground uppercase tracking-wide">
         Theme
       </p>
 
@@ -47,7 +47,7 @@ export function ThemePreferenceMenuItems() {
                       aria-label={option.label}
                       className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-2.5 py-1.5 transition-colors ${
                         isActive
-                          ? "bg-background text-foreground shadow-sm"
+                          ? "bg-background text-foreground shadow-[var(--shadow-card)]"
                           : "text-foreground/50 hover:text-foreground/80"
                       }`}
                       onClick={() => setThemePreference(option.value)}

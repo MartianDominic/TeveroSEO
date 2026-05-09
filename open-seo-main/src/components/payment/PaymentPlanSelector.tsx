@@ -106,7 +106,7 @@ function PlanCard({
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-foreground">{planName}</h3>
             {plan.type === "full" && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs-safe text-muted-foreground">
                 Single payment
               </span>
             )}
@@ -144,7 +144,7 @@ function PlanCard({
 
           {/* Total for split plans */}
           {plan.installments.length > 1 && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs-safe text-muted-foreground mt-3">
               Total: {formatCurrency(plan.totalAmount, currency)}
             </p>
           )}

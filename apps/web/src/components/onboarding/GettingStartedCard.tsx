@@ -33,7 +33,7 @@ const fetchPlatformSecrets = async (): Promise<PlatformSecretStatus[]> => {
 const StepIndicator = ({ done }: { done: boolean }) => (
   <span
     className={cn(
-      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs-safe font-bold",
       done
         ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
         : "border border-border text-muted-foreground"
@@ -95,7 +95,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
         <span className="text-sm font-semibold text-foreground">
           Getting Started
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           — {completedCount}/3 complete
         </span>
       </div>
@@ -136,14 +136,14 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
               {!step2Done && (
                 <button
                   onClick={() => router.push("/settings" as Parameters<typeof router.push>[0])}
-                  className="shrink-0 text-xs text-primary hover:underline"
+                  className="shrink-0 text-xs-safe text-primary hover:underline"
                 >
                   Go to Settings →
                 </button>
               )}
             </div>
             {!step2Done && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs-safe text-muted-foreground">
                 Gemini, DataForSEO, BrightData
               </p>
             )}
@@ -168,7 +168,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({
               {!step3Done && (
                 <button
                   onClick={onAddClient}
-                  className="shrink-0 text-xs text-primary hover:underline"
+                  className="shrink-0 text-xs-safe text-primary hover:underline"
                 >
                   Add Client →
                 </button>

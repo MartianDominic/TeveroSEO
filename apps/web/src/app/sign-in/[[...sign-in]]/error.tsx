@@ -39,12 +39,12 @@ export default function SignInError({
             return to the home page.
           </p>
           {error.digest && (
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-muted-foreground text-xs-safe mt-1">
               Error ID: {error.digest}
             </p>
           )}
           {process.env.NODE_ENV === "development" && (
-            <pre className="text-xs text-muted-foreground mt-2 overflow-auto p-2 bg-muted rounded text-left">
+            <pre className="text-xs-safe text-muted-foreground mt-2 overflow-auto p-2 bg-muted rounded text-left">
               {error.message}
             </pre>
           )}

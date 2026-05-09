@@ -76,7 +76,7 @@ export function ProgressIndicator({
             {/* Label tooltip */}
             <motion.span
               className={cn(
-                "absolute whitespace-nowrap px-2 py-1 text-xs font-medium bg-background/95 border rounded shadow-sm",
+                "absolute whitespace-nowrap px-2 py-1 text-xs-safe font-medium bg-background/95 border rounded shadow-[var(--shadow-card)]",
                 position === "right"
                   ? "right-full mr-3"
                   : "left-full ml-3",

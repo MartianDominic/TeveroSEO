@@ -114,14 +114,14 @@ export function DomainResultsCard({
           <button
             type="button"
             onClick={() => onTabChange("keywords")}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "keywords" ? "bg-background text-foreground shadow-sm" : "hover:bg-background/50"}`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "keywords" ? "bg-background text-foreground shadow-[var(--shadow-card)]" : "hover:bg-background/50"}`}
           >
             Top Keywords
           </button>
           <button
             type="button"
             onClick={() => onTabChange("pages")}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "pages" ? "bg-background text-foreground shadow-sm" : "hover:bg-background/50"}`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "pages" ? "bg-background text-foreground shadow-[var(--shadow-card)]" : "hover:bg-background/50"}`}
           >
             Top Pages
           </button>

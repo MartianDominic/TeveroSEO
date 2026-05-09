@@ -79,7 +79,7 @@ export function RevenueTrendChart({
               size="sm"
               variant={period === p ? "default" : "ghost"}
               onClick={() => setPeriod(p)}
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs-safe"
             >
               {p.toUpperCase()}
             </Button>

@@ -57,7 +57,7 @@ export function BrandingPreview({
   return (
     <div className="rounded-lg border border-border bg-white overflow-hidden">
       <div className="px-3 py-2 bg-muted/30 border-b border-border">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide">
           Report Header Preview
         </p>
       </div>
@@ -102,7 +102,7 @@ export function BrandingPreview({
               key={label}
               className="rounded border border-border p-3"
             >
-              <div className="text-xs text-muted-foreground mb-1">{label}</div>
+              <div className="text-xs-safe text-muted-foreground mb-1">{label}</div>
               <div
                 className="text-lg font-semibold"
                 style={{ color: label === "Clicks" ? primaryRgb : undefined }}

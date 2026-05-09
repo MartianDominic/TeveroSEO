@@ -185,7 +185,7 @@ export function SavedViewSelector({
                 <Label htmlFor="share-view" className="text-sm font-medium">
                   Share with team
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs-safe text-muted-foreground">
                   Team members can see and use this view
                 </p>
               </div>

@@ -93,12 +93,13 @@ export {
 } from './services/ResilientClassifier';
 
 // Circuit Breaker - Graceful degradation
+// Re-exported from canonical location in scraping/resilience/
 export {
   CircuitBreaker,
   CircuitOpenError,
-  CircuitState,
+  type CircuitState,
   type CircuitBreakerConfig as ServiceCircuitBreakerConfig,
-} from './services/CircuitBreaker';
+} from '@/server/features/scraping/resilience/CircuitBreaker';
 
 // Business Priority Parser
 export {

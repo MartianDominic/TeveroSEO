@@ -105,7 +105,7 @@ export function ChartWrapper({
                   <p className="text-sm font-medium text-foreground">
                     Failed to render chart
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs-safe text-muted-foreground">
                     {error.message || 'An unexpected error occurred'}
                   </p>
                 </div>
@@ -114,7 +114,7 @@ export function ChartWrapper({
                     retry();
                     onRetry();
                   }}
-                  className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground"
+                  className="inline-flex items-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-[var(--shadow-card)] hover:bg-accent hover:text-accent-foreground"
                 >
                   Retry
                 </button>

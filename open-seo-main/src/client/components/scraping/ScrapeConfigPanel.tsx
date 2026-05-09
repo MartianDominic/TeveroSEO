@@ -303,7 +303,7 @@ export function ScrapeConfigPanel({
               onChange={(e) => setTestHtml(e.target.value)}
               placeholder="Paste HTML content from the page..."
               rows={6}
-              className="font-mono text-xs"
+              className="font-mono text-xs-safe"
             />
           </div>
           <Button
@@ -337,7 +337,7 @@ export function ScrapeConfigPanel({
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{sel.field}</span>
-                      <code className="text-xs bg-background px-1 rounded">
+                      <code className="text-xs-safe bg-background px-1 rounded">
                         {sel.selector}
                       </code>
                     </div>
@@ -347,7 +347,7 @@ export function ScrapeConfigPanel({
                       >
                         {sel.confidence}%
                       </Badge>
-                      <span className="text-xs text-muted-foreground truncate max-w-32">
+                      <span className="text-xs-safe text-muted-foreground truncate max-w-32">
                         {sel.sampleValue}
                       </span>
                     </div>

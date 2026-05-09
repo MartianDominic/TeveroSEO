@@ -13,7 +13,7 @@
  */
 
 import { redis } from "@/server/lib/redis";
-import { BoundedCache } from "./bounded-cache";
+import { createSerpMemoryCache } from "@tevero/utils";
 import { CACHE_NS, safeJsonParse } from "./cache-keys";
 import type { SerpAnalysisData } from "@/db/brief-schema";
 import {
@@ -33,12 +33,9 @@ const MEMORY_CACHE_TTL_MS = 60 * 60 * 1000;
 /**
  * In-memory L1 cache for frequently accessed SERP data.
  * Bounded to 500 entries to prevent memory leaks.
+ * Uses consolidated BoundedCache from @tevero/utils.
  */
-const serpMemoryCache = new BoundedCache<string, SerpAnalysisData>({
-  maxSize: 500,
-  defaultTTLMs: MEMORY_CACHE_TTL_MS,
-  name: "serp",
-});
+const serpMemoryCache = createSerpMemoryCache<SerpAnalysisData>();
 
 // CRIT-CACHE-01 FIX: Register handler for cross-instance invalidation
 registerInvalidationHandler((message) => {

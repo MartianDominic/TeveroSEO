@@ -226,7 +226,7 @@ const RankBadge: React.FC<RankBadgeProps> = ({ position }) => {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs-safe font-semibold",
         badgeClass
       )}
     >
@@ -290,7 +290,7 @@ const RankSparklineRow: React.FC<RankSparklineRowProps> = ({
           <p className="text-sm text-muted-foreground py-2">Only one check recorded — check back later for trend data.</p>
         ) : (
           <div className="flex flex-col gap-1">
-            <p className="text-xs text-muted-foreground font-medium">
+            <p className="text-xs-safe text-muted-foreground font-medium">
               Rank position over time — lower is better
             </p>
             <ChartContainer config={SPARKLINE_CONFIG} className="h-[200px]">
@@ -655,7 +655,7 @@ export default function ArticleLibraryPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className={cn(
             "flex h-9 w-64 rounded-md border border-input bg-transparent px-3 py-1",
-            "text-sm shadow-sm placeholder:text-muted-foreground",
+            "text-sm shadow-[var(--shadow-card)] placeholder:text-muted-foreground",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           )}
         />

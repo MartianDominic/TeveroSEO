@@ -120,7 +120,7 @@ export function ChurnRiskAlerts({
                 <p className="text-sm font-medium text-text-1 truncate">
                   {risk.clientName}
                 </p>
-                <p className="text-xs text-text-3">{risk.description}</p>
+                <p className="text-xs-safe text-text-3">{risk.description}</p>
               </div>
             </div>
           );
@@ -128,7 +128,7 @@ export function ChurnRiskAlerts({
 
         {/* Show more indicator */}
         {remainingCount > 0 && (
-          <p className="text-xs text-text-3 text-center pt-2">
+          <p className="text-xs-safe text-text-3 text-center pt-2">
             +{remainingCount} more alerts
           </p>
         )}

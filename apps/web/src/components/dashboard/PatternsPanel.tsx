@@ -188,7 +188,7 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
                   )}
                   <div className="flex-1 text-left">
                     <p className="font-medium text-sm">{pattern.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs-safe text-muted-foreground">
                       {pattern.affectedCount} clients affected |{" "}
                       {Number(pattern.confidence).toFixed(0)}% confidence
                     </p>
@@ -220,13 +220,13 @@ export function PatternsPanel({ workspaceId }: PatternsPanelProps) {
                       <Link
                         key={client.id}
                         href={`/clients/${client.id}` as Parameters<typeof router.push>[0]}
-                        className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
+                        className="text-xs-safe bg-muted px-2 py-1 rounded hover:bg-muted/80 transition-colors"
                       >
                         {client.name}
                       </Link>
                     ))}
                     {pattern.affectedClients.length > 5 && (
-                      <span className="text-xs text-muted-foreground px-2 py-1">
+                      <span className="text-xs-safe text-muted-foreground px-2 py-1">
                         +{pattern.affectedClients.length - 5} more
                       </span>
                     )}

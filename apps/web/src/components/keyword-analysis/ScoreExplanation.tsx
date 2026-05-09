@@ -102,7 +102,7 @@ export function ScoreExplanation({
           {/* Component scores table */}
           <div className="space-y-2 text-sm">
             {/* Table header */}
-            <div className="flex items-center text-[var(--text-3)] text-xs uppercase tracking-wider">
+            <div className="flex items-center text-[var(--text-3)] text-xs-safe uppercase tracking-wider">
               <span className="flex-1">{t.factor}</span>
               <span className="w-16 text-right">{t.value}</span>
               <span className="w-16 text-right">{t.contribution}</span>
@@ -122,7 +122,7 @@ export function ScoreExplanation({
             <ScoreRow
               label={t.funnel.label}
               value={
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs-safe">
                   {breakdown.funnelStage}
                 </Badge>
               }
@@ -165,7 +165,7 @@ export function ScoreExplanation({
                     x{breakdown.priorityMultiplier.toFixed(1)}
                   </span>
                   {breakdown.priorityCategory && (
-                    <span className="text-[var(--text-3)] text-xs ml-1">
+                    <span className="text-[var(--text-3)] text-xs-safe ml-1">
                       ({breakdown.priorityCategory})
                     </span>
                   )}
@@ -182,7 +182,7 @@ export function ScoreExplanation({
                     +{breakdown.quickWinBonus.toFixed(2)}
                   </span>
                   {breakdown.position && (
-                    <span className="text-[var(--text-3)] text-xs ml-1">
+                    <span className="text-[var(--text-3)] text-xs-safe ml-1">
                       (pos {breakdown.position})
                     </span>
                   )}
@@ -226,7 +226,7 @@ function ScoreRow({ label, value, contribution, explanation }: ScoreRowProps) {
           {contribution}
         </span>
       </div>
-      <div className="text-xs text-[var(--text-3)] mt-0.5">{explanation}</div>
+      <div className="text-xs-safe text-[var(--text-3)] mt-0.5">{explanation}</div>
     </div>
   );
 }

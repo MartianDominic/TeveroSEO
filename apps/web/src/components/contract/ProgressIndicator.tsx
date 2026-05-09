@@ -62,7 +62,7 @@ export function ProgressIndicator({
                 )}
                 {/* Step number */}
                 <span
-                  className={`absolute inset-0 flex items-center justify-center text-xs font-medium ${
+                  className={`absolute inset-0 flex items-center justify-center text-xs-safe font-medium ${
                     isSigned
                       ? "text-green-700"
                       : isCurrent

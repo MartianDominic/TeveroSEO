@@ -52,7 +52,7 @@ function TrendIndicator({
     return (
       <span className="flex items-center gap-1 text-muted-foreground">
         <Minus className="h-3 w-3" />
-        <span className="text-xs">flat</span>
+        <span className="text-xs-safe">flat</span>
       </span>
     );
   }
@@ -68,7 +68,7 @@ function TrendIndicator({
       )}
     >
       {isUp ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-      <span className="text-xs">
+      <span className="text-xs-safe">
         {isUp ? "+" : ""}
         {numValue.toFixed(1)}
       </span>
@@ -97,12 +97,12 @@ export function GoalCard({ goal, template, onEdit, onDelete }: GoalCardProps) {
                 className="h-5 w-5 text-muted-foreground"
               />
               {goal.status === "achieved" && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs-safe">
                   Achieved
                 </Badge>
               )}
               {goal.status === "abandoned" && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-xs-safe text-muted-foreground">
                   Paused
                 </Badge>
               )}
@@ -133,8 +133,8 @@ export function GoalCard({ goal, template, onEdit, onDelete }: GoalCardProps) {
             {/* TODO: Phase 40+ - Show trend when backend supports trendDirection/trendValue */}
             {goal.targetDate && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Target:</span>
-                <span className="text-xs">{new Date(goal.targetDate).toLocaleDateString()}</span>
+                <span className="text-xs-safe text-muted-foreground">Target:</span>
+                <span className="text-xs-safe">{new Date(goal.targetDate).toLocaleDateString()}</span>
               </div>
             )}
           </div>

@@ -77,8 +77,11 @@ export const COST_PER_SOURCE: CostTable = {
 export const DATAFORSEO_PRICING = {
   /** SERP API standard queue: $0.0006/SERP */
   serp_per_result: DFS_SERP_PRICING.standard,
-  /** Keywords Data: $0.05 per request covering up to 1000 keywords */
-  keywords_per_request: 0.05,
+  /** Keywords Data: $0.0005 per keyword (canonical pricing) */
+  keywords_per_keyword: DFS_LABS_PRICING.keywordMetrics,
+  /** Search Volume batch: base + per keyword */
+  search_volume_base: DFS_LABS_PRICING.searchVolumeBase,
+  search_volume_per_keyword: DFS_LABS_PRICING.searchVolumePerKeyword,
   /** Labs API: $0.01 base + $0.0001 per item */
   labs_base: DFS_LABS_PRICING.keywordsForDomainBase,
   labs_per_item: DFS_LABS_PRICING.keywordsForDomainPerItem,

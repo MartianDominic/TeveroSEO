@@ -169,12 +169,12 @@ function PlatformSelect({ onSelect }: PlatformSelectProps) {
                 </h3>
                 <Badge
                   variant="secondary"
-                  className={cn("text-xs", difficultyColors[p.difficulty])}
+                  className={cn("text-xs-safe", difficultyColors[p.difficulty])}
                 >
                   {t(`difficulty.${p.difficulty}`)}
                 </Badge>
               </div>
-              <div className="flex items-center gap-3 text-xs text-[var(--text-3)]">
+              <div className="flex items-center gap-3 text-xs-safe text-[var(--text-3)]">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {t("estimatedTime", { minutes: p.estimatedMinutes })}
@@ -344,7 +344,7 @@ function VerificationScreen({
             </code>
             <CopyButton text={checkUrl} label={tCopy("copyUrl")} />
           </div>
-          <p className="text-xs text-[var(--text-3)] mt-2">
+          <p className="text-xs-safe text-[var(--text-3)] mt-2">
             {t("expectedContent")}
           </p>
         </CardContent>
@@ -469,7 +469,7 @@ function FilePreview({ apiKey, domain }: FilePreviewProps) {
       <CardContent className="space-y-3">
         {/* Filename */}
         <div>
-          <label className="text-xs text-[var(--text-3)]">Filename</label>
+          <label className="text-xs-safe text-[var(--text-3)]">Filename</label>
           <div className="flex items-center gap-2 mt-1">
             <code className="flex-1 bg-white p-2 rounded text-sm font-mono border">
               {fileName}
@@ -480,7 +480,7 @@ function FilePreview({ apiKey, domain }: FilePreviewProps) {
 
         {/* Content */}
         <div>
-          <label className="text-xs text-[var(--text-3)]">File Content</label>
+          <label className="text-xs-safe text-[var(--text-3)]">File Content</label>
           <div className="flex items-center gap-2 mt-1">
             <code className="flex-1 bg-white p-2 rounded text-sm font-mono border break-all">
               {fileContent}
@@ -491,9 +491,9 @@ function FilePreview({ apiKey, domain }: FilePreviewProps) {
 
         {/* Verification URL */}
         <div>
-          <label className="text-xs text-[var(--text-3)]">Final URL</label>
+          <label className="text-xs-safe text-[var(--text-3)]">Final URL</label>
           <div className="flex items-center gap-2 mt-1">
-            <code className="flex-1 bg-white p-2 rounded text-xs font-mono border break-all text-[var(--text-3)]">
+            <code className="flex-1 bg-white p-2 rounded text-xs-safe font-mono border break-all text-[var(--text-3)]">
               {verificationUrl}
             </code>
             <CopyButton text={verificationUrl} label={t("copyUrl")} />

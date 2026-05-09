@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { CircuitBreaker, CircuitOpenError } from "../services/CircuitBreaker";
+import { createCircuitBreaker, CircuitOpenError, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import {
   ClassificationResponseSchema,
   type BusinessContext,
@@ -22,10 +22,9 @@ export class GeminiClassifier {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.circuit = new CircuitBreaker({
-      name: "gemini-classifier",
+    this.circuit = createCircuitBreaker("gemini-classifier", {
       failureThreshold: 3,
-      resetTimeout: 60000,
+      timeout: 60000,
     });
   }
 
@@ -34,7 +33,7 @@ export class GeminiClassifier {
     context: BusinessContext
   ): Promise<ClassificationItem[]> {
     if (!this.circuit.allowsRequest) {
-      throw new CircuitOpenError("gemini-classifier");
+      throw new CircuitOpenError("gemini-classifier", 0);
     }
 
     if (keywords.length > CLASSIFICATION_CONFIG.BATCH_SIZE) {

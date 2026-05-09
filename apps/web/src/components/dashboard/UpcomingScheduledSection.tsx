@@ -93,13 +93,13 @@ export function UpcomingScheduledSection({ items }: UpcomingScheduledSectionProp
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm truncate">{item.clientName}</span>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs-safe">
                   {getTypeLabel(item.type)}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground truncate">{item.title}</p>
             </div>
-            <span className={`text-xs whitespace-nowrap ${
+            <span className={`text-xs-safe whitespace-nowrap ${
               isUrgent(item.scheduledAt) ? "text-orange-600 font-medium" : "text-muted-foreground"
             }`}>
               {formatScheduledTime(item.scheduledAt)}
@@ -107,7 +107,7 @@ export function UpcomingScheduledSection({ items }: UpcomingScheduledSectionProp
           </div>
         ))}
         {items.length > 5 && (
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs-safe text-center text-muted-foreground">
             +{items.length - 5} more items
           </p>
         )}

@@ -201,7 +201,7 @@ export function RuleEditor({
             onChange={(e) => updateRule({ urlPattern: e.target.value })}
             placeholder="/products/*"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             Use glob patterns: * matches any, ** matches nested paths
           </p>
         </div>
@@ -259,7 +259,7 @@ export function RuleEditor({
                     placeholder="Field name"
                     className="w-32 h-8"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs-safe text-muted-foreground">
                     ({field.selectors.length} selector
                     {field.selectors.length !== 1 ? "s" : ""})
                   </span>
@@ -282,12 +282,12 @@ export function RuleEditor({
                   {/* Selectors */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs">CSS Selectors</Label>
+                      <Label className="text-xs-safe">CSS Selectors</Label>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => addSelector(fieldIndex)}
-                        className="h-6 text-xs"
+                        className="h-6 text-xs-safe"
                       >
                         <Plus className="h-3 w-3 mr-1" />
                         Fallback
@@ -295,7 +295,7 @@ export function RuleEditor({
                     </div>
                     {field.selectors.map((selector, selectorIndex) => (
                       <div key={selectorIndex} className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-16">
+                        <span className="text-xs-safe text-muted-foreground w-16">
                           {selectorIndex === 0 ? "Primary" : `Fallback ${selectorIndex}`}
                         </span>
                         <Input
@@ -323,7 +323,7 @@ export function RuleEditor({
                   {/* Type & Transform */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs">Type</Label>
+                      <Label className="text-xs-safe">Type</Label>
                       <Select
                         value={field.type}
                         onValueChange={(value) =>
@@ -346,7 +346,7 @@ export function RuleEditor({
                     </div>
                     {field.type === "attribute" && (
                       <div className="space-y-1">
-                        <Label className="text-xs">Attribute</Label>
+                        <Label className="text-xs-safe">Attribute</Label>
                         <Input
                           value={field.attribute || ""}
                           onChange={(e) =>
@@ -358,7 +358,7 @@ export function RuleEditor({
                       </div>
                     )}
                     <div className="space-y-1">
-                      <Label className="text-xs">Transform</Label>
+                      <Label className="text-xs-safe">Transform</Label>
                       <Select
                         value={field.transform || "none"}
                         onValueChange={(value) =>

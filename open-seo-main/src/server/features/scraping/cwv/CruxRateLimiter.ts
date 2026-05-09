@@ -163,8 +163,8 @@ export class CruxRateLimiter {
 
       // Update Prometheus metrics
       const metrics = getMetricsCollector();
-      metrics.incrementCounter("scraping_crux_requests_total", {});
-      metrics.setGauge("scraping_crux_quota_remaining", this.config.dailyLimit - newCount);
+      metrics.incrementCounter("osm_scraping_crux_requests_total", {});
+      metrics.setGauge("osm_scraping_crux_quota_remaining", this.config.dailyLimit - newCount);
 
       // Check thresholds and send alerts
       await this.checkThresholds(newCount);
@@ -284,7 +284,7 @@ export class CruxRateLimiter {
 
       // Update Prometheus metric
       const metrics = getMetricsCollector();
-      metrics.incrementCounter("scraping_crux_alerts_total", { level });
+      metrics.incrementCounter("osm_scraping_crux_alerts_total", { level });
     }
   }
 

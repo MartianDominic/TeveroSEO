@@ -122,7 +122,7 @@ export function ColorPicker({
           onClick={() => colorInputRef.current?.click()}
           disabled={disabled}
           className={`
-            w-10 h-10 rounded-md border border-border shadow-sm
+            w-10 h-10 rounded-md border border-border shadow-[var(--shadow-card)]
             transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring
             ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
           `}
@@ -153,7 +153,7 @@ export function ColorPicker({
 
       {/* Validation error */}
       {!isValid && (
-        <p className="text-xs text-destructive">
+        <p className="text-xs-safe text-destructive">
           Invalid hex color (use format #RRGGBB)
         </p>
       )}

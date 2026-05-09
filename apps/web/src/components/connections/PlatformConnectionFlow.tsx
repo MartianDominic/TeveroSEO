@@ -158,7 +158,7 @@ export function PlatformConnectionFlow({
                   <div className="text-left">
                     <div className="font-medium">{p.name}</div>
                     {p.services && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs-safe text-muted-foreground">
                         {p.services.join(", ")}
                       </div>
                     )}
@@ -251,7 +251,7 @@ export function PlatformConnectionFlow({
                 href="https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline mt-1 inline-block"
+                className="text-xs-safe text-primary hover:underline mt-1 inline-block"
               >
                 How to create an Application Password
               </a>

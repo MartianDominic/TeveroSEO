@@ -77,7 +77,7 @@ export class ChartErrorBoundary extends Component<
             <p className="text-sm font-medium text-foreground">
               Failed to render chart
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs-safe text-muted-foreground">
               {error.message || 'An unexpected error occurred'}
             </p>
           </div>

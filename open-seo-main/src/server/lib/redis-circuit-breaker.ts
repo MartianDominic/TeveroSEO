@@ -16,7 +16,7 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "redis-circuit-breaker" });
 
-export type CircuitState = "closed" | "open" | "half_open";
+export type CircuitState = "closed" | "open" | "half-open";
 
 export interface CircuitBreakerState {
   state: CircuitState;
@@ -100,7 +100,7 @@ export class RedisCircuitBreaker {
         return true;
       }
 
-      // half_open state allows requests through for testing
+      // half-open state allows requests through for testing
       return false;
     } catch (error) {
       // If Redis is unavailable, fall back to in-memory state
@@ -136,7 +136,7 @@ export class RedisCircuitBreaker {
     try {
       const state = await redis.hget(this.key, "state");
 
-      if (state === "half_open") {
+      if (state === "half-open") {
         log.info("Circuit breaker closed after successful test request", { name: this.key });
       }
 
@@ -228,7 +228,7 @@ export class RedisCircuitBreaker {
    * Set circuit to half-open state.
    */
   private async setHalfOpen(): Promise<void> {
-    await redis.hset(this.key, "state", "half_open");
+    await redis.hset(this.key, "state", "half-open");
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -248,14 +248,14 @@ export class RedisCircuitBreaker {
       const elapsed = Date.now() - state.lastFailureTime;
       if (elapsed > this.recoveryTimeMs) {
         // Transition to half-open
-        state.state = "half_open";
+        state.state = "half-open";
         log.info("Circuit breaker entering half-open state (in-memory)", { name: this.key });
         return false;
       }
       return true;
     }
 
-    // half_open state allows requests through for testing
+    // half-open state allows requests through for testing
     return false;
   }
 

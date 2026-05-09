@@ -156,7 +156,7 @@ export const CaseStudySection: FC<CaseStudySectionProps> = ({
               )}
             >
               <div className="space-y-1">
-                <Label className="text-xs">{t.metricLabel}</Label>
+                <Label className="text-xs-safe">{t.metricLabel}</Label>
                 <Input
                   type="text"
                   value={metric.label}
@@ -169,7 +169,7 @@ export const CaseStudySection: FC<CaseStudySectionProps> = ({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t.metricValue}</Label>
+                <Label className="text-xs-safe">{t.metricValue}</Label>
                 <Input
                   type="text"
                   value={metric.value}
@@ -182,7 +182,7 @@ export const CaseStudySection: FC<CaseStudySectionProps> = ({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">{t.metricChange}</Label>
+                <Label className="text-xs-safe">{t.metricChange}</Label>
                 <Input
                   type="text"
                   value={metric.change || ""}

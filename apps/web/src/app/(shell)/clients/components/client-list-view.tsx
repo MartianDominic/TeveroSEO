@@ -164,7 +164,7 @@ export function ClientListView({ initialClients }: ClientListViewProps) {
                   <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                 </div>
                 {client.website_url && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-xs-safe text-muted-foreground">
                     <Globe className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">{client.website_url}</span>
                   </div>
@@ -174,7 +174,7 @@ export function ClientListView({ initialClients }: ClientListViewProps) {
                     status={cmsType ?? "draft"}
                     label={getCmsLabel(cmsType)}
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs-safe text-muted-foreground">
                     {lastPublishedAt
                       ? `Published ${new Date(lastPublishedAt).toLocaleDateString()}`
                       : "Never published"}

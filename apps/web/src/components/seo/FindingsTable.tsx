@@ -193,14 +193,14 @@ export function FindingsTable({ findings, onExport }: FindingsTableProps) {
                         <div className="w-4" />
                       )}
                       <Badge
-                        className={`text-xs ${SEVERITY_COLORS[f.severity] || ""}`}
+                        className={`text-xs-safe ${SEVERITY_COLORS[f.severity] || ""}`}
                       >
                         {f.severity}
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs-safe">
                         T{f.tier}
                       </Badge>
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs-safe">
                         {f.category}
                       </Badge>
                       <span
@@ -209,18 +209,18 @@ export function FindingsTable({ findings, onExport }: FindingsTableProps) {
                         {f.message}
                       </span>
                       {f.autoEditable && (
-                        <Badge variant="outline" className="text-xs gap-1">
+                        <Badge variant="outline" className="text-xs-safe gap-1">
                           <Wrench className="h-3 w-3" />
                           Auto-fix
                         </Badge>
                       )}
-                      <span className="text-xs font-mono text-muted-foreground">
+                      <span className="text-xs-safe font-mono text-muted-foreground">
                         {f.checkId}
                       </span>
                     </div>
                     {isExpanded && f.details && (
                       <div className="px-10 py-3 bg-muted/30 text-sm">
-                        <pre className="whitespace-pre-wrap text-xs">
+                        <pre className="whitespace-pre-wrap text-xs-safe">
                           {JSON.stringify(f.details, null, 2)}
                         </pre>
                       </div>

@@ -210,8 +210,12 @@ function secureCompareHex(actual: string, expected: string): boolean {
     }
 
     return timingSafeEqual(actualBuffer, expectedBuffer);
-  } catch {
-    // Any error in comparison should fail closed
+  } catch (error) {
+    // Any error in comparison should fail closed - log for security audit
+    log.warn("Hex comparison failed during internal auth", {
+      error: error instanceof Error ? error.message : String(error),
+      reason: "buffer_comparison_error",
+    });
     return false;
   }
 }
@@ -236,8 +240,12 @@ function secureCompareString(actual: string, expected: string): boolean {
     }
 
     return timingSafeEqual(actualBuffer, expectedBuffer);
-  } catch {
-    // Any error in comparison should fail closed
+  } catch (error) {
+    // Any error in comparison should fail closed - log for security audit
+    log.warn("String comparison failed during internal auth", {
+      error: error instanceof Error ? error.message : String(error),
+      reason: "buffer_comparison_error",
+    });
     return false;
   }
 }

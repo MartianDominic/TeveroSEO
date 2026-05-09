@@ -48,7 +48,7 @@ export function ChartTooltipContent({ active, payload, label }: ChartTooltipCont
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="bg-popover text-popover-foreground border border-border rounded-md shadow-sm p-2 text-xs">
+    <div className="bg-popover text-popover-foreground border border-border rounded-md shadow-[var(--shadow-tooltip)] p-2 text-xs">
       {label && <p className="font-medium mb-1">{label}</p>}
       {payload.map((item, index) => (
         <p key={index} className="text-muted-foreground">

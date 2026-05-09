@@ -79,12 +79,12 @@ export function VoiceProfileSummary({ profile }: Props) {
             </span>
           </div>
           {confidenceScore > 0 && confidenceScore < 70 && (
-            <p className="text-xs text-amber-600 mt-1">
+            <p className="text-xs-safe text-amber-600 mt-1">
               Below 70% - review recommended
             </p>
           )}
           {confidenceScore === 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs-safe text-muted-foreground mt-1">
               Not analyzed yet
             </p>
           )}
@@ -122,7 +122,7 @@ export function VoiceProfileSummary({ profile }: Props) {
         {profile.vocabularyPatterns && (
           <div className="text-sm">
             <span className="text-muted-foreground block mb-1">Vocabulary</span>
-            <div className="flex gap-2 text-xs">
+            <div className="flex gap-2 text-xs-safe">
               <Badge variant="outline" className="font-normal">
                 {profile.vocabularyPatterns.preferred?.length || 0} preferred
               </Badge>
@@ -134,7 +134,7 @@ export function VoiceProfileSummary({ profile }: Props) {
         )}
 
         {/* Last analysis */}
-        <div className="pt-2 border-t text-xs text-muted-foreground">
+        <div className="pt-2 border-t text-xs-safe text-muted-foreground">
           {profile.analyzedAt ? (
             <span>
               Last analyzed{" "}

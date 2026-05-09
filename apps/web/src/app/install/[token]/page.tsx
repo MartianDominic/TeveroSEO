@@ -129,7 +129,7 @@ export default async function InstallPage({ params }: PageProps) {
           <h2 className="text-xl font-semibold mb-4">Quick Install</h2>
           <div className="bg-card border rounded-lg p-6">
             <p className="text-sm text-muted-foreground mb-4">
-              Add this line to the <code className="bg-muted px-1 py-0.5 rounded text-xs">&lt;head&gt;</code> of your website:
+              Add this line to the <code className="bg-muted px-1 py-0.5 rounded text-xs-safe">&lt;head&gt;</code> of your website:
             </p>
             <div className="relative">
               <pre className="bg-slate-900 text-slate-100 p-4 rounded-md text-sm overflow-x-auto">
@@ -137,7 +137,7 @@ export default async function InstallPage({ params }: PageProps) {
               </pre>
               <CopyButton text={snippet} />
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs-safe text-muted-foreground mt-3">
               This tiny helper (less than 5KB) tracks visits and helps improve SEO.
               It cannot change anything without approval.
             </p>
@@ -218,7 +218,7 @@ export default async function InstallPage({ params }: PageProps) {
 function CopyButton({ text }: { text: string }) {
   return (
     <button
-      className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-100 rounded transition-colors"
+      className="absolute top-2 right-2 px-3 py-1.5 text-xs-safe bg-slate-700 hover:bg-slate-600 text-slate-100 rounded transition-colors"
       onClick={() => {
         if (typeof navigator !== "undefined") {
           navigator.clipboard.writeText(text);

@@ -362,8 +362,12 @@ export class CamoufoxPool extends EventEmitter {
     try {
       await handle.page.close();
       await handle.context.close();
-    } catch {
-      // Page already closed
+    } catch (error) {
+      // Page/context already closed - expected during cleanup, log at debug level
+      camoufoxLogger.debug(
+        { instanceId: handle.instanceId, error: error instanceof Error ? error.message : String(error) },
+        "Page/context already closed during release"
+      );
     }
 
     // Update instance state
@@ -506,21 +510,33 @@ export class CamoufoxPool extends EventEmitter {
       for (const context of contexts) {
         try {
           await Promise.race([context.close(), this.sleep(2000)]);
-        } catch {
-          // Context close failed
+        } catch (error) {
+          // Context close failed - may already be closed or unresponsive
+          camoufoxLogger.debug(
+            { instanceId: instance.id, error: error instanceof Error ? error.message : String(error) },
+            "Context close failed during instance destruction"
+          );
         }
       }
 
       // Close browser
       await Promise.race([instance.browser.close(), this.sleep(5000)]);
-    } catch {
-      // Force kill
+    } catch (error) {
+      // Browser close failed - force kill the process
+      camoufoxLogger.warn(
+        { instanceId: instance.id, error: error instanceof Error ? error.message : String(error) },
+        "Browser close failed, force killing process"
+      );
       const pid = instance.browser.process()?.pid;
       if (pid) {
         try {
           process.kill(pid, "SIGKILL");
-        } catch {
-          // Process already dead
+        } catch (killError) {
+          // Process already dead - this is expected in some cleanup scenarios
+          camoufoxLogger.debug(
+            { instanceId: instance.id, pid, error: killError instanceof Error ? killError.message : String(killError) },
+            "Process already dead during force kill"
+          );
         }
       }
     }
@@ -677,9 +693,18 @@ export class CamoufoxPool extends EventEmitter {
 
       instance.healthStatus = "healthy";
       instance.lastHealthCheck = new Date();
-    } catch {
+    } catch (error) {
       instance.healthStatus = "unhealthy";
       instance.consecutiveFailures++;
+
+      camoufoxLogger.warn(
+        {
+          instanceId: instance.id,
+          consecutiveFailures: instance.consecutiveFailures,
+          error: error instanceof Error ? error.message : String(error)
+        },
+        "Health check failed for instance"
+      );
 
       if (instance.consecutiveFailures >= this.config.maxConsecutiveFailures) {
         this.scheduleRecycle(instance);
@@ -736,12 +761,20 @@ export class CamoufoxPool extends EventEmitter {
               process.kill(parseInt(pid, 10), "SIGKILL");
               camoufoxLogger.info({ processName: name, pid }, "Killed orphan process");
             }
-          } catch {
-            // Process already dead
+          } catch (error) {
+            // Process already dead or inaccessible - expected during cleanup
+            camoufoxLogger.debug(
+              { processName: name, pid, error: error instanceof Error ? error.message : String(error) },
+              "Orphan process already dead or inaccessible"
+            );
           }
         }
-      } catch {
-        // pgrep not available
+      } catch (error) {
+        // pgrep/ps not available on this system - log once at debug level
+        camoufoxLogger.debug(
+          { processName: name, error: error instanceof Error ? error.message : String(error) },
+          "Unable to check for orphan processes (pgrep/ps unavailable)"
+        );
       }
     }
   }

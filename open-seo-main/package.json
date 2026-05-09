@@ -63,6 +63,7 @@
     "@tanstack/react-start": "^1.167.16",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.24",
+    "@tevero/shared-cache": "workspace:*",
     "@tevero/types": "workspace:*",
     "@tevero/ui": "workspace:*",
     "@tevero/utils": "workspace:*",

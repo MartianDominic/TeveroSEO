@@ -14,6 +14,21 @@ import type { NextRequest } from "next/server";
 
 import { logger } from '@/lib/logger';
 import { redis } from "@/lib/redis/client";
+
+// --- Jitter Helper ---
+
+/**
+ * Add jitter to a time value to prevent thundering herd on limit reset.
+ * Uses 10-25% jitter range.
+ *
+ * @param baseTime - Base time in milliseconds
+ * @returns Time with jitter applied
+ */
+function addJitter(baseTime: number): number {
+  const jitterFactor = 0.1 + Math.random() * 0.15; // 10-25%
+  return Math.round(baseTime * (1 + jitterFactor));
+}
+
 // --- Types ---
 
 export interface AuthRateLimitResult {
@@ -99,46 +114,58 @@ export function getClientIp(request: NextRequest): string {
 
 // --- Auth Rate Limiters ---
 
+// Import centralized rate limit configuration from @tevero/utils
+// This is the single source of truth for all rate limit values
+import { AUTH_RATE_LIMITS } from "@tevero/utils";
+
 /**
  * Pre-configured rate limiters for different auth operations.
+ * Values are imported from @tevero/utils for consistency across the monorepo.
+ *
+ * STANDARDIZED: All auth endpoints now use consistent values:
+ * - SIGNIN: 10 requests per 60 seconds (was 5/15min)
+ * - SIGNUP: 5 requests per 5 minutes
+ * - PASSWORD_RESET: 3 requests per 5 minutes
+ * - EMAIL_VERIFY: 5 requests per 5 minutes
+ * - DEFAULT: 10 requests per 60 seconds
  */
 export const AUTH_LIMITS = {
-  // Sign-in: 5 attempts per 15 minutes per IP
-  // Allows for typos but blocks brute force
+  // Sign-in: 10 attempts per minute per IP
+  // Balanced to allow typo corrections while blocking brute force
   SIGNIN: {
-    maxRequests: 5,
-    windowSeconds: 15 * 60, // 15 minutes
-    prefix: "ratelimit:auth:signin",
+    maxRequests: AUTH_RATE_LIMITS.SIGNIN.requests,
+    windowSeconds: Math.floor(AUTH_RATE_LIMITS.SIGNIN.windowMs / 1000),
+    prefix: AUTH_RATE_LIMITS.SIGNIN.keyPrefix.replace(/:$/, ""),
   },
 
-  // Sign-up: 5 attempts per 15 minutes per IP
+  // Sign-up: 5 attempts per 5 minutes per IP
   // Prevents mass account creation
   SIGNUP: {
-    maxRequests: 5,
-    windowSeconds: 15 * 60, // 15 minutes
-    prefix: "ratelimit:auth:signup",
+    maxRequests: AUTH_RATE_LIMITS.SIGNUP.requests,
+    windowSeconds: Math.floor(AUTH_RATE_LIMITS.SIGNUP.windowMs / 1000),
+    prefix: AUTH_RATE_LIMITS.SIGNUP.keyPrefix.replace(/:$/, ""),
   },
 
-  // Password reset: 3 attempts per hour per IP
+  // Password reset: 3 attempts per 5 minutes per IP
   // Very strict to prevent email bombing
   PASSWORD_RESET: {
-    maxRequests: 3,
-    windowSeconds: 60 * 60, // 1 hour
-    prefix: "ratelimit:auth:password-reset",
+    maxRequests: AUTH_RATE_LIMITS.PASSWORD_RESET.requests,
+    windowSeconds: Math.floor(AUTH_RATE_LIMITS.PASSWORD_RESET.windowMs / 1000),
+    prefix: AUTH_RATE_LIMITS.PASSWORD_RESET.keyPrefix.replace(/:$/, ""),
   },
 
-  // Email verification: 5 attempts per 15 minutes
+  // Email verification: 5 attempts per 5 minutes
   EMAIL_VERIFY: {
-    maxRequests: 5,
-    windowSeconds: 15 * 60, // 15 minutes
-    prefix: "ratelimit:auth:email-verify",
+    maxRequests: AUTH_RATE_LIMITS.EMAIL_VERIFY.requests,
+    windowSeconds: Math.floor(AUTH_RATE_LIMITS.EMAIL_VERIFY.windowMs / 1000),
+    prefix: AUTH_RATE_LIMITS.EMAIL_VERIFY.keyPrefix.replace(/:$/, ""),
   },
 
-  // Generic auth endpoint fallback
+  // Generic auth endpoint fallback: 10 requests per minute
   DEFAULT: {
-    maxRequests: 10,
-    windowSeconds: 60, // 1 minute
-    prefix: "ratelimit:auth:default",
+    maxRequests: AUTH_RATE_LIMITS.DEFAULT.requests,
+    windowSeconds: Math.floor(AUTH_RATE_LIMITS.DEFAULT.windowMs / 1000),
+    prefix: AUTH_RATE_LIMITS.DEFAULT.keyPrefix.replace(/:$/, ""),
   },
 } as const;
 
@@ -175,7 +202,9 @@ async function checkLimit(
       // Get oldest entry to calculate reset time
       const oldest = await redis.zrange(key, 0, 0, "WITHSCORES");
       const oldestTimestamp = oldest?.[1] ? parseInt(oldest[1], 10) : now;
-      const resetAt = oldestTimestamp + config.windowSeconds * 1000;
+      const baseResetAt = oldestTimestamp + config.windowSeconds * 1000;
+      // Add jitter to prevent thundering herd on limit reset
+      const resetAt = now + addJitter(baseResetAt - now);
 
       return {
         success: false,
@@ -202,10 +231,11 @@ async function checkLimit(
     // This is intentionally different from other rate limiters
     if (process.env.NODE_ENV === "production") {
       logger.error("[auth-limiter] Redis error on auth endpoint - BLOCKING request for safety", error instanceof Error ? error : { error: String(error) });
+      // Add jitter to prevent thundering herd on recovery
       return {
         success: false,
         remaining: 0,
-        reset: now + 60000, // Try again in 1 minute
+        reset: now + addJitter(60000), // Try again in ~1 minute with jitter
         limit: config.maxRequests,
       };
     }

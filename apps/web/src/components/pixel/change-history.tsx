@@ -152,7 +152,7 @@ function TruncatedValue({ value, maxLength = 50 }: { value: string; maxLength?: 
 
   return (
     <span
-      className="font-mono text-xs"
+      className="font-mono text-xs-safe"
       title={value.length > maxLength ? value : undefined}
     >
       {truncated}
@@ -314,7 +314,7 @@ export function ChangeHistory({
                       {change.oldValue ? (
                         <TruncatedValue value={change.oldValue} />
                       ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
+                        <span className="text-muted-foreground text-xs-safe">-</span>
                       )}
                     </TableCell>
                     <TableCell>

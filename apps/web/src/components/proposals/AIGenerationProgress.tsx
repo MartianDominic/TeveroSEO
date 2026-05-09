@@ -223,7 +223,7 @@ export const AIGenerationProgress: FC<AIGenerationProgressProps> = ({
                     {getSectionLabel(section.type)}
                   </span>
                   {section.status === "error" && section.errorMessage && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 line-clamp-1">
+                    <p className="text-xs-safe text-red-600 dark:text-red-400 mt-0.5 line-clamp-1">
                       {section.errorMessage}
                     </p>
                   )}

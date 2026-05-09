@@ -57,7 +57,7 @@ export function ChecklistProgress({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {categories.map((cat) => (
           <div key={cat.category} className="text-center">
-            <span className="text-xs text-muted-foreground capitalize">
+            <span className="text-xs-safe text-muted-foreground capitalize">
               {cat.category}
             </span>
             <p className="text-sm font-medium text-foreground">

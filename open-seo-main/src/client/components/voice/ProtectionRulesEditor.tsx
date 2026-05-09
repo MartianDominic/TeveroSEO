@@ -354,7 +354,7 @@ export function ProtectionRulesEditor({ profileId }: Props) {
                       value={newTarget}
                       onChange={(e) => setNewTarget(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs-safe text-muted-foreground">
                       {RULE_TYPE_LABELS[newRuleType].hint}
                     </p>
                   </div>

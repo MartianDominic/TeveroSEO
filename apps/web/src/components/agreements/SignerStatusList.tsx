@@ -115,7 +115,7 @@ export function SignerStatusList({
                   </p>
                   <Badge
                     variant="secondary"
-                    className={cn("text-xs", config.bgColor, config.color)}
+                    className={cn("text-xs-safe", config.bgColor, config.color)}
                   >
                     {locale === "lt" ? config.labelLt : config.label}
                   </Badge>
@@ -125,24 +125,24 @@ export function SignerStatusList({
                   {signer.email}
                 </p>
 
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   {signer.role}
                 </p>
 
                 {signer.signedAt && (
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs-safe text-green-600 mt-1">
                     {locale === "lt" ? "Pasirasytas" : "Signed"}: {formatDate(signer.signedAt)}
                   </p>
                 )}
 
                 {!signer.signedAt && signer.viewedAt && (
-                  <p className="text-xs text-amber-600 mt-1">
+                  <p className="text-xs-safe text-amber-600 mt-1">
                     {locale === "lt" ? "Perziureta" : "Viewed"}: {formatDate(signer.viewedAt)}
                   </p>
                 )}
 
                 {!signer.signedAt && !signer.viewedAt && signer.sentAt && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs-safe text-muted-foreground mt-1">
                     {locale === "lt" ? "Issiusta" : "Sent"}: {formatDate(signer.sentAt)}
                   </p>
                 )}

@@ -39,7 +39,7 @@ export function DomainKeywordsTable({
 }: Props) {
   return (
     <div className="overflow-x-auto">
-      <div className="mb-2 text-xs text-muted-foreground">
+      <div className="mb-2 text-xs-safe text-muted-foreground">
         {selectedKeywords.size > 0
           ? `${selectedKeywords.size} selected`
           : "Select keywords to save"}

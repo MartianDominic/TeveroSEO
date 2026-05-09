@@ -96,6 +96,23 @@ export interface RateLimitMetrics {
 }
 
 // =============================================================================
+// Jitter Helper
+// =============================================================================
+
+/**
+ * Add jitter to a time value to prevent thundering herd on limit reset.
+ * Uses 10-25% jitter range (0.1 to 0.25 of base value).
+ *
+ * @param baseTime - Base time in milliseconds
+ * @returns Time with jitter applied
+ */
+function addJitter(baseTime: number): number {
+  // Add 10-25% jitter to spread out retries
+  const jitterFactor = 0.1 + Math.random() * 0.15; // 10-25%
+  return Math.round(baseTime * (1 + jitterFactor));
+}
+
+// =============================================================================
 // In-Memory Fallback Rate Limiter
 // =============================================================================
 
@@ -152,14 +169,16 @@ class InMemoryFallbackLimiter {
 
     // Check if over limit
     if (entry.count >= limit) {
-      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      const baseRetryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      // Add jitter to prevent thundering herd on limit reset
+      const retryAfterWithJitter = Math.max(1, Math.ceil(addJitter(baseRetryAfter * 1000) / 1000));
       return {
         allowed: false,
         remaining: 0,
-        resetAt: new Date(entry.resetAt),
+        resetAt: new Date(now + addJitter(retryAfterWithJitter * 1000)),
         limit,
         current: entry.count,
-        retryAfter: Math.max(1, retryAfter),
+        retryAfter: retryAfterWithJitter,
         fromFallback: true,
       };
     }
@@ -409,22 +428,24 @@ class RateLimitServiceImpl {
           retryAfter = Math.ceil((oldestTimestamp + windowMs - now) / 1000);
           retryAfter = Math.max(1, Math.min(retryAfter, window));
         }
+        // Add jitter to prevent thundering herd on limit reset
+        const retryAfterWithJitter = Math.ceil(addJitter(retryAfter * 1000) / 1000);
 
         log.warn("Rate limit exceeded", {
           key: redisKey,
           current: currentCount,
           limit: maxLimit,
-          retryAfter,
+          retryAfter: retryAfterWithJitter,
           tier,
         });
 
         return {
           allowed: false,
           remaining: 0,
-          resetAt: new Date(now + retryAfter * 1000),
+          resetAt: new Date(now + addJitter(retryAfterWithJitter * 1000)),
           limit: maxLimit,
           current: currentCount,
-          retryAfter,
+          retryAfter: retryAfterWithJitter,
           fromFallback: false,
         };
       }
@@ -685,184 +706,176 @@ export function createRateLimiter(config: {
 // Pre-configured Rate Limiters
 // =============================================================================
 
+// Import centralized rate limit configuration from @tevero/utils
+// This is the single source of truth for all rate limit values
+import {
+  AUTH_RATE_LIMITS,
+  API_RATE_LIMITS,
+  SEO_RATE_LIMITS,
+  CONTENT_RATE_LIMITS,
+  ANALYTICS_RATE_LIMITS,
+  PORTAL_RATE_LIMITS,
+  SCRAPING_ADMIN_RATE_LIMITS,
+  toSecondsConfig,
+} from "@tevero/utils";
+
 /**
  * Rate limit configurations for common use cases.
+ * Values are imported from @tevero/utils for consistency across the monorepo.
  */
 export const RATE_LIMIT_CONFIGS = {
   // GSC Bridge - 100 calls/day/client (SEC-002 fix)
   GSC_BRIDGE: {
-    keyPrefix: "gsc-bridge",
-    limit: 100,
-    window: 86400, // 24 hours
-    tier: "standard" as RateLimitTier,
+    keyPrefix: ANALYTICS_RATE_LIMITS.GSC_BRIDGE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(ANALYTICS_RATE_LIMITS.GSC_BRIDGE),
+    tier: ANALYTICS_RATE_LIMITS.GSC_BRIDGE.tier,
   },
 
   // Audit run checks - 10/min (resource intensive)
   AUDIT_RUN_CHECKS: {
-    keyPrefix: "audit:run-checks",
-    limit: 10,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: SEO_RATE_LIMITS.AUDIT_RUN_CHECKS.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SEO_RATE_LIMITS.AUDIT_RUN_CHECKS),
+    tier: SEO_RATE_LIMITS.AUDIT_RUN_CHECKS.tier,
   },
 
   // Content validation - 10/min
   CONTENT_VALIDATE: {
-    keyPrefix: "seo:content:validate",
-    limit: 10,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: SEO_RATE_LIMITS.CONTENT_VALIDATE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SEO_RATE_LIMITS.CONTENT_VALIDATE),
+    tier: SEO_RATE_LIMITS.CONTENT_VALIDATE.tier,
   },
 
   // Link suggestions - 30/min (lighter operation)
   LINK_SUGGESTIONS: {
-    keyPrefix: "seo:links:suggestions",
-    limit: 30,
-    window: 60,
-    tier: "relaxed" as RateLimitTier,
+    keyPrefix: SEO_RATE_LIMITS.LINK_SUGGESTIONS.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SEO_RATE_LIMITS.LINK_SUGGESTIONS),
+    tier: SEO_RATE_LIMITS.LINK_SUGGESTIONS.tier,
   },
 
   // Authentication - 10/min (strict)
   AUTH: {
-    keyPrefix: "auth",
-    limit: 10,
-    window: 60,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: AUTH_RATE_LIMITS.DEFAULT.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(AUTH_RATE_LIMITS.DEFAULT),
+    tier: AUTH_RATE_LIMITS.DEFAULT.tier,
   },
 
   // Password reset - 3/5min (very strict)
   PASSWORD_RESET: {
-    keyPrefix: "auth:password-reset",
-    limit: 3,
-    window: 300,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: AUTH_RATE_LIMITS.PASSWORD_RESET.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(AUTH_RATE_LIMITS.PASSWORD_RESET),
+    tier: AUTH_RATE_LIMITS.PASSWORD_RESET.tier,
   },
 
   // Signup - 5/5min (prevent enumeration)
   SIGNUP: {
-    keyPrefix: "auth:signup",
-    limit: 5,
-    window: 300,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: AUTH_RATE_LIMITS.SIGNUP.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(AUTH_RATE_LIMITS.SIGNUP),
+    tier: AUTH_RATE_LIMITS.SIGNUP.tier,
   },
 
   // Content generation - 20/min (AI operations)
   CONTENT_GENERATE: {
-    keyPrefix: "content:generate",
-    limit: 20,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: CONTENT_RATE_LIMITS.GENERATE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(CONTENT_RATE_LIMITS.GENERATE),
+    tier: CONTENT_RATE_LIMITS.GENERATE.tier,
   },
 
   // Brief generation - 10/min (AI operations)
   BRIEF_GENERATE: {
-    keyPrefix: "brief:generate",
-    limit: 10,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: CONTENT_RATE_LIMITS.BRIEF_GENERATE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(CONTENT_RATE_LIMITS.BRIEF_GENERATE),
+    tier: CONTENT_RATE_LIMITS.BRIEF_GENERATE.tier,
   },
 
   // Keyword enrichment - 30/min (external API)
   KEYWORD_ENRICH: {
-    keyPrefix: "keyword:enrich",
-    limit: 30,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: SEO_RATE_LIMITS.KEYWORD_ENRICH.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SEO_RATE_LIMITS.KEYWORD_ENRICH),
+    tier: SEO_RATE_LIMITS.KEYWORD_ENRICH.tier,
   },
 
   // SERP analysis - 20/min (external API)
   SERP_ANALYZE: {
-    keyPrefix: "serp:analyze",
-    limit: 20,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: SEO_RATE_LIMITS.SERP_ANALYZE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SEO_RATE_LIMITS.SERP_ANALYZE),
+    tier: SEO_RATE_LIMITS.SERP_ANALYZE.tier,
   },
 
   // Admin endpoints - 10/min (strict)
   ADMIN: {
-    keyPrefix: "admin",
-    limit: 10,
-    window: 60,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: API_RATE_LIMITS.ADMIN.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(API_RATE_LIMITS.ADMIN),
+    tier: API_RATE_LIMITS.ADMIN.tier,
   },
 
   // Portal standard - 60/min
   PORTAL_STANDARD: {
-    keyPrefix: "portal:standard",
-    limit: 60,
-    window: 60,
-    tier: "relaxed" as RateLimitTier,
+    keyPrefix: PORTAL_RATE_LIMITS.STANDARD.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(PORTAL_RATE_LIMITS.STANDARD),
+    tier: PORTAL_RATE_LIMITS.STANDARD.tier,
   },
 
   // Portal expensive - 30/min
   PORTAL_EXPENSIVE: {
-    keyPrefix: "portal:expensive",
-    limit: 30,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: PORTAL_RATE_LIMITS.EXPENSIVE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(PORTAL_RATE_LIMITS.EXPENSIVE),
+    tier: PORTAL_RATE_LIMITS.EXPENSIVE.tier,
   },
 
   // Portal export - 5/hour
   PORTAL_EXPORT: {
-    keyPrefix: "portal:export",
-    limit: 5,
-    window: 3600,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: PORTAL_RATE_LIMITS.EXPORT.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(PORTAL_RATE_LIMITS.EXPORT),
+    tier: PORTAL_RATE_LIMITS.EXPORT.tier,
   },
 
   // Analytics standard - 60/min
   ANALYTICS_STANDARD: {
-    keyPrefix: "analytics:standard",
-    limit: 60,
-    window: 60,
-    tier: "relaxed" as RateLimitTier,
+    keyPrefix: ANALYTICS_RATE_LIMITS.STANDARD.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(ANALYTICS_RATE_LIMITS.STANDARD),
+    tier: ANALYTICS_RATE_LIMITS.STANDARD.tier,
   },
 
   // Analytics expensive - 30/min
   ANALYTICS_EXPENSIVE: {
-    keyPrefix: "analytics:expensive",
-    limit: 30,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: ANALYTICS_RATE_LIMITS.EXPENSIVE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(ANALYTICS_RATE_LIMITS.EXPENSIVE),
+    tier: ANALYTICS_RATE_LIMITS.EXPENSIVE.tier,
   },
 
   // Analytics sync - 5/hour (prevent quota exhaustion)
   ANALYTICS_SYNC: {
-    keyPrefix: "analytics:sync",
-    limit: 5,
-    window: 3600,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: ANALYTICS_RATE_LIMITS.SYNC.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(ANALYTICS_RATE_LIMITS.SYNC),
+    tier: ANALYTICS_RATE_LIMITS.SYNC.tier,
   },
 
   // Scraping critical ops - 2/min
   SCRAPING_CRITICAL: {
-    keyPrefix: "scraping:admin:critical",
-    limit: 2,
-    window: 60,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: SCRAPING_ADMIN_RATE_LIMITS.CRITICAL.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SCRAPING_ADMIN_RATE_LIMITS.CRITICAL),
+    tier: SCRAPING_ADMIN_RATE_LIMITS.CRITICAL.tier,
   },
 
   // Scraping state change - 5/min
   SCRAPING_STATE_CHANGE: {
-    keyPrefix: "scraping:admin:state",
-    limit: 5,
-    window: 60,
-    tier: "strict" as RateLimitTier,
+    keyPrefix: SCRAPING_ADMIN_RATE_LIMITS.STATE_CHANGE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SCRAPING_ADMIN_RATE_LIMITS.STATE_CHANGE),
+    tier: SCRAPING_ADMIN_RATE_LIMITS.STATE_CHANGE.tier,
   },
 
   // Scraping resource intensive - 10/min
   SCRAPING_RESOURCE: {
-    keyPrefix: "scraping:admin:resource",
-    limit: 10,
-    window: 60,
-    tier: "standard" as RateLimitTier,
+    keyPrefix: SCRAPING_ADMIN_RATE_LIMITS.RESOURCE.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(SCRAPING_ADMIN_RATE_LIMITS.RESOURCE),
+    tier: SCRAPING_ADMIN_RATE_LIMITS.RESOURCE.tier,
   },
 
-  // Default fallback - 60/min
+  // Default fallback - 100/min (from API_RATE_LIMITS.DEFAULT)
   DEFAULT: {
-    keyPrefix: "default",
-    limit: 60,
-    window: 60,
-    tier: "relaxed" as RateLimitTier,
+    keyPrefix: API_RATE_LIMITS.DEFAULT.keyPrefix.replace("ratelimit:", ""),
+    ...toSecondsConfig(API_RATE_LIMITS.DEFAULT),
+    tier: API_RATE_LIMITS.DEFAULT.tier,
   },
 } as const;
 

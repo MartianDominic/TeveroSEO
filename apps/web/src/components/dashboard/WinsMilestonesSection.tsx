@@ -88,17 +88,17 @@ export function WinsMilestonesSection({ wins }: WinsMilestonesSectionProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium truncate">{win.clientName}</span>
-                  <Badge variant="outline" className="text-xs bg-white dark:bg-gray-800">
+                  <Badge variant="outline" className="text-xs-safe bg-white dark:bg-gray-800">
                     {getTypeLabel(win.type)}
                   </Badge>
                 </div>
                 <p className="text-sm mt-1 font-medium text-emerald-700 dark:text-emerald-400">
                   {win.title}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   {win.description}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs-safe text-muted-foreground mt-1">
                   {formatDate(win.achievedAt)}
                 </p>
               </div>

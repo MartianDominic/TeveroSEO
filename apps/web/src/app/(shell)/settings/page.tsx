@@ -58,7 +58,7 @@ export default function GlobalSettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-foreground">Service Catalog</h3>
-                  <p className="text-xs text-muted-foreground">Manage service templates for proposals</p>
+                  <p className="text-xs-safe text-muted-foreground">Manage service templates for proposals</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -75,7 +75,7 @@ export default function GlobalSettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-foreground">Payment Settings</h3>
-                  <p className="text-xs text-muted-foreground">Configure payment providers</p>
+                  <p className="text-xs-safe text-muted-foreground">Configure payment providers</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />

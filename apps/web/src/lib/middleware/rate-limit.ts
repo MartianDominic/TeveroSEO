@@ -30,6 +30,20 @@ import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { redis } from '@/lib/redis/client';
 
+// --- Jitter Helper ---
+
+/**
+ * Add jitter to a time value to prevent thundering herd on limit reset.
+ * Uses 10-25% jitter range.
+ *
+ * @param baseTime - Base time in milliseconds
+ * @returns Time with jitter applied
+ */
+function addJitter(baseTime: number): number {
+  const jitterFactor = 0.1 + Math.random() * 0.15; // 10-25%
+  return Math.round(baseTime * (1 + jitterFactor));
+}
+
 // --- Schemas ---
 
 const rateLimitEntrySchema = z.object({
@@ -211,10 +225,12 @@ export async function checkRateLimit(
 
       // Check if over limit
       if (entry.count >= limit) {
+        // Add jitter to prevent thundering herd on limit reset
+        const resetWithJitter = now + addJitter(entry.resetTime - now);
         return {
           success: false,
           remaining: 0,
-          reset: entry.resetTime,
+          reset: resetWithJitter,
           limit,
         };
       }
@@ -236,10 +252,11 @@ export async function checkRateLimit(
     // SECURITY: Fail-closed in production to prevent rate limit bypass
     if (process.env.NODE_ENV === 'production') {
       logger.error('[rate-limit] Redis error in production, blocking request for safety', error instanceof Error ? error : { error: String(error) });
+      // Add jitter to prevent thundering herd on recovery
       return {
         success: false,
         remaining: 0,
-        reset: now + 60000, // Retry in 1 minute
+        reset: now + addJitter(60000), // Retry in ~1 minute with jitter
         limit,
       };
     }
@@ -260,10 +277,12 @@ export async function checkRateLimit(
     }
 
     if (entry.count >= limit) {
+      // Add jitter to prevent thundering herd on limit reset
+      const resetWithJitter = now + addJitter(entry.resetTime - now);
       return {
         success: false,
         remaining: 0,
-        reset: entry.resetTime,
+        reset: resetWithJitter,
         limit,
       };
     }
@@ -573,27 +592,51 @@ export async function rateLimitAction(
 
 // --- Predefined Rate Limiters ---
 
+// Import centralized rate limit configuration from @tevero/utils
+// This is the single source of truth for all rate limit values
+import {
+  AUTH_RATE_LIMITS,
+  API_RATE_LIMITS,
+  CONTENT_RATE_LIMITS,
+} from "@tevero/utils";
+
 /**
  * Pre-configured rate limits for common endpoint types.
+ * Values are imported from @tevero/utils for consistency across the monorepo.
  */
 export const RATE_LIMITS = {
-  /** Authentication endpoints - strict limits */
-  AUTH: { limit: 10, windowMs: 60000 },
+  /** Authentication endpoints - strict limits (10 req/min) */
+  AUTH: {
+    limit: AUTH_RATE_LIMITS.DEFAULT.requests,
+    windowMs: AUTH_RATE_LIMITS.DEFAULT.windowMs,
+  },
 
-  /** General API endpoints */
-  API: { limit: 100, windowMs: 60000 },
+  /** General API endpoints (100 req/min) */
+  API: {
+    limit: API_RATE_LIMITS.DEFAULT.requests,
+    windowMs: API_RATE_LIMITS.DEFAULT.windowMs,
+  },
 
-  /** Resource-intensive operations (generate, audit, etc.) */
-  HEAVY: { limit: 20, windowMs: 60000 },
+  /** Resource-intensive operations (generate, audit, etc.) - 20 req/min */
+  HEAVY: {
+    limit: CONTENT_RATE_LIMITS.GENERATE.requests,
+    windowMs: CONTENT_RATE_LIMITS.GENERATE.windowMs,
+  },
 
-  /** Server actions (form submissions, mutations) */
+  /** Server actions (form submissions, mutations) - 30 req/min */
   ACTION: { limit: 30, windowMs: 60000 },
 
-  /** Password reset - very strict */
-  PASSWORD_RESET: { limit: 3, windowMs: 300000 }, // 3 per 5 minutes
+  /** Password reset - very strict (3 per 5 minutes) */
+  PASSWORD_RESET: {
+    limit: AUTH_RATE_LIMITS.PASSWORD_RESET.requests,
+    windowMs: AUTH_RATE_LIMITS.PASSWORD_RESET.windowMs,
+  },
 
-  /** Sign up - prevent enumeration */
-  SIGNUP: { limit: 5, windowMs: 300000 }, // 5 per 5 minutes
+  /** Sign up - prevent enumeration (5 per 5 minutes) */
+  SIGNUP: {
+    limit: AUTH_RATE_LIMITS.SIGNUP.requests,
+    windowMs: AUTH_RATE_LIMITS.SIGNUP.windowMs,
+  },
 } as const;
 
 /**

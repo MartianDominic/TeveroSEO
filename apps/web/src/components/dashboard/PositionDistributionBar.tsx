@@ -17,7 +17,7 @@ export function PositionDistributionBar({
     return (
       <div className="space-y-1">
         <div className="h-6 w-full rounded-sm border bg-muted" />
-        <p className="text-xs text-muted-foreground">No keywords tracked</p>
+        <p className="text-xs-safe text-muted-foreground">No keywords tracked</p>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function PositionDistributionBar({
         <div className="flex-1 bg-muted" />
       </div>
       {showLabels && (
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="flex justify-between text-xs-safe text-muted-foreground">
           <span>#1: {position1}</span>
           <span>Top 3: {top3}</span>
           <span>Top 10: {top10}</span>

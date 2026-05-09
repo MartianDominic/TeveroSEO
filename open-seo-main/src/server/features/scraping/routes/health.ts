@@ -7,6 +7,10 @@ import {
   expressScrapingResourceIntensiveRateLimit,
   expressScrapingCircuitOpsRateLimit,
 } from '../../../middleware/rate-limit';
+import {
+  createExpressHelpers,
+  API_ERROR_CODES,
+} from '@tevero/types/api';
 
 export interface StatusResult {
   health: HealthCheckResult;
@@ -32,7 +36,8 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Liveness probe (is the process running?)
   // Always returns 200 if the server can respond
   router.get('/health/live', (req: Request, res: Response) => {
-    res.status(200).json({
+    const api = createExpressHelpers(res);
+    api.success({
       status: 'alive',
       timestamp: new Date().toISOString(),
     });
@@ -42,11 +47,12 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Returns 503 if any critical component is unhealthy
   // Protected: exposes latency and component health details
   router.get('/health/ready', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
+    const api = createExpressHelpers(res);
     try {
       const health = await scrapingService.healthCheck();
 
       if (health.healthy) {
-        res.status(200).json({
+        api.success({
           status: 'ready',
           timestamp: health.timestamp,
           latencyMs: health.latencyMs,
@@ -56,16 +62,15 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
           .filter(([_, v]) => !v.healthy)
           .map(([k]) => k);
 
-        res.status(503).json({
+        api.error(API_ERROR_CODES.SERVICE_UNAVAILABLE, 'Service not ready', {
           status: 'not_ready',
           timestamp: health.timestamp,
           unhealthyComponents,
         });
       }
     } catch (error) {
-      res.status(503).json({
+      api.error(API_ERROR_CODES.SERVICE_UNAVAILABLE, error instanceof Error ? error.message : 'Unknown error', {
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
       });
     }
@@ -121,6 +126,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
   // Detailed status (for debugging)
   // Protected: exposes metrics, circuit states, queue stats
   router.get('/status', requireAdminAuth, requireReadonly, async (req: Request, res: Response) => {
+    const api = createExpressHelpers(res);
     try {
       const [health, metrics, circuits, queue] = await Promise.all([
         scrapingService.healthCheck(),
@@ -129,7 +135,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
         scrapingService.getQueueStats(),
       ]);
 
-      res.json({
+      api.success({
         health,
         metrics: {
           requestsToday: metrics.performance.requestsTotal || 0,
@@ -147,10 +153,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      });
+      api.error(API_ERROR_CODES.INTERNAL_ERROR, error instanceof Error ? error.message : String(error));
     }
   });
 

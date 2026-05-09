@@ -201,10 +201,11 @@ export interface PixelStatus {
 // Types - Pixel Analytics
 // -----------------------------------------------------------------------------
 
-export interface DateRange {
-  start: Date;
-  end: Date;
-}
+// Import DateRangeDate from unified types (uses Date objects for start/end)
+import type { DateRangeDate } from "@tevero/types/common";
+
+/** @deprecated Use DateRangeDate from @tevero/types/common */
+export type DateRange = DateRangeDate;
 
 export interface PixelAnalytics {
   pageviews: number;

@@ -13,7 +13,7 @@
  * - Never throws - always returns a classification
  */
 
-import { CircuitBreaker, CircuitOpenError } from "./CircuitBreaker";
+import { createCircuitBreaker, CircuitOpenError, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import { createLogger } from "@/server/lib/logger";
 import { anthropicClient, openaiClient, HttpError, TimeoutError } from "@/server/lib/http-client";
 
@@ -427,16 +427,14 @@ export class ResilientClassifier {
     this.rules = new RuleBasedClassifier();
 
     // Initialize circuit breakers
-    this.claudeCircuit = new CircuitBreaker({
-      name: "claude-classifier",
+    this.claudeCircuit = createCircuitBreaker("claude-classifier", {
       failureThreshold: config.claudeCircuit?.failureThreshold ?? 3,
-      resetTimeout: config.claudeCircuit?.resetTimeout ?? 60000,
+      timeout: config.claudeCircuit?.resetTimeout ?? 60000,
     });
 
-    this.openaiCircuit = new CircuitBreaker({
-      name: "openai-classifier",
+    this.openaiCircuit = createCircuitBreaker("openai-classifier", {
       failureThreshold: config.openaiCircuit?.failureThreshold ?? 5,
-      resetTimeout: config.openaiCircuit?.resetTimeout ?? 120000,
+      timeout: config.openaiCircuit?.resetTimeout ?? 120000,
     });
   }
 

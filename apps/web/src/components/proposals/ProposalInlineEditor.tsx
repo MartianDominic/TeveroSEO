@@ -280,7 +280,7 @@ export function ProposalInlineEditor({
       />
 
       {/* Character count indicator */}
-      <div className="absolute bottom-1 right-2 text-xs text-muted-foreground pointer-events-none">
+      <div className="absolute bottom-1 right-2 text-xs-safe text-muted-foreground pointer-events-none">
         {characterCount.excluding > 0 && (
           <span>
             {characterCount.excluding} {t("toolbar.characters", { fallback: "chars" })}

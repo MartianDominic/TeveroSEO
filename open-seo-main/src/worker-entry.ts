@@ -29,6 +29,8 @@ import { startGa4SyncWorker, stopGa4SyncWorker } from "@/server/workers/ga4-sync
 import { startTrendCalculationWorker, stopTrendCalculationWorker } from "@/server/workers/trend-calculation-worker";
 import { startCannibalizationWorker, stopCannibalizationWorker } from "@/server/workers/cannibalization-worker";
 import { startAlertDispatchWorker, stopAlertDispatchWorker } from "@/server/workers/alert-dispatch-worker";
+// Phase 95 Scraping Workers (SCRAPE-W01: register unified scraping infrastructure workers)
+import { startScrapeWorkers, stopScrapeWorkers } from "@/server/features/scraping";
 import { closeRedis } from "@/server/lib/redis";
 import { closeWebhookQueue } from "@/server/queues/webhookQueue";
 import { closeOnboardingQueue } from "@/server/queues/onboardingQueue";
@@ -84,6 +86,9 @@ const workers = [
   { name: "Trend calculation", start: startTrendCalculationWorker },
   { name: "Cannibalization", start: startCannibalizationWorker },
   { name: "Alert dispatch", start: startAlertDispatchWorker },
+  // Phase 95 Scraping Workers (SCRAPE-W01: unified scraping infrastructure)
+  // Starts priority, standard, and background scrape workers with TieredFetcher
+  { name: "Scrape (priority/standard/background)", start: startScrapeWorkers },
 ] as const;
 
 /**
@@ -195,6 +200,8 @@ async function shutdown(signal: string): Promise<void> {
   try { await stopTrendCalculationWorker(); } catch (err) { log.error("stopTrendCalculationWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopCannibalizationWorker(); } catch (err) { log.error("stopCannibalizationWorker failed", err instanceof Error ? err : new Error(String(err))); }
   try { await stopAlertDispatchWorker(); } catch (err) { log.error("stopAlertDispatchWorker failed", err instanceof Error ? err : new Error(String(err))); }
+  // Phase 95 Scraping Workers (SCRAPE-W01: graceful shutdown)
+  try { await stopScrapeWorkers(); } catch (err) { log.error("stopScrapeWorkers failed", err instanceof Error ? err : new Error(String(err))); }
   // Close queues before Redis connections
   try { stopDLQCleanupScheduler(); } catch (err) { log.error("stopDLQCleanupScheduler failed", err instanceof Error ? err : new Error(String(err))); }
   try { await closeWebhookQueue(); } catch (err) { log.error("closeWebhookQueue failed", err instanceof Error ? err : new Error(String(err))); }

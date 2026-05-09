@@ -33,7 +33,7 @@ export default async function InvoiceSuccessPage({ params }: Props) {
         </p>
 
         {/* Invoice Reference */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-8">
+        <div className="bg-white rounded-lg shadow-[var(--shadow-card)] border p-4 mb-8">
           <p className="text-sm text-gray-500 mb-1">Invoice Reference</p>
           <p className="font-mono text-gray-900">{id}</p>
         </div>
@@ -43,19 +43,19 @@ export default async function InvoiceSuccessPage({ params }: Props) {
           <h2 className="font-semibold text-emerald-900 mb-3">What happens next?</h2>
           <ul className="space-y-2 text-sm text-emerald-800">
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-medium">
+              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs-safe font-medium">
                 1
               </span>
               <span>You will receive a payment confirmation email</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-medium">
+              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs-safe font-medium">
                 2
               </span>
               <span>Your onboarding checklist is now active</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-medium">
+              <span className="w-5 h-5 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs-safe font-medium">
                 3
               </span>
               <span>Our team will reach out within 24 hours</span>

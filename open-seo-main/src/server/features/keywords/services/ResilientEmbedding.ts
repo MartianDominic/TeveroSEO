@@ -20,7 +20,7 @@
  * - Throws on complete failure (better than garbage clusters)
  */
 
-import { CircuitBreaker } from "./CircuitBreaker";
+import { createCircuitBreaker, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import { createLogger } from "@/server/lib/logger";
 import { jinaClient, HttpError, TimeoutError } from "@/server/lib/http-client";
 import { EMBEDDING_CONFIG } from "@/server/lib/embeddings/embedding-config";
@@ -173,7 +173,13 @@ class LocalEmbeddingClient {
         signal: AbortSignal.timeout(5000),
       });
       this.isHealthy = response.ok;
-    } catch {
+    } catch (error) {
+      // Health check failed - server unavailable or network issue
+      // This is expected when local embedding server is not running
+      log.debug("Local embedding server health check failed", {
+        serverUrl: this.serverUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.isHealthy = false;
     }
 
@@ -239,16 +245,14 @@ export class ResilientEmbedding {
     this.cache = fullConfig.cache || null;
 
     // Circuit breaker: 5 failures in sliding window, 60s reset
-    this.jinaCircuit = new CircuitBreaker({
-      name: "jina-embedding",
+    this.jinaCircuit = createCircuitBreaker("jina-embedding", {
       failureThreshold: fullConfig.jinaCircuit?.failureThreshold ?? 5,
-      resetTimeout: fullConfig.jinaCircuit?.resetTimeout ?? 60000,
+      timeout: fullConfig.jinaCircuit?.resetTimeout ?? 60000,
     });
 
-    this.localServerCircuit = new CircuitBreaker({
-      name: "local-embedding-server",
+    this.localServerCircuit = createCircuitBreaker("local-embedding-server", {
       failureThreshold: 5,
-      resetTimeout: 30000,
+      timeout: 30000,
     });
   }
 

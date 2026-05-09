@@ -142,7 +142,7 @@ export default function LighthouseIssuesPage() {
               className={category === key ? "ring-2 ring-primary" : ""}
             >
               <CardContent className="p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                   {cat.title}
                 </p>
                 <p

@@ -195,7 +195,7 @@ export function PreviewPane({ clauses, order }: PreviewPaneProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
+      <div className="flex flex-wrap gap-4 text-xs-safe">
         <div className="flex items-center gap-2">
           <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 px-2 py-0.5 rounded">
             Sample Value
@@ -217,13 +217,13 @@ export function PreviewPane({ clauses, order }: PreviewPaneProps) {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs-safe font-medium">
                     {index + 1}
                   </span>
                   <h3 className="font-medium">{clause.title}</h3>
                 </div>
                 {clause.isLegal && (
-                  <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                  <span className="text-xs-safe px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
                     Legal
                   </span>
                 )}
@@ -241,7 +241,7 @@ export function PreviewPane({ clauses, order }: PreviewPaneProps) {
               />
               {clause.unknownCount > 0 && (
                 <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs-safe text-red-600 dark:text-red-400">
                     <strong>Unknown variables:</strong>{" "}
                     {clause.unknownVars.join(", ")}
                   </p>

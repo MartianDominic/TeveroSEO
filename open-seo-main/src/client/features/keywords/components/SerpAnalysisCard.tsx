@@ -58,7 +58,7 @@ export function SerpAnalysisCard({
 
   return (
     <div>
-      <div className="text-xs text-muted-foreground mb-3">
+      <div className="text-xs-safe text-muted-foreground mb-3">
         {items.length} organic results
       </div>
       <SerpAnalysisTable items={pageItems} />
@@ -76,7 +76,7 @@ function SerpAnalysisTable({ items }: { items: SerpResultItem[] }) {
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="text-xs text-muted-foreground">
+          <TableRow className="text-xs-safe text-muted-foreground">
             <TableHead className="w-8">#</TableHead>
             <TableHead>Page</TableHead>
             <TableHead className="text-right w-20">Traffic</TableHead>
@@ -91,7 +91,7 @@ function SerpAnalysisTable({ items }: { items: SerpResultItem[] }) {
               key={`${item.rank}-${item.url}`}
               className="hover:bg-muted/50"
             >
-              <TableCell className="font-mono text-muted-foreground text-xs">
+              <TableCell className="font-mono text-muted-foreground text-xs-safe">
                 {item.rank}
               </TableCell>
               <TableCell className="max-w-[280px]">
@@ -106,7 +106,7 @@ function SerpAnalysisTable({ items }: { items: SerpResultItem[] }) {
                     {item.title || item.url}
                     <ExternalLink className="size-3 shrink-0 opacity-40" />
                   </a>
-                  <span className="text-xs text-foreground/40 truncate">
+                  <span className="text-xs-safe text-foreground/40 truncate">
                     {item.domain}
                   </span>
                 </div>
@@ -144,7 +144,7 @@ function SerpAnalysisPagination({
 
   return (
     <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs-safe text-muted-foreground">
         Page {page + 1} of {totalPages}
       </span>
       <div className="flex gap-1">
@@ -214,7 +214,7 @@ function RankChangeBadge({
     return <Minus className="size-3 text-foreground/40 mx-auto" />;
   if (change > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-success text-xs">
+      <span className="inline-flex items-center gap-0.5 text-success text-xs-safe">
         <TrendingUp className="size-3" />
         {change}
       </span>
@@ -222,7 +222,7 @@ function RankChangeBadge({
   }
   if (change < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-destructive text-xs">
+      <span className="inline-flex items-center gap-0.5 text-destructive text-xs-safe">
         <TrendingDown className="size-3" />
         {Math.abs(change)}
       </span>

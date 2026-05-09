@@ -372,7 +372,7 @@ export default function SeoSetupPage() {
               {domainError && (
                 <p
                   id="domain-error"
-                  className="text-xs text-destructive flex items-center gap-1"
+                  className="text-xs-safe text-destructive flex items-center gap-1"
                   role="alert"
                 >
                   <AlertCircle className="h-3 w-3" />
@@ -442,7 +442,7 @@ export default function SeoSetupPage() {
                       )}
                     </div>
                     {sitemap.pageCount && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs-safe text-muted-foreground">
                         {sitemap.pageCount} pages
                       </span>
                     )}

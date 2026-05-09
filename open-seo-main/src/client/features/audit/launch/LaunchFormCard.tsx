@@ -86,7 +86,7 @@ export function LaunchFormCard({ commitMaxPagesInput, launchForm }: Props) {
 function LaunchOptions({ launchForm, commitMaxPagesInput }: Props) {
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <label className="text-xs-safe font-medium uppercase tracking-wide text-muted-foreground">
         Crawl limit
       </label>
       <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ function LaunchOptions({ launchForm, commitMaxPagesInput }: Props) {
           )}
         </launchForm.Field>
       </div>
-      <p className="text-xs text-foreground/50">
+      <p className="text-xs-safe text-foreground/50">
         Enter any value from {MIN_PAGES} to {MAX_PAGES_LIMIT}.
       </p>
     </div>
@@ -147,7 +147,7 @@ function LighthouseOptions({ launchForm }: Pick<Props, "launchForm">) {
         {(runLighthouse) =>
           runLighthouse ? (
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 We choose a sample of 20 pages to audit, removing pages from
                 duplicate templates.
               </p>

@@ -42,7 +42,7 @@ function DataforseoApiKeyHelpPage() {
               <li>
                 Base64 encode your DataForSEO login and API password in this
                 format:
-                <pre className="mt-2 p-3 rounded bg-muted border border-border overflow-x-auto text-xs">
+                <pre className="mt-2 p-3 rounded bg-muted border border-border overflow-x-auto text-xs-safe">
                   <code>printf '%s' 'YOUR_LOGIN:YOUR_PASSWORD' | base64</code>
                 </pre>
               </li>
@@ -81,7 +81,7 @@ function DataforseoApiKeyHelpPage() {
             <div className="border-t border-border my-1" />
 
             <p>Or set the same secret from your terminal with:</p>
-            <pre className="p-3 rounded bg-muted border border-border overflow-x-auto text-xs">
+            <pre className="p-3 rounded bg-muted border border-border overflow-x-auto text-xs-safe">
               <code>npx wrangler secret put DATAFORSEO_API_KEY</code>
             </pre>
             <p>

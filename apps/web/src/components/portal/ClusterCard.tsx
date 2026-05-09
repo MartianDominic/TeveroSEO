@@ -177,7 +177,7 @@ export function ClusterCard({
             {/* Top row: tier badge + label + quick wins + expand icon */}
             <div className="flex items-center gap-3">
               {/* Tier badge - v6 Badge component */}
-              <Badge variant={tierConfig.variant} className="text-xs-safe">
+              <Badge variant={tierConfig.variant} className="text-xs-safe-safe">
                 {tierConfig.label}
               </Badge>
 
@@ -400,7 +400,7 @@ function KeywordRow({ keyword }: KeywordRowProps) {
 
       {/* Status badge - v6 Badge component */}
       <div className="text-right">
-        <Badge variant={statusConfig.variant} className="text-xs-safe">
+        <Badge variant={statusConfig.variant} className="text-xs-safe-safe">
           {statusConfig.label}
         </Badge>
       </div>

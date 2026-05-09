@@ -163,7 +163,7 @@ export const VideoSection: FC<VideoSectionProps> = ({
           {data.url && (
             <Badge
               variant={data.platform !== "unknown" ? "secondary" : "outline"}
-              className="text-xs"
+              className="text-xs-safe"
             >
               {t.detected}: {platformLabels[data.platform]}
             </Badge>
@@ -177,7 +177,7 @@ export const VideoSection: FC<VideoSectionProps> = ({
           placeholder={t.urlPlaceholder}
           disabled={!editable}
         />
-        <p className="text-xs text-muted-foreground">{t.supportedPlatforms}</p>
+        <p className="text-xs-safe text-muted-foreground">{t.supportedPlatforms}</p>
       </div>
 
       {/* Video preview */}

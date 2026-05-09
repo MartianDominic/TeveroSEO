@@ -25,7 +25,7 @@ export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={cn("text-xs capitalize", PRIORITY_STYLES[priority], className)}
+      className={cn("text-xs-safe capitalize", PRIORITY_STYLES[priority], className)}
     >
       {priority}
     </Badge>

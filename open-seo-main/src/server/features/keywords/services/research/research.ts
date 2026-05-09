@@ -5,7 +5,7 @@ import {
   buildCacheKey,
   getCached,
   setCached,
-} from "@/server/lib/r2-cache";
+} from "@/server/lib/cache/redis-kv-cache";
 import { KeywordResearchRepository } from "@/server/features/keywords/repositories/KeywordResearchRepository";
 import type { KeywordResearchRow } from "@/types/keywords";
 import type { ResearchKeywordsInput } from "@/types/schemas/keywords";

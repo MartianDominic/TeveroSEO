@@ -126,7 +126,7 @@ export const TimelineSection: FC<TimelineSectionProps> = ({
             <div
               className={cn(
                 "absolute -left-6 top-4 h-4 w-4 rounded-full",
-                "bg-primary border-2 border-background shadow-sm"
+                "bg-primary border-2 border-background shadow-[var(--shadow-card)]"
               )}
             />
 
@@ -139,7 +139,7 @@ export const TimelineSection: FC<TimelineSectionProps> = ({
             >
               {/* Phase header */}
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs-safe text-muted-foreground">
                   <GripVertical className="h-3 w-3" />
                   {t.phase} {index + 1}
                 </div>
@@ -160,7 +160,7 @@ export const TimelineSection: FC<TimelineSectionProps> = ({
               {/* Title and duration row */}
               <div className="grid grid-cols-[2fr_1fr] gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">{t.phaseTitle}</Label>
+                  <Label className="text-xs-safe">{t.phaseTitle}</Label>
                   <Input
                     type="text"
                     value={phase.title}
@@ -173,7 +173,7 @@ export const TimelineSection: FC<TimelineSectionProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">{t.duration}</Label>
+                  <Label className="text-xs-safe">{t.duration}</Label>
                   <Input
                     type="text"
                     value={phase.duration}
@@ -189,7 +189,7 @@ export const TimelineSection: FC<TimelineSectionProps> = ({
 
               {/* Description */}
               <div className="space-y-1">
-                <Label className="text-xs">{t.description}</Label>
+                <Label className="text-xs-safe">{t.description}</Label>
                 <Textarea
                   value={phase.description}
                   onChange={(e) =>

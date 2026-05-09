@@ -104,7 +104,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         <div className="mb-2">{renderNavItem(dashboardNav)}</div>
 
         {!collapsed && (
-          <p className="text-xs-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
+          <p className="text-xs-safe-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-3">
             Client
           </p>
         )}
@@ -113,7 +113,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         </div>
 
         {!collapsed && (
-          <p className="text-xs-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-5">
+          <p className="text-xs-safe-safe font-medium uppercase tracking-widest text-muted-foreground px-3 mb-1.5 mt-5">
             Workspace
           </p>
         )}
@@ -134,7 +134,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
         >
           <UserButton />
           {!collapsed && (
-            <span className="text-xs text-muted-foreground truncate">
+            <span className="text-xs-safe text-muted-foreground truncate">
               Account
             </span>
           )}
@@ -145,7 +145,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
           onClick={onToggleTheme}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           className={cn(
-            "flex w-full items-center rounded-md px-2 py-2 text-xs text-muted-foreground",
+            "flex w-full items-center rounded-md px-2 py-2 text-xs-safe text-muted-foreground",
             "transition-colors hover:bg-accent/50 hover:text-foreground",
             collapsed ? "justify-center" : "gap-2.5"
           )}
@@ -165,7 +165,7 @@ export const AppShellSidebar: React.FC<AppShellSidebarProps> = ({
           onClick={onToggleCollapse}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "flex w-full items-center rounded-md px-2 py-2 text-xs text-muted-foreground",
+            "flex w-full items-center rounded-md px-2 py-2 text-xs-safe text-muted-foreground",
             "transition-colors hover:bg-accent/50 hover:text-foreground",
             collapsed ? "justify-center" : "gap-2.5"
           )}

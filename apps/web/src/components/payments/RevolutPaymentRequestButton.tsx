@@ -142,7 +142,7 @@ export function RevolutPaymentRequestButton({
     <div className="space-y-2">
       <div ref={containerRef} className="min-h-[48px]" />
       {availableMethod && (
-        <p className="text-xs text-center text-muted-foreground">
+        <p className="text-xs-safe text-center text-muted-foreground">
           Pay with {availableMethod}
         </p>
       )}

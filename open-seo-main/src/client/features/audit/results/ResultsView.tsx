@@ -139,14 +139,14 @@ function ResultsHeader({
           <button
             type="button"
             onClick={() => setSearchParams({ tab: "pages" })}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "pages" ? "bg-background text-foreground shadow-sm" : "hover:bg-background/50"}`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "pages" ? "bg-background text-foreground shadow-[var(--shadow-card)]" : "hover:bg-background/50"}`}
           >
             Pages ({pageCount})
           </button>
           <button
             type="button"
             onClick={() => setSearchParams({ tab: "performance" })}
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "performance" ? "bg-background text-foreground shadow-sm" : "hover:bg-background/50"}`}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${activeTab === "performance" ? "bg-background text-foreground shadow-[var(--shadow-card)]" : "hover:bg-background/50"}`}
           >
             Performance ({lighthouseCount})
           </button>

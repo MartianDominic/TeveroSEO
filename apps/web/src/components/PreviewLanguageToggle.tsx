@@ -85,9 +85,9 @@ export function PreviewLanguageToggle({
               disabled={disabled || isLoading}
               onClick={() => onChange(lang.code)}
               className={cn(
-                'h-7 px-2.5 text-xs font-medium',
+                'h-7 px-2.5 text-xs-safe font-medium',
                 isSelected
-                  ? 'bg-background shadow-sm'
+                  ? 'bg-background shadow-[var(--shadow-card)]'
                   : 'bg-transparent hover:bg-background/50'
               )}
               aria-pressed={isSelected}

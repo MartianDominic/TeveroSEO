@@ -70,7 +70,7 @@ export function WinCard({ win, className }: WinCardProps) {
           </div>
 
           {/* Time */}
-          <p className="mt-1.5 text-xs-safe text-text-3 font-mono">
+          <p className="mt-1.5 text-xs-safe-safe text-text-3 font-mono">
             {timeAgo}
           </p>
         </div>

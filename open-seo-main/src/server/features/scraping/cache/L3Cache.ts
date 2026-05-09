@@ -55,12 +55,14 @@ const logger = createComponentLogger("l3-cache");
  * - Gzip compression for storage efficiency
  * - Content deduplication via aliases table
  * - Efficient batch operations
+ * - Tenant isolation via clientId (Phase 97)
  */
 export class L3Cache implements ICacheLevel {
   readonly level: CacheLevel = "L3";
 
   private db: PostgresJsDatabase;
   private config: L3CacheConfig;
+  private clientId: string;
 
   // Stats tracking
   private hits = 0;
@@ -68,11 +70,22 @@ export class L3Cache implements ICacheLevel {
   private totalLatencyMs = 0;
   private requestCount = 0;
 
+  /**
+   * Create a new L3 cache instance.
+   * @param db - Drizzle database connection
+   * @param clientId - Client UUID for tenant isolation (required)
+   * @param config - Optional cache configuration
+   */
   constructor(
     db: PostgresJsDatabase,
+    clientId: string,
     config: Partial<L3CacheConfig> = {}
   ) {
+    if (!clientId) {
+      throw new Error("L3Cache requires clientId for tenant isolation");
+    }
     this.db = db;
+    this.clientId = clientId;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -88,36 +101,43 @@ export class L3Cache implements ICacheLevel {
     try {
       // Use circuit breaker for database operations
       const result = await circuitBreaker.executeOrNull(async () => {
-        // First check if this is an alias
+        // First check if this is an alias (scoped to this client)
         const alias = await this.db
           .select({ canonicalId: htmlCacheAliases.canonicalId })
           .from(htmlCacheAliases)
-          .where(eq(htmlCacheAliases.aliasUrlHash, hash))
+          .where(
+            and(
+              eq(htmlCacheAliases.aliasUrlHash, hash),
+              eq(htmlCacheAliases.clientId, this.clientId)
+            )
+          )
           .limit(1);
 
         let row;
 
         if (alias.length > 0) {
-          // Fetch by canonical ID
+          // Fetch by canonical ID (already tenant-scoped via alias)
           const results = await this.db
             .select()
             .from(htmlCache)
             .where(
               and(
                 eq(htmlCache.id, alias[0].canonicalId),
+                eq(htmlCache.clientId, this.clientId),
                 gt(htmlCache.expiresAt, new Date())
               )
             )
             .limit(1);
           row = results[0];
         } else {
-          // Fetch by URL hash directly
+          // Fetch by URL hash directly (tenant-scoped)
           const results = await this.db
             .select()
             .from(htmlCache)
             .where(
               and(
                 eq(htmlCache.urlHash, hash),
+                eq(htmlCache.clientId, this.clientId),
                 gt(htmlCache.expiresAt, new Date())
               )
             )
@@ -159,29 +179,36 @@ export class L3Cache implements ICacheLevel {
 
         const expiresAt = new Date(Date.now() + ttlMs);
 
-        // Check for content deduplication
+        // Check for content deduplication (within same tenant only)
         const existingContent = await this.db
           .select({ id: htmlCache.id, urlHash: htmlCache.urlHash })
           .from(htmlCache)
-          .where(eq(htmlCache.contentHash, page.contentHash))
+          .where(
+            and(
+              eq(htmlCache.contentHash, page.contentHash),
+              eq(htmlCache.clientId, this.clientId)
+            )
+          )
           .limit(1);
 
         if (existingContent.length > 0 && existingContent[0].urlHash !== hash) {
-          // Same content, different URL - create alias
+          // Same content, different URL - create alias (tenant-scoped)
           await this.db
             .insert(htmlCacheAliases)
             .values({
               aliasUrlHash: hash,
               canonicalId: existingContent[0].id,
+              clientId: this.clientId,
             })
             .onConflictDoNothing();
           return;
         }
 
-        // Insert or update the cache entry
+        // Insert or update the cache entry (tenant-scoped)
         await this.db
           .insert(htmlCache)
           .values({
+            clientId: this.clientId,
             urlHash: hash,
             url: page.etag ? `[hash:${hash}]` : `[hash:${hash}]`, // Placeholder URL
             contentHash: page.contentHash,
@@ -226,13 +253,25 @@ export class L3Cache implements ICacheLevel {
 
   async delete(hash: string): Promise<void> {
     try {
-      // Delete aliases first
+      // Delete aliases first (tenant-scoped)
       await this.db
         .delete(htmlCacheAliases)
-        .where(eq(htmlCacheAliases.aliasUrlHash, hash));
+        .where(
+          and(
+            eq(htmlCacheAliases.aliasUrlHash, hash),
+            eq(htmlCacheAliases.clientId, this.clientId)
+          )
+        );
 
-      // Then delete the main entry
-      await this.db.delete(htmlCache).where(eq(htmlCache.urlHash, hash));
+      // Then delete the main entry (tenant-scoped)
+      await this.db
+        .delete(htmlCache)
+        .where(
+          and(
+            eq(htmlCache.urlHash, hash),
+            eq(htmlCache.clientId, this.clientId)
+          )
+        );
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Delete error:", error);
     }
@@ -240,21 +279,27 @@ export class L3Cache implements ICacheLevel {
 
   async has(hash: string): Promise<boolean> {
     try {
-      // Check aliases first
+      // Check aliases first (tenant-scoped)
       const alias = await this.db
         .select({ canonicalId: htmlCacheAliases.canonicalId })
         .from(htmlCacheAliases)
-        .where(eq(htmlCacheAliases.aliasUrlHash, hash))
+        .where(
+          and(
+            eq(htmlCacheAliases.aliasUrlHash, hash),
+            eq(htmlCacheAliases.clientId, this.clientId)
+          )
+        )
         .limit(1);
 
       if (alias.length > 0) {
-        // Verify canonical entry exists and is not expired
+        // Verify canonical entry exists and is not expired (tenant-scoped)
         const canonical = await this.db
           .select({ id: htmlCache.id })
           .from(htmlCache)
           .where(
             and(
               eq(htmlCache.id, alias[0].canonicalId),
+              eq(htmlCache.clientId, this.clientId),
               gt(htmlCache.expiresAt, new Date())
             )
           )
@@ -262,12 +307,16 @@ export class L3Cache implements ICacheLevel {
         return canonical.length > 0;
       }
 
-      // Check direct entry
+      // Check direct entry (tenant-scoped)
       const result = await this.db
         .select({ id: htmlCache.id })
         .from(htmlCache)
         .where(
-          and(eq(htmlCache.urlHash, hash), gt(htmlCache.expiresAt, new Date()))
+          and(
+            eq(htmlCache.urlHash, hash),
+            eq(htmlCache.clientId, this.clientId),
+            gt(htmlCache.expiresAt, new Date())
+          )
         )
         .limit(1);
 
@@ -292,8 +341,13 @@ export class L3Cache implements ICacheLevel {
 
   async clear(): Promise<void> {
     try {
-      await this.db.delete(htmlCacheAliases);
-      await this.db.delete(htmlCache);
+      // Clear only this tenant's cache entries
+      await this.db
+        .delete(htmlCacheAliases)
+        .where(eq(htmlCacheAliases.clientId, this.clientId));
+      await this.db
+        .delete(htmlCache)
+        .where(eq(htmlCache.clientId, this.clientId));
       this.resetStats();
     } catch (error) {
       logger.error({ error: error instanceof Error ? error.message : String(error) }, "[L3Cache] Clear error:", error);
@@ -330,29 +384,36 @@ export class L3Cache implements ICacheLevel {
 
       const expiresAt = new Date(Date.now() + ttlMs);
 
-      // Check for content deduplication
+      // Check for content deduplication (within same tenant only)
       const existingContent = await this.db
         .select({ id: htmlCache.id, urlHash: htmlCache.urlHash })
         .from(htmlCache)
-        .where(eq(htmlCache.contentHash, page.contentHash))
+        .where(
+          and(
+            eq(htmlCache.contentHash, page.contentHash),
+            eq(htmlCache.clientId, this.clientId)
+          )
+        )
         .limit(1);
 
       if (existingContent.length > 0 && existingContent[0].urlHash !== hash) {
-        // Same content, different URL - create alias
+        // Same content, different URL - create alias (tenant-scoped)
         await this.db
           .insert(htmlCacheAliases)
           .values({
             aliasUrlHash: hash,
             canonicalId: existingContent[0].id,
+            clientId: this.clientId,
           })
           .onConflictDoNothing();
         return;
       }
 
-      // Insert or update
+      // Insert or update (tenant-scoped)
       await this.db
         .insert(htmlCache)
         .values({
+          clientId: this.clientId,
           urlHash: hash,
           url,
           contentHash: page.contentHash,
@@ -392,7 +453,7 @@ export class L3Cache implements ICacheLevel {
   }
 
   /**
-   * Bulk get multiple items.
+   * Bulk get multiple items (tenant-scoped).
    */
   async mget(hashes: string[]): Promise<Map<string, CachedPage>> {
     const startTime = performance.now();
@@ -403,13 +464,14 @@ export class L3Cache implements ICacheLevel {
         return results;
       }
 
-      // Fetch all matching rows
+      // Fetch all matching rows (tenant-scoped)
       const rows = await this.db
         .select()
         .from(htmlCache)
         .where(
           and(
             sql`${htmlCache.urlHash} IN ${hashes}`,
+            eq(htmlCache.clientId, this.clientId),
             gt(htmlCache.expiresAt, new Date())
           )
         );
@@ -438,18 +500,24 @@ export class L3Cache implements ICacheLevel {
   }
 
   /**
-   * Delete expired entries (maintenance job).
+   * Delete expired entries for this tenant (maintenance job).
    */
   async deleteExpired(): Promise<number> {
     try {
       const result = await this.db
         .delete(htmlCache)
-        .where(lt(htmlCache.expiresAt, new Date()));
+        .where(
+          and(
+            eq(htmlCache.clientId, this.clientId),
+            lt(htmlCache.expiresAt, new Date())
+          )
+        );
 
-      // Also clean up orphaned aliases
+      // Also clean up orphaned aliases for this tenant
       await this.db.execute(sql`
         DELETE FROM html_cache_aliases
-        WHERE canonical_id NOT IN (SELECT id FROM html_cache)
+        WHERE client_id = ${this.clientId}
+          AND canonical_id NOT IN (SELECT id FROM html_cache WHERE client_id = ${this.clientId})
       `);
 
       return result.rowCount ?? 0;
@@ -460,7 +528,7 @@ export class L3Cache implements ICacheLevel {
   }
 
   /**
-   * Get storage statistics.
+   * Get storage statistics for this tenant.
    */
   async getStorageStats(): Promise<{
     totalEntries: number;
@@ -479,11 +547,13 @@ export class L3Cache implements ICacheLevel {
           oldest: sql<Date>`min(fetched_at)`,
           newest: sql<Date>`max(fetched_at)`,
         })
-        .from(htmlCache);
+        .from(htmlCache)
+        .where(eq(htmlCache.clientId, this.clientId));
 
       const aliasesResult = await this.db
         .select({ count: sql<number>`count(*)` })
-        .from(htmlCacheAliases);
+        .from(htmlCacheAliases)
+        .where(eq(htmlCacheAliases.clientId, this.clientId));
 
       return {
         totalEntries: entriesResult[0]?.count ?? 0,
@@ -507,20 +577,30 @@ export class L3Cache implements ICacheLevel {
   }
 
   /**
-   * Find entries by content hash (for deduplication analysis).
+   * Find entries by content hash for this tenant (for deduplication analysis).
    */
   async findByContentHash(contentHash: string): Promise<string[]> {
     try {
       const results = await this.db
         .select({ urlHash: htmlCache.urlHash })
         .from(htmlCache)
-        .where(eq(htmlCache.contentHash, contentHash));
+        .where(
+          and(
+            eq(htmlCache.contentHash, contentHash),
+            eq(htmlCache.clientId, this.clientId)
+          )
+        );
 
       const aliases = await this.db
         .select({ aliasUrlHash: htmlCacheAliases.aliasUrlHash })
         .from(htmlCacheAliases)
         .innerJoin(htmlCache, eq(htmlCacheAliases.canonicalId, htmlCache.id))
-        .where(eq(htmlCache.contentHash, contentHash));
+        .where(
+          and(
+            eq(htmlCache.contentHash, contentHash),
+            eq(htmlCacheAliases.clientId, this.clientId)
+          )
+        );
 
       return [
         ...results.map((r) => r.urlHash),
@@ -566,11 +646,15 @@ export class L3Cache implements ICacheLevel {
 // =============================================================================
 
 /**
- * Create a new L3 cache instance.
+ * Create a new L3 cache instance for a specific tenant.
+ * @param db - Drizzle database connection
+ * @param clientId - Client UUID for tenant isolation (required)
+ * @param config - Optional cache configuration
  */
 export function createL3Cache(
   db: PostgresJsDatabase,
+  clientId: string,
   config?: Partial<L3CacheConfig>
 ): L3Cache {
-  return new L3Cache(db, config);
+  return new L3Cache(db, clientId, config);
 }

@@ -46,7 +46,7 @@ export function PipelineDistributionChart({
             <div key={status} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${config.color}`} />
               <span className="text-muted-foreground">{config.label}:</span>
-              <Badge variant="secondary" className="font-mono text-xs">
+              <Badge variant="secondary" className="font-mono text-xs-safe">
                 {count}
               </Badge>
             </div>

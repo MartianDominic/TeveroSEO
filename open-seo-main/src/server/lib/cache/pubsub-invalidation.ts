@@ -14,7 +14,10 @@
  * Architecture:
  * - Publisher: Called when L2 cache is updated/invalidated
  * - Subscriber: Listens for invalidation messages and clears L1
- * - Message format: { keys: string[], patterns: string[], source: string, timestamp: number }
+ * - Message format: { type: CacheType, keys: string[], patterns: string[], source: string, timestamp: number }
+ *
+ * UNIFIED CHANNEL: All services now use tevero:cache:invalidate.
+ * This module handles type="serp" messages.
  *
  * Usage:
  *   // At startup
@@ -29,7 +32,12 @@
 
 import Redis from "ioredis";
 import { createLogger } from "@/server/lib/logger";
-import * as crypto from "crypto";
+import {
+  UNIFIED_INVALIDATION_CHANNEL,
+  generateInstanceId,
+  type CacheType,
+  type UnifiedInvalidationMessage,
+} from "@tevero/shared-cache";
 
 const log = createLogger({ module: "cache-pubsub" });
 
@@ -37,16 +45,26 @@ const log = createLogger({ module: "cache-pubsub" });
 // Configuration
 // ============================================================================
 
-/** Channel for cache invalidation messages */
-export const INVALIDATION_CHANNEL = "osm:cache:invalidate";
+/**
+ * Unified channel for all cache invalidation messages.
+ * @deprecated Use UNIFIED_INVALIDATION_CHANNEL from @tevero/shared-cache
+ */
+export const INVALIDATION_CHANNEL = UNIFIED_INVALIDATION_CHANNEL;
+
+/** Cache type for this module - handles SERP cache invalidation */
+const CACHE_TYPE: CacheType = "serp";
 
 /** Unique instance identifier for preventing self-processing */
-const INSTANCE_ID = process.env.INSTANCE_ID ?? `osm-${crypto.randomBytes(4).toString("hex")}`;
+const INSTANCE_ID = process.env.INSTANCE_ID ?? generateInstanceId("osm");
 
 // ============================================================================
 // Message Types
 // ============================================================================
 
+/**
+ * Legacy message format for backwards compatibility.
+ * @deprecated Use UnifiedInvalidationMessage from @tevero/shared-cache
+ */
 export interface InvalidationMessage {
   /** Cache keys to invalidate (exact match) */
   keys: string[];
@@ -59,6 +77,9 @@ export interface InvalidationMessage {
   /** Optional reason for debugging */
   reason?: string;
 }
+
+// Re-export unified types for callers migrating to new format
+export type { UnifiedInvalidationMessage, CacheType } from "@tevero/shared-cache";
 
 // ============================================================================
 // Invalidation Handlers Registry
@@ -164,7 +185,9 @@ export async function publishInvalidation(
     return; // Nothing to invalidate
   }
 
-  const message: InvalidationMessage = {
+  // Use unified message format with type field
+  const message: UnifiedInvalidationMessage = {
+    type: CACHE_TYPE,
     keys,
     patterns,
     source: INSTANCE_ID,
@@ -174,8 +197,9 @@ export async function publishInvalidation(
 
   try {
     const publisher = getPublisher();
-    const subscribers = await publisher.publish(INVALIDATION_CHANNEL, JSON.stringify(message));
+    const subscribers = await publisher.publish(UNIFIED_INVALIDATION_CHANNEL, JSON.stringify(message));
     log.debug("Published invalidation", {
+      type: CACHE_TYPE,
       keys: keys.length,
       patterns: patterns.length,
       reason,
@@ -200,18 +224,36 @@ let isSubscribed = false;
 
 /**
  * Process an invalidation message by calling all registered handlers.
+ * Only processes messages with type="serp" (this module's domain).
  */
-function processInvalidationMessage(message: InvalidationMessage): void {
+function processInvalidationMessage(message: UnifiedInvalidationMessage): void {
   // Skip messages from self
   if (message.source === INSTANCE_ID) {
     log.debug("Ignoring self-published invalidation", { timestamp: message.timestamp });
     return;
   }
 
+  // Filter by cache type - only process SERP invalidations
+  if (message.type !== CACHE_TYPE) {
+    log.debug("Ignoring invalidation for different cache type", {
+      messageType: message.type,
+      ourType: CACHE_TYPE,
+    });
+    return;
+  }
+
   let totalCleared = 0;
   for (const handler of handlers) {
     try {
-      const cleared = handler(message);
+      // Convert to legacy format for existing handlers
+      const legacyMessage: InvalidationMessage = {
+        keys: message.keys,
+        patterns: message.patterns,
+        source: message.source,
+        timestamp: message.timestamp,
+        reason: message.reason,
+      };
+      const cleared = handler(legacyMessage);
       totalCleared += cleared;
     } catch (error) {
       log.error("Invalidation handler threw error", error instanceof Error ? error : undefined);
@@ -219,6 +261,7 @@ function processInvalidationMessage(message: InvalidationMessage): void {
   }
 
   log.debug("Processed invalidation", {
+    type: message.type,
     keys: message.keys.length,
     patterns: message.patterns.length,
     reason: message.reason,
@@ -255,23 +298,27 @@ export async function startInvalidationSubscriber(): Promise<void> {
     log.debug("Subscriber Redis connected");
   });
 
-  // Subscribe to invalidation channel
-  await subscriberRedis.subscribe(INVALIDATION_CHANNEL);
+  // Subscribe to unified invalidation channel
+  await subscriberRedis.subscribe(UNIFIED_INVALIDATION_CHANNEL);
   isSubscribed = true;
 
   // Handle incoming messages
   subscriberRedis.on("message", (channel, data) => {
-    if (channel !== INVALIDATION_CHANNEL) return;
+    if (channel !== UNIFIED_INVALIDATION_CHANNEL) return;
 
     try {
-      const message = JSON.parse(data) as InvalidationMessage;
+      const message = JSON.parse(data) as UnifiedInvalidationMessage;
       processInvalidationMessage(message);
     } catch (error) {
       log.error("Failed to parse invalidation message", error instanceof Error ? error : undefined, { data });
     }
   });
 
-  log.info("Cache invalidation subscriber started", { instanceId: INSTANCE_ID });
+  log.info("Cache invalidation subscriber started", {
+    instanceId: INSTANCE_ID,
+    channel: UNIFIED_INVALIDATION_CHANNEL,
+    cacheType: CACHE_TYPE,
+  });
 }
 
 /**
@@ -284,7 +331,7 @@ export async function stopInvalidationSubscriber(): Promise<void> {
   }
 
   try {
-    await subscriberRedis.unsubscribe(INVALIDATION_CHANNEL);
+    await subscriberRedis.unsubscribe(UNIFIED_INVALIDATION_CHANNEL);
     await subscriberRedis.quit();
     subscriberRedis = null;
     isSubscribed = false;

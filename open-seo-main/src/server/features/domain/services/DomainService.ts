@@ -1,6 +1,6 @@
 import { type DomainRankedKeywordItem } from "@/server/lib/dataforseo";
 import { sortBy } from "remeda";
-import { buildCacheKey, getCached, setCached } from "@/server/lib/r2-cache";
+import { buildCacheKey, getCached, setCached } from "@/server/lib/cache/redis-kv-cache";
 import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { createDataforseoClient } from "@/server/lib/dataforseoClient";

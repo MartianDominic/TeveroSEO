@@ -239,7 +239,7 @@ export function AnalysisResults({ result, locale = "en", onRefine }: AnalysisRes
                         ? "secondary"
                         : "outline"
                   }
-                  className="text-xs"
+                  className="text-xs-safe"
                 >
                   {kw.funnelStage}
                 </Badge>

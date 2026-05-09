@@ -112,7 +112,7 @@ export function PipelineCard({
       meta={
         <div className="flex items-center justify-between">
           {/* D-07: Deal value, days in stage */}
-          <div className="flex items-center gap-2 text-xs text-text-3">
+          <div className="flex items-center gap-2 text-xs-safe text-text-3">
             {formattedValue && (
               <span className="font-medium text-text-2">{formattedValue}</span>
             )}

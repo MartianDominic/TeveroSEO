@@ -37,7 +37,7 @@ export function AlertBadge({ count, hasCritical, onClick, className }: AlertBadg
         <Badge
           variant="destructive"
           className={cn(
-            "absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs",
+            "absolute -top-1 -right-1 h-5 min-w-5 px-1 text-xs-safe",
             pulse && "animate-pulse",
           )}
         >

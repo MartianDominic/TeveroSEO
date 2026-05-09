@@ -33,7 +33,7 @@ export const IntelligenceStatusBanner: React.FC<IntelligenceStatusBannerProps> =
           <p className="text-sm font-medium text-foreground">
             Gathering intelligence...
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             Analysing website, extracting brand voice and keyword opportunities.
             Usually takes 30-90 seconds.
           </p>
@@ -50,13 +50,13 @@ export const IntelligenceStatusBanner: React.FC<IntelligenceStatusBannerProps> =
           <p className="text-sm font-medium text-foreground">
             Intelligence gathering failed
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             Check that BrightData and DataForSEO are configured in Global Settings.
           </p>
         </div>
         <button
           onClick={onTriggerScrape}
-          className="ml-auto shrink-0 text-xs text-primary hover:underline"
+          className="ml-auto shrink-0 text-xs-safe text-primary hover:underline"
         >
           Retry
         </button>
@@ -72,14 +72,14 @@ export const IntelligenceStatusBanner: React.FC<IntelligenceStatusBannerProps> =
         <p className="text-sm font-medium text-foreground">
           Intelligence not gathered yet
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Trigger a scan to extract brand voice, keyword opportunities, and
           competitor insights.
         </p>
       </div>
       <button
         onClick={onTriggerScrape}
-        className="ml-auto shrink-0 text-xs text-primary hover:underline"
+        className="ml-auto shrink-0 text-xs-safe text-primary hover:underline"
       >
         Run now
       </button>

@@ -24,13 +24,19 @@ import {
   BudgetExceededError,
   getDfsCostTracker,
 } from "@/server/features/scraping";
+import {
+  getLabsCost,
+  getKeywordMetricsCostCents,
+} from "@/server/features/scraping/cost";
 import { createLogger } from "@/server/lib/logger";
 
 // Constants - exported for testing
 export const CACHE_PREFIX = CACHE_NS.KEYWORD;
 export const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 export const BATCH_SIZE = 1000;
-export const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
+// Cost per keyword in cents - derived from canonical pricing module
+// $0.0005 per keyword = 0.05 cents (NOT 0.5 cents which would be 10x higher)
+export const COST_PER_KEYWORD_CENTS = getKeywordMetricsCostCents();
 
 export interface EnrichmentResult {
   enriched: number;
@@ -55,8 +61,8 @@ interface CachedMetrics {
   competition: number;
 }
 
-// DataForSEO Labs API cost per keyword (in dollars)
-const DFS_COST_PER_KEYWORD = 0.005;
+// DataForSEO Labs API cost per keyword (in dollars) - from canonical pricing
+const DFS_COST_PER_KEYWORD = getLabsCost("keywordMetrics"); // 0.0005 USD
 
 const log = createLogger({ module: 'keywords/enrichment' });
 

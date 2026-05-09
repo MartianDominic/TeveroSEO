@@ -55,7 +55,7 @@ export function VoiceModeCard({ mode, selected, onSelect }: VoiceModeCardProps) 
     <Card
       className={cn(
         "p-5 cursor-pointer transition-all",
-        "hover:border-primary/50 hover:shadow-sm",
+        "hover:border-primary/50 hover:shadow-[var(--shadow-card)]",
         selected && "border-primary border-2 ring-2 ring-primary/20 bg-primary/5"
       )}
       onClick={onSelect}
@@ -76,12 +76,12 @@ export function VoiceModeCard({ mode, selected, onSelect }: VoiceModeCardProps) 
               <Check className="h-4 w-4 text-primary shrink-0" />
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs-safe text-muted-foreground mt-1">
             {config.description}
           </p>
           <ul className="mt-3 space-y-1">
             {config.features.map((feature, i) => (
-              <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <li key={i} className="text-xs-safe text-muted-foreground flex items-center gap-1.5">
                 <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
                 {feature}
               </li>

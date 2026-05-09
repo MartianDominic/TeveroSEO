@@ -111,29 +111,29 @@ export function WritingMechanicsTab({ profile, onSave, saving }: WritingMechanic
 
       <Card className="p-4 space-y-3">
         <Label>SEO vs Voice Priority</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Balance between maintaining voice and optimizing for SEO
         </p>
         <Slider value={seoVoicePriority} onValueChange={setSeoVoicePriority} min={1} max={10} step={1} />
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="flex justify-between text-xs-safe text-muted-foreground">
           <span>Voice Priority</span>
           <span>SEO Priority</span>
         </div>
-        <p className="text-xs text-muted-foreground">Current: {seoVoicePriority[0]}/10</p>
+        <p className="text-xs-safe text-muted-foreground">Current: {seoVoicePriority[0]}/10</p>
       </Card>
 
       <Card className="p-4 space-y-3">
         <Label>Keyword Density Tolerance</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Maximum keyword density percentage before flagging as over-optimized
         </p>
         <Slider value={keywordDensity} onValueChange={setKeywordDensity} min={1} max={10} step={0.5} />
-        <p className="text-xs text-muted-foreground">Current: {keywordDensity[0]}%</p>
+        <p className="text-xs-safe text-muted-foreground">Current: {keywordDensity[0]}%</p>
       </Card>
 
       <Card className="p-4">
         <Label>CTA Template</Label>
-        <p className="text-xs text-muted-foreground mb-2">
+        <p className="text-xs-safe text-muted-foreground mb-2">
           Default call-to-action format for this client
         </p>
         <Textarea

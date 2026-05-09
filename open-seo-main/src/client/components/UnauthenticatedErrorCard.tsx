@@ -38,7 +38,7 @@ export function UnauthenticatedErrorCard({
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-md shadow-[var(--shadow-modal)]">
       <CardHeader>
         <CardTitle>Authentication required</CardTitle>
       </CardHeader>

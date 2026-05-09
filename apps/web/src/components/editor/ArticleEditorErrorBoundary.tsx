@@ -183,7 +183,7 @@ export class ArticleEditorErrorBoundary extends Component<Props, State> {
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground mt-6 text-center max-w-sm">
+          <p className="text-xs-safe text-muted-foreground mt-6 text-center max-w-sm">
             If this error persists, please try refreshing the page or contact support.
           </p>
         </div>

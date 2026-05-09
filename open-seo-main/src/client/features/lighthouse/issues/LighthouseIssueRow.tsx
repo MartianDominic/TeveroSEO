@@ -29,7 +29,7 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
         <td className="py-3 pr-3">
           <Badge
             variant="outline"
-            className={`text-xs gap-1 ${severityBadgeClass(issue.severity)}`}
+            className={`text-xs-safe gap-1 ${severityBadgeClass(issue.severity)}`}
           >
             {severityIcon(issue.severity)}
             {issue.severity}
@@ -39,18 +39,18 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
           <div>
             <p className="font-medium text-sm leading-snug">{issue.title}</p>
             {issue.displayValue ? (
-              <p className="text-xs text-foreground/50 mt-0.5">
+              <p className="text-xs-safe text-foreground/50 mt-0.5">
                 {issue.displayValue}
               </p>
             ) : null}
           </div>
         </td>
         <td className="py-3 pr-3 hidden sm:table-cell">
-          <span className="text-xs text-foreground/50">{issue.category}</span>
+          <span className="text-xs-safe text-foreground/50">{issue.category}</span>
         </td>
         <td className="py-3 pr-3 hidden md:table-cell text-right">
           {issue.impactMs != null || issue.impactBytes != null ? (
-            <span className="text-xs tabular-nums text-foreground/50">
+            <span className="text-xs-safe tabular-nums text-foreground/50">
               {issue.impactMs ? formatMs(issue.impactMs) : null}
               {issue.impactMs && issue.impactBytes ? " / " : null}
               {issue.impactBytes ? formatBytes(issue.impactBytes) : null}
@@ -59,7 +59,7 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
         </td>
         <td className="py-3 pr-4 text-right">
           {issue.score != null ? (
-            <span className="text-xs tabular-nums text-foreground/50">
+            <span className="text-xs-safe tabular-nums text-foreground/50">
               {issue.score}
             </span>
           ) : null}
@@ -76,14 +76,14 @@ export function LighthouseIssueRow({ issue }: { issue: LighthouseIssue }) {
               ) : null}
               {issue.items.length > 0 ? (
                 <details className="text-sm">
-                  <summary className="cursor-pointer font-medium text-muted-foreground text-xs">
+                  <summary className="cursor-pointer font-medium text-muted-foreground text-xs-safe">
                     Affected items ({issue.items.length})
                   </summary>
                   <div className="mt-2 space-y-1.5">
                     {issue.items.map((item, itemIndex) => (
                       <pre
                         key={`${issue.auditKey}-${itemIndex}`}
-                        className="bg-muted/60 p-2 rounded overflow-x-auto text-xs leading-relaxed"
+                        className="bg-muted/60 p-2 rounded overflow-x-auto text-xs-safe leading-relaxed"
                       >
                         {item}
                       </pre>

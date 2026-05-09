@@ -4,6 +4,11 @@
  *
  * Provides lightweight metrics collection for request counts, latencies, and error rates.
  * Logs metrics in structured format for external collection (Datadog, CloudWatch, etc.)
+ *
+ * Metric Naming Convention (Prometheus Standard):
+ * - Format: {prefix}_{subsystem}_{metric}_{unit}
+ * - Prefix: osm_ (open-seo-main)
+ * - Examples: osm_api_requests_total, osm_api_latency_seconds
  */
 import { createLogger } from "./logger";
 
@@ -33,7 +38,7 @@ class Metrics {
 
   /**
    * Increment a counter metric.
-   * @param name - Metric name (e.g., "api.requests")
+   * @param name - Metric name (e.g., "osm_api_requests_total")
    * @param labels - Dimensional labels (endpoint, status, clientId)
    * @param value - Amount to increment (default 1)
    */
@@ -47,7 +52,7 @@ class Metrics {
 
   /**
    * Record a timing metric (latency, duration).
-   * @param name - Metric name (e.g., "api.latency")
+   * @param name - Metric name (e.g., "osm_api_latency_seconds")
    * @param durationMs - Duration in milliseconds
    * @param labels - Dimensional labels
    */
@@ -128,8 +133,8 @@ export function recordRequestMetrics(
   const durationMs = Date.now() - startTime;
   const labels = { endpoint, status, ...additionalLabels };
 
-  metrics.increment("api.requests", labels);
-  metrics.timing("api.latency", durationMs, { endpoint });
+  metrics.increment("osm_api_requests_total", labels);
+  metrics.timing("osm_api_latency_seconds", durationMs, { endpoint });
 
   // Log slow requests (>1s) at info level for alerting
   if (durationMs > 1000) {

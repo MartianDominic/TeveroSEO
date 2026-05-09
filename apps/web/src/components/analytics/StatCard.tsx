@@ -14,16 +14,16 @@ export function StatCard({ label, value, subtitle, trend }: StatCardProps) {
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
         <p className="text-2xl font-semibold mt-1">{value}</p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          <p className="text-xs-safe text-muted-foreground mt-0.5">{subtitle}</p>
         )}
         {trend && (
           <p
-            className={`text-xs mt-1 ${
+            className={`text-xs-safe mt-1 ${
               trend.value > 0
                 ? "text-emerald-600"
                 : trend.value < 0

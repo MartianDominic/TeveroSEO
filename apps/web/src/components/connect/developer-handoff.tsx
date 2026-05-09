@@ -188,7 +188,7 @@ That's it! Questions? Reply to this email.`,
                 <span className="font-medium">{form.email}</span>
               </p>
             </div>
-            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md w-full">
+            <div className="text-xs-safe text-muted-foreground bg-muted p-3 rounded-md w-full">
               <p>They will receive:</p>
               <ul className="list-disc list-inside mt-1 space-y-0.5">
                 <li>Step-by-step instructions</li>
@@ -245,7 +245,7 @@ That's it! Questions? Reply to this email.`,
             }
           />
           {form.email && !validateEmail(form.email) && (
-            <p className="text-xs text-destructive">
+            <p className="text-xs-safe text-destructive">
               Please enter a valid email address
             </p>
           )}
@@ -283,7 +283,7 @@ That's it! Questions? Reply to this email.`,
             rows={3}
             maxLength={500}
           />
-          <p className="text-xs text-muted-foreground text-right">
+          <p className="text-xs-safe text-muted-foreground text-right">
             {form.message.length}/500
           </p>
         </div>
@@ -300,7 +300,7 @@ That's it! Questions? Reply to this email.`,
               <span className="font-medium">{emailPreview.subject}</span>
             </div>
             <hr className="border-border" />
-            <pre className="whitespace-pre-wrap font-sans text-foreground/80 text-xs leading-relaxed">
+            <pre className="whitespace-pre-wrap font-sans text-foreground/80 text-xs-safe leading-relaxed">
               {emailPreview.body}
             </pre>
             <div className="pt-2">
@@ -385,7 +385,7 @@ export function HandoffStatusTracker({
             </div>
             <div>
               <p className="text-sm font-medium">{h.developerEmail}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 Sent{" "}
                 {new Date(h.sentAt).toLocaleDateString(undefined, {
                   month: "short",
@@ -397,7 +397,7 @@ export function HandoffStatusTracker({
           </div>
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[h.status] || statusColors.sent}`}
+              className={`text-xs-safe font-medium px-2 py-1 rounded-full ${statusColors[h.status] || statusColors.sent}`}
             >
               {statusLabels[h.status] || h.status}
             </span>

@@ -1142,7 +1142,7 @@ export function createHealthRoutes(scrapingService: ScrapingService): Router {
 
 ### Task 95-09-06: Grafana Dashboard Template
 
-**File:** `open-seo-main/docs/monitoring/grafana-dashboard.json`
+**File:** `open-seo-main/src/server/features/scraping/monitoring/grafana-dashboard.json`
 
 ```json
 {

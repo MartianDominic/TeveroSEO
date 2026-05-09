@@ -358,7 +358,7 @@ export default function ConnectionsPage() {
                   <h3 className="text-sm font-medium text-foreground">
                     {provider.name}
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs-safe text-muted-foreground">
                     {provider.description}
                   </p>
                 </div>
@@ -368,7 +368,7 @@ export default function ConnectionsPage() {
               {/* Connected state */}
               {isConnected && connection && (
                 <div className="space-y-3">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs-safe text-muted-foreground">
                     Connected by {connection.connected_by} on{" "}
                     {formatDate(connection.connected_at)}
                   </div>
@@ -384,7 +384,7 @@ export default function ConnectionsPage() {
                           <span className="text-muted-foreground">
                             {formatPropertyKey(prop.key)}
                           </span>
-                          <span className="text-foreground font-mono text-xs">
+                          <span className="text-foreground font-mono text-xs-safe">
                             {prop.value}
                           </span>
                         </div>
@@ -460,7 +460,7 @@ export default function ConnectionsPage() {
                       </div>
                       {inviteUrl && (
                         <div className="p-2 rounded-md bg-muted/50">
-                          <p className="text-xs text-muted-foreground break-all font-mono">
+                          <p className="text-xs-safe text-muted-foreground break-all font-mono">
                             {inviteUrl}
                           </p>
                         </div>
@@ -496,7 +496,7 @@ export default function ConnectionsPage() {
 
       {/* Toast notification */}
       {toast.open && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border transition-opacity">
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-[var(--shadow-overlay)] bg-card border border-border transition-opacity">
           <div className="flex items-center gap-2">
             <StatusChip
               status={toast.severity === "success" ? "published" : "failed"}

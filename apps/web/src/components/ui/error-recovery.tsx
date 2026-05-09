@@ -72,7 +72,7 @@ export function ErrorRecovery({
                 <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
                   Technical details
                 </summary>
-                <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
+                <pre className="mt-2 p-2 bg-muted rounded text-xs-safe overflow-auto max-h-32">
                   {error.stack}
                 </pre>
               </details>

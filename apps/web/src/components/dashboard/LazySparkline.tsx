@@ -130,7 +130,7 @@ export function LazySparkline({
       <div
         ref={ref}
         style={{ width, height }}
-        className="flex items-center justify-center text-muted-foreground text-xs"
+        className="flex items-center justify-center text-muted-foreground text-xs-safe"
       >
         -
       </div>

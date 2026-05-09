@@ -202,9 +202,9 @@ export function UndoRedoButtons({
           <TooltipContent side="bottom">
             <div className="flex flex-col items-center gap-0.5">
               <span>{t("undo")}</span>
-              <span className="text-xs text-text-3">{undoShortcut}</span>
+              <span className="text-xs-safe text-text-3">{undoShortcut}</span>
               {undoCount > 0 && (
-                <span className="text-xs text-text-3">
+                <span className="text-xs-safe text-text-3">
                   {t("historyCount", { count: undoCount })}
                 </span>
               )}
@@ -233,9 +233,9 @@ export function UndoRedoButtons({
           <TooltipContent side="bottom">
             <div className="flex flex-col items-center gap-0.5">
               <span>{t("redo")}</span>
-              <span className="text-xs text-text-3">{redoShortcut}</span>
+              <span className="text-xs-safe text-text-3">{redoShortcut}</span>
               {redoCount > 0 && (
-                <span className="text-xs text-text-3">
+                <span className="text-xs-safe text-text-3">
                   {t("historyCount", { count: redoCount })}
                 </span>
               )}

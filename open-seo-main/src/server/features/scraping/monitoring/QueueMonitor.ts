@@ -344,37 +344,37 @@ export class QueueMonitor {
     const s = this.lastSnapshot;
 
     // Queue depth gauges
-    lines.push("# HELP scrape_queue_depth Number of jobs in queue");
-    lines.push("# TYPE scrape_queue_depth gauge");
+    lines.push("# HELP osm_queue_depth_jobs Number of jobs in queue");
+    lines.push("# TYPE osm_queue_depth_jobs gauge");
     for (const [queueName, stats] of Object.entries(s.queueDepth)) {
-      lines.push(`scrape_queue_depth{queue="${queueName}",state="waiting"} ${stats.waiting}`);
-      lines.push(`scrape_queue_depth{queue="${queueName}",state="active"} ${stats.active}`);
-      lines.push(`scrape_queue_depth{queue="${queueName}",state="delayed"} ${stats.delayed}`);
+      lines.push(`osm_queue_depth_jobs{queue="${queueName}",state="waiting"} ${stats.waiting}`);
+      lines.push(`osm_queue_depth_jobs{queue="${queueName}",state="active"} ${stats.active}`);
+      lines.push(`osm_queue_depth_jobs{queue="${queueName}",state="delayed"} ${stats.delayed}`);
     }
 
     // Jobs processed counter
-    lines.push("# HELP scrape_jobs_processed_total Total number of jobs processed");
-    lines.push("# TYPE scrape_jobs_processed_total counter");
-    lines.push(`scrape_jobs_processed_total{status="completed"} ${s.jobsProcessed.completed}`);
-    lines.push(`scrape_jobs_processed_total{status="failed"} ${s.jobsProcessed.failed}`);
+    lines.push("# HELP osm_queue_jobs_processed_total Total number of jobs processed");
+    lines.push("# TYPE osm_queue_jobs_processed_total counter");
+    lines.push(`osm_queue_jobs_processed_total{status="completed"} ${s.jobsProcessed.completed}`);
+    lines.push(`osm_queue_jobs_processed_total{status="failed"} ${s.jobsProcessed.failed}`);
 
     // Processing time histogram summary
-    lines.push("# HELP scrape_job_processing_seconds Job processing time in seconds");
-    lines.push("# TYPE scrape_job_processing_seconds summary");
-    lines.push(`scrape_job_processing_seconds{quantile="0.5"} ${s.processingTime.p50 / 1000}`);
-    lines.push(`scrape_job_processing_seconds{quantile="0.9"} ${s.processingTime.p90 / 1000}`);
-    lines.push(`scrape_job_processing_seconds{quantile="0.95"} ${s.processingTime.p95 / 1000}`);
-    lines.push(`scrape_job_processing_seconds{quantile="0.99"} ${s.processingTime.p99 / 1000}`);
+    lines.push("# HELP osm_queue_job_processing_seconds Job processing time in seconds");
+    lines.push("# TYPE osm_queue_job_processing_seconds summary");
+    lines.push(`osm_queue_job_processing_seconds{quantile="0.5"} ${s.processingTime.p50 / 1000}`);
+    lines.push(`osm_queue_job_processing_seconds{quantile="0.9"} ${s.processingTime.p90 / 1000}`);
+    lines.push(`osm_queue_job_processing_seconds{quantile="0.95"} ${s.processingTime.p95 / 1000}`);
+    lines.push(`osm_queue_job_processing_seconds{quantile="0.99"} ${s.processingTime.p99 / 1000}`);
 
     // Concurrency gauge
-    lines.push("# HELP scrape_concurrency_utilization Current concurrency utilization (0-1)");
-    lines.push("# TYPE scrape_concurrency_utilization gauge");
-    lines.push(`scrape_concurrency_utilization ${s.concurrency.utilization.toFixed(4)}`);
+    lines.push("# HELP osm_queue_concurrency_utilization Current concurrency utilization (0-1)");
+    lines.push("# TYPE osm_queue_concurrency_utilization gauge");
+    lines.push(`osm_queue_concurrency_utilization ${s.concurrency.utilization.toFixed(4)}`);
 
     // Blocked domains gauge
-    lines.push("# HELP scrape_blocked_domains Number of blocked domains");
-    lines.push("# TYPE scrape_blocked_domains gauge");
-    lines.push(`scrape_blocked_domains ${s.blockedDomains.total}`);
+    lines.push("# HELP osm_queue_blocked_domains Number of blocked domains");
+    lines.push("# TYPE osm_queue_blocked_domains gauge");
+    lines.push(`osm_queue_blocked_domains ${s.blockedDomains.total}`);
 
     return lines.join("\n") + "\n";
   }

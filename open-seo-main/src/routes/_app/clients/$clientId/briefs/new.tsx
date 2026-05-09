@@ -334,7 +334,7 @@ function Step2SerpPreview({ serpAnalysis }: { serpAnalysis: SerpAnalysisData | n
             <p className="text-2xl font-bold">
               {avgWordCount > 0 ? Math.round(avgWordCount * 1.2).toLocaleString() : "1,800"}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               Based on competitor avg ({avgWordCount.toLocaleString()}) + 20%
             </p>
           </CardContent>
@@ -382,7 +382,7 @@ function Step2SerpPreview({ serpAnalysis }: { serpAnalysis: SerpAnalysisData | n
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs-safe text-muted-foreground">
         Analyzed: {new Date(serpAnalysis.analyzedAt).toLocaleDateString()} • {serpAnalysis.location}
       </p>
     </div>

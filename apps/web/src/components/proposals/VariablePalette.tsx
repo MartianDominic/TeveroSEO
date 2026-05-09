@@ -205,7 +205,7 @@ function VariableChip({
               group flex items-center gap-2 rounded-md border cursor-grab
               bg-background hover:bg-accent/50 transition-colors
               active:cursor-grabbing select-none
-              ${compact ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm"}
+              ${compact ? "px-2 py-1 text-xs-safe" : "px-3 py-2 text-sm"}
             `}
             style={{
               borderColor: variable.color ?? "#6B7280",
@@ -237,7 +237,7 @@ function VariableChip({
             {variable.isSystem && (
               <Badge
                 variant="outline"
-                className={`opacity-60 ${compact ? "text-xs-safe px-1 py-0" : "text-xs"}`}
+                className={`opacity-60 ${compact ? "text-xs-safe-safe px-1 py-0" : "text-xs-safe"}`}
               >
                 sys
               </Badge>
@@ -246,7 +246,7 @@ function VariableChip({
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-xs">
           <div className="space-y-1">
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-mono text-xs-safe text-muted-foreground">
               {`{{${variable.key}}}`}
             </p>
             {variable.description && (
@@ -312,7 +312,7 @@ function CategorySection({
         <Button
           variant="ghost"
           className={`w-full justify-between font-medium ${
-            compact ? "h-8 px-2 text-xs" : "h-10 px-3"
+            compact ? "h-8 px-2 text-xs-safe" : "h-10 px-3"
           }`}
         >
           <span className="flex items-center gap-2">
@@ -321,7 +321,7 @@ function CategorySection({
               style={{ backgroundColor: group.color }}
             />
             <span>{categoryLabel}</span>
-            <Badge variant="secondary" className={compact ? "text-xs-safe" : "text-xs"}>
+            <Badge variant="secondary" className={compact ? "text-xs-safe-safe" : "text-xs-safe"}>
               {filteredVariables.length}
             </Badge>
           </span>
@@ -401,7 +401,7 @@ export function VariablePalette({
           <h3 className={`font-semibold ${compact ? "text-sm" : "text-base"}`}>
             {t("title", { fallback: "Variables" })}
           </h3>
-          <Badge variant="outline" className={compact ? "text-xs-safe" : "text-xs"}>
+          <Badge variant="outline" className={compact ? "text-xs-safe-safe" : "text-xs-safe"}>
             {totalCount}
           </Badge>
         </div>
@@ -418,7 +418,7 @@ export function VariablePalette({
             placeholder={t("search", { fallback: "Search variables..." })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`${compact ? "h-8 pl-7 text-xs" : "h-9 pl-9"}`}
+            className={`${compact ? "h-8 pl-7 text-xs-safe" : "h-9 pl-9"}`}
           />
         </div>
       </div>
@@ -451,7 +451,7 @@ export function VariablePalette({
       {/* Drag hint */}
       <div
         className={`border-t text-muted-foreground text-center ${
-          compact ? "px-2 py-1.5 text-xs-safe" : "px-3 py-2 text-xs"
+          compact ? "px-2 py-1.5 text-xs-safe-safe" : "px-3 py-2 text-xs-safe"
         }`}
       >
         {t("dragTip", { fallback: "Drag variables into content" })}

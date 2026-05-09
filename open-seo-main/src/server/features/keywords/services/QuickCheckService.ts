@@ -17,7 +17,7 @@ import { CACHE_NS, safeJsonParse } from "@/server/lib/cache/cache-keys";
 import { createLogger } from "@/server/lib/logger";
 import { db } from "@/db";
 import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
-import { getLabsCost } from "@/server/features/scraping/cost";
+import { getLabsCost, getKeywordMetricsCostCents } from "@/server/features/scraping/cost";
 
 const log = createLogger({ module: "quick-check-service" });
 
@@ -25,7 +25,7 @@ const log = createLogger({ module: "quick-check-service" });
 const QUICK_CHECK_CLIENT_ID = "system:quick-check";
 
 // DataForSEO Labs API cost per keyword (from centralized pricing)
-const DFS_COST_PER_KEYWORD = getLabsCost("keywordMetrics");
+const DFS_COST_PER_KEYWORD = getLabsCost("keywordMetrics"); // 0.0005 USD
 
 // Constants
 const MAX_KEYWORDS = 20;
@@ -33,7 +33,8 @@ const CACHE_PREFIX = CACHE_NS.KEYWORD;
 const SHARE_PREFIX = CACHE_NS.QUICK_CHECK_SHARE;
 const CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const SHARE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-const COST_PER_KEYWORD_CENTS = 0.5; // $0.005 per keyword
+// Cost per keyword in cents - from canonical pricing module
+const COST_PER_KEYWORD_CENTS = getKeywordMetricsCostCents(); // 0.05 cents
 
 export interface QuickCheckKeyword {
   keyword: string;

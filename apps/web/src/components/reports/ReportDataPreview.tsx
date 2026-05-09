@@ -56,7 +56,7 @@ const MetricPreview: FC<MetricPreviewProps> = ({
       <Icon className="h-4 w-4 text-[var(--accent)]" />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-xs text-[var(--text-3)] truncate">{label}</p>
+      <p className="text-xs-safe text-[var(--text-3)] truncate">{label}</p>
       <p className="text-sm font-semibold text-[var(--text-1)] tabular-nums">
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
@@ -130,7 +130,7 @@ const QueriesPreview: FC<{
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
+      <p className="text-xs-safe font-medium text-[var(--text-3)] uppercase tracking-wider">
         Top Queries Preview
       </p>
       <div className="space-y-1">
@@ -142,7 +142,7 @@ const QueriesPreview: FC<{
             <span className="text-sm text-[var(--text-2)] truncate max-w-[60%]">
               {q.query}
             </span>
-            <div className="flex items-center gap-3 text-xs text-[var(--text-3)]">
+            <div className="flex items-center gap-3 text-xs-safe text-[var(--text-3)]">
               <span className="tabular-nums">{q.clicks} clicks</span>
               <span className="tabular-nums">#{Math.round(q.position)}</span>
             </div>
@@ -293,7 +293,7 @@ export const ReportDataPreview: FC<ReportDataPreviewProps> = ({
       )}
 
       {/* Date range info */}
-      <p className="text-xs text-[var(--text-3)] text-center">
+      <p className="text-xs-safe text-[var(--text-3)] text-center">
         Data from {dateRange.start} to {dateRange.end}
       </p>
     </div>

@@ -301,7 +301,7 @@ export class LatencyTracker {
     // Structured logging for observability
     alertLogger.warn(
       {
-        metric: "scraping_p95_latency_ms",
+        metric: "osm_scraping_p95_latency_ms",
         value: p95,
         threshold: this.thresholdMs,
         sampleCount: this.sampleCount,
@@ -320,17 +320,17 @@ export class LatencyTracker {
     const stats = this.getStats();
 
     // Set rolling window P95 gauge
-    collector.setGauge("scraping_p95_latency_rolling_ms", stats.p95Ms);
+    collector.setGauge("osm_scraping_p95_latency_rolling_ms", stats.p95Ms);
 
     // Set threshold breach gauge (1 if above, 0 if below)
     collector.setGauge(
-      "scraping_p95_threshold_breach",
+      "osm_scraping_p95_threshold_breach",
       stats.isAboveThreshold ? 1 : 0
     );
 
     // Set consecutive breaches counter
     collector.setGauge(
-      "scraping_p95_consecutive_breaches",
+      "osm_scraping_p95_consecutive_breaches",
       this.consecutiveBreaches
     );
   }

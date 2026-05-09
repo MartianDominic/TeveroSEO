@@ -167,7 +167,7 @@ function MetricCard({
     <div className="bg-muted/50 rounded-lg p-4">
       <div className="flex items-center gap-2 text-muted-foreground mb-1">
         {icon}
-        <span className="text-xs font-medium uppercase">{label}</span>
+        <span className="text-xs-safe font-medium uppercase">{label}</span>
       </div>
       <div className="text-2xl font-bold">{value}</div>
     </div>

@@ -32,7 +32,7 @@ export function DomainFilterPanel({
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1 h-7 text-xs"
+          className="gap-1 h-7 text-xs-safe"
           onClick={resetFilters}
           disabled={activeFilterCount === 0}
         >
@@ -145,7 +145,7 @@ function FilterRangeInputs({
         <form.Field name={minName}>
           {(field) => (
             <Input
-              className="h-6 text-xs bg-background px-2"
+              className="h-6 text-xs-safe bg-background px-2"
               placeholder="Min"
               type="number"
               step={step}
@@ -157,7 +157,7 @@ function FilterRangeInputs({
         <form.Field name={maxName}>
           {(field) => (
             <Input
-              className="h-6 text-xs bg-background px-2"
+              className="h-6 text-xs-safe bg-background px-2"
               placeholder="Max"
               type="number"
               step={step}

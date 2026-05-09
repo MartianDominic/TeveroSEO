@@ -42,13 +42,13 @@ export function TeamWorkloadSection({ members }: TeamWorkloadSectionProps) {
                     className="h-6 w-6 rounded-full"
                   />
                 ) : (
-                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs-safe font-medium">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <span className="font-medium text-sm">{member.name}</span>
                 {isOverloaded(member.clientCount, member.maxCapacity) && (
-                  <Badge variant="destructive" className="text-xs gap-1">
+                  <Badge variant="destructive" className="text-xs-safe gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     Overloaded
                   </Badge>

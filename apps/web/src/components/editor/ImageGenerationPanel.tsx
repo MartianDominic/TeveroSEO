@@ -172,13 +172,13 @@ export function ImageGenerationPanel({
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-[var(--shadow-card)]">
       <p className="text-sm font-semibold text-foreground">Image Generation</p>
       <Separator />
 
       {/* Model selector */}
       <div className="space-y-1">
-        <Label className="text-xs font-medium text-muted-foreground">Model</Label>
+        <Label className="text-xs-safe font-medium text-muted-foreground">Model</Label>
         <Select value={selectedModel} onValueChange={setSelectedModel}>
           <SelectTrigger className="w-full h-8 text-sm">
             <SelectValue placeholder="Select model" />
@@ -195,7 +195,7 @@ export function ImageGenerationPanel({
 
       {/* Prompt textarea */}
       <div className="space-y-1">
-        <Label className="text-xs font-medium text-muted-foreground">Prompt</Label>
+        <Label className="text-xs-safe font-medium text-muted-foreground">Prompt</Label>
         <Textarea
           value={prompt}
           onChange={(e) => {
@@ -268,7 +268,7 @@ export function ImageGenerationPanel({
       {/* Placeholder when no image yet */}
       {!generatedImageUrl && !imageGenerating && (
         <div className="rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center py-8">
-          <div className="text-center text-xs text-muted-foreground space-y-1">
+          <div className="text-center text-xs-safe text-muted-foreground space-y-1">
             <ImageIcon className="h-8 w-8 mx-auto opacity-30" />
             <p>1024 x 1024</p>
           </div>

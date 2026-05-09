@@ -16,6 +16,7 @@
 
 import OpenAI from "openai";
 import * as cheerio from "cheerio";
+import type { CheerioAPI } from "cheerio";
 import {
   CircuitBreaker,
   CircuitOpenError,
@@ -88,13 +89,15 @@ export class VerticalClassifier {
    * @param path - URL path (e.g., "/products/widget")
    * @param html - Page HTML content
    * @param clientId - Client ID for cache scoping
+   * @param $ - Optional shared Cheerio instance (avoids re-parsing HTML)
    * @returns Classification result
    */
   async classify(
     domain: string,
     path: string,
     html: string,
-    clientId: string
+    clientId: string,
+    $?: CheerioAPI
   ): Promise<Classification> {
     const pathPattern = this.extractPathPattern(path);
 
@@ -109,8 +112,11 @@ export class VerticalClassifier {
       return cached;
     }
 
+    // Create shared cheerio instance if not provided (single parse for all methods)
+    const shared$ = $ ?? cheerio.load(html);
+
     // 2. Run heuristic classification
-    const heuristic = this.classifyHeuristic(html, path);
+    const heuristic = this.classifyHeuristic(html, path, shared$);
     if (heuristic && heuristic.confidence >= this.config.heuristicThreshold) {
       log.debug("Heuristic classification successful", {
         domain,
@@ -129,7 +135,7 @@ export class VerticalClassifier {
       pathPattern,
       heuristicConfidence: heuristic?.confidence ?? 0,
     });
-    const llmResult = await this.classifyLLM(html, path);
+    const llmResult = await this.classifyLLM(html, path, shared$);
     await this.cacheClassification(domain, pathPattern, clientId, llmResult);
     return llmResult;
   }
@@ -137,10 +143,17 @@ export class VerticalClassifier {
   /**
    * Classify page using heuristics (Schema.org, URL patterns, keywords).
    * Returns null if no confident match found.
+   *
+   * @param html - Raw HTML string (used only if $ not provided)
+   * @param url - Page URL for pattern matching
+   * @param $ - Optional shared Cheerio instance (avoids re-parsing HTML)
    */
-  classifyHeuristic(html: string, url: string): Classification | null {
+  classifyHeuristic(html: string, url: string, $?: CheerioAPI): Classification | null {
+    // Create shared cheerio instance if not provided
+    const shared$ = $ ?? cheerio.load(html);
+
     // 1. Schema.org detection (highest confidence: 0.95)
-    const schemaResult = this.detectSchemaOrg(html);
+    const schemaResult = this.detectSchemaOrg(shared$);
     if (schemaResult) {
       return schemaResult;
     }
@@ -152,7 +165,7 @@ export class VerticalClassifier {
     }
 
     // 3. YMYL keyword detection (lower confidence: 0.70)
-    const keywordResult = this.detectYmylKeywords(html);
+    const keywordResult = this.detectYmylKeywords(shared$);
     if (keywordResult) {
       return keywordResult;
     }
@@ -164,16 +177,20 @@ export class VerticalClassifier {
    * Classify page using LLM (Grok 4.1 Fast).
    * Uses circuit breaker for graceful degradation.
    *
+   * @param html - Raw HTML string (used only if $ not provided)
+   * @param url - Page URL
+   * @param $ - Optional shared Cheerio instance (avoids re-parsing HTML)
    * @throws CircuitOpenError if circuit breaker is open
    */
-  async classifyLLM(html: string, url: string): Promise<Classification> {
-    const $ = cheerio.load(html);
+  async classifyLLM(html: string, url: string, $?: CheerioAPI): Promise<Classification> {
+    // Use shared cheerio instance if provided
+    const shared$ = $ ?? cheerio.load(html);
 
     // Extract key page signals for classification
-    const title = $("title").text().trim().slice(0, 200);
-    const h1 = $("h1").first().text().trim().slice(0, 200);
-    const metaDesc = $('meta[name="description"]').attr("content")?.slice(0, 300) || "";
-    const bodyText = this.extractBodyText($).slice(0, 500);
+    const title = shared$("title").text().trim().slice(0, 200);
+    const h1 = shared$("h1").first().text().trim().slice(0, 200);
+    const metaDesc = shared$('meta[name="description"]').attr("content")?.slice(0, 300) || "";
+    const bodyText = this.extractBodyText(shared$).slice(0, 500);
 
     // Use circuit breaker execute() which handles success/failure tracking
     return this.circuit.execute(async () => {
@@ -261,10 +278,11 @@ export class VerticalClassifier {
 
   /**
    * Detect Schema.org types from JSON-LD scripts.
+   *
+   * @param $ - Cheerio instance with loaded HTML
    */
-  private detectSchemaOrg(html: string): Classification | null {
+  private detectSchemaOrg($: CheerioAPI): Classification | null {
     try {
-      const $ = cheerio.load(html);
       const scripts = $('script[type="application/ld+json"]');
 
       for (let i = 0; i < scripts.length; i++) {
@@ -347,9 +365,10 @@ export class VerticalClassifier {
 
   /**
    * Detect YMYL vertical from body text keywords.
+   *
+   * @param $ - Cheerio instance with loaded HTML
    */
-  private detectYmylKeywords(html: string): Classification | null {
-    const $ = cheerio.load(html);
+  private detectYmylKeywords($: CheerioAPI): Classification | null {
     const bodyText = this.extractBodyText($).toLowerCase();
 
     for (const [verticalKey, pattern] of Object.entries(YMYL_KEYWORDS)) {
@@ -369,12 +388,15 @@ export class VerticalClassifier {
 
   /**
    * Extract body text from HTML, excluding scripts and styles.
+   * Uses the shared cheerio instance without re-parsing.
+   *
+   * @param $ - Cheerio instance with loaded HTML
    */
-  private extractBodyText($: cheerio.CheerioAPI): string {
-    const $clone = $.root().clone();
-    const $body = cheerio.load($clone.html() ?? "");
-    $body("script, style, noscript, nav, header, footer").remove();
-    return $body("body").text().replace(/\s+/g, " ").trim();
+  private extractBodyText($: CheerioAPI): string {
+    // Clone body to avoid mutating the shared instance
+    const $body = $("body").clone();
+    $body.find("script, style, noscript, nav, header, footer").remove();
+    return $body.text().replace(/\s+/g, " ").trim();
   }
 
   /**

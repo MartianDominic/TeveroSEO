@@ -58,11 +58,12 @@ describe("KeywordEnrichmentService", () => {
   });
 
   // Test 3: Cost tracking constant is correct
-  it("should track cost at 0.5 cents per keyword", async () => {
+  // $0.0005 per keyword = 0.05 cents (from canonical DFS pricing)
+  it("should track cost at 0.05 cents per keyword (canonical pricing)", async () => {
     const { COST_PER_KEYWORD_CENTS } = await import(
       "./KeywordEnrichmentService"
     );
-    expect(COST_PER_KEYWORD_CENTS).toBe(0.5);
+    expect(COST_PER_KEYWORD_CENTS).toBe(0.05);
   });
 
   // Test 4: Cache key prefix

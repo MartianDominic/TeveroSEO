@@ -184,11 +184,11 @@ export class BandwidthTracker {
 
       // Update Prometheus metrics
       const metrics = getMetricsCollector();
-      metrics.addCounter("scraping_proxy_bandwidth_bytes", totalBytes, { provider });
+      metrics.addCounter("osm_scraping_proxy_bandwidth_bytes", totalBytes, { provider });
 
       const config = this.config[provider];
       const costUsd = (newTotal / BYTES_PER_GB) * config.costPerGb;
-      metrics.setGauge("scraping_proxy_bandwidth_cost_usd", costUsd, { provider });
+      metrics.setGauge("osm_scraping_proxy_bandwidth_cost_usd", costUsd, { provider });
 
       // Check thresholds and send alerts
       await this.checkThresholds(provider, newTotal);
@@ -354,7 +354,7 @@ export class BandwidthTracker {
 
       // Update Prometheus metric
       const metrics = getMetricsCollector();
-      metrics.incrementCounter("scraping_proxy_bandwidth_alerts_total", { provider, level });
+      metrics.incrementCounter("osm_scraping_proxy_bandwidth_alerts_total", { provider, level });
     }
   }
 

@@ -228,7 +228,7 @@ export const AddSectionMenu: FC<AddSectionMenuProps> = ({
                   aria-label={getLabel(config)}
                 >
                   <Icon className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">
+                  <span className="text-xs-safe font-medium text-foreground">
                     {getLabel(config)}
                   </span>
                 </button>
@@ -239,7 +239,7 @@ export const AddSectionMenu: FC<AddSectionMenuProps> = ({
           {/* Hover description */}
           <div
             className={cn(
-              "min-h-[2rem] text-xs text-muted-foreground",
+              "min-h-[2rem] text-xs-safe text-muted-foreground",
               "transition-opacity duration-150",
               hoveredConfig ? "opacity-100" : "opacity-0"
             )}

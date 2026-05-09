@@ -108,7 +108,7 @@ export function PortfolioHealthSummary({ summary, workspaceId }: PortfolioHealth
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{data.totalClients}</div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             <span className="text-emerald-600">{data.clientsOnTrack}</span> on track
             {data.clientsCritical > 0 && (
               <span className="text-red-600 ml-2">{data.clientsCritical} critical</span>
@@ -132,7 +132,7 @@ export function PortfolioHealthSummary({ summary, workspaceId }: PortfolioHealth
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             {data.goalsMet}/{data.goalsTotal} goals met
           </p>
         </CardContent>
@@ -152,7 +152,7 @@ export function PortfolioHealthSummary({ summary, workspaceId }: PortfolioHealth
           <div className={`text-2xl font-bold ${data.avgTrafficChange >= 0 ? "text-emerald-600" : "text-red-600"}`}>
             {formatPercent(data.avgTrafficChange)}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             {formatNumber(data.totalClicks30d)} clicks (30d)
           </p>
         </CardContent>

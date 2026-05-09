@@ -180,7 +180,7 @@ export function ConnectionWizard({
                   disabled={loading}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 We&apos;ll auto-detect if it&apos;s WordPress, Shopify, Wix,
                 etc.
               </p>

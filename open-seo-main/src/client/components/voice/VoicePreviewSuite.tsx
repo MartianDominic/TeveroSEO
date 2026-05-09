@@ -232,7 +232,7 @@ export function VoicePreviewSuite({ profile }: Props) {
                     >
                       {score}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs-safe text-muted-foreground mt-1">
                       {label}
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export function VoicePreviewSuite({ profile }: Props) {
                                 ? "secondary"
                                 : "outline"
                           }
-                          className="text-xs"
+                          className="text-xs-safe"
                         >
                           {v.severity}
                         </Badge>
@@ -279,7 +279,7 @@ export function VoicePreviewSuite({ profile }: Props) {
                       </div>
                       <p className="text-muted-foreground">{v.text}</p>
                       {v.suggestion && (
-                        <p className="text-xs mt-1">
+                        <p className="text-xs-safe mt-1">
                           <span className="font-medium">Suggestion:</span>{" "}
                           {v.suggestion}
                         </p>

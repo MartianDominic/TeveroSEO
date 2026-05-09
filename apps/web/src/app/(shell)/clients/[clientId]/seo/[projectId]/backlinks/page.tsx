@@ -188,7 +188,7 @@ export default function BacklinksPage() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                         Total Backlinks
                       </p>
                       <p className="text-2xl font-semibold">
@@ -198,7 +198,7 @@ export default function BacklinksPage() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                         Referring Domains
                       </p>
                       <p className="text-2xl font-semibold">
@@ -208,7 +208,7 @@ export default function BacklinksPage() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                         Domain Rank
                       </p>
                       <p className="text-2xl font-semibold">
@@ -218,7 +218,7 @@ export default function BacklinksPage() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                         Trust Rank
                       </p>
                       <p className="text-2xl font-semibold">
@@ -228,7 +228,7 @@ export default function BacklinksPage() {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                         Spam Score
                       </p>
                       <p

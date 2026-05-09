@@ -48,7 +48,7 @@ export function AuditHistorySection({
             <tbody>
               {history.map((audit) => (
                 <tr key={audit.id} className="hover group">
-                  <td className="text-xs text-foreground/70">
+                  <td className="text-xs-safe text-foreground/70">
                     {formatDate(audit.startedAt)}
                   </td>
                   <td className="max-w-[220px] truncate">{audit.startUrl}</td>
@@ -106,7 +106,7 @@ function HistoryActions({
         </div>
         <ul
           tabIndex={0}
-          className="dropdown-content z-10 menu p-2 shadow-lg bg-background border border-border rounded-lg w-40"
+          className="dropdown-content z-10 menu p-2 shadow-[var(--shadow-dropdown)] bg-background border border-border rounded-lg w-40"
         >
           <li>
             <button

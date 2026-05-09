@@ -48,13 +48,15 @@ export {
 
 // =============================================================================
 // Circuit Breaker (pure but typically server-side pattern)
+// Re-exported from canonical location in scraping/resilience/
 // =============================================================================
 export {
   CircuitBreaker,
   CircuitOpenError,
-  CircuitState,
+  createCircuitBreaker,
+  type CircuitState,
   type CircuitBreakerConfig as ServiceCircuitBreakerConfig,
-} from './services/CircuitBreaker';
+} from '@/server/features/scraping/resilience/CircuitBreaker';
 
 // =============================================================================
 // Business Priority Parser (uses fs, path, crypto)

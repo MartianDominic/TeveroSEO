@@ -30,6 +30,7 @@
     "@sentry/nextjs": "^10.51.0",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/react-virtual": "^3.13.24",
+    "@tevero/shared-cache": "workspace:*",
     "@tevero/types": "workspace:*",
     "@tevero/ui": "workspace:*",
     "@tevero/utils": "workspace:*",

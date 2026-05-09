@@ -283,7 +283,7 @@ export function VoiceWizard({ clientId }: Props) {
                         {MODE_DESCRIPTIONS[mode].title}
                       </span>
                       {mode === recommendedMode && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                        <span className="text-xs-safe bg-primary/10 text-primary px-2 py-0.5 rounded">
                           Recommended
                         </span>
                       )}

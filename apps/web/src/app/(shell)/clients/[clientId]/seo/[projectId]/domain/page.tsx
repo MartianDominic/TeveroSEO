@@ -116,7 +116,7 @@ export default function DomainOverviewPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Organic Traffic
                   </p>
                   <div className="flex items-center gap-2">
@@ -145,7 +145,7 @@ export default function DomainOverviewPage() {
                   </div>
                   {data.trafficChange !== undefined && (
                     <p
-                      className={`text-xs ${
+                      className={`text-xs-safe ${
                         data.trafficChange >= 0
                           ? "text-green-600"
                           : "text-red-600"
@@ -160,7 +160,7 @@ export default function DomainOverviewPage() {
 
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Organic Keywords
                   </p>
                   <p className="text-2xl font-semibold">
@@ -171,7 +171,7 @@ export default function DomainOverviewPage() {
 
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Backlinks
                   </p>
                   <p className="text-2xl font-semibold">
@@ -182,7 +182,7 @@ export default function DomainOverviewPage() {
 
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Domain Rank
                   </p>
                   <p className="text-2xl font-semibold">{data.domainRank}</p>

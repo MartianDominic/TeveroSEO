@@ -212,7 +212,7 @@ function QuickConfigCard({
           <GoalIcon type={template.metric} />
           <span className="font-medium">{template.name}</span>
           {isPrimary && (
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+            <span className="text-xs-safe bg-primary/10 text-primary px-2 py-0.5 rounded">
               First
             </span>
           )}

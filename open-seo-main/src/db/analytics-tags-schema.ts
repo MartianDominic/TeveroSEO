@@ -8,6 +8,7 @@
 import { pgTable, uuid, text, timestamp, unique, index } from "drizzle-orm/pg-core";
 import { siteConnections } from "./connection-schema";
 import { clients } from "./client-schema";
+import { user } from "./user-schema";
 
 export const siteTags = pgTable(
   "site_tags",
@@ -17,6 +18,8 @@ export const siteTags = pgTable(
     tagName: text("tag_name").notNull(),
     tagColor: text("tag_color"), // Hex color for UI badge (e.g., "#1B6E45")
     tagCategory: text("tag_category"), // Optional: "project", "region", "custom"
+    // Audit trail: who created this tag (SCHEMA-FK)
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     softDeletedAt: timestamp("soft_deleted_at", { withTimezone: true }),
   },
@@ -37,6 +40,8 @@ export const clientTags = pgTable(
     tagName: text("tag_name").notNull(),
     tagColor: text("tag_color"),
     tagCategory: text("tag_category"),
+    // Audit trail: who created this tag (SCHEMA-FK)
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     softDeletedAt: timestamp("soft_deleted_at", { withTimezone: true }),
   },

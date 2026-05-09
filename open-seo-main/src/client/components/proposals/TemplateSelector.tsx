@@ -82,7 +82,7 @@ export function TemplateSelector({ selected, onSelect }: TemplateSelectorProps) 
         {TEMPLATES.map((template) => (
           <Card
             key={template.id}
-            className={`relative p-6 cursor-pointer transition-all hover:shadow-md ${
+            className={`relative p-6 cursor-pointer transition-all hover:shadow-[var(--shadow-elevated)] ${
               selected === template.id
                 ? "ring-2 ring-primary border-primary"
                 : "hover:border-primary/50"

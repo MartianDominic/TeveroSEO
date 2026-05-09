@@ -130,7 +130,7 @@ export function KeyboardShortcutsHelp({ isOpen: externalOpen, onClose }: Keyboar
                     <span className="text-sm text-muted-foreground">
                       {description}
                     </span>
-                    <kbd className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-1 text-xs font-mono text-muted-foreground">
+                    <kbd className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-1 text-xs-safe font-mono text-muted-foreground">
                       {keys}
                     </kbd>
                   </div>
@@ -141,8 +141,8 @@ export function KeyboardShortcutsHelp({ isOpen: externalOpen, onClose }: Keyboar
         </div>
 
         <div className="border-t border-border pt-3 mt-4">
-          <p className="text-xs text-muted-foreground text-center">
-            Press <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe">Esc</kbd> to close
+          <p className="text-xs-safe text-muted-foreground text-center">
+            Press <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs-safe-safe">Esc</kbd> to close
           </p>
         </div>
       </DialogContent>

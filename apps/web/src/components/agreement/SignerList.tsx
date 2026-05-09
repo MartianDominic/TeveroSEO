@@ -177,7 +177,7 @@ function SortableSignerItem({ signer, mode, onRemove }: SortableSignerItemProps)
         <p className="font-medium text-gray-900 truncate">{signer.name}</p>
         <p className="text-sm text-gray-500 truncate">{signer.email}</p>
         {signer.title && (
-          <p className="text-xs text-gray-400 truncate">{signer.title}</p>
+          <p className="text-xs-safe text-gray-400 truncate">{signer.title}</p>
         )}
       </div>
 

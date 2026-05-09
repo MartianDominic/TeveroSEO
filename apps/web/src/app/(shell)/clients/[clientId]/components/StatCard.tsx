@@ -19,7 +19,7 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, subtitle }) =>
     <p className="text-sm text-muted-foreground">{label}</p>
     <p className="mt-1.5 text-2xl font-semibold text-foreground">{value}</p>
     {subtitle && (
-      <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+      <p className="mt-0.5 text-xs-safe text-muted-foreground">{subtitle}</p>
     )}
   </div>
 );

@@ -67,9 +67,9 @@ function ChartTooltip({
 
   const data = payload[0].payload;
   return (
-    <div className="rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+    <div className="rounded-md border border-border bg-background/95 px-3 py-2 shadow-[var(--shadow-overlay)] backdrop-blur-sm">
       <p className="text-sm font-medium">{STAGE_LABELS[data.stage]}</p>
-      <p className="text-xs text-muted-foreground">{data.count} prospects</p>
+      <p className="text-xs-safe text-muted-foreground">{data.count} prospects</p>
     </div>
   );
 }

@@ -130,7 +130,7 @@ export function InvoicePaymentClient({
   }, [invoice.id]);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="bg-white rounded-lg shadow-[var(--shadow-overlay)] overflow-hidden">
       {/* Invoice Header */}
       <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white px-6 py-8">
         <p className="text-sm text-gray-300 mb-1">Invoice</p>
@@ -208,7 +208,7 @@ export function InvoicePaymentClient({
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
+              <div className="relative flex justify-center text-xs-safe uppercase">
                 <span className="bg-white px-2 text-gray-500">or</span>
               </div>
             </div>
@@ -270,7 +270,7 @@ export function InvoicePaymentClient({
 
       {/* Security Footer */}
       <div className="px-6 py-4 bg-gray-50 border-t">
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center justify-center gap-2 text-xs-safe text-gray-500">
           <svg
             className="w-4 h-4"
             fill="currentColor"

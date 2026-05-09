@@ -142,7 +142,7 @@ export function KeywordReviewPanel({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
+                      <div className="flex items-center gap-1 text-xs-safe text-muted-foreground cursor-help">
                         <Info className="h-3 w-3" />
                         <span className="truncate max-w-[200px]">
                           {keyword.reasoning}
@@ -159,7 +159,7 @@ export function KeywordReviewPanel({
               <div className="flex items-center gap-2 shrink-0">
                 {keyword.type && (
                   <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeBadgeColor(
+                    className={`px-2 py-0.5 rounded text-xs-safe font-medium ${getTypeBadgeColor(
                       keyword.type
                     )}`}
                   >
@@ -168,11 +168,11 @@ export function KeywordReviewPanel({
                 )}
                 <Badge
                   variant={getConfidenceBadgeVariant(keyword.confidence)}
-                  className="text-xs"
+                  className="text-xs-safe"
                 >
                   {(keyword.confidence * 100).toFixed(0)}%
                 </Badge>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs-safe">
                   P{keyword.pass}
                 </Badge>
               </div>

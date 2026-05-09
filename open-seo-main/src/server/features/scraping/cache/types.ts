@@ -193,7 +193,15 @@ export interface L2CacheConfig {
   /** Compression algorithm (default: 'gzip') */
   compressionAlgo: CompressionAlgo;
 
-  /** Key prefix (default: 'cache:') */
+  /**
+   * Key prefix (default: 'osm:scrape:')
+   *
+   * Redis key namespace convention in TeveroSEO:
+   * - osm:scrape:* - open-seo-main scraping/caching
+   * - serp:* - SERP cache
+   * - analytics:* - Analytics cache
+   * - tevero:* - apps/web cache
+   */
   keyPrefix: string;
 }
 
@@ -246,6 +254,9 @@ export interface CacheConfig {
  * Options for cache get operations.
  */
 export interface GetOptions {
+  /** Client UUID for tenant isolation (required for L3 operations) */
+  clientId?: string;
+
   /** Maximum cache level to check (default: 'L4') */
   maxLevel?: CacheLevel;
 
@@ -263,6 +274,9 @@ export interface GetOptions {
  * Options for cache set operations.
  */
 export interface SetOptions {
+  /** Client UUID for tenant isolation (required for L3 operations) */
+  clientId?: string;
+
   /** Override auto-detected content type */
   contentType?: ContentType;
 

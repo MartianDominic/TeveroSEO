@@ -13,7 +13,7 @@
  * - Safe parameterized queries to prevent injection
  */
 
-import { CircuitBreaker } from "./CircuitBreaker";
+import { createCircuitBreaker, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import { createLogger } from "@/server/lib/logger";
 import {
   sanitizeGraphName,
@@ -358,10 +358,9 @@ export class ResilientGraph {
       : null;
 
     // Circuit breaker for FalkorDB
-    this.falkordbCircuit = new CircuitBreaker({
-      name: "falkordb-graph",
+    this.falkordbCircuit = createCircuitBreaker("falkordb-graph", {
       failureThreshold: fullConfig.falkordbCircuit?.failureThreshold ?? 3,
-      resetTimeout: fullConfig.falkordbCircuit?.resetTimeout ?? 30000, // Shorter timeout for graph DB
+      timeout: fullConfig.falkordbCircuit?.resetTimeout ?? 30000, // Shorter timeout for graph DB
     });
   }
 

@@ -195,7 +195,7 @@ export const AIGenerationModal: FC<AIGenerationModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-lg border bg-background p-6 shadow-lg">
+      <DialogContent className="max-w-lg rounded-lg border bg-background p-6 shadow-[var(--shadow-modal)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />

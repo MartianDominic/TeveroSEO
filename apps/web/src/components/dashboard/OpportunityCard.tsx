@@ -111,10 +111,10 @@ export function OpportunityCard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={cn("text-xs", impactColors[opportunity.impact])}>
+            <Badge className={cn("text-xs-safe", impactColors[opportunity.impact])}>
               {opportunity.impact} impact
             </Badge>
-            <Badge className={cn("text-xs", effortColors[opportunity.effort])}>
+            <Badge className={cn("text-xs-safe", effortColors[opportunity.effort])}>
               {opportunity.effort} effort
             </Badge>
           </div>
@@ -133,7 +133,7 @@ export function OpportunityCard({
                   <p className="text-2xl font-bold">
                     {formatMetricValue(opportunity.metrics.currentValue, opportunity.type)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Current</p>
+                  <p className="text-xs-safe text-muted-foreground">Current</p>
                 </div>
               )}
               {opportunity.metrics.potentialValue != null && (
@@ -143,7 +143,7 @@ export function OpportunityCard({
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                       {formatMetricValue(opportunity.metrics.potentialValue, opportunity.type)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Potential</p>
+                    <p className="text-xs-safe text-muted-foreground">Potential</p>
                   </div>
                 </>
               )}
@@ -156,7 +156,7 @@ export function OpportunityCard({
                         +{opportunity.metrics.estimatedGain.toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Est. gain</p>
+                    <p className="text-xs-safe text-muted-foreground">Est. gain</p>
                   </div>
                 )}
             </div>
@@ -171,7 +171,7 @@ export function OpportunityCard({
               {opportunity.keywords.map((keyword) => (
                 <code
                   key={keyword}
-                  className="text-xs bg-muted px-2 py-1 rounded font-mono"
+                  className="text-xs-safe bg-muted px-2 py-1 rounded font-mono"
                 >
                   {keyword}
                 </code>
@@ -192,7 +192,7 @@ export function OpportunityCard({
                     href={safeHref(url)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    className="flex items-center gap-1 text-xs-safe text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     <ExternalLink className="h-3 w-3" />
                     {truncateUrl(url)}
@@ -200,7 +200,7 @@ export function OpportunityCard({
                 ) : (
                   <span
                     key={url}
-                    className="flex items-center gap-1 text-xs text-muted-foreground"
+                    className="flex items-center gap-1 text-xs-safe text-muted-foreground"
                   >
                     {truncateUrl(url)}
                   </span>
@@ -237,7 +237,7 @@ export function OpportunityCard({
         )}
 
         {/* Priority indicator */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+        <div className="flex items-center justify-between text-xs-safe text-muted-foreground pt-2 border-t">
           <span>Priority score: {opportunity.priority}/9</span>
           <span>
             Created: {new Date(opportunity.createdAt).toLocaleDateString()}

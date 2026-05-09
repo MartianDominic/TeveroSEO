@@ -66,7 +66,7 @@ export function InvestmentSection({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pradinis mokestis</p>
-                  <p className="text-xs text-muted-foreground">Vienkartinis</p>
+                  <p className="text-xs-safe text-muted-foreground">Vienkartinis</p>
                 </div>
               </div>
               <p className="text-4xl font-bold" style={{ color: primaryColor }}>
@@ -99,7 +99,7 @@ export function InvestmentSection({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Menesinis mokestis</p>
-                  <p className="text-xs text-muted-foreground">Kas menesi</p>
+                  <p className="text-xs-safe text-muted-foreground">Kas menesi</p>
                 </div>
               </div>
               <p className="text-4xl font-bold" style={{ color: primaryColor }}>

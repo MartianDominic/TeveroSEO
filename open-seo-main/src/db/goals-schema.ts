@@ -14,24 +14,32 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { clients } from "./client-schema";
+import { organization } from "./user-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * System-level goal templates.
  * Pre-defined goal types that agencies can select for clients.
  */
-export const goalTemplates = pgTable("goal_templates", {
-  id: text("id").primaryKey(),
-  goalType: text("goal_type").notNull().unique(),
-  name: text("name").notNull(),
-  description: text("description"),
-  unit: text("unit"), // 'keywords', 'clicks', '%', 'impressions'
-  defaultTarget: numeric("default_target"),
-  hasDenominator: boolean("has_denominator").default(false), // For "X out of Y" goals
-  computationMethod: text("computation_method").notNull(),
-  isActive: boolean("is_active").default(true),
-  displayOrder: integer("display_order").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const goalTemplates = pgTable(
+  "goal_templates",
+  {
+    id: text("id").primaryKey(),
+    goalType: text("goal_type").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    unit: text("unit"), // 'keywords', 'clicks', '%', 'impressions'
+    defaultTarget: numeric("default_target"),
+    hasDenominator: boolean("has_denominator").default(false), // For "X out of Y" goals
+    computationMethod: text("computation_method").notNull(),
+    isActive: boolean("is_active").default(true),
+    displayOrder: integer("display_order").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    // SCHEMA-SOFTDELETE: Standard soft delete column
+    ...softDeleteColumns,
+  },
+  (table) => [index("idx_goal_templates_soft_deleted").on(table.softDeletedAt)]
+);
 
 /**
  * Per-client goal configurations.
@@ -44,7 +52,10 @@ export const clientGoals = pgTable(
     clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "cascade" }),
-    workspaceId: text("workspace_id").notNull(),
+    // SCHEMA-FK: Added FK constraint to organization
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
     templateId: text("template_id")
       .notNull()
       .references(() => goalTemplates.id, { onDelete: "restrict" }),

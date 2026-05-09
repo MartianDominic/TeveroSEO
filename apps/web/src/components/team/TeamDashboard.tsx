@@ -32,7 +32,7 @@ function getCapacityColor(utilizationPct: number): string {
 function getStatusBadge(member: TeamMemberWithAssignments) {
   if (member.isOverloaded) {
     return (
-      <Badge variant="destructive" className="text-xs gap-1">
+      <Badge variant="destructive" className="text-xs-safe gap-1">
         <AlertTriangle className="h-3 w-3" />
         Overloaded
       </Badge>
@@ -40,14 +40,14 @@ function getStatusBadge(member: TeamMemberWithAssignments) {
   }
   if (member.utilizationPct >= 80) {
     return (
-      <Badge variant="secondary" className="text-xs gap-1 bg-yellow-100 text-yellow-800">
+      <Badge variant="secondary" className="text-xs-safe gap-1 bg-yellow-100 text-yellow-800">
         <TrendingUp className="h-3 w-3" />
         Near Capacity
       </Badge>
     );
   }
   return (
-    <Badge variant="secondary" className="text-xs gap-1 bg-emerald-100 text-emerald-800">
+    <Badge variant="secondary" className="text-xs-safe gap-1 bg-emerald-100 text-emerald-800">
       <CheckCircle className="h-3 w-3" />
       Available
     </Badge>
@@ -103,7 +103,7 @@ function MemberCard({
           <div className="flex items-center justify-between gap-2">
             <div>
               <h4 className="font-medium text-sm truncate">{member.name}</h4>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs-safe text-muted-foreground truncate">
                 {member.email}
               </p>
             </div>
@@ -111,7 +111,7 @@ function MemberCard({
           </div>
 
           <div className="mt-3 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs-safe">
               <span className="text-muted-foreground">
                 Workload: {member.clientCount} / {member.capacity} clients
               </span>
@@ -144,14 +144,14 @@ function MemberCard({
               {member.assignments.slice(0, 3).map((assignment) => (
                 <span
                   key={assignment.clientId}
-                  className="text-xs px-2 py-0.5 bg-muted rounded-full truncate max-w-[100px]"
+                  className="text-xs-safe px-2 py-0.5 bg-muted rounded-full truncate max-w-[100px]"
                   title={assignment.clientName}
                 >
                   {assignment.clientName}
                 </span>
               ))}
               {member.assignments.length > 3 && (
-                <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
+                <span className="text-xs-safe px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
                   +{member.assignments.length - 3} more
                 </span>
               )}
@@ -170,17 +170,17 @@ function TeamSummary({ metrics }: { metrics: TeamMetrics }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
       <div>
-        <p className="text-xs text-muted-foreground">Team Members</p>
+        <p className="text-xs-safe text-muted-foreground">Team Members</p>
         <p className="text-lg font-semibold">{metrics.members.length}</p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">Total Capacity</p>
+        <p className="text-xs-safe text-muted-foreground">Total Capacity</p>
         <p className="text-lg font-semibold">
           {metrics.utilizedCapacity} / {metrics.totalCapacity}
         </p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">Utilization</p>
+        <p className="text-xs-safe text-muted-foreground">Utilization</p>
         <p
           className={`text-lg font-semibold ${
             metrics.utilizationPct >= 90
@@ -194,7 +194,7 @@ function TeamSummary({ metrics }: { metrics: TeamMetrics }) {
         </p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">Overloaded</p>
+        <p className="text-xs-safe text-muted-foreground">Overloaded</p>
         <p
           className={`text-lg font-semibold ${
             metrics.overloadedMembers > 0 ? "text-red-600" : "text-emerald-600"

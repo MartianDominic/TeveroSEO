@@ -48,7 +48,7 @@ function ViewModeSelector({ mode, onChange }: ViewModeSelectorProps) {
             "text-[13px] font-medium",
             "transition-all duration-[160ms]",
             mode === m.value
-              ? "bg-surface text-text-1 shadow-sm"
+              ? "bg-surface text-text-1 shadow-[var(--shadow-card)]"
               : "text-text-3 hover:text-text-2"
           )}
         >
@@ -213,9 +213,9 @@ export function ContentCalendar({
               "border border-hairline",
               "text-text-2 hover:text-text-1",
               "hover:border-hairline-2",
-              "shadow-sm",
+              "shadow-[var(--shadow-card)]",
               "transition-all duration-[160ms]",
-              "hover:-translate-y-px hover:shadow-md",
+              "hover:-translate-y-px hover:shadow-[var(--shadow-elevated)]",
               "focus:outline-none focus:ring-2 focus:ring-accent"
             )}
           >

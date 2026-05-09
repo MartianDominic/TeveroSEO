@@ -138,7 +138,7 @@ export function OnboardingChecklist({
             </span>
           </div>
           <ProgressBar value={progress} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs-safe text-muted-foreground mt-2">
             {serviceTier.charAt(0).toUpperCase() + serviceTier.slice(1)} tier
           </p>
         </CardContent>
@@ -160,7 +160,7 @@ export function OnboardingChecklist({
                   <h3 className="text-sm font-medium text-foreground">
                     {categoryLabels[category] || category}
                   </h3>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs-safe text-muted-foreground">
                     {categoryCompletedCount}/{categoryItems.length}
                   </span>
                 </div>
@@ -230,7 +230,7 @@ export function OnboardingChecklist({
                         {/* MEDIUM-02 FIX: Show error message */}
                         {hasError && errorMessage && (
                           <div
-                            className="ml-8 text-xs text-destructive flex items-center gap-1"
+                            className="ml-8 text-xs-safe text-destructive flex items-center gap-1"
                             role="alert"
                           >
                             <AlertCircle className="h-3 w-3" />

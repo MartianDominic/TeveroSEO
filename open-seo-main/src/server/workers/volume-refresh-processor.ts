@@ -22,12 +22,15 @@ import { eq, and, sql, lt, isNull, or, ne } from "drizzle-orm";
 import { createLogger } from "@/server/lib/logger";
 import type { VolumeRefreshJobData, VolumeRefreshResult } from "@/server/queues/volumeRefreshQueue";
 
+import { DFS_LABS_PRICING } from "@/server/features/scraping/cost";
+
 const log = createLogger({ module: "volume-refresh-processor" });
 
 const BATCH_SIZE = 1000;  // DataForSEO max per request
 const STALE_THRESHOLD_DAYS = 30;
-const COST_PER_REQUEST_USD = 0.15;  // DataForSEO pricing
-const COST_PER_KEYWORD_USD = 0.0001;  // Labs keyword volume cost per keyword
+// Cost constants from canonical pricing module
+const COST_PER_REQUEST_USD = DFS_LABS_PRICING.searchVolumeBase;  // $0.15 base per request
+const COST_PER_KEYWORD_USD = DFS_LABS_PRICING.searchVolumePerKeyword;  // $0.0001 per keyword
 
 /**
  * Fetch keyword metrics from DataForSEO.

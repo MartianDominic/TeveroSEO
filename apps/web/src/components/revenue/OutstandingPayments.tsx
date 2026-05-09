@@ -68,7 +68,7 @@ export function OutstandingPayments({
         <p className="text-sm font-medium text-text-1 truncate">
           {payment.clientName}
         </p>
-        <p className="text-xs text-text-3">
+        <p className="text-xs-safe text-text-3">
           {payment.urgency === "overdue"
             ? `${payment.daysOverdue} days overdue`
             : payment.urgency === "due_this_week"
@@ -125,7 +125,7 @@ export function OutstandingPayments({
         {/* D-16: Overdue (red) */}
         {overdue.length > 0 && (
           <div>
-            <h4 className="text-xs font-medium text-error mb-2 uppercase tracking-wide">
+            <h4 className="text-xs-safe font-medium text-error mb-2 uppercase tracking-wide">
               Overdue
             </h4>
             <div className="space-y-1">{overdue.map(renderPayment)}</div>
@@ -135,7 +135,7 @@ export function OutstandingPayments({
         {/* D-16: Due this week (yellow) */}
         {dueThisWeek.length > 0 && (
           <div>
-            <h4 className="text-xs font-medium text-warning mb-2 uppercase tracking-wide">
+            <h4 className="text-xs-safe font-medium text-warning mb-2 uppercase tracking-wide">
               Due This Week
             </h4>
             <div className="space-y-1">{dueThisWeek.map(renderPayment)}</div>
@@ -145,7 +145,7 @@ export function OutstandingPayments({
         {/* D-16: Upcoming (gray) */}
         {upcoming.length > 0 && (
           <div>
-            <h4 className="text-xs font-medium text-text-3 mb-2 uppercase tracking-wide">
+            <h4 className="text-xs-safe font-medium text-text-3 mb-2 uppercase tracking-wide">
               Upcoming
             </h4>
             <div className="space-y-1">{upcoming.map(renderPayment)}</div>

@@ -146,7 +146,7 @@ export function QuickWinsTab({
           <div className="text-2xl font-bold text-yellow-600">
             {quickWins.length}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs-safe text-muted-foreground">
             of {gaps.length} total gaps
           </div>
         </Card>
@@ -158,7 +158,7 @@ export function QuickWinsTab({
           <div className="text-2xl font-bold">
             {summary.totalVolume.toLocaleString()}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs-safe text-muted-foreground">
             monthly searches
           </div>
         </Card>
@@ -169,7 +169,7 @@ export function QuickWinsTab({
           <div className="text-2xl font-bold text-green-600">
             {summary.avgDifficulty}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs-safe text-muted-foreground">
             low competition
           </div>
         </Card>

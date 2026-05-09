@@ -163,7 +163,7 @@ export function LogoUpload({
             <p className="text-sm font-medium">
               {isDragOver ? "Drop logo here" : "Upload logo"}
             </p>
-            <p className="text-xs">
+            <p className="text-xs-safe">
               PNG, JPG, or SVG (max 2MB, 200x60px recommended)
             </p>
           </div>

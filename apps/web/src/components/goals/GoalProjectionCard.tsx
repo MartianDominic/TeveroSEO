@@ -80,7 +80,7 @@ function TrendIndicator({ trend, velocity }: { trend: TrendDirection; velocity: 
   return (
     <div className="flex items-center gap-1.5">
       {icon}
-      <span className={cn("text-xs", color)}>
+      <span className={cn("text-xs-safe", color)}>
         {label}
         {velocity !== 0 && (
           <span className="text-muted-foreground ml-1">
@@ -100,7 +100,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   const label = confidence >= 70 ? "High" : confidence >= 40 ? "Medium" : "Low";
 
   return (
-    <Badge variant={variant} className="text-xs">
+    <Badge variant={variant} className="text-xs-safe">
       {label} ({confidence.toFixed(0)}%)
     </Badge>
   );
@@ -138,7 +138,7 @@ function GoalProjectionRow({ projection }: { projection: GoalProjection }) {
 
       <ProgressBar value={projection.attainmentPct} />
 
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-xs-safe">
         <span className="text-muted-foreground">
           {projection.currentValue.toLocaleString()} /{" "}
           {projection.targetValue.toLocaleString()}
@@ -161,22 +161,22 @@ function GoalProjectionRow({ projection }: { projection: GoalProjection }) {
         <TrendIndicator trend={projection.trend} velocity={projection.weeklyVelocity} />
 
         {isAchieved ? (
-          <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+          <span className="text-xs-safe text-emerald-600 font-medium flex items-center gap-1">
             <Target className="h-3 w-3" />
             Goal achieved
           </span>
         ) : projection.projectedDate ? (
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="text-xs-safe text-muted-foreground flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             Est. {formatProjectedDate(projection.projectedDate)}
           </span>
         ) : isAtRisk ? (
-          <span className="text-xs text-red-600 flex items-center gap-1">
+          <span className="text-xs-safe text-red-600 flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
             At risk
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs-safe text-muted-foreground">
             Insufficient data
           </span>
         )}
@@ -242,7 +242,7 @@ export function GoalProjectionCard({ clientId, className }: GoalProjectionCardPr
         <CardTitle className="text-base flex items-center gap-2">
           <Target className="h-4 w-4" />
           Goal Projections
-          <Badge variant="secondary" className="ml-auto text-xs">
+          <Badge variant="secondary" className="ml-auto text-xs-safe">
             {projections.length} {projections.length === 1 ? "goal" : "goals"}
           </Badge>
         </CardTitle>
@@ -252,7 +252,7 @@ export function GoalProjectionCard({ clientId, className }: GoalProjectionCardPr
           <GoalProjectionRow key={projection.goalId} projection={projection} />
         ))}
         {projections.length > 5 && (
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs-safe text-center text-muted-foreground">
             +{projections.length - 5} more goals
           </p>
         )}

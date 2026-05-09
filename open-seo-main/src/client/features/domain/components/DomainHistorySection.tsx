@@ -65,7 +65,7 @@ export function DomainHistorySection({
               </div>
             </button>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-foreground/40">
+              <span className="text-xs-safe text-foreground/40">
                 {new Date(item.timestamp).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",

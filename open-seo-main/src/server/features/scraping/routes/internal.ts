@@ -24,6 +24,14 @@ import { timingSafeEqual } from 'crypto';
 import type { ScrapingService } from '../ScrapingService';
 import type { ScrapeTier } from '@/db/domain-scrape-learning-schema';
 import { logger } from '../logging';
+import {
+  type ApiResponse,
+  createExpressHelpers,
+  errorResponse,
+  successResponse,
+  validationErrorResponse,
+  API_ERROR_CODES,
+} from '@tevero/types/api';
 
 // =============================================================================
 // Zod Validation Schemas
@@ -177,35 +185,24 @@ function timingSafeCompare(provided: string, expected: string): boolean {
  */
 function requireInternalApiKey(req: Request, res: Response, next: NextFunction): void {
   const internalApiKey = process.env.INTERNAL_API_KEY;
+  const api = createExpressHelpers(res);
 
   if (!internalApiKey) {
     logger.error({}, 'INTERNAL_API_KEY not configured - internal API disabled');
-    res.status(503).json({
-      success: false,
-      error: 'Internal API not configured',
-      timestamp: new Date().toISOString(),
-    });
+    api.error(API_ERROR_CODES.SERVICE_UNAVAILABLE, 'Internal API not configured');
     return;
   }
 
   const providedKey = req.headers['x-internal-api-key'] as string | undefined;
 
   if (!providedKey) {
-    res.status(401).json({
-      success: false,
-      error: 'Missing internal API key',
-      timestamp: new Date().toISOString(),
-    });
+    api.error(API_ERROR_CODES.UNAUTHORIZED, 'Missing internal API key');
     return;
   }
 
   if (!timingSafeCompare(providedKey, internalApiKey)) {
     logger.warn({ ip: req.ip }, 'Invalid internal API key attempted');
-    res.status(401).json({
-      success: false,
-      error: 'Invalid internal API key',
-      timestamp: new Date().toISOString(),
-    });
+    api.error(API_ERROR_CODES.UNAUTHORIZED, 'Invalid internal API key');
     return;
   }
 
@@ -228,16 +225,13 @@ function validateRequestBody<T extends z.ZodType>(
   const result = schema.safeParse(body);
 
   if (!result.success) {
-    res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: result.error.issues.map((issue) => ({
+    const api = createExpressHelpers(res);
+    api.validationError(
+      result.error.issues.map((issue) => ({
         field: issue.path.join('.') || 'body',
         message: issue.message,
-        code: issue.code,
-      })),
-      timestamp: new Date().toISOString(),
-    });
+      }))
+    );
     return null;
   }
 
@@ -269,12 +263,8 @@ function internalApiRateLimit(req: Request, res: Response, next: NextFunction): 
 
   if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
     const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-    res.status(429).json({
-      success: false,
-      error: 'Rate limit exceeded',
-      retryAfterSeconds: retryAfter,
-      timestamp: new Date().toISOString(),
-    });
+    const api = createExpressHelpers(res);
+    api.error(API_ERROR_CODES.RATE_LIMITED, 'Rate limit exceeded', { retryAfterSeconds: retryAfter });
     return;
   }
 
@@ -398,7 +388,8 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
         clientId: options?.clientId,
       }, 'Internal scrape completed');
 
-      res.json(response);
+      const api = createExpressHelpers(res);
+      api.success(response);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -409,9 +400,8 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
         feature: options?.feature ?? 'ai-writer',
       }, 'Internal scrape failed');
 
-      const response: InternalScrapeResponse = {
-        success: false,
-        error: errorMessage,
+      const api = createExpressHelpers(res);
+      api.error(API_ERROR_CODES.INTERNAL_ERROR, errorMessage, {
         metadata: {
           tierUsed: 'direct',
           fromCache: false,
@@ -420,9 +410,7 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
           statusCode: 0,
           responseSizeBytes: 0,
         },
-      };
-
-      res.status(500).json(response);
+      });
     }
   });
 
@@ -498,7 +486,8 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
         clientId: options?.clientId,
       }, 'Internal batch scrape completed');
 
-      res.json(response);
+      const api = createExpressHelpers(res);
+      api.success(response);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -509,9 +498,8 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
         feature: options?.feature ?? 'ai-writer',
       }, 'Internal batch scrape failed');
 
-      res.status(500).json({
-        success: false,
-        error: errorMessage,
+      const api = createExpressHelpers(res);
+      api.error(API_ERROR_CODES.INTERNAL_ERROR, errorMessage, {
         results: [],
         summary: {
           totalUrls: urls.length,
@@ -541,7 +529,8 @@ export function createInternalRoutes(scrapingService: ScrapingService): Router {
    * Used by AI-Writer to verify connectivity.
    */
   router.get('/health', (_req: Request, res: Response) => {
-    res.json({
+    const api = createExpressHelpers(res);
+    api.success({
       status: 'ok',
       service: 'scraping-internal-api',
       timestamp: new Date().toISOString(),

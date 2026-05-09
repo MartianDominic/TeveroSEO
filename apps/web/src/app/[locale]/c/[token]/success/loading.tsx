@@ -7,7 +7,7 @@ import { Skeleton } from "@tevero/ui";
 export default function SigningSuccessLoading() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full bg-white rounded-lg shadow-sm p-8">
+      <div className="max-w-lg w-full bg-white rounded-lg shadow-[var(--shadow-card)] p-8">
         {/* Success icon placeholder */}
         <div className="flex justify-center mb-6">
           <Skeleton className="w-16 h-16 rounded-full" />

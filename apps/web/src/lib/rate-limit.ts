@@ -3,10 +3,35 @@
  * Uses Redis with sliding window algorithm for distributed rate limiting.
  *
  * Security: Prevents abuse of expensive operations (crawls, API calls, LLM usage).
+ *
+ * Rate limit values are imported from @tevero/utils for consistency across the monorepo.
  */
 
 import { redis } from "@/lib/cache/redis-cache";
 import { logger } from '@/lib/logger';
+
+// Import centralized rate limit configuration from @tevero/utils
+// This is the single source of truth for all rate limit values
+import {
+  SEO_RATE_LIMITS,
+  CONTENT_RATE_LIMITS,
+  ANALYTICS_RATE_LIMITS,
+  RESOURCE_RATE_LIMITS,
+  API_RATE_LIMITS,
+} from "@tevero/utils";
+
+/**
+ * Add jitter to a time value to prevent thundering herd on limit reset.
+ * Uses 10-25% jitter range.
+ *
+ * @param baseTime - Base time in milliseconds
+ * @returns Time with jitter applied
+ */
+function addJitter(baseTime: number): number {
+  const jitterFactor = 0.1 + Math.random() * 0.15; // 10-25%
+  return Math.round(baseTime * (1 + jitterFactor));
+}
+
 /**
  * Rate limit configuration for different operation types.
  */
@@ -78,7 +103,9 @@ export class RateLimiter {
         // Get the oldest entry to calculate reset time
         const oldest = await redis.zrange(key, 0, 0, "WITHSCORES");
         const oldestTimestamp = oldest?.[1] ? parseInt(oldest[1], 10) : now;
-        const resetAt = oldestTimestamp + this.config.windowSeconds * 1000;
+        const baseResetAt = oldestTimestamp + this.config.windowSeconds * 1000;
+        // Add jitter to prevent thundering herd on limit reset
+        const resetAt = addJitter(baseResetAt - now) + now;
 
         return {
           success: false,
@@ -104,11 +131,12 @@ export class RateLimiter {
       // Handle Redis failure based on failClosed configuration
       if (this.config.failClosed) {
         // For expensive operations, fail closed to prevent abuse during outages
+        // Add jitter to prevent thundering herd on recovery
         logger.error("[rate-limit] Redis error, rejecting request (failClosed)", error instanceof Error ? error : { error: String(error) });
         return {
           success: false,
           remaining: 0,
-          resetAt: now + 60000, // Suggest retry in 1 minute
+          resetAt: now + addJitter(60000), // Suggest retry in ~1 minute with jitter
           limit: this.config.maxRequests,
         };
       }
@@ -158,6 +186,7 @@ export class RateLimiter {
 }
 
 // Pre-configured rate limiters for different operation types
+// Values are imported from @tevero/utils for consistency across the monorepo
 
 /**
  * Audit limiter: 5 audits per hour per user.
@@ -165,9 +194,9 @@ export class RateLimiter {
  * Fails closed on Redis outage to prevent abuse.
  */
 export const auditLimiter = new RateLimiter({
-  maxRequests: 5,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:audit",
+  maxRequests: SEO_RATE_LIMITS.AUDIT_FULL.requests,
+  windowSeconds: Math.floor(SEO_RATE_LIMITS.AUDIT_FULL.windowMs / 1000),
+  prefix: SEO_RATE_LIMITS.AUDIT_FULL.keyPrefix.replace(/:$/, ""),
   failClosed: true,
 });
 
@@ -189,9 +218,9 @@ export const apiCostLimiter = new RateLimiter({
  * Fails closed on Redis outage to prevent cost overruns.
  */
 export const llmLimiter = new RateLimiter({
-  maxRequests: 50,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:llm",
+  maxRequests: CONTENT_RATE_LIMITS.LLM.requests,
+  windowSeconds: Math.floor(CONTENT_RATE_LIMITS.LLM.windowMs / 1000),
+  prefix: CONTENT_RATE_LIMITS.LLM.keyPrefix.replace(/:$/, ""),
   failClosed: true,
 });
 
@@ -200,9 +229,9 @@ export const llmLimiter = new RateLimiter({
  * For pattern detection, report generation, exports.
  */
 export const cpuIntensiveLimiter = new RateLimiter({
-  maxRequests: 30,
-  windowSeconds: 60, // 1 minute
-  prefix: "ratelimit:cpu",
+  maxRequests: RESOURCE_RATE_LIMITS.CPU_INTENSIVE.requests,
+  windowSeconds: Math.floor(RESOURCE_RATE_LIMITS.CPU_INTENSIVE.windowMs / 1000),
+  prefix: RESOURCE_RATE_LIMITS.CPU_INTENSIVE.keyPrefix.replace(/:$/, ""),
 });
 
 /**
@@ -210,9 +239,9 @@ export const cpuIntensiveLimiter = new RateLimiter({
  * Prevents SSRF abuse via CMS connection testing.
  */
 export const connectionTestLimiter = new RateLimiter({
-  maxRequests: 10,
-  windowSeconds: 60, // 1 minute
-  prefix: "ratelimit:connection",
+  maxRequests: RESOURCE_RATE_LIMITS.CONNECTION_TEST.requests,
+  windowSeconds: Math.floor(RESOURCE_RATE_LIMITS.CONNECTION_TEST.windowMs / 1000),
+  prefix: RESOURCE_RATE_LIMITS.CONNECTION_TEST.keyPrefix.replace(/:$/, ""),
 });
 
 /**
@@ -250,9 +279,9 @@ export const verifyLimiter = new RateLimiter({
  * Report generation involves expensive PDF rendering and data aggregation.
  */
 export const reportLimiter = new RateLimiter({
-  maxRequests: 5,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:report",
+  maxRequests: RESOURCE_RATE_LIMITS.REPORT.requests,
+  windowSeconds: Math.floor(RESOURCE_RATE_LIMITS.REPORT.windowMs / 1000),
+  prefix: RESOURCE_RATE_LIMITS.REPORT.keyPrefix.replace(/:$/, ""),
 });
 
 /**
@@ -260,9 +289,9 @@ export const reportLimiter = new RateLimiter({
  * Prevents bulk downloading and bandwidth abuse.
  */
 export const downloadLimiter = new RateLimiter({
-  maxRequests: 20,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:download",
+  maxRequests: RESOURCE_RATE_LIMITS.DOWNLOAD.requests,
+  windowSeconds: Math.floor(RESOURCE_RATE_LIMITS.DOWNLOAD.windowMs / 1000),
+  prefix: RESOURCE_RATE_LIMITS.DOWNLOAD.keyPrefix.replace(/:$/, ""),
 });
 
 /**
@@ -270,31 +299,31 @@ export const downloadLimiter = new RateLimiter({
  * Web scraping is expensive and can trigger bot detection.
  */
 export const scrapeLimiter = new RateLimiter({
-  maxRequests: 10,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:scrape",
+  maxRequests: RESOURCE_RATE_LIMITS.SCRAPE.requests,
+  windowSeconds: Math.floor(RESOURCE_RATE_LIMITS.SCRAPE.windowMs / 1000),
+  prefix: RESOURCE_RATE_LIMITS.SCRAPE.keyPrefix.replace(/:$/, ""),
 });
 
 /**
- * Content generation limiter: 20 generations per hour per user.
+ * Content generation limiter: 20 generations per minute per user.
  * Content generation involves expensive LLM calls.
  * Fails closed on Redis outage to prevent cost overruns.
  */
 export const contentGenerationLimiter = new RateLimiter({
-  maxRequests: 20,
-  windowSeconds: 3600, // 1 hour
-  prefix: "ratelimit:content-gen",
+  maxRequests: CONTENT_RATE_LIMITS.GENERATE.requests,
+  windowSeconds: Math.floor(CONTENT_RATE_LIMITS.GENERATE.windowMs / 1000),
+  prefix: CONTENT_RATE_LIMITS.GENERATE.keyPrefix.replace(/:$/, ""),
   failClosed: true,
 });
 
 /**
- * Analytics limiter: 30 analytics queries per minute per user.
+ * Analytics limiter: 60 analytics queries per minute per user.
  * Prevents abuse of analytics endpoints.
  */
 export const analyticsLimiter = new RateLimiter({
-  maxRequests: 30,
-  windowSeconds: 60, // 1 minute
-  prefix: "ratelimit:analytics",
+  maxRequests: ANALYTICS_RATE_LIMITS.STANDARD.requests,
+  windowSeconds: Math.floor(ANALYTICS_RATE_LIMITS.STANDARD.windowMs / 1000),
+  prefix: ANALYTICS_RATE_LIMITS.STANDARD.keyPrefix.replace(/:$/, ""),
 });
 
 /**
@@ -302,9 +331,9 @@ export const analyticsLimiter = new RateLimiter({
  * Fallback for routes without specific limiters.
  */
 export const generalApiLimiter = new RateLimiter({
-  maxRequests: 100,
-  windowSeconds: 60, // 1 minute
-  prefix: "ratelimit:general-api",
+  maxRequests: API_RATE_LIMITS.DEFAULT.requests,
+  windowSeconds: Math.floor(API_RATE_LIMITS.DEFAULT.windowMs / 1000),
+  prefix: API_RATE_LIMITS.DEFAULT.keyPrefix.replace(/:$/, ""),
 });
 
 /**

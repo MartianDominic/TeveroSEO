@@ -235,7 +235,7 @@ function TopNav({
           <TooltipContent side="bottom">Help & Community</TooltipContent>
         </Tooltip>
 
-        <div className="flex items-center rounded-full border border-border bg-background/70 px-1 py-1 shadow-sm">
+        <div className="flex items-center rounded-full border border-border bg-background/70 px-1 py-1 shadow-[var(--shadow-card)]">
           <Tooltip>
             <TooltipTrigger asChild>
               <button

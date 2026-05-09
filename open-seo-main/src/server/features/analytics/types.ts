@@ -43,14 +43,14 @@ export const DIMENSION_COMBINATIONS: DimensionCombination[] = [
 
 /**
  * Phase 96-02: Master Dashboard Types
+ * Re-export common types from @tevero/types for backward compatibility.
  */
 
-export type ComparisonPeriod = 'WoW' | 'MoM' | 'YoY';
+// Import from unified types package
+import type { DateRange, ComparisonPeriod } from "@tevero/types/common";
 
-export interface DateRange {
-  startDate: string;  // YYYY-MM-DD
-  endDate: string;    // YYYY-MM-DD
-}
+// Re-export for backward compatibility
+export type { DateRange, ComparisonPeriod };
 
 export interface DashboardFilters {
   dateRange: DateRange;

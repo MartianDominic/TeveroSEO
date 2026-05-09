@@ -160,7 +160,7 @@ export function InstallmentCard({
             {totalInstallments && ` of ${totalInstallments}`}
           </span>
           {statusBadge && (
-            <Badge variant={statusBadge.variant} className="text-xs">
+            <Badge variant={statusBadge.variant} className="text-xs-safe">
               {statusBadge.label}
             </Badge>
           )}

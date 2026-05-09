@@ -643,9 +643,9 @@ export class ScrapingService {
     const revalidationCandidates = await this.domainLearning.getRevalidationCandidates(1);
 
     // Calculate latency percentiles from histogram
-    const latencyP50Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 50) * 1000;
-    const latencyP95Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 95) * 1000;
-    const latencyP99Ms = metricsCollector.getPercentile('scraping_request_duration_seconds', 99) * 1000;
+    const latencyP50Ms = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 50) * 1000;
+    const latencyP95Ms = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 95) * 1000;
+    const latencyP99Ms = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 99) * 1000;
 
     // Get request counts by tier from MetricsCollector
     const tiers: ScrapeTier[] = ['direct', 'webshare', 'geonode', 'camoufox', 'dfs_basic', 'dfs_js', 'dfs_browser'];
@@ -672,13 +672,13 @@ export class ScrapingService {
     let successfulRequests = 0;
 
     for (const tier of tiers) {
-      const successCount = metricsCollector.getCounter('scraping_requests_total', { tier, status: 'success' });
-      const errorCount = metricsCollector.getCounter('scraping_requests_total', { tier, status: 'error' });
+      const successCount = metricsCollector.getCounter('osm_scraping_requests_total', { tier, status: 'success' });
+      const errorCount = metricsCollector.getCounter('osm_scraping_requests_total', { tier, status: 'error' });
       requestsByTier[tier] = successCount + errorCount;
       totalRequests += successCount + errorCount;
       successfulRequests += successCount;
 
-      costByTier[tier] = metricsCollector.getCounter('scraping_cost_usd_total', { tier });
+      costByTier[tier] = metricsCollector.getCounter('osm_scraping_cost_usd_total', { tier });
     }
 
     const successRate = totalRequests > 0 ? successfulRequests / totalRequests : 1;
@@ -1342,18 +1342,18 @@ export class ScrapingService {
     // ==========================================================================
     // Component health gauges
     // ==========================================================================
-    lines.push('# HELP scraping_component_health Component health status (1=healthy, 0=unhealthy)');
-    lines.push('# TYPE scraping_component_health gauge');
+    lines.push('# HELP osm_scraping_component_health Component health status (1=healthy, 0=unhealthy)');
+    lines.push('# TYPE osm_scraping_component_health gauge');
     for (const [name, component] of Object.entries(health.components)) {
-      lines.push(`scraping_component_health{component="${name}"} ${component.healthy ? 1 : 0}`);
+      lines.push(`osm_scraping_component_health{component="${name}"} ${component.healthy ? 1 : 0}`);
     }
     lines.push('');
 
     // Component latency
-    lines.push('# HELP scraping_component_latency_ms Component health check latency in milliseconds');
-    lines.push('# TYPE scraping_component_latency_ms gauge');
+    lines.push('# HELP osm_scraping_component_latency_ms Component health check latency in milliseconds');
+    lines.push('# TYPE osm_scraping_component_latency_ms gauge');
     for (const [name, component] of Object.entries(health.components)) {
-      lines.push(`scraping_component_latency_ms{component="${name}"} ${component.latencyMs}`);
+      lines.push(`osm_scraping_component_latency_ms{component="${name}"} ${component.latencyMs}`);
     }
     lines.push('');
 
@@ -1361,11 +1361,11 @@ export class ScrapingService {
     // Circuit breaker states (also update MetricsCollector gauges)
     // ==========================================================================
     const circuits = this.getCircuitStates();
-    lines.push('# HELP scraping_circuit_breaker_state Circuit breaker state (0=closed, 1=half-open, 2=open)');
-    lines.push('# TYPE scraping_circuit_breaker_state gauge');
+    lines.push('# HELP osm_scraping_circuit_breaker_state Circuit breaker state (0=closed, 1=half-open, 2=open)');
+    lines.push('# TYPE osm_scraping_circuit_breaker_state gauge');
     for (const [tier, state] of Object.entries(circuits)) {
       const stateValue = { closed: 0, 'half-open': 1, open: 2 }[state] ?? 0;
-      lines.push(`scraping_circuit_breaker_state{tier="${tier}"} ${stateValue}`);
+      lines.push(`osm_scraping_circuit_breaker_state{tier="${tier}"} ${stateValue}`);
       // Also record in MetricsCollector for consistency
       recordCircuitState(tier, state);
     }
@@ -1375,12 +1375,12 @@ export class ScrapingService {
     // Queue metrics
     // ==========================================================================
     const queueStats = await this.getQueueStats();
-    lines.push('# HELP scraping_queue_jobs Queue job counts');
-    lines.push('# TYPE scraping_queue_jobs gauge');
-    lines.push(`scraping_queue_jobs{state="waiting"} ${queueStats.waiting}`);
-    lines.push(`scraping_queue_jobs{state="active"} ${queueStats.active}`);
-    lines.push(`scraping_queue_jobs{state="completed"} ${queueStats.completed}`);
-    lines.push(`scraping_queue_jobs{state="failed"} ${queueStats.failed}`);
+    lines.push('# HELP osm_queue_jobs Queue job counts');
+    lines.push('# TYPE osm_queue_jobs gauge');
+    lines.push(`osm_queue_jobs{state="waiting"} ${queueStats.waiting}`);
+    lines.push(`osm_queue_jobs{state="active"} ${queueStats.active}`);
+    lines.push(`osm_queue_jobs{state="completed"} ${queueStats.completed}`);
+    lines.push(`osm_queue_jobs{state="failed"} ${queueStats.failed}`);
     lines.push('');
 
     // ==========================================================================
@@ -1416,54 +1416,54 @@ export class ScrapingService {
     // ==========================================================================
     // Migration metrics
     // ==========================================================================
-    lines.push('# HELP scraping_migration_shadow_mismatches Shadow mode comparison mismatches');
-    lines.push('# TYPE scraping_migration_shadow_mismatches counter');
-    lines.push(`scraping_migration_shadow_mismatches ${this.shadowMismatches}`);
+    lines.push('# HELP osm_scraping_migration_shadow_mismatches Shadow mode comparison mismatches');
+    lines.push('# TYPE osm_scraping_migration_shadow_mismatches counter');
+    lines.push(`osm_scraping_migration_shadow_mismatches ${this.shadowMismatches}`);
     lines.push('');
 
-    lines.push('# HELP scraping_migration_fallbacks Legacy fallbacks triggered');
-    lines.push('# TYPE scraping_migration_fallbacks counter');
-    lines.push(`scraping_migration_fallbacks ${this.fallbacksTriggered}`);
+    lines.push('# HELP osm_scraping_migration_fallbacks Legacy fallbacks triggered');
+    lines.push('# TYPE osm_scraping_migration_fallbacks counter');
+    lines.push(`osm_scraping_migration_fallbacks ${this.fallbacksTriggered}`);
     lines.push('');
 
     // ==========================================================================
     // Latency percentiles (computed from histogram)
     // ==========================================================================
-    const p50 = metricsCollector.getPercentile('scraping_request_duration_seconds', 50);
-    const p95 = metricsCollector.getPercentile('scraping_request_duration_seconds', 95);
-    const p99 = metricsCollector.getPercentile('scraping_request_duration_seconds', 99);
+    const p50 = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 50);
+    const p95 = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 95);
+    const p99 = metricsCollector.getPercentile('osm_scraping_request_duration_seconds', 99);
 
-    lines.push('# HELP scraping_latency_percentile_seconds Request latency percentiles');
-    lines.push('# TYPE scraping_latency_percentile_seconds gauge');
-    lines.push(`scraping_latency_percentile_seconds{quantile="0.5"} ${p50.toFixed(6)}`);
-    lines.push(`scraping_latency_percentile_seconds{quantile="0.95"} ${p95.toFixed(6)}`);
-    lines.push(`scraping_latency_percentile_seconds{quantile="0.99"} ${p99.toFixed(6)}`);
+    lines.push('# HELP osm_scraping_latency_percentile_seconds Request latency percentiles');
+    lines.push('# TYPE osm_scraping_latency_percentile_seconds gauge');
+    lines.push(`osm_scraping_latency_percentile_seconds{quantile="0.5"} ${p50.toFixed(6)}`);
+    lines.push(`osm_scraping_latency_percentile_seconds{quantile="0.95"} ${p95.toFixed(6)}`);
+    lines.push(`osm_scraping_latency_percentile_seconds{quantile="0.99"} ${p99.toFixed(6)}`);
     lines.push('');
 
     // ==========================================================================
     // Rolling P95 Latency Metrics (Gap P3.G20)
     // ==========================================================================
     const latencyStats = this.getLatencyStats();
-    lines.push('# HELP scraping_p95_latency_rolling_ms Rolling P95 latency in milliseconds (last 100 non-cached requests)');
-    lines.push('# TYPE scraping_p95_latency_rolling_ms gauge');
-    lines.push(`scraping_p95_latency_rolling_ms ${latencyStats.p95Ms.toFixed(2)}`);
+    lines.push('# HELP osm_scraping_p95_latency_rolling_ms Rolling P95 latency in milliseconds (last 100 non-cached requests)');
+    lines.push('# TYPE osm_scraping_p95_latency_rolling_ms gauge');
+    lines.push(`osm_scraping_p95_latency_rolling_ms ${latencyStats.p95Ms.toFixed(2)}`);
     lines.push('');
 
-    lines.push('# HELP scraping_p95_threshold_breach P95 latency threshold breach indicator (1=above, 0=below)');
-    lines.push('# TYPE scraping_p95_threshold_breach gauge');
-    lines.push(`scraping_p95_threshold_breach ${latencyStats.isAboveThreshold ? 1 : 0}`);
+    lines.push('# HELP osm_scraping_p95_threshold_breach P95 latency threshold breach indicator (1=above, 0=below)');
+    lines.push('# TYPE osm_scraping_p95_threshold_breach gauge');
+    lines.push(`osm_scraping_p95_threshold_breach ${latencyStats.isAboveThreshold ? 1 : 0}`);
     lines.push('');
 
-    lines.push('# HELP scraping_latency_rolling_stats Rolling latency statistics in milliseconds');
-    lines.push('# TYPE scraping_latency_rolling_stats gauge');
-    lines.push(`scraping_latency_rolling_stats{stat="p50"} ${latencyStats.p50Ms.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="p95"} ${latencyStats.p95Ms.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="p99"} ${latencyStats.p99Ms.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="avg"} ${latencyStats.avgMs.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="min"} ${latencyStats.minMs.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="max"} ${latencyStats.maxMs.toFixed(2)}`);
-    lines.push(`scraping_latency_rolling_stats{stat="samples"} ${latencyStats.sampleCount}`);
-    lines.push(`scraping_latency_rolling_stats{stat="threshold"} ${latencyStats.thresholdMs}`);
+    lines.push('# HELP osm_scraping_latency_rolling_stats Rolling latency statistics in milliseconds');
+    lines.push('# TYPE osm_scraping_latency_rolling_stats gauge');
+    lines.push(`osm_scraping_latency_rolling_stats{stat="p50"} ${latencyStats.p50Ms.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="p95"} ${latencyStats.p95Ms.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="p99"} ${latencyStats.p99Ms.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="avg"} ${latencyStats.avgMs.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="min"} ${latencyStats.minMs.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="max"} ${latencyStats.maxMs.toFixed(2)}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="samples"} ${latencyStats.sampleCount}`);
+    lines.push(`osm_scraping_latency_rolling_stats{stat="threshold"} ${latencyStats.thresholdMs}`);
     lines.push('');
 
     return lines.join('\n');

@@ -298,7 +298,7 @@ export function ToneTab({ profile, clientId }: Props) {
               max={10}
               step={1}
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-xs-safe text-muted-foreground">
               <span>Casual</span>
               <span>Formal</span>
             </div>
@@ -383,7 +383,7 @@ export function ToneTab({ profile, clientId }: Props) {
                 <span className="text-sm">Analyzing content...</span>
               </div>
               <Progress value={learningProgress} />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 {learningProgress < 30
                   ? "Scraping website pages..."
                   : learningProgress < 60
@@ -404,10 +404,10 @@ export function ToneTab({ profile, clientId }: Props) {
             </Button>
           )}
           {learningError && (
-            <p className="text-xs text-destructive">{learningError}</p>
+            <p className="text-xs-safe text-destructive">{learningError}</p>
           )}
           {mode === "best_practices" && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               Voice learning is not available in Best Practices mode
             </p>
           )}

@@ -30,7 +30,7 @@ export function LighthouseIssuesSummary({
               key={metric.label}
               className="flex items-baseline justify-between gap-2 py-1"
             >
-              <span className="text-xs text-foreground/50 uppercase tracking-wide">
+              <span className="text-xs-safe text-foreground/50 uppercase tracking-wide">
                 {metric.label}
               </span>
               <span className="text-sm font-semibold tabular-nums text-foreground">

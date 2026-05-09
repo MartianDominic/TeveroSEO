@@ -142,7 +142,7 @@ export function ConnectionChoice({
       </div>
 
       {/* Help text */}
-      <p className="text-[var(--text-4)] text-xs mt-6 text-center">
+      <p className="text-[var(--text-4)] text-xs-safe mt-6 text-center">
         Not sure? Start with &quot;I&apos;ll do it myself&quot; - it&apos;s the easiest option.
       </p>
     </div>

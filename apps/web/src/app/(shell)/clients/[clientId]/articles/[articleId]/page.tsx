@@ -501,7 +501,7 @@ function ArticleEditorPageInner() {
     <div className="min-h-screen p-8 md:p-10">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-lg bg-card border border-border">
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-[var(--shadow-overlay)] bg-card border border-border">
           <div className="flex items-center gap-2">
             <StatusChip status={toast.type === "success" ? "published" : "failed"} />
             <span className="text-foreground font-medium">{toast.message}</span>
@@ -537,7 +537,7 @@ function ArticleEditorPageInner() {
           )}
 
           {generationStatus === "error" && !error && (
-            <span className="text-xs text-destructive">Generation failed. Try again.</span>
+            <span className="text-xs-safe text-destructive">Generation failed. Try again.</span>
           )}
 
           {/* Title */}
@@ -625,7 +625,7 @@ function ArticleEditorPageInner() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Voice Blend</Label>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs-safe text-muted-foreground">
                   {blendLabel(currentArticle.blendWeight)}
                 </span>
               </div>
@@ -637,7 +637,7 @@ function ArticleEditorPageInner() {
                 onValueChange={handleBlendWeight}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-xs-safe text-muted-foreground">
                 <span>Brand (100%)</span>
                 <span>Template (100%)</span>
               </div>
@@ -671,7 +671,7 @@ function ArticleEditorPageInner() {
                   onChange={handleCustomInstructions}
                   className="resize-y"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs-safe text-muted-foreground">
                   These instructions are injected at the highest priority and override any template defaults.
                 </p>
               </div>
@@ -718,7 +718,7 @@ function ArticleEditorPageInner() {
 
           {/* HTML Preview pane */}
           {currentArticle.htmlContent && (
-            <div className="rounded-lg border border-border bg-card shadow-sm">
+            <div className="rounded-lg border border-border bg-card shadow-[var(--shadow-card)]">
               <div className="border-b border-border px-4 py-3 flex items-center justify-between">
                 <p className="text-sm font-semibold">Preview</p>
                 <StatusChip
@@ -734,10 +734,10 @@ function ArticleEditorPageInner() {
         <div className="w-full lg:w-72 shrink-0 space-y-4">
 
           {/* Metadata card */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-[var(--shadow-card)]">
             <p className="text-sm font-semibold text-foreground">Article Details</p>
             <Separator />
-            <div className="space-y-2 text-xs text-muted-foreground">
+            <div className="space-y-2 text-xs-safe text-muted-foreground">
               <div className="flex justify-between">
                 <span>Status</span>
                 <StatusChip
@@ -771,12 +771,12 @@ function ArticleEditorPageInner() {
 
           {/* Actions card */}
           {currentArticle.articleId && (
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-[var(--shadow-card)]">
               <p className="text-sm font-semibold text-foreground">Actions</p>
               <Separator />
 
               {sidebarError && (
-                <p className="text-xs text-destructive">{sidebarError}</p>
+                <p className="text-xs-safe text-destructive">{sidebarError}</p>
               )}
 
               {(currentArticle.articleStatus === "generated" ||
@@ -827,7 +827,7 @@ function ArticleEditorPageInner() {
           />
 
           {/* Quick notes card */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-[var(--shadow-card)]">
             <p className="text-sm font-semibold text-foreground">Quick Notes</p>
             <Textarea
               placeholder="Add notes about this article..."

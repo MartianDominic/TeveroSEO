@@ -192,7 +192,7 @@ export function VoiceTemplatesTab() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-sm font-medium text-foreground">Voice Templates</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs-safe text-muted-foreground mt-0.5">
               Reusable writing style templates. Clients can blend their brand voice with these templates.
             </p>
           </div>
@@ -289,9 +289,9 @@ export function VoiceTemplatesTab() {
 
       {/* New Template Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
-        <DialogContent className="max-w-lg w-full rounded-lg border border-border bg-card p-6 shadow-lg">
+        <DialogContent className="max-w-lg w-full rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-overlay)]">
           <h2 className="text-base font-semibold text-foreground mb-1">New Voice Template</h2>
-          <p className="text-xs text-muted-foreground mb-4">Create a reusable writing style template</p>
+          <p className="text-xs-safe text-muted-foreground mb-4">Create a reusable writing style template</p>
 
           <div className="space-y-4">
             <div>
@@ -324,7 +324,7 @@ export function VoiceTemplatesTab() {
             </div>
 
             {formError && (
-              <p className="text-xs text-destructive">{formError}</p>
+              <p className="text-xs-safe text-destructive">{formError}</p>
             )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -348,9 +348,9 @@ export function VoiceTemplatesTab() {
         open={editingTemplate !== null}
         onOpenChange={(open) => { if (!open) setEditingTemplate(null); }}
       >
-        <DialogContent className="max-w-lg w-full rounded-lg border border-border bg-card p-6 shadow-lg">
+        <DialogContent className="max-w-lg w-full rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-overlay)]">
           <h2 className="text-base font-semibold text-foreground mb-1">Edit Voice Template</h2>
-          <p className="text-xs text-muted-foreground mb-4">Update this writing style template</p>
+          <p className="text-xs-safe text-muted-foreground mb-4">Update this writing style template</p>
 
           <div className="space-y-4">
             <div>
@@ -380,7 +380,7 @@ export function VoiceTemplatesTab() {
             </div>
 
             {editError && (
-              <p className="text-xs text-destructive">{editError}</p>
+              <p className="text-xs-safe text-destructive">{editError}</p>
             )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -401,7 +401,7 @@ export function VoiceTemplatesTab() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-lg bg-card border border-border">
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg px-4 py-3 text-sm shadow-[var(--shadow-overlay)] bg-card border border-border">
           <div className="flex items-center gap-2">
             <StatusChip status={toast.type === "success" ? "published" : "failed"} />
             <span className="text-foreground font-medium">{toast.message}</span>

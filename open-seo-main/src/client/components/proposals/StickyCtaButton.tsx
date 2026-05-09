@@ -57,7 +57,7 @@ export function StickyCtaButton({
             disabled={isLoading}
             size="lg"
             className={cn(
-              "w-full md:w-auto md:px-8 md:py-6 text-lg font-semibold shadow-lg",
+              "w-full md:w-auto md:px-8 md:py-6 text-lg font-semibold shadow-[var(--shadow-overlay)]",
               "transition-transform hover:scale-105 active:scale-95",
             )}
             style={

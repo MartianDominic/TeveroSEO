@@ -29,7 +29,7 @@ export const ClientSetupChecklist: React.FC<ClientSetupChecklistProps> = ({
       <div className="space-y-2.5">
         {/* Step 1 - Client added (always done on this page) */}
         <div className="flex items-center gap-2.5">
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs-safe font-bold text-emerald-600 dark:text-emerald-400">
             ✓
           </span>
           <span className="text-sm text-muted-foreground line-through opacity-60">
@@ -45,7 +45,7 @@ export const ClientSetupChecklist: React.FC<ClientSetupChecklistProps> = ({
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
           ) : intelligenceStatus === "completed" ? (
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs-safe font-bold text-emerald-600 dark:text-emerald-400">
               ✓
             </span>
           ) : (
@@ -74,7 +74,7 @@ export const ClientSetupChecklist: React.FC<ClientSetupChecklistProps> = ({
                 `/clients/${clientId}/settings` as Parameters<typeof router.push>[0]
               )
             }
-            className="text-xs text-primary hover:underline shrink-0"
+            className="text-xs-safe text-primary hover:underline shrink-0"
           >
             Configure
           </button>
@@ -92,7 +92,7 @@ export const ClientSetupChecklist: React.FC<ClientSetupChecklistProps> = ({
                 `/clients/${clientId}/calendar` as Parameters<typeof router.push>[0]
               )
             }
-            className="text-xs text-primary hover:underline shrink-0"
+            className="text-xs-safe text-primary hover:underline shrink-0"
           >
             Open Calendar
           </button>

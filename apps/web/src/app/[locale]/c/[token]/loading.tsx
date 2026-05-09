@@ -15,7 +15,7 @@ export default function ContractLoading() {
         </div>
 
         {/* Card skeleton */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-[var(--shadow-card)] p-6 space-y-6">
           <div className="space-y-2">
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-4 w-full" />

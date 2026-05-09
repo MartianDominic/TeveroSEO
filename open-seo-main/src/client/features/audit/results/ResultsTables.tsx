@@ -56,7 +56,7 @@ export function PagesTable({ pages }: { pages: AuditResultsData["pages"] }) {
                   href={page.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="link link-primary text-xs inline-flex items-center gap-1"
+                  className="link link-primary text-xs-safe inline-flex items-center gap-1"
                 >
                   {extractPathname(page.url)}
                   <ExternalLink className="size-3" />
@@ -67,7 +67,7 @@ export function PagesTable({ pages }: { pages: AuditResultsData["pages"] }) {
               </td>
               <td className="max-w-[180px] truncate" title={page.title ?? ""}>
                 {page.title || (
-                  <span className="text-destructive text-xs">missing</span>
+                  <span className="text-destructive text-xs-safe">missing</span>
                 )}
               </td>
               <td>{page.h1Count}</td>
@@ -81,7 +81,7 @@ export function PagesTable({ pages }: { pages: AuditResultsData["pages"] }) {
                   page.imagesTotal
                 )}
               </td>
-              <td className="text-xs">
+              <td className="text-xs-safe">
                 {page.responseTimeMs ? `${page.responseTimeMs}ms` : "-"}
               </td>
             </tr>
@@ -156,17 +156,17 @@ function PerformanceRow({
 
   return (
     <tr>
-      <td className="max-w-[160px] truncate text-xs">
+      <td className="max-w-[160px] truncate text-xs-safe">
         {page ? extractPathname(page.url) : "-"}
       </td>
-      <td className="capitalize text-xs">{result.strategy}</td>
+      <td className="capitalize text-xs-safe">{result.strategy}</td>
       <td>
         {isFailed ? (
-          <Badge variant="destructive" className="text-xs" title={failureMessage}>
+          <Badge variant="destructive" className="text-xs-safe" title={failureMessage}>
             failed
           </Badge>
         ) : (
-          <Badge className="bg-success/20 text-green-700 dark:text-green-400 text-xs border-success/30">ok</Badge>
+          <Badge className="bg-success/20 text-green-700 dark:text-green-400 text-xs-safe border-success/30">ok</Badge>
         )}
       </td>
       <td>
@@ -178,16 +178,16 @@ function PerformanceRow({
       <td>
         <LighthouseScoreBadge score={result.seoScore} />
       </td>
-      <td className="text-xs">
+      <td className="text-xs-safe">
         {result.lcpMs ? `${(result.lcpMs / 1000).toFixed(1)}s` : "-"}
       </td>
-      <td className="text-xs">
+      <td className="text-xs-safe">
         {result.cls != null ? result.cls.toFixed(3) : "-"}
       </td>
-      <td className="text-xs">
+      <td className="text-xs-safe">
         {result.inpMs ? `${Math.round(result.inpMs)}ms` : "-"}
       </td>
-      <td className="text-xs">
+      <td className="text-xs-safe">
         {result.ttfbMs ? `${Math.round(result.ttfbMs)}ms` : "-"}
       </td>
       <td>
@@ -200,7 +200,7 @@ function PerformanceRow({
             </a>
           </Button>
         ) : (
-          <span className="text-xs text-foreground/40">-</span>
+          <span className="text-xs-safe text-foreground/40">-</span>
         )}
       </td>
     </tr>
@@ -221,7 +221,7 @@ export function ExportDropdown({
       </div>
       <ul
         tabIndex={0}
-        className="dropdown-content z-10 menu p-2 shadow-lg bg-background border border-border rounded-lg w-40"
+        className="dropdown-content z-10 menu p-2 shadow-[var(--shadow-dropdown)] bg-background border border-border rounded-lg w-40"
       >
         <li>
           <button onClick={() => onExport("csv")}>CSV</button>

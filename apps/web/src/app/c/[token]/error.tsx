@@ -19,7 +19,7 @@ export default function Error({
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
       <h2 className="text-lg font-semibold">Something went wrong</h2>
       {error.digest && (
-        <p className="text-muted-foreground text-xs">Error ID: {error.digest}</p>
+        <p className="text-muted-foreground text-xs-safe">Error ID: {error.digest}</p>
       )}
       <Button onClick={() => reset()}>Try again</Button>
     </div>

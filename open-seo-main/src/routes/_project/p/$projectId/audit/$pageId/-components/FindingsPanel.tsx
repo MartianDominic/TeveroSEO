@@ -247,14 +247,14 @@ export function FindingsPanel({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             )}
-                            <span className="font-mono text-xs text-gray-500">{finding.checkId}</span>
+                            <span className="font-mono text-xs-safe text-gray-500">{finding.checkId}</span>
                           </div>
                           <div className="flex gap-1">
-                            <span className={cn("rounded border px-2 py-0.5 text-xs", SEVERITY_COLORS[finding.severity])}>
+                            <span className={cn("rounded border px-2 py-0.5 text-xs-safe", SEVERITY_COLORS[finding.severity])}>
                               {finding.severity}
                             </span>
                             {finding.autoEditable && (
-                              <span className="rounded border border-purple-200 bg-purple-100 px-2 py-0.5 text-xs text-purple-800">
+                              <span className="rounded border border-purple-200 bg-purple-100 px-2 py-0.5 text-xs-safe text-purple-800">
                                 Auto-fix
                               </span>
                             )}

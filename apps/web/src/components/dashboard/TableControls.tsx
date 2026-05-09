@@ -117,7 +117,7 @@ export function TableControls({
 
         {/* Unsaved changes indicator */}
         {hasUnsavedChanges && (
-          <span className="text-xs text-muted-foreground italic">
+          <span className="text-xs-safe text-muted-foreground italic">
             Unsaved changes
           </span>
         )}

@@ -100,7 +100,7 @@ export function HeaderHelpLabel({
         ? createPortal(
             <span
               role="tooltip"
-              className="pointer-events-none fixed z-[1000] w-max max-w-56 -translate-x-1/2 -translate-y-full rounded-md border border-border bg-background px-2 py-1 text-[11px] font-normal normal-case leading-snug text-foreground shadow-md"
+              className="pointer-events-none fixed z-[1000] w-max max-w-56 -translate-x-1/2 -translate-y-full rounded-md border border-border bg-background px-2 py-1 text-[11px] font-normal normal-case leading-snug text-foreground shadow-[var(--shadow-tooltip)]"
               style={{ left: position.left, top: position.top }}
             >
               {helpText}
@@ -287,7 +287,7 @@ export function IntentBadge({ intent }: { intent: KeywordIntent }) {
   const isNavigational = intent === "navigational";
   return (
     <Badge
-      className={`text-xs ${className}`}
+      className={`text-xs-safe ${className}`}
       variant={isNavigational ? "default" : "outline"}
     >
       {shortLabels[intent]}

@@ -175,7 +175,7 @@ export function AgreementStatusTracker({
 
                 <span
                   className={cn(
-                    "text-xs text-center",
+                    "text-xs-safe text-center",
                     isCompleted || isCurrent
                       ? "text-foreground font-medium"
                       : "text-muted-foreground"

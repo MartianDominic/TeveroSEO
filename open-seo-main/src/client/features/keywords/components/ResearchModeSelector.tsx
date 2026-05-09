@@ -135,7 +135,7 @@ export function ResearchModeSelector({ prospectId, onSubmit, isSubmitting }: Res
             rows={6}
             className="font-mono text-sm"
           />
-          <p className="text-xs text-text-3 mt-1">
+          <p className="text-xs-safe text-text-3 mt-1">
             {keywords.split('\n').filter(k => k.trim()).length} items entered
           </p>
         </div>

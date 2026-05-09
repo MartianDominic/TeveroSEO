@@ -60,8 +60,8 @@ function ChartTooltip({
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur-sm">
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="rounded-md border border-border bg-background/95 px-3 py-2 shadow-[var(--shadow-overlay)] backdrop-blur-sm">
+      <p className="text-xs-safe text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold tabular-nums">
         {payload[0].value.toLocaleString("lt-LT")} lankytojų
       </p>

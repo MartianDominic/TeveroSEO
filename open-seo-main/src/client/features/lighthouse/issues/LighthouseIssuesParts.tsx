@@ -58,7 +58,7 @@ export function LighthouseIssuesHeader({
         <Button variant="ghost" size="sm" className="px-2" onClick={onBack}>
           &larr; Back to {backLabel}
         </Button>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           {scannedAt
             ? `Scanned ${new Date(scannedAt).toLocaleString()}`
             : "Reading latest issues..."}
@@ -74,7 +74,7 @@ export function LighthouseIssuesHeader({
             </p>
           </div>
           <LighthouseIssuesSummary scores={scores} metrics={metrics} />
-          <div className="flex flex-wrap gap-2 text-xs">
+          <div className="flex flex-wrap gap-2 text-xs-safe">
             <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive/80 gap-1">
               <FileWarning className="size-3" />
               Critical {severityCounts.critical}
@@ -167,7 +167,7 @@ function CategoryTabs({
           onClick={() => onCategoryChange(tab)}
         >
           <span>{categoryLabel(tab)}</span>
-          <span className="ml-1 text-xs opacity-70">
+          <span className="ml-1 text-xs-safe opacity-70">
             ({categoryCounts[tab]})
           </span>
         </button>
@@ -296,7 +296,7 @@ export function LighthouseIssueList({
         <col className="w-14" />
       </colgroup>
       <TableHeader>
-        <TableRow className="text-xs text-foreground/50 uppercase tracking-wide border-b border-border">
+        <TableRow className="text-xs-safe text-foreground/50 uppercase tracking-wide border-b border-border">
           <TableHead />
           <TableHead className="font-medium">Severity</TableHead>
           <TableHead className="font-medium">Issue</TableHead>

@@ -75,7 +75,7 @@ export function VoiceModeWizard({
         <h3 className="text-sm font-medium mb-1">
           How should AI handle this client&apos;s content?
         </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs-safe text-muted-foreground mb-4">
           Choose how the system should approach content generation and
           optimization for this client.
         </p>
@@ -105,7 +105,7 @@ export function VoiceModeWizard({
         <Card className="p-4 space-y-4">
           <div>
             <Label className="text-sm font-medium">Industry Template</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs-safe text-muted-foreground mt-0.5">
               Select a template that matches your client&apos;s industry
             </p>
             <Select
@@ -125,7 +125,7 @@ export function VoiceModeWizard({
               </SelectContent>
             </Select>
             {selectedTemplate?.description && (
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs-safe text-muted-foreground mt-2">
                 {selectedTemplate.description}
               </p>
             )}
@@ -156,7 +156,7 @@ export function VoiceModeWizard({
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">Enable Voice Blending</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs-safe text-muted-foreground">
                   Blend client voice with industry template
                 </p>
               </div>
@@ -184,15 +184,15 @@ export function VoiceModeWizard({
                       aria-valuetext={`${Math.round((1 - blendWeight[0]) * 100)}% client voice, ${Math.round(blendWeight[0] * 100)}% template style`}
                     />
                     <div className="flex justify-between mt-1" aria-hidden="true">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs-safe text-muted-foreground">
                         Client voice
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs-safe text-muted-foreground">
                         Template style
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs-safe text-muted-foreground">
                     Current: {blendWeight[0].toFixed(2)}
                   </p>
                 </div>

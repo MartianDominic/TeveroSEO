@@ -50,10 +50,10 @@ export function AlertItem({ alert, onAcknowledge, onDismiss, compact }: AlertIte
       <Icon className={cn("h-5 w-5 mt-0.5 flex-shrink-0", config.color)} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant={config.badge} className="text-xs">
+          <Badge variant={config.badge} className="text-xs-safe">
             {alert.severity}
           </Badge>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs-safe text-muted-foreground">
             {formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}
           </span>
         </div>

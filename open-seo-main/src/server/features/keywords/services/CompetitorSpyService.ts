@@ -23,7 +23,7 @@ import type { ScrapeResult } from "@/server/features/scraping";
 import type { ConsumerAdapter, ComparisonResult } from "@/server/features/scraping/migration/adapters/types";
 import { db } from "@/db";
 import { getDfsCostTracker } from "@/server/features/scraping/providers/DfsCostTracker";
-import { getLabsCost } from "@/server/features/scraping/cost";
+import { getLabsCost, getRankedKeywordsCostCents } from "@/server/features/scraping/cost";
 
 const log = createLogger({ module: "competitor-spy-service" });
 
@@ -31,7 +31,8 @@ const log = createLogger({ module: "competitor-spy-service" });
 const CACHE_PREFIX = CACHE_NS.COMPETITOR_SPY;
 const CACHE_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 const DEFAULT_LIMIT = 100;
-const COST_PER_DOMAIN_CENTS = 2; // $0.02 per domain
+// Cost per domain in cents - from canonical pricing ($0.002 = 0.2 cents)
+const COST_PER_DOMAIN_CENTS = getRankedKeywordsCostCents();
 // Labs API cost per domain from centralized pricing ($0.002/query)
 const LABS_API_COST_USD = getLabsCost("rankedKeywords");
 

@@ -56,7 +56,7 @@ export function MagicLinkButton({
   if (generatedUrl) {
     return (
       <div className={cn("flex items-center gap-2", className)}>
-        <code className="truncate max-w-[200px] rounded bg-muted px-2 py-1 text-xs">
+        <code className="truncate max-w-[200px] rounded bg-muted px-2 py-1 text-xs-safe">
           {generatedUrl}
         </code>
         <Button

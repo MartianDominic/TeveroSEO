@@ -107,14 +107,14 @@ export function PackageSelector({
                     {isRecommended && (
                       <Badge
                         variant="secondary"
-                        className="text-xs-safe px-1.5 py-0"
+                        className="text-xs-safe-safe px-1.5 py-0"
                       >
                         {t("selector.recommended")}
                       </Badge>
                     )}
                   </div>
                   {pkg.inclusions && pkg.inclusions.length > 0 && (
-                    <div className="text-xs text-muted-foreground mt-1">
+                    <div className="text-xs-safe text-muted-foreground mt-1">
                       {pkg.inclusions.slice(0, 3).join(" • ")}
                       {pkg.inclusions.length > 3 &&
                         ` +${pkg.inclusions.length - 3}`}
@@ -128,7 +128,7 @@ export function PackageSelector({
                   {t("perMonth")}
                 </div>
                 {pkg.setupFeeCents != null && pkg.setupFeeCents > 0 && (
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs-safe text-muted-foreground">
                     + {formatPrice(pkg.setupFeeCents)} setup
                   </div>
                 )}

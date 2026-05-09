@@ -113,7 +113,7 @@ export const TestimonialSection: FC<TestimonialSectionProps> = ({
                 <span className="text-muted-foreground">{t.authorPlaceholder}</span>
               )}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs-safe text-muted-foreground">
               {data.company || t.companyPlaceholder}
             </div>
           </div>

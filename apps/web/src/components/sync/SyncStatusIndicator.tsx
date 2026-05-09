@@ -103,20 +103,20 @@ export function SyncStatusIndicator({
         </p>
 
         {showDetails && progress.status === SyncStatus.SYNCING && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs-safe text-muted-foreground mt-0.5">
             Attempt {progress.attempt} of {progress.maxAttempts}
           </p>
         )}
 
         {progress.error && (
-          <p className="text-xs text-destructive mt-0.5 truncate">
+          <p className="text-xs-safe text-destructive mt-0.5 truncate">
             {progress.error}
           </p>
         )}
       </div>
 
       {showDetails && progress.durationMs > 0 && (
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
+        <span className="text-xs-safe text-muted-foreground whitespace-nowrap">
           {(progress.durationMs / 1000).toFixed(1)}s
         </span>
       )}
@@ -185,7 +185,7 @@ export function SyncOverlay({
           </div>
 
           {progress.attempt > 1 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs-safe text-amber-600 dark:text-amber-400">
               Retrying... (attempt {progress.attempt} of {progress.maxAttempts})
             </p>
           )}

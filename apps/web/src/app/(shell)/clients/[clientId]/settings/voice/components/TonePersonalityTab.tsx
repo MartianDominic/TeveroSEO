@@ -144,11 +144,11 @@ export function TonePersonalityTab({ profile, onSave, saving }: TonePersonalityT
             step={1}
           />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-muted-foreground">Very Casual</span>
-            <span className="text-xs text-muted-foreground">Highly Formal</span>
+            <span className="text-xs-safe text-muted-foreground">Very Casual</span>
+            <span className="text-xs-safe text-muted-foreground">Highly Formal</span>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">Current: {formalityLevel[0]}/10</p>
+        <p className="text-xs-safe text-muted-foreground">Current: {formalityLevel[0]}/10</p>
       </Card>
 
       {/* Emotional Range */}

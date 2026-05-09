@@ -1,12 +1,16 @@
 /**
  * L3 PostgreSQL Cache Tests
  * Phase 95-02: Multi-Level Caching
+ * Phase 97: Tenant Isolation
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { L3Cache, createL3Cache } from "../L3Cache";
 import type { CachedPage } from "../types";
+
+// Test client ID for tenant isolation
+const TEST_CLIENT_ID = "550e8400-e29b-41d4-a716-446655440000";
 
 // =============================================================================
 // Mock Database
@@ -194,7 +198,7 @@ describe("L3Cache", () => {
 
   beforeEach(() => {
     db = createMockDb() as any;
-    cache = createL3Cache(db);
+    cache = createL3Cache(db, TEST_CLIENT_ID);
     db.__reset();
   });
 
@@ -308,11 +312,18 @@ describe("L3Cache", () => {
 describe("createL3Cache factory", () => {
   it("should create cache with custom config", () => {
     const db = createMockDb();
-    const cache = createL3Cache(db, {
+    const cache = createL3Cache(db, TEST_CLIENT_ID, {
       retentionDays: 60,
       batchSize: 50,
     });
 
     expect(cache).toBeInstanceOf(L3Cache);
+  });
+
+  it("should throw error when clientId is not provided", () => {
+    const db = createMockDb();
+    expect(() => createL3Cache(db, "", {})).toThrow(
+      "L3Cache requires clientId for tenant isolation"
+    );
   });
 });

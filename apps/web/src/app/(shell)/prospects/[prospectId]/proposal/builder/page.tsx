@@ -406,7 +406,7 @@ export default function ProposalBuilderPage() {
     <div className="container max-w-4xl py-8">
       {/* Toast notification */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background border rounded-lg px-4 py-3 shadow-lg">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background border rounded-lg px-4 py-3 shadow-[var(--shadow-overlay)]">
           <StatusChip status={toast.type === "success" ? "published" : "failed"} />
           <span className="text-foreground font-medium">{toast.message}</span>
         </div>

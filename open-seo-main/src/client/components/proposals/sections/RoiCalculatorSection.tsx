@@ -65,7 +65,7 @@ function SliderInput({
           }}
         />
       </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
+      <div className="flex justify-between text-xs-safe text-muted-foreground">
         <span>{min.toLocaleString("lt-LT")}{unit}</span>
         <span>{max.toLocaleString("lt-LT")}{unit}</span>
       </div>
@@ -136,7 +136,7 @@ export function RoiCalculatorSection({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Input controls */}
           <motion.div
-            className="bg-card rounded-xl p-6 border shadow-sm space-y-8"
+            className="bg-card rounded-xl p-6 border shadow-[var(--shadow-card)] space-y-8"
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-50px" }}
@@ -157,7 +157,7 @@ export function RoiCalculatorSection({
                       variant="outline"
                       size="sm"
                       onClick={() => handleIndustrySelect(industry)}
-                      className="text-xs"
+                      className="text-xs-safe"
                     >
                       {industry === "ecommerce" && "El. parduotuve"}
                       {industry === "saas" && "SaaS"}
@@ -213,7 +213,7 @@ export function RoiCalculatorSection({
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             {/* Traffic metrics */}
-            <div className="bg-card rounded-xl p-6 border shadow-sm">
+            <div className="bg-card rounded-xl p-6 border shadow-[var(--shadow-card)]">
               <h3 className="font-semibold mb-4">Numatomas srautas</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -232,7 +232,7 @@ export function RoiCalculatorSection({
             </div>
 
             {/* Conversion metrics */}
-            <div className="bg-card rounded-xl p-6 border shadow-sm">
+            <div className="bg-card rounded-xl p-6 border shadow-[var(--shadow-card)]">
               <h3 className="font-semibold mb-4">Numatomi rezultatai</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>

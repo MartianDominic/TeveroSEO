@@ -110,7 +110,7 @@ export function ClauseEditor({
             placeholder="Clause title"
           />
           {clause.isLegal && (
-            <span className="flex-shrink-0 text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+            <span className="flex-shrink-0 text-xs-safe px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
               Legal
             </span>
           )}
@@ -140,7 +140,7 @@ export function ClauseEditor({
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs-safe text-muted-foreground mt-2">
           Drag variables from the palette to insert them at cursor position.
           Variables use the format {"{{variable_name}}"}.
         </p>

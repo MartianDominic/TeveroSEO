@@ -7,7 +7,7 @@
  * Supports multiple provider backends per model family.
  */
 
-import { CircuitBreaker } from "./CircuitBreaker";
+import { createCircuitBreaker, type CircuitBreaker } from "@/server/features/scraping/resilience/CircuitBreaker";
 import { resolveProvider, type ProviderConfig } from "./provider-config";
 import { createLogger } from "@/server/lib/logger";
 
@@ -208,10 +208,9 @@ export class ModelRouter {
   private getOrCreateBreaker(modelId: string): CircuitBreaker {
     let breaker = this.circuitBreakers.get(modelId);
     if (!breaker) {
-      breaker = new CircuitBreaker({
-        name: `model-${modelId}`,
+      breaker = createCircuitBreaker(`model-${modelId}`, {
         failureThreshold: 5,
-        resetTimeout: 60000,
+        timeout: 60000,
       });
       this.circuitBreakers.set(modelId, breaker);
     }

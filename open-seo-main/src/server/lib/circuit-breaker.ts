@@ -23,7 +23,7 @@ const log = createLogger({ module: "circuit-breaker" });
 /**
  * Circuit breaker states.
  */
-export type CircuitState = "closed" | "open" | "half_open";
+export type CircuitState = "closed" | "open" | "half-open";
 
 /**
  * Circuit breaker configuration.
@@ -107,7 +107,7 @@ export class RedisCircuitBreaker {
     this.failuresKey = `${baseKey}failures`;
     this.stateKey = `${baseKey}state`;
     this.openedAtKey = `${baseKey}opened_at`;
-    this.halfOpenAttemptsKey = `${baseKey}half_open_attempts`;
+    this.halfOpenAttemptsKey = `${baseKey}half-open_attempts`;
   }
 
   /**
@@ -131,7 +131,7 @@ export class RedisCircuitBreaker {
       if (elapsed >= this.resetTimeoutMs) {
         // Transition to half-open
         await this.transitionToHalfOpen();
-        return "half_open";
+        return "half-open";
       }
     }
 
@@ -186,7 +186,7 @@ export class RedisCircuitBreaker {
   async recordSuccess(): Promise<void> {
     const state = await this.getState();
 
-    if (state === "half_open") {
+    if (state === "half-open") {
       // Reset to closed after successful half-open request
       await this.close();
       log.info("Circuit breaker closed after successful recovery", { name: this.name });
@@ -205,7 +205,7 @@ export class RedisCircuitBreaker {
   async recordFailure(): Promise<void> {
     const state = await this.getState();
 
-    if (state === "half_open") {
+    if (state === "half-open") {
       // Failure in half-open immediately reopens
       await this.open();
       log.warn("Circuit breaker reopened - half-open test failed", { name: this.name });
@@ -331,7 +331,7 @@ export class RedisCircuitBreaker {
     const halfOpenTtl = 60; // 1 minute TTL for half-open state
 
     await Promise.all([
-      redis.set(this.stateKey, "half_open", "EX", halfOpenTtl),
+      redis.set(this.stateKey, "half-open", "EX", halfOpenTtl),
       redis.set(this.halfOpenAttemptsKey, "0", "EX", halfOpenTtl),
     ]);
 

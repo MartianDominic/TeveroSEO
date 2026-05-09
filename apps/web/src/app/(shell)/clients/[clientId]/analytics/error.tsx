@@ -59,10 +59,10 @@ export default function AnalyticsError({
         We encountered an error loading the analytics section. Please try again.
       </p>
       {error.digest && (
-        <p className="text-muted-foreground text-xs font-mono">Error ID: {error.digest}</p>
+        <p className="text-muted-foreground text-xs-safe font-mono">Error ID: {error.digest}</p>
       )}
       {isDev && (
-        <pre className="text-xs text-muted-foreground max-w-md overflow-auto p-2 bg-muted rounded">
+        <pre className="text-xs-safe text-muted-foreground max-w-md overflow-auto p-2 bg-muted rounded">
           {error.message}
         </pre>
       )}

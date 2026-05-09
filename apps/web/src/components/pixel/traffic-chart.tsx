@@ -90,7 +90,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || !payload.length) return null;
 
   return (
-    <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[160px]">
+    <div className="bg-popover border border-border rounded-lg shadow-[var(--shadow-overlay)] p-3 min-w-[160px]">
       <p className="text-sm font-medium text-foreground mb-2">
         {label ? formatDate(label) : ""}
       </p>
@@ -102,7 +102,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-xs text-muted-foreground">{entry.name}</span>
+              <span className="text-xs-safe text-muted-foreground">{entry.name}</span>
             </div>
             <span className="text-sm font-medium tabular-nums">
               {formatNumber(entry.value)}
@@ -179,7 +179,7 @@ export function TrafficChart({ data, loading = false, className }: TrafficChartP
               key={key}
               onClick={() => toggleSeries(key)}
               className={cn(
-                "flex items-center gap-1.5 text-xs transition-opacity",
+                "flex items-center gap-1.5 text-xs-safe transition-opacity",
                 visibleSeries.has(key) ? "opacity-100" : "opacity-40"
               )}
             >

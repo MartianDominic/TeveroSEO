@@ -74,15 +74,17 @@ export interface VolumeRefreshOutput {
   refreshedAt: Date;
 }
 
+import { DFS_LABS_PRICING } from "../../cost/dfs-pricing";
+
 // =============================================================================
-// Cost Constants
+// Cost Constants - from canonical pricing module
 // =============================================================================
 
-/** Cost per DataForSEO Labs API request */
-const COST_PER_REQUEST_USD = 0.15;
+/** Cost per DataForSEO Labs API request (search volume base) */
+const COST_PER_REQUEST_USD = DFS_LABS_PRICING.searchVolumeBase;
 
 /** Cost per keyword in Labs API (search volume endpoint) */
-const COST_PER_KEYWORD_USD = 0.0001;
+const COST_PER_KEYWORD_USD = DFS_LABS_PRICING.searchVolumePerKeyword;
 
 // =============================================================================
 // Adapter Implementation

@@ -130,7 +130,7 @@ export function AcceptRejectButtons({
             placeholder="Pasakykite, kodel pasiulymas netinka..."
             maxLength={500}
           />
-          <p className="text-xs text-gray-400 mt-1 text-right">
+          <p className="text-xs-safe text-gray-400 mt-1 text-right">
             {rejectReason.length}/500
           </p>
         </div>

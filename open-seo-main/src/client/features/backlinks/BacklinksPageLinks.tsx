@@ -36,7 +36,7 @@ export function BacklinksSourceLink({
     <BacklinksExternalLink
       url={url}
       label={truncateMiddle(extractUrlPath(url), maxLength)}
-      className={`link link-hover break-all inline-flex items-center gap-1 ${muted ? "text-xs text-foreground/55" : "text-sm"}`}
+      className={`link link-hover break-all inline-flex items-center gap-1 ${muted ? "text-xs-safe text-foreground/55" : "text-sm"}`}
     />
   );
 }

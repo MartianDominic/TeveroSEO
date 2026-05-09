@@ -294,7 +294,7 @@ export function CsvImportDialog({
                       or click to browse
                     </p>
                   </div>
-                  <p className="text-text-4 text-xs">
+                  <p className="text-text-4 text-xs-safe">
                     Maximum file size: 10 MB
                   </p>
                 </>
@@ -345,7 +345,7 @@ export function CsvImportDialog({
                     <Badge
                       key={col.sourceColumn}
                       variant="outline"
-                      className="text-xs"
+                      className="text-xs-safe"
                     >
                       {col.sourceColumn} → {col.targetField}
                     </Badge>

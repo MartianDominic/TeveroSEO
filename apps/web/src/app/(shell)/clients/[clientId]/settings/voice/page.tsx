@@ -242,7 +242,7 @@ export default function VoiceSettingsPage() {
         <div
           role="alert"
           aria-live="polite"
-          className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-card border border-border"
+          className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-[var(--shadow-overlay)] bg-card border border-border"
         >
           <span className="text-foreground">{toast.message}</span>
         </div>

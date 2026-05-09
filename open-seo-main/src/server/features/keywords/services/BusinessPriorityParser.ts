@@ -103,13 +103,15 @@ export class BusinessPriorityParser {
 
   /**
    * Parse raw LLM response to extract JSON.
+   * Uses multiple extraction strategies in order of preference.
    */
   private extractJson(response: string): object | null {
     // Try to parse directly first
     try {
       return JSON.parse(response);
     } catch {
-      // Response might have markdown code blocks
+      // Direct parse failed - expected when response has markdown wrapper
+      // Continue to extraction strategies below
     }
 
     // Try to extract from markdown code block
@@ -118,7 +120,7 @@ export class BusinessPriorityParser {
       try {
         return JSON.parse(jsonMatch[1].trim());
       } catch {
-        // Continue to next strategy
+        // Markdown block content not valid JSON - continue to next strategy
       }
     }
 
@@ -128,10 +130,11 @@ export class BusinessPriorityParser {
       try {
         return JSON.parse(objectMatch[0]);
       } catch {
-        // Failed to parse
+        // Extracted object not valid JSON - all strategies exhausted
       }
     }
 
+    // All extraction strategies failed - caller handles null return
     return null;
   }
 

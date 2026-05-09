@@ -208,7 +208,7 @@ export default async function PublicAgreementPage({ params }: PageProps) {
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-accent">2</span>
+                  <span className="text-xs-safe font-bold text-accent">2</span>
                 </div>
                 <div>
                   <p className="font-medium text-text-1">Invoice within 24 hours</p>
@@ -217,7 +217,7 @@ export default async function PublicAgreementPage({ params }: PageProps) {
               </li>
               <li className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-accent">3</span>
+                  <span className="text-xs-safe font-bold text-accent">3</span>
                 </div>
                 <div>
                   <p className="font-medium text-text-1">Onboarding begins</p>
@@ -250,7 +250,7 @@ export default async function PublicAgreementPage({ params }: PageProps) {
           </div>
 
           {/* Footer info */}
-          <p className="text-center text-text-4 text-xs mt-8">
+          <p className="text-center text-text-4 text-xs-safe mt-8">
             Questions? Email us at{" "}
             <a href="mailto:support@tevero.io" className="text-accent hover:underline">
               support@tevero.io

@@ -29,6 +29,20 @@ import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "rate-limit" });
 
+// --- Jitter Helper ---
+
+/**
+ * Add jitter to a time value to prevent thundering herd on limit reset.
+ * Uses 10-25% jitter range.
+ *
+ * @param baseTime - Base time in milliseconds
+ * @returns Time with jitter applied
+ */
+function addJitter(baseTime: number): number {
+  const jitterFactor = 0.1 + Math.random() * 0.15; // 10-25%
+  return Math.round(baseTime * (1 + jitterFactor));
+}
+
 // --- Types ---
 
 export interface RateLimitOptions {
@@ -64,88 +78,85 @@ export interface RateLimitOptionsWithKeyFn {
 
 // --- Default Rate Limit Configurations ---
 
+// Import centralized rate limit configuration from @tevero/utils
+// This is the single source of truth for all rate limit values
+import {
+  AUTH_RATE_LIMITS,
+  API_RATE_LIMITS,
+  SEO_RATE_LIMITS,
+  CONTENT_RATE_LIMITS,
+  toSecondsConfig,
+} from "@tevero/utils";
+
 /**
  * Predefined rate limit configurations for common endpoints.
- * These can be used directly or as templates.
+ * Values are imported from @tevero/utils for consistency across the monorepo.
  */
 export const RATE_LIMITS = {
   /** Run SEO checks - resource intensive, 10 req/min per client */
   AUDIT_RUN_CHECKS: {
-    limit: 10,
-    window: 60,
-    keyPrefix: "ratelimit:audit:run-checks:",
+    ...toSecondsConfig(SEO_RATE_LIMITS.AUDIT_RUN_CHECKS),
+    keyPrefix: SEO_RATE_LIMITS.AUDIT_RUN_CHECKS.keyPrefix,
   },
   /** Content validation - 10 req/min per client */
   CONTENT_VALIDATE: {
-    limit: 10,
-    window: 60,
-    keyPrefix: "ratelimit:seo:content:validate:",
+    ...toSecondsConfig(SEO_RATE_LIMITS.CONTENT_VALIDATE),
+    keyPrefix: SEO_RATE_LIMITS.CONTENT_VALIDATE.keyPrefix,
   },
   /** Link suggestions - lighter operation, 30 req/min per client */
   LINK_SUGGESTIONS: {
-    limit: 30,
-    window: 60,
-    keyPrefix: "ratelimit:seo:links:suggestions:",
+    ...toSecondsConfig(SEO_RATE_LIMITS.LINK_SUGGESTIONS),
+    keyPrefix: SEO_RATE_LIMITS.LINK_SUGGESTIONS.keyPrefix,
   },
   /** Default rate limit for unspecified endpoints */
   DEFAULT: {
-    limit: 60,
-    window: 60,
-    keyPrefix: "ratelimit:default:",
+    ...toSecondsConfig(API_RATE_LIMITS.DEFAULT),
+    keyPrefix: API_RATE_LIMITS.DEFAULT.keyPrefix,
   },
   /** Authentication - login, signup, token refresh */
   AUTH: {
-    limit: 10,
-    window: 60,
-    keyPrefix: "ratelimit:auth:",
+    ...toSecondsConfig(AUTH_RATE_LIMITS.DEFAULT),
+    keyPrefix: AUTH_RATE_LIMITS.DEFAULT.keyPrefix,
   },
   /** Password reset - very strict to prevent abuse */
   PASSWORD_RESET: {
-    limit: 3,
-    window: 300, // 5 minutes
-    keyPrefix: "ratelimit:auth:password-reset:",
+    ...toSecondsConfig(AUTH_RATE_LIMITS.PASSWORD_RESET),
+    keyPrefix: AUTH_RATE_LIMITS.PASSWORD_RESET.keyPrefix,
   },
   /** Signup - prevent enumeration attacks */
   SIGNUP: {
-    limit: 5,
-    window: 300, // 5 minutes
-    keyPrefix: "ratelimit:auth:signup:",
+    ...toSecondsConfig(AUTH_RATE_LIMITS.SIGNUP),
+    keyPrefix: AUTH_RATE_LIMITS.SIGNUP.keyPrefix,
   },
   /** API key generation - strict limits */
   API_KEY_GENERATE: {
-    limit: 5,
-    window: 60,
-    keyPrefix: "ratelimit:auth:api-key:",
+    ...toSecondsConfig(AUTH_RATE_LIMITS.API_KEY_GENERATE),
+    keyPrefix: AUTH_RATE_LIMITS.API_KEY_GENERATE.keyPrefix,
   },
   /** Content generation - AI operations, resource intensive */
   CONTENT_GENERATE: {
-    limit: 20,
-    window: 60,
-    keyPrefix: "ratelimit:content:generate:",
+    ...toSecondsConfig(CONTENT_RATE_LIMITS.GENERATE),
+    keyPrefix: CONTENT_RATE_LIMITS.GENERATE.keyPrefix,
   },
   /** Brief generation - AI operations */
   BRIEF_GENERATE: {
-    limit: 10,
-    window: 60,
-    keyPrefix: "ratelimit:brief:generate:",
+    ...toSecondsConfig(CONTENT_RATE_LIMITS.BRIEF_GENERATE),
+    keyPrefix: CONTENT_RATE_LIMITS.BRIEF_GENERATE.keyPrefix,
   },
   /** Keyword enrichment - external API calls */
   KEYWORD_ENRICH: {
-    limit: 30,
-    window: 60,
-    keyPrefix: "ratelimit:keyword:enrich:",
+    ...toSecondsConfig(SEO_RATE_LIMITS.KEYWORD_ENRICH),
+    keyPrefix: SEO_RATE_LIMITS.KEYWORD_ENRICH.keyPrefix,
   },
   /** SERP analysis - external API calls */
   SERP_ANALYZE: {
-    limit: 20,
-    window: 60,
-    keyPrefix: "ratelimit:serp:analyze:",
+    ...toSecondsConfig(SEO_RATE_LIMITS.SERP_ANALYZE),
+    keyPrefix: SEO_RATE_LIMITS.SERP_ANALYZE.keyPrefix,
   },
   /** Admin endpoints - strict limits to prevent abuse */
   ADMIN: {
-    limit: 10,
-    window: 60,
-    keyPrefix: "ratelimit:admin:",
+    ...toSecondsConfig(API_RATE_LIMITS.ADMIN),
+    keyPrefix: API_RATE_LIMITS.ADMIN.keyPrefix,
   },
 } as const;
 
@@ -270,18 +281,20 @@ export async function rateLimit(
         retryAfter = Math.ceil((oldestTimestamp + windowMs - now) / 1000);
         retryAfter = Math.max(1, Math.min(retryAfter, window));
       }
+      // Add jitter to prevent thundering herd on limit reset
+      const retryAfterWithJitter = Math.ceil(addJitter(retryAfter * 1000) / 1000);
 
       log.warn("Rate limit exceeded", {
         key: redisKey,
         current: currentCount,
         limit: maxLimit,
-        retryAfter,
+        retryAfter: retryAfterWithJitter,
       });
 
       return {
         allowed: false,
         remaining: 0,
-        retryAfter,
+        retryAfter: retryAfterWithJitter,
         limit: maxLimit,
         current: currentCount,
       };
@@ -313,10 +326,12 @@ export async function rateLimit(
 
     if (process.env.NODE_ENV === "production") {
       // In production: fail closed to prevent abuse during outages
+      // Add jitter to prevent thundering herd on recovery
+      const retryAfterWithJitter = Math.ceil(addJitter(60000) / 1000);
       return {
         allowed: false,
         remaining: 0,
-        retryAfter: 60, // Ask client to retry in 60 seconds
+        retryAfter: retryAfterWithJitter,
         limit,
         current: limit, // Report as at limit
       };

@@ -1,0 +1,17 @@
+{
+  "name": "@tevero/shared-cache",
+  "version": "1.0.0",
+  "description": "Shared cache invalidation types and utilities for TeveroSEO",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

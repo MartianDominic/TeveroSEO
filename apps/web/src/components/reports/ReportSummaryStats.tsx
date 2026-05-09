@@ -34,7 +34,7 @@ function SummaryStat({ label, value, trend }: SummaryStatProps) {
       }}
     >
       <p
-        className="text-xs uppercase tracking-wide"
+        className="text-xs-safe uppercase tracking-wide"
         style={{ color: REPORT_COLORS.textMuted }}
       >
         {label}
@@ -47,7 +47,7 @@ function SummaryStat({ label, value, trend }: SummaryStatProps) {
       </p>
       {trend && (
         <p
-          className="text-xs mt-1"
+          className="text-xs-safe mt-1"
           style={{ color: getTrendColor(trend.value) }}
         >
           {trend.value > 0 ? "+" : ""}

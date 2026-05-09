@@ -273,7 +273,7 @@ function PipelineDashboard() {
           <AlertDescription>
             <p className="font-medium">{blocker.message}</p>
             <p className="text-sm mt-1">{blocker.suggestedAction}</p>
-            <p className="text-xs mt-2">Phase {blocker.phaseNumber}, Plan {blocker.planId}</p>
+            <p className="text-xs-safe mt-2">Phase {blocker.phaseNumber}, Plan {blocker.planId}</p>
           </AlertDescription>
         </Alert>
       )}

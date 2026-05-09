@@ -337,16 +337,16 @@ export default function CredentialsPage() {
                               {secret.key}
                             </code>
                             {secret.required && (
-                              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
+                              <span className="text-xs-safe bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
                                 Required
                               </span>
                             )}
                             {secret.isSet ? (
-                              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                              <span className="text-xs-safe bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
                                 Set
                               </span>
                             ) : (
-                              <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
+                              <span className="text-xs-safe bg-red-500/20 text-red-400 px-2 py-0.5 rounded">
                                 Not Set
                               </span>
                             )}
@@ -354,21 +354,21 @@ export default function CredentialsPage() {
                           <p className="text-gray-400 text-sm mt-1">
                             {secret.description}
                           </p>
-                          <p className="text-gray-500 text-xs mt-1">
+                          <p className="text-gray-500 text-xs-safe mt-1">
                             Used by: {secret.usedByServices.join(", ")}
                           </p>
                           {secret.validationHint && (
-                            <p className="text-gray-500 text-xs mt-1">
+                            <p className="text-gray-500 text-xs-safe mt-1">
                               Format: {secret.validationHint}
                             </p>
                           )}
                           {secret.eitherOrGroup && (
-                            <p className="text-blue-400 text-xs mt-1">
+                            <p className="text-blue-400 text-xs-safe mt-1">
                               Either/Or group: {secret.eitherOrGroup}
                             </p>
                           )}
                           {secret.pairedWith && secret.pairedWith.length > 0 && (
-                            <p className="text-purple-400 text-xs mt-1">
+                            <p className="text-purple-400 text-xs-safe mt-1">
                               Paired with: {secret.pairedWith.join(", ")}
                             </p>
                           )}
@@ -379,7 +379,7 @@ export default function CredentialsPage() {
                           {secret.isSet && (
                             <div className="flex items-center gap-2">
                               {revealedKey === secret.key && revealedValue ? (
-                                <code className="font-mono text-xs bg-gray-700 px-2 py-1 rounded max-w-xs truncate">
+                                <code className="font-mono text-xs-safe bg-gray-700 px-2 py-1 rounded max-w-xs truncate">
                                   {revealedValue}
                                 </code>
                               ) : (
@@ -395,7 +395,7 @@ export default function CredentialsPage() {
                             {secret.isSet && revealedKey !== secret.key && (
                               <button
                                 onClick={() => handleReveal(secret.key)}
-                                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                                className="px-2 py-1 text-xs-safe bg-gray-700 hover:bg-gray-600 rounded transition-colors"
                                 title="Reveal"
                               >
                                 👁️
@@ -404,7 +404,7 @@ export default function CredentialsPage() {
                             {secret.isSet && revealedKey === secret.key && revealedValue && (
                               <button
                                 onClick={() => handleCopy(revealedValue)}
-                                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                                className="px-2 py-1 text-xs-safe bg-gray-700 hover:bg-gray-600 rounded transition-colors"
                                 title="Copy"
                               >
                                 📋
@@ -412,7 +412,7 @@ export default function CredentialsPage() {
                             )}
                             <button
                               onClick={() => handleEdit(secret.key)}
-                              className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                              className="px-2 py-1 text-xs-safe bg-blue-600 hover:bg-blue-700 rounded transition-colors"
                               title="Edit"
                             >
                               ✏️
@@ -450,7 +450,7 @@ export default function CredentialsPage() {
                               Cancel
                             </button>
                           </div>
-                          <p className="text-gray-500 text-xs mt-2">
+                          <p className="text-gray-500 text-xs-safe mt-2">
                             Leave empty to clear the secret
                           </p>
                         </div>

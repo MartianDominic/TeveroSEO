@@ -96,7 +96,7 @@ export function WebhookList({
               <TableRow key={webhook.id}>
                 <TableCell className="font-medium">{webhook.name}</TableCell>
                 <TableCell>
-                  <code className="text-xs bg-muted px-2 py-1 rounded">
+                  <code className="text-xs-safe bg-muted px-2 py-1 rounded">
                     {webhook.url.length > 40
                       ? webhook.url.slice(0, 40) + "..."
                       : webhook.url}
@@ -105,12 +105,12 @@ export function WebhookList({
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {(webhook.events as string[]).slice(0, 2).map((event) => (
-                      <Badge key={event} variant="secondary" className="text-xs">
+                      <Badge key={event} variant="secondary" className="text-xs-safe">
                         {event}
                       </Badge>
                     ))}
                     {(webhook.events as string[]).length > 2 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs-safe">
                         +{(webhook.events as string[]).length - 2} more
                       </Badge>
                     )}

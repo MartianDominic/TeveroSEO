@@ -107,7 +107,7 @@ export function PaymentMethodSelector({
                 {info.methods.map((method) => (
                   <span
                     key={method}
-                    className="text-xs px-2 py-0.5 bg-muted rounded text-muted-foreground"
+                    className="text-xs-safe px-2 py-0.5 bg-muted rounded text-muted-foreground"
                   >
                     {method}
                   </span>

@@ -87,7 +87,7 @@ export const ClientEventSchema = z.object({
   source: z.enum(EVENT_SOURCES),
 
   /** Event-specific payload data */
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 
   /** Optional correlation ID for request tracing */
   correlation_id: z.string().uuid().optional(),

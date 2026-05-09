@@ -92,13 +92,14 @@ export {
 
 // =============================================================================
 // Circuit Breaker Types
+// Re-exported from canonical location in scraping/resilience/
 // =============================================================================
 export {
-  CircuitBreakerOpenError,
+  CircuitOpenError as CircuitBreakerOpenError,
   type CircuitBreakerConfig,
-  type CircuitBreakerStats,
+  type CircuitStats as CircuitBreakerStats,
   type CircuitState,
-} from './circuit-breaker';
+} from '@/server/features/scraping/resilience/CircuitBreaker';
 
 // =============================================================================
 // Focus Directive Types

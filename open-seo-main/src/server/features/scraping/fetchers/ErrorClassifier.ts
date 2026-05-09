@@ -6,6 +6,9 @@
  * Classifies HTTP status codes, network errors, and timeouts into
  * standardized error types for escalation decisions and retry logic.
  *
+ * CONSOLIDATION: ErrorType enum is now deprecated. Use ScrapeRetryBehavior
+ * from queue.types.ts for new code. This file re-exports for backward compat.
+ *
  * Classification Rules:
  * - 429 = RATE_LIMITED (wait and retry)
  * - 403/451 = BLOCKED (escalate tier or skip)
@@ -16,6 +19,7 @@
  */
 
 import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
+import type { ScrapeRetryBehavior } from "../queue/queue.types";
 
 // =============================================================================
 // Error Type Definitions
@@ -23,6 +27,9 @@ import type { EscalationReason } from "@/db/domain-scrape-learning-schema";
 
 /**
  * High-level error classification for retry/escalation decisions.
+ *
+ * @deprecated Use ScrapeRetryBehavior from queue.types.ts instead.
+ * This enum is kept for backward compatibility with existing code.
  */
 export enum ErrorType {
   /** Error can be retried with backoff (5xx, timeouts, network issues) */
@@ -36,6 +43,14 @@ export enum ErrorType {
 
   /** Blocked by target (403, 451) - escalate tier */
   BLOCKED = "blocked",
+}
+
+/**
+ * Convert ErrorType to ScrapeRetryBehavior.
+ * Use this when migrating code to the consolidated types.
+ */
+export function toScrapeRetryBehavior(errorType: ErrorType): ScrapeRetryBehavior {
+  return errorType as ScrapeRetryBehavior;
 }
 
 /**

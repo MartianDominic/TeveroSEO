@@ -109,7 +109,7 @@ export function WordPressCredentialForm({
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Your WordPress admin username
         </p>
       </div>
@@ -141,7 +141,7 @@ export function WordPressCredentialForm({
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Go to WordPress Admin &rarr; Users &rarr; Profile &rarr; Application Passwords
         </p>
       </div>

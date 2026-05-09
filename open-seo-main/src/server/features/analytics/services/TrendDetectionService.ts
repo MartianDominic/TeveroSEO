@@ -364,8 +364,11 @@ export class TrendDetectionService {
     try {
       // Create a simple RegExp to validate syntax (basic check)
       new RegExp(pattern);
-    } catch {
-      logger.warn('Invalid regex pattern, rejecting', { pattern });
+    } catch (error) {
+      logger.warn('Invalid regex pattern, rejecting', {
+        pattern,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
 

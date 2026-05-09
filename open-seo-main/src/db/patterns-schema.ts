@@ -11,6 +11,8 @@ import {
   index,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { organization } from "./user-schema";
+import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * Detected cross-client patterns.
@@ -21,7 +23,10 @@ export const detectedPatterns = pgTable(
   "detected_patterns",
   {
     id: text("id").primaryKey(),
-    workspaceId: text("workspace_id").notNull(),
+    // SCHEMA-FK: Added FK constraint to organization
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
 
     // Pattern classification
     patternType: text("pattern_type").notNull(), // 'traffic_drop', 'ranking_shift', 'industry_trend', 'serp_change'
@@ -47,11 +52,15 @@ export const detectedPatterns = pgTable(
     dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
 
     detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow(),
+
+    // SCHEMA-SOFTDELETE: Standard soft delete column
+    ...softDeleteColumns,
   },
   (table) => [
     index("idx_detected_patterns_workspace").on(table.workspaceId),
     index("idx_detected_patterns_type").on(table.patternType),
     index("idx_detected_patterns_status").on(table.status),
+    index("idx_detected_patterns_soft_deleted").on(table.softDeletedAt),
   ]
 );
 

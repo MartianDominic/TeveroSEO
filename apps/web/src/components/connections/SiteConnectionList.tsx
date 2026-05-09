@@ -102,7 +102,7 @@ export function SiteConnectionList({
                   status={conn.status === "active" ? "connected" : "draft"}
                 />
               </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <div className="text-xs-safe text-muted-foreground flex items-center gap-2">
                 <span className="capitalize">{conn.platform}</span>
                 <span>*</span>
                 <span>Verified: {formatDate(conn.lastVerifiedAt)}</span>

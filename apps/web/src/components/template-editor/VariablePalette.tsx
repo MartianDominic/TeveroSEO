@@ -125,7 +125,7 @@ export function VariablePalette({ onInsert }: VariablePaletteProps) {
     <div className="space-y-4">
       <div>
         <h3 className="font-semibold text-sm mb-1">Variables</h3>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Drag to clause or click copy
         </p>
       </div>
@@ -174,7 +174,7 @@ export function VariablePalette({ onInsert }: VariablePaletteProps) {
                       {CATEGORY_LABELS[category]}
                     </span>
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs-safe text-muted-foreground">
                     {variableCount}
                   </span>
                 </Button>
@@ -194,7 +194,7 @@ export function VariablePalette({ onInsert }: VariablePaletteProps) {
       </div>
 
       {/* Help text */}
-      <div className="text-xs text-muted-foreground border-t border-border pt-3">
+      <div className="text-xs-safe text-muted-foreground border-t border-border pt-3">
         <p className="font-medium mb-1">How to use:</p>
         <ul className="list-disc list-inside space-y-0.5">
           <li>Drag a variable to a clause editor</li>

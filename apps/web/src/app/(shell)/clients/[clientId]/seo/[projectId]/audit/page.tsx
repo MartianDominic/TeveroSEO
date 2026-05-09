@@ -335,7 +335,7 @@ function LaunchView({
                       <p className="font-medium">
                         {extractHostname(audit.startUrl)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs-safe text-muted-foreground">
                         {formatStartedAt(audit.startedAt)} &middot;{" "}
                         {audit.pagesCrawled} pages
                       </p>
@@ -711,7 +711,7 @@ function ProgressCard({
           </div>
           {/* MEDIUM-13-02: Display ETA */}
           {estimatedEta && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 text-xs-safe text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>{estimatedEta} remaining</span>
             </div>
@@ -725,7 +725,7 @@ function ProgressCard({
             <h3 className="text-sm font-medium text-foreground/70">
               Crawled Pages ({crawledUrls.length})
             </h3>
-            <p className="text-xs text-foreground/50">
+            <p className="text-xs-safe text-foreground/50">
               Updated {safeFormatTime(safeFirst(crawledUrls)?.crawledAt)}
             </p>
             <div className="max-h-[400px] overflow-y-auto -mx-1">
@@ -747,7 +747,7 @@ function ProgressCard({
                   </div>
                   {entry.title && (
                     <span
-                      className="text-xs text-foreground/40 truncate max-w-[260px] hidden md:block"
+                      className="text-xs-safe text-foreground/40 truncate max-w-[260px] hidden md:block"
                       title={entry.title}
                     >
                       {entry.title}
@@ -836,7 +836,7 @@ function ResultsView({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                 Pages Scanned
               </p>
               <p className="text-2xl font-semibold">
@@ -846,7 +846,7 @@ function ResultsView({
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                 Issues Found
               </p>
               <p className="text-2xl font-semibold text-red-600">
@@ -858,7 +858,7 @@ function ResultsView({
             <>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     Performance
                   </p>
                   <p className="text-2xl font-semibold">
@@ -868,7 +868,7 @@ function ResultsView({
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs-safe uppercase tracking-wide text-muted-foreground">
                     SEO Score
                   </p>
                   <p className="text-2xl font-semibold">
@@ -909,11 +909,11 @@ function ResultsView({
                       <span className="font-medium">{category}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs">
+                      <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs-safe">
                         {passedCount} passed
                       </Badge>
                       {failedCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge variant="destructive" className="text-xs-safe">
                           {failedCount} failed
                         </Badge>
                       )}
@@ -928,17 +928,17 @@ function ResultsView({
                         >
                           <div className="flex items-start gap-2 min-w-0 flex-1">
                             {finding.passed ? (
-                              <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs shrink-0">
+                              <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 text-xs-safe shrink-0">
                                 Pass
                               </Badge>
                             ) : (
-                              <Badge variant="destructive" className="text-xs shrink-0">
+                              <Badge variant="destructive" className="text-xs-safe shrink-0">
                                 {finding.severity}
                               </Badge>
                             )}
                             <span className="text-muted-foreground">{finding.message}</span>
                           </div>
-                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                          <span className="text-xs-safe text-muted-foreground shrink-0 ml-2">
                             Tier {finding.tier}
                           </span>
                         </div>
@@ -997,7 +997,7 @@ function ResultsView({
                     </span>
                   </div>
                   {page.issues > 0 && (
-                    <Badge variant="destructive" className="text-xs">
+                    <Badge variant="destructive" className="text-xs-safe">
                       {page.issues} issues
                     </Badge>
                   )}

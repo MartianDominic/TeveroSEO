@@ -308,9 +308,20 @@ export async function withRetry<T>(
 
 // --- SEC-005 FIX: Sanitized Error Responses ---
 
+// CONSOLIDATION: Import error codes from the canonical source.
+// The duplicate ERROR_CODES definition has been removed.
+import {
+  type ErrorCode,
+  getSafeErrorMessage,
+  getHttpStatus,
+} from "@/shared/error-codes";
+
+// Re-export for backward compatibility
+export type { ErrorCode };
+
 /**
- * Error codes for client-facing error responses.
- * Maps internal error types to safe, generic codes.
+ * @deprecated Use ERROR_CODE_TO_HTTP_STATUS from @/shared/error-codes instead.
+ * This constant is kept for backward compatibility.
  */
 export const ERROR_CODES = {
   INTERNAL_ERROR: "INTERNAL_ERROR",
@@ -322,23 +333,6 @@ export const ERROR_CODES = {
   BAD_REQUEST: "BAD_REQUEST",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
 } as const;
-
-export type ErrorCode = keyof typeof ERROR_CODES;
-
-/**
- * Generic error messages that are safe to expose to clients.
- * These do NOT leak internal details like file paths, stack traces, or database info.
- */
-const SAFE_ERROR_MESSAGES: Record<ErrorCode, string> = {
-  INTERNAL_ERROR: "An unexpected error occurred. Please try again later.",
-  VALIDATION_ERROR: "The request contains invalid data.",
-  NOT_FOUND: "The requested resource was not found.",
-  UNAUTHORIZED: "Authentication is required to access this resource.",
-  FORBIDDEN: "You do not have permission to access this resource.",
-  RATE_LIMITED: "Too many requests. Please try again later.",
-  BAD_REQUEST: "The request could not be processed.",
-  SERVICE_UNAVAILABLE: "The service is temporarily unavailable.",
-};
 
 /**
  * Sanitized error response for API handlers.
@@ -381,12 +375,12 @@ export function createSanitizedErrorResponse(
     ...context,
   });
 
-  // Return sanitized response
+  // Return sanitized response using consolidated safe messages
   return {
     success: false,
     error: {
       code,
-      message: SAFE_ERROR_MESSAGES[code],
+      message: getSafeErrorMessage(code),
       requestId,
     },
   };
@@ -491,24 +485,8 @@ export function withApiErrorHandler(
 
 /**
  * Get HTTP status code for an error code.
+ * Uses consolidated mapping from @/shared/error-codes.
  */
 function getStatusForCode(code: ErrorCode): number {
-  switch (code) {
-    case "VALIDATION_ERROR":
-    case "BAD_REQUEST":
-      return 400;
-    case "UNAUTHORIZED":
-      return 401;
-    case "FORBIDDEN":
-      return 403;
-    case "NOT_FOUND":
-      return 404;
-    case "RATE_LIMITED":
-      return 429;
-    case "SERVICE_UNAVAILABLE":
-      return 503;
-    case "INTERNAL_ERROR":
-    default:
-      return 500;
-  }
+  return getHttpStatus(code);
 }

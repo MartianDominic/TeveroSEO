@@ -75,7 +75,7 @@ function MobileKeywordCards({ controller }: Props) {
     <div className="flex-1 flex flex-col overflow-hidden">
       {controller.showApproximateMatchNotice ? (
         <div
-          className="mx-4 mt-2 rounded-lg border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-foreground"
+          className="mx-4 mt-2 rounded-lg border border-warning/40 bg-warning/15 px-3 py-2 text-xs-safe text-foreground"
           role="status"
         >
           No exact match for{" "}
@@ -88,7 +88,7 @@ function MobileKeywordCards({ controller }: Props) {
         <Button
           variant="ghost"
           size="sm"
-          className={`gap-1 h-7 text-xs px-2 ${showFilters ? "bg-muted" : ""}`}
+          className={`gap-1 h-7 text-xs-safe px-2 ${showFilters ? "bg-muted" : ""}`}
           onClick={() => controller.setShowFilters((current) => !current)}
         >
           <SlidersHorizontal className="size-3.5" />
@@ -99,7 +99,7 @@ function MobileKeywordCards({ controller }: Props) {
             </Badge>
           ) : null}
         </Button>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs-safe text-muted-foreground">
           {keywordCountLabel}
         </span>
         <div className="flex-1" />
@@ -165,7 +165,7 @@ function MobileFilters({ controller }: Props) {
     <div className="shrink-0 border-b border-border bg-gradient-to-b from-background to-muted/30 px-4 py-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold">Refine table results</p>
+          <p className="text-xs-safe font-semibold">Refine table results</p>
           {activeFilterCount > 0 ? (
             <Badge className="text-[10px] px-1 py-0 border-0">
               {activeFilterCount}
@@ -175,7 +175,7 @@ function MobileFilters({ controller }: Props) {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1 h-7 text-xs px-2"
+          className="gap-1 h-7 text-xs-safe px-2"
           onClick={controller.resetFilters}
           disabled={activeFilterCount === 0}
         >

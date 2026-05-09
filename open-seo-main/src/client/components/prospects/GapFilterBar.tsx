@@ -173,7 +173,7 @@ export function GapFilterBar({
                 variant="ghost"
                 size="sm"
                 onClick={handleSelectAllCompetitors}
-                className="text-xs h-7"
+                className="text-xs-safe h-7"
               >
                 Select All
               </Button>
@@ -181,7 +181,7 @@ export function GapFilterBar({
                 variant="ghost"
                 size="sm"
                 onClick={handleClearCompetitors}
-                className="text-xs h-7"
+                className="text-xs-safe h-7"
               >
                 Clear
               </Button>

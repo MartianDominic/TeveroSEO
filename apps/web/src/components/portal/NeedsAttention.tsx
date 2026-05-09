@@ -112,7 +112,7 @@ export function NeedsAttentionList({
       <h4 className="text-[12px] font-medium text-text-3 uppercase tracking-[0.08em] mb-3 flex items-center gap-1.5">
         <AlertTriangle className="h-3.5 w-3.5 text-warning" />
         {title}
-        <span className="ml-1 px-1.5 py-0.5 rounded-[--radius-pill] bg-warning-soft text-warning text-xs-safe">
+        <span className="ml-1 px-1.5 py-0.5 rounded-[--radius-pill] bg-warning-soft text-warning text-xs-safe-safe">
           {items.length}
         </span>
       </h4>

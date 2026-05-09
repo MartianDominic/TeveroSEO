@@ -101,7 +101,7 @@ export function ProposalView({
       </section>
 
       {/* Current State Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[var(--shadow-card)] border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2
             className="text-xl font-semibold"
@@ -144,7 +144,7 @@ export function ProposalView({
       </div>
 
       {/* Opportunities Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[var(--shadow-card)] border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2
             className="text-xl font-semibold"
@@ -163,7 +163,7 @@ export function ProposalView({
                 <div className="flex items-center gap-3">
                   <span className="font-medium text-gray-900">{opp.keyword}</span>
                   <span
-                    className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                    className={`inline-flex px-2 py-0.5 text-xs-safe font-medium rounded-full ${
                       opp.difficulty === "easy"
                         ? "bg-green-100 text-green-700"
                         : opp.difficulty === "medium"
@@ -182,7 +182,7 @@ export function ProposalView({
                   <div className="font-semibold text-gray-900">
                     {opp.volume.toLocaleString("lt-LT")}
                   </div>
-                  <div className="text-xs text-gray-500">paieskos/men.</div>
+                  <div className="text-xs-safe text-gray-500">paieskos/men.</div>
                 </div>
               </div>
             ))}
@@ -205,7 +205,7 @@ export function ProposalView({
       ) : (
         /* Legacy Investment Card (fallback when no structured services) */
         <div
-          className="bg-white rounded-xl shadow-sm overflow-hidden"
+          className="bg-white rounded-xl shadow-[var(--shadow-card)] overflow-hidden"
           style={{ borderColor: primaryColor, borderWidth: 2 }}
         >
           <div
@@ -258,7 +258,7 @@ export function ProposalView({
       )}
 
       {/* ROI Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[var(--shadow-card)] border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2
             className="text-xl font-semibold"
@@ -294,7 +294,7 @@ export function ProposalView({
       </div>
 
       {/* Next Steps Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[var(--shadow-card)] border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2
             className="text-xl font-semibold"

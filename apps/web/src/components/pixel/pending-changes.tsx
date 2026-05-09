@@ -147,7 +147,7 @@ function ChangeCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <ChangeTypeBadge type={change.changeType} />
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs-safe text-muted-foreground">
                 {formatDistanceToNow(createdAt, { addSuffix: true })}
               </span>
             </div>

@@ -148,7 +148,7 @@ export function PlatformSelector({
             <span className="ml-2">Detect</span>
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Enter the website domain to auto-detect the platform
         </p>
       </div>
@@ -179,7 +179,7 @@ export function PlatformSelector({
           </div>
 
           {detection.signals.length > 0 && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs-safe text-muted-foreground">
               <span>Signals: </span>
               {detection.signals.map((s, i) => (
                 <span key={i}>
@@ -211,7 +211,7 @@ export function PlatformSelector({
           </SelectContent>
         </Select>
         {detection && selectedPlatform !== detection.platform && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs-safe text-muted-foreground">
             Overriding detected platform ({PLATFORM_LABELS[detection.platform]})
           </p>
         )}

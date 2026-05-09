@@ -101,19 +101,19 @@ export function ScoreCard({ score, breakdown, gates = [], className }: ScoreCard
           <p className="text-sm font-medium text-gray-700">Score Breakdown</p>
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="rounded bg-white p-2">
-              <p className="text-xs text-gray-500">Base</p>
+              <p className="text-xs-safe text-gray-500">Base</p>
               <p className="font-semibold">{breakdown.base}</p>
             </div>
             <div className="rounded bg-white p-2">
-              <p className="text-xs text-gray-500">Tier 1</p>
+              <p className="text-xs-safe text-gray-500">Tier 1</p>
               <p className="font-semibold">+{breakdown.tier1.toFixed(1)}</p>
             </div>
             <div className="rounded bg-white p-2">
-              <p className="text-xs text-gray-500">Tier 2</p>
+              <p className="text-xs-safe text-gray-500">Tier 2</p>
               <p className="font-semibold">+{breakdown.tier2.toFixed(1)}</p>
             </div>
             <div className="rounded bg-white p-2">
-              <p className="text-xs text-gray-500">Tier 3</p>
+              <p className="text-xs-safe text-gray-500">Tier 3</p>
               <p className="font-semibold">+{breakdown.tier3.toFixed(1)}</p>
             </div>
           </div>

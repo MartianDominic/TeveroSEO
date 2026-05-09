@@ -1,16 +1,17 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { shouldCaptureAppErrorCode } from "@/shared/error-codes";
-import { asAppError, toClientError } from "@/server/lib/errors";
-import { captureServerError } from "@/server/lib/posthog";
-import { createLogger } from "@/server/lib/logger";
 import {
-  StandardAppError,
+  AppError,
+  asAppError,
+  toClientError,
   getRequestId,
   createErrorResponse,
   deriveErrorCode,
   type ErrorCode,
-} from "@/server/lib/standard-error";
+} from "@/server/lib/errors";
+import { captureServerError } from "@/server/lib/posthog";
+import { createLogger } from "@/server/lib/logger";
 
 const log = createLogger({ module: "error-handling" });
 
@@ -34,8 +35,8 @@ export const errorHandlingMiddleware = createMiddleware({
       throw new Error("INTERNAL_ERROR", { cause: error });
     }
 
-    // Handle StandardAppError (already in correct format)
-    if (error instanceof StandardAppError) {
+    // Handle AppError (already in correct format)
+    if (error instanceof AppError) {
       log.error("Server function error", error, {
         errorCode: error.code,
         requestId,
@@ -78,8 +79,8 @@ export const errorHandlingMiddleware = createMiddleware({
     const errorCode: ErrorCode = (appError?.code as ErrorCode) ?? "INTERNAL_ERROR";
     const clientError = toClientError(error);
 
-    // Wrap in StandardAppError to ensure standard format
-    throw new StandardAppError(
+    // Wrap in AppError to ensure standard format
+    throw new AppError(
       errorCode,
       clientError.message,
       process.env.NODE_ENV !== "production"

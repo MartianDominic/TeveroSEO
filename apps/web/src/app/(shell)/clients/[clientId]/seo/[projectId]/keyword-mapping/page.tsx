@@ -127,7 +127,7 @@ export default function KeywordMappingPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{stats.optimize}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 Existing pages to improve
               </p>
             </CardContent>
@@ -142,7 +142,7 @@ export default function KeywordMappingPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">{stats.create}</div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs-safe text-muted-foreground">
                 Keywords without matching pages
               </p>
             </CardContent>

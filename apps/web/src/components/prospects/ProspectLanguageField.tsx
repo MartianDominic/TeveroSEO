@@ -117,7 +117,7 @@ export function ProspectLanguageField<T extends FieldValues>({
       </Select>
       <p
         id={`field-${String(name)}-description`}
-        className="mt-1.5 text-xs text-muted-foreground"
+        className="mt-1.5 text-xs-safe text-muted-foreground"
       >
         {t('communicationLanguageDesc')}
       </p>

@@ -50,7 +50,7 @@ export function BillingUsageChart() {
     <div className="rounded-lg border border-border p-4 space-y-3">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-semibold">Usage</span>
-        <span className="text-xs text-foreground/50">Last 30 days</span>
+        <span className="text-xs-safe text-foreground/50">Last 30 days</span>
       </div>
 
       <div className="text-2xl font-semibold tabular-nums">
@@ -121,8 +121,8 @@ function UsageTooltip({
   if (!active || !payload?.length || label == null) return null;
 
   return (
-    <div className="rounded-md border border-border bg-background px-3 py-2 shadow-sm">
-      <p className="text-xs text-muted-foreground">
+    <div className="rounded-md border border-border bg-background px-3 py-2 shadow-[var(--shadow-card)]">
+      <p className="text-xs-safe text-muted-foreground">
         {new Date(label).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",

@@ -84,7 +84,7 @@ export const ClientTableRow: React.FC<ClientTableRowProps> = ({
           {client.connectionStatus === "stale" && (
             <Badge
               variant="outline"
-              className="text-xs bg-yellow-100 text-yellow-800"
+              className="text-xs-safe bg-yellow-100 text-yellow-800"
             >
               Stale
             </Badge>
@@ -92,7 +92,7 @@ export const ClientTableRow: React.FC<ClientTableRowProps> = ({
           {client.connectionStatus === "disconnected" && (
             <Badge
               variant="outline"
-              className="text-xs bg-red-100 text-red-800"
+              className="text-xs-safe bg-red-100 text-red-800"
             >
               No GSC
             </Badge>
@@ -110,7 +110,7 @@ export const ClientTableRow: React.FC<ClientTableRowProps> = ({
               size="sm"
             />
             {client.primaryGoalName && (
-              <span className="text-xs-safe text-muted-foreground truncate max-w-[120px]">
+              <span className="text-xs-safe-safe text-muted-foreground truncate max-w-[120px]">
                 {client.primaryGoalName}
               </span>
             )}

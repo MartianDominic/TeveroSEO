@@ -20,7 +20,7 @@ key-files:
     - open-seo-main/src/server/features/scraping/monitoring/CostVerifier.ts
     - open-seo-main/src/server/features/scraping/routes/health.ts
     - open-seo-main/docs/runbooks/SCRAPING-OPERATIONS.md
-    - open-seo-main/docs/monitoring/grafana-dashboard.json
+    - open-seo-main/src/server/features/scraping/monitoring/grafana-dashboard.json
     - open-seo-main/src/server/features/scraping/monitoring/__tests__/AlertManager.test.ts
     - open-seo-main/src/server/features/scraping/retention/__tests__/RetentionManager.test.ts
     - open-seo-main/src/server/features/scraping/monitoring/__tests__/CostVerifier.test.ts

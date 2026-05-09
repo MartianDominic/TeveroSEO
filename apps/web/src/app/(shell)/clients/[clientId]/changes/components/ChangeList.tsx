@@ -254,12 +254,12 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
                     </a>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground">{change.resourceType}</span>
+                <span className="text-xs-safe text-muted-foreground">{change.resourceType}</span>
               </TableCell>
 
               {/* Field */}
               <TableCell>
-                <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                <code className="text-xs-safe bg-muted px-1 py-0.5 rounded">
                   {change.field}
                 </code>
               </TableCell>
@@ -275,7 +275,7 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
               <TableCell className="max-w-[300px]">
                 <div className="space-y-1">
                   <div
-                    className="text-xs text-muted-foreground truncate"
+                    className="text-xs-safe text-muted-foreground truncate"
                     title={change.beforeValue ?? undefined}
                   >
                     <span className="font-medium">Before:</span>{' '}
@@ -286,7 +286,7 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
                     )}
                   </div>
                   <div
-                    className="text-xs text-foreground truncate"
+                    className="text-xs-safe text-foreground truncate"
                     title={change.afterValue ?? undefined}
                   >
                     <span className="font-medium">After:</span>{' '}
@@ -333,7 +333,7 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
                 )}
                 {/* Optimistically reverted (HIGH-STATE-001) */}
                 {!isChangePending(change.id) && isChangeOptimisticallyReverted(change.id) && (
-                  <span className="text-xs text-green-600">
+                  <span className="text-xs-safe text-green-600">
                     Reverted
                   </span>
                 )}
@@ -360,7 +360,7 @@ export function ChangeList({ changes, connectionId, clientId }: ChangeListProps)
                   </Button>
                 )}
                 {!isChangePending(change.id) && !isChangeOptimisticallyReverted(change.id) && change.revertedAt && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs-safe text-muted-foreground">
                     Reverted
                   </span>
                 )}

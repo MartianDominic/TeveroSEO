@@ -78,7 +78,7 @@ export function ClientTableHoverPopover({
                 trend={trend}
                 showTooltip
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-xs-safe text-muted-foreground">
                 <span>30 days ago</span>
                 <span>Today</span>
               </div>
@@ -294,7 +294,7 @@ export function GoalsHoverPopover({
                 </div>
               ))}
               {data.goals.length > 3 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs-safe text-muted-foreground">
                   +{data.goals.length - 3} more goals
                 </p>
               )}

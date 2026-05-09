@@ -142,7 +142,7 @@ function StatCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs-safe font-medium text-muted-foreground uppercase tracking-wide">
               {config.label}
             </p>
             <p
@@ -153,7 +153,7 @@ function StatCard({
             >
               {formatCurrency(value.amountCents, currency)}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               {value.count} {value.count === 1 ? "payment" : "payments"}
             </p>
           </div>

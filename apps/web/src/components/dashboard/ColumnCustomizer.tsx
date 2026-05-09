@@ -96,7 +96,7 @@ function SortableColumn({ column, isVisible, onToggle }: SortableColumnProps) {
       >
         {column.label}
         {column.locked && (
-          <span className="ml-1 text-xs text-muted-foreground">(locked)</span>
+          <span className="ml-1 text-xs-safe text-muted-foreground">(locked)</span>
         )}
       </Label>
     </div>
@@ -178,7 +178,7 @@ export function ColumnCustomizer({
           <Settings2 className="h-4 w-4" />
           Columns
           {hiddenCount > 0 && (
-            <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+            <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs-safe">
               {hiddenCount} hidden
             </span>
           )}
@@ -192,13 +192,13 @@ export function ColumnCustomizer({
               variant="ghost"
               size="sm"
               onClick={resetToDefaults}
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs-safe"
             >
               <RotateCcw className="h-3 w-3 mr-1" />
               Reset
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs-safe text-muted-foreground mt-1">
             Drag to reorder, check to show
           </p>
         </div>

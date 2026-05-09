@@ -33,7 +33,7 @@ const DEFAULT_CONFIG: L2CacheConfig = {
   maxMemory: "2gb",
   compressionEnabled: true,
   compressionAlgo: "gzip",
-  keyPrefix: "cache:",
+  keyPrefix: "osm:scrape:",
 };
 
 // Key prefixes for different data types

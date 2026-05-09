@@ -7,5 +7,7 @@ export {
   createScrapeWorker,
   createAllScrapeWorkers,
   createAllScrapeWorkersWithDlq,
+  startScrapeWorkers,
+  stopScrapeWorkers,
   type ScrapeWorkerConfig,
 } from "./ScrapeWorker";

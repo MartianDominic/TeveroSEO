@@ -16,7 +16,10 @@ import {
   serial,
   jsonb,
   smallint,
+  uuid,
 } from "drizzle-orm/pg-core";
+import { clients } from "./client-schema";
+import type { ScrapeTier } from "./domain-scrape-learning-schema";
 
 // =============================================================================
 // Types
@@ -53,6 +56,12 @@ export const htmlCache = pgTable(
   {
     id: serial("id").primaryKey(),
 
+    // Tenant isolation (Phase 97: Multi-tenant cache security)
+    // Required for all new entries - prevents cross-tenant cache pollution
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+
     // URL identification
     urlHash: text("url_hash").notNull(), // sha256(normalized_url).slice(0,16)
     url: text("url").notNull(), // Original URL for debugging
@@ -67,7 +76,7 @@ export const htmlCache = pgTable(
     // Response metadata
     statusCode: smallint("status_code").notNull(),
     pageSizeBytes: integer("page_size_bytes").notNull(),
-    tierUsed: text("tier_used").notNull(),
+    tierUsed: text("tier_used").notNull().$type<ScrapeTier>(),
 
     // Timestamps
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
@@ -92,6 +101,13 @@ export const htmlCache = pgTable(
       .defaultNow(),
   },
   (table) => ({
+    // Composite index for tenant-scoped lookups (most common query pattern)
+    clientUrlHashIdx: index("idx_html_cache_client_url_hash").on(
+      table.clientId,
+      table.urlHash
+    ),
+    // Index for client-scoped cache cleanup/maintenance
+    clientIdIdx: index("idx_html_cache_client_id").on(table.clientId),
     urlHashIdx: index("idx_html_cache_url_hash").on(table.urlHash),
     contentHashIdx: index("idx_html_cache_content_hash").on(table.contentHash),
     expiresAtIdx: index("idx_html_cache_expires_at").on(table.expiresAt),
@@ -111,6 +127,10 @@ export const htmlCacheAliases = pgTable(
   {
     aliasUrlHash: text("alias_url_hash").primaryKey(),
     canonicalId: integer("canonical_id").notNull(),
+    // Tenant isolation - must match the canonical entry's clientId
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -119,6 +139,8 @@ export const htmlCacheAliases = pgTable(
     canonicalIdIdx: index("idx_html_cache_aliases_canonical").on(
       table.canonicalId
     ),
+    // Index for client-scoped alias lookups
+    clientAliasIdx: index("idx_html_cache_aliases_client").on(table.clientId),
   })
 );
 
@@ -132,6 +154,11 @@ export const cacheStats = pgTable("cache_stats", {
   timestamp: timestamp("timestamp", { withTimezone: true })
     .notNull()
     .defaultNow(),
+
+  // Tenant isolation - optional for aggregate stats, required for client-specific stats
+  clientId: uuid("client_id").references(() => clients.id, {
+    onDelete: "cascade",
+  }),
 
   // Per-level stats
   l1Hits: integer("l1_hits").notNull().default(0),

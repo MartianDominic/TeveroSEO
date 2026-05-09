@@ -69,12 +69,12 @@ export const SectionSelectionList: FC<SectionSelectionListProps> = ({
               <span className="text-sm font-medium">
                 {getLocalizedLabel(section, locale)}
               </span>
-              <p className="text-xs text-muted-foreground line-clamp-1">
+              <p className="text-xs-safe text-muted-foreground line-clamp-1">
                 {getLocalizedDescription(section, locale)}
               </p>
             </div>
             {exists && (
-              <span className="text-xs text-amber-600 shrink-0">
+              <span className="text-xs-safe text-amber-600 shrink-0">
                 {existsLabel}
               </span>
             )}

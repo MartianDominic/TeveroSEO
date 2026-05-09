@@ -55,7 +55,7 @@ export function RankHistoryChart({ data30, data90 }: RankHistoryChartProps) {
 
     const point = payload[0].payload;
     return (
-      <div className="bg-popover border rounded-lg p-3 shadow-lg">
+      <div className="bg-popover border rounded-lg p-3 shadow-[var(--shadow-overlay)]">
         <p className="font-medium">{formatDate(label)}</p>
         <p className="text-lg">
           Position: <span className="font-bold">{point.position}</span>

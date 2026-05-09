@@ -83,7 +83,7 @@ function CompactRangeInput({
     <form.Field name={name}>
       {(field) => (
         <Input
-          className="h-6 text-xs bg-background px-2"
+          className="h-6 text-xs-safe bg-background px-2"
           placeholder={placeholder}
           type="number"
           step={step}

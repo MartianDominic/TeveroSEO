@@ -135,7 +135,7 @@ function OverviewTab({
       {/* Domain metrics row */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-xs-safe text-muted-foreground flex items-center gap-1">
             <BarChart2 className="h-3.5 w-3.5" /> Domain Rating
           </p>
           <p className="mt-1 text-2xl font-semibold text-foreground">
@@ -145,7 +145,7 @@ function OverviewTab({
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-xs-safe text-muted-foreground flex items-center gap-1">
             <TrendingUp className="h-3.5 w-3.5" /> Traffic Estimate
           </p>
           <p className="mt-1 text-2xl font-semibold text-foreground">
@@ -153,7 +153,7 @@ function OverviewTab({
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-xs-safe text-muted-foreground flex items-center gap-1">
             <Search className="h-3.5 w-3.5" /> Keywords Tracked
           </p>
           <p className="mt-1 text-2xl font-semibold text-foreground">
@@ -176,7 +176,7 @@ function OverviewTab({
                 href={`https://${domain}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-foreground hover:bg-accent transition-colors"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2.5 py-1 text-xs-safe text-foreground hover:bg-accent transition-colors"
               >
                 {domain}
                 <ExternalLink className="h-3 w-3 text-muted-foreground" />
@@ -219,14 +219,14 @@ function OverviewTab({
                 {intelligence.technical_issues.map((issue) => (
                   <span
                     key={issue}
-                    className="inline-flex items-center rounded-md bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400"
+                    className="inline-flex items-center rounded-md bg-amber-500/10 px-2.5 py-1 text-xs-safe font-medium text-amber-600 dark:text-amber-400"
                   >
                     {issue}
                   </span>
                 ))}
               </div>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs-safe font-medium text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 No issues detected
               </span>
@@ -403,21 +403,21 @@ function BrandVoiceTab({
         </p>
         <dl className="space-y-3">
           <div>
-            <dt className="text-xs text-muted-foreground">Tone</dt>
+            <dt className="text-xs-safe text-muted-foreground">Tone</dt>
             {field(bv?.writing_style?.tone)}
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Voice</dt>
+            <dt className="text-xs-safe text-muted-foreground">Voice</dt>
             {field(bv?.writing_style?.voice)}
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">
+            <dt className="text-xs-safe text-muted-foreground">
               Brand Voice Statement
             </dt>
             {field(bv?.brand_analysis?.brand_voice)}
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">
+            <dt className="text-xs-safe text-muted-foreground">
               Target Expertise Level
             </dt>
             {field(bv?.target_audience?.expertise_level)}
@@ -433,9 +433,9 @@ function BrandVoiceTab({
 
         {/* Awareness Stage */}
         <div className="mb-3">
-          <p className="text-xs text-muted-foreground mb-1">Awareness Stage</p>
+          <p className="text-xs-safe text-muted-foreground mb-1">Awareness Stage</p>
           {icp?.awareness_stage ? (
-            <span className="inline-flex rounded-md bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+            <span className="inline-flex rounded-md bg-blue-500/10 px-2.5 py-1 text-xs-safe font-medium text-blue-600 dark:text-blue-400">
               {icp.awareness_stage}
             </span>
           ) : (
@@ -445,13 +445,13 @@ function BrandVoiceTab({
 
         {/* Core Fears */}
         <div className="mb-3">
-          <p className="text-xs text-muted-foreground mb-1">Core Fears</p>
+          <p className="text-xs-safe text-muted-foreground mb-1">Core Fears</p>
           {Array.isArray(icp?.core_fears) && icp.core_fears.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {icp.core_fears.map((f) => (
                 <span
                   key={f}
-                  className="inline-flex rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400"
+                  className="inline-flex rounded-md bg-red-500/10 px-2 py-0.5 text-xs-safe font-medium text-red-600 dark:text-red-400"
                 >
                   {f}
                 </span>
@@ -464,7 +464,7 @@ function BrandVoiceTab({
 
         {/* Identity Aspirations */}
         <div className="mb-3">
-          <p className="text-xs text-muted-foreground mb-1">
+          <p className="text-xs-safe text-muted-foreground mb-1">
             Identity Aspirations
           </p>
           {Array.isArray(icp?.identity_aspirations) &&
@@ -473,7 +473,7 @@ function BrandVoiceTab({
               {icp.identity_aspirations.map((a) => (
                 <span
                   key={a}
-                  className="inline-flex rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                  className="inline-flex rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs-safe font-medium text-emerald-600 dark:text-emerald-400"
                 >
                   {a}
                 </span>
@@ -486,7 +486,7 @@ function BrandVoiceTab({
 
         {/* Content Implications */}
         <div>
-          <p className="text-xs text-muted-foreground mb-1">
+          <p className="text-xs-safe text-muted-foreground mb-1">
             Content Implications
           </p>
           {Array.isArray(icp?.content_implications) &&
@@ -641,7 +641,7 @@ function ContentGapsTab({
         <p className="text-sm font-semibold text-foreground mb-1">
           Keyword Ideas Explorer
         </p>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs-safe text-muted-foreground mb-4">
           Select up to 5 seed keywords, then explore related ideas via
           DataForSEO.
         </p>
@@ -649,7 +649,7 @@ function ContentGapsTab({
         {organicKws.length > 0 ? (
           <>
             <div className="mb-4">
-              <p className="text-xs font-medium text-foreground mb-2">
+              <p className="text-xs-safe font-medium text-foreground mb-2">
                 Seed keywords{" "}
                 {selectedSeeds.length > 0
                   ? `(${selectedSeeds.length}/5 selected)`
@@ -663,7 +663,7 @@ function ContentGapsTab({
                       key={kw.keyword}
                       type="button"
                       onClick={() => toggleSeed(kw.keyword)}
-                      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs-safe transition-colors ${
                         selected
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-muted text-foreground hover:bg-accent"
@@ -706,12 +706,12 @@ function ContentGapsTab({
         )}
 
         {ideasError && (
-          <p className="mt-3 text-xs text-destructive">{ideasError}</p>
+          <p className="mt-3 text-xs-safe text-destructive">{ideasError}</p>
         )}
 
         {keywordIdeas.length > 0 && (
           <div className="mt-5">
-            <p className="text-xs font-medium text-foreground mb-2">
+            <p className="text-xs-safe font-medium text-foreground mb-2">
               Results ({keywordIdeas.length})
             </p>
             <div className="rounded-lg border border-border overflow-hidden">
@@ -943,7 +943,7 @@ export default function ClientIntelligencePage() {
 
       {/* Last scraped + rerun error */}
       {intelligence?.last_scraped_at && (
-        <p className="mb-4 text-xs text-muted-foreground">
+        <p className="mb-4 text-xs-safe text-muted-foreground">
           Last scraped:{" "}
           {new Date(intelligence.last_scraped_at).toLocaleString()}
         </p>

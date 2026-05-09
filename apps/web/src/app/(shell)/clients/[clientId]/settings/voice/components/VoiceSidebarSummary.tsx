@@ -47,33 +47,33 @@ export function VoiceSidebarSummary({
   return (
     <Card className="p-4 space-y-4">
       <div>
-        <p className="text-xs text-muted-foreground">Voice Mode</p>
+        <p className="text-xs-safe text-muted-foreground">Voice Mode</p>
         <Badge variant="outline" className="mt-1">
           {MODE_LABELS[mode]}
         </Badge>
       </div>
 
       <div>
-        <p className="text-xs text-muted-foreground">Confidence</p>
+        <p className="text-xs-safe text-muted-foreground">Confidence</p>
         <p className="text-sm font-medium mt-1">
           {confidence !== null ? `${confidence}%` : "Not analyzed"}
         </p>
       </div>
 
       <div>
-        <p className="text-xs text-muted-foreground">Last Analyzed</p>
+        <p className="text-xs-safe text-muted-foreground">Last Analyzed</p>
         <p className="text-sm mt-1">{lastAnalyzed ?? "Never"}</p>
       </div>
 
       {profile?.voiceBlendEnabled && (
         <div>
-          <p className="text-xs text-muted-foreground">Template Blend</p>
+          <p className="text-xs-safe text-muted-foreground">Template Blend</p>
           <p className="text-sm mt-1">{(blendWeight * 100).toFixed(0)}%</p>
         </div>
       )}
 
       <div>
-        <p className="text-xs text-muted-foreground">Protection Rules</p>
+        <p className="text-xs-safe text-muted-foreground">Protection Rules</p>
         <p className="text-sm mt-1">{rulesCount} rules</p>
       </div>
 

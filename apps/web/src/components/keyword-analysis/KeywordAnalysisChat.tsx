@@ -415,7 +415,7 @@ export function KeywordAnalysisChat({
                     <Sparkles className="inline h-4 w-4 mr-1 text-[var(--accent)]" />
                     Generate keywords from your business description
                   </p>
-                  <p className="text-xs text-[var(--text-3)] mt-1">
+                  <p className="text-xs-safe text-[var(--text-3)] mt-1">
                     We detected a business description. Would you like us to generate
                     relevant keywords?
                   </p>
@@ -440,7 +440,7 @@ export function KeywordAnalysisChat({
                   <p className="text-sm font-medium">
                     Generating keywords based on your business...
                   </p>
-                  <p className="text-xs text-[var(--text-3)]">
+                  <p className="text-xs-safe text-[var(--text-3)]">
                     Analyzing description and creating keyword suggestions
                   </p>
                 </div>

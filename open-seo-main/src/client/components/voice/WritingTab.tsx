@@ -153,7 +153,7 @@ export function WritingTab({ profile, clientId }: Props) {
             max={25}
             step={1}
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs-safe text-muted-foreground">
             <span>Short & punchy</span>
             <span>Long & detailed</span>
           </div>
@@ -189,7 +189,7 @@ export function WritingTab({ profile, clientId }: Props) {
             max={8}
             step={1}
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs-safe text-muted-foreground">
             <span>Short paragraphs</span>
             <span>Long paragraphs</span>
           </div>

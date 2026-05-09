@@ -94,7 +94,7 @@ function AlertCard({
             <span className="font-medium text-sm truncate">{alert.title}</span>
             <Badge
               variant="outline"
-              className={cn("text-xs uppercase", SEVERITY_BADGE[alert.severity])}
+              className={cn("text-xs-safe uppercase", SEVERITY_BADGE[alert.severity])}
             >
               {alert.severity}
             </Badge>

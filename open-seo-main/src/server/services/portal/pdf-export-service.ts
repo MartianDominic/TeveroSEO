@@ -20,7 +20,13 @@ import type { TrendAnalysis } from "@/server/features/analytics/types";
 import type { VisibilityConfig } from "@/db/analytics-extended-schema";
 
 /**
- * White-label branding configuration for PDF exports.
+ * CSV column label overrides (imported from schema).
+ */
+import type { CsvColumnLabels } from "@/db/branding-schema";
+export type { CsvColumnLabels };
+
+/**
+ * White-label branding configuration for PDF and CSV exports.
  */
 export interface PortalBranding {
   logoUrl: string | null;
@@ -28,6 +34,9 @@ export interface PortalBranding {
   secondaryColor: string;
   companyName: string;
   footerText: string | null;
+  // Phase 96: CSV white-label configuration
+  csvHeaderTemplate: string | null;
+  csvColumnLabels: CsvColumnLabels | null;
 }
 
 /**
@@ -39,6 +48,8 @@ const DEFAULT_BRANDING: PortalBranding = {
   secondaryColor: "#10b981",
   companyName: "TeveroSEO",
   footerText: null,
+  csvHeaderTemplate: null,
+  csvColumnLabels: null,
 };
 
 /**
@@ -104,6 +115,8 @@ export async function getClientBranding(clientId: string): Promise<PortalBrandin
       secondaryColor: branding.secondaryColor,
       companyName: orgName || DEFAULT_BRANDING.companyName,
       footerText: branding.footerText,
+      csvHeaderTemplate: branding.csvHeaderTemplate ?? null,
+      csvColumnLabels: branding.csvColumnLabels ?? null,
     };
   } catch {
     return DEFAULT_BRANDING;

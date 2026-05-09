@@ -102,8 +102,8 @@ const SortableSectionItem: FC<SortableSectionItemProps> = ({
       className={cn(
         "flex items-center gap-3 p-3 rounded-lg",
         "bg-surface border border-hairline",
-        "hover:bg-surface-2 hover:shadow-sm transition-all",
-        isDragging && "shadow-md opacity-80 z-10",
+        "hover:bg-surface-2 hover:shadow-[var(--shadow-card)] transition-all",
+        isDragging && "shadow-[var(--shadow-elevated)] opacity-80 z-10",
         !isEnabled && "opacity-60"
       )}
     >
@@ -130,13 +130,13 @@ const SortableSectionItem: FC<SortableSectionItemProps> = ({
         <p className="text-sm font-medium text-text-1">
           {meta?.label ?? section.type}
         </p>
-        <p className="text-xs text-text-3 truncate">
+        <p className="text-xs-safe text-text-3 truncate">
           {meta?.description ?? ""}
         </p>
       </div>
 
       {meta?.required && (
-        <span className="text-xs text-text-3 bg-surface-2 px-2 py-0.5 rounded-sm shrink-0">
+        <span className="text-xs-safe text-text-3 bg-surface-2 px-2 py-0.5 rounded-sm shrink-0">
           Required
         </span>
       )}

@@ -77,7 +77,7 @@ export function FallbackIndicator({
       aria-live="polite"
     >
       <Icon className={cn('flex-shrink-0', isSmall ? 'h-3 w-3' : 'h-4 w-4')} />
-      <span className={cn('flex-1', isSmall ? 'text-xs' : 'text-sm')}>
+      <span className={cn('flex-1', isSmall ? 'text-xs-safe' : 'text-sm')}>
         {displayMessage}
       </span>
       {onRetry && (
@@ -87,7 +87,7 @@ export function FallbackIndicator({
           size="sm"
           className={cn(
             'gap-1 text-yellow-800 hover:bg-yellow-100 hover:text-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-900 dark:hover:text-yellow-100',
-            isSmall ? 'h-5 px-1 text-xs' : 'h-7 px-2 text-sm'
+            isSmall ? 'h-5 px-1 text-xs-safe' : 'h-7 px-2 text-sm'
           )}
         >
           <RefreshCw className={cn(isSmall ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
@@ -112,7 +112,7 @@ export function InlineFallbackIndicator({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 text-xs text-muted-foreground italic',
+        'inline-flex items-center gap-1 text-xs-safe text-muted-foreground italic',
         className
       )}
       title={message}

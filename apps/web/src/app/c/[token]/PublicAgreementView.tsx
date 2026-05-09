@@ -190,14 +190,14 @@ export function PublicAgreementView({ agreement, token }: PublicAgreementViewPro
               <p className="text-2xl font-bold text-text-1">
                 {formatCurrency(content.pricing.setupFeeCents, content.pricing.currency)}
               </p>
-              <p className="text-xs text-text-3">one-time</p>
+              <p className="text-xs-safe text-text-3">one-time</p>
             </div>
             <div className="bg-surface-1 rounded-lg p-4 text-center">
               <p className="text-sm text-text-3 mb-1">Monthly Fee</p>
               <p className="text-2xl font-bold text-text-1">
                 {formatCurrency(content.pricing.monthlyFeeCents, content.pricing.currency)}
               </p>
-              <p className="text-xs text-text-3">per month</p>
+              <p className="text-xs-safe text-text-3">per month</p>
             </div>
           </div>
         </div>
@@ -286,7 +286,7 @@ export function PublicAgreementView({ agreement, token }: PublicAgreementViewPro
 
         {/* Footer */}
         <div className="mt-12 text-center">
-          <p className="text-text-4 text-xs">
+          <p className="text-text-4 text-xs-safe">
             This agreement was generated on {new Date(agreement.createdAt).toLocaleDateString()}.
             {agreement.expiresAt && (
               <> Valid until {new Date(agreement.expiresAt).toLocaleDateString()}.</>

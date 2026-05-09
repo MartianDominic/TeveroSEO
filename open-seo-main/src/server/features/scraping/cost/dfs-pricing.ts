@@ -68,6 +68,13 @@ export const DFS_LABS_PRICING = {
   // Composite pricing for Keywords For Domain endpoint
   keywordsForDomainBase: 0.01,     // Base cost per request
   keywordsForDomainPerItem: 0.0001, // Per keyword returned
+  // Volume refresh / search volume endpoint pricing
+  searchVolumeBase: 0.15,          // Base cost per request (up to 1000 keywords)
+  searchVolumePerKeyword: 0.0001,  // Per keyword in batch
+  // Additional Labs endpoints
+  keywordsForSite: 0.05,           // Keywords For Site - per query
+  competitorsDomain: 0.05,         // Competitors Domain - per query
+  domainIntersection: 0.02,        // Domain Intersection (keyword gap) - per query
 } as const;
 
 export type DfsLabsOperation = keyof typeof DFS_LABS_PRICING;
@@ -203,6 +210,40 @@ export function estimateSerpBatchCost(
  */
 export function estimateKeywordMetricsCost(keywordCount: number): number {
   return keywordCount * DFS_LABS_PRICING.keywordMetrics;
+}
+
+/**
+ * Estimate total cost for search volume batch request.
+ *
+ * @param keywordCount - Number of keywords in batch
+ * @returns Total estimated cost in USD
+ */
+export function estimateSearchVolumeCost(keywordCount: number): number {
+  return DFS_LABS_PRICING.searchVolumeBase + keywordCount * DFS_LABS_PRICING.searchVolumePerKeyword;
+}
+
+// =============================================================================
+// Cents Conversion Helpers
+// =============================================================================
+
+/**
+ * Get Labs keyword metrics cost in cents (for DB storage).
+ * Canonical value: 0.0005 USD = 0.05 cents per keyword
+ *
+ * Note: The common pattern "$0.005 per keyword" refers to batched
+ * pricing (10 keywords = $0.005), not per-keyword pricing.
+ * Actual per-keyword cost is $0.0005 = 0.05 cents.
+ */
+export function getKeywordMetricsCostCents(): number {
+  return DFS_LABS_PRICING.keywordMetrics * 100;
+}
+
+/**
+ * Get ranked keywords (domain spy) cost in cents.
+ * $0.002 per query = 0.2 cents
+ */
+export function getRankedKeywordsCostCents(): number {
+  return DFS_LABS_PRICING.rankedKeywords * 100;
 }
 
 // =============================================================================

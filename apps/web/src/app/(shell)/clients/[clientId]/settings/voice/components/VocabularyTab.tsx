@@ -67,7 +67,7 @@ export function VocabularyTab({ profile, onSave, saving }: VocabularyTabProps) {
       {/* Jargon Level */}
       <Card className="p-4">
         <Label className="text-sm font-medium">Jargon Level</Label>
-        <p className="text-xs text-muted-foreground mb-2">
+        <p className="text-xs-safe text-muted-foreground mb-2">
           How much industry-specific terminology to use
         </p>
         <Select value={jargonLevel} onValueChange={setJargonLevel}>
@@ -140,7 +140,7 @@ export function VocabularyTab({ profile, onSave, saving }: VocabularyTabProps) {
       {/* Signature Phrases */}
       <Card className="p-4 space-y-3">
         <Label className="text-sm font-medium">Signature Phrases</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Phrases that should appear frequently in content
         </p>
         <div className="flex gap-2">
@@ -183,7 +183,7 @@ export function VocabularyTab({ profile, onSave, saving }: VocabularyTabProps) {
       {/* Forbidden Phrases */}
       <Card className="p-4 space-y-3">
         <Label className="text-sm font-medium">Forbidden Phrases</Label>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs-safe text-muted-foreground">
           Words or phrases that should never appear
         </p>
         <div className="flex gap-2">

@@ -157,7 +157,7 @@ export function PlatformCredentialsForm({
             disabled={loading}
           />
           {field.helpText && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs-safe text-muted-foreground">
               {field.helpText}
               {field.helpLink && (
                 <>

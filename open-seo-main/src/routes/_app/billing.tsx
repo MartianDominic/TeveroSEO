@@ -150,7 +150,7 @@ function BillingPageContent() {
                 remaining
               </span>
             </div>
-            <div className="mt-1 flex gap-3 text-xs text-foreground/50">
+            <div className="mt-1 flex gap-3 text-xs-safe text-foreground/50">
               <span className="tabular-nums">
                 Monthly ${monthlyRemaining.toFixed(2)}
               </span>
@@ -212,7 +212,7 @@ function BillingPageContent() {
               />
             </div>
             {topUpAmount.trim() !== "" && !isValidTopUp ? (
-              <p className="mt-1 text-xs text-destructive">Enter between $10–$99.</p>
+              <p className="mt-1 text-xs-safe text-destructive">Enter between $10–$99.</p>
             ) : null}
           </div>
 
@@ -251,7 +251,7 @@ function BillingPageContent() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <p className="text-xs text-foreground/40">
+      <p className="text-xs-safe text-foreground/40">
         Billing is powered by Stripe.
       </p>
     </div>

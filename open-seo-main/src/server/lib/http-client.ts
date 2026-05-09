@@ -131,7 +131,7 @@ export class CircuitBreakerOpenError extends Error {
 enum CircuitState {
   CLOSED = "closed",
   OPEN = "open",
-  HALF_OPEN = "half_open",
+  HALF_OPEN = "half-open",
 }
 
 /**
