@@ -391,7 +391,7 @@ export async function resetTenantRateLimit(
   } catch (error) {
     logger.warn(
       "[tenant-rate-limit] Failed to reset rate limit",
-      error instanceof Error ? error : { error: String(error) }
+      { error: error instanceof Error ? error.message : String(error) }
     );
   }
 }

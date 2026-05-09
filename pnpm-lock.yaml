@@ -70,6 +70,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.24
         version: 3.13.24(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+      '@tevero/shared-cache':
+        specifier: workspace:*
+        version: link:../../packages/shared-cache
       '@tevero/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -338,6 +341,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.24
         version: 3.13.24(react-dom@19.1.6(react@19.1.6))(react@19.1.6)
+      '@tevero/shared-cache':
+        specifier: workspace:*
+        version: link:../packages/shared-cache
       '@tevero/types':
         specifier: workspace:*
         version: link:../packages/types
@@ -588,6 +594,9 @@ importers:
 
   packages/shared-cache:
     devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.40
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -6128,6 +6137,9 @@ packages:
 
   '@types/mysql@2.15.27':
     resolution: {integrity: sha512-YfWiV16IY0OeBfBCk8+hXKmdTKrKlwKN1MNKAPBu5JYxLwBEZl7QzeEpGnlZb3VMGJrrGmB84gXiH+ofs/TezA==}
+
+  '@types/node@20.19.40':
+    resolution: {integrity: sha512-xxx6M2IpSTnnKcR0cMvIiohkiCx20/oRPtWGbenFygKCGl3zqUzdNjQ/1V4solq1LU+dgv0nQzeGOuqkqZGg0Q==}
 
   '@types/node@22.10.5':
     resolution: {integrity: sha512-F8Q+SeGimwOo86fiovQh8qiXfFEh2/ocYv7tU5pJ3EXMSSxk1Joj5wefpFK2fHTf/N6HKGSxIDBT9f3gCxXPkQ==}
@@ -18945,6 +18957,10 @@ snapshots:
   '@types/mysql@2.15.27':
     dependencies:
       '@types/node': 22.19.17
+
+  '@types/node@20.19.40':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/node@22.10.5':
     dependencies:

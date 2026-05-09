@@ -11,6 +11,7 @@
  */
 
 // Error Classification (shared utility)
+// NOTE: ErrorType is deprecated - use ScrapeRetryBehavior from queue.types.ts
 export {
   ErrorType,
   classifyStatusCode,
@@ -22,8 +23,18 @@ export {
   getEscalationReason,
   mapStatusCodeToEscalationReason,
   mapErrorToEscalationReason,
+  toScrapeRetryBehavior,
   type ClassifiedError,
 } from "./ErrorClassifier";
+
+// Consolidated retry behavior types (use these for new code)
+export {
+  type ScrapeErrorCode,
+  type ScrapeRetryBehavior,
+  getScrapeRetryBehavior,
+  isScrapeErrorRetryable,
+  shouldScrapeEscalateTier,
+} from "../queue/queue.types";
 
 // Types
 export type {

@@ -122,39 +122,44 @@ async function setOwnershipCache(
 }
 
 /**
- * Verify ownership by querying the database.
+ * Verify ownership by querying the backend API.
  * This is the source of truth for access control.
  */
 async function verifyOwnershipFromDatabase(
   workspaceId: string,
   clientId: string
 ): Promise<boolean> {
-  // Import db dynamically to avoid circular dependencies
-  // and ensure proper initialization order
-  const { db } = await import("@/lib/db");
-  const { clients } = await import("@/lib/db/schema");
-  const { eq, and, isNull } = await import("drizzle-orm");
-
   try {
-    const client = await db.query.clients.findFirst({
-      where: and(
-        eq(clients.id, clientId),
-        eq(clients.workspaceId, workspaceId),
-        // Exclude soft-deleted clients
-        isNull(clients.softDeletedAt)
-      ),
-      columns: {
-        id: true,
-      },
-    });
+    // Use internal API to verify ownership
+    // This calls the open-seo-main backend which has database access
+    const { getOpenSeoUrl } = await import("@/lib/env");
+    const backendUrl = getOpenSeoUrl();
 
-    return client !== undefined;
+    const response = await fetch(
+      `${backendUrl}/api/internal/clients/${clientId}/verify-ownership`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": process.env.INTERNAL_API_SECRET || "",
+        },
+        body: JSON.stringify({ workspaceId }),
+      }
+    );
+
+    if (!response.ok) {
+      // 404 = client doesn't exist, 403 = wrong workspace
+      return false;
+    }
+
+    const result = (await response.json()) as { hasAccess: boolean };
+    return result.hasAccess === true;
   } catch (error) {
     logger.error(
-      "[ownership] Database query failed",
+      "[ownership] Backend API call failed",
       error instanceof Error ? error : { error: String(error) }
     );
-    // Fail closed on database errors
+    // Fail closed on API errors
     return false;
   }
 }
@@ -210,7 +215,7 @@ export async function invalidateAllClientOwnership(
   } catch (error) {
     logger.warn(
       "[ownership] Failed to invalidate all client cache",
-      error instanceof Error ? error : { error: String(error) }
+      { error: error instanceof Error ? error.message : String(error) }
     );
   }
 }
@@ -249,36 +254,48 @@ export async function batchVerifyClientOwnership(
     })
   );
 
-  // Query database for uncached clients
+  // Query backend API for uncached clients
   if (uncachedIds.length > 0) {
     try {
-      const { db } = await import("@/lib/db");
-      const { clients } = await import("@/lib/db/schema");
-      const { eq, and, inArray, isNull } = await import("drizzle-orm");
+      const { getOpenSeoUrl } = await import("@/lib/env");
+      const backendUrl = getOpenSeoUrl();
 
-      const ownedClients = await db.query.clients.findMany({
-        where: and(
-          inArray(clients.id, uncachedIds),
-          eq(clients.workspaceId, workspaceId),
-          isNull(clients.softDeletedAt)
-        ),
-        columns: {
-          id: true,
-        },
-      });
-
-      const ownedSet = new Set(ownedClients.map((c) => c.id));
-
-      // Update results and cache
-      await Promise.all(
-        uncachedIds.map(async (clientId) => {
-          const hasAccess = ownedSet.has(clientId);
-          results.set(clientId, hasAccess);
-
-          const cacheKey = `${OWNERSHIP_CACHE_PREFIX}${workspaceId}:${clientId}`;
-          await setOwnershipCache(cacheKey, hasAccess);
-        })
+      const response = await fetch(
+        `${backendUrl}/api/internal/clients/batch-verify-ownership`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Secret": process.env.INTERNAL_API_SECRET || "",
+          },
+          body: JSON.stringify({ workspaceId, clientIds: uncachedIds }),
+        }
       );
+
+      if (response.ok) {
+        const data = (await response.json()) as { results: Record<string, boolean> };
+        const ownedSet = new Set(
+          Object.entries(data.results)
+            .filter(([, hasAccess]) => hasAccess)
+            .map(([id]) => id)
+        );
+
+        // Update results and cache
+        await Promise.all(
+          uncachedIds.map(async (clientId) => {
+            const hasAccess = ownedSet.has(clientId);
+            results.set(clientId, hasAccess);
+
+            const cacheKey = `${OWNERSHIP_CACHE_PREFIX}${workspaceId}:${clientId}`;
+            await setOwnershipCache(cacheKey, hasAccess);
+          })
+        );
+      } else {
+        // API error - mark all as denied
+        uncachedIds.forEach((clientId) => {
+          results.set(clientId, false);
+        });
+      }
     } catch (error) {
       logger.error(
         "[ownership] Batch verification failed",

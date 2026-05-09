@@ -310,3 +310,6 @@ export * from "./scraping-audit-schema";
 
 // On-Page SEO Mastery schema (Phase 92: Tier 5 Content Quality)
 export * from "./onpage-mastery-schema";
+
+// Tenant isolation schema (Multi-tenant SEO chat system)
+export * from "./tenant-isolation-schema";

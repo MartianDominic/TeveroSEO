@@ -304,10 +304,11 @@ export function isClientContext(
 
 /**
  * Assert that the current context has client scope.
+ * Returns the context with clientId guaranteed to be defined.
  *
  * @throws TenantContextError if client context is not available
  */
-export function assertClientContext(): asserts context is ClientTenantContext {
+export function assertClientContext(): ClientTenantContext {
   const context = getTenantContext();
   if (!context.clientId) {
     throw new TenantContextError(
@@ -315,4 +316,5 @@ export function assertClientContext(): asserts context is ClientTenantContext {
       "MISSING_CLIENT"
     );
   }
+  return context as ClientTenantContext;
 }

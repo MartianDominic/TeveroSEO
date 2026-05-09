@@ -28,7 +28,7 @@ import type {
   DlqEnqueueResult,
   DlqJobStatus,
 } from "./queue.types";
-import { SCRAPE_QUEUE_NAMES, QUEUE_CONFIG } from "./queue.types";
+import { SCRAPE_QUEUE_NAMES } from "./queue.types";
 import { queueLogger } from "../logging";
 import { assignPriority, selectQueue, toBullMQPriority } from "./PriorityAssigner";
 import { DEFAULT_RETRY_CONFIG } from "./retry.config";

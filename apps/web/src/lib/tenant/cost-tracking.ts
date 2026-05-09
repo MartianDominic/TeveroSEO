@@ -421,30 +421,38 @@ export async function persistCostToDatabase(
   period: "daily" | "monthly",
   summary: CostSummary
 ): Promise<void> {
-  // Import dynamically to avoid circular dependencies
-  const { db } = await import("@/lib/db");
-  const { apiCosts } = await import("@/lib/db/schema");
-
   try {
+    // Use backend API to persist cost data
+    const { getOpenSeoUrl } = await import("@/lib/env");
+    const backendUrl = getOpenSeoUrl();
+
     // Convert microdollars to cents for database storage
     const costCents = Math.ceil(summary.totalCostMicros / 10000);
 
-    await db.insert(apiCosts).values({
-      workspaceId,
-      service: "aggregate",
-      operation: `${period}_total`,
-      inputTokens: 0,
-      outputTokens: 0,
-      costCents,
-      metadata: JSON.stringify({
-        period,
-        periodStart: summary.periodStart,
-        periodEnd: summary.periodEnd,
-        operationCount: summary.operationCount,
-        byOperation: summary.byOperation,
-        clientId,
-      }),
-    });
+    const response = await fetch(
+      `${backendUrl}/api/internal/costs/persist`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": process.env.INTERNAL_API_SECRET || "",
+        },
+        body: JSON.stringify({
+          workspaceId,
+          clientId,
+          period,
+          costCents,
+          periodStart: summary.periodStart,
+          periodEnd: summary.periodEnd,
+          operationCount: summary.operationCount,
+          byOperation: summary.byOperation,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to persist cost: ${response.status}`);
+    }
 
     logger.info("[cost-tracking] Persisted cost to database", {
       workspaceId,
