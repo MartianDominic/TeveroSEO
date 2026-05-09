@@ -10,11 +10,15 @@
  */
 
 import { type FC } from "react";
+
 import { Clock, Plus, Trash2, GripVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Label, Textarea } from "@tevero/ui";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+import { Label, Textarea } from "@tevero/ui";
+
 
 export interface TimelinePhase {
   title: string;

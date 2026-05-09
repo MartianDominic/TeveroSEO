@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@tevero/ui";
+
 import { AlertTriangle, Eye, Clock, RefreshCcw, X, ChevronDown, ChevronUp, Target } from "lucide-react";
-import type { AttentionItem } from "@/lib/dashboard/types";
+
 import { dismissAttentionItem } from "@/app/(shell)/dashboard/actions";
+import type { AttentionItem } from "@/lib/dashboard/types";
+
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@tevero/ui";
+
 import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 
 interface NeedsAttentionSectionProps {

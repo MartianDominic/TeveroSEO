@@ -1,12 +1,18 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
+
 import { Target } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { SparklineChart, getTrend } from "./SparklineChart";
-import type { SparklineDataPoint } from "./SparklineChart";
+
 import type { HealthBreakdown } from "@/lib/dashboard/types";
+import { cn } from "@/lib/utils";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
+
+import { SparklineChart, getTrend } from "./SparklineChart";
+
+import type { SparklineDataPoint } from "./SparklineChart";
+
 
 interface BreakdownItem {
   label: string;

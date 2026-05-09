@@ -8,9 +8,12 @@
  * - Shows up to 5 pinned tasks
  * - Allows user to focus on specific tasks
  */
-import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 import { Target } from "lucide-react";
+
+import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
+
 import { TaskItem } from "./TaskItem";
+
 import type { AggregatedTask } from "./types";
 
 interface MyFocusSectionProps {

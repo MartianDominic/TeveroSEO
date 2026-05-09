@@ -12,10 +12,10 @@
  * - Automatic extension for long-running operations
  */
 
-import { redis } from "@/lib/redis/client";
 import crypto from "crypto";
 
 import { logger } from '@/lib/logger';
+import { redis } from "@/lib/redis/client";
 /** Lock key prefix to namespace all locks */
 const LOCK_PREFIX = "tevero:lock:";
 

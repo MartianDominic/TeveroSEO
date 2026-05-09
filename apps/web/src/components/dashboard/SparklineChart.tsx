@@ -5,6 +5,7 @@
  * Sparklines are frequently used on dashboards, but Recharts is ~54KB.
  */
 import dynamic from "next/dynamic";
+
 import { cn } from "@/lib/utils";
 
 // Dynamically import Recharts components to reduce initial bundle

@@ -6,6 +6,12 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { Target, TrendingUp, TrendingDown, Minus, Calendar, AlertCircle } from "lucide-react";
+
+import { getGoalProjections } from "@/actions/analytics/get-predictions";
+import { cn } from "@/lib/utils";
+import type { GoalProjection, TrendDirection } from "@/types/predictions";
+
 import {
   Card,
   CardContent,
@@ -14,10 +20,6 @@ import {
   Badge,
   Skeleton,
 } from "@tevero/ui";
-import { Target, TrendingUp, TrendingDown, Minus, Calendar, AlertCircle } from "lucide-react";
-import { getGoalProjections } from "@/actions/analytics/get-predictions";
-import { cn } from "@/lib/utils";
-import type { GoalProjection, TrendDirection } from "@/types/predictions";
 
 interface GoalProjectionCardProps {
   clientId: string;

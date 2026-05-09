@@ -10,16 +10,19 @@
  * - canSign=true -> Consent checkbox + signing buttons
  */
 import { useState } from "react";
+
+import { CheckCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { SigningButtons } from "./SigningButtons";
-import { ConsentCheckbox } from "./ConsentCheckbox";
+
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle } from "lucide-react";
+
+import { ConsentCheckbox } from "./ConsentCheckbox";
+import { SigningButtons } from "./SigningButtons";
 
 interface SignatureSectionProps {
   token: string;

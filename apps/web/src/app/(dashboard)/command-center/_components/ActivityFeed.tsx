@@ -17,13 +17,7 @@
  * - Time formatting with date-fns
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useActivityFeed,
-  type ActivityEvent,
-} from "@/hooks/command-center/useActivityFeed";
+import { formatDistanceToNow } from "date-fns";
 import {
   Wifi,
   WifiOff,
@@ -38,7 +32,14 @@ import {
   MessageSquare,
   Activity,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  useActivityFeed,
+  type ActivityEvent,
+} from "@/hooks/command-center/useActivityFeed";
 import { cn } from "@/lib/utils";
 
 /**

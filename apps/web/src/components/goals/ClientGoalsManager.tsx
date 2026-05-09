@@ -1,6 +1,17 @@
 "use client";
 
 import { useState } from "react";
+
+import { Plus } from "lucide-react";
+
+import {
+  useClientGoals,
+  useCreateGoal,
+  useUpdateGoal,
+  useDeleteGoal,
+  useGoalTemplates,
+} from "@/lib/hooks/useGoals";
+
 import {
   Button,
   Dialog,
@@ -9,17 +20,10 @@ import {
   DialogTitle,
   Skeleton,
 } from "@tevero/ui";
-import { Plus } from "lucide-react";
-import {
-  useClientGoals,
-  useCreateGoal,
-  useUpdateGoal,
-  useDeleteGoal,
-  useGoalTemplates,
-} from "@/lib/hooks/useGoals";
+
 import { GoalCard } from "./GoalCard";
-import { GoalTemplateSelector } from "./GoalTemplateSelector";
 import { GoalConfigForm, type GoalFormValues } from "./GoalConfigForm";
+import { GoalTemplateSelector } from "./GoalTemplateSelector";
 
 interface ClientGoalsManagerProps {
   clientId: string;

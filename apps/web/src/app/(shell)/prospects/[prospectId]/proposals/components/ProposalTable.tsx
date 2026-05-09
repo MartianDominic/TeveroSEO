@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { Eye, Send, Edit, RefreshCw, Loader2 } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -10,9 +14,11 @@ import {
   Button,
   Badge,
 } from "@tevero/ui";
-import { Eye, Send, Edit, RefreshCw, Loader2 } from "lucide-react";
-import type { ProposalSummary } from "../actions";
+
 import { sendProposal, resendProposal } from "../actions";
+
+import type { ProposalSummary } from "../actions";
+
 
 interface ProposalTableProps {
   proposals: ProposalSummary[];

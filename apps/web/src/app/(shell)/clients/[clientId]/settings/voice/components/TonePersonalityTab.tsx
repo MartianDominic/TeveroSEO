@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
+import { X } from "lucide-react";
+
+import type { VoiceProfile } from "@/lib/voiceApi";
+
 import {
   Button,
   Card,
@@ -14,8 +19,6 @@ import {
   Slider,
   Badge,
 } from "@tevero/ui";
-import { X } from "lucide-react";
-import type { VoiceProfile } from "@/lib/voiceApi";
 
 interface TonePersonalityTabProps {
   profile: VoiceProfile | null;

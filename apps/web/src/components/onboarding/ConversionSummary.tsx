@@ -9,10 +9,13 @@
  */
 
 import { useEffect } from "react";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import confetti from "canvas-confetti";
 import { CheckCircle, ArrowRight, Zap } from "lucide-react";
+
 import { Card, CardContent, Button } from "@tevero/ui";
 
 type AnyRoute = Parameters<typeof redirect>[0];

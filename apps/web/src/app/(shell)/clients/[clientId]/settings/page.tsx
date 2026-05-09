@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+
 import { useParams } from "next/navigation";
-import { logger } from '@/lib/logger';
+
 import {
   RotateCcw,
   Eye,
@@ -12,6 +13,23 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+
+
+import { testCmsConnection, type CmsPlatform } from "@/actions/cms/test-connection";
+import { ClientGoalsManager } from "@/components/goals";
+import {
+  fetchClientSettings,
+  upsertClientSettings,
+  type ClientSettings,
+  fetchVoiceTemplates,
+  type VoiceTemplate,
+} from "@/lib/clientSettings";
+import { logger } from '@/lib/logger';
+import { useClientStore } from "@/stores/clientStore";
+import {
+  useContentCalendarStore,
+  type PublishingSettings,
+} from "@/stores/contentCalendarStore";
 
 import {
   Button,
@@ -34,22 +52,6 @@ import {
   TabsTrigger,
   Textarea,
 } from "@tevero/ui";
-
-import {
-  fetchClientSettings,
-  upsertClientSettings,
-  type ClientSettings,
-  fetchVoiceTemplates,
-  type VoiceTemplate,
-} from "@/lib/clientSettings";
-import { testCmsConnection, type CmsPlatform } from "@/actions/cms/test-connection";
-
-import { useClientStore } from "@/stores/clientStore";
-import { ClientGoalsManager } from "@/components/goals";
-import {
-  useContentCalendarStore,
-  type PublishingSettings,
-} from "@/stores/contentCalendarStore";
 
 // ── Model lists ──────────────────────────────────────────────────────────────
 

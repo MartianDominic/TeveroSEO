@@ -1,19 +1,22 @@
 import { auth } from "@clerk/nextjs/server";
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@tevero/ui";
-import { ClientPortfolioTable } from "@/components/dashboard/ClientPortfolioTable";
-import { PortfolioHealthSummary } from "@/components/dashboard/PortfolioHealthSummary";
-import { NeedsAttentionSection } from "@/components/dashboard/NeedsAttentionSection";
-import { WinsMilestonesSection } from "@/components/dashboard/WinsMilestonesSection";
+
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
+import { ClientPortfolioTable } from "@/components/dashboard/ClientPortfolioTable";
+import { DashboardViewProvider } from "@/components/dashboard/DashboardViewProvider";
 import { ExportButton } from "@/components/dashboard/ExportButton";
+import { NeedsAttentionSection } from "@/components/dashboard/NeedsAttentionSection";
+import { PortfolioHealthSummary } from "@/components/dashboard/PortfolioHealthSummary";
+import { PowerUserFeatures } from "@/components/dashboard/PowerUserFeatures";
+import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
 import { TeamWorkloadSection } from "@/components/dashboard/TeamWorkloadSection";
 import { UpcomingScheduledSection } from "@/components/dashboard/UpcomingScheduledSection";
-import { PowerUserFeatures } from "@/components/dashboard/PowerUserFeatures";
-import { DashboardViewProvider } from "@/components/dashboard/DashboardViewProvider";
+import { WinsMilestonesSection } from "@/components/dashboard/WinsMilestonesSection";
 import { WithErrorBoundary } from "@/components/with-error-boundary";
 import { logger } from '@/lib/logger';
+
+import { PageHeader } from "@tevero/ui";
+
 import {
   getDashboardMetrics,
   getPortfolioSummary,

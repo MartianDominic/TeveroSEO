@@ -1,9 +1,12 @@
 "use client";
 
 import * as React from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw, Calendar } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+
 import {
   Card,
   CardContent,
@@ -18,8 +21,8 @@ import {
 } from "@tevero/ui";
 
 import { CwvCard, type CwvRating } from "./cwv-card";
-import { TrafficChart, type TimeseriesDataPoint } from "./traffic-chart";
 import { TopPages, type TopPage } from "./top-pages";
+import { TrafficChart, type TimeseriesDataPoint } from "./traffic-chart";
 
 // ============================================================================
 // Types

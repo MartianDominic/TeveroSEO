@@ -8,8 +8,10 @@
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { notFound } from "next/navigation";
-import { InvoicePaymentClient } from "./InvoicePaymentClient";
+
 import { getOpenSeoUrl } from "@/lib/env";
+
+import { InvoicePaymentClient } from "./InvoicePaymentClient";
 
 interface Props {
   params: Promise<{ id: string }>;

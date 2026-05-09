@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import { Globe, Search, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+
+import { getDomainOverview } from "@/actions/seo/domain";
+
 import {
   Button,
   Card,
@@ -14,7 +19,6 @@ import {
   Label,
   Badge,
 } from "@tevero/ui";
-import { getDomainOverview } from "@/actions/seo/domain";
 
 interface DomainOverview {
   domain: string;

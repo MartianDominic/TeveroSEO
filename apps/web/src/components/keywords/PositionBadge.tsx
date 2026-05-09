@@ -1,8 +1,10 @@
 "use client";
 
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
-import { Badge } from "@tevero/ui";
+
 import { cn } from "@/lib/utils";
+
+import { Badge } from "@tevero/ui";
 
 interface PositionBadgeProps {
   position: number | null;

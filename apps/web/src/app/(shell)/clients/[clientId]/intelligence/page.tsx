@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+
 import { useParams, useRouter } from "next/navigation";
-import { logger } from '@/lib/logger';
+
 import {
   Loader2,
   RefreshCw,
@@ -18,6 +19,18 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import { z } from "zod";
+
+import { useWebSocket } from "@/hooks/use-websocket";
+import { apiGet, apiPost } from "@/lib/api-client";
+import { logger } from '@/lib/logger';
+import { useClientStore } from "@/stores/clientStore";
+import {
+  useIntelligenceStore,
+  type OrganicKeyword,
+  type KeywordIdea,
+  type IntelligenceData,
+} from "@/stores/intelligenceStore";
 
 import {
   Button,
@@ -35,17 +48,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tevero/ui";
-
-import { z } from "zod";
-import { useClientStore } from "@/stores/clientStore";
-import {
-  useIntelligenceStore,
-  type OrganicKeyword,
-  type KeywordIdea,
-  type IntelligenceData,
-} from "@/stores/intelligenceStore";
-import { apiGet, apiPost } from "@/lib/api-client";
-import { useWebSocket } from "@/hooks/use-websocket";
 
 // WebSocket message schema for intelligence updates
 const intelligenceWsMessageSchema = z.union([

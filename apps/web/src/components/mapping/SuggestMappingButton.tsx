@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@tevero/ui";
+
 import { Wand2, Loader2 } from "lucide-react";
+
 import { suggestMappings } from "@/actions/seo/mapping";
+
+import { Button } from "@tevero/ui";
 
 interface SuggestMappingButtonProps {
   projectId: string;

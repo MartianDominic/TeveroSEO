@@ -5,8 +5,10 @@
  * Phase 27-03: AI Business Extractor
  */
 import { useRouter } from "next/navigation";
-import { BusinessInfoForm, type BusinessInfoFormData } from "./BusinessInfoForm";
+
 import { saveManualBusinessInfo } from "@/app/(shell)/prospects/[prospectId]/actions";
+
+import { BusinessInfoForm, type BusinessInfoFormData } from "./BusinessInfoForm";
 
 interface BusinessInfoFormWrapperProps {
   prospectId: string;

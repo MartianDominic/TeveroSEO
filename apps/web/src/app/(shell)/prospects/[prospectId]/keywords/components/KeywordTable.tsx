@@ -8,6 +8,11 @@
  */
 
 import { useState } from "react";
+
+import { ArrowUpDown, Zap, Target, Sparkles, ExternalLink } from "lucide-react";
+
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 import {
   Table,
   TableBody,
@@ -19,10 +24,12 @@ import {
   Button,
   Badge,
 } from "@tevero/ui";
-import { ArrowUpDown, Zap, Target, Sparkles, ExternalLink } from "lucide-react";
-import type { ProspectKeyword } from "../actions";
+
 import { getTierBadge } from "./TierFilter";
-import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
+import type { ProspectKeyword } from "../actions";
+
+
 
 interface KeywordTableProps {
   keywords: ProspectKeyword[];

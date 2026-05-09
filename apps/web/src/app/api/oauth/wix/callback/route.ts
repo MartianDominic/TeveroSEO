@@ -12,10 +12,11 @@
  * GET /api/oauth/wix/callback?code=xxx&state=xxx
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
-import { checkRateLimit, getClientIpFromRequest } from "@/lib/middleware/rate-limit";
 
 import { logger } from '@/lib/logger';
+import { checkRateLimit, getClientIpFromRequest } from "@/lib/middleware/rate-limit";
+import { getOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

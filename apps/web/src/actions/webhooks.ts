@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo, postOpenSeo, patchOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { rateLimitAction } from "@/lib/middleware/rate-limit";
+import { getOpenSeo, postOpenSeo, patchOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 import { generateWebhookIdempotencyKey } from "@/lib/utils/idempotency";
 
 /** Rate limit configs for webhook mutations */

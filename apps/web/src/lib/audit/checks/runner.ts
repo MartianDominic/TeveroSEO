@@ -5,8 +5,9 @@
  * Enforces HTML size limit (5MB max) per threat model T-32-01.
  */
 
-import type { CheckResult, CheckOptions, CheckTier, PageAnalysis } from "./types";
 import { CHECK_DEFINITIONS, getChecksByTier } from "./definitions";
+
+import type { CheckResult, CheckOptions, CheckTier, PageAnalysis } from "./types";
 
 /**
  * Maximum HTML size in bytes (5MB)

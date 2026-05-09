@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/nextjs';
-import { ApplicationError, ErrorCode } from './types';
 
 import { logger } from '@/lib/logger';
+
+import { ApplicationError, ErrorCode } from './types';
+
 const isDev = process.env.NODE_ENV !== 'production';
 
 /**

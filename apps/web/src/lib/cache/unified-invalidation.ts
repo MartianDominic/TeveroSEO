@@ -15,6 +15,10 @@
  */
 
 import { revalidatePath, revalidateTag } from 'next/cache';
+
+import { logger } from '@/lib/logger';
+
+import { apiResponseCache, userProfileCache } from './bounded-cache';
 import {
   cacheInvalidateByTag,
   cacheInvalidatePattern,
@@ -22,8 +26,6 @@ import {
   cacheTags,
   redis,
 } from './redis-cache';
-import { logger } from '@/lib/logger';
-import { apiResponseCache, userProfileCache } from './bounded-cache';
 
 /**
  * Client data categories for selective invalidation.

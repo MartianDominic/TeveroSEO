@@ -8,9 +8,12 @@
 "use client";
 
 import * as React from "react";
+
 import { Rocket, Mail, Key, ArrowRight } from "lucide-react";
-import { Card, CardContent, Button, cn } from "@tevero/ui";
+
 import type { ConnectionPath } from "@/hooks/use-connection-wizard";
+
+import { Card, CardContent, Button, cn } from "@tevero/ui";
 
 // ============================================================================
 // Types

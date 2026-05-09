@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+
 import type { ClientMetrics, ClientTableFilters } from "@/lib/dashboard/types";
 
 export interface UseClientFilteringOptions {

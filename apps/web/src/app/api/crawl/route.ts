@@ -8,13 +8,15 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+
 import { z } from "zod";
+
 import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { logger } from '@/lib/logger';
 import { connectionTestLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 
-import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

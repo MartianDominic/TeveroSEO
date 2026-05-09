@@ -9,7 +9,13 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
+
 import { useRouter, useSearchParams } from 'next/navigation';
+
+import { Loader2 } from 'lucide-react';
+
+import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
+
 import { Button } from '@tevero/ui';
 import {
   Select,
@@ -20,8 +26,6 @@ import {
 } from '@tevero/ui';
 import { Input } from '@tevero/ui';
 import { Label } from '@tevero/ui';
-import { Loader2 } from 'lucide-react';
-import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 
 interface ChangeFiltersProps {
   clientId: string;

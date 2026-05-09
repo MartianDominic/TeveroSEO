@@ -8,8 +8,9 @@
  * Renders service line items grouped by category with totals.
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
 import { ServiceLineItems } from "@/components/proposals/ServiceLineItems";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
 
 interface ServiceWithSelection {
   id: string;

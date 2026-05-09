@@ -10,11 +10,15 @@
  */
 
 import { type FC, useMemo } from "react";
+
 import { Video, Link, Play } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Label } from "@tevero/ui";
+
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+import { Label } from "@tevero/ui";
+
 
 export type VideoPlatform = "youtube" | "vimeo" | "loom" | "unknown";
 

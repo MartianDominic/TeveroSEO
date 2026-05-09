@@ -1,7 +1,7 @@
 "use client";
 
-import { Badge } from "@tevero/ui";
 import type { ReportStatus } from "@tevero/types";
+import { Badge } from "@tevero/ui";
 
 interface ReportStatusBadgeProps {
   status: ReportStatus;

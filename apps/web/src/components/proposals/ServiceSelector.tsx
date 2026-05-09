@@ -16,12 +16,17 @@
  */
 
 import { useState } from "react";
-import { PackageSelector } from "./PackageSelector";
-import { AddonCheckbox } from "./AddonCheckbox";
-import { ServiceSummary } from "./ServiceSummary";
-import { PriceEditModal } from "./PriceEditModal";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { useTranslations } from "next-intl";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { AddonCheckbox } from "./AddonCheckbox";
+import { PackageSelector } from "./PackageSelector";
+import { PriceEditModal } from "./PriceEditModal";
+import { ServiceSummary } from "./ServiceSummary";
+
+
 
 interface ServiceTemplate {
   id: string;

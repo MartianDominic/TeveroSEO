@@ -7,20 +7,21 @@
  * DELETE /api/clients/:clientId/branding - Delete branding
  */
 import { NextRequest, NextResponse } from "next/server";
+
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import {
   getOpenSeo,
   putOpenSeo,
   deleteOpenSeo,
   FastApiError,
 } from "@/lib/server-fetch";
-import { requireClientAccess, AuthError } from "@/lib/auth";
-import { validateCsrf } from "@/lib/api/security";
 import {
   brandingSchema,
   safeParseJson,
   formatValidationErrors,
 } from "@/lib/validations/api-schemas";
-import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

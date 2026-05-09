@@ -8,7 +8,14 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+
 import { formatDistanceToNow } from 'date-fns';
+import { Undo2, ExternalLink, Loader2 } from 'lucide-react';
+
+import type { Change } from '@/actions/changes';
+import { safeGetPathname } from '@/lib/utils/safe-parse';
+import { safeHref, isSafeUrl } from '@/lib/utils/safe-url';
+
 import { Button } from '@tevero/ui';
 import { Badge } from '@tevero/ui';
 import { Checkbox } from '@tevero/ui';
@@ -20,12 +27,10 @@ import {
   TableHeader,
   TableRow,
 } from '@tevero/ui';
-import { Undo2, ExternalLink, Loader2 } from 'lucide-react';
-import type { Change } from '@/actions/changes';
-import { RevertDialog } from './RevertDialog';
+
 import { BatchRevertDialog } from './BatchRevertDialog';
-import { safeGetPathname } from '@/lib/utils/safe-parse';
-import { safeHref, isSafeUrl } from '@/lib/utils/safe-url';
+import { RevertDialog } from './RevertDialog';
+
 
 interface ChangeListProps {
   changes: Change[];

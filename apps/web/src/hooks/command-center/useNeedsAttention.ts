@@ -8,6 +8,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+
 import type { AttentionItem } from "@/types/command-center";
 
 export interface NeedsAttentionResponse {

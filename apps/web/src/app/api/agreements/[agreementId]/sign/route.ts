@@ -16,10 +16,10 @@
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { NextRequest, NextResponse } from "next/server";
-import { RateLimiter, rateLimitHeaders } from "@/lib/rate-limit";
-import { getOpenSeoUrl } from "@/lib/env";
 
+import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
+import { RateLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 
 /**
  * Strict rate limiter for public agreement signing endpoint.

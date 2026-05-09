@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
+
 import { useParams } from "next/navigation";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link2, FileQuestion, CheckCircle, AlertCircle } from "lucide-react";
+
+import { getMappings } from "@/actions/seo/mapping";
+import { MappingTable } from "@/components/mapping/MappingTable";
+import { SuggestMappingButton } from "@/components/mapping/SuggestMappingButton";
+
 import {
   Card,
   CardContent,
@@ -14,10 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { Link2, FileQuestion, CheckCircle, AlertCircle } from "lucide-react";
-import { getMappings } from "@/actions/seo/mapping";
-import { MappingTable } from "@/components/mapping/MappingTable";
-import { SuggestMappingButton } from "@/components/mapping/SuggestMappingButton";
 
 interface MappingItem {
   id: string;

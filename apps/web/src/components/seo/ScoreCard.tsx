@@ -1,8 +1,9 @@
 "use client";
 
-import { Card, CardContent, Badge } from "@tevero/ui";
 import type { ScoreBreakdown } from "@/lib/audit/checks/types";
+
 import { QUALITY_THRESHOLDS } from "@tevero/types";
+import { Card, CardContent, Badge } from "@tevero/ui";
 
 interface ScoreCardProps {
   score: number;

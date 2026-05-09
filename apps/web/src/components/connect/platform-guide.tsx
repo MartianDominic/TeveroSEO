@@ -10,10 +10,14 @@
 "use client";
 
 import * as React from "react";
+
 import Link from "next/link";
+
 import { ChevronLeft, ChevronRight, Copy, Check, ExternalLink } from "lucide-react";
-import { Button, Card, CardContent, cn } from "@tevero/ui";
+
 import type { GuideStep } from "@/lib/api/connect";
+
+import { Button, Card, CardContent, cn } from "@tevero/ui";
 
 // ============================================================================
 // Types

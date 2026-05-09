@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+
 import * as Sentry from "@sentry/nextjs";
-import { Button } from "@tevero/ui";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
 import { logger } from "@/lib/logger";
+
+import { Button } from "@tevero/ui";
 
 const USER_FRIENDLY_MESSAGE = "Something went wrong. Please try again.";
 const isDev = process.env.NODE_ENV === "development";

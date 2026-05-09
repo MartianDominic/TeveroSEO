@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+
 import { RotateCcw, Loader2 } from "lucide-react";
+
+import {
+  type ClientBranding,
+  DEFAULT_BRANDING,
+  updateBranding,
+  uploadLogo,
+  deleteLogo,
+  resetBranding,
+} from "@/lib/api/branding";
+import { useClientStore } from "@/stores/clientStore";
+
 import {
   Button,
   Card,
@@ -13,18 +25,9 @@ import {
   StatusChip,
 } from "@tevero/ui";
 
-import { LogoUpload } from "./LogoUpload";
-import { ColorPicker } from "./ColorPicker";
 import { BrandingPreview } from "./BrandingPreview";
-import {
-  type ClientBranding,
-  DEFAULT_BRANDING,
-  updateBranding,
-  uploadLogo,
-  deleteLogo,
-  resetBranding,
-} from "@/lib/api/branding";
-import { useClientStore } from "@/stores/clientStore";
+import { ColorPicker } from "./ColorPicker";
+import { LogoUpload } from "./LogoUpload";
 
 interface BrandingFormProps {
   /** Client UUID */

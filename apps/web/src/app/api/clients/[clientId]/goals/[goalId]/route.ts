@@ -6,6 +6,8 @@
  * DELETE /api/clients/:clientId/goals/:goalId - Delete a goal
  */
 import { NextResponse } from "next/server";
+
+import { validateCsrf } from "@/lib/api/security";
 import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import {
   getOpenSeo,
@@ -13,7 +15,6 @@ import {
   deleteOpenSeo,
   FastApiError,
 } from "@/lib/server-fetch";
-import { validateCsrf } from "@/lib/api/security";
 import {
   updateGoalByIdSchema,
   safeParseJson,

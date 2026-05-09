@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { useGoalTemplates, useCreateGoal } from "@/lib/hooks/useGoals";
+import { cn } from "@/lib/utils";
+import type { GoalTemplateSelect } from "@/types/goals";
+
 import {
   Dialog,
   DialogContent,
@@ -14,10 +19,8 @@ import {
   Label,
   Checkbox,
 } from "@tevero/ui";
-import { useGoalTemplates, useCreateGoal } from "@/lib/hooks/useGoals";
+
 import { GoalIcon } from "./GoalIcon";
-import { cn } from "@/lib/utils";
-import type { GoalTemplateSelect } from "@/types/goals";
 
 interface GoalSetupWizardProps {
   clientId: string;

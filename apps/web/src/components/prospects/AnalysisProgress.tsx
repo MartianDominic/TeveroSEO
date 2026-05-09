@@ -10,11 +10,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+
 import {
   useAnalysisProgress,
   type ProgressStage,
 } from "@/hooks/useAnalysisProgress";
+import { cn } from "@/lib/utils";
 
 const STAGE_ICONS: Record<ProgressStage, React.ElementType> = {
   connecting: Globe,

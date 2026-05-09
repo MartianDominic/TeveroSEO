@@ -2,8 +2,9 @@
  * URL Input Component Tests
  * Phase 66-04: Connection Wizard UI
  */
-import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+
 import { UrlInput } from "./url-input";
 
 describe("UrlInput", () => {

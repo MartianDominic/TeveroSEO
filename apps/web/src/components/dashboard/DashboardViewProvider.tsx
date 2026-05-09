@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { TableControls } from "./TableControls";
+
 import { type ViewConfig, getDefaultViewConfig } from "@/types/saved-views";
+
+import { TableControls } from "./TableControls";
 
 interface DashboardViewProviderProps {
   /** Workspace ID for saved views */

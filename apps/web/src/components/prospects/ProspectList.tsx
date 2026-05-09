@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ProspectCard } from "./ProspectCard";
-import { BulkActionBar } from "./BulkActionBar";
-import { PipelineDistributionChart } from "./PipelineDistributionChart";
-import { Badge, Checkbox } from "@tevero/ui";
+
 import type { Prospect } from "@/app/(shell)/prospects/actions";
 import {
   updateProspectAction,
   bulkAnalyzeAction,
 } from "@/app/(shell)/prospects/actions";
+
+import { Badge, Checkbox } from "@tevero/ui";
+
+import { BulkActionBar } from "./BulkActionBar";
+import { PipelineDistributionChart } from "./PipelineDistributionChart";
+import { ProspectCard } from "./ProspectCard";
 
 interface ProspectListProps {
   prospects: Prospect[];

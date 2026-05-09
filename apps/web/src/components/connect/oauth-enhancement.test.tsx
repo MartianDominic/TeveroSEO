@@ -2,8 +2,9 @@
  * OAuth Enhancement Tests
  * Phase 66-09: Platform Integration Facade
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { OAuthEnhancement, type EnhancementPlatform } from "./oauth-enhancement";
 
 // Mock @tevero/ui components

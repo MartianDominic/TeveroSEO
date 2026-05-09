@@ -787,7 +787,7 @@ export const indexnowConfig = pgTable("indexnow_config", {
   apiKeyEncrypted: text("api_key_encrypted").notNull(),
   
   // Key source tracking
-  keySource: text("key_source", { enum: ["client_key", "tevero_fallback", "plugin_native", "manual_pending"] })
+  keySource: text("key_source", { enum: ["client_key", "plugin_native", "manual_pending"] })
     .notNull()
     .default("manual_pending"),
   
@@ -812,7 +812,6 @@ export const indexnowConfig = pgTable("indexnow_config", {
   
   // Settings
   enabled: boolean("enabled").default(true),
-  teveroFallbackEnabled: boolean("tevero_fallback_enabled").default(true),
   
   // Statistics
   submissionsToday: integer("submissions_today").default(0),
@@ -839,13 +838,12 @@ ALTER TABLE indexnow_config
 ADD COLUMN connection_id UUID REFERENCES site_connections(id),
 ADD COLUMN key_source TEXT DEFAULT 'manual_pending',
 ADD COLUMN detected_plugin TEXT,
-ADD COLUMN platform_metadata JSONB DEFAULT '{}',
-ADD COLUMN tevero_fallback_enabled BOOLEAN DEFAULT true;
+ADD COLUMN platform_metadata JSONB DEFAULT '{}';
 
 -- Add constraint for key_source enum
 ALTER TABLE indexnow_config
 ADD CONSTRAINT indexnow_config_key_source_check
-CHECK (key_source IN ('client_key', 'tevero_fallback', 'plugin_native', 'manual_pending'));
+CHECK (key_source IN ('client_key', 'plugin_native', 'manual_pending'));
 
 -- Create index for connection lookups
 CREATE INDEX indexnow_config_connection_idx ON indexnow_config(connection_id);
@@ -1039,13 +1037,10 @@ export function ConnectionSuccessScreen({ connection, indexNowStatus }: Connecti
                 </Collapsible>
               )}
               
-              {/* Fallback option */}
+              {/* Note: IndexNow requires key file at each domain - no shared key possible */}
               <div className="text-sm text-muted-foreground">
-                <span>Or enable </span>
-                <Button variant="link" className="p-0 h-auto">
-                  TeveroSEO fallback mode
-                </Button>
-                <span> to use our shared IndexNow key (submissions still work)</span>
+                <span>IndexNow requires the key file hosted at your domain. </span>
+                <span>URLs will queue until verification completes.</span>
               </div>
             </div>
           )}
@@ -1210,7 +1205,7 @@ export class IndexNowMigrationService {
 - [ ] ConnectionOnboardingService.onConnectionEstablished()
 - [ ] Update connection success screen with IndexNow status
 - [ ] Add manual instruction display for unsupported platforms
-- [ ] Enable TeveroSEO fallback mode option
+- [ ] Show pending queue status for unverified domains
 
 ### Phase 4: Migration & Testing (Days 8-9)
 - [ ] IndexNowMigrationService for existing connections
@@ -1227,7 +1222,7 @@ export class IndexNowMigrationService {
 3. **Native Detection**: WordPress SEO plugins detected in 90%+ of cases
 4. **Shopify Automation**: Files API + Redirect works for 80%+ of Shopify stores
 5. **Cloudflare Bypass**: Offered automatically for Squarespace, Webflow, etc.
-6. **Fallback Mode**: TeveroSEO key works when client key not verified
+6. **Pending Queue**: URLs queued until key verification completes (no fallback - protocol requires per-domain keys)
 
 ---
 

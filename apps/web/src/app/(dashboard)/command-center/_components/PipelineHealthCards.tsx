@@ -8,11 +8,13 @@
  * Implemented in Task 2.
  */
 
-import { useDashboardMetrics } from "@/hooks/command-center/useDashboardMetrics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DraggableCard } from "@/components/command-center/DraggableCard";
 import { Users, FileText, FileSignature, CreditCard } from "lucide-react";
+
+import { DraggableCard } from "@/components/command-center/DraggableCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboardMetrics } from "@/hooks/command-center/useDashboardMetrics";
 import type { DashboardMetricsResponse, PipelineMetrics } from "@/types/dashboard-metrics";
+
 import type { LucideIcon } from "lucide-react";
 
 interface PipelineHealthCardsProps {

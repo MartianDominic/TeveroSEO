@@ -25,7 +25,7 @@ This execution plan sequences the implementation of the IndexNow Multi-Tenant In
 2. **Top 15 CMS Support** - WordPress, Shopify, Wix, Drupal, Joomla, Magento, and 9 more platforms
 3. **IndexNowCapableAdapter Interface** - Platform adapters extended with IndexNow methods
 4. **Native Plugin Detection** - Auto-detect Rank Math, SEOPress, Yoast for WordPress
-5. **Graceful Degradation** - Native plugin > Auto-deploy > Cloudflare bypass > Manual instructions > TeveroSEO fallback
+5. **Graceful Degradation** - Native plugin > Auto-deploy > Cloudflare bypass > Manual instructions (pending queue until verified)
 6. **Parallel workstreams** - Infrastructure, Platform Adapters, and Sitemap tracks run concurrently
 
 ---
@@ -43,16 +43,15 @@ This execution plan sequences the implementation of the IndexNow Multi-Tenant In
    - `indexnow_config` table with domains, verification status, statistics
    - `indexnow_submissions` table for audit trail
    - **Link to site_connections table** for onboarding integration
-   - Add `key_source` enum: `client_key`, `tevero_fallback`, `plugin_native`, `manual_pending`
+   - Add `key_source` enum: `client_key`, `plugin_native`, `manual_pending`
 
 2. Schema fields for onboarding integration:
    ```typescript
    // New fields in indexnow_config
    connectionId: uuid("connection_id").references(() => siteConnections.id)
-   keySource: enum("client_key", "tevero_fallback", "plugin_native", "manual_pending")
+   keySource: enum("client_key", "plugin_native", "manual_pending")
    detectedPlugin: text("detected_plugin")  // e.g., "rankmath", "seopress"
    platformMetadata: jsonb("platform_metadata")  // automation score, method
-   teveroFallbackEnabled: boolean  // Client opted into fallback
    ```
 
 **Afternoon (4 hours):**
@@ -61,11 +60,11 @@ This execution plan sequences the implementation of the IndexNow Multi-Tenant In
    - `setupClient(clientId, domains, options)`
    - `verifyDomain(clientId, domain)`
    - `getConfig(clientId)`
-   - `enableTeveroFallback(clientId)`
+   - `getPendingUrls(clientId, domain)`
 
 ### Success Criteria
 - [x] Migration runs without errors on dev PostgreSQL
-- [x] Schema includes fallback mode tracking
+- [x] Schema includes pending queue tracking
 - [x] IndexNowService class compiles with TypeScript
 
 ### Parallel Workstream
@@ -102,7 +101,7 @@ If migration fails: `drizzle-kit drop` and fix schema before proceeding.
 
 **Afternoon (4 hours):**
 3. Create worker (`src/server/workers/indexnow-worker.ts`)
-   - Decrypt API key (client or TeveroSEO fallback)
+   - Decrypt client API key (skip if domain pending verification)
    - Build payload with correct keyLocation based on key source
    - POST to endpoints with timeout handling
    - Log to `indexnow_submissions` table
@@ -179,65 +178,76 @@ If scheduler causes Redis memory issues: Add TTL to all keys, implement key clea
 
 ---
 
-## Day 4: TeveroSEO Fallback Key Infrastructure
+## Day 4: Pending Queue and Verification Flow
 
 ### Objectives
-- Deploy TeveroSEO-owned key file to our hosting
-- Implement fallback cascade logic
+- Implement pending URL queue for unverified domains
+- Build verification status management
+- NOTE: IndexNow protocol requires key file at each domain — no shared/fallback key possible
 
 ### Deliverables
 
 **Morning (4 hours):**
-1. Create TeveroSEO IndexNow key (single key for fallback):
-   ```bash
-   TEVERO_INDEXNOW_KEY=<uuid>  # Add to .env
-   ```
-
-2. Deploy key file endpoint to TeveroSEO infrastructure:
+1. Pending URL queue management:
    ```typescript
-   // apps/web/src/app/[key].txt/route.ts (Next.js route)
-   // OR nginx config for static file
-   ```
-   - Serve at: `https://app.teveroseo.com/{TEVERO_INDEXNOW_KEY}.txt`
-
-**Afternoon (4 hours):**
-3. Implement graceful degradation cascade in `IndexNowService`:
-   ```typescript
-   async getKeyForSubmission(clientId, domain) {
-     const config = await this.getConfig(clientId);
-     
-     // Cascade 1: Client's verified key
-     if (config.verificationStatus[domain] === "verified") {
-       return {
-         key: decrypt(config.apiKeyEncrypted),
-         keyLocation: `https://${domain}/${key}.txt`,
-         source: "client_key"
-       };
+   // URLs queued while domain verification is pending
+   async queuePendingUrl(clientId: string, domain: string, url: string) {
+     const pendingKey = `indexnow:pending:${clientId}:${domain}`;
+     await redis.sadd(pendingKey, url);
+     await redis.expire(pendingKey, 86400 * 7); // 7 day TTL
+   }
+   
+   async flushPendingOnVerification(clientId: string, domain: string) {
+     const pendingKey = `indexnow:pending:${clientId}:${domain}`;
+     const urls = await redis.smembers(pendingKey);
+     if (urls.length > 0) {
+       await this.queueBatch(clientId, domain, urls, "verification_flush");
+       await redis.del(pendingKey);
      }
-     
-     // Cascade 2: TeveroSEO fallback (if enabled)
-     if (config.teveroFallbackEnabled) {
-       return {
-         key: env.TEVERO_INDEXNOW_KEY,
-         keyLocation: `https://app.teveroseo.com/${env.TEVERO_INDEXNOW_KEY}.txt`,
-         source: "tevero_fallback"
-       };
-     }
-     
-     // Cascade 3: Not ready
-     return null;
    }
    ```
 
-4. Update worker to use cascade logic
+2. Verification status transitions:
+   ```typescript
+   type VerificationStatus = "pending" | "verified" | "failed" | "native_handled";
+   
+   async updateVerificationStatus(clientId, domain, status) {
+     await db.update(indexnowConfig)
+       .set({ verificationStatus: { [domain]: status } })
+       .where(eq(indexnowConfig.clientId, clientId));
+     
+     // On verification success, flush pending URLs
+     if (status === "verified") {
+       await this.flushPendingOnVerification(clientId, domain);
+     }
+   }
+   ```
+
+**Afternoon (4 hours):**
+3. Key verification checker (cron job):
+   ```typescript
+   // Run every 15 minutes for pending domains
+   async verifyPendingDomains() {
+     const pending = await db.query.indexnowConfig.findMany({
+       where: sql`verification_status->>'${domain}' = 'pending'`
+     });
+     
+     for (const config of pending) {
+       const verified = await this.checkKeyFile(domain, config.apiKey);
+       if (verified) {
+         await this.updateVerificationStatus(config.clientId, domain, "verified");
+       }
+     }
+   }
+   ```
+
+4. Dashboard notification for pending verification
 
 ### Success Criteria
-- [x] `https://app.teveroseo.com/{key}.txt` returns key
-- [x] Submissions use correct key based on verification status
-- [x] Fallback-mode submissions log with `source: tevero_fallback`
-
-### Risk: TeveroSEO Key Rate Limiting
-IndexNow has no official rate limits, but we should monitor for any throttling when many clients use the fallback key. Mitigation: Implement per-domain rate limiting for fallback submissions.
+- [x] URLs queue when domain not yet verified
+- [x] Pending URLs auto-flush on verification success
+- [x] Verification cron checks pending domains every 15 min
+- [x] Dashboard shows pending status with setup instructions
 
 ---
 
@@ -327,7 +337,7 @@ If adapter methods fail: Connection still works, IndexNow shows manual instructi
 2. Update Connection Success Screen component:
    - Show IndexNow status inline (not separate wizard)
    - Collapsible manual instructions for unsupported platforms
-   - TeveroSEO fallback mode toggle
+   - Pending verification status indicator
 
 **Afternoon (4 hours):**
 3. Additional platform adapters:
@@ -432,7 +442,7 @@ If AI-Writer integration breaks publish flow: IndexNow queue errors are non-bloc
    - Step 2: Platform detection
    - Step 3: Auto-deploy or manual instructions
    - Step 4: Verification
-   - Step 5: Enable TeveroSEO fallback (optional)
+   - Step 5: View pending queue status
 
 **Afternoon (4 hours):**
 3. Submission History Table (`IndexNowSubmissionHistory.tsx`):
@@ -499,7 +509,7 @@ Manual walkthrough of complete user journey:
    - [ ] Worker processing jobs
    - [ ] Scheduler flushing batches
    - [ ] WordPress auto-deploy works
-   - [ ] TeveroSEO fallback key accessible
+   - [ ] Pending queue flushes on verification
    - [ ] Dashboard shows data
    - [ ] AI-Writer triggers working
 
@@ -517,7 +527,7 @@ Manual walkthrough of complete user journey:
 |------|------------|--------|------------|
 | IndexNow endpoint downtime | Low | Medium | Dual-endpoint fallback (api.indexnow.org + bing.com) |
 | WordPress REST API auth failures | Medium | Medium | Fall back to manual instructions |
-| TeveroSEO fallback key abuse | Low | High | Per-domain rate limiting for fallback |
+| Pending queue overflow | Low | Medium | 7-day TTL on pending URLs, max 10K per domain |
 | Redis memory exhaustion | Low | High | TTL on all keys, batching limits |
 | Platform detection inaccuracy | Medium | Low | Default to "unknown" with generic instructions |
 | AI-Writer integration breaks publish | Medium | High | Non-blocking try/except, async fire-and-forget |
@@ -535,7 +545,7 @@ Day 1 (Schema + Service + connection_id linkage)
     |                   |
     |                   +---> Day 7 (Triggers)
     |
-    +---> Day 4 (TeveroSEO Fallback)
+    +---> Day 4 (Pending Queue + Verification)
     |
     +---> Day 5 (IndexNowCapableAdapter + WordPress/Shopify)
     |         |
@@ -555,7 +565,7 @@ Day 1 (Schema + Service + connection_id linkage)
 **Days 1-3:** Infrastructure foundation (sequential, critical path)
 
 **Days 4-6:** Three parallel tracks possible:
-- Track A: TeveroSEO fallback (Day 4) + Triggers (partial Day 7)
+- Track A: Pending Queue (Day 4) + Triggers (partial Day 7)
 - Track B: WordPress (Day 5) + Platform detection (Day 6)
 - Track C: Sitemap lastmod integration
 
@@ -572,7 +582,7 @@ Day 1 (Schema + Service + connection_id linkage)
 | Submission success rate | > 98% | `success=true / total` |
 | Queue latency (publish) | < 60s | Time from publish to IndexNow POST |
 | WordPress auto-deploy rate | > 70% | Auto-deploy success / WordPress clients |
-| Fallback usage | < 30% | Fallback submissions / total |
+| Verification rate | > 80% | Verified domains / total domains |
 | Dashboard availability | 99.9% | Uptime monitoring |
 
 ---
@@ -586,8 +596,8 @@ PAYMENT_ENCRYPTION_KEY=<32-byte-base64>
 # Cross-service auth
 INTERNAL_API_KEY=<random-string>
 
-# TeveroSEO fallback key
-TEVERO_INDEXNOW_KEY=<uuid>
+# Pending queue TTL (days)
+INDEXNOW_PENDING_TTL_DAYS=7
 
 # Optional tuning
 INDEXNOW_DEFAULT_DELAY_PUBLISH=30
@@ -604,7 +614,7 @@ This 9-day execution plan delivers a complete IndexNow system with:
 1. **Zero Extra Steps:** IndexNow auto-configures during CMS connection onboarding
 2. **Top 15 CMS Support:** WordPress, Shopify, Wix, Drupal, Joomla, Magento, and more
 3. **Native Plugin Detection:** Auto-detect Rank Math, SEOPress, Yoast (WordPress handles IndexNow)
-4. **Graceful Degradation:** Native plugin > Auto-deploy > Cloudflare bypass > Manual > TeveroSEO fallback
+4. **Graceful Degradation:** Native plugin > Auto-deploy > Cloudflare bypass > Manual (pending queue until verified)
 5. **Observability:** Inline status in connection screen, history table, statistics
 6. **Resilience:** Dual endpoints, retry logic, circuit breakers
 

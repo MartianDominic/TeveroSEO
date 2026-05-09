@@ -9,12 +9,14 @@
  * FIX H-API-04: Use LONG_RUNNING_TIMEOUT_MS for sync operations that may take time.
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
+
 import { validateCsrf } from "@/lib/api/security";
-import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { postOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
 import { LONG_RUNNING_TIMEOUT_MS } from "@/lib/fetch-with-timeout";
 import { logger } from '@/lib/logger';
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { postOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

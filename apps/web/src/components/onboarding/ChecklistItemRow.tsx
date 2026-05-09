@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import { Check, Send, Link2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface ChecklistItemRowProps {
   itemId: string;

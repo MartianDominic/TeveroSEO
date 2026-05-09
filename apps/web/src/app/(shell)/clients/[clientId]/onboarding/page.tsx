@@ -6,7 +6,9 @@
  * Redirects to complete page when 100% done.
  */
 import { notFound, redirect } from "next/navigation";
+
 import { getClientChecklist, getClient } from "@/lib/api/clients";
+
 import { OnboardingChecklist } from "./onboarding-checklist";
 
 interface PageProps {

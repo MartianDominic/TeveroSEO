@@ -5,8 +5,10 @@
  * Displays appropriate icon for each entity type in the command center.
  */
 import { Users, FileText, FileSignature, CreditCard, User } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+
 import type { EntityType } from "@/types/command-center";
+
+import type { LucideIcon } from "lucide-react";
 
 const ENTITY_ICONS: Record<EntityType, LucideIcon> = {
   prospect: Users,

@@ -8,10 +8,14 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+
 import Link from "next/link";
-import { OAuthEnhancement, type EnhancementPlatform } from "@/components/connect/oauth-enhancement";
+import { useSearchParams, useRouter } from "next/navigation";
+
 import { Loader2 } from "lucide-react";
+
+import { OAuthEnhancement, type EnhancementPlatform } from "@/components/connect/oauth-enhancement";
+
 
 // -----------------------------------------------------------------------------
 // Types

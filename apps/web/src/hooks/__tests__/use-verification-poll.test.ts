@@ -4,8 +4,9 @@
  *
  * Tests polling behavior, status transitions, cleanup, and error handling.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { useVerificationPoll } from "../use-verification-poll";
 
 // Mock fetch globally

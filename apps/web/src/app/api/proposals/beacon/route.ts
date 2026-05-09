@@ -16,13 +16,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { logger } from "@/lib/logger";
-import { getOpenSeoUrl } from "@/lib/env";
 import {
   verifyBeaconToken,
   isSignedBeaconToken,
   BeaconTokenError,
 } from "@/lib/auth/beacon-tokens";
+import { getOpenSeoUrl } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 // 1x1 transparent GIF (43 bytes)
 const TRANSPARENT_GIF = Buffer.from(

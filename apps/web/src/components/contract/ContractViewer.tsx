@@ -11,6 +11,7 @@
  * with restricted ALLOWED_TAGS before rendering.
  */
 import DOMPurify from "dompurify";
+
 import {
   Card,
   CardContent,

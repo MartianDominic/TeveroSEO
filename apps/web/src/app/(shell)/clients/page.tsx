@@ -10,11 +10,15 @@
  * - GettingStartedCard conditionally renders based on data
  */
 
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getFastApi, FastApiError, CircuitOpenError } from "@/lib/server-fetch";
+
+import { auth } from "@clerk/nextjs/server";
+
 import { logger } from "@/lib/logger";
+import { getFastApi, FastApiError, CircuitOpenError } from "@/lib/server-fetch";
+
 import type { Client } from "@tevero/types";
+
 import { ClientListView } from "./components/client-list-view";
 import { ClientsError } from "./components/clients-error";
 

@@ -10,8 +10,9 @@
 
 'use client';
 
-import { Tabs, TabsList, TabsTrigger, cn } from '@tevero/ui';
 import { LayoutGrid, List } from 'lucide-react';
+
+import { Tabs, TabsList, TabsTrigger, cn } from '@tevero/ui';
 
 // ============================================================================
 // Types

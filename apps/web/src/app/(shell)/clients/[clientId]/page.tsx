@@ -11,12 +11,17 @@
  * - Sub-components extracted to ./components/
  */
 
-import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
-import { getFastApi, FastApiError, CircuitOpenError } from "@/lib/server-fetch";
+
+import { auth } from "@clerk/nextjs/server";
+
 import { logger } from "@/lib/logger";
+import { getFastApi, FastApiError, CircuitOpenError } from "@/lib/server-fetch";
+
 import type { Client } from "@tevero/types";
+
 import { ClientDashboardView } from "./client-dashboard-view";
+
 import type { IntelligenceStatus, PublishingLog } from "./components";
 
 export const dynamic = "force-dynamic";

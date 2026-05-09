@@ -1,8 +1,12 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Info } from "lucide-react";
+
+import { getAuditResults } from "@/actions/seo/audit";
+
 import {
   Button,
   Card,
@@ -11,7 +15,6 @@ import {
   CardTitle,
   Badge,
 } from "@tevero/ui";
-import { getAuditResults } from "@/actions/seo/audit";
 
 interface LighthouseAudit {
   id: string;

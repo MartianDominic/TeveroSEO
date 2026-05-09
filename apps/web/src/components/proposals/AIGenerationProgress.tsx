@@ -13,6 +13,18 @@
  */
 
 import { type FC } from "react";
+
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Circle,
+  Sparkles,
+  AlertTriangle,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import {
   Dialog,
   DialogContent,
@@ -22,15 +34,7 @@ import {
   Button,
   ProgressBar,
 } from "@tevero/ui";
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Circle,
-  Sparkles,
-  AlertTriangle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import type { GeneratableSectionType } from "./AIGenerationModal";
 
 /**

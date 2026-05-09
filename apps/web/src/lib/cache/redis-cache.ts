@@ -19,10 +19,10 @@ export {
   checkRedisHealth,
 } from "@/lib/redis/client";
 
+import { logger } from '@/lib/logger';
 import { redis } from "@/lib/redis/client";
 import type { ZodLikeSchema } from "@/lib/utils/type-guards";
 
-import { logger } from '@/lib/logger';
 // Namespace prefix for all cache keys - prevents collisions
 const CACHE_PREFIX = "tevero:cache:";
 

@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { Download, Search, Loader2, ExternalLink, TrendingUp } from "lucide-react";
+
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 import {
   Badge,
   Button,
@@ -16,13 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from "@tevero/ui";
-import { Download, Search, Loader2, ExternalLink, TrendingUp } from "lucide-react";
+
 import {
   spyOnCompetitor,
   exportCompetitorCsv,
   type CompetitorKeyword,
 } from "./actions";
-import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 
 export default function CompetitorSpyPage() {
   const [domain, setDomain] = useState("");

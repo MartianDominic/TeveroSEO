@@ -12,13 +12,16 @@
  *
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
-import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { PublicAgreementView } from "./PublicAgreementView";
-import { getOpenSeoUrl } from "@/lib/env";
+import { notFound } from "next/navigation";
 
+import { Metadata } from "next";
+
+
+import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
+
+import { PublicAgreementView } from "./PublicAgreementView";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

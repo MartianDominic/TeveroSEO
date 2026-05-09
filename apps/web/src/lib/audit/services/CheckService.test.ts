@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+
 import { CheckService, createCheckService } from "./CheckService";
 import { createInMemoryFindingsRepository } from "../repositories";
+
 import type { FindingsRepository } from "../repositories";
 
 const sampleHtml = `

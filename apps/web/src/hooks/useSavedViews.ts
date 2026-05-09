@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
 import {
   getSavedViewsWithConfig,
   createSavedViewWithConfig,
@@ -6,13 +7,13 @@ import {
   deleteSavedViewById,
   setDefaultViewById,
 } from "@/actions/views/saved-views";
+import { queryKeys } from "@/lib/query-keys";
 import type {
   SavedView,
   CreateSavedViewInput,
   UpdateSavedViewInput,
 } from "@/types/saved-views";
 // HIGH-STATE-04 FIX: Use centralized query key factory
-import { queryKeys } from "@/lib/query-keys";
 
 interface UseSavedViewsOptions {
   workspaceId: string;

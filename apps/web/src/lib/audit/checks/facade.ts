@@ -5,19 +5,21 @@
  * Phase 40-04: Proxies to open-seo-main for actual check execution.
  */
 
+import * as crypto from "crypto";
+
+import { logger } from '@/lib/logger';
+
+import {
+  isValidCheckResult,
+  isValidCheckResponse,
+} from "./types";
+
 import type {
   CheckOptions,
   AllChecksResult,
   CheckResult,
   ScoreResult,
 } from "./types";
-import {
-  isValidCheckResult,
-  isValidCheckResponse,
-} from "./types";
-import * as crypto from "crypto";
-
-import { logger } from '@/lib/logger';
 /**
  * Request timeout in milliseconds (120 seconds).
  * FIX H-COMM-04: Increased from 30s to 120s because audits can take 5+ minutes.

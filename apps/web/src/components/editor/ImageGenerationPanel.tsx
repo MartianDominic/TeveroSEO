@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+
 import { Image as ImageIcon, Loader2, Paperclip } from "lucide-react";
+
+import { apiPost, apiPatch } from "@/lib/api-client";
+import { useArticleEditorStore } from "@/stores";
 
 import {
   Button,
@@ -16,8 +20,6 @@ import {
 } from "@tevero/ui";
 
 // Stores and API
-import { useArticleEditorStore } from "@/stores";
-import { apiPost, apiPatch } from "@/lib/api-client";
 
 // ---------------------------------------------------------------------------
 // Model constants — display names mapped to model IDs

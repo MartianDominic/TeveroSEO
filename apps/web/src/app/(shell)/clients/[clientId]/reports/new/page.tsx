@@ -1,7 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import { PageHeader } from "@tevero/ui";
+
 import { ReportBuilder } from "@/components/reports/ReportBuilder";
 import { getOpenSeo } from "@/lib/server-fetch";
+
+import { PageHeader } from "@tevero/ui";
 
 type AnyRoute = Parameters<typeof redirect>[0];
 

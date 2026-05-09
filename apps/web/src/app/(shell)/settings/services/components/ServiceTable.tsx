@@ -9,10 +9,14 @@
  */
 
 import { useState } from "react";
-import { Button } from "@tevero/ui";
+
 import { Plus } from "lucide-react";
+
+import { Button } from "@tevero/ui";
+
 import { ServiceCard } from "./ServiceCard";
 import { ServiceFormModal } from "./ServiceFormModal";
+
 import type { ServiceTemplateSelect } from "../actions";
 
 interface Props {

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@tevero/ui";
+
 import { AlertCircle, RotateCcw, Home } from "lucide-react";
 
 import { logger } from '@/lib/logger';
+
+import { Button } from "@tevero/ui";
 /**
  * Error boundary for OAuth success callback page.
  * Catches errors during the post-OAuth completion flow.

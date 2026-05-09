@@ -9,13 +9,16 @@
  * Phase 65: UX Dead End Fix - CRIT-15 (self-service SEO project creation)
  */
 
-import { redirect } from "next/navigation";
-import { getOpenSeo } from "@/lib/server-fetch";
-import { Card, CardContent, CardHeader, CardTitle, Button } from "@tevero/ui";
-import { Search, Globe, BarChart3, Zap, ArrowRight, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { Search, Globe, BarChart3, Zap, ArrowRight, AlertCircle } from "lucide-react";
 
 import { logger } from '@/lib/logger';
+import { getOpenSeo } from "@/lib/server-fetch";
+
+import { Card, CardContent, CardHeader, CardTitle, Button } from "@tevero/ui";
+
 interface Project {
   id: string;
   name: string;

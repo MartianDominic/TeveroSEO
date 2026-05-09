@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@tevero/ui';
 
 import { logger } from '@/lib/logger';
+
+import { Button } from '@tevero/ui';
+
 export default function ConnectionError({
   error,
   reset,

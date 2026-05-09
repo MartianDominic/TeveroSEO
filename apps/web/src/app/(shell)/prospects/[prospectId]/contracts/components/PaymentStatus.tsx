@@ -1,7 +1,8 @@
 "use client";
 
-import { Badge, Button } from "@tevero/ui";
 import { CreditCard, Clock, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+
+import { Badge, Button } from "@tevero/ui";
 
 interface PaymentStatusProps {
   status: string;

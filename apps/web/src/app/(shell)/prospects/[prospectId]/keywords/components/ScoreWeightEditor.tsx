@@ -8,8 +8,11 @@
  */
 
 import { useState } from "react";
-import { Button, Card, CardContent, CardHeader, CardTitle, Slider } from "@tevero/ui";
+
 import { Settings } from "lucide-react";
+
+import { Button, Card, CardContent, CardHeader, CardTitle, Slider } from "@tevero/ui";
+
 import type { ScoreWeights } from "../actions";
 
 interface ScoreWeightEditorProps {

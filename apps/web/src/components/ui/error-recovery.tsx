@@ -11,7 +11,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
 import { AlertCircle, RefreshCw, ArrowLeft, HelpCircle } from "lucide-react";
+
 import { Button, Card, CardContent, Alert, AlertDescription, AlertTitle } from "@tevero/ui";
 
 export interface ErrorRecoveryProps {

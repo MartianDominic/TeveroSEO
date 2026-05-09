@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+
 import { useParams } from "next/navigation";
-import { logger } from '@/lib/logger';
+
 import {
   Link2,
   Link2Off,
@@ -15,23 +16,25 @@ import {
   Plus,
 } from "lucide-react";
 
+
+import { ConnectionWizard, SiteConnectionList } from "@/components/connections";
+import {
+  fetchConnections,
+  createInvite,
+  revokeConnection,
+} from "@/lib/clientOAuth";
+import { logger } from '@/lib/logger';
+import { getSiteConnections } from "@/lib/siteConnections";
+import type { SiteConnection } from "@/lib/siteConnections";
+import { useClientStore } from "@/stores/clientStore";
+
+import type { OAuthConnection, OAuthProvider } from "@tevero/types";
 import {
   Button,
   PageHeader,
   Skeleton,
   StatusChip,
 } from "@tevero/ui";
-
-import type { OAuthConnection, OAuthProvider } from "@tevero/types";
-import { useClientStore } from "@/stores/clientStore";
-import {
-  fetchConnections,
-  createInvite,
-  revokeConnection,
-} from "@/lib/clientOAuth";
-import { ConnectionWizard, SiteConnectionList } from "@/components/connections";
-import { getSiteConnections } from "@/lib/siteConnections";
-import type { SiteConnection } from "@/lib/siteConnections";
 
 // ── Provider configuration ───────────────────────────────────────────────────
 

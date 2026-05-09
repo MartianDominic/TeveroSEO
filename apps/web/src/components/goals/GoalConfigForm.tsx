@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
+import type { GoalTemplateSelect, ClientGoalSelect } from "@/types/goals";
+
 import {
   Button,
   Input,
@@ -9,8 +12,8 @@ import {
   Card,
   CardContent,
 } from "@tevero/ui";
+
 import { GoalIcon } from "./GoalIcon";
-import type { GoalTemplateSelect, ClientGoalSelect } from "@/types/goals";
 
 interface GoalConfigFormProps {
   template: GoalTemplateSelect;

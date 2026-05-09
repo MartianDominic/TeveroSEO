@@ -8,8 +8,7 @@
  */
 
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
-import { Button } from "@tevero/ui";
+
 import {
   LineChart,
   Line,
@@ -19,7 +18,11 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+
 import { formatCurrency } from "@/lib/currency";
+
+import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
+import { Button } from "@tevero/ui";
 
 /**
  * Trend data point structure.

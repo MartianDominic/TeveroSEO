@@ -35,6 +35,7 @@ export const WithLabel: Story = {
 };
 
 export const AllSizes: Story = {
+  args: { value: 60 },
   render: () => (
     <div className="space-y-4 w-64">
       <ProgressBar value={60} size="sm" />
@@ -45,6 +46,7 @@ export const AllSizes: Story = {
 };
 
 export const AutoVariant: Story = {
+  args: { value: 50 },
   render: () => (
     <div className="space-y-4 w-64">
       <ProgressBar value={50} variant="auto" showLabel />

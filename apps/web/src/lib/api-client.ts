@@ -1,13 +1,15 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import {
   fetchWithTimeout,
   TimeoutError,
   DEFAULT_TIMEOUT_MS,
 } from "./fetch-with-timeout";
+
 import type { ZodLikeSchema } from "./utils/type-guards";
 
-import { logger } from '@/lib/logger';
 export class ApiError extends Error {
   constructor(public status: number, public body: unknown, message: string) {
     super(message);

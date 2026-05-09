@@ -8,6 +8,7 @@
  * The SeoQueryProvider handles TanStack Query context for data fetching.
  */
 import type { ReactNode } from "react";
+
 import { SeoQueryProvider } from "./SeoQueryProvider";
 
 export default function SeoProjectLayout({ children }: { children: ReactNode }) {

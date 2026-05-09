@@ -12,16 +12,11 @@
  */
 
 import { useState } from "react";
+
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-  Button,
-} from "@tevero/ui";
 import {
   TrendingDown,
   TrendingUp,
@@ -32,9 +27,7 @@ import {
   Users,
   RefreshCcw,
 } from "lucide-react";
-import Link from "next/link";
-import type { PatternWithClients, PatternType, PatternSeverity } from "@/types/patterns";
-import { getPatternSeverity } from "@/types/patterns";
+
 import {
   getPatterns,
   dismissPattern,
@@ -42,6 +35,17 @@ import {
   refreshPatterns,
   type PaginatedPatternsResponse,
 } from "@/actions/analytics/detect-patterns";
+import type { PatternWithClients, PatternType, PatternSeverity } from "@/types/patterns";
+import { getPatternSeverity } from "@/types/patterns";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+} from "@tevero/ui";
 
 interface PatternsPanelProps {
   workspaceId: string;

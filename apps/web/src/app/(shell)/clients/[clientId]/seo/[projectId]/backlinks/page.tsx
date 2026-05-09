@@ -1,9 +1,27 @@
 "use client";
 
 import { useState } from "react";
+
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link2, Globe, FileText, Loader2, ExternalLink } from "lucide-react";
+
+import {
+  getBacklinksOverview,
+  getBacklinksReferringDomains,
+  getBacklinksTopPages,
+} from "@/actions/seo/backlinks";
+import { extractHostname } from "@/lib/seo/shared";
+import {
+  BacklinksOverviewSchema,
+  ReferringDomainArraySchema,
+  TopPageArraySchema,
+  type BacklinksOverview,
+  type ReferringDomain,
+  type TopPage,
+} from "@/lib/validations/api-response-schemas";
+
 import {
   Button,
   Card,
@@ -23,20 +41,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tevero/ui";
-import {
-  getBacklinksOverview,
-  getBacklinksReferringDomains,
-  getBacklinksTopPages,
-} from "@/actions/seo/backlinks";
-import { extractHostname } from "@/lib/seo/shared";
-import {
-  BacklinksOverviewSchema,
-  ReferringDomainArraySchema,
-  TopPageArraySchema,
-  type BacklinksOverview,
-  type ReferringDomain,
-  type TopPage,
-} from "@/lib/validations/api-response-schemas";
 
 export default function BacklinksPage() {
   const params = useParams<{ clientId: string; projectId: string }>();

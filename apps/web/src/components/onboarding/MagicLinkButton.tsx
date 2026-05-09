@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import { Copy, Mail, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface MagicLinkButtonProps {
   checklistId: string;

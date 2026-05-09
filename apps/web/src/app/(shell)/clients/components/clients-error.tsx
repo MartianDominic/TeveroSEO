@@ -8,9 +8,12 @@
  */
 
 import React from "react";
+
 import { useRouter } from "next/navigation";
-import { Button, PageHeader } from "@tevero/ui";
+
 import { AlertCircle, RefreshCw } from "lucide-react";
+
+import { Button, PageHeader } from "@tevero/ui";
 
 interface ClientsErrorProps {
   message: string;

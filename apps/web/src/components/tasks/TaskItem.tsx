@@ -11,10 +11,14 @@
  * - Source tag
  */
 import { useState } from "react";
+
 import { isBefore, isToday } from "date-fns";
+import { Pin, Clock, Check, MoreHorizontal, Bell } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import { TodayFeedItem } from "@tevero/ui";
 import { Button } from "@tevero/ui";
-import { Pin, Clock, Check, MoreHorizontal, Bell } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +26,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@tevero/ui";
-import { cn } from "@/lib/utils";
+
+
 import { UrgencyScoreBadge } from "./UrgencyScoreBadge";
+
 import type { AggregatedTask } from "./types";
 
 interface TaskItemProps {

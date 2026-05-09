@@ -5,7 +5,15 @@
  * Phase 25: Team & Intelligence - Opportunity Identification
  */
 
+import Link from "next/link";
+
 import { useQuery } from "@tanstack/react-query";
+import { Lightbulb, TrendingUp, Target, Zap, ArrowRight, FileText } from "lucide-react";
+
+import { getClientOpportunities, type PaginatedResponse } from "@/actions/analytics/get-opportunities";
+import { cn } from "@/lib/utils";
+import type { Opportunity, OpportunityType } from "@/types/opportunities";
+
 import {
   Card,
   CardContent,
@@ -14,11 +22,6 @@ import {
   Badge,
   Button,
 } from "@tevero/ui";
-import { Lightbulb, TrendingUp, Target, Zap, ArrowRight, FileText } from "lucide-react";
-import Link from "next/link";
-import { getClientOpportunities, type PaginatedResponse } from "@/actions/analytics/get-opportunities";
-import type { Opportunity, OpportunityType } from "@/types/opportunities";
-import { cn } from "@/lib/utils";
 
 interface OpportunitiesPanelProps {
   clientId: string;

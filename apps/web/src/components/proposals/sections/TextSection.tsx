@@ -8,6 +8,7 @@
  */
 
 import { type FC } from "react";
+
 import { ProposalInlineEditor } from "../ProposalInlineEditor";
 
 export interface TextSectionData {

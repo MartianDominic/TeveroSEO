@@ -12,9 +12,11 @@
  */
 
 import { NextRequest } from 'next/server';
+
 import { auth } from '@clerk/nextjs/server';
-import { StageEmitter } from '@/lib/keyword-chat/stage-emitter';
+
 import { runAnalysisPipeline } from '@/lib/keyword-chat/analysis-pipeline';
+import { StageEmitter } from '@/lib/keyword-chat/stage-emitter';
 import type { AnalyzeRequest, AnalysisEvent } from '@/lib/keyword-chat/types';
 
 export const runtime = 'nodejs';

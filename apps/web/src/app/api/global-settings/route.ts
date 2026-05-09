@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
-import { getFastApi, patchFastApi, FastApiError } from "@/lib/server-fetch";
+
+import { badRequest, validationError } from "@/lib/api/responses";
 import { validateCsrf } from "@/lib/api/security";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { badRequest, validationError } from "@/lib/api/responses";
+import { getFastApi, patchFastApi, FastApiError } from "@/lib/server-fetch";
 
 /**
  * Schema for global settings updates.

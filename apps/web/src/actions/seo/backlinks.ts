@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { postOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { apiCostLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { postOpenSeo } from "@/lib/server-fetch";
 
 // Validation schemas
 const backlinksParamsSchema = z.object({

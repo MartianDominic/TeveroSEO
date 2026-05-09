@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@tevero/ui';
+
 import { AlertTriangle, RotateCcw, ArrowLeft } from 'lucide-react';
 
 import { logger } from '@/lib/logger';
+
+import { Button } from '@tevero/ui';
 export default function ReportSettingsError({
   error,
   reset,

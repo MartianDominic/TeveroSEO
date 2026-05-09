@@ -8,11 +8,15 @@
  * Displays complete analysis results with stats, breakdowns, and export actions.
  */
 
-import { Card, Badge } from "@tevero/ui";
 import { Clock, Target, Filter, Layers, Sparkles } from "lucide-react";
+
+import type { AnalysisResult, SelectedKeyword } from "@/lib/keyword-chat/types";
+
+import { Card, Badge } from "@tevero/ui";
+
 import { ExportActions } from "./ExportActions";
 import { ScoreExplanation, type ScoreBreakdown } from "./ScoreExplanation";
-import type { AnalysisResult, SelectedKeyword } from "@/lib/keyword-chat/types";
+
 
 interface AnalysisResultsProps {
   result: AnalysisResult;

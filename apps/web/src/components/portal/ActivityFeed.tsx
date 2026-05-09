@@ -8,7 +8,8 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
+import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
 import {
   FileText,
   Wrench,
@@ -17,8 +18,9 @@ import {
   MoreHorizontal,
   ExternalLink,
 } from "lucide-react";
-import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns";
+
 import type { ActivityEntry, ActivityCategory } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 export interface ActivityFeedProps {
   /** Activity entries to display */

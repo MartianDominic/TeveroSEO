@@ -4,8 +4,9 @@
  */
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Loader2, Check, AlertCircle, Cloud, CloudOff } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,8 +14,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/hooks/useAutoSave";
+import { cn } from "@/lib/utils";
 
 // Relative time formatting
 function formatRelativeTime(date: Date | null, locale: string): string {

@@ -9,15 +9,18 @@
  */
 
 import { useState, useEffect } from "react";
-import { Switch } from "@tevero/ui";
-import { Label } from "@/components/ui/label";
+
 import { HelpCircle } from "lucide-react";
+
+import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+import { Switch } from "@tevero/ui";
 
 const STORAGE_KEY = "keyword_confirmation_mode";
 

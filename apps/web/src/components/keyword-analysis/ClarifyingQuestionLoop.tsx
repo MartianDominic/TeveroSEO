@@ -14,8 +14,11 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Button, Card, Input, Badge } from "@tevero/ui";
+
 import { ChevronRight, SkipForward, MessageCircleQuestion } from "lucide-react";
+
+import { Button, Card, Input, Badge } from "@tevero/ui";
+
 import {
   useClarifyingQuestions,
   type ClarificationQuestion,

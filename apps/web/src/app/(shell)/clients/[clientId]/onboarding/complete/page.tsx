@@ -6,6 +6,7 @@
  * Redirects back to onboarding page if checklist is not 100% complete.
  */
 import { notFound, redirect } from "next/navigation";
+
 import { ConversionSummary } from "@/components/onboarding/ConversionSummary";
 import { getClientChecklist, getClient } from "@/lib/api/clients";
 

@@ -1,10 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardHeader, CardTitle, Badge, ProgressBlock } from "@tevero/ui";
-import { PipelineStep, type StepStatus, type StepDetail } from "./PipelineStep";
+
 import { Search, FileText, PenTool, Image, Link, Upload } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Card, CardHeader, CardTitle, Badge, ProgressBlock } from "@tevero/ui";
+
+import { PipelineStep, type StepStatus, type StepDetail } from "./PipelineStep";
 
 export interface PipelineStepData {
   id: string;

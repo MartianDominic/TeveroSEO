@@ -4,9 +4,10 @@
  * periodically removing expired entries from in-memory caches.
  */
 
+import { logger } from '@/lib/logger';
+
 import { apiResponseCache, userProfileCache } from "./bounded-cache";
 
-import { logger } from '@/lib/logger';
 let cleanupInterval: NodeJS.Timeout | null = null;
 
 /**

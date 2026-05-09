@@ -8,14 +8,10 @@
  */
 
 import * as React from "react";
+
 import { useParams, useSearchParams } from "next/navigation";
-import { useDashboard } from "@/lib/portal/hooks";
-import { StatCard } from "@/components/portal/StatCard";
-import { WinCardList } from "@/components/portal/WinCard";
-import { NeedsAttentionList } from "@/components/portal/NeedsAttention";
-import { ActivityFeed } from "@/components/portal/ActivityFeed";
-import { useActivity } from "@/lib/portal/hooks";
-import { cn } from "@/lib/utils";
+
+import { formatDistanceToNow } from "date-fns";
 import {
   MousePointerClick,
   Eye,
@@ -23,7 +19,15 @@ import {
   Target,
   RefreshCw,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+
+import { ActivityFeed } from "@/components/portal/ActivityFeed";
+import { NeedsAttentionList } from "@/components/portal/NeedsAttention";
+import { StatCard } from "@/components/portal/StatCard";
+import { WinCardList } from "@/components/portal/WinCard";
+import { useDashboard } from "@/lib/portal/hooks";
+import { useActivity } from "@/lib/portal/hooks";
+import { cn } from "@/lib/utils";
+
 
 export default function PortalDashboard() {
   const params = useParams();

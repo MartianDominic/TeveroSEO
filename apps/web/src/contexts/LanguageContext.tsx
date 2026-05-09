@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import { createContext, useContext, useMemo } from 'react';
+
 import { useLocale } from 'next-intl';
-import type { SupportedLocale } from '@/lib/locale-storage';
+
 import type { Formality } from '@/lib/language-resolution';
+import type { SupportedLocale } from '@/lib/locale-storage';
 
 /**
  * Language context value.

@@ -4,7 +4,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+
 import { StageEmitter, type EventCallback } from '../stage-emitter';
+
 import type { AnalysisEvent, AnalysisResult } from '../types';
 
 describe('StageEmitter', () => {

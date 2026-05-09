@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import {
   LineChart,
   Line,
@@ -11,6 +12,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+
 import { Button } from "@tevero/ui";
 
 interface RankingDataPoint {

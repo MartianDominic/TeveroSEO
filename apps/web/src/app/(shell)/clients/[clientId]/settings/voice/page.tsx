@@ -1,7 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+
 import { useParams } from "next/navigation";
+
+import { AlertCircle, RefreshCw } from "lucide-react";
+
+import {
+  getVoiceProfile,
+  saveVoiceProfile,
+  analyzeVoice,
+  getVoiceTemplates,
+} from "@/actions/voice";
+import type { VoiceProfile, VoiceTemplate } from "@/lib/voiceApi";
+import { useClientStore } from "@/stores/clientStore";
+
 import {
   Button,
   PageHeader,
@@ -11,24 +24,14 @@ import {
   TabsTrigger,
   Skeleton,
 } from "@tevero/ui";
-import { AlertCircle, RefreshCw } from "lucide-react";
 
-import { useClientStore } from "@/stores/clientStore";
-import {
-  getVoiceProfile,
-  saveVoiceProfile,
-  analyzeVoice,
-  getVoiceTemplates,
-} from "@/actions/voice";
-import type { VoiceProfile, VoiceTemplate } from "@/lib/voiceApi";
-
-import { VoiceSidebarSummary } from "./components/VoiceSidebarSummary";
-import { VoiceModeWizard } from "./components/VoiceModeWizard";
+import { ProtectionRulesTab } from "./components/ProtectionRulesTab";
 import { TonePersonalityTab } from "./components/TonePersonalityTab";
 import { VocabularyTab } from "./components/VocabularyTab";
-import { WritingMechanicsTab } from "./components/WritingMechanicsTab";
-import { ProtectionRulesTab } from "./components/ProtectionRulesTab";
+import { VoiceModeWizard } from "./components/VoiceModeWizard";
 import { VoicePreviewPanel } from "./components/VoicePreviewPanel";
+import { VoiceSidebarSummary } from "./components/VoiceSidebarSummary";
+import { WritingMechanicsTab } from "./components/WritingMechanicsTab";
 
 export default function VoiceSettingsPage() {
   const { clientId } = useParams<{ clientId: string }>();

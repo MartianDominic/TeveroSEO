@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@tevero/ui';
+
 import { logError } from '@/lib/errors';
+
+import { Button } from '@tevero/ui';
 
 /**
  * Error boundary for client pages.

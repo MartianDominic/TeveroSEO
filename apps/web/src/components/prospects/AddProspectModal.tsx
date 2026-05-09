@@ -1,6 +1,20 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+
+import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
+import { nanoid } from "nanoid";
+import { useTranslations } from "next-intl";
+
+import {
+  extractFromConversationAction,
+  confirmAndCreateProspectAction,
+} from "@/app/(shell)/prospects/actions";
+import {
+  useProspectWizardStore,
+  type ExtractionResult,
+} from "@/stores/prospect-wizard-store";
+
 import {
   Dialog,
   DialogContent,
@@ -14,22 +28,14 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@tevero/ui";
-import { Globe, MessageSquare, FileText, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { nanoid } from "nanoid";
-import {
-  useProspectWizardStore,
-  type ExtractionResult,
-} from "@/stores/prospect-wizard-store";
-import { WebsiteInputForm } from "./WebsiteInputForm";
-import { WebsiteContextForm } from "./WebsiteContextForm";
+
+import { AnalysisProgress } from "./AnalysisProgress";
 import { ConversationInputForm } from "./ConversationInputForm";
 import { ExtractionConfirmation } from "./ExtractionConfirmation";
-import { AnalysisProgress } from "./AnalysisProgress";
-import {
-  extractFromConversationAction,
-  confirmAndCreateProspectAction,
-} from "@/app/(shell)/prospects/actions";
+import { WebsiteContextForm } from "./WebsiteContextForm";
+import { WebsiteInputForm } from "./WebsiteInputForm";
+
+
 
 interface AddProspectModalProps {
   trigger?: React.ReactNode;

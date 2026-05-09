@@ -13,12 +13,16 @@
  * - user.updated: User profile changes
  * - user.deleted: User deletion
  */
-import { Webhook } from 'svix';
-import { headers } from 'next/headers';
-import { WebhookEvent } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import * as crypto from 'crypto';
+
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+import { WebhookEvent } from '@clerk/nextjs/server';
+import { Webhook } from 'svix';
+import { z } from 'zod';
+
+
 import { getClerkWebhookSecret } from '@/lib/env';
 import { logger } from '@/lib/logger';
 

@@ -1,5 +1,9 @@
 "use client";
 
+import { Users, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
+
+import type { TeamMetrics, TeamMemberWithAssignments } from "@/types/team";
+
 import {
   Card,
   CardContent,
@@ -7,8 +11,6 @@ import {
   CardTitle,
   Badge,
 } from "@tevero/ui";
-import { Users, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
-import type { TeamMetrics, TeamMemberWithAssignments } from "@/types/team";
 
 interface TeamDashboardProps {
   metrics: TeamMetrics;

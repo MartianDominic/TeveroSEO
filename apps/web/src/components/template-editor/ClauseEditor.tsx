@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
+
 import { Card, CardContent, CardHeader, Input, Textarea } from "@tevero/ui";
 
 interface ClauseEditorProps {

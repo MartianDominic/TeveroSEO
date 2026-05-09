@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useMemo, type FC } from "react";
-import { Card, CardContent, Skeleton, cn } from "@tevero/ui";
+
 import {
   AlertCircle,
   TrendingUp,
@@ -19,9 +19,12 @@ import {
   Activity,
   Search,
 } from "lucide-react";
-import type { ReportSection, ReportSectionType } from "@tevero/types";
-import type { ReportData } from "@/lib/reports/types";
+
 import { aggregateReportData } from "@/lib/reports/builder";
+import type { ReportData } from "@/lib/reports/types";
+
+import type { ReportSection, ReportSectionType } from "@tevero/types";
+import { Card, CardContent, Skeleton, cn } from "@tevero/ui";
 
 interface ReportDataPreviewProps {
   /** Client UUID */

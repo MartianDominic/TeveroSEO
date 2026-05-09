@@ -15,10 +15,13 @@
  */
 
 import { useEffect } from "react";
+
 import confetti from "canvas-confetti";
 import { CheckCircle2, ArrowRight } from "lucide-react";
-import { Button, Card, CardContent, Separator } from "@tevero/ui";
+
 import type { GeoLocation } from "@/hooks/use-verification-poll";
+
+import { Button, Card, CardContent, Separator } from "@tevero/ui";
 
 // ============================================================================
 // Types

@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { formatDistanceToNow, format } from "date-fns";
 import { AlertTriangle, AlertCircle, Info, Check, X, Eye } from "lucide-react";
+
+import type { Alert } from "@/actions/alerts";
+import { updateAlertStatus } from "@/actions/alerts";
+
 import {
   Table,
   TableBody,
@@ -20,8 +26,6 @@ import {
   SelectValue,
   cn,
 } from "@tevero/ui";
-import type { Alert } from "@/actions/alerts";
-import { updateAlertStatus } from "@/actions/alerts";
 
 interface AlertsTableProps {
   alerts: Alert[];

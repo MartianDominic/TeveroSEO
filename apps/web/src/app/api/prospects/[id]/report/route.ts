@@ -11,11 +11,12 @@
  * - Rate limited to 5 reports per hour per user (2026-04-28)
  */
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { reportLimiter, rateLimitHeaders } from "@/lib/rate-limit";
-import { getOpenSeoUrl } from "@/lib/env";
 
+import { auth } from "@clerk/nextjs/server";
+
+import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
+import { reportLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

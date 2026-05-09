@@ -14,18 +14,22 @@
  */
 
 import React, { useState, useEffect } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { Building2, Globe, ChevronRight, Plus } from "lucide-react";
+
+import { AddClientModal } from "@/components/onboarding/AddClientModal";
+import { GettingStartedCard } from "@/components/onboarding/GettingStartedCard";
+import { cn } from "@/lib/utils";
 import { useClientStore } from "@/stores/clientStore";
+
+import type { Client } from "@tevero/types";
 import {
   Button,
   PageHeader,
   StatusChip,
 } from "@tevero/ui";
-import { GettingStartedCard } from "@/components/onboarding/GettingStartedCard";
-import { AddClientModal } from "@/components/onboarding/AddClientModal";
-import { Building2, Globe, ChevronRight, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { Client } from "@tevero/types";
 
 // ---------------------------------------------------------------------------
 // Types

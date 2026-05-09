@@ -12,6 +12,9 @@
  */
 
 // React hooks imported as needed
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
+import { nanoid } from "nanoid";
+
 import {
   Button,
   Card,
@@ -29,8 +32,7 @@ import {
   Badge,
   cn,
 } from "@tevero/ui";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
-import { nanoid } from "nanoid";
+
 import type { ExtractionRule, ExtractionField } from "../actions";
 
 interface RuleEditorProps {

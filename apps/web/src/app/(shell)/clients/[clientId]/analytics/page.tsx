@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useState, useTransition, useCallback } from "react";
+
 import { useParams, useRouter } from "next/navigation";
-import { useClientStore } from "@/stores/clientStore";
-import { PageHeader, Card, CardContent, Button, Skeleton } from "@tevero/ui";
+
 import { RefreshCw, AlertCircle, ExternalLink } from "lucide-react";
 
-import { GSCChart } from "@/components/analytics/GSCChart";
-import { GA4Chart } from "@/components/analytics/GA4Chart";
-import { QueriesTable } from "@/components/analytics/QueriesTable";
 import { DateRangeSelector } from "@/components/analytics/DateRangeSelector";
+import { GA4Chart } from "@/components/analytics/GA4Chart";
+import { GSCChart } from "@/components/analytics/GSCChart";
+import { QueriesTable } from "@/components/analytics/QueriesTable";
 import { StatCard } from "@/components/analytics/StatCard";
-import { fetchAnalyticsData } from "./actions";
 import type { AnalyticsData } from "@/lib/analytics/types";
+import { useClientStore } from "@/stores/clientStore";
+
+import { PageHeader, Card, CardContent, Button, Skeleton } from "@tevero/ui";
+
+import { fetchAnalyticsData } from "./actions";
 
 export default function AnalyticsPage() {
   const { clientId } = useParams<{ clientId: string }>();

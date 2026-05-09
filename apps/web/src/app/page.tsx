@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+
 import { auth } from "@clerk/nextjs/server";
 type AnyRoute = any; // eslint-disable-line
 

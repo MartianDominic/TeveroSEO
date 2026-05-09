@@ -1,13 +1,15 @@
 "use server";
 
 import { z } from "zod";
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo, patchOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+import { logger } from "@/lib/logger";
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { getOpenSeo, patchOpenSeo, postOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 import { generateAlertIdempotencyKey } from "@/lib/utils/idempotency";
 import {
   AlertArraySchema,
@@ -18,7 +20,6 @@ import {
   type Alert,
   type AlertRule,
 } from "@/lib/validations/api-response-schemas";
-import { logger } from "@/lib/logger";
 
 // Re-export types for consumers
 export type { Alert, AlertRule };

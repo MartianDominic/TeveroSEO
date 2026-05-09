@@ -2,9 +2,11 @@
  * Display component for scraped website content and AI-extracted business info.
  * Phase 27-03: AI Business Extractor
  */
-import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 import { MapPin, Target, Package, Award, Wrench } from "lucide-react";
+
 import type { ScrapedContent } from "@/app/(shell)/prospects/actions";
+
+import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 
 interface ScrapedContentDisplayProps {
   scrapedContent: ScrapedContent;

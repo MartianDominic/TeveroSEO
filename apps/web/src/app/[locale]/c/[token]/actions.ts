@@ -15,8 +15,9 @@
  */
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import { getOpenSeoUrl } from "@/lib/env";
+import { logger } from '@/lib/logger';
 
 // ---------------------------------------------------------------------------
 // Validation Schemas (MEDIUM-NX-02 FIX)

@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 
 // Validation schemas
 const mappingParamsSchema = z.object({

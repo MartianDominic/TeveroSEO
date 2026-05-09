@@ -11,6 +11,7 @@ import type {
   PatternType,
   PatternDirection,
 } from "@/types/patterns";
+
 import { linearRegression, calculateConfidence } from "./predictions";
 
 /**

@@ -11,6 +11,12 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
+
+import { Loader2, X } from "lucide-react";
+
+import { apiPost, apiGet } from "@/lib/api-client";
+import { useClientStore } from "@/stores/clientStore";
+
 import {
   Button,
   Dialog,
@@ -21,9 +27,7 @@ import {
   Input,
   Label,
 } from "@tevero/ui";
-import { apiPost, apiGet } from "@/lib/api-client";
-import { useClientStore } from "@/stores/clientStore";
-import { Loader2, X } from "lucide-react";
+
 
 // ---------------------------------------------------------------------------
 // Types

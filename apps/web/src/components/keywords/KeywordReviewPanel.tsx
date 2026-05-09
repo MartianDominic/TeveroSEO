@@ -11,15 +11,18 @@
  */
 
 import { useState } from "react";
-import { Button, Badge, Checkbox } from "@tevero/ui";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Check, X, Info } from "lucide-react";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+import { Button, Badge, Checkbox } from "@tevero/ui";
 
 export interface ClassifiedKeyword {
   keyword: string;

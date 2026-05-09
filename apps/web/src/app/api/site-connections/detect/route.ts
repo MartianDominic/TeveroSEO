@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { requireAuth, AuthError } from "@/lib/auth";
+
 import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
+import { requireAuth, AuthError } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
+import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import {
   detectPlatformSchema,
   safeParseJson,

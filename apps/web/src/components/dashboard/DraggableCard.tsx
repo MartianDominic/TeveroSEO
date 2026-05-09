@@ -1,10 +1,12 @@
 "use client";
 
+import { ReactNode } from "react";
+
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
 import { GripVertical } from "lucide-react";
-import { ReactNode } from "react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
 
 interface DraggableCardProps {
   id: string;

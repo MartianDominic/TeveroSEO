@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
+
 import {
   ArrowLeft,
   Globe,
@@ -12,12 +12,16 @@ import {
   FileDown,
   FileText,
 } from "lucide-react";
+
 import { AnalysisResults } from "@/components/prospects/AnalysisResults";
-import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisplay";
 import { BusinessInfoFormWrapper } from "@/components/prospects/BusinessInfoFormWrapper";
 import { OpportunityKeywordsSection } from "@/components/prospects/OpportunityKeywordsSection";
-import { getProspectDetail } from "./actions";
+import { ScrapedContentDisplay } from "@/components/prospects/ScrapedContentDisplay";
 import { WithErrorBoundary } from "@/components/with-error-boundary";
+
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@tevero/ui";
+
+import { getProspectDetail } from "./actions";
 
 interface ProspectDetailPageProps {
   params: Promise<{ prospectId: string }>;

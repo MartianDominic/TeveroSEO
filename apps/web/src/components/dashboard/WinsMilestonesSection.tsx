@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@tevero/ui";
+
 import { Trophy, TrendingUp, Award, Link2, ChevronDown, ChevronUp, Share2 } from "lucide-react";
+
 import type { WinItem } from "@/lib/dashboard/types";
+
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@tevero/ui";
 
 interface WinsMilestonesSectionProps {
   wins: WinItem[];

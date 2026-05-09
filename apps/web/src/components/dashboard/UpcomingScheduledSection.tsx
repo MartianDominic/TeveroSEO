@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 import { Calendar, FileText, Search, ShieldAlert, Video } from "lucide-react";
+
 import type { ScheduledItem } from "@/lib/dashboard/types";
+
+import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 
 interface UpcomingScheduledSectionProps {
   items: ScheduledItem[];

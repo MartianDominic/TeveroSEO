@@ -1,8 +1,10 @@
 "use client";
 
-import { Label, Textarea } from "@tevero/ui";
 import { useTranslations } from "next-intl";
+
 import { useProspectWizardStore } from "@/stores/prospect-wizard-store";
+
+import { Label, Textarea } from "@tevero/ui";
 
 const MIN_CONVERSATION_LENGTH = 50;
 const MAX_CONVERSATION_LENGTH = 50000;

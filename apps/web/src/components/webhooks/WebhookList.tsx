@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { formatDistanceToNow } from "date-fns";
 import { Webhook, Plus, MoreVertical, Trash2, Edit, Key } from "lucide-react";
+
+import type { Webhook as WebhookType } from "@/actions/webhooks";
+import { updateWebhook, deleteWebhookAction } from "@/actions/webhooks";
+
 import {
   Table,
   TableBody,
@@ -16,8 +22,6 @@ import {
   Switch,
   cn,
 } from "@tevero/ui";
-import type { Webhook as WebhookType } from "@/actions/webhooks";
-import { updateWebhook, deleteWebhookAction } from "@/actions/webhooks";
 
 interface WebhookListProps {
   webhooks: WebhookType[];

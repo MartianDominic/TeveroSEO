@@ -8,8 +8,10 @@
  */
 
 import { useEffect, useState } from "react";
-import { ProgressBar } from "@tevero/ui";
+
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+
+import { ProgressBar } from "@tevero/ui";
 
 export interface ProgressEvent {
   stage: "expanding" | "pass1" | "pass2" | "complete" | "error";

@@ -25,9 +25,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, Badge } from "@tevero/ui";
 import { GripVertical, Trash2, Mail, Eye, CheckCircle, Clock } from "lucide-react";
+
 import type { SignerData } from "@/app/(shell)/clients/[clientId]/agreements/[agreementId]/pre-sign/actions";
+
+import { Button, Badge } from "@tevero/ui";
 
 interface SignerListProps {
   signers: SignerData[];

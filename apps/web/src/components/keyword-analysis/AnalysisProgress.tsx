@@ -8,7 +8,6 @@
  * Displays current stage, progress bar, and partial results.
  */
 
-import { ProgressBar } from "@tevero/ui";
 import {
   CheckCircle2,
   Loader2,
@@ -18,7 +17,10 @@ import {
   Sparkles,
   Layers,
 } from "lucide-react";
+
 import type { AnalysisStage, AnalysisResult } from "@/lib/keyword-chat/types";
+
+import { ProgressBar } from "@tevero/ui";
 
 interface AnalysisProgressProps {
   stage: AnalysisStage;

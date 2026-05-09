@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
+
 import { z } from "zod";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
-import { checkRateLimit } from "@/lib/middleware/rate-limit";
+
 import {
   badRequest,
   validationError,
@@ -11,7 +9,11 @@ import {
   internalError,
   accepted,
 } from "@/lib/api/responses";
+import { validateCsrf, RATE_LIMITS } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { logger } from '@/lib/logger';
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
+import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

@@ -8,10 +8,12 @@
  * Redirects to Dokobit for actual signing flow.
  */
 import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
+
 import { Loader2, Smartphone, CreditCard } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import { initiateSigning } from "@/app/[locale]/c/[token]/actions";
+import { Button } from "@/components/ui/button";
 
 interface SigningButtonsProps {
   token: string;

@@ -1,6 +1,8 @@
-import { PageHeader } from "@tevero/ui";
-import { ProspectList } from "@/components/prospects/ProspectList";
 import { AddProspectDialog } from "@/components/prospects/AddProspectDialog";
+import { ProspectList } from "@/components/prospects/ProspectList";
+
+import { PageHeader } from "@tevero/ui";
+
 import { getProspects, getRemainingAnalyses } from "./actions";
 
 export default async function ProspectsPage() {

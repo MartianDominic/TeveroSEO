@@ -8,6 +8,7 @@
  */
 
 import { useMemo, type FC } from "react";
+
 import {
   DndContext,
   closestCenter,
@@ -25,7 +26,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Checkbox, cn } from "@tevero/ui";
 import {
   GripVertical,
   FileText,
@@ -36,8 +36,11 @@ import {
   FileSignature,
   type LucideIcon,
 } from "lucide-react";
-import type { ReportSection, ReportSectionType } from "@tevero/types";
+
 import { REPORT_SECTIONS, getSectionMeta } from "@/lib/reports/sections";
+
+import type { ReportSection, ReportSectionType } from "@tevero/types";
+import { Checkbox, cn } from "@tevero/ui";
 
 /** Map icon names to Lucide components */
 const ICON_MAP: Record<string, LucideIcon> = {

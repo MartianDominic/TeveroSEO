@@ -6,11 +6,13 @@
  * GET /api/oauth/wix/authorize?prospectId=123
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
 import { nanoid } from "nanoid";
-import { postOpenSeo } from "@/lib/server-fetch";
 
 import { logger } from '@/lib/logger';
+import { postOpenSeo } from "@/lib/server-fetch";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

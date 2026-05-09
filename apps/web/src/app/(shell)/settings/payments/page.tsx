@@ -8,7 +8,13 @@
  * v6 Design: ghost-edge shadows, emerald accent, proper tokens.
  */
 import { useState, useEffect } from "react";
+
 import { useOrganization } from "@clerk/nextjs";
+import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+
+import { ProviderCard, PaymentProviderType } from "@/components/payments/ProviderCard";
+import { RevolutConnectModal, RevolutCredentials } from "@/components/payments/RevolutConnectModal";
+
 import {
   Card,
   CardContent,
@@ -27,9 +33,6 @@ import {
   Alert,
   AlertDescription,
 } from "@tevero/ui";
-import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
-import { ProviderCard, PaymentProviderType } from "@/components/payments/ProviderCard";
-import { RevolutConnectModal, RevolutCredentials } from "@/components/payments/RevolutConnectModal";
 
 interface PaymentSettings {
   defaultProvider: PaymentProviderType;

@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { postOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { postOpenSeo } from "@/lib/server-fetch";
 
 // Validation schemas
 const clientIdSchema = z.string().uuid("Invalid client ID format");

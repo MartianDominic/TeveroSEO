@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
+
+import {
+  badRequest,
+  validationError,
+  internalError,
+} from "@/lib/api/responses";
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import {
   getFastApi,
   putFastApi,
   patchFastApi,
   FastApiError,
 } from "@/lib/server-fetch";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { validateCsrf } from "@/lib/api/security";
-import {
-  badRequest,
-  validationError,
-  internalError,
-} from "@/lib/api/responses";
 import {
   clientSettingsSchema,
   safeParseJson,

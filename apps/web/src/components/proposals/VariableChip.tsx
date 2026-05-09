@@ -12,14 +12,16 @@
  */
 
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { useVariableValue } from "@/hooks/useVariableValue";
+import { cn } from "@/lib/utils";
+
 import { VARIABLE_CATEGORY_COLORS, type VariableNodeAttrs } from "./extensions/VariableExtension";
 
 /**

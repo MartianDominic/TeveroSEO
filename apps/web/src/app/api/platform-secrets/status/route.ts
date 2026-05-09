@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFastApi, FastApiError } from "@/lib/server-fetch";
+
 import { requireAuth, AuthError } from "@/lib/auth";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getFastApi, FastApiError } from "@/lib/server-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

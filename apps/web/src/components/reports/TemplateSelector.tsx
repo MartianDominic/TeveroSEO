@@ -12,6 +12,16 @@
  */
 
 import { useState, useEffect, type FC } from "react";
+
+import { Save, Loader2, Star, FileText } from "lucide-react";
+
+import {
+  getReportTemplates,
+  createReportTemplate,
+  type ReportTemplateResponse,
+} from "@/lib/api/report-templates";
+
+import type { ReportSection } from "@tevero/types";
 import {
   Select,
   SelectContent,
@@ -28,13 +38,6 @@ import {
   Label,
   Textarea,
 } from "@tevero/ui";
-import { Save, Loader2, Star, FileText } from "lucide-react";
-import {
-  getReportTemplates,
-  createReportTemplate,
-  type ReportTemplateResponse,
-} from "@/lib/api/report-templates";
-import type { ReportSection } from "@tevero/types";
 
 interface TemplateSelectorProps {
   /** Current sections configuration */

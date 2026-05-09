@@ -1,8 +1,11 @@
-import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-import { ReportGSCChart } from "../ReportGSCChart";
-import { ReportGA4Chart } from "../ReportGA4Chart";
+import { describe, it, expect } from "vitest";
+
 import type { GSCDataPoint, GA4DataPoint } from "@/lib/analytics/types";
+
+import { ReportGA4Chart } from "../ReportGA4Chart";
+import { ReportGSCChart } from "../ReportGSCChart";
+
 
 const mockGSCData: GSCDataPoint[] = [
   { date: "2026-04-01", clicks: 100, impressions: 1000, ctr: 0.1, position: 5.2 },

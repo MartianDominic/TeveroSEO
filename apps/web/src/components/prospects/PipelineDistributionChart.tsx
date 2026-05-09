@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+
 import { Badge } from "@tevero/ui";
 
 interface PipelineDistributionChartProps {

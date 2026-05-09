@@ -8,9 +8,11 @@
  */
 
 import React from "react";
+
 import { Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { SyncStatus, type SyncProgress } from "@/hooks/use-sync-status";
+import { cn } from "@/lib/utils";
 
 interface SyncStatusIndicatorProps {
   /** Current sync progress state */

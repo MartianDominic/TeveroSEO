@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { useLocale } from 'next-intl';
+
 import { setStoredLocale, type SupportedLocale } from '@/lib/locale-storage';
 
 /**

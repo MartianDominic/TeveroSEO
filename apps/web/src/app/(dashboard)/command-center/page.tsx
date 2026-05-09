@@ -1,16 +1,20 @@
 import { Suspense } from "react";
+
 import { auth } from "@clerk/nextjs/server";
-import { TodayActionBar } from "./_components/TodayActionBar";
-import { PipelineHealthCards } from "./_components/PipelineHealthCards";
-import { RevenuePipeline } from "./_components/RevenuePipeline";
-import { PipelineFunnel } from "./_components/PipelineFunnel";
+
+import { getDashboardMetrics } from "@/server/features/command-center/api/metrics";
+
 import {
   DashboardSkeleton,
   CardSkeleton,
   ChartSkeleton,
   TodayBarSkeleton,
 } from "./_components/DashboardSkeleton";
-import { getDashboardMetrics } from "@/server/features/command-center/api/metrics";
+import { PipelineFunnel } from "./_components/PipelineFunnel";
+import { PipelineHealthCards } from "./_components/PipelineHealthCards";
+import { RevenuePipeline } from "./_components/RevenuePipeline";
+import { TodayActionBar } from "./_components/TodayActionBar";
+
 
 /**
  * Command Center Dashboard Page

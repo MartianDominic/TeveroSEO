@@ -1,7 +1,21 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { Search, Loader2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+
+import { usePaginatedClients } from "@/hooks/usePaginatedClients";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import type {
+  ClientMetrics,
+  ClientSortKey,
+  ClientTableFilters,
+} from "@/lib/dashboard/types";
+import type { FilterParams } from "@/types/pagination";
+
 import {
   Table,
   TableBody,
@@ -15,26 +29,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { Search, Loader2 } from "lucide-react";
-import { FilterBar } from "./FilterBar";
-import { usePaginatedClients } from "@/hooks/usePaginatedClients";
-import type { FilterParams } from "@/types/pagination";
-import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
+import { Badge } from "@tevero/ui";
+
 import { BulkActionBar } from "./BulkActionBar";
-import { useRowSelection } from "@/hooks/useRowSelection";
-import { useClientFiltering } from "./hooks/useClientFiltering";
-import { useClientSorting } from "./hooks/useClientSorting";
 import { ClientTableHeader, SortButton } from "./ClientTableHeader";
 import { ClientTableRow } from "./ClientTableRow";
-import type {
-  ClientMetrics,
-  ClientSortKey,
-  ClientTableFilters,
-} from "@/lib/dashboard/types";
+import { FilterBar } from "./FilterBar";
+
+
+import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
+import { HealthScoreBadge } from "./HealthScoreBadge";
+import { useClientFiltering } from "./hooks/useClientFiltering";
+import { VirtualizedTable, type VirtualizedColumnDef } from "./VirtualizedTable";
+
+import { useClientSorting } from "./hooks/useClientSorting";
+
 
 // Virtualized table imports for column definitions
-import { HealthScoreBadge } from "./HealthScoreBadge";
-import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
 import { PositionDistributionBar } from "./PositionDistributionBar";
 import {
   HealthHoverPopover,
@@ -42,8 +53,8 @@ import {
   KeywordsHoverPopover,
 } from "./ClientTableHoverPopover";
 import { LazySparkline } from "./LazySparkline";
-import { Badge } from "@tevero/ui";
-import { ChevronRight } from "lucide-react";
+
+
 
 // ---------------------------------------------------------------------------
 // Types

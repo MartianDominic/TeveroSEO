@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle, Loader2, Ban } from "lucide-react";
+
 import { Badge } from "@tevero/ui";
 
 export function StatusBadge({ status }: { status: string }) {

@@ -10,8 +10,11 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
 import { LucideIcon, Inbox } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import { Button } from "@tevero/ui";
 
 export interface EmptyStateProps {

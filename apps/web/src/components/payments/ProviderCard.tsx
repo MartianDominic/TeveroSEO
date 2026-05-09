@@ -8,10 +8,13 @@
  * v6 Design: ghost-edge shadows, emerald accent for connected state.
  */
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Check, CreditCard, Smartphone, Building2, Loader2 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 export type PaymentProviderType = "stripe" | "revolut";
 

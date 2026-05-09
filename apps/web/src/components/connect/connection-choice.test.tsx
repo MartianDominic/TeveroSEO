@@ -2,8 +2,9 @@
  * Connection Choice Component Tests
  * Phase 66-04: Connection Wizard UI
  */
-import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+
 import { ConnectionChoice } from "./connection-choice";
 
 describe("ConnectionChoice", () => {

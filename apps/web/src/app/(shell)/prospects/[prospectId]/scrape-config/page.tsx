@@ -12,8 +12,22 @@
  */
 
 import { useState, useEffect, useCallback, useTransition } from "react";
-import { useParams } from "next/navigation";
+
 import Link from "next/link";
+import { useParams } from "next/navigation";
+
+import {
+  ChevronLeft,
+  Loader2,
+  Sparkles,
+  Plus,
+  Settings,
+  TestTube,
+  Check,
+  AlertCircle,
+  Globe,
+} from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -31,18 +45,8 @@ import {
   Textarea,
   Slider,
 } from "@tevero/ui";
-import {
-  ChevronLeft,
-  Loader2,
-  Sparkles,
-  Plus,
-  Settings,
-  TestTube,
-  Check,
-  AlertCircle,
-  Globe,
-} from "lucide-react";
-import { RuleEditor, createEmptyRule } from "./components/RuleEditor";
+
+
 import {
   getScrapeConfig,
   updateScrapeConfig,
@@ -52,6 +56,7 @@ import {
   type ExtractionRule,
   type AiSelector,
 } from "./actions";
+import { RuleEditor, createEmptyRule } from "./components/RuleEditor";
 
 // Platform display names and colors
 const PLATFORM_INFO: Record<

@@ -12,6 +12,8 @@
  */
 
 import { useCallback, type FC, type ReactNode } from "react";
+import { useState } from "react";
+
 import {
   DndContext,
   closestCenter,
@@ -30,8 +32,9 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
+
 import { SortableSection } from "./SortableSection";
+
 import type { EditorSection } from "./types";
 
 /**

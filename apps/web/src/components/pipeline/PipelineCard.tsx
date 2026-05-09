@@ -9,9 +9,11 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+
 import { differenceInDays } from "date-fns";
-import { KanbanCard, Button, Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
 import { MoreHorizontal, Eye, Archive, ArrowRight, ChevronRight } from "lucide-react";
+
+import { KanbanCard, Button, Popover, PopoverContent, PopoverTrigger } from "@tevero/ui";
 
 export interface PipelineCardProps {
   /** Unique prospect ID */

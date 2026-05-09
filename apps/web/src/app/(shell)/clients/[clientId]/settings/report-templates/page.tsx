@@ -1,7 +1,17 @@
 import { Suspense } from "react";
+
 import { redirect } from "next/navigation";
 type AnyRoute = Parameters<typeof redirect>[0];
 import Link from "next/link";
+
+import { Plus, Star, Trash2, Edit, ArrowLeft } from "lucide-react";
+
+import {
+  getReportTemplates,
+  type ReportTemplateResponse,
+} from "@/lib/api/report-templates";
+import { REPORT_SECTIONS, getSectionMeta } from "@/lib/reports/sections";
+
 import {
   Card,
   CardContent,
@@ -10,12 +20,6 @@ import {
   Button,
   Badge,
 } from "@tevero/ui";
-import { Plus, Star, Trash2, Edit, ArrowLeft } from "lucide-react";
-import {
-  getReportTemplates,
-  type ReportTemplateResponse,
-} from "@/lib/api/report-templates";
-import { REPORT_SECTIONS, getSectionMeta } from "@/lib/reports/sections";
 
 interface TemplateSettingsPageProps {
   params: Promise<{ clientId: string }>;

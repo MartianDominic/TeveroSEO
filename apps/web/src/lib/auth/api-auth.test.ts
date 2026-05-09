@@ -8,6 +8,7 @@
  * - Valid UUID passes validation
  */
 import { describe, it, expect } from "vitest";
+
 import { validateClientAccess, AuthError } from "./api-auth";
 
 describe("validateClientAccess", () => {

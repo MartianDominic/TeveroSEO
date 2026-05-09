@@ -8,14 +8,18 @@
 "use client";
 
 import * as React from "react";
-import { useConnectionWizard } from "@/hooks/use-connection-wizard";
-import { UrlInput } from "@/components/connect/url-input";
-import { PlatformDetected } from "@/components/connect/platform-detected";
-import { ConnectionChoice } from "@/components/connect/connection-choice";
-import { ConnectionStepIndicator } from "@/components/connect/step-indicator";
-import { PlatformGuide } from "@/components/connect/platform-guide";
-import { Card, CardContent, Button } from "@tevero/ui";
+
 import { AlertCircle, RefreshCw } from "lucide-react";
+
+import { ConnectionChoice } from "@/components/connect/connection-choice";
+import { PlatformDetected } from "@/components/connect/platform-detected";
+import { PlatformGuide } from "@/components/connect/platform-guide";
+import { ConnectionStepIndicator } from "@/components/connect/step-indicator";
+import { UrlInput } from "@/components/connect/url-input";
+import { useConnectionWizard } from "@/hooks/use-connection-wizard";
+
+import { Card, CardContent, Button } from "@tevero/ui";
+
 
 // ============================================================================
 // Verifying Step Component (extracted to comply with Rules of Hooks)

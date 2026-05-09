@@ -1,15 +1,16 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
+import type { ScoreResult } from "@/lib/audit/checks/types";
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
-import type { ScoreResult } from "@/lib/audit/checks/types";
+import { getOpenSeo } from "@/lib/server-fetch";
 
 // Validation schemas
 const findingsParamsSchema = z.object({

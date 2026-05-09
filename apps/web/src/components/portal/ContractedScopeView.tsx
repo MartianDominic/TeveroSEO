@@ -7,12 +7,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { CheckCircle, Clock, AlertCircle, FileQuestion } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { GoalProgressCard, type GoalProgressCardProps } from "./GoalProgressCard";
-import { CheckCircle, Clock, AlertCircle, FileQuestion } from "lucide-react";
+
 
 interface KeywordDistribution {
   total: number;

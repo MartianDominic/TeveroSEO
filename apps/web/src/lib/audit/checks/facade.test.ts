@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { runAllChecks } from "./facade";
-import type { CheckTier, CheckResult, ScoreResult, ScoreBreakdown } from "./types";
 import {
   isValidScoreResult,
   isValidScoreBreakdown,
@@ -8,6 +8,8 @@ import {
   isValidCheckResponse,
   isValidAllChecksResult,
 } from "./types";
+
+import type { CheckTier, CheckResult, ScoreResult, ScoreBreakdown } from "./types";
 
 // -----------------------------------------------------------------------------
 // Test fixtures

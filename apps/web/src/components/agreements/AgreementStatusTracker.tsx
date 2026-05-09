@@ -9,8 +9,10 @@
  */
 
 import { CheckCircle, FileText, Send, Eye, PenTool, Download } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, ProgressBar } from "@tevero/ui";
+
 import { cn } from "@/lib/utils";
+
+import { Card, CardContent, CardHeader, CardTitle, ProgressBar } from "@tevero/ui";
 
 export type AgreementStatus =
   | "draft"

@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+
+import { ReportList } from "@/components/reports";
+import { listClientReports } from "@/lib/reports/actions";
+
 import {
   PageHeader,
   Card,
   CardContent,
   Skeleton,
 } from "@tevero/ui";
-import { ReportList } from "@/components/reports";
-import { listClientReports } from "@/lib/reports/actions";
 
 interface ReportsPageProps {
   params: Promise<{ clientId: string }>;

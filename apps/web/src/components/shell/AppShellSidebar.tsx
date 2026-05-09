@@ -7,13 +7,17 @@
  */
 
 import React from "react";
+
 import { UserButton } from "@clerk/nextjs";
 import { Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { TeveroMark } from "@/components/brand/TeveroLogo";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ClientSwitcherButton } from "./ClientSwitcherButton";
+import { cn } from "@/lib/utils";
+
 import { AppShellNavItem, type NavItem } from "./AppShellNavItem";
+import { ClientSwitcherButton } from "./ClientSwitcherButton";
+
 import type { PlatformHealth } from "./hooks/usePlatformHealth";
 
 // ---------------------------------------------------------------------------

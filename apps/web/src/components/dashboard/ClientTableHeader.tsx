@@ -1,9 +1,12 @@
 "use client";
 
 import React from "react";
-import { TableHead, TableHeader, TableRow, Checkbox } from "@tevero/ui";
+
 import { ArrowUpDown } from "lucide-react";
+
 import type { ClientSortKey } from "@/lib/dashboard/types";
+
+import { TableHead, TableHeader, TableRow, Checkbox } from "@tevero/ui";
 
 // ---------------------------------------------------------------------------
 // SortButton

@@ -9,8 +9,9 @@
  */
 "use client";
 
-import { cn } from "@/lib/utils";
 import { ReactNode, useState, useCallback } from "react";
+
+import { cn } from "@/lib/utils";
 
 /**
  * Blur intensity levels

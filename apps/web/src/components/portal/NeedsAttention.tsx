@@ -8,9 +8,11 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
 import { AlertTriangle, ArrowDown } from "lucide-react";
+
 import type { NeedsAttentionItem } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 export interface NeedsAttentionCardProps {
   /** Attention item data */

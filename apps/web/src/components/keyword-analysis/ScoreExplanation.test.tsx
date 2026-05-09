@@ -5,8 +5,9 @@
  * TDD RED: Tests written before implementation.
  */
 
-import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+
 import { ScoreExplanation, type ScoreBreakdown } from "./ScoreExplanation";
 
 const mockBreakdown: ScoreBreakdown = {

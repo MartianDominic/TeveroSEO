@@ -9,8 +9,11 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
+
 import { Lightbulb, TrendingUp, Target, Users, Loader2 } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
+
 import {
   getAIRecommendations,
   type AIRecommendations,

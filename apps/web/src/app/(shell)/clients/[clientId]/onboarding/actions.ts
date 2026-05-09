@@ -7,9 +7,11 @@
  * Server actions for completing checklist items.
  */
 
-import { z } from "zod";
-import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { revalidatePath } from "next/cache";
+
+import { z } from "zod";
+
+import { postOpenSeo, FastApiError } from "@/lib/server-fetch";
 
 const completeItemResponseSchema = z.object({
   checklist: z.object({

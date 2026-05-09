@@ -16,10 +16,12 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useClientStore } from "@/stores/clientStore";
-import type { Client } from "@tevero/types";
+
 import { queryKeys } from "@/lib/query-keys";
 import { broadcastSync } from "@/lib/state/broadcast-sync";
+import { useClientStore } from "@/stores/clientStore";
+
+import type { Client } from "@tevero/types";
 
 // ============================================================================
 // Query Configuration

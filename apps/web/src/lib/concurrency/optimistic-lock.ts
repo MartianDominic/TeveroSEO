@@ -12,9 +12,9 @@
  * - Type-safe update operations
  */
 
+import { logger } from '@/lib/logger';
 import { redis } from "@/lib/redis/client";
 
-import { logger } from '@/lib/logger';
 /** Version key prefix */
 const VERSION_PREFIX = "tevero:version:";
 

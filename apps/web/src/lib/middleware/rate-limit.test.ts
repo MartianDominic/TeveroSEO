@@ -2,8 +2,9 @@
  * Tests for Next.js rate limiting middleware.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock next/headers
 vi.mock('next/headers', () => ({

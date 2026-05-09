@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { z } from "zod";
+
+import { validateCsrf } from "@/lib/api/security";
+import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import {
   getFastApi,
   patchFastApi,
@@ -7,9 +12,6 @@ import {
   postFastApi,
   FastApiError,
 } from "@/lib/server-fetch";
-import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { validateCsrf } from "@/lib/api/security";
-import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 /**
  * Schema for validating eventId route parameter.

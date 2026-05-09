@@ -1,5 +1,9 @@
 "use client";
 
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+
+import type { TopQuery } from "@/lib/analytics/types";
+
 import {
   Table,
   TableBody,
@@ -8,8 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@tevero/ui";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import type { TopQuery } from "@/lib/analytics/types";
 
 interface QueriesTableProps {
   queries: TopQuery[];

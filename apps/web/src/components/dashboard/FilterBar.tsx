@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { Search, Filter, X } from "lucide-react";
+
+import type { FilterParams } from "@/types/pagination";
+
 import {
   Button,
   Input,
@@ -11,8 +16,6 @@ import {
   Checkbox,
   Slider,
 } from "@tevero/ui";
-import { Search, Filter, X } from "lucide-react";
-import type { FilterParams } from "@/types/pagination";
 
 interface FilterBarProps {
   filters: FilterParams;

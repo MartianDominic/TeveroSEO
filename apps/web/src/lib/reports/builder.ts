@@ -8,9 +8,12 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+
 import type { ReportSection, ReportBuilderConfig, ReportSectionType } from "@tevero/types";
-import type { ReportData } from "./types";
+
 import { getDefaultSections, isSectionRequired } from "./sections";
+
+import type { ReportData } from "./types";
 
 /** Maximum date range in days (threat model T-53-03) */
 const MAX_DATE_RANGE_DAYS = 365;

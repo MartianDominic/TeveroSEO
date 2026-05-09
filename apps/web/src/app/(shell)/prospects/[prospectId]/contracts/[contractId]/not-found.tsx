@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { Button } from '@tevero/ui';
+
 import { FileQuestion, ArrowLeft } from 'lucide-react';
+
+import { Button } from '@tevero/ui';
 
 export default function ContractNotFound() {
   return (

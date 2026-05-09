@@ -1,8 +1,11 @@
-import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+
 import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from "next-intl/server";
+
 import { ThemeScript } from "@/contexts/ThemeContext";
+
+import type { Metadata } from "next";
 import "./globals.css";
 
 const geist = Geist({

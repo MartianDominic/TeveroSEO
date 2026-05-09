@@ -8,9 +8,10 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { Command } from "cmdk";
-import { Dialog, DialogContent } from "@tevero/ui";
 import {
   Search,
   Users,
@@ -22,7 +23,10 @@ import {
   ArrowRight,
   Keyboard,
 } from "lucide-react";
+
 import type { ClientMetrics } from "@/lib/dashboard/types";
+
+import { Dialog, DialogContent } from "@tevero/ui";
 
 interface CommandPaletteProps {
   /** List of clients for search */

@@ -7,18 +7,19 @@
  * The goalId in the body is used to look up and update the goal.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { putFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { validateCsrf } from "@/lib/api/security";
-import {
-  updateGoalSchema,
-  safeParseJson,
-} from "@/lib/validations/api-schemas";
+
 import {
   badRequest,
   validationError,
 } from "@/lib/api/responses";
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { putFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
+import {
+  updateGoalSchema,
+  safeParseJson,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

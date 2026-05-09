@@ -1,5 +1,9 @@
 "use client";
 
+import { Globe, TrendingUp, Users, DollarSign, Target } from "lucide-react";
+
+import type { ProspectAnalysis } from "@/app/(shell)/prospects/actions";
+
 import {
   Card,
   CardContent,
@@ -14,8 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@tevero/ui";
-import { Globe, TrendingUp, Users, DollarSign, Target } from "lucide-react";
-import type { ProspectAnalysis } from "@/app/(shell)/prospects/actions";
 
 interface AnalysisResultsProps {
   analysis: ProspectAnalysis;

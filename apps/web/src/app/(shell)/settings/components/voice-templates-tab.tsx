@@ -8,9 +8,12 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
+
 import {
   Button,
   Dialog,
@@ -28,7 +31,6 @@ import {
   TableRow,
   Textarea,
 } from "@tevero/ui";
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -1,8 +1,10 @@
 'use client';
 
 import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react';
-import { Button } from '@tevero/ui';
+
 import { cn } from '@/lib/utils';
+
+import { Button } from '@tevero/ui';
 
 export interface FallbackIndicatorProps {
   /** Type of fallback being shown */

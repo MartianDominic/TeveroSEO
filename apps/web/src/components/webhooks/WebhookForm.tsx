@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { AlertCircle } from "lucide-react";
+
+import type { Webhook, WebhookEvent } from "@/actions/webhooks";
+import { createWebhook, updateWebhook } from "@/actions/webhooks";
 import { logger } from '@/lib/logger';
+
 import {
   Dialog,
   DialogContent,
@@ -17,9 +24,6 @@ import {
   Alert,
   AlertDescription,
 } from "@tevero/ui";
-import { AlertCircle } from "lucide-react";
-import type { Webhook, WebhookEvent } from "@/actions/webhooks";
-import { createWebhook, updateWebhook } from "@/actions/webhooks";
 
 interface WebhookFormProps {
   open: boolean;

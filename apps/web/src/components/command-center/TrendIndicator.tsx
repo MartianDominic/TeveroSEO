@@ -7,6 +7,7 @@
  */
 
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+
 import { cn } from "@tevero/ui";
 
 interface TrendIndicatorProps {

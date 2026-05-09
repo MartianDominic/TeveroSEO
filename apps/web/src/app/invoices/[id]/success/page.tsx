@@ -4,8 +4,9 @@
  *
  * Shown after successful payment. Thank you message with next steps.
  */
-import { CheckCircle } from "lucide-react";
 import Link from "next/link";
+
+import { CheckCircle } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;

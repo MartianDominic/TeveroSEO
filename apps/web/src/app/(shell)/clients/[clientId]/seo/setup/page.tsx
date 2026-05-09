@@ -20,7 +20,10 @@
  */
 
 import { useState, useTransition, useCallback, useRef, useEffect } from "react";
+
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+
 import {
   Globe,
   FileSearch,
@@ -32,7 +35,11 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
-import Link from "next/link";
+
+
+import { apiPost, apiGet } from "@/lib/api-client";
+import { useClientStore } from "@/stores/clientStore";
+
 import {
   Button,
   Card,
@@ -44,8 +51,6 @@ import {
   PageHeader,
   Skeleton,
 } from "@tevero/ui";
-import { apiPost, apiGet } from "@/lib/api-client";
-import { useClientStore } from "@/stores/clientStore";
 
 // H-ONBOARD-01 FIX: Generate idempotency key for project creation
 function generateIdempotencyKey(clientId: string, domain: string): string {

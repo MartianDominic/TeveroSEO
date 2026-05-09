@@ -12,6 +12,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+
+import { X, ArrowUpDown, ArrowUp, ArrowDown, Zap } from 'lucide-react';
+
 import {
   Table,
   TableHeader,
@@ -23,7 +26,6 @@ import {
   Button,
   cn,
 } from '@tevero/ui';
-import { X, ArrowUpDown, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 
 // ============================================================================
 // Types

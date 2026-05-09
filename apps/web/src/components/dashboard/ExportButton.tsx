@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
+import { Download, FileSpreadsheet, FileText, ChevronDown, AlertCircle } from "lucide-react";
+
+import type { ExportColumn, ClientMetrics } from "@/lib/dashboard/types";
+import { EXPORT_COLUMN_LABELS } from "@/lib/dashboard/types";
+import { generateCSV, type CSVColumn } from "@/lib/export/csv";
+import { generatePDF, type PDFColumn, createPDFOptions } from "@/lib/export/pdf";
 import { logger } from '@/lib/logger';
+
 import {
   Button,
   Dialog,
@@ -17,11 +25,6 @@ import {
   Alert,
   AlertDescription,
 } from "@tevero/ui";
-import { Download, FileSpreadsheet, FileText, ChevronDown, AlertCircle } from "lucide-react";
-import type { ExportColumn, ClientMetrics } from "@/lib/dashboard/types";
-import { EXPORT_COLUMN_LABELS } from "@/lib/dashboard/types";
-import { generateCSV, type CSVColumn } from "@/lib/export/csv";
-import { generatePDF, type PDFColumn, createPDFOptions } from "@/lib/export/pdf";
 
 export type ExportFormat = "csv" | "pdf";
 

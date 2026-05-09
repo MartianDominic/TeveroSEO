@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+
 import { useAuth } from "@clerk/nextjs";
 import { io, Socket } from "socket.io-client";
-import type { ActivityEvent, ActivityEventType } from "./socket-events";
 
 import { logger } from '@/lib/logger';
+
+import type { ActivityEvent, ActivityEventType } from "./socket-events";
+
 // NEXT_PUBLIC_WS_URL must be set via build args in docker-compose.vps.yml
 // Fallback to relative path for same-origin WebSocket (works in both dev and prod)
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "";

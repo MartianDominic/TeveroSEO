@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 import { Users, AlertTriangle } from "lucide-react";
+
 import type { TeamMember } from "@/lib/dashboard/types";
+
+import { Card, CardContent, CardHeader, CardTitle, Badge } from "@tevero/ui";
 
 interface TeamWorkloadSectionProps {
   members: TeamMember[];

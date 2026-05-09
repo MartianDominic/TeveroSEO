@@ -4,8 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { AnalysisPipeline, runAnalysisPipeline } from '../analysis-pipeline';
 import { StageEmitter, type EventCallback } from '../stage-emitter';
+
 import type { AnalysisEvent, AnalyzeRequest, AnalysisStage } from '../types';
 
 describe('AnalysisPipeline', () => {

@@ -3,6 +3,7 @@
  * Phase 66-04: Connection Wizard UI
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { connectApi, ConnectApiError } from "./connect";
 
 // Mock fetch globally

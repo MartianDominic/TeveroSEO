@@ -7,9 +7,11 @@
  * D-12: 4 metric cards (MRR, One-Time, Collected, Outstanding)
  */
 
-import { MetricCard } from "@tevero/ui";
 import { DollarSign, CreditCard, Banknote, AlertCircle } from "lucide-react";
+
 import { formatCurrency } from "@/lib/currency";
+
+import { MetricCard } from "@tevero/ui";
 
 /**
  * Props for RevenueCards component.

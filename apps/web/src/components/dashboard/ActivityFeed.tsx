@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@tevero/ui";
+
 import { Activity, Pause, Play, Trash2, Wifi, WifiOff } from "lucide-react";
+
 import { useActivityFeed } from "@/lib/websocket/socket-client";
 import {
   EVENT_TYPE_LABELS,
@@ -11,6 +12,8 @@ import {
   type ActivityEventType,
   type ActivityEventCategory
 } from "@/lib/websocket/socket-events";
+
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@tevero/ui";
 
 interface ActivityFeedProps {
   workspaceId: string;

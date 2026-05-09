@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
+import type { VoiceProfile } from "@/lib/voiceApi";
+
 import {
   Button,
   Card,
@@ -13,7 +16,6 @@ import {
   Slider,
   Textarea,
 } from "@tevero/ui";
-import type { VoiceProfile } from "@/lib/voiceApi";
 
 interface WritingMechanicsTabProps {
   profile: VoiceProfile | null;

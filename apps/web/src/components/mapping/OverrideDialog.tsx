@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { Loader2 } from "lucide-react";
+
+import { overrideMapping } from "@/actions/seo/mapping";
+
 import {
   Dialog,
   DialogContent,
@@ -14,8 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { Loader2 } from "lucide-react";
-import { overrideMapping } from "@/actions/seo/mapping";
 
 interface OverrideDialogProps {
   open: boolean;

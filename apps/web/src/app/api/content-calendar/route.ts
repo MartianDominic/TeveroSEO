@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+
 import { z } from "zod";
-import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
-import { validateCsrf } from "@/lib/api/security";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+
 import { badRequest, validationError } from "@/lib/api/responses";
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
 
 /**
  * Schema for creating a new calendar event/article.

@@ -8,9 +8,12 @@
 "use client";
 
 import * as React from "react";
+
 import { Check, AlertCircle, Globe } from "lucide-react";
-import { ProgressBar, Badge, cn } from "@tevero/ui";
+
 import type { DetectionResult } from "@/lib/api/connect";
+
+import { ProgressBar, Badge, cn } from "@tevero/ui";
 
 // ============================================================================
 // Types

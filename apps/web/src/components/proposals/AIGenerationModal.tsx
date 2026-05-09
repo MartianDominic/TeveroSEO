@@ -21,6 +21,9 @@
  */
 
 import { type FC, useState, useCallback, useMemo, useEffect } from "react";
+
+import { Sparkles, Loader2 } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -31,7 +34,6 @@ import {
   Button,
   Label,
 } from "@tevero/ui";
-import { Sparkles, Loader2 } from "lucide-react";
 
 // Extracted configuration and sub-components
 import {

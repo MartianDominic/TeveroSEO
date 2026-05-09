@@ -7,13 +7,14 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { cacheInvalidateByTag, cacheTags } from "@/lib/cache";
 import {
   createGoalUpdateOptimistic,
   createGoalDeleteOptimistic,
   type UpdateGoalVariables,
   type DeleteGoalVariables,
 } from "@/lib/optimistic";
-import { cacheInvalidateByTag, cacheTags } from "@/lib/cache";
 // HIGH-STATE-04 FIX: Use centralized query key factory
 import { queryKeys } from "@/lib/query-keys";
 

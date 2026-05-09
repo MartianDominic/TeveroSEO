@@ -1,18 +1,22 @@
 "use client";
 
 import React from "react";
-import { TableCell, TableRow, Badge, Checkbox } from "@tevero/ui";
+
 import { ChevronRight } from "lucide-react";
-import { HealthScoreBadge } from "./HealthScoreBadge";
-import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
-import { PositionDistributionBar } from "./PositionDistributionBar";
+
+import type { ClientMetrics } from "@/lib/dashboard/types";
+
+import { TableCell, TableRow, Badge, Checkbox } from "@tevero/ui";
+
 import {
   HealthHoverPopover,
   TrafficHoverPopover,
   KeywordsHoverPopover,
 } from "./ClientTableHoverPopover";
+import { GoalAttainmentBadge } from "./GoalAttainmentBadge";
+import { HealthScoreBadge } from "./HealthScoreBadge";
 import { LazySparkline } from "./LazySparkline";
-import type { ClientMetrics } from "@/lib/dashboard/types";
+import { PositionDistributionBar } from "./PositionDistributionBar";
 
 // ---------------------------------------------------------------------------
 // Helpers

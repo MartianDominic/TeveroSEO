@@ -1,7 +1,9 @@
+import { notFound } from 'next/navigation';
+
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
+
 import { routing } from '@/i18n/routing';
-import { notFound } from 'next/navigation';
 
 /**
  * Generate static params for supported locales.

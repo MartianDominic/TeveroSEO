@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { FileText, Loader2 } from "lucide-react";
+
 import { logger } from '@/lib/logger';
+import { generateReport } from "@/lib/reports/actions";
+
 import {
   Button,
   Dialog,
@@ -19,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { FileText, Loader2 } from "lucide-react";
-import { generateReport } from "@/lib/reports/actions";
 
 interface GenerateReportButtonProps {
   clientId: string;

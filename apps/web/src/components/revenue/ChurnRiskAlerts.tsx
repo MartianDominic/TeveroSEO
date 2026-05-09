@@ -11,9 +11,11 @@
  * - D-21: SEO metrics declining
  */
 
-import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 import { AlertTriangle, Clock, Calendar, TrendingDown, User } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+
+import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 
 /**
  * Churn risk types per D-18-21.

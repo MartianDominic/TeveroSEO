@@ -10,11 +10,13 @@
  * - Add task modal state
  */
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
 import { redirect } from "next/navigation";
-import { TodaysFeed, type AggregatedTask } from "@/components/tasks";
 
+import { TodaysFeed, type AggregatedTask } from "@/components/tasks";
 import { logger } from '@/lib/logger';
+
 type AnyRoute = Parameters<typeof redirect>[0];
 import {
   completeTask,

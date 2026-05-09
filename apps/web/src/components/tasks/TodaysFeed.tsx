@@ -9,6 +9,9 @@
  * - D-11 Layer 5: My Focus section integration
  */
 import { useState } from "react";
+
+import { ArrowUpDown, Plus, ListTodo } from "lucide-react";
+
 import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 import { Button } from "@tevero/ui";
 import {
@@ -17,11 +20,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@tevero/ui";
-import { ArrowUpDown, Plus, ListTodo } from "lucide-react";
+
 import { MyFocusSection } from "./MyFocusSection";
 import { TaskItem } from "./TaskItem";
-import type { AggregatedTask, SortMode } from "./types";
 import { SORT_MODE_LABELS } from "./types";
+
+import type { AggregatedTask, SortMode } from "./types";
 
 interface TodaysFeedProps {
   /** All aggregated tasks */

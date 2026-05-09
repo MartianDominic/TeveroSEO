@@ -14,7 +14,7 @@
 
 import * as React from "react";
 import { useCallback, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+
 import {
   AlertCircle,
   AlertTriangle,
@@ -29,18 +29,8 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  Badge,
-  cn,
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@tevero/ui";
+import { useTranslations } from "next-intl";
+
 
 import type {
   Platform,
@@ -55,6 +45,19 @@ import {
   generateKeyFileContent,
   generateVerificationUrl,
 } from "@/lib/indexnow/instruction-templates";
+
+import {
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  Badge,
+  cn,
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@tevero/ui";
 
 // ============================================================================
 // Types

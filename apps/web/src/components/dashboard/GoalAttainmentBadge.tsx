@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Minus, Target } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 interface GoalAttainmentBadgeProps {
   attainmentPct: number | null;

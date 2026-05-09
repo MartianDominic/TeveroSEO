@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Button, Card, CardContent } from "@tevero/ui";
+
 import { ArrowLeft, Download, Send, Loader2, AlertCircle } from "lucide-react";
+
+import { Button, Card, CardContent } from "@tevero/ui";
+
 import {
   getProposalForPreview,
   type ProposalPreviewData,

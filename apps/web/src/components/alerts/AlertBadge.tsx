@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { Bell } from "lucide-react";
+
 import { Button, Badge, cn } from "@tevero/ui";
 
 interface AlertBadgeProps {

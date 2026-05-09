@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
+import { Download, Share2, Plus, Loader2, Copy, Check } from "lucide-react";
+
 import {
   Badge,
   Button,
@@ -16,7 +19,7 @@ import {
   TableRow,
   Textarea,
 } from "@tevero/ui";
-import { Download, Share2, Plus, Loader2, Copy, Check } from "lucide-react";
+
 import {
   quickCheckKeywords,
   exportToCsv,

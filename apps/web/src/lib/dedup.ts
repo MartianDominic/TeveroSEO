@@ -7,11 +7,13 @@
  * Uses Redis for distributed deduplication across server instances.
  */
 
-import { redis } from "@/lib/redis/client";
 import crypto from "crypto";
-import type { ZodLikeSchema } from "./utils/type-guards";
 
 import { logger } from '@/lib/logger';
+import { redis } from "@/lib/redis/client";
+
+import type { ZodLikeSchema } from "./utils/type-guards";
+
 /** Default dedup window in seconds */
 const DEDUP_TTL = 60;
 

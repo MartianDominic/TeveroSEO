@@ -10,9 +10,10 @@
  * - Monthly, setup, and one-time totals calculation
  */
 
-import { Separator } from "@tevero/ui";
 import { Check, Package } from "lucide-react";
 import * as Icons from "lucide-react";
+
+import { Separator } from "@tevero/ui";
 
 interface ServiceWithSelection {
   id: string;

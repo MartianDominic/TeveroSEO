@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import * as Sentry from '@sentry/nextjs';
-import { Button } from '@tevero/ui';
-import { AlertTriangle, RefreshCw, ArrowLeft, Home } from 'lucide-react';
+
 import Link from 'next/link';
 
-import { logger } from '@/lib/logger';
+import * as Sentry from '@sentry/nextjs';
+import { AlertTriangle, RefreshCw, ArrowLeft, Home } from 'lucide-react';
+
 import { getUserFriendlyError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
+
+import { Button } from '@tevero/ui';
 
 // SECURITY: Never expose raw error messages to users in production
 const isDev = process.env.NODE_ENV === 'development';

@@ -10,6 +10,7 @@
  * @see https://developer.revolut.com/docs/revolut-checkout-js/#payment-request
  */
 import { useEffect, useState, useRef } from "react";
+
 import { Loader2 } from "lucide-react";
 
 interface RevolutPaymentRequestButtonProps {

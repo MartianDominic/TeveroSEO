@@ -6,9 +6,10 @@
  * Stores WordPress Application Password connection with encrypted credentials.
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
-import { z } from "zod";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 
 const connectSchema = z.object({
   siteUrl: z.string().url(),

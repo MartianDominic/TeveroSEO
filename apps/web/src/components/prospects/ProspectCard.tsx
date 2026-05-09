@@ -1,9 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+
+import {
+  Globe,
+  User,
+  Mail,
+  Building2,
+  MoreVertical,
+  Search,
+  Trash2,
+  ExternalLink,
+  Loader2,
+  Check,
+} from "lucide-react";
+
+import type { Prospect } from "@/app/(shell)/prospects/actions";
+import {
+  deleteProspectAction,
+  triggerAnalysisAction,
+} from "@/app/(shell)/prospects/actions";
 import { logger } from '@/lib/logger';
+
 import {
   Card,
   CardContent,
@@ -17,23 +39,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@tevero/ui";
-import {
-  Globe,
-  User,
-  Mail,
-  Building2,
-  MoreVertical,
-  Search,
-  Trash2,
-  ExternalLink,
-  Loader2,
-  Check,
-} from "lucide-react";
-import type { Prospect } from "@/app/(shell)/prospects/actions";
-import {
-  deleteProspectAction,
-  triggerAnalysisAction,
-} from "@/app/(shell)/prospects/actions";
 
 interface ProspectCardProps {
   prospect: Prospect;

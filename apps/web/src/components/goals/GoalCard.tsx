@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import type { ClientGoalSelect, GoalTemplateSelect } from "@/types/goals";
+
 import {
   Card,
   CardContent,
@@ -10,10 +16,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@tevero/ui";
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Minus } from "lucide-react";
+
 import { GoalIcon } from "./GoalIcon";
-import { cn } from "@/lib/utils";
-import type { ClientGoalSelect, GoalTemplateSelect } from "@/types/goals";
 
 interface GoalCardProps {
   goal: ClientGoalSelect;

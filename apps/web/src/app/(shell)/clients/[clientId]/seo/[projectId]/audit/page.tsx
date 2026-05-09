@@ -1,27 +1,13 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
+
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { calculateAuditRefetchInterval } from "@/hooks/use-audit-polling";
-import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
 import { AlertCircle, Loader2, Play, Trash2, Eye, FolderX, XCircle, RotateCcw, Clock, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
-import { logger } from '@/lib/logger';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@tevero/ui";
+import { z } from "zod";
+
 import {
   startAudit,
   getAuditStatus,
@@ -37,13 +23,15 @@ import {
   StatusBadge,
   HttpStatusBadge,
 } from "@/components/seo/audit/StatusBadge";
+import { calculateAuditRefetchInterval } from "@/hooks/use-audit-polling";
+import { logger } from '@/lib/logger';
+import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
 import {
   extractHostname,
   extractPathname,
   formatStartedAt,
   SUPPORT_URL,
 } from "@/lib/seo/shared";
-import { z } from "zod";
 import {
   AuditStatusSchema,
   CrawlProgressArraySchema,
@@ -52,6 +40,22 @@ import {
   type CrawlProgressEntry,
   type AuditHistoryEntry,
 } from "@/lib/validations/api-response-schemas";
+
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@tevero/ui";
 
 // Zod schema for audit results validation
 const AuditResultsSchema = z.object({

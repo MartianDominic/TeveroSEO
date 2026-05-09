@@ -7,8 +7,11 @@
  */
 
 import { type FC } from "react";
-import { Checkbox } from "@tevero/ui";
+
 import { cn } from "@/lib/utils";
+
+import { Checkbox } from "@tevero/ui";
+
 import {
   type GeneratableSectionType,
   SECTION_CONFIGS,

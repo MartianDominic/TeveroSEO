@@ -9,10 +9,11 @@
  */
 
 import * as React from "react";
+
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Search,
@@ -21,6 +22,8 @@ import {
   Bell,
   LogOut,
 } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 /**
  * Register service worker on mount

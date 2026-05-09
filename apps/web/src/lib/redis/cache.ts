@@ -4,9 +4,11 @@
  */
 
 import { z } from "zod";
-import { redis } from "./client";
 
 import { logger } from '@/lib/logger';
+
+import { redis } from "./client";
+
 // Namespace prefix for all cache keys - prevents collisions with other Redis users
 const CACHE_PREFIX = "tevero:cache:";
 

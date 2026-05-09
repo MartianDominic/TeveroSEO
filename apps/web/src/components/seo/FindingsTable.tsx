@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
+
+import { Download, ChevronDown, ChevronRight, Wrench } from "lucide-react";
+
+import type { AuditFinding } from "@/actions/seo/findings";
+
 import {
   Card,
   CardContent,
@@ -15,8 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { Download, ChevronDown, ChevronRight, Wrench } from "lucide-react";
-import type { AuditFinding } from "@/actions/seo/findings";
 
 interface FindingsTableProps {
   findings: AuditFinding[];

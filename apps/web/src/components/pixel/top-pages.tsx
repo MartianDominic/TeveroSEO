@@ -1,8 +1,17 @@
 "use client";
 
 import * as React from "react";
+
 import { ExternalLink, ChevronDown } from "lucide-react";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
 import {
   Card,
   CardContent,
@@ -11,12 +20,6 @@ import {
   Skeleton,
   Button,
 } from "@tevero/ui";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 // ============================================================================
 // Types

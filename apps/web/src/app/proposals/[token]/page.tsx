@@ -8,9 +8,10 @@
  * Now includes structured services from service catalog.
  */
 import { notFound } from "next/navigation";
+
 import { getPublicProposal, getProposalServices } from "./actions";
-import { ProposalView } from "./components/ProposalView";
 import { AcceptRejectButtons } from "./components/AcceptRejectButtons";
+import { ProposalView } from "./components/ProposalView";
 
 interface Props {
   params: Promise<{ token: string }>;

@@ -10,8 +10,10 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { ClauseEditor } from "./ClauseEditor";
+
 import type { TemplateClause } from "@/app/[locale]/(shell)/templates/[templateId]/edit/actions";
+
+import { ClauseEditor } from "./ClauseEditor";
 
 interface ClauseListProps {
   clauses: TemplateClause[];

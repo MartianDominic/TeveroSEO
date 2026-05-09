@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { Button } from '@tevero/ui';
 
 import { logger } from '@/lib/logger';
+
+import { Button } from '@tevero/ui';
+
 export default function SEOProjectError({
   error,
   reset,

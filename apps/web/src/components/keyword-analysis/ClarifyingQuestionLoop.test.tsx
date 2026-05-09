@@ -5,8 +5,8 @@
  * TDD RED: Tests written before implementation.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Import the component (will fail until implemented)
 import { ClarifyingQuestionLoop } from "./ClarifyingQuestionLoop";

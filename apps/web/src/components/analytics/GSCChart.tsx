@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+
 import type { GSCDataPoint } from "@/lib/analytics/types";
 
 interface GSCChartProps {

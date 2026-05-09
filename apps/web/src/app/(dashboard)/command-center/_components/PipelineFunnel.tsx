@@ -8,7 +8,6 @@
  * Implemented in Task 3.
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FunnelChart,
   Funnel,
@@ -16,6 +15,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardMetrics } from "@/hooks/command-center/useDashboardMetrics";
 import type { DashboardMetricsResponse } from "@/types/dashboard-metrics";
 

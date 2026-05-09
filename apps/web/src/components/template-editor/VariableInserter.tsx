@@ -8,8 +8,10 @@
  */
 
 import { useCallback } from "react";
-import { Badge, Button } from "@tevero/ui";
+
 import { Copy, GripHorizontal } from "lucide-react";
+
+import { Badge, Button } from "@tevero/ui";
 
 interface VariableInserterProps {
   variable: string;

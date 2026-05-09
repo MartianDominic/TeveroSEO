@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+
 import { Loader2, AlertCircle, Brain } from "lucide-react";
 
 export type IntelligenceStatus = "not_started" | "in_progress" | "completed" | "failed";

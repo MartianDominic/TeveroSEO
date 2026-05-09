@@ -2,8 +2,10 @@
  * OAuth Prompts Tests
  * Phase 66-09: Platform Integration Facade
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import {
   GscPrompt,
   GaPrompt,
@@ -13,7 +15,7 @@ import {
   dismissPrompt,
   useOAuthPrompts,
 } from "./oauth-prompts";
-import { renderHook, act } from "@testing-library/react";
+
 
 // Mock @tevero/ui components
 vi.mock("@tevero/ui", () => ({

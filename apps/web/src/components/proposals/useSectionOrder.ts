@@ -12,6 +12,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+
 import type { EditorSection } from "./types";
 
 /**

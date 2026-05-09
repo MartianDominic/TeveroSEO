@@ -7,7 +7,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
+
+import { AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+
+import type { Change, RevertPreview } from '@/actions/changes';
+import { previewRevert, executeRevert } from '@/actions/changes';
+
 import { Button } from '@tevero/ui';
 import {
   Dialog,
@@ -18,9 +25,6 @@ import {
   DialogTitle,
 } from '@tevero/ui';
 import { Label } from '@tevero/ui';
-import { AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import type { Change, RevertPreview } from '@/actions/changes';
-import { previewRevert, executeRevert } from '@/actions/changes';
 
 interface RevertDialogProps {
   isOpen: boolean;

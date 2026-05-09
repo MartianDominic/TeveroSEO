@@ -11,6 +11,17 @@
  * - Export to CSV
  */
 import { useState, useMemo } from "react";
+
+import {
+  Sparkles,
+  Download,
+  ChevronUp,
+  ChevronDown,
+  Target,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -30,15 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import {
-  Sparkles,
-  Download,
-  ChevronUp,
-  ChevronDown,
-  Target,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
 
 // Types matching the backend schema
 export type OpportunityKeywordCategory =

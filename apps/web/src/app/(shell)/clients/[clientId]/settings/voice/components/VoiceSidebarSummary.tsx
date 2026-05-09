@@ -1,8 +1,10 @@
 "use client";
 
-import { Badge, Button, Card, Skeleton } from "@tevero/ui";
 import { Loader2, RefreshCw } from "lucide-react";
+
 import type { VoiceProfile } from "@/lib/voiceApi";
+
+import { Badge, Button, Card, Skeleton } from "@tevero/ui";
 
 interface VoiceSidebarSummaryProps {
   profile: VoiceProfile | null;

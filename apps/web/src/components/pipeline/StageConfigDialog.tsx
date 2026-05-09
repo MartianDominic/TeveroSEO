@@ -9,6 +9,9 @@
  */
 
 import { useState } from "react";
+
+import { Plus, Trash2, GripVertical } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -19,7 +22,6 @@ import {
 } from "@tevero/ui";
 import { Button } from "@tevero/ui";
 import { Input } from "@tevero/ui";
-import { Plus, Trash2, GripVertical } from "lucide-react";
 
 export interface PipelineStageConfig {
   id: string;

@@ -10,13 +10,17 @@
  */
 
 import { Suspense } from "react";
-import { auth } from "@clerk/nextjs/server";
-import { PageHeader, Skeleton } from "@tevero/ui";
-import { PipelineKanbanContainer } from "./PipelineKanbanContainer";
-import { DEFAULT_PIPELINE_STAGES } from "./constants";
-import { getOpenSeoUrl } from "@/lib/env";
 
+import { auth } from "@clerk/nextjs/server";
+
+import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
+
+import { PageHeader, Skeleton } from "@tevero/ui";
+
+import { DEFAULT_PIPELINE_STAGES } from "./constants";
+import { PipelineKanbanContainer } from "./PipelineKanbanContainer";
+
 // Default empty state
 const defaultGroupedProspects: Record<string, never[]> = {};
 for (const stage of DEFAULT_PIPELINE_STAGES) {

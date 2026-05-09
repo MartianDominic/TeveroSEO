@@ -4,8 +4,9 @@
  * Provides authentication utilities for Next.js API routes.
  * All API routes should use these wrappers to ensure proper authentication.
  */
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 import { logger } from '@/lib/logger';
 /**

@@ -20,6 +20,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+
 import { useProposalEditingActions } from '@/lib/copilot/tools/proposal-editing';
 
 // TODO: Import from open-seo-main once types are wired

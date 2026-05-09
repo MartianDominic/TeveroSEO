@@ -7,15 +7,16 @@
  * Uses POST instead of DELETE for simpler body parsing.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { deleteFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { validateCsrf } from "@/lib/api/security";
+
 import {
   badRequest,
   validationError,
   internalError,
 } from "@/lib/api/responses";
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { deleteFastApi, getFastApi, FastApiError } from "@/lib/server-fetch";
 import {
   deleteGoalSchema,
   safeParseJson,

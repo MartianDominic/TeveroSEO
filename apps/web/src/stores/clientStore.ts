@@ -36,10 +36,12 @@
  */
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Client } from "@tevero/types";
-import { ACTIVE_CLIENT_COOKIE, cookieStorage } from "@/lib/cookies";
+
 import { abortManager } from "@/lib/client-context/abort-manager";
+import { ACTIVE_CLIENT_COOKIE, cookieStorage } from "@/lib/cookies";
 import { broadcastSync } from "@/lib/state/broadcast-sync";
+
+import type { Client } from "@tevero/types";
 
 // FIX-17 HIGH-UJ-12: Stale time for client data (5 minutes)
 const STALE_TIME_MS = 5 * 60 * 1000;

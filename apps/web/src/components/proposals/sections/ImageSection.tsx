@@ -11,9 +11,12 @@
  */
 
 import { type FC } from "react";
+
 import { Image as ImageIcon, Link, Type, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
 import { Label, Textarea } from "@tevero/ui";
 
 export interface ImageSectionData {

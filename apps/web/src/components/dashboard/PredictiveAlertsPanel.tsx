@@ -5,16 +5,11 @@
  * Phase 25: Team & Intelligence - Predictive Alerts + Goal Projection
  */
 
+import { useState } from "react";
+
+import Link from "next/link";
+
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-  Button,
-  Skeleton,
-} from "@tevero/ui";
 import {
   AlertTriangle,
   TrendingDown,
@@ -24,11 +19,20 @@ import {
   ChevronUp,
   ExternalLink,
 } from "lucide-react";
+
 import { getWorkspacePredictions } from "@/actions/analytics/get-predictions";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { useState } from "react";
 import type { PredictiveAlert, PredictionType, PredictionSeverity } from "@/types/predictions";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Skeleton,
+} from "@tevero/ui";
 
 interface PredictiveAlertsPanelProps {
   workspaceId: string;

@@ -13,10 +13,13 @@
  */
 
 import { type FC } from "react";
+
+import { GripVertical } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { GripVertical } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /**
  * Props for SectionHandle component.

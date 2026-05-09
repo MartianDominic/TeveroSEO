@@ -6,15 +6,16 @@
  * DELETE /api/clients/:clientId/branding/logo - Delete logo
  */
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { actionLimiters } from "@/lib/rate-limit/action-limiters";
-import { validateCsrf } from "@/lib/api/security";
-import { getClientIpFromRequest } from "@/lib/middleware/rate-limit";
-import { getOpenSeoUrl } from "@/lib/env";
 
+import { auth } from "@clerk/nextjs/server";
+
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
+import { getClientIpFromRequest } from "@/lib/middleware/rate-limit";
+import { actionLimiters } from "@/lib/rate-limit/action-limiters";
+import { deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

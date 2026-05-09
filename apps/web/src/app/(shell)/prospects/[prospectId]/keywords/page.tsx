@@ -9,8 +9,19 @@
  */
 
 import { useState, useEffect, useCallback, useTransition } from "react";
-import { useParams, useRouter } from "next/navigation";
+
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+
+import {
+  Upload,
+  Download,
+  RefreshCcw,
+  Loader2,
+  ChevronLeft,
+  Search,
+} from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -24,18 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import {
-  Upload,
-  Download,
-  RefreshCcw,
-  Loader2,
-  ChevronLeft,
-  Search,
-} from "lucide-react";
 
-import { KeywordTable } from "./components/KeywordTable";
-import { TierFilter } from "./components/TierFilter";
-import { ScoreWeightEditor } from "./components/ScoreWeightEditor";
+
 import {
   getKeywords,
   prioritizeKeywords,
@@ -45,6 +46,9 @@ import {
   type ProspectKeyword,
   type ScoreWeights,
 } from "./actions";
+import { KeywordTable } from "./components/KeywordTable";
+import { ScoreWeightEditor } from "./components/ScoreWeightEditor";
+import { TierFilter } from "./components/TierFilter";
 
 export default function KeywordListPage() {
   const params = useParams();

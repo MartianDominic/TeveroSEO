@@ -1,9 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@tevero/ui";
+
 import { ChevronDown, Check, Circle, Loader2 } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Badge } from "@tevero/ui";
 
 export type StepStatus = "complete" | "active" | "pending";
 

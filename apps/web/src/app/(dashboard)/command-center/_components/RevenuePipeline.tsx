@@ -8,11 +8,12 @@
  * Implemented in Task 3.
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendIndicator } from "@/components/command-center/TrendIndicator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
-import { cn } from "@tevero/ui";
 import type { DashboardMetricsResponse } from "@/types/dashboard-metrics";
+
+import { cn } from "@tevero/ui";
 
 interface RevenuePipelineProps {
   initialData: DashboardMetricsResponse;

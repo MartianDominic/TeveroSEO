@@ -9,7 +9,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
-import { logger } from '@/lib/logger';
+
 import {
   DndContext,
   closestCenter,
@@ -28,7 +28,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+import { logger } from '@/lib/logger';
+
 import { KanbanColumn } from "@tevero/ui";
+
 import { PipelineCard } from "./PipelineCard";
 
 export interface ProspectData {

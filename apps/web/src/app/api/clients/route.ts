@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { z } from "zod";
-import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+
 import { validateCsrf } from "@/lib/api/security";
+import { requireAuth, AuthError } from "@/lib/auth/api-auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getFastApi, postFastApi, FastApiError } from "@/lib/server-fetch";
+
 import type { Client } from "@tevero/types";
 
 // Zod schema for creating a client

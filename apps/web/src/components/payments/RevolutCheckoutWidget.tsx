@@ -10,6 +10,7 @@
  * @see https://developer.revolut.com/docs/revolut-checkout-js
  */
 import { useEffect, useState, useCallback } from "react";
+
 import { Loader2, AlertCircle } from "lucide-react";
 
 interface RevolutCheckoutWidgetProps {

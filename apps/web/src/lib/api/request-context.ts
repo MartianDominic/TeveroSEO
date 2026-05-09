@@ -8,8 +8,9 @@
  */
 
 import { randomUUID } from "crypto";
-import { NextRequest } from "next/server";
+
 import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 
 /**
  * Request context containing tracing identifiers and client context.

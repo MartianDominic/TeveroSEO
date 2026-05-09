@@ -1,9 +1,23 @@
 "use client";
 
 import { useState } from "react";
+
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Save, Trash2, Loader2, TrendingUp } from "lucide-react";
+import { z } from "zod";
+
+import {
+  researchKeywords,
+  saveKeywords,
+  getSavedKeywordsWithRankings,
+  removeSavedKeyword,
+} from "@/actions/seo/keywords";
+import { PositionBadge } from "@/components/keywords/PositionBadge";
+import { RankSparkline } from "@/components/keywords/RankSparkline";
+import { safeLast } from "@/lib/utils/safe-parse";
+
 import {
   Button,
   Card,
@@ -19,16 +33,7 @@ import {
   SelectValue,
   Badge,
 } from "@tevero/ui";
-import {
-  researchKeywords,
-  saveKeywords,
-  getSavedKeywordsWithRankings,
-  removeSavedKeyword,
-} from "@/actions/seo/keywords";
-import { RankSparkline } from "@/components/keywords/RankSparkline";
-import { PositionBadge } from "@/components/keywords/PositionBadge";
-import { safeLast } from "@/lib/utils/safe-parse";
-import { z } from "zod";
+
 
 // Zod schemas for type-safe validation
 const KeywordResultSchema = z.object({

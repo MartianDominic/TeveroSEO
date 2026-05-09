@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+
+import { getClientAlerts } from "@/actions/alerts";
+import { AlertsTable } from "@/components/alerts/AlertsTable";
+
 import {
   PageHeader,
   Card,
   CardContent,
   Skeleton,
 } from "@tevero/ui";
-import { AlertsTable } from "@/components/alerts/AlertsTable";
-import { getClientAlerts } from "@/actions/alerts";
 
 interface AlertsPageProps {
   params: Promise<{ clientId: string }>;

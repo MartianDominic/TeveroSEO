@@ -5,13 +5,13 @@
  * Uses simple linear extrapolation for projections.
  */
 
+import type { ClientGoalSelect } from "@/types/goals";
 import type {
   GoalProjection,
   RegressionResult,
   TrafficDataPoint,
   TrendDirection,
 } from "@/types/predictions";
-import type { ClientGoalSelect } from "@/types/goals";
 
 /**
  * Simple linear regression for trend prediction.

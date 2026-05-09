@@ -6,6 +6,9 @@
  * Phase 27-03: AI Business Extractor
  */
 import { useState } from "react";
+
+import { Plus, X } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -17,7 +20,6 @@ import {
   Label,
   Textarea,
 } from "@tevero/ui";
-import { Plus, X } from "lucide-react";
 
 interface BusinessInfoFormProps {
   prospectId: string;

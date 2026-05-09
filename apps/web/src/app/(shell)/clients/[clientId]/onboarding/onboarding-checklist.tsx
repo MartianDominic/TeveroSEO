@@ -10,10 +10,15 @@
  */
 
 import { useState, useTransition } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { Check, Circle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { Card, CardContent, ProgressBar, Button } from "@tevero/ui";
+
 import type { ChecklistItem } from "@/lib/api/clients";
+
+import { Card, CardContent, ProgressBar, Button } from "@tevero/ui";
+
 import { completeChecklistItem } from "./actions";
 
 interface OnboardingChecklistProps {

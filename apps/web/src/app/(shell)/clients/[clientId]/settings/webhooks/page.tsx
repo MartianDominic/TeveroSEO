@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { useParams } from "next/navigation";
-import { PageHeader, Card, CardContent, Skeleton, Button } from "@tevero/ui";
-import { WebhookList, WebhookForm } from "@/components/webhooks";
-import type { Webhook, WebhookEvent } from "@/actions/webhooks";
-import { getClientWebhooks, getEventRegistry } from "@/actions/webhooks";
+
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
+import type { Webhook, WebhookEvent } from "@/actions/webhooks";
+import { getClientWebhooks, getEventRegistry } from "@/actions/webhooks";
+import { WebhookList, WebhookForm } from "@/components/webhooks";
 import { logger } from '@/lib/logger';
+
+import { PageHeader, Card, CardContent, Skeleton, Button } from "@tevero/ui";
 export default function WebhooksSettingsPage() {
   const params = useParams();
   const clientId = params.clientId as string;

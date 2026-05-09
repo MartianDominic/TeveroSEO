@@ -2,8 +2,10 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, AlertCircle, Info, Check, X } from "lucide-react";
-import { Button, Badge, cn } from "@tevero/ui";
+
 import type { Alert } from "@/actions/alerts";
+
+import { Button, Badge, cn } from "@tevero/ui";
 
 interface AlertItemProps {
   alert: Alert;

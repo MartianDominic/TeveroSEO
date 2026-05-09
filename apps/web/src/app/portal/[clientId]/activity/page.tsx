@@ -8,11 +8,13 @@
  */
 
 import * as React from "react";
+
 import { useParams, useSearchParams } from "next/navigation";
-import { useActivity } from "@/lib/portal/hooks";
+
 import { ActivityFeed } from "@/components/portal/ActivityFeed";
-import { cn } from "@/lib/utils";
+import { useActivity } from "@/lib/portal/hooks";
 import type { ActivityCategory } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 export default function PortalActivityPage() {
   const params = useParams();

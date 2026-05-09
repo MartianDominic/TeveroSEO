@@ -1,6 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
+
+import { ChevronDown, ChevronUp } from "lucide-react";
+
+import type { VoiceProfile, VoiceTemplate } from "@/lib/voiceApi";
+
 import {
   Button,
   Card,
@@ -14,8 +19,7 @@ import {
   Switch,
   Separator,
 } from "@tevero/ui";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import type { VoiceProfile, VoiceTemplate } from "@/lib/voiceApi";
+
 import { VoiceModeCard } from "./VoiceModeCard";
 
 interface VoiceModeWizardProps {

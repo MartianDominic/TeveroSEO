@@ -8,6 +8,8 @@
  * This module provides a lightweight alternative using type guards.
  */
 
+import { logger } from '@/lib/logger';
+
 import {
   hasProperty,
   hasProperties,
@@ -15,7 +17,6 @@ import {
   isNonEmptyString,
   isNonEmptyArray,
 } from './type-guards';
-import { logger } from '@/lib/logger';
 
 /**
  * API validation error with detailed context.

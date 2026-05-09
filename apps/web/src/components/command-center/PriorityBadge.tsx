@@ -5,8 +5,9 @@
  * Displays priority level with color-coded badge styling.
  */
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@tevero/ui";
 import type { Priority } from "@/types/command-center";
+
+import { cn } from "@tevero/ui";
 
 const PRIORITY_STYLES: Record<Priority, string> = {
   critical: "bg-red-100 text-red-700 border-red-200",

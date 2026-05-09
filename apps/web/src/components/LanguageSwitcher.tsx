@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { useLocale } from 'next-intl';
-import { useRouter, usePathname, redirect } from 'next/navigation';
 import { useTransition } from 'react';
+
+import { useRouter, usePathname, redirect } from 'next/navigation';
+
 import { Globe, Check, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useLocale } from 'next-intl';
+
 import { setStoredLocale, type SupportedLocale } from '@/lib/locale-storage';
+import { cn } from '@/lib/utils';
 
 type AnyRoute = Parameters<typeof redirect>[0];
 import {

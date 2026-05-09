@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+
 import { useParams, useRouter } from "next/navigation";
+
+import { Loader2, FileText, Eye, ArrowLeft, ArrowRight } from "lucide-react";
+
+import { ServiceSelector } from "@/components/proposals/ServiceSelector";
+import { WithErrorBoundary } from "@/components/with-error-boundary";
+
 import {
   Card,
   CardContent,
@@ -18,11 +25,7 @@ import {
   SelectValue,
   StatusChip,
 } from "@tevero/ui";
-import { Loader2, FileText, Eye, ArrowLeft, ArrowRight } from "lucide-react";
-import { ScenarioSelector } from "./components/ScenarioSelector";
-import { SectionEditor } from "./components/SectionEditor";
-import { RecommendationsPanel } from "./components/RecommendationsPanel";
-import { ServiceSelector } from "@/components/proposals/ServiceSelector";
+
 import {
   generateProposal,
   getServicesForWorkspace,
@@ -33,7 +36,12 @@ import {
   type ServiceTemplate,
   type ProposalServiceInput,
 } from "./actions";
-import { WithErrorBoundary } from "@/components/with-error-boundary";
+import { RecommendationsPanel } from "./components/RecommendationsPanel";
+import { ScenarioSelector } from "./components/ScenarioSelector";
+import { SectionEditor } from "./components/SectionEditor";
+
+
+
 
 type BuilderStep = "scenario" | "customize" | "pricing" | "sections";
 

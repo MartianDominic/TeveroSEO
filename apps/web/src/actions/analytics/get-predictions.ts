@@ -6,28 +6,29 @@
  */
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
-import {
-  requireActionAuth,
-  validateClientOwnership,
-  validateWorkspaceMembership,
-} from "@/lib/auth/action-auth";
-import { getFastApi } from "@/lib/server-fetch";
-import { mlPredictionsLimiter, checkRateLimit } from "@/lib/rate-limit";
-import { deduplicateRequest, createRequestHash } from "@/lib/dedup";
 
-// Validation schemas
-const clientIdSchema = z.string().uuid("Invalid client ID");
-const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
-import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import {
   projectGoalCompletion,
   predictTrafficDecline,
   formatTimeframe,
 } from "@/lib/analytics/predictions";
-import type { GoalProjection, PredictiveAlert, TrafficDataPoint } from "@/types/predictions";
-import type { ClientGoalSelect, GoalTemplateSelect } from "@/types/goals";
+import {
+  requireActionAuth,
+  validateClientOwnership,
+  validateWorkspaceMembership,
+} from "@/lib/auth/action-auth";
+import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
 import type { ClientMetrics } from "@/lib/dashboard/types";
+import { deduplicateRequest, createRequestHash } from "@/lib/dedup";
+import { logger } from '@/lib/logger';
+import { mlPredictionsLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { getFastApi } from "@/lib/server-fetch";
+
+// Validation schemas
+const clientIdSchema = z.string().uuid("Invalid client ID");
+const workspaceIdSchema = z.string().uuid("Invalid workspace ID");
+import type { ClientGoalSelect, GoalTemplateSelect } from "@/types/goals";
+import type { GoalProjection, PredictiveAlert, TrafficDataPoint } from "@/types/predictions";
 
 interface GoalWithTemplate {
   goal: ClientGoalSelect;

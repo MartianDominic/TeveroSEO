@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
+import { AlertCircle, RotateCcw, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { cn } from "@/lib/utils";
+import type { ExtractionResult } from "@/stores/prospect-wizard-store";
+
 import {
   Input,
   Label,
@@ -12,11 +19,8 @@ import {
   Button,
   Badge,
 } from "@tevero/ui";
-import { AlertCircle, RotateCcw, Check } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+
 import { KeywordSelector } from "./KeywordSelector";
-import type { ExtractionResult } from "@/stores/prospect-wizard-store";
 
 const INDUSTRIES = [
   "Technology",

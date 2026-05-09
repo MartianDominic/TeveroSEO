@@ -1,4 +1,8 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+
+import { ArrowLeft, FileText, Clock } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -7,11 +11,10 @@ import {
   Button,
   Separator,
 } from "@tevero/ui";
-import { ArrowLeft, FileText, Clock } from "lucide-react";
-import Link from "next/link";
+
 import { getContractDetail } from "../actions";
-import { SignatureStatus } from "../components/SignatureStatus";
 import { PaymentStatus } from "../components/PaymentStatus";
+import { SignatureStatus } from "../components/SignatureStatus";
 
 type AnyRoute = Parameters<typeof redirect>[0];
 

@@ -10,6 +10,9 @@
 "use client";
 
 import * as React from "react";
+
+import { CheckCircle2, ExternalLink, X } from "lucide-react";
+
 import { Button } from "@tevero/ui";
 import {
   Card,
@@ -18,7 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@tevero/ui";
-import { CheckCircle2, ExternalLink, X } from "lucide-react";
 
 // -----------------------------------------------------------------------------
 // Types

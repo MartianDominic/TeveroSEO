@@ -7,10 +7,12 @@
  * D-12: Shows new MRR, expansion MRR, churn MRR, and net movement.
  */
 
-import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+
+import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 
 /**
  * Props for MrrMovementBreakdown component.

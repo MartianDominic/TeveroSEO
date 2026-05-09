@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+
 import { Skeleton } from "@tevero/ui";
+
 import { SparklineChart, getTrend } from "./SparklineChart";
+
 import type { SparklineDataPoint } from "./SparklineChart";
 
 export type SparklineMetric = "traffic" | "keywords" | "ctr";

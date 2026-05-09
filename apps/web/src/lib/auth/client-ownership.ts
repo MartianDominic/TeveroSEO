@@ -20,9 +20,12 @@
  */
 'use server';
 
+import { z } from 'zod';
+
 import { redis, cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache/redis-cache';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+
 import {
   AuthorizationError,
   ClientOwnershipError,
@@ -30,7 +33,6 @@ import {
   AuthServiceUnavailableError,
   AuthErrorCode,
 } from './errors';
-import { z } from 'zod';
 
 // Re-export errors for convenience
 export {

@@ -8,8 +8,11 @@
  * Uses next-intl for translations.
  */
 import { useState, useEffect } from "react";
+
 import { useOrganization } from "@clerk/nextjs";
+import { Loader2, Save, AlertCircle, CheckCircle2, Globe, Languages } from "lucide-react";
 import { useTranslations } from "next-intl";
+
 import {
   Card,
   CardContent,
@@ -27,7 +30,6 @@ import {
   Alert,
   AlertDescription,
 } from "@tevero/ui";
-import { Loader2, Save, AlertCircle, CheckCircle2, Globe, Languages } from "lucide-react";
 
 type SupportedLocale = "en" | "lt";
 type Formality = "formal" | "informal";

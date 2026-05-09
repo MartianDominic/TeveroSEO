@@ -21,9 +21,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
 import { z } from "zod";
-import { getOpenSeoUrl } from "@/lib/env";
+
 import { requireActionAuth } from "@/lib/auth/action-auth";
+import { getOpenSeoUrl } from "@/lib/env";
 
 // CFG-CRIT-01 FIX: Use centralized env validation
 const OPEN_SEO_API_URL = getOpenSeoUrl();

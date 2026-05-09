@@ -6,15 +6,7 @@
  */
 
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Badge,
-  Button,
-} from "@tevero/ui";
+
 import {
   Lightbulb,
   TrendingUp,
@@ -27,10 +19,21 @@ import {
   ArrowUp,
   ArrowRight,
 } from "lucide-react";
-import type { Opportunity, OpportunityType } from "@/types/opportunities";
+
 import { cn } from "@/lib/utils";
 import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+import type { Opportunity, OpportunityType } from "@/types/opportunities";
 import { OPPORTUNITY_TYPE_LABELS } from "@/types/opportunities";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Badge,
+  Button,
+} from "@tevero/ui";
 
 interface OpportunityCardProps {
   opportunity: Opportunity;

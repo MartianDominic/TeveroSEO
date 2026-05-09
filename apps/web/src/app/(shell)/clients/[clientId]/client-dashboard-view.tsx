@@ -14,11 +14,22 @@
  */
 
 import React, { useEffect, useState, useCallback } from "react";
+
 import { useRouter } from "next/navigation";
-import { useClientStore } from "@/stores/clientStore";
-import { apiGet, apiPost } from "@/lib/api-client";
+
+import {
+  FileText,
+  Calendar,
+  Brain,
+  Settings,
+  PlusCircle,
+} from "lucide-react";
+
 import { WithErrorBoundary } from "@/components/with-error-boundary";
+import { apiGet, apiPost } from "@/lib/api-client";
 import { logger } from "@/lib/logger";
+import { useClientStore } from "@/stores/clientStore";
+
 import type { Client } from "@tevero/types";
 import {
   Button,
@@ -27,13 +38,7 @@ import {
   PageHeader,
   Skeleton,
 } from "@tevero/ui";
-import {
-  FileText,
-  Calendar,
-  Brain,
-  Settings,
-  PlusCircle,
-} from "lucide-react";
+
 
 // Extracted components
 import {

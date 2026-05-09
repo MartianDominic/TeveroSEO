@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { ArrowUpDown, Send, ChevronRight, Search } from "lucide-react";
+
+import type { DashboardClient } from "@/lib/analytics/types";
+
 import {
   Input,
   Table,
@@ -12,9 +18,9 @@ import {
   TableRow,
   Button,
 } from "@tevero/ui";
-import { ArrowUpDown, Send, ChevronRight, Search } from "lucide-react";
+
 import { StatusBadge } from "./StatusBadge";
-import type { DashboardClient } from "@/lib/analytics/types";
+
 
 type SortKey = "name" | "clicks_30d" | "wow_change" | "avg_position";
 type SortDir = "asc" | "desc";

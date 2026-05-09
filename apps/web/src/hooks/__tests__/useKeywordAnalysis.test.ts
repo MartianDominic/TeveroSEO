@@ -3,8 +3,9 @@
  * Phase 82: Chat Integration - TDD RED phase
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { useKeywordAnalysis } from "../useKeywordAnalysis";
 
 // Mock fetch for SSE testing

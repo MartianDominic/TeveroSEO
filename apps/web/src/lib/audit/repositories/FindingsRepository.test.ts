@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
+
 import {
   FindingsRepository,
   createInMemoryFindingsRepository,
 } from "./FindingsRepository";
+
 import type { CheckResult, CheckSeverity } from "../checks/types";
 
 // Mock check results

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Checklist, ChecklistItem } from '../components/checklist';
 
-const meta = {
+const meta: Meta<typeof Checklist> = {
   title: 'Data Display/Checklist',
   component: Checklist,
   parameters: { layout: 'centered' },
@@ -11,11 +11,12 @@ const meta = {
     description: { control: 'text' },
     completedCount: { control: 'number' },
     totalCount: { control: 'number' },
+    children: { table: { disable: true } },
   },
-} satisfies Meta<typeof Checklist>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<Omit<typeof Checklist, 'children'>>;
 
 export const Default: Story = {
   args: {

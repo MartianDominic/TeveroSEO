@@ -1,9 +1,16 @@
-import { type ClientBranding } from "@/lib/api/branding";
-import { BrandingForm } from "@/components/settings/BrandingForm";
-import { PageHeader, Skeleton } from "@tevero/ui";
 import { Suspense } from "react";
-import { auth } from "@clerk/nextjs/server";
+
 import { redirect } from "next/navigation";
+
+import { auth } from "@clerk/nextjs/server";
+
+import { BrandingForm } from "@/components/settings/BrandingForm";
+import { type ClientBranding } from "@/lib/api/branding";
+
+import { PageHeader, Skeleton } from "@tevero/ui";
+
+
+
 
 // Type for redirect with any route (Next.js typed routes)
 type AnyRoute = Parameters<typeof redirect>[0];

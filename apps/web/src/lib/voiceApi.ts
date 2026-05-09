@@ -10,11 +10,13 @@
  */
 
 import "server-only";
-import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
-import { fetchWithTimeout } from "./fetch-with-timeout";
-import { getOpenSeoUrl } from "./env";
+import { z } from "zod";
+
 import { logger } from '@/lib/logger';
+
+import { getOpenSeoUrl } from "./env";
+import { fetchWithTimeout } from "./fetch-with-timeout";
 import {
   VOICE_API_BREAKER,
   CircuitOpenError,

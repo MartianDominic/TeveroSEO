@@ -9,8 +9,8 @@
  * path-to-regexp which is what Clerk uses internally.
  */
 
-import { describe, it, expect } from 'vitest';
 import { match } from 'path-to-regexp';
+import { describe, it, expect } from 'vitest';
 
 /**
  * Create a route matcher that mimics Clerk's createRouteMatcher behavior.

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
 
+import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
 import { logger } from '@/lib/logger';
+import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

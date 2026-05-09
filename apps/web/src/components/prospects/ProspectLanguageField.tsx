@@ -1,8 +1,11 @@
 'use client';
 
 import * as React from 'react';
+
 import { useTranslations } from 'next-intl';
-import type { UseFormReturn, FieldValues, Path } from 'react-hook-form';
+
+import { type SupportedLocale } from '@/lib/locale-storage';
+
 import {
   Select,
   SelectContent,
@@ -11,7 +14,8 @@ import {
   SelectValue,
   Label,
 } from '@tevero/ui';
-import { type SupportedLocale } from '@/lib/locale-storage';
+
+import type { UseFormReturn, FieldValues, Path } from 'react-hook-form';
 
 /**
  * Language option value.

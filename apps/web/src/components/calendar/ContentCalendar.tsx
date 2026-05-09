@@ -10,10 +10,14 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardHeader, CardTitle } from "@tevero/ui";
-import { ChevronLeft, ChevronRight, Calendar, List, LayoutGrid } from "lucide-react";
+
 import { format, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { ChevronLeft, ChevronRight, Calendar, List, LayoutGrid } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Card, CardHeader, CardTitle } from "@tevero/ui";
+
 import {
   MonthView,
   WeekView,

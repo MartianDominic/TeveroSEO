@@ -10,11 +10,15 @@
  * - Top competitors
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { LossReasonChart } from "./LossReasonChart";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "next-intl";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { LossReasonChart } from "./LossReasonChart";
+
+
 
 /**
  * Win/Loss analytics data structure.

@@ -6,17 +6,18 @@
  */
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
+import {
+  findOpportunities,
+} from "@/lib/analytics/opportunities";
 import {
   requireActionAuth,
   validateClientOwnership,
   validateWorkspaceMembership,
 } from "@/lib/auth/action-auth";
-import {
-  findOpportunities,
-} from "@/lib/analytics/opportunities";
-import { getOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from "@/lib/rate-limit/action-limiters";
+import { getOpenSeo } from "@/lib/server-fetch";
 import type { Opportunity, OpportunityFilter } from "@/types/opportunities";
 
 // Validation schemas

@@ -1,8 +1,10 @@
 "use client";
 
-import { Input, Label } from "@tevero/ui";
 import { useTranslations } from "next-intl";
+
 import { useProspectWizardStore } from "@/stores/prospect-wizard-store";
+
+import { Input, Label } from "@tevero/ui";
 
 export function WebsiteInputForm() {
   const t = useTranslations("prospects.wizard");

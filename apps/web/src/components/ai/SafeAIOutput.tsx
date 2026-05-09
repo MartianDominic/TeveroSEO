@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+
 import DOMPurify, { type Config } from 'dompurify';
 
 /**

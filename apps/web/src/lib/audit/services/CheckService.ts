@@ -5,8 +5,9 @@
  * Uses runAllChecks facade and FindingsRepository.
  */
 
-import type { ScoreResult, CheckSeverity } from "../checks/types";
 import { runAllChecks } from "../checks";
+
+import type { ScoreResult, CheckSeverity } from "../checks/types";
 import type { FindingsRepository, AuditFinding } from "../repositories";
 
 /**

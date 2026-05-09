@@ -1,9 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
+
 import dynamic from "next/dynamic";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+
+import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
+
+import {
+  ArticleEditorErrorBoundary,
+  saveArticleRecoveryData,
+  clearArticleRecoveryData,
+} from "@/components/editor/ArticleEditorErrorBoundary";
+import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
+import { sanitizeHtml } from "@/lib/sanitize";
+import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
+import type { ArticleStatus } from "@/stores";
 
 import {
   Button,
@@ -29,11 +41,8 @@ import {
 } from "@tevero/ui";
 
 // Stores
-import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
-import type { ArticleStatus } from "@/stores";
 
 // API
-import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
 
 // Editor components — dynamic import to avoid SSR issues with browser-only APIs
 const ImageGenerationPanel = dynamic(
@@ -103,14 +112,8 @@ function blendLabel(weight: number): string {
 // insufficient as it can be bypassed via img onerror, SVG scripts, etc.
 // ---------------------------------------------------------------------------
 
-import { sanitizeHtml } from "@/lib/sanitize";
 
 // Error boundary for crash recovery
-import {
-  ArticleEditorErrorBoundary,
-  saveArticleRecoveryData,
-  clearArticleRecoveryData,
-} from "@/components/editor/ArticleEditorErrorBoundary";
 
 // ---------------------------------------------------------------------------
 // ArticleHtmlPreview — renders AI-generated article HTML safely

@@ -9,6 +9,7 @@
  * - T-56-11: Validates user owns the prospect before streaming
  */
 import { NextRequest } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
 
 export const runtime = "nodejs";

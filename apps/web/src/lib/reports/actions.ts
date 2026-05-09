@@ -1,10 +1,11 @@
 "use server";
 
 import { requireActionAuth, validateClientOwnership, type ActionResult } from "@/lib/auth/action-auth";
+import { logger } from '@/lib/logger';
 import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+
 import type { ReportMetadata } from "@tevero/types";
 
-import { logger } from '@/lib/logger';
 /**
  * Generate a new report.
  *

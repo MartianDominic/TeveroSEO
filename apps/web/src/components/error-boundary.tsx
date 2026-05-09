@@ -1,9 +1,12 @@
 'use client';
 
 import { Component, ReactNode } from 'react';
+
 import * as Sentry from '@sentry/nextjs';
-import { Button } from '@tevero/ui';
+
 import { logError } from '@/lib/errors';
+
+import { Button } from '@tevero/ui';
 
 interface Props {
   children: ReactNode;

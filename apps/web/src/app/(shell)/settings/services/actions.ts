@@ -9,19 +9,21 @@
  */
 
 import { revalidatePath } from "next/cache";
+
 import { z } from "zod";
-import {
-  getOpenSeo,
-  postOpenSeo,
-  patchOpenSeo,
-  deleteOpenSeo,
-} from "@/lib/server-fetch";
+
 import {
   requireActionAuth,
   type ActionResult,
 } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
 import { logError } from "@/lib/errors/handler";
+import {
+  getOpenSeo,
+  postOpenSeo,
+  patchOpenSeo,
+  deleteOpenSeo,
+} from "@/lib/server-fetch";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -10,11 +10,13 @@
  *               retries, circuit breaker protection, and consistent error handling.
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@clerk/nextjs/server";
+
 import { validateCsrf } from "@/lib/api/security";
+import { logger } from '@/lib/logger';
 import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { getOpenSeo, deleteOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
-import { logger } from '@/lib/logger';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

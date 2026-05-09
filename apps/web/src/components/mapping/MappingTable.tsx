@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { Edit2, ExternalLink } from "lucide-react";
+
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 import {
   Table,
   TableBody,
@@ -11,9 +16,9 @@ import {
   Badge,
   Button,
 } from "@tevero/ui";
-import { Edit2, ExternalLink } from "lucide-react";
+
 import { OverrideDialog } from "./OverrideDialog";
-import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 
 interface MappingItem {
   id: string;

@@ -11,9 +11,10 @@
  * - First Month Total (all combined)
  */
 
+import { useTranslations } from "next-intl";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useTranslations } from "next-intl";
 
 interface ServiceTemplate {
   id: string;

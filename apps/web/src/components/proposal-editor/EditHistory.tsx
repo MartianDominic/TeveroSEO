@@ -15,14 +15,17 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+
 import { useCopilotAction } from "@copilotkit/react-core";
+import { formatDistanceToNow } from "date-fns";
+import { History, Undo2, Redo2, ChevronDown, ChevronUp } from "lucide-react";
+
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { History, Undo2, Redo2, ChevronDown, ChevronUp } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+
 
 // ---------------------------------------------------------------------------
 // Types

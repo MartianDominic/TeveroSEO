@@ -22,12 +22,14 @@
  * ```
  */
 
-import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+
 import { z } from 'zod';
-import { redis } from '@/lib/redis/client';
 
 import { logger } from '@/lib/logger';
+import { redis } from '@/lib/redis/client';
+
 // --- Schemas ---
 
 const rateLimitEntrySchema = z.object({

@@ -14,6 +14,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
+import { format, addDays } from "date-fns";
+import { Loader2, CalendarIcon, AlertCircle, CheckCircle2 } from "lucide-react";
+
+import type { AttentionItem, QuickActionType, LossReason } from "@/types/command-center";
+
 import {
   Dialog,
   DialogContent,
@@ -31,15 +37,14 @@ import {
   Label,
   cn,
 } from "@tevero/ui";
-import { Loader2, CalendarIcon, AlertCircle, CheckCircle2 } from "lucide-react";
-import { format, addDays } from "date-fns";
+
 import {
   sendReminder,
   snoozeFollowUp,
   markAsLost,
   addNote,
 } from "../actions";
-import type { AttentionItem, QuickActionType, LossReason } from "@/types/command-center";
+
 
 /**
  * Loss reason options for the dropdown.

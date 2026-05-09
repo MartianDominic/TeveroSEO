@@ -5,6 +5,7 @@
  * Recharts is ~54KB and only needed when charts are rendered.
  */
 import dynamic from "next/dynamic";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import type { GA4DataPoint } from "@/lib/analytics/types";
 

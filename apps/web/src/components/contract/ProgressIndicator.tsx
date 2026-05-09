@@ -7,8 +7,8 @@
  * Shows signing progress per D-07 (sequential) and D-08 (parallel).
  * Per D-18: Progress indicator shows section completion.
  */
-import { useTranslations } from "next-intl";
 import { CheckCircle, Circle, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ProgressIndicatorProps {
   mode: "sequential" | "parallel";

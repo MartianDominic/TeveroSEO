@@ -11,8 +11,9 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
+
 import { useAuth } from "@clerk/nextjs";
+import { io, Socket } from "socket.io-client";
 
 import { logger } from '@/lib/logger';
 /**

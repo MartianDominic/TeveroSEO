@@ -30,6 +30,7 @@ export const LowScore: Story = {
 };
 
 export const AllSizes: Story = {
+  args: { score: 85 },
   render: () => (
     <div className="flex items-end gap-6">
       <HealthGauge score={85} size="sm" />
@@ -40,6 +41,7 @@ export const AllSizes: Story = {
 };
 
 export const GradeVariations: Story = {
+  args: { score: 95 },
   render: () => (
     <div className="flex items-center gap-6">
       <HealthGauge score={95} size="md" />

@@ -9,7 +9,9 @@
  */
 
 import { useState, useTransition } from "react";
+
 import { Check, X, Loader2, PartyPopper } from "lucide-react";
+
 import { acceptProposal, rejectProposal } from "../actions";
 
 interface AcceptRejectButtonsProps {

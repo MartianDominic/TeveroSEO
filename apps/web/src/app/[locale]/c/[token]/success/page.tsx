@@ -6,12 +6,16 @@
  * Shows confirmation, progress, and download option when complete.
  */
 import { redirect } from "next/navigation";
+
 type AnyRoute = Parameters<typeof redirect>[0];
-import { getTranslations } from "next-intl/server";
-import { Card, CardContent } from "@tevero/ui";
 import { CheckCircle, Download, Mail } from "lucide-react";
+import { getTranslations } from "next-intl/server";
+
+import { Card, CardContent } from "@tevero/ui";
 import { Button } from "@tevero/ui";
+
 import Link from "next/link";
+
 import { getContractByToken } from "../actions";
 
 interface Props {

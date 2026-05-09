@@ -10,15 +10,17 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
 import { Check, User, Asterisk } from "lucide-react";
-import type { TrustLevel } from "@/lib/portal/types";
+
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { TrustLevel } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 export interface TrustIndicatorProps {
   /** Trust level of the data */

@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { useAuth } from "@clerk/nextjs";
 import { Check, Globe, ChevronDown, Plus } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { useClientStore } from "@/stores";
+
 import {
   Command,
   CommandEmpty,
@@ -14,9 +21,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@tevero/ui";
-import { useClientStore } from "@/stores";
-import { useAuth } from "@clerk/nextjs";
-import { cn } from "@/lib/utils";
 
 /** Generate a stable HSL color from a string */
 function seedColor(str: string): string {

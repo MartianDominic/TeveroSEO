@@ -14,11 +14,14 @@
  * - A4 page format
  */
 import "server-only";
-import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
-import fontkit from "@pdf-lib/fontkit";
 import * as fs from "fs/promises";
 import * as path from "path";
+
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+
 import { getOpenSeo } from "@/lib/server-fetch";
+
 import { PdfBrandingService, type BrandingConfig, type RgbColor } from "./pdf-branding-service";
 
 /**

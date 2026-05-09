@@ -7,8 +7,10 @@
  * Handles provider selection and checkout widget rendering.
  */
 import { useState, useCallback } from "react";
+
 import { useRouter } from "next/navigation";
 import { redirect } from "next/navigation";
+
 import { CreditCard, Loader2, ExternalLink } from "lucide-react";
 
 type AnyRoute = Parameters<typeof redirect>[0];

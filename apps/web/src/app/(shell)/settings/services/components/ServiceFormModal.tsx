@@ -14,6 +14,9 @@
  */
 
 import { useState, useTransition, useEffect } from "react";
+
+import { Loader2, Plus, X } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -30,7 +33,7 @@ import {
   SelectValue,
   Textarea,
 } from "@tevero/ui";
-import { Loader2, Plus, X } from "lucide-react";
+
 import {
   createService,
   updateService,

@@ -18,8 +18,9 @@
  * ```
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
+
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Capture an API error with request context.

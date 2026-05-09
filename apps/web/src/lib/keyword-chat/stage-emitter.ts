@@ -5,8 +5,9 @@
  * Provides progress callback mechanism for streaming updates.
  */
 
-import type { AnalysisStage, AnalysisEvent, AnalysisResult } from './types';
 import { STAGE_WEIGHTS } from './types';
+
+import type { AnalysisStage, AnalysisEvent, AnalysisResult } from './types';
 
 export type EventCallback = (event: AnalysisEvent) => Promise<void>;
 

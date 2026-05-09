@@ -2,8 +2,9 @@
  * Platform Guide Component Tests
  * Phase 66-04: Connection Wizard UI
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { PlatformGuide } from "./platform-guide";
 
 const mockGuide = {

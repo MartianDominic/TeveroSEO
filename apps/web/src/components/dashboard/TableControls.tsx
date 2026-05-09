@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { SavedViewSelector } from "./SavedViewSelector";
-import { ColumnCustomizer } from "./ColumnCustomizer";
-import { FilterBar } from "./FilterBar";
+
+import type { FilterParams } from "@/types/pagination";
 import {
   type ViewConfig,
   getDefaultViewConfig,
   DEFAULT_COLUMNS,
 } from "@/types/saved-views";
-import type { FilterParams } from "@/types/pagination";
+
+import { ColumnCustomizer } from "./ColumnCustomizer";
+import { FilterBar } from "./FilterBar";
+import { SavedViewSelector } from "./SavedViewSelector";
+
 
 interface TableControlsProps {
   /** Workspace ID for saved views */

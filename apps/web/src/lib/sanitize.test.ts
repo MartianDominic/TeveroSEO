@@ -5,6 +5,7 @@
  * Tests verify that DOMPurify properly sanitizes malicious HTML content.
  */
 import { describe, it, expect } from "vitest";
+
 import { sanitizeHtml, sanitizeMinimalHtml, stripHtml } from "./sanitize";
 
 describe("sanitizeHtml - XSS Prevention", () => {

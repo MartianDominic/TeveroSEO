@@ -2,8 +2,9 @@
  * Developer Handoff Component Tests
  * Phase 66-05: Developer Handoff Flow
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { DeveloperHandoff, HandoffStatusTracker } from "../developer-handoff";
 
 // Mock fetch

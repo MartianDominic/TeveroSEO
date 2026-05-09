@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { RefreshCw, Unplug, Search, BarChart3, MapPin, ShoppingBag, Globe, FileCode } from "lucide-react";
+
 import { Button, Card, CardHeader, CardContent, Badge } from "@tevero/ui";
 
 interface ConnectionCardProps {

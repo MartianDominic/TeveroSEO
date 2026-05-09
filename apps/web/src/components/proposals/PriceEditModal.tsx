@@ -10,6 +10,13 @@
  */
 
 import { useState, useEffect } from "react";
+
+import { useTranslations } from "next-intl";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import {
   Dialog,
   DialogContent,
@@ -17,10 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@tevero/ui";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useTranslations } from "next-intl";
+
 
 interface ServiceTemplate {
   id: string;

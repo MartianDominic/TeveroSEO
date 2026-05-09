@@ -1,21 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Badge,
-} from "@tevero/ui";
-import {
-  Scale,
-  ArrowRight,
-  CheckCircle,
-  Lightbulb,
-  GripVertical,
-} from "lucide-react";
+
 import {
   DndContext,
   closestCenter,
@@ -33,12 +19,29 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  Scale,
+  ArrowRight,
+  CheckCircle,
+  Lightbulb,
+  GripVertical,
+} from "lucide-react";
+
 import type {
   TeamMetrics,
   TeamMemberWithAssignments,
   ClientAssignment,
   ReassignmentSuggestion,
 } from "@/types/team";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Badge,
+} from "@tevero/ui";
 
 interface WorkloadBalancerProps {
   metrics: TeamMetrics;

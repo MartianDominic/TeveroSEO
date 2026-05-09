@@ -8,8 +8,10 @@
 "use client";
 
 import * as React from "react";
-import { Button, type ButtonProps } from "@tevero/ui";
+
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+import { Button, type ButtonProps } from "@tevero/ui";
 
 type Breakpoint = "sm" | "md" | "lg";
 

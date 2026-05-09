@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFastApi, FastApiError } from "@/lib/server-fetch";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+
 import type { AnalyticsData } from "@/lib/analytics/types";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getFastApi, FastApiError } from "@/lib/server-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

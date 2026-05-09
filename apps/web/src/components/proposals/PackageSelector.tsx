@@ -8,11 +8,12 @@
  * Shows package name, price, setup fee, and inclusions preview.
  */
 
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useTranslations } from "next-intl";
+
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface ServiceTemplate {
   id: string;

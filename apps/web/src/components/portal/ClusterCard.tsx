@@ -9,19 +9,23 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import {
-  Badge,
-  SegmentedProgressBar,
-  type ProgressSegment,
-} from "@tevero/ui";
+
+import { ChevronDown, Zap, TrendingUp, TrendingDown } from "lucide-react";
+
 import {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Zap, TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { PortalCluster, PortalKeyword } from "@/types/portal";
+
+import {
+  Badge,
+  SegmentedProgressBar,
+  type ProgressSegment,
+} from "@tevero/ui";
+
 
 /**
  * Props for the ClusterCard component

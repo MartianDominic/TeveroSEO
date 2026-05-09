@@ -1,16 +1,19 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, AlertCircle, CheckCircle, XCircle, Wrench } from "lucide-react";
-import { Button, Card, CardContent } from "@tevero/ui";
-import { getPageFindings, exportFindingsCSV } from "@/actions/seo/findings";
-import { ScoreCard } from "@/components/seo/ScoreCard";
-import { FindingsTable } from "@/components/seo/FindingsTable";
-import type { PageFindingsResponse } from "@/actions/seo/findings";
 
+import { getPageFindings, exportFindingsCSV } from "@/actions/seo/findings";
+import type { PageFindingsResponse } from "@/actions/seo/findings";
+import { FindingsTable } from "@/components/seo/FindingsTable";
+import { ScoreCard } from "@/components/seo/ScoreCard";
 import { logger } from '@/lib/logger';
+
+import { Button, Card, CardContent } from "@tevero/ui";
 export default function PageFindingsPage() {
   const params = useParams<{
     clientId: string;

@@ -2,8 +2,9 @@
  * Platform Detected Component Tests
  * Phase 66-04: Connection Wizard UI
  */
-import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+
 import { PlatformDetected } from "./platform-detected";
 
 describe("PlatformDetected", () => {

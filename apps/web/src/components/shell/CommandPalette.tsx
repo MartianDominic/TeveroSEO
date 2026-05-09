@@ -7,7 +7,9 @@
  */
 
 import React, { useEffect, useMemo } from "react";
+
 import { useRouter } from "next/navigation";
+
 import {
   Building2,
   Check,
@@ -20,6 +22,10 @@ import {
   Globe,
   Info,
 } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { useClientStore } from "@/stores";
+
 import {
   Command,
   CommandEmpty,
@@ -30,8 +36,6 @@ import {
   Dialog,
   DialogContent,
 } from "@tevero/ui";
-import { useClientStore } from "@/stores";
-import { cn } from "@/lib/utils";
 
 interface CommandPaletteProps {
   isOpen: boolean;

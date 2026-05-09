@@ -7,9 +7,10 @@
  * Templates define the metric type, default targets, and computation methods.
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

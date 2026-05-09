@@ -1,9 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@tevero/ui";
+
 import { ChevronDown, Check, AlertTriangle, X } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Badge } from "@tevero/ui";
 
 export type CheckStatus = "pass" | "warning" | "fail";
 

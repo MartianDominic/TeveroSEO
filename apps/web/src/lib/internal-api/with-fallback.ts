@@ -13,9 +13,10 @@
  * @see client.ts for the primary internal API client
  */
 
+import { logger } from '@/lib/logger';
+
 import { InternalApiError } from "./client";
 
-import { logger } from '@/lib/logger';
 /**
  * Options for fallback behavior.
  */

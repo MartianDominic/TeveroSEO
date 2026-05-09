@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
+import { Loader2, Sparkles, RefreshCw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+
+import type { VoiceProfile } from "@/lib/voiceApi";
+
 import {
   Button,
   Card,
@@ -18,8 +23,6 @@ import {
   Badge,
   Skeleton,
 } from "@tevero/ui";
-import { Loader2, Sparkles, RefreshCw, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
-import type { VoiceProfile } from "@/lib/voiceApi";
 
 interface VoicePreviewPanelProps {
   profile: VoiceProfile | null;

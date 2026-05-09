@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
+
 import { cn } from "@/lib/utils";
+
 import { Card, CardHeader, CardTitle, Badge, ProgressBlock } from "@tevero/ui";
+
 import { QualityCheckRow, type CheckStatus, type CheckDetail } from "./QualityCheckRow";
 
 export interface QualityCheck {

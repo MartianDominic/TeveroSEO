@@ -10,9 +10,10 @@
  * - History limited to 50 states
  */
 
-import { create } from "zustand";
 import { temporal } from "zundo";
+import { create } from "zustand";
 import { shallow } from "zustand/shallow";
+
 import type { EditorSection } from "@/components/proposals/types";
 
 // ---------------------------------------------------------------------------

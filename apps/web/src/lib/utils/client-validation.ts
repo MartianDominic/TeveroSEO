@@ -11,9 +11,9 @@
  *   // Throws if client doesn't exist in both services
  */
 
+import { logger } from '@/lib/logger';
 import { getFastApi, getOpenSeo, FastApiError, CircuitOpenError } from '@/lib/server-fetch';
 
-import { logger } from '@/lib/logger';
 /**
  * Error thrown when client doesn't exist in one or more services.
  */

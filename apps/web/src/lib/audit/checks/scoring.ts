@@ -6,8 +6,9 @@
  * FIX-14: Quality Gate & Scoring Standardization
  */
 
-import type { CheckResult, ScoreResult, ScoreBreakdown, CheckTier } from "./types";
 import { QUALITY_THRESHOLDS, clampScore } from "@tevero/types";
+
+import type { CheckResult, ScoreResult, ScoreBreakdown, CheckTier } from "./types";
 
 /**
  * Tier weights for score calculation (points per passed check)

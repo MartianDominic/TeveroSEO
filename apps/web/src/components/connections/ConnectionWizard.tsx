@@ -1,17 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
 import { Loader2, Globe, Check, AlertCircle, ChevronRight, ArrowLeft } from "lucide-react";
-import {
-  Button,
-  Input,
-  Label,
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  StatusChip,
-} from "@tevero/ui";
+
 import {
   detectPlatform,
   createSiteConnection,
@@ -22,6 +14,18 @@ import type {
   DetectionResult,
   CreateConnectionInput,
 } from "@/lib/siteConnections";
+
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+  StatusChip,
+} from "@tevero/ui";
+
 import { PlatformCredentialsForm } from "./PlatformCredentialsForm";
 
 type WizardStep = "detect" | "credentials" | "verify";

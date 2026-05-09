@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import {
   Loader2,
   RefreshCw,
@@ -10,12 +11,14 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
-import { Button, StatusChip } from "@tevero/ui";
+
 import {
   verifySiteConnection,
   deleteSiteConnection,
 } from "@/lib/siteConnections";
 import type { SiteConnection } from "@/lib/siteConnections";
+
+import { Button, StatusChip } from "@tevero/ui";
 
 interface SiteConnectionListProps {
   connections: SiteConnection[];

@@ -8,8 +8,10 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 export interface DeltaBadgeProps {
   /** The change value (positive = green, negative = red, zero = gray) */

@@ -1,8 +1,8 @@
 "use server";
 
-import { getFastApi } from "@/lib/server-fetch";
-import { requireActionAuth, validateClientOwnership } from "@/lib/auth/action-auth";
 import type { AnalyticsData } from "@/lib/analytics/types";
+import { requireActionAuth, validateClientOwnership } from "@/lib/auth/action-auth";
+import { getFastApi } from "@/lib/server-fetch";
 
 /**
  * Fetch analytics data for a client.

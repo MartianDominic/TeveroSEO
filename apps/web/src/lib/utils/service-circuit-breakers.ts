@@ -37,6 +37,8 @@
  * ```
  */
 
+import { logger } from '@/lib/logger';
+
 import {
   getCircuitBreaker,
   CircuitOpenError,
@@ -44,7 +46,6 @@ import {
   type CircuitBreakerOptions,
   type CircuitState,
 } from "./circuit-breaker";
-import { logger } from '@/lib/logger';
 
 // Re-export for consumers
 export { CircuitOpenError, getAllCircuitBreakerStates };

@@ -5,11 +5,12 @@
  * Phase 53: Templates for saving/loading report configurations.
  */
 
-import { getOpenSeo, postOpenSeo, putOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
 import { requireActionAuth, type ActionResult } from "@/lib/auth/action-auth";
+import { logger } from '@/lib/logger';
+import { getOpenSeo, postOpenSeo, putOpenSeo, deleteOpenSeo } from "@/lib/server-fetch";
+
 import type { ReportSection } from "@tevero/types";
 
-import { logger } from '@/lib/logger';
 /**
  * Report template response from API.
  */

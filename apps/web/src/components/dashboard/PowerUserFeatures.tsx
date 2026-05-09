@@ -8,9 +8,11 @@
  */
 
 import { useState, useCallback } from "react";
+
+import type { ClientMetrics } from "@/lib/dashboard/types";
+
 import { CommandPalette } from "./CommandPalette";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
-import type { ClientMetrics } from "@/lib/dashboard/types";
 
 interface PowerUserFeaturesProps {
   /** List of clients for command palette search */

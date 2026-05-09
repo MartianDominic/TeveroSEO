@@ -4,8 +4,9 @@
  *
  * Tests error states, troubleshooting UI, and recovery actions.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { ErrorScreen, type ErrorType } from "../error-screen";
 
 describe("ErrorScreen", () => {

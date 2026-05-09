@@ -9,14 +9,7 @@
  */
 
 import { useState, useTransition } from "react";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@tevero/ui";
+
 import {
   MoreHorizontal,
   Edit,
@@ -33,6 +26,16 @@ import {
   Calendar,
   Package,
 } from "lucide-react";
+
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@tevero/ui";
+
 import { ServiceFormModal } from "./ServiceFormModal";
 import { deleteService, duplicateService, type ServiceTemplateSelect } from "../actions";
 

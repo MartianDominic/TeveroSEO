@@ -7,15 +7,7 @@
  * FIX CRIT-API-01: Uses Zod schemas for runtime response validation.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
-import { getOpenSeo, postOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { validateCsrf } from "@/lib/api/security";
-import {
-  goalBodySchema,
-  safeParseJson,
-  formatValidationErrors,
-} from "@/lib/validations/api-schemas";
+
 import {
   GoalsListResponseSchema,
   CreateGoalResponseSchema,
@@ -24,6 +16,15 @@ import {
   type CreateGoalResponse,
   type BulkCreateGoalsResponse,
 } from "@/lib/api/schemas/cross-service";
+import { validateCsrf } from "@/lib/api/security";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getOpenSeo, postOpenSeo, FastApiError } from "@/lib/server-fetch";
+import {
+  goalBodySchema,
+  safeParseJson,
+  formatValidationErrors,
+} from "@/lib/validations/api-schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

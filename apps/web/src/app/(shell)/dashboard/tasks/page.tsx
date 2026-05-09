@@ -9,10 +9,13 @@
  * - Sort mode toggle (D-11 Layer 3)
  */
 import { Suspense } from "react";
+
 import { auth } from "@clerk/nextjs/server";
+
 import { PageHeader, Skeleton } from "@tevero/ui";
-import { TodaysFeedClient } from "./TodaysFeedClient";
+
 import { getTasks } from "./actions";
+import { TodaysFeedClient } from "./TodaysFeedClient";
 
 export default async function TasksPage() {
   const { userId, orgId } = await auth();

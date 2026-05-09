@@ -13,11 +13,7 @@
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, AuthError } from "@/lib/auth/api-auth";
-import { validateCsrf } from "@/lib/api/security";
-import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
-import { logger } from "@/lib/logger";
-import { getOpenSeoUrl } from "@/lib/env";
+
 import {
   extractRequestContextFromRequest,
   buildTracingHeaders,
@@ -29,6 +25,11 @@ import {
   invoicePaymentSessionSchema,
   invoiceAccessVerificationSchema,
 } from "@/lib/api/schemas/invoice-schemas";
+import { validateCsrf } from "@/lib/api/security";
+import { requireAuth, AuthError } from "@/lib/auth/api-auth";
+import { getOpenSeoUrl } from "@/lib/env";
+import { logger } from "@/lib/logger";
+import { withRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 
 // CFG-CRIT-01 FIX: Use centralized env validation
 const OPEN_SEO_API_URL = getOpenSeoUrl();

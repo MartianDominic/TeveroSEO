@@ -1,11 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { useTranslations } from 'next-intl';
+
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Label, Button } from '@tevero/ui';
+import { useTranslations } from 'next-intl';
+
 import type { SupportedLocale } from '@/lib/locale-storage';
+import { cn } from '@/lib/utils';
+
+import { Label, Button } from '@tevero/ui';
+
 
 /**
  * Convert country code to flag emoji.

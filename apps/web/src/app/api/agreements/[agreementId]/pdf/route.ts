@@ -16,11 +16,12 @@
  * - Cache-Control: no-store prevents caching of sensitive documents
  */
 import { NextRequest, NextResponse } from "next/server";
+
 import { requireAuth, AuthError } from "@/lib/auth/api-auth";
+import { logger } from '@/lib/logger';
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { getPdfGenerationService } from "@/server/services/pdf-generation-service";
 
-import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

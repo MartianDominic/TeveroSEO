@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Badge } from "@tevero/ui";
+
 import { Download, FileText, X, Loader2 } from "lucide-react";
 
 import { logger } from '@/lib/logger';
+
+import { Button, Badge } from "@tevero/ui";
 export interface BulkActionBarProps {
   /** Number of items currently selected */
   selectedCount: number;

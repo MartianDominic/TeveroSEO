@@ -13,7 +13,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { runAllChecks } from "./facade";
+
 import type { CheckResult, ScoreResult, ScoreBreakdown } from "./types";
 
 // -----------------------------------------------------------------------------

@@ -7,9 +7,12 @@
 "use client";
 
 import * as React from "react";
+
 import { Check } from "lucide-react";
-import { cn } from "@tevero/ui";
+
 import type { WizardStep } from "@/hooks/use-connection-wizard";
+
+import { cn } from "@tevero/ui";
 
 // ============================================================================
 // Types

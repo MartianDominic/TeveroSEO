@@ -1,13 +1,15 @@
 "use server";
 
-import { z } from "zod";
-import { getProspect as getProspectBase } from "../actions";
-import { patchOpenSeo } from "@/lib/server-fetch";
 import { revalidatePath } from "next/cache";
+
+import { z } from "zod";
+
 import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { sanitizeErrorForClient } from "@/lib/error-utils";
-
 import { logger } from '@/lib/logger';
+import { patchOpenSeo } from "@/lib/server-fetch";
+
+import { getProspect as getProspectBase } from "../actions";
 // Validation schemas
 const prospectIdSchema = z.string().uuid("Invalid prospect ID format");
 const analysisIdSchema = z.string().uuid("Invalid analysis ID format");

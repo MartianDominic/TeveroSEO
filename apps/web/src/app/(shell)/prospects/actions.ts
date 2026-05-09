@@ -1,16 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
 import { z } from "zod";
+
+import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
+import { sanitizeErrorForClient } from "@/lib/error-utils";
+import { logError } from "@/lib/errors/handler";
 import {
   getOpenSeo,
   postOpenSeo,
   patchOpenSeo,
   deleteOpenSeo,
 } from "@/lib/server-fetch";
-import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
-import { sanitizeErrorForClient } from "@/lib/error-utils";
-import { logError } from "@/lib/errors/handler";
 
 // Validation schemas
 const prospectIdSchema = z.string().uuid("Invalid prospect ID format");

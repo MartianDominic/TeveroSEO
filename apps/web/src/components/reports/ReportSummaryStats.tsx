@@ -1,5 +1,5 @@
-import { REPORT_COLORS } from "@/lib/reports/styles";
 import type { GSCSummary, GA4Summary } from "@/lib/analytics/types";
+import { REPORT_COLORS } from "@/lib/reports/styles";
 import type { ReportLabels } from "@/lib/reports/types";
 
 interface SummaryStatProps {

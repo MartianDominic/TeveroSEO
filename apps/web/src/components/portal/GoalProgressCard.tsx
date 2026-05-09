@@ -8,10 +8,13 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, Badge, ProgressBlock } from "@tevero/ui";
-import { CheckCircle2, Clock, AlertCircle, TrendingUp } from "lucide-react";
+
 import { formatDistanceToNow, isPast } from "date-fns";
+import { CheckCircle2, Clock, AlertCircle, TrendingUp } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Card, CardContent, Badge, ProgressBlock } from "@tevero/ui";
 
 export interface GoalProgressCardProps {
   /** Goal ID for tracking */

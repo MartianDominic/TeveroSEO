@@ -5,9 +5,12 @@
  * Displays all site changes with filtering and revert capabilities.
  */
 import { Suspense } from 'react';
-import { PageHeader } from '@tevero/ui';
+
 import { getChanges, type ChangeFilters } from '@/actions/changes';
 import { getOpenSeo } from '@/lib/server-fetch';
+
+import { PageHeader } from '@tevero/ui';
+
 import { ChangeFilters as ChangeFiltersComponent } from './components/ChangeFilters';
 import { ChangeList } from './components/ChangeList';
 

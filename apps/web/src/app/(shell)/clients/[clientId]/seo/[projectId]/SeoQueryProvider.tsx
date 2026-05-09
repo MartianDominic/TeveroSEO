@@ -12,8 +12,9 @@
  * - 30 minute gcTime for cache garbage collection
  * - Periodic cleanup of queries inactive for 1+ hour
  */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 interface SeoQueryProviderProps {
   children: ReactNode;

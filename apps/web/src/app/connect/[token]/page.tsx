@@ -16,9 +16,10 @@
  * 4. If valid: show Connect with Google button with appropriate branding
  */
 
-import type { InviteValidation } from "@tevero/types";
-import { getAiWriterUrl, getPublicAiWriterUrl } from "@/lib/env";
 import { validateMagicLink, type MagicLinkValidation } from "@/lib/api/onboarding";
+import { getAiWriterUrl, getPublicAiWriterUrl } from "@/lib/env";
+
+import type { InviteValidation } from "@tevero/types";
 
 type PageProps = {
   params: Promise<{ token: string }>;

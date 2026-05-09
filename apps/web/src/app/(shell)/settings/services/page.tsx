@@ -1,7 +1,10 @@
 import { Suspense } from "react";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { Loader2 } from "lucide-react";
+
 import { getServices } from "./actions";
 import { ServiceTable } from "./components/ServiceTable";
 

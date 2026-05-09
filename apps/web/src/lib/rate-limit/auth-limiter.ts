@@ -10,10 +10,10 @@
  * Uses Redis-backed sliding window for distributed rate limiting.
  */
 
-import { redis } from "@/lib/redis/client";
 import type { NextRequest } from "next/server";
 
 import { logger } from '@/lib/logger';
+import { redis } from "@/lib/redis/client";
 // --- Types ---
 
 export interface AuthRateLimitResult {

@@ -5,9 +5,12 @@
  * FIX-06 M-NEXT-02: Added error.tsx boundary.
  */
 import { useEffect } from "react";
-import { Button } from "@tevero/ui";
+
 import { AlertCircle } from "lucide-react";
+
 import { logError } from "@/lib/errors";
+
+import { Button } from "@tevero/ui";
 
 export default function SigningSuccessError({
   error,

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+
+import { Plus, Trash2 } from "lucide-react";
+
+import { getProtectionRules, addProtectionRule, removeProtectionRule } from "@/actions/voice";
 import { logger } from '@/lib/logger';
+import type { ProtectionRule } from "@/lib/voiceApi";
+
 import {
   Button,
   Card,
@@ -15,9 +21,6 @@ import {
   Badge,
   Skeleton,
 } from "@tevero/ui";
-import { Plus, Trash2 } from "lucide-react";
-import { getProtectionRules, addProtectionRule, removeProtectionRule } from "@/actions/voice";
-import type { ProtectionRule } from "@/lib/voiceApi";
 
 interface ProtectionRulesTabProps {
   clientId: string;

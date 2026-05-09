@@ -1,22 +1,27 @@
 import { Suspense } from "react";
+
 import { auth } from "@clerk/nextjs/server";
-import { PageHeader } from "@tevero/ui";
-import { Skeleton } from "@tevero/ui";
-import { WithErrorBoundary } from "@/components/with-error-boundary";
-import { RevenueCards } from "@/components/revenue/RevenueCards";
+
+import { ChurnRiskAlerts } from "@/components/revenue/ChurnRiskAlerts";
 import { MrrMovementBreakdown } from "@/components/revenue/MrrMovementBreakdown";
 import { OutstandingPayments } from "@/components/revenue/OutstandingPayments";
+import { RevenueCards } from "@/components/revenue/RevenueCards";
 import { RevenueTrendChart } from "@/components/revenue/RevenueTrendChart";
-import { ChurnRiskAlerts } from "@/components/revenue/ChurnRiskAlerts";
-import { RevenueViewToggle } from "./RevenueViewToggle";
-import { logger } from '@/lib/logger';
+import { WithErrorBoundary } from "@/components/with-error-boundary";
+import { getChurnRisks } from "@/lib/api/churn";
 import {
   getRevenueMetrics,
   getOutstandingPayments,
   getMonthlyRevenueData,
   getMrrTrend,
 } from "@/lib/api/revenue";
-import { getChurnRisks } from "@/lib/api/churn";
+import { logger } from '@/lib/logger';
+
+import { PageHeader } from "@tevero/ui";
+import { Skeleton } from "@tevero/ui";
+
+import { RevenueViewToggle } from "./RevenueViewToggle";
+
 
 /**
  * Generate trend data for different periods.

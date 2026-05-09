@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Button,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Checkbox,
-  Label,
-} from "@tevero/ui";
-import { Settings2, GripVertical, RotateCcw } from "lucide-react";
+
 import {
   DndContext,
   closestCenter,
@@ -26,11 +18,22 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Settings2, GripVertical, RotateCcw } from "lucide-react";
+
 import {
   ALL_COLUMNS,
   DEFAULT_COLUMNS,
   type ColumnDefinition,
 } from "@/types/saved-views";
+
+import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Checkbox,
+  Label,
+} from "@tevero/ui";
 
 interface ColumnCustomizerProps {
   /** Currently visible column IDs in display order */

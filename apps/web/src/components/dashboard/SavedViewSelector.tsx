@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+
+import { Bookmark, Plus, Trash2, Star, Check, Share2, Loader2 } from "lucide-react";
+
+import { useSavedViews } from "@/hooks/useSavedViews";
+import type { SavedView, ViewConfig } from "@/types/saved-views";
+
 import {
   Button,
   Dialog,
@@ -19,9 +25,6 @@ import {
   Badge,
   Switch,
 } from "@tevero/ui";
-import { Bookmark, Plus, Trash2, Star, Check, Share2, Loader2 } from "lucide-react";
-import type { SavedView, ViewConfig } from "@/types/saved-views";
-import { useSavedViews } from "@/hooks/useSavedViews";
 
 interface SavedViewSelectorProps {
   /** Workspace ID for fetching views */

@@ -14,6 +14,7 @@
  */
 
 import { Loader2 } from "lucide-react";
+
 import { useClientStore } from "@/stores/clientStore";
 
 export function ClientSwitchOverlay() {

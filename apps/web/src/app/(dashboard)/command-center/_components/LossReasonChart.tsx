@@ -8,6 +8,7 @@
  * Uses Recharts with donut-style inner radius.
  */
 
+import { useTranslations } from "next-intl";
 import {
   PieChart,
   Pie,
@@ -17,7 +18,6 @@ import {
   Legend,
   type PieLabelRenderProps,
 } from "recharts";
-import { useTranslations } from "next-intl";
 
 /**
  * Color palette for chart segments.

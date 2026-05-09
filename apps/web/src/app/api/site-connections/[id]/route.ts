@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenSeo, deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
-import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
+
 import { validateCsrf } from "@/lib/api/security";
+import { requireAuth, requireClientAccess, AuthError } from "@/lib/auth";
 import { checkRateLimit, getClientIpFromRequest, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { getOpenSeo, deleteOpenSeo, FastApiError } from "@/lib/server-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -10,8 +10,9 @@
  * Supports structured services from Phase 58 service catalog.
  */
 
-import type { PublicProposal } from "../actions";
 import { ServicesSection } from "./ServicesSection";
+
+import type { PublicProposal } from "../actions";
 
 interface ServiceWithSelection {
   id: string;

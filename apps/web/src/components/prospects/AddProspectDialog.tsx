@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
+
 import { useRouter } from "next/navigation";
+
+import { Plus, Loader2 } from "lucide-react";
+
+import { createProspectAction } from "@/app/(shell)/prospects/actions";
+
 import {
   Dialog,
   DialogContent,
@@ -20,8 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@tevero/ui";
-import { Plus, Loader2 } from "lucide-react";
-import { createProspectAction } from "@/app/(shell)/prospects/actions";
 
 interface AddProspectDialogProps {
   trigger?: React.ReactNode;

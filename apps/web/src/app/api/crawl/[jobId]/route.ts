@@ -9,11 +9,12 @@
  */
 
 import { NextResponse } from "next/server";
+
 import { AuthError } from "@/lib/auth/api-auth";
+import { logger } from '@/lib/logger';
 import { generalApiLimiter, rateLimitHeaders } from "@/lib/rate-limit";
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 
-import { logger } from '@/lib/logger';
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

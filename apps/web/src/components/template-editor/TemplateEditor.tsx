@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback, useTransition } from "react";
-import { logger } from '@/lib/logger';
+
 import {
   DndContext,
   closestCenter,
@@ -28,17 +28,23 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Tabs, TabsContent, TabsList, TabsTrigger, Input, Button } from "@tevero/ui";
 import { Save, Eye, Edit3, Loader2 } from "lucide-react";
-import { ClauseList } from "./ClauseList";
-import { VariablePalette } from "./VariablePalette";
-import { PreviewPane } from "./PreviewPane";
+
 import {
   saveTemplate,
   reorderClauses,
   type TemplateData,
   type TemplateClause,
 } from "@/app/[locale]/(shell)/templates/[templateId]/edit/actions";
+import { logger } from '@/lib/logger';
+
+import { Tabs, TabsContent, TabsList, TabsTrigger, Input, Button } from "@tevero/ui";
+
+
+import { ClauseList } from "./ClauseList";
+import { PreviewPane } from "./PreviewPane";
+import { VariablePalette } from "./VariablePalette";
+
 
 interface TemplateEditorProps {
   initialData: TemplateData;

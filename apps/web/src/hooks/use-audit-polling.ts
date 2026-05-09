@@ -15,6 +15,7 @@
 "use client";
 
 import { useRef, useCallback, useEffect } from "react";
+
 import { getAdaptiveDelay } from "@/lib/polling/adaptive-poll";
 
 export interface UseAuditPollingOptions {

@@ -9,9 +9,11 @@
  */
 
 import { useState, useCallback } from "react";
+
 import { useRouter } from "next/navigation";
-import { Button } from "@tevero/ui";
+
 import { Settings } from "lucide-react";
+
 import { PipelineKanban } from "@/components/pipeline/PipelineKanban";
 import { StageConfigDialog } from "@/components/pipeline/StageConfigDialog";
 import {
@@ -19,6 +21,9 @@ import {
   archiveProspect,
   updatePipelineStages,
 } from "@/lib/api/pipeline";
+
+import { Button } from "@tevero/ui";
+
 import type { PipelineStageConfig } from "./constants";
 
 interface ProspectData {

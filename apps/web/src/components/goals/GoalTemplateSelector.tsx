@@ -1,5 +1,7 @@
 "use client";
 
+import { useGoalTemplates } from "@/lib/hooks/useGoals";
+
 import {
   Select,
   SelectContent,
@@ -8,7 +10,7 @@ import {
   SelectValue,
 } from "@tevero/ui";
 import { Skeleton } from "@tevero/ui";
-import { useGoalTemplates } from "@/lib/hooks/useGoals";
+
 import { GoalIcon } from "./GoalIcon";
 
 interface GoalTemplateSelectorProps {

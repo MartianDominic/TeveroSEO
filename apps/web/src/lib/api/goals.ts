@@ -8,8 +8,8 @@
  */
 
 import { z } from "zod";
-import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { logger } from '@/lib/logger';
 // Default timeout for goal API calls (30 seconds)
 const GOAL_API_TIMEOUT = 30_000;

@@ -15,8 +15,8 @@
  */
 
 import { useState, useCallback } from "react";
+
 import { useCopilotAction } from "@copilotkit/react-core";
-import { Button, Card, Textarea, Badge } from "@tevero/ui";
 import {
   Upload,
   MessageSquare,
@@ -25,9 +25,8 @@ import {
   Sparkles,
   CheckCircle,
 } from "lucide-react";
+
 import { useKeywordAnalysis } from "@/hooks/useKeywordAnalysis";
-import { AnalysisProgress } from "./AnalysisProgress";
-import { AnalysisResults } from "./AnalysisResults";
 import {
   analyzeKeywordsToolConfig,
   toAnalysisConfig,
@@ -39,6 +38,11 @@ import {
   getClientSessions,
   type SessionSummary,
 } from "@/lib/keyword-chat/session-service";
+
+import { Button, Card, Textarea, Badge } from "@tevero/ui";
+
+import { AnalysisProgress } from "./AnalysisProgress";
+import { AnalysisResults } from "./AnalysisResults";
 import {
   ClarifyingQuestionLoop,
   type ClarificationQuestion,

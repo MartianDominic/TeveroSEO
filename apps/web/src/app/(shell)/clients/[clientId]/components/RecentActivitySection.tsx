@@ -7,7 +7,11 @@
  */
 
 import React from "react";
+
 import { useRouter } from "next/navigation";
+
+import { Calendar } from "lucide-react";
+
 import {
   Button,
   Skeleton,
@@ -19,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@tevero/ui";
-import { Calendar } from "lucide-react";
 
 export interface PublishingLog {
   id: string;

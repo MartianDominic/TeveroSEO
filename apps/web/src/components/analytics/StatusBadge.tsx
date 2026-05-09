@@ -1,8 +1,10 @@
 "use client";
 
-import { Badge } from "@tevero/ui";
 import { TrendingDown, AlertCircle, Link2Off, CheckCircle2 } from "lucide-react";
+
 import type { ClientStatus } from "@/lib/analytics/types";
+
+import { Badge } from "@tevero/ui";
 
 const STATUS_CONFIG: Record<ClientStatus, {
   variant: "default" | "secondary" | "destructive" | "outline";

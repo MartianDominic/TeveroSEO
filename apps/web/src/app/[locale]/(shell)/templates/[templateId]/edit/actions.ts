@@ -8,12 +8,13 @@
  * Calls open-seo-main API endpoints for persistence.
  */
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getOpenSeo, putOpenSeo } from "@/lib/server-fetch";
-import { requireActionAuth } from "@/lib/auth/action-auth";
 
+import { z } from "zod";
+
+import { requireActionAuth } from "@/lib/auth/action-auth";
 import { logger } from '@/lib/logger';
+import { getOpenSeo, putOpenSeo } from "@/lib/server-fetch";
 // =============================================================================
 // Types
 // =============================================================================

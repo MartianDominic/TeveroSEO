@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+
 import { usePathname } from "next/navigation";
+
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -12,14 +14,17 @@ import {
   Globe,
   Search,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useClientStore } from "@/stores";
-import { TopBar } from "./TopBar";
-import { CommandPalette } from "./CommandPalette";
+
 import { KeyboardShortcutsHelp } from "@/components/dashboard/KeyboardShortcutsHelp";
 import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
+import { useClientStore } from "@/stores";
+
 import { AppShellSidebar } from "./AppShellSidebar";
+import { CommandPalette } from "./CommandPalette";
 import { usePlatformHealth } from "./hooks/usePlatformHealth";
+import { TopBar } from "./TopBar";
+
 import type { NavItem } from "./AppShellNavItem";
 
 const COLLAPSED_KEY = "appshell_collapsed";

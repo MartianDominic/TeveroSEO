@@ -17,7 +17,10 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { ChevronRight, CreditCard, Package } from "lucide-react";
+
+import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 import {
   PageHeader,
@@ -26,7 +29,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@tevero/ui";
-import { WithErrorBoundary } from "@/components/with-error-boundary";
 
 import {
   ApiIntegrationsTab,

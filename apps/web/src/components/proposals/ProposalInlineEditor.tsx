@@ -14,19 +14,23 @@
  */
 
 import { useCallback, useEffect, useMemo } from "react";
-import { useEditor, EditorContent, Editor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+
+import Highlight from "@tiptap/extension-highlight";
+import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
-import Link from "@tiptap/extension-link";
-import Highlight from "@tiptap/extension-highlight";
+import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { sanitizeHtml } from "@/lib/sanitize";
-import { VariableExtension } from "./extensions/VariableExtension";
-import type { VariableItem } from "./VariablePalette";
 
 import { logger } from '@/lib/logger';
+import { sanitizeHtml } from "@/lib/sanitize";
+import { cn } from "@/lib/utils";
+
+import { VariableExtension } from "./extensions/VariableExtension";
+
+import type { VariableItem } from "./VariablePalette";
+
 /**
  * Props for ProposalInlineEditor.
  */

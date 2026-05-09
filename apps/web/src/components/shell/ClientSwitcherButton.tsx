@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { useAuth } from "@clerk/nextjs";
 import { Globe, ChevronDown, Check, Plus, Loader2 } from "lucide-react";
+
+import { useClients, useActiveClient, useSetActiveClient } from "@/hooks/use-clients";
 import { cn } from "@/lib/utils";
 // HIGH-12-02 FIX: Migrate from Zustand to TanStack Query hooks for improved caching
-import { useClients, useActiveClient, useSetActiveClient } from "@/hooks/use-clients";
 import { useClientStore } from "@/stores";
+
 import {
   Command,
   CommandEmpty,

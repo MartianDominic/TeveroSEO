@@ -7,7 +7,9 @@
  */
 
 import React from "react";
+
 import { useRouter } from "next/navigation";
+
 import type { IntelligenceStatus } from "./IntelligenceStatusBanner";
 
 export interface ClientSetupChecklistProps {

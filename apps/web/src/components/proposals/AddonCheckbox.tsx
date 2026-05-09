@@ -8,10 +8,11 @@
  * Shows custom price if overridden, with visual indicator.
  */
 
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Edit2 } from "lucide-react";
 import * as Icons from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ServiceTemplate {
   id: string;

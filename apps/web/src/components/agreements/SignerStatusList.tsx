@@ -9,8 +9,10 @@
  */
 
 import { CheckCircle, Clock, AlertCircle, Mail } from "lucide-react";
-import { Badge, Button } from "@tevero/ui";
+
 import { cn } from "@/lib/utils";
+
+import { Badge, Button } from "@tevero/ui";
 
 export interface SignerStatus {
   id: string;

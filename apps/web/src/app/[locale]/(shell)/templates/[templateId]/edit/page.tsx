@@ -6,10 +6,14 @@
  */
 
 import { notFound } from "next/navigation";
+
 import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@tevero/ui";
-import { getTemplate } from "./actions";
+
 import { TemplateEditor } from "@/components/template-editor/TemplateEditor";
+
+import { PageHeader } from "@tevero/ui";
+
+import { getTemplate } from "./actions";
 
 interface Props {
   params: Promise<{ templateId: string; locale: string }>;

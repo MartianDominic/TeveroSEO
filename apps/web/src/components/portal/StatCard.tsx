@@ -9,11 +9,14 @@
  */
 
 import * as React from "react";
+
+import type { TrustLevel } from "@/lib/portal/types";
 import { cn } from "@/lib/utils";
+
 import { Card } from "@tevero/ui";
+
 import { DeltaBadge } from "./DeltaBadge";
 import { TrustIndicator } from "./TrustIndicator";
-import type { TrustLevel } from "@/lib/portal/types";
 
 export interface StatCardProps {
   /** Icon to display (optional) */

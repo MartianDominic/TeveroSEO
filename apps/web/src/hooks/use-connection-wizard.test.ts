@@ -2,10 +2,13 @@
  * useConnectionWizard Hook Tests
  * Phase 66-04: Connection Wizard UI
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useConnectionWizard } from "./use-connection-wizard";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { connectApi } from "@/lib/api/connect";
+
+import { useConnectionWizard } from "./use-connection-wizard";
+
 
 // Mock the connect API
 vi.mock("@/lib/api/connect", () => ({

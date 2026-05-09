@@ -6,16 +6,19 @@
  */
 'use server';
 
-import { z } from 'zod';
+import { createHash } from 'crypto';
+
 import { revalidatePath } from 'next/cache';
-import { logger } from '@/lib/logger';
+
+import { z } from 'zod';
+
 import {
   requireActionAuth,
   validateClientOwnership,
 } from '@/lib/auth/action-auth';
-import { getOpenSeo, postOpenSeo } from '@/lib/server-fetch';
+import { logger } from '@/lib/logger';
 import { checkActionRateLimit } from '@/lib/rate-limit/action-limiters';
-import { createHash } from 'crypto';
+import { getOpenSeo, postOpenSeo } from '@/lib/server-fetch';
 
 /**
  * Generate an idempotency key for revert operations.

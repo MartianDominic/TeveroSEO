@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+
 import type { GSCDataPoint } from "@/lib/analytics/types";
 import { REPORT_COLORS, CHART_CONFIG } from "@/lib/reports/styles";
 

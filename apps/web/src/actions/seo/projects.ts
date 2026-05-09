@@ -1,12 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
+import { logger } from '@/lib/logger';
 import { getOpenSeo } from "@/lib/server-fetch";
 
 // Validation schemas

@@ -1,9 +1,13 @@
 import { Suspense } from "react";
+
 import Link from "next/link";
+
+import { Plus, Loader2, ArrowLeft } from "lucide-react";
+
+import { Button, Card, CardContent } from "@tevero/ui";
+
 import { getProposalsForProspect } from "./actions";
 import { ProposalTable } from "./components/ProposalTable";
-import { Button, Card, CardContent } from "@tevero/ui";
-import { Plus, Loader2, ArrowLeft } from "lucide-react";
 
 interface Props {
   params: Promise<{ prospectId: string }>;

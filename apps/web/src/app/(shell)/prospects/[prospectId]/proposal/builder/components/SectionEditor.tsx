@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+
+import { RefreshCw, Save, GripVertical, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+
 import { logger } from '@/lib/logger';
+
 import {
   Card,
   CardContent,
@@ -11,9 +15,11 @@ import {
   Textarea,
   cn,
 } from "@tevero/ui";
-import { RefreshCw, Save, GripVertical, ChevronDown, ChevronUp, Pencil } from "lucide-react";
-import type { GeneratedSection } from "../actions";
+
 import { regenerateSection, updateSection } from "../actions";
+
+import type { GeneratedSection } from "../actions";
+
 
 interface SectionEditorProps {
   proposalId: string;

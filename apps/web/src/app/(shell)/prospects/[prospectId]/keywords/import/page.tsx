@@ -8,8 +8,18 @@
  */
 
 import { useState, useCallback } from "react";
+
 import { useParams, useRouter } from "next/navigation";
+
+import {
+  Upload,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { useDropzone } from "react-dropzone";
+
 import {
   Card,
   CardContent,
@@ -20,14 +30,7 @@ import {
   Checkbox,
   Badge,
 } from "@tevero/ui";
-import {
-  Upload,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
-import { ColumnMapper } from "./components/ColumnMapper";
+
 import {
   previewCsv,
   importCsv,
@@ -35,6 +38,7 @@ import {
   type CsvPreviewResponse,
   type CsvImportResponse,
 } from "./actions";
+import { ColumnMapper } from "./components/ColumnMapper";
 
 type ImportStep = "upload" | "mapping" | "importing" | "complete";
 

@@ -9,9 +9,12 @@
  */
 
 import { useState } from "react";
+
 import { RefreshCw, Check, X } from "lucide-react";
-import { Button } from "@tevero/ui";
+
 import type { GeoLocation } from "@/hooks/use-verification-poll";
+
+import { Button } from "@tevero/ui";
 
 // ============================================================================
 // Types

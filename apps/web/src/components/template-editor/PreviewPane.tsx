@@ -12,10 +12,13 @@
  */
 
 import { useMemo } from "react";
+
 import DOMPurify from "dompurify";
-import { Card, CardContent, CardHeader } from "@tevero/ui";
 import { AlertCircle, CheckCircle } from "lucide-react";
+
 import type { TemplateClause } from "@/app/[locale]/(shell)/templates/[templateId]/edit/actions";
+
+import { Card, CardContent, CardHeader } from "@tevero/ui";
 
 interface PreviewPaneProps {
   clauses: TemplateClause[];

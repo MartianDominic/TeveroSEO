@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { logger } from '@/lib/logger';
+
 import {
   requireActionAuth,
   validateClientOwnership,
   type ActionResult,
 } from "@/lib/auth/action-auth";
-import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
+import { logger } from '@/lib/logger';
 import { auditLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import { generateAuditIdempotencyKey } from "@/lib/utils/idempotency";
 
 // Validation schemas

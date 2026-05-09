@@ -8,6 +8,9 @@
  * Includes test connection button before saving.
  */
 import { useState } from "react";
+
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -21,7 +24,6 @@ import {
   Alert,
   AlertDescription,
 } from "@tevero/ui";
-import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 
 interface RevolutConnectModalProps {
   open: boolean;

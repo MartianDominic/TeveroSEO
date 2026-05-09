@@ -8,9 +8,15 @@
  */
 
 import { useState, type FC } from "react";
+
 import { useRouter, redirect } from "next/navigation";
 
 type AnyRoute = Parameters<typeof redirect>[0];
+import { Calendar, FileText, Loader2, AlertCircle } from "lucide-react";
+
+import { generateReport } from "@/lib/reports/actions";
+import { useReportBuilder } from "@/lib/reports/builder";
+
 import {
   Card,
   CardContent,
@@ -21,11 +27,9 @@ import {
   Label,
   cn,
 } from "@tevero/ui";
-import { Calendar, FileText, Loader2, AlertCircle } from "lucide-react";
-import { useReportBuilder } from "@/lib/reports/builder";
-import { generateReport } from "@/lib/reports/actions";
-import { SectionSelector } from "./SectionSelector";
+
 import { ReportDataPreview } from "./ReportDataPreview";
+import { SectionSelector } from "./SectionSelector";
 import { TemplateSelector } from "./TemplateSelector";
 
 interface ReportBuilderProps {

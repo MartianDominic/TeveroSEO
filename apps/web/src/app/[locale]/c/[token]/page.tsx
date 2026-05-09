@@ -7,11 +7,12 @@
  *
  * Mobile-first responsive design per D-17.
  */
-import { getContractByToken, markContractViewed } from "./actions";
 import { ContractViewer } from "@/components/contract/ContractViewer";
 import { LanguageToggle } from "@/components/contract/LanguageToggle";
 import { ProgressIndicator } from "@/components/contract/ProgressIndicator";
 import { SignatureSection } from "@/components/contract/SignatureSection";
+
+import { getContractByToken, markContractViewed } from "./actions";
 
 interface Props {
   params: Promise<{ token: string; locale: string }>;

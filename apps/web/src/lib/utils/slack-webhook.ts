@@ -20,10 +20,11 @@
  * ```
  */
 
-import { getCircuitBreaker, CircuitOpenError } from './circuit-breaker';
-import { withRetry } from './backoff';
-
 import { logger } from '@/lib/logger';
+
+import { withRetry } from './backoff';
+import { getCircuitBreaker, CircuitOpenError } from './circuit-breaker';
+
 /** Slack webhook timeout in milliseconds */
 const SLACK_TIMEOUT_MS = 10_000;
 

@@ -12,7 +12,9 @@
  */
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+
 import { useParams } from "next/navigation";
+
 import { useClientStore } from "@/stores";
 
 interface ClientIdProviderProps {

@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { useTranslations } from "next-intl";
+
 import {
   Share2,
   Copy,
@@ -25,7 +25,18 @@ import {
   ExternalLink,
   Calendar,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
 import {
   Dialog,
   DialogContent,
@@ -36,14 +47,6 @@ import {
   DialogTrigger,
   Label,
 } from "@tevero/ui";
-import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types

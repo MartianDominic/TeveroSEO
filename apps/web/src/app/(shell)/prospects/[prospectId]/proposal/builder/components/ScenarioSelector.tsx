@@ -7,8 +7,10 @@
  * Uses v6 color tokens, a11y keyboard navigation, and recommended badge.
  */
 
-import { Card, CardContent } from "@tevero/ui";
 import { FileSearch, FileText, Users, Check } from "lucide-react";
+
+import { Card, CardContent } from "@tevero/ui";
+
 import type { ProposalScenario } from "../actions";
 
 interface ScenarioSelectorProps {

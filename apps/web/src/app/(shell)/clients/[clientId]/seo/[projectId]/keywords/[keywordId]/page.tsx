@@ -1,8 +1,18 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, ExternalLink } from "lucide-react";
+
+import {
+  getKeywordHistory,
+  getKeywordLatestRanking,
+} from "@/actions/seo/keywords";
+import { PositionBadge } from "@/components/keywords/PositionBadge";
+import { RankHistoryChart } from "@/components/keywords/RankHistoryChart";
+import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
+
 import {
   Button,
   Card,
@@ -11,13 +21,6 @@ import {
   CardTitle,
   Badge,
 } from "@tevero/ui";
-import { RankHistoryChart } from "@/components/keywords/RankHistoryChart";
-import { PositionBadge } from "@/components/keywords/PositionBadge";
-import {
-  getKeywordHistory,
-  getKeywordLatestRanking,
-} from "@/actions/seo/keywords";
-import { safeHref, isSafeUrl } from "@/lib/utils/safe-url";
 
 export default function KeywordDetailPage() {
   const params = useParams<{

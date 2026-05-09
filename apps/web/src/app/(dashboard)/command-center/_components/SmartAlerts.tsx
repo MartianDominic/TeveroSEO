@@ -17,16 +17,18 @@
  * - Suggested actions with links
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+import { AlertTriangle, X, ArrowRight, Bell, CheckCircle } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useSmartAlerts,
   type SmartAlert,
 } from "@/hooks/command-center/useSmartAlerts";
-import { AlertTriangle, X, ArrowRight, Bell, CheckCircle } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /**

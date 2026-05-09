@@ -10,11 +10,13 @@
  * - Upcoming (gray)
  */
 
-import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
-import { Button } from "@tevero/ui";
 import { Mail, Phone, FileText } from "lucide-react";
+
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+
+import { Button } from "@tevero/ui";
+import { Card, CardHeader, CardTitle, CardContent } from "@tevero/ui";
 
 /**
  * Outstanding payment data structure.

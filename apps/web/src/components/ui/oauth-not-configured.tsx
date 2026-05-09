@@ -8,6 +8,7 @@
 "use client";
 
 import { AlertTriangle, Settings, ExternalLink } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle, Alert, AlertDescription } from "@tevero/ui";
 
 export interface OAuthNotConfiguredProps {

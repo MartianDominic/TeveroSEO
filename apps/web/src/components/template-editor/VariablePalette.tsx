@@ -9,8 +9,11 @@
  */
 
 import { useState, useMemo } from "react";
-import { Button, Input } from "@tevero/ui";
+
 import { ChevronDown, ChevronRight, Search } from "lucide-react";
+
+import { Button, Input } from "@tevero/ui";
+
 import { VariableInserter } from "./VariableInserter";
 
 /**

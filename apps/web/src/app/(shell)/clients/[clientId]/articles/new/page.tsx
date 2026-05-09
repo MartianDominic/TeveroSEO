@@ -11,11 +11,18 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
-import dynamic from "next/dynamic";
 
+import dynamic from "next/dynamic";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+
+import { ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
+
+import { apiGet, apiPost } from "@/lib/api-client";
 import { logger } from '@/lib/logger';
+import { sanitizeHtml } from "@/lib/sanitize";
+import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
+import type { ArticleStatus } from "@/stores";
+
 import {
   Button,
   Input,
@@ -32,10 +39,6 @@ import {
   Textarea,
 } from "@tevero/ui";
 
-import { useClientStore, useArticleEditorStore, DEFAULT_ARTICLE } from "@/stores";
-import type { ArticleStatus } from "@/stores";
-import { apiGet, apiPost } from "@/lib/api-client";
-import { sanitizeHtml } from "@/lib/sanitize";
 
 const ImageGenerationPanel = dynamic(
   () => import("@/components/editor/ImageGenerationPanel").then((m) => m.ImageGenerationPanel),

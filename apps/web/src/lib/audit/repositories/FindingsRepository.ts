@@ -5,9 +5,11 @@
  * Supports both in-memory storage (for testing) and API-based storage.
  */
 
-import type { CheckResult, CheckSeverity, CheckCategory, CheckTier } from "../checks/types";
-import { getCheckById, getTierFromCheckId } from "../checks";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+
+import { getCheckById, getTierFromCheckId } from "../checks";
+
+import type { CheckResult, CheckSeverity, CheckCategory, CheckTier } from "../checks/types";
 
 /**
  * Audit Finding entity

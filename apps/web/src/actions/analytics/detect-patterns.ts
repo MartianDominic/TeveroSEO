@@ -10,17 +10,18 @@
  */
 
 import { z } from "zod";
-import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
-import { getOpenSeoPattern } from "@/lib/server-fetch";
-import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
-import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
-import { cpuIntensiveLimiter, checkRateLimit } from "@/lib/rate-limit";
-import type { PatternWithClients, PatternStatus } from "@/types/patterns";
+
 import {
   detectAllPatterns,
   type ClientTrafficData,
   type ClientRankingData,
 } from "@/lib/analytics/pattern-detection";
+import { requireActionAuth, validateWorkspaceMembership } from "@/lib/auth/action-auth";
+import { cacheGet, cacheSet, cacheTags, getCachedWithSingleflight } from "@/lib/cache";
+import { cpuIntensiveLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { getOpenSeoPattern } from "@/lib/server-fetch";
+import { getOpenSeo, patchOpenSeo } from "@/lib/server-fetch";
+import type { PatternWithClients, PatternStatus } from "@/types/patterns";
 
 // Cache TTL: 1 hour (patterns don't change rapidly)
 const PATTERNS_CACHE_TTL = 3600;

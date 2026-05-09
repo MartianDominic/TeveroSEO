@@ -17,6 +17,15 @@
 "use client";
 
 import { useState } from "react";
+
+import { MoreHorizontal, Send, X, Clock, StickyNote } from "lucide-react";
+
+import { EntityIcon } from "@/components/command-center/EntityIcon";
+import { PriorityBadge } from "@/components/command-center/PriorityBadge";
+import { useNeedsAttention } from "@/hooks/command-center/useNeedsAttention";
+import { formatCurrency } from "@/lib/currency";
+import type { AttentionItem, QuickActionType, Priority } from "@/types/command-center";
+
 import {
   Card,
   CardContent,
@@ -29,13 +38,8 @@ import {
   Button,
   Skeleton,
 } from "@tevero/ui";
-import { PriorityBadge } from "@/components/command-center/PriorityBadge";
-import { EntityIcon } from "@/components/command-center/EntityIcon";
+
 import { QuickActionDialog } from "./QuickActionDialog";
-import { useNeedsAttention } from "@/hooks/command-center/useNeedsAttention";
-import { formatCurrency } from "@/lib/currency";
-import { MoreHorizontal, Send, X, Clock, StickyNote } from "lucide-react";
-import type { AttentionItem, QuickActionType, Priority } from "@/types/command-center";
 
 /**
  * Priority order for sorting (lower number = higher priority).

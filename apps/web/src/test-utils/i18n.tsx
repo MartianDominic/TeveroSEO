@@ -1,5 +1,6 @@
-import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
+
+import { NextIntlClientProvider } from 'next-intl';
 
 // Import English messages for tests
 import messages from '../../messages/en.json';

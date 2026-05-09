@@ -8,10 +8,12 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { Trophy, ArrowUp } from "lucide-react";
+
 import { formatDistanceToNow } from "date-fns";
+import { Trophy, ArrowUp } from "lucide-react";
+
 import type { RecentWin } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
 
 export interface WinCardProps {
   /** Win data */

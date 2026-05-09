@@ -3,6 +3,7 @@
  * FIX CRIT-API-02: Verify snake_case <-> camelCase conversion.
  */
 import { describe, it, expect } from "vitest";
+
 import {
   snakeToCamel,
   camelToSnake,

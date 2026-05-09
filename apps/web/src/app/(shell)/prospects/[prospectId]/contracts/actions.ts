@@ -1,11 +1,12 @@
 "use server";
 
-import { z } from "zod";
-import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 import { revalidatePath } from "next/cache";
-import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 
+import { z } from "zod";
+
+import { requireActionAuth, validateProspectOwnership, type ActionResult } from "@/lib/auth/action-auth";
 import { logger } from '@/lib/logger';
+import { getOpenSeo, postOpenSeo } from "@/lib/server-fetch";
 // Validation schemas
 const contractIdSchema = z.string().min(1, "Invalid contract ID");
 const prospectIdSchema = z.string().min(1, "Invalid prospect ID");

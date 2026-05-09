@@ -7,12 +7,13 @@ import type {
   ReportTemplate as ReportTemplateType,
   ReportSectionType,
 } from "@/lib/reports/types";
-import { ReportHeader } from "./ReportHeader";
-import { ReportSummaryStats } from "./ReportSummaryStats";
-import { ReportGSCChart } from "./ReportGSCChart";
-import { ReportGA4Chart } from "./ReportGA4Chart";
-import { ReportQueriesTable } from "./ReportQueriesTable";
+
 import { ReportFooter } from "./ReportFooter";
+import { ReportGA4Chart } from "./ReportGA4Chart";
+import { ReportGSCChart } from "./ReportGSCChart";
+import { ReportHeader } from "./ReportHeader";
+import { ReportQueriesTable } from "./ReportQueriesTable";
+import { ReportSummaryStats } from "./ReportSummaryStats";
 
 interface ReportTemplateProps {
   /** Full report data payload */

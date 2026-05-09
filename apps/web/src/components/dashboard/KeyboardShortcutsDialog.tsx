@@ -8,13 +8,15 @@
  */
 
 import { useEffect, useState } from "react";
+
+import { Keyboard } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@tevero/ui";
-import { Keyboard } from "lucide-react";
 
 interface ShortcutGroup {
   title: string;

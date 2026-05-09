@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { logger } from '@/lib/logger';
+
 import {
   DndContext,
   closestCenter,
@@ -25,9 +25,12 @@ import {
   AlertTriangle,
   Trophy,
 } from "lucide-react";
-import { DraggableCard } from "./DraggableCard";
-import type { PortfolioSummary } from "@/lib/dashboard/types";
+
 import { saveCardLayout } from "@/app/(shell)/dashboard/actions";
+import type { PortfolioSummary } from "@/lib/dashboard/types";
+import { logger } from '@/lib/logger';
+
+import { DraggableCard } from "./DraggableCard";
 
 interface QuickStatsCardsProps {
   summary: PortfolioSummary;

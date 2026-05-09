@@ -13,13 +13,17 @@
  */
 
 import { type FC, type ReactNode } from "react";
+
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 import { ProposalInlineEditor } from "./ProposalInlineEditor";
 import { SectionHandle } from "./SectionHandle";
+
 import type { EditorSection } from "./types";
 
 /**

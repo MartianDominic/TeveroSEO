@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useState, useRef } from "react";
+
 import { Upload, X, Loader2, ImageIcon } from "lucide-react";
+
 import { Button } from "@tevero/ui";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB

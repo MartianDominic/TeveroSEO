@@ -1,7 +1,8 @@
 "use client";
 
-import { Badge } from "@tevero/ui";
 import { FileCheck, Clock, Send, AlertCircle } from "lucide-react";
+
+import { Badge } from "@tevero/ui";
 
 interface SignatureStatusProps {
   status: string;

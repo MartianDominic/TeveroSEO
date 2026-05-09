@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
+
 import { z } from "zod";
-import { getOpenSeo, postOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
+
 import { validateCsrf } from "@/lib/api/security";
-import { generalApiLimiter, connectionTestLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import { requireClientAccess, AuthError } from "@/lib/auth/api-auth";
 import {
   createErrorJsonResponse,
   badRequestResponse,
@@ -11,6 +11,8 @@ import {
   internalErrorResponse,
   validationErrorResponse,
 } from "@/lib/error-utils";
+import { generalApiLimiter, connectionTestLimiter, rateLimitHeaders } from "@/lib/rate-limit";
+import { getOpenSeo, postOpenSeo, FastApiError, extractRequestContextFromRequest } from "@/lib/server-fetch";
 
 // Zod schema for creating a site connection
 const createConnectionSchema = z.object({

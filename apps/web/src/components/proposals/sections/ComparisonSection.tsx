@@ -10,11 +10,15 @@
  */
 
 import { type FC } from "react";
+
 import { Scale, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Label } from "@tevero/ui";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+import { Label } from "@tevero/ui";
+
 
 export interface ComparisonItem {
   aspect: string;

@@ -12,10 +12,16 @@
  */
 
 import { useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+
 import { useRouter } from "next/navigation";
+
 import { Copy, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
 import {
   Dialog,
   DialogContent,
@@ -27,8 +33,6 @@ import {
   Label,
   Checkbox,
 } from "@tevero/ui";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Types

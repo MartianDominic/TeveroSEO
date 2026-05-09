@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Checkbox, Input, Button, Badge } from "@tevero/ui";
+
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+
 import { cn } from "@/lib/utils";
+
+import { Checkbox, Input, Button, Badge } from "@tevero/ui";
 
 interface KeywordSelectorProps {
   keywords: string[];

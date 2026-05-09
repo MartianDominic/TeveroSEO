@@ -9,9 +9,7 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { DeltaBadge } from "./DeltaBadge";
-import { TrustIndicator, EstimatedDataFootnote } from "./TrustIndicator";
+
 import {
   ArrowUpDown,
   ArrowUp,
@@ -19,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+
 import type {
   KeywordData,
   KeywordFilter,
@@ -26,6 +25,10 @@ import type {
   SortOrder,
   KeywordsSummary,
 } from "@/lib/portal/types";
+import { cn } from "@/lib/utils";
+
+import { DeltaBadge } from "./DeltaBadge";
+import { TrustIndicator, EstimatedDataFootnote } from "./TrustIndicator";
 
 /**
  * Get difficulty configuration based on KD value

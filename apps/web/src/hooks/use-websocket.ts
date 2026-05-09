@@ -8,6 +8,7 @@
  * HIGH-40 FIX: Added debounce for auth state changes to prevent unnecessary reconnects.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+
 import { useAuth } from '@clerk/nextjs';
 import { z, ZodSchema } from 'zod';
 
