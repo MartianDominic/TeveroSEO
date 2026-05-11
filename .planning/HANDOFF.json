@@ -1,44 +1,48 @@
 {
-  "version": "1.1",
-  "timestamp": "2026-05-11T19:45:00+03:00",
+  "version": "1.2",
+  "timestamp": "2026-05-11T20:15:00+03:00",
   "phase": "100",
   "phase_name": "world-class-scraping",
   "phase_dir": ".planning/phases/100-world-class-scraping",
   "plan": "PHASE-100-REVISED-PLAN.md",
+  "plan_version": "v3",
   "task": null,
-  "total_tasks": 5,
+  "total_tasks": 4,
   "status": "planning_complete",
+  "key_finding": "Bottleneck is concurrency=10 in TieredFetcher line 637, NOT framework. Config fix achieves same speed as Scrapling rewrite.",
   "completed_tasks": [
     {"id": 1, "name": "Phase 95 10-agent DARPA research", "status": "done"},
-    {"id": 2, "name": "Scrapling re-evaluation (HTTP layer)", "status": "done"},
-    {"id": 3, "name": "Architecture decision (Scrapling Fetcher at T0-T2)", "status": "done"},
-    {"id": 4, "name": "Phase 100 REVISED plan creation", "status": "done"},
-    {"id": 5, "name": "UI Progress Spec creation", "status": "done"},
+    {"id": 2, "name": "Scrapling evaluation", "status": "done", "finding": "Not needed - config fix sufficient"},
+    {"id": 3, "name": "5 Opus agent investigation", "status": "done", "finding": "concurrency=10 is the bottleneck"},
+    {"id": 4, "name": "Phase 100 REVISED v3 plan", "status": "done"},
+    {"id": 5, "name": "UI Progress Spec", "status": "done"},
     {"id": 6, "name": "CLAUDE.md Prospect→Client flow", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 1, "name": "Week 1: Scrapling Fetcher Integration", "status": "not_started", "week": 1},
-    {"id": 2, "name": "Week 2: Concurrency Optimization", "status": "not_started", "week": 2},
-    {"id": 3, "name": "Week 3: Parser Migration", "status": "not_started", "week": 3},
-    {"id": 4, "name": "Week 4: Streaming Architecture", "status": "not_started", "week": 4},
-    {"id": 5, "name": "Week 5: Worker Thread Parallelization", "status": "not_started", "week": 5}
+    {"id": 1, "name": "Week 1: Concurrency 10→200", "status": "not_started", "week": 1, "file": "TieredFetcher.ts:637"},
+    {"id": 2, "name": "Week 2: Parser Migration", "status": "not_started", "week": 2},
+    {"id": 3, "name": "Week 3: Streaming Architecture", "status": "not_started", "week": 3},
+    {"id": 4, "name": "Week 4: Two-Stage Flow + Workers", "status": "not_started", "week": 4}
   ],
   "blockers": [],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "Scrapling Fetcher at T0-T2 (HTTP layer)", "rationale": "curl_cffi TLS fingerprinting gives 85-94% success vs httpx ~10% on protected sites", "phase": "100"},
-    {"decision": "Keep Camoufox at T2.5 (browser layer)", "rationale": "Best browser anti-detection (88% success), StealthyFetcher only 58%", "phase": "100"},
-    {"decision": "Keep DataForSEO as T3-T5 fallback", "rationale": "Only for extreme protection cases", "phase": "100"},
-    {"decision": "Concurrency 10→200", "rationale": "Current 10 is bottleneck, not Geonode", "phase": "100"},
-    {"decision": "node-html-parser over Cheerio", "rationale": "6x faster (2ms vs 12ms)", "phase": "100"}
+    {"decision": "NO Scrapling rewrite needed", "rationale": "Config fix (concurrency 10→200) achieves same 2-3 min speed", "phase": "100"},
+    {"decision": "Keep TieredFetcher + Camoufox", "rationale": "Works fine, just misconfigured", "phase": "100"},
+    {"decision": "node-html-parser over Cheerio", "rationale": "6x faster (2ms vs 12ms)", "phase": "100"},
+    {"decision": "Two-stage flow", "rationale": "Fast prospect (content) → Deferred client (109 checks)", "phase": "100"}
+  ],
+  "what_we_learned": [
+    "concurrency ?? 10 was the problem - read the code first",
+    "$32/month hidden costs claim was BS - Python on same VPS costs $0",
+    "Phase 98 uses DataForSEO APIs, not our scraping",
+    "76% of SEO checks are simple HTML parsing"
   ],
   "uncommitted_files": [
     ".planning/phases/100-world-class-scraping/PHASE-100-REVISED-PLAN.md",
-    ".planning/phases/100-world-class-scraping/UI-PROGRESS-SPEC.md",
     ".planning/phases/100-world-class-scraping/.continue-here.md",
-    ".planning/HANDOFF.json",
-    "CLAUDE.md"
+    ".planning/HANDOFF.json"
   ],
-  "next_action": "Begin Week 1: Create scrapling-engine/ Python microservice with FastAPI server and Scrapling Fetcher wrapper",
-  "context_notes": "REVISED PLAN: Scrapling Fetcher (HTTP + curl_cffi) replaces httpx at T0-T2 for TLS fingerprint impersonation. Camoufox STAYS at T2.5 for browser challenges. This reduces escalations to expensive tiers by ~70%, cutting costs from $2.60 to $0.80 per 5000 pages."
+  "next_action": "Week 1: Change concurrency ?? 10 to concurrency ?? 200 in TieredFetcher.ts line 637",
+  "context_notes": "5 Opus agents investigated and found the REAL bottleneck: TieredFetcher configured at 5% capacity (concurrency=10). No Scrapling Python microservice needed. Simple config fix + parser swap achieves same 5x speedup."
 }
