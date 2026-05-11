@@ -3,7 +3,7 @@
  * Category A: Secondary HTML signals per Kyle Roof Group B/C
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 
 /** Create word boundary regex for keyword matching */
 function keywordRegex(keyword: string): RegExp {
@@ -36,6 +36,22 @@ registerCheck({
       editRecipe: passed ? undefined : "Wrap one instance of keyword in <strong> tag",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-01", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_in_strong
+    const passed = (data as any).keyword_in_strong ?? false;
+    return {
+      checkId: "T1-01",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Keyword found in strong/bold tag" : "Keyword not found in any strong/bold tag",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Wrap one instance of keyword in <strong> tag",
+    };
+  },
 });
 
 // T1-02: Keyword in <em>/<i>
@@ -54,6 +70,22 @@ registerCheck({
     }
     const text = $("em, i").text();
     const passed = keywordRegex(keyword).test(text);
+    return {
+      checkId: "T1-02",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Keyword found in em/italic tag" : "Keyword not found in any em/italic tag",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Wrap one instance of keyword in <em> tag",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-02", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_in_emphasis
+    const passed = (data as any).keyword_in_emphasis ?? false;
     return {
       checkId: "T1-02",
       passed,
@@ -93,6 +125,22 @@ registerCheck({
       editRecipe: found ? undefined : "Add title attribute with keyword to a relevant link",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-03", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_in_link_title
+    const passed = (data as any).keyword_in_link_title ?? false;
+    return {
+      checkId: "T1-03",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Keyword found in link title attribute" : "No link title contains keyword",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add title attribute with keyword to a relevant link",
+    };
+  },
 });
 
 // T1-04: Keyword in <noscript>
@@ -120,6 +168,22 @@ registerCheck({
       editRecipe: passed ? undefined : "Add keyword in noscript content",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-04", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_in_noscript
+    const passed = (data as any).keyword_in_noscript ?? false;
+    return {
+      checkId: "T1-04",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Keyword found in noscript tag" : "Keyword not found in noscript content",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add keyword in noscript content",
+    };
+  },
 });
 
 // T1-05: Keyword in first <p>
@@ -138,6 +202,23 @@ registerCheck({
     }
     const firstP = $("p").first().text();
     const passed = keywordRegex(keyword).test(firstP);
+    return {
+      checkId: "T1-05",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "Keyword found in first paragraph" : "Keyword not in first paragraph",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add keyword to the first paragraph",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-05", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_in_first_paragraph
+    // Fallback: use keyword_in_first_100_words as approximation (first paragraph usually within first 100 words)
+    const passed = (data as any).keyword_in_first_paragraph ?? data.keyword_in_first_100_words;
     return {
       checkId: "T1-05",
       passed,

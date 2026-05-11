@@ -19,6 +19,9 @@ declare namespace NodeJS {
 
     DATAFORSEO_API_KEY?: string;
 
+    // Scrapling Service (Phase 100)
+    SCRAPLING_SERVICE_URL?: string; // Default: "http://localhost:8001"
+
     // SEO Configuration
     SEO_QUALITY_THRESHOLD?: string; // Default: "80" - minimum score for content approval
 

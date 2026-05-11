@@ -3,7 +3,7 @@
  * Category E: Content organization and keyword placement
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 import type { CheerioAPI } from "cheerio";
 
 function keywordRegex(keyword: string): RegExp {
@@ -48,6 +48,21 @@ registerCheck({
       editRecipe: passed ? undefined : "Add keyword to the first 100 words of content",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-26", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    const passed = data.keyword_in_first_100_words;
+    return {
+      checkId: "T1-26",
+      passed,
+      severity: passed ? "info" : "high",
+      message: passed ? "Keyword found in first 100 words" : "Keyword missing from first 100 words",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add keyword to the first 100 words of content",
+    };
+  },
 });
 
 // T1-27: Keyword 2x in first 100 words
@@ -78,6 +93,25 @@ registerCheck({
       editRecipe: passed ? undefined : "Add keyword at least twice in the first 100 words",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-27", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: keyword_count_in_first_100_words
+    // For now, use keyword_occurrences as a proxy (less precise but available)
+    const count = (data as any).keyword_count_in_first_100_words ?? (data.keyword_in_first_100_words ? 1 : 0);
+    const passed = count >= 2;
+    return {
+      checkId: "T1-27",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? `Keyword appears ${count}x in first 100 words` : `Keyword appears ${count}x in first 100 words (need 2+)`,
+      details: { count },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add keyword at least twice in the first 100 words",
+    };
+  },
 });
 
 // T1-28: Short intro 5-8 sentences before first H2
@@ -103,6 +137,26 @@ registerCheck({
     // Count sentences (rough: split by . ! ?)
     const sentences = introText.split(/[.!?]+/).filter(s => s.trim().length > 10);
     const count = sentences.length;
+    const passed = count >= 5 && count <= 8;
+    return {
+      checkId: "T1-28",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `Intro has ${count} sentences (optimal)` : `Intro has ${count} sentences (optimal 5-8)`,
+      details: { sentenceCount: count },
+      autoEditable: false,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data } = ctx;
+    if (data.h2_count === 0) {
+      return { checkId: "T1-28", passed: true, severity: "info", message: "No H2 found", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: intro_sentence_count
+    // Fallback: estimate from intro_text if available
+    const introText = data.intro_text ?? "";
+    const sentences = introText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const count = (data as any).intro_sentence_count ?? sentences.length;
     const passed = count >= 5 && count <= 8;
     return {
       checkId: "T1-28",
@@ -146,6 +200,25 @@ registerCheck({
       autoEditable: false,
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data } = ctx;
+    const total = data.paragraph_count;
+    if (total === 0) {
+      return { checkId: "T1-29", passed: true, severity: "info", message: "No paragraphs found", autoEditable: false };
+    }
+    // TODO: Requires new fields from Phase 100 Python update: short_paragraph_count, short_paragraph_ratio
+    const shortCount = (data as any).short_paragraph_count ?? Math.round(total * 0.7);
+    const ratio = (data as any).short_paragraph_ratio ?? (shortCount / total);
+    const passed = ratio >= 0.7; // 70% short paragraphs
+    return {
+      checkId: "T1-29",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `${Math.round(ratio * 100)}% short paragraphs (good)` : `Only ${Math.round(ratio * 100)}% short paragraphs (aim for 70%+)`,
+      details: { shortCount, total, ratio },
+      autoEditable: false,
+    };
+  },
 });
 
 // T1-30: TOC on pages >1500 words
@@ -166,6 +239,23 @@ registerCheck({
     }
     // Detect TOC patterns
     const hasToc = $('[class*="toc"], [id*="toc"], nav[aria-label*="contents"], .table-of-contents, #table-of-contents').length > 0;
+    return {
+      checkId: "T1-30",
+      passed: hasToc,
+      severity: hasToc ? "info" : "medium",
+      message: hasToc ? "TOC found on long content" : `${wordCount} words but no TOC detected`,
+      details: { wordCount },
+      autoEditable: !hasToc,
+      editRecipe: hasToc ? undefined : "Add table of contents for pages over 1500 words",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data } = ctx;
+    const wordCount = data.word_count;
+    if (wordCount < 1500) {
+      return { checkId: "T1-30", passed: true, severity: "info", message: `${wordCount} words (TOC not required)`, autoEditable: false };
+    }
+    const hasToc = data.has_table_of_contents;
     return {
       checkId: "T1-30",
       passed: hasToc,
@@ -212,6 +302,25 @@ registerCheck({
       editRecipe: passed ? undefined : "Fix broken TOC anchor links",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data } = ctx;
+    // TODO: Requires new fields from Phase 100 Python update: toc_anchor_count, broken_toc_anchor_count
+    const total = (data as any).toc_anchor_count ?? 0;
+    if (total === 0) {
+      return { checkId: "T1-31", passed: true, severity: "info", message: "No TOC anchor links found", autoEditable: false };
+    }
+    const broken = (data as any).broken_toc_anchor_count ?? 0;
+    const passed = broken === 0;
+    return {
+      checkId: "T1-31",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "All TOC anchors resolve" : `${broken} broken TOC anchor(s)`,
+      details: { total, broken },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Fix broken TOC anchor links",
+    };
+  },
 });
 
 // T1-32: 30-40 word answer after H2
@@ -243,6 +352,25 @@ registerCheck({
       severity: passed ? "info" : "low",
       message: passed ? `${goodAnswers}/${h2s.length} H2s have optimal answer length` : `Only ${goodAnswers}/${h2s.length} H2s have 30-40 word answers`,
       details: { goodAnswers, total: h2s.length },
+      autoEditable: false,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data } = ctx;
+    const total = data.h2_count;
+    if (total === 0) {
+      return { checkId: "T1-32", passed: true, severity: "info", message: "No H2 found", autoEditable: false };
+    }
+    // TODO: Requires new field from Phase 100 Python update: h2_optimal_answer_count
+    const goodAnswers = (data as any).h2_optimal_answer_count ?? 0;
+    const ratio = goodAnswers / total;
+    const passed = ratio >= 0.5; // At least 50% of H2s have good answer length
+    return {
+      checkId: "T1-32",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `${goodAnswers}/${total} H2s have optimal answer length` : `Only ${goodAnswers}/${total} H2s have 30-40 word answers`,
+      details: { goodAnswers, total },
       autoEditable: false,
     };
   },

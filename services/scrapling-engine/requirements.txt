@@ -1,0 +1,20 @@
+# Scrapling SEO Engine Dependencies
+
+# Core framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+
+# HTTP client (for test mode)
+httpx>=0.26.0
+
+# Scrapling - core scraping library
+# Uses curl_cffi internally for TLS impersonation
+scrapling>=0.2.0
+
+# Camoufox - stealth browser for Cloudflare bypass
+# Firefox with C++/Rust patches, 0% headless detection
+camoufox>=0.4.0
+
+# Playwright dependency for Camoufox
+playwright>=1.41.0

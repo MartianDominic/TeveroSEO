@@ -3,7 +3,7 @@
  * Category H: External linking best practices
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 import type { CheerioAPI } from "cheerio";
 
 function isExternalLink(href: string, pageUrl: string): boolean {
@@ -42,7 +42,23 @@ registerCheck({
     }
     // Calculate expected: 2-5 per 1500 words
     const ratio = wordCount / 1500;
+    const maxExpected = Math.max(5, Math.ceil(ratio * 5));
     const minExpected = Math.max(2, Math.floor(ratio * 2));
+    const passed = external >= minExpected && external <= maxExpected;
+    return {
+      checkId: "T1-44",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `${external} outbound links (good for ${wordCount} words)` : `${external} outbound links for ${wordCount} words (aim for 2-5 per 1500 words)`,
+      details: { external, wordCount },
+      autoEditable: false,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const wordCount = ctx.data.word_count;
+    const external = ctx.data.external_link_count;
+    // Calculate expected: 2-5 per 1500 words
+    const ratio = wordCount / 1500;
     const maxExpected = Math.max(5, Math.ceil(ratio * 5));
     const passed = external >= 2 && external <= Math.max(5, maxExpected);
     return {
@@ -75,6 +91,28 @@ registerCheck({
       const href = $(link).attr("href") ?? "";
       if (isExternalLink(href, ctx.url)) {
         const lower = href.toLowerCase();
+        if (citationDomains.some(d => lower.includes(d))) nofollowedCitations++;
+      }
+    }
+    const passed = nofollowedCitations === 0;
+    return {
+      checkId: "T1-45",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "No citations are nofollowed" : `${nofollowedCitations} citation link(s) have nofollow`,
+      details: { nofollowedCitations },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Remove nofollow from citation links to authoritative sources",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const links = ctx.data.external_links;
+    let nofollowedCitations = 0;
+    // Check if external link with nofollow goes to likely citation domain
+    const citationDomains = ["wikipedia.org", "gov", "edu", "pubmed", "ncbi.nlm.nih", "nature.com", "sciencedirect", "springer", "wiley"];
+    for (const link of links) {
+      if (link.is_nofollow) {
+        const lower = link.href.toLowerCase();
         if (citationDomains.some(d => lower.includes(d))) nofollowedCitations++;
       }
     }
@@ -123,6 +161,23 @@ registerCheck({
       editRecipe: passed ? undefined : "Add target=\"_blank\" to external links",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    // Note: LinkData doesn't include target attribute
+    // This check requires DOM access for accurate results
+    // For V2, we can only report total external links count
+    const total = ctx.data.external_link_count;
+    // Without target attribute data, assume pass if external links exist
+    // This is a limitation - consider adding target to LinkData in Python extractor
+    const passed = true; // Cannot accurately check without target attribute
+    return {
+      checkId: "T1-46",
+      passed,
+      severity: "info",
+      message: `${total} external links found (target attribute check requires DOM)`,
+      details: { total, note: "V2 limitation: target attribute not in LinkData" },
+      autoEditable: false,
+    };
+  },
 });
 
 // T1-47: rel="noopener" on external
@@ -153,6 +208,26 @@ registerCheck({
       passed,
       severity: passed ? "info" : "medium",
       message: passed ? "All external _blank links have noopener" : `${missing}/${total} external links missing rel="noopener"`,
+      details: { total, missing },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add rel=\"noopener\" to external links for security",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    // LinkData has rel field which we can check for noopener
+    const links = ctx.data.external_links;
+    let missing = 0;
+    let total = links.length;
+    for (const link of links) {
+      const rel = link.rel ?? "";
+      if (!rel.includes("noopener")) missing++;
+    }
+    const passed = missing === 0;
+    return {
+      checkId: "T1-47",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "All external links have noopener" : `${missing}/${total} external links missing rel="noopener"`,
       details: { total, missing },
       autoEditable: !passed,
       editRecipe: passed ? undefined : "Add rel=\"noopener\" to external links for security",

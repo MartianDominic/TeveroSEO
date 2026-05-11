@@ -2,10 +2,12 @@
  * Type definitions for SEO check system.
  * Phase 32: 107 SEO Checks Implementation
  * Phase 92: Tier 5 Content Quality Intelligence
+ * Phase 100: JSON-based SEO data extraction (migration support)
  */
 import type { CheerioAPI } from "cheerio";
 import type { PageAnalysis } from "../types";
 import type { Vertical } from "@/server/features/onpage-mastery/types";
+import type { SEOExtractionResult } from "@/server/features/scraping/ScraplingClient";
 
 /** Severity levels for check results */
 export type CheckSeverity = "critical" | "high" | "medium" | "low" | "info";
@@ -97,6 +99,54 @@ export interface CheckContext {
 }
 
 /**
+ * JSON-based context for Phase 100 checks.
+ * Uses pre-extracted SEO data from Scrapling service instead of Cheerio parsing.
+ * This allows checks to run against structured JSON - no DOM traversal needed.
+ */
+export interface SEODataContext {
+  /** Pre-extracted SEO data from Scrapling service */
+  data: SEOExtractionResult;
+  /** Page URL being checked */
+  url: string;
+  /** Target keyword for keyword-based checks (optional) */
+  keyword?: string;
+  /** Pre-computed page analysis data (may include extended fields) */
+  pageAnalysis?: PageAnalysis | ExtendedPageAnalysis;
+  /** Site-wide context for Tier 4 checks */
+  siteContext?: SiteContext;
+  /** HTTP response headers (optional, for X-Robots-Tag check) */
+  responseHeaders?: Record<string, string>;
+  /** Vertical classification for Tier 5 quality checks */
+  vertical?: Vertical;
+  /** SERP competitor content for information gain checks */
+  serpContent?: string[];
+  /** Client ID for voice consistency checks */
+  clientId?: string;
+}
+
+/**
+ * Union type for migration period - checks can accept either context type.
+ * Phase 100: Allows gradual migration from Cheerio to JSON-based checks.
+ */
+export type AnyCheckContext = CheckContext | SEODataContext;
+
+/**
+ * Type guard to determine if context is JSON-based (SEODataContext).
+ * Returns true if the context has 'data' field and lacks '$' (Cheerio) field.
+ */
+export function isSEODataContext(ctx: AnyCheckContext): ctx is SEODataContext {
+  return "data" in ctx && !("$" in ctx);
+}
+
+/**
+ * Type guard to determine if context is Cheerio-based (CheckContext).
+ * Returns true if the context has '$' (Cheerio) field.
+ */
+export function isCheerioContext(ctx: AnyCheckContext): ctx is CheckContext {
+  return "$" in ctx;
+}
+
+/**
  * Site-wide context for Tier 4 crawl-based checks.
  */
 export interface SiteContext {
@@ -150,8 +200,23 @@ export interface CheckDefinition {
   editRecipe?: string;
   /** Tier 5: If true and check failed, blocks publication */
   blocking?: boolean;
-  /** The check function */
+  /**
+   * The check function (Cheerio-based, legacy).
+   * Use this for checks that require DOM traversal.
+   */
   run: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
+  /**
+   * Phase 100: JSON-based check function.
+   * When provided, runner will prefer this over `run` when SEODataContext is available.
+   * This enables gradual migration - checks can support both during transition.
+   */
+  runV2?: (ctx: SEODataContext) => CheckResult | Promise<CheckResult>;
+  /**
+   * Phase 100: Indicates this check has been fully migrated to JSON-based.
+   * When true, the check ONLY supports runV2 and will skip if Cheerio context provided.
+   * Default: false (supports both during migration)
+   */
+  v2Only?: boolean;
 }
 
 /**
@@ -194,4 +259,14 @@ export interface RunChecksOptions {
   pageAnalysis?: PageAnalysis;
   /** Site context for Tier 4 checks */
   siteContext?: SiteContext;
+  /**
+   * Phase 100: Pre-extracted SEO data from Scrapling service.
+   * When provided, checks with runV2 will use JSON-based extraction.
+   */
+  seoData?: SEOExtractionResult;
+  /**
+   * Phase 100: Force use of legacy Cheerio-based checks even if seoData provided.
+   * Useful for debugging/comparison during migration.
+   */
+  forceLegacy?: boolean;
 }

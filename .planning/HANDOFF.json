@@ -1,48 +1,69 @@
 {
-  "version": "1.2",
-  "timestamp": "2026-05-11T20:15:00+03:00",
+  "version": "2.0",
+  "timestamp": "2026-05-11T23:15:00+03:00",
   "phase": "100",
   "phase_name": "world-class-scraping",
   "phase_dir": ".planning/phases/100-world-class-scraping",
-  "plan": "PHASE-100-REVISED-PLAN.md",
-  "plan_version": "v3",
-  "task": null,
+  "plan": "FINAL-SCRAPLING-DECISION.md",
+  "plan_version": "final-v2",
+  "task": "week_3_concurrency_streaming",
   "total_tasks": 4,
-  "status": "planning_complete",
-  "key_finding": "Bottleneck is concurrency=10 in TieredFetcher line 637, NOT framework. Config fix achieves same speed as Scrapling rewrite.",
+  "status": "week_2_complete",
+  "key_finding": "SCRAPLING-FIRST with RESIDENTIAL PROXIES: Server IP NEVER touches target sites. 3-tier system (Fetcher+Geonode → StealthyFetcher+Geonode → DataForSEO). Returns comprehensive JSON to TypeScript.",
+  "critical_rule": "NEVER use direct server IP for scraping - IP reputation decay is real and cross-site via Cloudflare",
   "completed_tasks": [
     {"id": 1, "name": "Phase 95 10-agent DARPA research", "status": "done"},
-    {"id": 2, "name": "Scrapling evaluation", "status": "done", "finding": "Not needed - config fix sufficient"},
-    {"id": 3, "name": "5 Opus agent investigation", "status": "done", "finding": "concurrency=10 is the bottleneck"},
-    {"id": 4, "name": "Phase 100 REVISED v3 plan", "status": "done"},
-    {"id": 5, "name": "UI Progress Spec", "status": "done"},
-    {"id": 6, "name": "CLAUDE.md Prospect→Client flow", "status": "done"}
+    {"id": 2, "name": "5 Opus subagent investigation", "status": "done"},
+    {"id": 3, "name": "Agent synthesis and final plan", "status": "done"},
+    {"id": 4, "name": "IP reputation analysis", "status": "done"},
+    {"id": 5, "name": "3-tier architecture finalization", "status": "done"}
   ],
+  "architecture": {
+    "t0": {
+      "name": "Fetcher + Geonode Residential",
+      "success_rate": "98%",
+      "cost": "$0.77/GB",
+      "usage": "96% of requests"
+    },
+    "t1": {
+      "name": "Camoufox + Geonode",
+      "success_rate": "88%",
+      "cost": "$0.77/GB + compute",
+      "usage": "3% of requests (Cloudflare)",
+      "note": "88% beats StealthyFetcher's 58% (ZenRows 2026)"
+    },
+    "t2": {
+      "name": "DataForSEO Nuclear",
+      "success_rate": "100%",
+      "cost": "$0.004/page",
+      "usage": "1% of requests (edge cases)"
+    }
+  },
+  "cost_model": {
+    "per_prospect_5000_pages": "$0.58",
+    "monthly_100_prospects": "$58",
+    "vs_old_direct": "+$18/month but zero IP risk"
+  },
   "remaining_tasks": [
-    {"id": 1, "name": "Week 1: Concurrency 10→200", "status": "not_started", "week": 1, "file": "TieredFetcher.ts:637"},
-    {"id": 2, "name": "Week 2: Parser Migration", "status": "not_started", "week": 2},
-    {"id": 3, "name": "Week 3: Streaming Architecture", "status": "not_started", "week": 3},
-    {"id": 4, "name": "Week 4: Two-Stage Flow + Workers", "status": "not_started", "week": 4}
+    {"id": 1, "name": "Week 1: Scrapling Service + Residential-First", "status": "complete", "week": 1},
+    {"id": 2, "name": "Week 2: Check Adaptation + Domain Learning", "status": "complete", "week": 2, "result": "55 checks migrated to runV2, 12 new fields in Python/TypeScript"},
+    {"id": 3, "name": "Week 3: Concurrency + Streaming", "status": "not_started", "week": 3},
+    {"id": 4, "name": "Week 4: Testing + Rollout", "status": "not_started", "week": 4}
   ],
   "blockers": [],
-  "human_actions_pending": [],
   "decisions": [
-    {"decision": "NO Scrapling rewrite needed", "rationale": "Config fix (concurrency 10→200) achieves same 2-3 min speed", "phase": "100"},
-    {"decision": "Keep TieredFetcher + Camoufox", "rationale": "Works fine, just misconfigured", "phase": "100"},
-    {"decision": "node-html-parser over Cheerio", "rationale": "6x faster (2ms vs 12ms)", "phase": "100"},
-    {"decision": "Two-stage flow", "rationale": "Fast prospect (content) → Deferred client (109 checks)", "phase": "100"}
+    {"decision": "NEVER use direct server IP", "rationale": "IP reputation decay is real and cross-site via Cloudflare", "phase": "100"},
+    {"decision": "Residential proxy at T0", "rationale": "98% success, server IP protected, $0.77/GB", "phase": "100"},
+    {"decision": "3 tiers only", "rationale": "Simplified from 7: Residential → Stealth → DataForSEO", "phase": "100"},
+    {"decision": "Scrapling for fetch AND parse", "rationale": "2.02ms parse, comprehensive JSON output, no Cheerio needed", "phase": "100"},
+    {"decision": "Remove Webshare DC tier", "rationale": "Burned IPs, near-zero value", "phase": "100"}
   ],
-  "what_we_learned": [
-    "concurrency ?? 10 was the problem - read the code first",
-    "$32/month hidden costs claim was BS - Python on same VPS costs $0",
-    "Phase 98 uses DataForSEO APIs, not our scraping",
-    "76% of SEO checks are simple HTML parsing"
-  ],
-  "uncommitted_files": [
-    ".planning/phases/100-world-class-scraping/PHASE-100-REVISED-PLAN.md",
-    ".planning/phases/100-world-class-scraping/.continue-here.md",
-    ".planning/HANDOFF.json"
-  ],
-  "next_action": "Week 1: Change concurrency ?? 10 to concurrency ?? 200 in TieredFetcher.ts line 637",
-  "context_notes": "5 Opus agents investigated and found the REAL bottleneck: TieredFetcher configured at 5% capacity (concurrency=10). No Scrapling Python microservice needed. Simple config fix + parser swap achieves same 5x speedup."
+  "targets": {
+    "scrape_time_5000": "15 min → <3 min",
+    "cost_per_prospect": "$2.03 → $0.58 (71% reduction)",
+    "t0_success_rate": "60-80% (decaying) → 98% (stable)",
+    "server_ip_exposure": "Yes → Never"
+  },
+  "next_action": "Week 3: Increase concurrency from 10 to 200, add Redis streaming for RAG integration, implement batch extraction endpoint",
+  "context_notes": "9 Opus agents investigated. User was right: direct server IP causes cascading reputation decay. Fixed by mandating residential proxy at T0. Extra $18/month buys zero IP risk."
 }

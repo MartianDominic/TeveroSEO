@@ -3,7 +3,7 @@
  * Category F: Image optimization
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 
 // T1-33: All images have alt
 registerCheck({
@@ -18,6 +18,20 @@ registerCheck({
     const $ = ctx.$;
     const allImages = $("img").length;
     const missingAlt = $("img:not([alt])").length;
+    const passed = missingAlt === 0;
+    return {
+      checkId: "T1-33",
+      passed,
+      severity: passed ? "info" : "high",
+      message: passed ? `All ${allImages} images have alt text` : `${missingAlt}/${allImages} images missing alt text`,
+      details: { total: allImages, missing: missingAlt },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add descriptive alt text to images without alt attribute",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const allImages = ctx.data.image_count;
+    const missingAlt = ctx.data.images_without_alt;
     const passed = missingAlt === 0;
     return {
       checkId: "T1-33",
@@ -50,6 +64,28 @@ registerCheck({
     let poor = 0;
     for (const img of images) {
       const alt = ($(img).attr("alt") ?? "").toLowerCase().trim();
+      if (badAlts.includes(alt) || alt.length < 5) poor++;
+    }
+    const passed = poor === 0;
+    return {
+      checkId: "T1-34",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "All alt text is descriptive" : `${poor}/${images.length} images have poor alt text`,
+      details: { total: images.length, poor },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Replace generic alt text with descriptive content",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const images = ctx.data.images.filter(img => img.has_alt);
+    if (images.length === 0) {
+      return { checkId: "T1-34", passed: true, severity: "info", message: "No images with alt found", autoEditable: false };
+    }
+    const badAlts = ["image", "img", "photo", "picture", "icon", "logo", "banner", ""];
+    let poor = 0;
+    for (const img of images) {
+      const alt = (img.alt ?? "").toLowerCase().trim();
       if (badAlts.includes(alt) || alt.length < 5) poor++;
     }
     const passed = poor === 0;
@@ -97,6 +133,26 @@ registerCheck({
       editRecipe: passed ? undefined : "Add explicit width and height attributes to prevent CLS",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const images = ctx.data.images;
+    if (images.length === 0) {
+      return { checkId: "T1-35", passed: true, severity: "info", message: "No images found", autoEditable: false };
+    }
+    let missing = 0;
+    for (const img of images) {
+      if (img.width === null || img.height === null) missing++;
+    }
+    const passed = missing === 0;
+    return {
+      checkId: "T1-35",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "All images have explicit dimensions" : `${missing}/${images.length} images missing width/height`,
+      details: { total: images.length, missing },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add explicit width and height attributes to prevent CLS",
+    };
+  },
 });
 
 // T1-36: loading="lazy" on images
@@ -119,6 +175,27 @@ registerCheck({
     for (const img of images) {
       const loading = $(img).attr("loading");
       if (loading !== "lazy") notLazy++;
+    }
+    const passed = notLazy === 0;
+    return {
+      checkId: "T1-36",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "All below-fold images use lazy loading" : `${notLazy}/${images.length} images not using lazy loading`,
+      details: { total: images.length, notLazy },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add loading=\"lazy\" to below-the-fold images",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    // Exclude first image (likely hero/LCP)
+    const images = ctx.data.images.slice(1);
+    if (images.length === 0) {
+      return { checkId: "T1-36", passed: true, severity: "info", message: "No below-fold images", autoEditable: false };
+    }
+    let notLazy = 0;
+    for (const img of images) {
+      if (!img.is_lazy) notLazy++;
     }
     const passed = notLazy === 0;
     return {
@@ -163,6 +240,26 @@ registerCheck({
       autoEditable: false,
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const images = ctx.data.images;
+    if (images.length === 0) {
+      return { checkId: "T1-37", passed: true, severity: "info", message: "No images found", autoEditable: false };
+    }
+    let modern = 0;
+    for (const img of images) {
+      if (/\.(webp|avif)(\?|$)/i.test(img.src)) modern++;
+    }
+    const ratio = modern / images.length;
+    const passed = ratio >= 0.8; // 80% modern formats
+    return {
+      checkId: "T1-37",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `${Math.round(ratio * 100)}% images use WebP/AVIF` : `Only ${Math.round(ratio * 100)}% images use modern formats`,
+      details: { total: images.length, modern, ratio },
+      autoEditable: false,
+    };
+  },
 });
 
 // T1-38: Lowercase hyphenated filename
@@ -184,6 +281,36 @@ registerCheck({
       const src = $(img).attr("src") ?? "";
       try {
         const filename = src.split("/").pop()?.split("?")[0] ?? "";
+        // Check: lowercase, uses hyphens, no underscores, descriptive (>3 chars before ext)
+        const isLower = filename === filename.toLowerCase();
+        const hasHyphens = filename.includes("-");
+        const noUnderscores = !filename.includes("_");
+        const namepart = filename.replace(/\.[^.]+$/, "");
+        if (isLower && (hasHyphens || namepart.length > 10) && noUnderscores) seoFriendly++;
+      } catch {
+        // Skip invalid URLs
+      }
+    }
+    const ratio = seoFriendly / images.length;
+    const passed = ratio >= 0.7;
+    return {
+      checkId: "T1-38",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? `${Math.round(ratio * 100)}% images have SEO-friendly filenames` : `Only ${Math.round(ratio * 100)}% images have SEO-friendly filenames`,
+      details: { total: images.length, seoFriendly },
+      autoEditable: false,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const images = ctx.data.images;
+    if (images.length === 0) {
+      return { checkId: "T1-38", passed: true, severity: "info", message: "No images found", autoEditable: false };
+    }
+    let seoFriendly = 0;
+    for (const img of images) {
+      try {
+        const filename = img.src.split("/").pop()?.split("?")[0] ?? "";
         // Check: lowercase, uses hyphens, no underscores, descriptive (>3 chars before ext)
         const isLower = filename === filename.toLowerCase();
         const hasHyphens = filename.includes("-");

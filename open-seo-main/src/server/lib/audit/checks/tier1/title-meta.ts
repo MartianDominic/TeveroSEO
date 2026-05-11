@@ -3,7 +3,7 @@
  * Category C: Title and meta description optimization
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 
 function keywordRegex(keyword: string): RegExp {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -22,6 +22,20 @@ registerCheck({
   run: (ctx: CheckContext): CheckResult => {
     const title = ctx.$("title").text().trim();
     const len = title.length;
+    const passed = len >= 50 && len <= 60;
+    return {
+      checkId: "T1-14",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? `Title is ${len} characters (optimal)` : `Title is ${len} characters (optimal 50-60)`,
+      details: { titleLength: len, title: title.slice(0, 70) },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Adjust title to 50-60 characters",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const title = ctx.data.title ?? "";
+    const len = ctx.data.title_length;
     const passed = len >= 50 && len <= 60;
     return {
       checkId: "T1-14",
@@ -62,6 +76,24 @@ registerCheck({
       editRecipe: passed ? undefined : "Move keyword to the beginning of the title",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-15", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    const title = data.title ?? "";
+    const first30 = title.slice(0, 30);
+    const passed = keywordRegex(keyword).test(first30);
+    return {
+      checkId: "T1-15",
+      passed,
+      severity: passed ? "info" : "high",
+      message: passed ? "Keyword in first 30 chars of title" : "Keyword not front-loaded in title",
+      details: { first30 },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Move keyword to the beginning of the title",
+    };
+  },
 });
 
 // T1-16: Brackets/parentheses in title
@@ -85,6 +117,18 @@ registerCheck({
       editRecipe: passed ? undefined : "Add brackets like [2026] or (Guide) to title for +40% CTR",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const title = ctx.data.title ?? "";
+    const passed = /[\[\]\(\)]/.test(title);
+    return {
+      checkId: "T1-16",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Title has brackets/parentheses (CTR boost)" : "Consider adding brackets to title for CTR",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add brackets like [2026] or (Guide) to title for +40% CTR",
+    };
+  },
 });
 
 // T1-17: Year in title
@@ -98,6 +142,22 @@ registerCheck({
   editRecipe: "Add current year to title for freshness signal",
   run: (ctx: CheckContext): CheckResult => {
     const title = ctx.$("title").text();
+    // Dynamically calculate current year and accept current year or next year
+    const currentYear = new Date().getFullYear();
+    const validYears = [currentYear, currentYear + 1];
+    const yearPattern = new RegExp(`\\b(${validYears.join("|")})\\b`);
+    const passed = yearPattern.test(title);
+    return {
+      checkId: "T1-17",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Title contains year (freshness signal)" : `Consider adding ${currentYear} to title`,
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : `Add current year (${currentYear}) to title for freshness signal`,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const title = ctx.data.title ?? "";
     // Dynamically calculate current year and accept current year or next year
     const currentYear = new Date().getFullYear();
     const validYears = [currentYear, currentYear + 1];
@@ -137,6 +197,19 @@ registerCheck({
       editRecipe: passed ? undefined : "Adjust meta description to 140-160 characters",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const len = ctx.data.meta_description_length;
+    const passed = len >= 140 && len <= 160;
+    return {
+      checkId: "T1-18",
+      passed,
+      severity: len === 0 ? "high" : passed ? "info" : "medium",
+      message: len === 0 ? "No meta description found" : passed ? `Meta description is ${len} chars (optimal)` : `Meta description is ${len} chars (optimal 140-160)`,
+      details: { metaLength: len },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Adjust meta description to 140-160 characters",
+    };
+  },
 });
 
 // T1-19: Meta description has keyword
@@ -164,6 +237,24 @@ registerCheck({
       editRecipe: passed ? undefined : "Add keyword to meta description",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const { data, keyword } = ctx;
+    if (!keyword) {
+      return { checkId: "T1-19", passed: true, severity: "info", message: "No keyword provided", autoEditable: false };
+    }
+    // Use pre-computed keyword_in_meta_description if keyword matches, otherwise compute
+    const passed = data.keyword === keyword
+      ? data.keyword_in_meta_description
+      : keywordRegex(keyword).test(data.meta_description ?? "");
+    return {
+      checkId: "T1-19",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "Keyword found in meta description" : "Keyword missing from meta description",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add keyword to meta description",
+    };
+  },
 });
 
 // T1-20: Meta description has CTA verb
@@ -177,6 +268,20 @@ registerCheck({
   editRecipe: "Add CTA verb (Learn, Discover, Get, Find, etc.) to meta description",
   run: (ctx: CheckContext): CheckResult => {
     const meta = ctx.$('meta[name="description"]').attr("content") ?? "";
+    // Common CTA verbs
+    const ctaPattern = /\b(learn|discover|get|find|explore|try|start|join|see|read|download|buy|shop|save|compare|check|view|unlock|access)\b/i;
+    const passed = ctaPattern.test(meta);
+    return {
+      checkId: "T1-20",
+      passed,
+      severity: passed ? "info" : "low",
+      message: passed ? "Meta description has CTA verb" : "Add CTA verb to meta description",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add CTA verb (Learn, Discover, Get, Find, etc.) to meta description",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const meta = ctx.data.meta_description ?? "";
     // Common CTA verbs
     const ctaPattern = /\b(learn|discover|get|find|explore|try|start|join|see|read|download|buy|shop|save|compare|check|view|unlock|access)\b/i;
     const passed = ctaPattern.test(meta);

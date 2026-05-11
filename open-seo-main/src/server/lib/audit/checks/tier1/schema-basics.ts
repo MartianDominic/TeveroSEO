@@ -1,9 +1,10 @@
 /**
  * Tier 1 Schema Basics Checks (T1-48 to T1-54)
  * Category I: Structured data basics
+ * Phase 100: Added runV2 for JSON-based extraction
  */
 import { registerCheck } from "../registry";
-import type { CheckContext, CheckResult } from "../types";
+import type { CheckContext, CheckResult, SEODataContext } from "../types";
 import type { CheerioAPI } from "cheerio";
 
 function parseJsonLd($: CheerioAPI): unknown[] {
@@ -64,6 +65,19 @@ registerCheck({
       editRecipe: passed ? undefined : "Add JSON-LD structured data to the page",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const hasSchema = ctx.data.has_schema;
+    const count = ctx.data.schemas.length;
+    return {
+      checkId: "T1-48",
+      passed: hasSchema,
+      severity: hasSchema ? "info" : "high",
+      message: hasSchema ? `${count} JSON-LD schema block(s) found` : "No JSON-LD schema found",
+      details: { count, types: ctx.data.schema_types },
+      autoEditable: !hasSchema,
+      editRecipe: hasSchema ? undefined : "Add JSON-LD structured data to the page",
+    };
+  },
 });
 
 // T1-49: Article schema has author
@@ -83,6 +97,24 @@ registerCheck({
     }
     const obj = article as Record<string, unknown>;
     const hasAuthor = obj.author !== undefined && obj.author !== null;
+    return {
+      checkId: "T1-49",
+      passed: hasAuthor,
+      severity: hasAuthor ? "info" : "high",
+      message: hasAuthor ? "Article schema has author" : "Article schema missing author",
+      autoEditable: !hasAuthor,
+      editRecipe: hasAuthor ? undefined : "Add author property to Article schema",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const articleTypes = ["Article", "BlogPosting", "NewsArticle"];
+    const hasArticle = ctx.data.schema_types.some((t) => articleTypes.includes(t));
+    if (!hasArticle) {
+      return { checkId: "T1-49", passed: true, severity: "info", message: "No Article schema found", autoEditable: false };
+    }
+    // Find article schema and check for author
+    const articleSchema = ctx.data.schemas.find((s) => articleTypes.includes(s.type));
+    const hasAuthor = articleSchema?.raw?.author !== undefined && articleSchema?.raw?.author !== null;
     return {
       checkId: "T1-49",
       passed: hasAuthor,
@@ -127,6 +159,29 @@ registerCheck({
       editRecipe: passed ? undefined : "Format datePublished as ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const articleTypes = ["Article", "BlogPosting"];
+    const articleSchema = ctx.data.schemas.find((s) => articleTypes.includes(s.type));
+    if (!articleSchema) {
+      return { checkId: "T1-50", passed: true, severity: "info", message: "No Article schema found", autoEditable: false };
+    }
+    const date = articleSchema.raw?.datePublished;
+    if (!date) {
+      return { checkId: "T1-50", passed: false, severity: "medium", message: "datePublished missing", autoEditable: true, editRecipe: "Add datePublished to Article schema" };
+    }
+    // ISO 8601 pattern
+    const iso8601 = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+    const passed = typeof date === "string" && iso8601.test(date);
+    return {
+      checkId: "T1-50",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "datePublished is valid ISO 8601" : "datePublished is not valid ISO 8601",
+      details: { datePublished: date },
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Format datePublished as ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)",
+    };
+  },
 });
 
 // T1-51: dateModified present
@@ -146,6 +201,22 @@ registerCheck({
     }
     const obj = article as Record<string, unknown>;
     const passed = obj.dateModified !== undefined && obj.dateModified !== null;
+    return {
+      checkId: "T1-51",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "dateModified present in schema" : "dateModified missing from schema",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add dateModified to Article schema",
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const articleTypes = ["Article", "BlogPosting"];
+    const articleSchema = ctx.data.schemas.find((s) => articleTypes.includes(s.type));
+    if (!articleSchema) {
+      return { checkId: "T1-51", passed: true, severity: "info", message: "No Article schema found", autoEditable: false };
+    }
+    const passed = articleSchema.raw?.dateModified !== undefined && articleSchema.raw?.dateModified !== null;
     return {
       checkId: "T1-51",
       passed,
@@ -179,6 +250,17 @@ registerCheck({
       editRecipe: passed ? undefined : "Add BreadcrumbList schema for +40% CTR in SERPs",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const passed = ctx.data.schema_types.includes("BreadcrumbList");
+    return {
+      checkId: "T1-52",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "BreadcrumbList schema found" : "BreadcrumbList schema missing",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Add BreadcrumbList schema for +40% CTR in SERPs",
+    };
+  },
 });
 
 // T1-53: No HowTo schema (deprecated Sep 2023)
@@ -203,6 +285,17 @@ registerCheck({
       editRecipe: passed ? undefined : "Remove HowTo schema (deprecated September 2023)",
     };
   },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const passed = !ctx.data.schema_types.includes("HowTo");
+    return {
+      checkId: "T1-53",
+      passed,
+      severity: passed ? "info" : "medium",
+      message: passed ? "No deprecated HowTo schema" : "HowTo schema found (deprecated Sep 2023)",
+      autoEditable: !passed,
+      editRecipe: passed ? undefined : "Remove HowTo schema (deprecated September 2023)",
+    };
+  },
 });
 
 // T1-54: FAQPage only for gov/health
@@ -217,6 +310,22 @@ registerCheck({
     const schemas = parseJsonLd(ctx.$);
     const faq = findSchemaByType(schemas, "FAQPage");
     if (!faq) {
+      return { checkId: "T1-54", passed: true, severity: "info", message: "No FAQPage schema found", autoEditable: false };
+    }
+    // Check if site is gov/health (restricted Aug 2023)
+    const url = ctx.url.toLowerCase();
+    const isGovHealth = url.includes(".gov") || url.includes("health") || url.includes("medical");
+    return {
+      checkId: "T1-54",
+      passed: isGovHealth,
+      severity: isGovHealth ? "info" : "medium",
+      message: isGovHealth ? "FAQPage schema on appropriate site" : "FAQPage schema restricted to gov/health sites (Aug 2023)",
+      autoEditable: false,
+    };
+  },
+  runV2: (ctx: SEODataContext): CheckResult => {
+    const hasFaq = ctx.data.schema_types.includes("FAQPage");
+    if (!hasFaq) {
       return { checkId: "T1-54", passed: true, severity: "info", message: "No FAQPage schema found", autoEditable: false };
     }
     // Check if site is gov/health (restricted Aug 2023)
