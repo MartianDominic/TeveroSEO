@@ -79,10 +79,15 @@ services:
       TEVERO_DATABASE_URL: ${TEVERO_DATABASE_URL:-}
       SHADOW_WRITE_ENABLED: ${SHADOW_WRITE_ENABLED:-false}
       DB_READ_PERCENTAGE_TEVERO: ${DB_READ_PERCENTAGE_TEVERO:-0}
+      # Scrapling service for SEO data extraction (Phase 100)
+      SCRAPLING_SERVICE_URL: "http://scrapling-engine:8001"
+      USE_SCRAPLING_FETCHER: ${USE_SCRAPLING_FETCHER:-true}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      scrapling-engine:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/healthz || exit 1"]
@@ -117,6 +122,9 @@ services:
       TEVERO_DATABASE_URL: ${TEVERO_DATABASE_URL:-}
       SHADOW_WRITE_ENABLED: ${SHADOW_WRITE_ENABLED:-false}
       DB_READ_PERCENTAGE_TEVERO: ${DB_READ_PERCENTAGE_TEVERO:-0}
+      # Scrapling service for SEO data extraction (Phase 100)
+      SCRAPLING_SERVICE_URL: "http://scrapling-engine:8001"
+      USE_SCRAPLING_FETCHER: ${USE_SCRAPLING_FETCHER:-true}
     volumes:
       - reports_data:/data/reports
       - branding_data:/data/branding
@@ -128,6 +136,8 @@ services:
       open-seo:
         condition: service_started   # not healthy — worker can start in parallel with HTTP server
       puppeteer-pdf:
+        condition: service_healthy
+      scrapling-engine:
         condition: service_healthy
     healthcheck:
       # Worker has no HTTP surface — check redis reachability as a liveness proxy.
@@ -175,6 +185,29 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - teveroseo-net
+
+  # ===== SCRAPLING ENGINE (SEO data extraction with residential proxies) =====
+
+  scrapling-engine:
+    build:
+      context: ./services/scrapling-engine
+      dockerfile: Dockerfile
+    image: teveroseo/scrapling-engine:latest
+    restart: unless-stopped
+    environment:
+      # Geonode residential proxy - REQUIRED for production
+      GEONODE_USER: ${GEONODE_USER}
+      GEONODE_PASS: ${GEONODE_PASS}
+      GEONODE_HOST: ${GEONODE_HOST:-gate.geonode.com}
+      GEONODE_PORT: ${GEONODE_PORT:-9000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     networks:
       - teveroseo-net
 

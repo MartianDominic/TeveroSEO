@@ -92,10 +92,15 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      # Scrapling service for SEO data extraction
+      SCRAPLING_SERVICE_URL: http://scrapling-engine:8001
+      USE_SCRAPLING_FETCHER: ${USE_SCRAPLING_FETCHER:-true}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      scrapling-engine:
         condition: service_healthy
     networks:
       - tevero-dev-net
@@ -199,6 +204,31 @@ services:
     depends_on:
       - open-seo
       - ai-writer-backend
+    networks:
+      - tevero-dev-net
+
+  # ===== SCRAPLING ENGINE (SEO data extraction with residential proxies) =====
+
+  scrapling-engine:
+    build:
+      context: ./services/scrapling-engine
+      dockerfile: Dockerfile
+    container_name: tevero-dev-scrapling-engine
+    ports:
+      - "58002:8001"
+    environment:
+      # Proxy configuration - optional for local dev (use tier=test)
+      GEONODE_USER: ${GEONODE_USER:-}
+      GEONODE_PASS: ${GEONODE_PASS:-}
+      GEONODE_HOST: ${GEONODE_HOST:-gate.geonode.com}
+      GEONODE_PORT: ${GEONODE_PORT:-9000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
     networks:
       - tevero-dev-net
 
