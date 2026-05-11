@@ -1,50 +1,44 @@
 {
-  "version": "1.0",
-  "timestamp": "2026-05-11 16:04:18 EEST",
-  "phase": "95",
-  "phase_name": "scraping-infrastructure",
-  "phase_dir": ".planning/phases/95-scraping-infrastructure",
-  "plan": null,
+  "version": "1.1",
+  "timestamp": "2026-05-11T19:45:00+03:00",
+  "phase": "100",
+  "phase_name": "world-class-scraping",
+  "phase_dir": ".planning/phases/100-world-class-scraping",
+  "plan": "PHASE-100-REVISED-PLAN.md",
   "task": null,
-  "total_tasks": null,
-  "status": "research_complete",
+  "total_tasks": 5,
+  "status": "planning_complete",
   "completed_tasks": [
-    {"id": 1, "name": "10-agent DARPA-level research launch", "status": "done"},
-    {"id": 2, "name": "Agent 1: Crawlee vs Current Stack", "status": "done"},
-    {"id": 3, "name": "Agent 2: Scrapling Deep Dive", "status": "done"},
-    {"id": 4, "name": "Agent 3: DC Proxy First Layer", "status": "done"},
-    {"id": 5, "name": "Agent 4: Purpose-Driven Architecture", "status": "done"},
-    {"id": 6, "name": "Agent 5: Scrapy + Cheerio Compatibility", "status": "done"},
-    {"id": 7, "name": "Agent 6: 5000-Page Speed Optimization", "status": "done"},
-    {"id": 8, "name": "Agent 7: Auto-Detection Layer", "status": "done"},
-    {"id": 9, "name": "Agent 8: Prospect SEO Analysis Requirements", "status": "done"},
-    {"id": 10, "name": "Agent 9: Competitor Analysis Data Model", "status": "done"},
-    {"id": 11, "name": "Agent 10: Client Conversion Depth Strategy", "status": "done"},
-    {"id": 12, "name": "Synthesis and Implementation Roadmap", "status": "done"}
+    {"id": 1, "name": "Phase 95 10-agent DARPA research", "status": "done"},
+    {"id": 2, "name": "Scrapling re-evaluation (HTTP layer)", "status": "done"},
+    {"id": 3, "name": "Architecture decision (Scrapling Fetcher at T0-T2)", "status": "done"},
+    {"id": 4, "name": "Phase 100 REVISED plan creation", "status": "done"},
+    {"id": 5, "name": "UI Progress Spec creation", "status": "done"},
+    {"id": 6, "name": "CLAUDE.md Prospect→Client flow", "status": "done"}
   ],
   "remaining_tasks": [
-    {"id": 1, "name": "Phase 1: Purpose-driven profiles + auto-detection", "status": "not_started"},
-    {"id": 2, "name": "Phase 2: Speed optimizations (node-html-parser)", "status": "not_started"},
-    {"id": 3, "name": "Phase 3: Crawlee hybrid integration", "status": "not_started"},
-    {"id": 4, "name": "Phase 4: Client depth strategy", "status": "not_started"},
-    {"id": 5, "name": "Phase 5: Continuous learning system", "status": "not_started"}
+    {"id": 1, "name": "Week 1: Scrapling Fetcher Integration", "status": "not_started", "week": 1},
+    {"id": 2, "name": "Week 2: Concurrency Optimization", "status": "not_started", "week": 2},
+    {"id": 3, "name": "Week 3: Parser Migration", "status": "not_started", "week": 3},
+    {"id": 4, "name": "Week 4: Streaming Architecture", "status": "not_started", "week": 4},
+    {"id": 5, "name": "Week 5: Worker Thread Parallelization", "status": "not_started", "week": 5}
   ],
   "blockers": [],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "Adopt Crawlee hybrid", "rationale": "CheerioCrawler for T0-T2, keep Camoufox for T2.5, keep BullMQ for jobs", "phase": "95"},
-    {"decision": "Skip paid DC proxy layer", "rationale": "Evomi $0.45/GB would increase costs, Webshare free handles 95%", "phase": "95"},
-    {"decision": "Skip Scrapling/Python", "rationale": "node-html-parser matches speed at 2ms/page, no polyglot complexity", "phase": "95"},
-    {"decision": "Purpose-driven scrape profiles", "rationale": "91% cost reduction via 6 profiles (prospect/proposal/client/competitor/etc)", "phase": "95"},
-    {"decision": "Auto-detection layer", "rationale": "85% page reduction via URL patterns + content signals", "phase": "95"}
+    {"decision": "Scrapling Fetcher at T0-T2 (HTTP layer)", "rationale": "curl_cffi TLS fingerprinting gives 85-94% success vs httpx ~10% on protected sites", "phase": "100"},
+    {"decision": "Keep Camoufox at T2.5 (browser layer)", "rationale": "Best browser anti-detection (88% success), StealthyFetcher only 58%", "phase": "100"},
+    {"decision": "Keep DataForSEO as T3-T5 fallback", "rationale": "Only for extreme protection cases", "phase": "100"},
+    {"decision": "Concurrency 10→200", "rationale": "Current 10 is bottleneck, not Geonode", "phase": "100"},
+    {"decision": "node-html-parser over Cheerio", "rationale": "6x faster (2ms vs 12ms)", "phase": "100"}
   ],
   "uncommitted_files": [
-    ".planning/phases/95-scraping-infrastructure/WORLD-CLASS-SCRAPING-DEEP-DIVE.md",
-    ".planning/phases/95-scraping-infrastructure/AGENT-1-CRAWLEE-FINDINGS.md",
-    ".planning/phases/95-scraping-infrastructure/AGENT-4-PURPOSE-DRIVEN-ARCHITECTURE.md",
-    ".planning/phases/95-scraping-infrastructure/AGENT-7-AUTO-DETECTION-LAYER.md",
-    ".planning/phases/95-scraping-infrastructure/AGENT-8-PROSPECT-ANALYSIS.md"
+    ".planning/phases/100-world-class-scraping/PHASE-100-REVISED-PLAN.md",
+    ".planning/phases/100-world-class-scraping/UI-PROGRESS-SPEC.md",
+    ".planning/phases/100-world-class-scraping/.continue-here.md",
+    ".planning/HANDOFF.json",
+    "CLAUDE.md"
   ],
-  "next_action": "Review WORLD-CLASS-SCRAPING-DEEP-DIVE.md synthesis, then start Phase 1 implementation (purpose-driven profiles)",
-  "context_notes": "Completed comprehensive 10-agent research into world-class scraping infrastructure. All agents finished with actionable findings. Key wins: 91% cost reduction via purpose-driven profiles, 85% page reduction via auto-detection, 6x parse speed via node-html-parser, Crawlee hybrid adoption. Implementation roadmap spans 10 weeks across 5 phases."
+  "next_action": "Begin Week 1: Create scrapling-engine/ Python microservice with FastAPI server and Scrapling Fetcher wrapper",
+  "context_notes": "REVISED PLAN: Scrapling Fetcher (HTTP + curl_cffi) replaces httpx at T0-T2 for TLS fingerprint impersonation. Camoufox STAYS at T2.5 for browser challenges. This reduces escalations to expensive tiers by ~70%, cutting costs from $2.60 to $0.80 per 5000 pages."
 }

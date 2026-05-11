@@ -123,3 +123,65 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 - SEO checks run against Tier 1-4 (109 checks total)
 - Quality gate requires score >= 80 for auto-publish
 - Brand voice uses 40+ field profiles with VoiceConstraintBuilder
+
+## Prospect to Client Conversion Flow
+
+Three-stage pipeline optimized for speed (proposals) and depth (clients).
+
+```
+PROSPECT (2-5 min)          PROPOSAL (~30 sec)         CLIENT (async)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Domain Entry                SEO Chat Analysis          Payment via Stripe
+     ↓                           ↓                          ↓
+Fast Content Scrape         Proposal Generation        Client Created
+(5000 pages, ~$0.05)        (AI narrative)             Data Migration
+     ↓                           ↓                          ↓
+Stream to RAG               Package Assignment         Full 109-Check Audit
+(FalkorDB + embeddings)     Magic Link Created         (~$0.15, overnight)
+     ↓                           ↓                          ↓
+Keyword Intelligence        Prospect Portal            Baseline + Monitoring
+(5-pass pipeline)           /proposals/[token]
+     ↓
+Gap Analysis
+(vs competitors)
+```
+
+**Stage Details:**
+
+| Stage | Duration | Cost | What Happens |
+|-------|----------|------|--------------|
+| **Prospect** | 2-5 min | ~$0.13 | Fast scrape (content only), RAG ingestion, keyword intelligence, topical clusters, competitor gaps |
+| **Proposal** | ~30 sec | ~$0.04 | SEO Chat assists sales call, AI generates proposal narrative, magic link created |
+| **Client** | Async | ~$0.15 | Stripe payment triggers conversion, prospect data migrated (no re-scrape), full 109-check technical audit runs overnight |
+
+**Total cost per conversion: ~$0.32**
+
+**Key insight:** Prospect stage extracts CONTENT for keyword mapping. Technical audit (109 checks) is DEFERRED until payment - this optimizes for proposal velocity.
+
+**Integration points:**
+- Scraping: `TieredFetcher` with T0-T5 escalation (keep Camoufox at T2.5)
+- RAG: FalkorDB knowledge graph + pgvector embeddings
+- SEO Chat: Phase 98 CopilotKit interface with 9 intent types
+- Proposals: `ProposalService` + `ProposalGeneratorService`
+
+**Reference docs:**
+- `.planning/phases/98-general-seo-chat/PHASE-98-COMPLETE-SPEC.md`
+- `.planning/keyword-intelligence/AI-KEYWORD-INTELLIGENCE-SYSTEM.md`
+- `.planning/keyword-intelligence/CRAWL-TO-GRAPH-PIPELINE.md`
+
+## Scraping Architecture (Phase 100)
+
+**Decision: Keep TieredFetcher + Camoufox** (do NOT migrate to Scrapling)
+
+Scrapling StealthyFetcher has 58% success rate vs Camoufox's 88% (ZenRows 2026 benchmark). The optimization path is config + parser, not framework replacement.
+
+| Optimization | Impact | Status |
+|-------------|--------|--------|
+| Increase concurrency (10→200) | 3-4x faster | Week 1 |
+| Cheerio → node-html-parser | 6x parse speed | Week 2 |
+| Streaming to RAG | Real-time proposals | Week 3 |
+| Worker thread parallelization | 4-8x parse throughput | Week 4 |
+
+**Target:** 5000 pages in <3 minutes (currently ~15 min)
+
+**Reference:** `.planning/phases/100-world-class-scraping/PHASE-100-REVISED-PLAN.md`
