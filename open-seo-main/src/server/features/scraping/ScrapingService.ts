@@ -457,7 +457,7 @@ export class ScrapingService {
     }
 
     const startTime = Date.now();
-    const concurrency = options.concurrency ?? 10;
+    const concurrency = options.concurrency ?? 200;
     const results: ScrapeResult[] = [];
     let cacheHits = 0;
     let cacheMisses = 0;

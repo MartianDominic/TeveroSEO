@@ -21,6 +21,7 @@ declare namespace NodeJS {
 
     // Scrapling Service (Phase 100)
     SCRAPLING_SERVICE_URL?: string; // Default: "http://localhost:8001"
+    USE_SCRAPLING_FETCHER?: string; // "true" to enable Scrapling-first 3-tier architecture
 
     // SEO Configuration
     SEO_QUALITY_THRESHOLD?: string; // Default: "80" - minimum score for content approval

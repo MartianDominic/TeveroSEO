@@ -22,10 +22,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from schema import (
     ExtractRequest,
     BatchExtractRequest,
+    StreamBatchRequest,
+    BatchProgress,
     SEOExtractionResult,
     HealthResponse,
 )
 from extractors import extract_seo_data
+from fastapi.responses import StreamingResponse
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -175,6 +179,83 @@ async def batch_extract(req: BatchExtractRequest):
     results = await asyncio.gather(*tasks)
 
     return list(results)
+
+
+@app.post("/stream")
+async def stream_batch_extract(req: StreamBatchRequest):
+    """
+    Stream SEO extraction results as Server-Sent Events.
+
+    Processes URLs in chunks for memory efficiency.
+    Yields progress updates and results as they complete.
+    """
+    async def generate():
+        total = len(req.urls)
+        completed = 0
+        success_count = 0
+        error_count = 0
+        semaphore = asyncio.Semaphore(req.concurrency)
+
+        # Process in chunks for memory efficiency
+        for chunk_start in range(0, total, req.chunk_size):
+            chunk_end = min(chunk_start + req.chunk_size, total)
+            chunk_urls = req.urls[chunk_start:chunk_end]
+
+            async def extract_one(url: str) -> tuple[str, SEOExtractionResult | None, str | None]:
+                async with semaphore:
+                    single_req = ExtractRequest(
+                        url=url,
+                        tier=req.tier,
+                        keyword=req.keyword,
+                        timeout_ms=req.timeout_ms,
+                    )
+                    try:
+                        result = await extract(single_req)
+                        return (url, result, None)
+                    except HTTPException as e:
+                        return (url, None, e.detail)
+                    except Exception as e:
+                        return (url, None, str(e))
+
+            # Process chunk concurrently
+            tasks = [extract_one(url) for url in chunk_urls]
+
+            for coro in asyncio.as_completed(tasks):
+                url, result, error = await coro
+                completed += 1
+
+                if result:
+                    success_count += 1
+                    yield f"data: {json.dumps({'type': 'result', 'data': result.model_dump(mode='json')})}\n\n"
+                else:
+                    error_count += 1
+                    yield f"data: {json.dumps({'type': 'error', 'url': url, 'error': error})}\n\n"
+
+                # Send progress every 10 completions or on last item
+                if completed % 10 == 0 or completed == total:
+                    progress = BatchProgress(
+                        type="progress",
+                        completed=completed,
+                        total=total,
+                        percent=round((completed / total) * 100, 1),
+                        current_url=url,
+                        success_count=success_count,
+                        error_count=error_count,
+                    )
+                    yield f"data: {json.dumps(progress.model_dump())}\n\n"
+
+        # Final completion message
+        yield f"data: {json.dumps({'type': 'complete', 'total': total, 'success': success_count, 'errors': error_count})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 
 async def _fetch_residential(

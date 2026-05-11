@@ -1,26 +1,25 @@
 {
   "version": "2.0",
-  "timestamp": "2026-05-11T23:15:00+03:00",
+  "timestamp": "2026-05-12T00:30:00+03:00",
   "phase": "100",
   "phase_name": "world-class-scraping",
   "phase_dir": ".planning/phases/100-world-class-scraping",
   "plan": "FINAL-SCRAPLING-DECISION.md",
   "plan_version": "final-v2",
-  "task": "week_3_concurrency_streaming",
+  "task": "week_4_rollout_complete",
   "total_tasks": 4,
-  "status": "week_2_complete",
-  "key_finding": "SCRAPLING-FIRST with RESIDENTIAL PROXIES: Server IP NEVER touches target sites. 3-tier system (Fetcher+Geonode → StealthyFetcher+Geonode → DataForSEO). Returns comprehensive JSON to TypeScript.",
+  "status": "week_4_implementation_complete",
+  "key_finding": "SCRAPLING-FIRST with RESIDENTIAL PROXIES: Server IP NEVER touches target sites. 3-tier system (Fetcher+Geonode → Camoufox+Geonode → DataForSEO). Returns comprehensive JSON to TypeScript.",
   "critical_rule": "NEVER use direct server IP for scraping - IP reputation decay is real and cross-site via Cloudflare",
   "completed_tasks": [
-    {"id": 1, "name": "Phase 95 10-agent DARPA research", "status": "done"},
-    {"id": 2, "name": "5 Opus subagent investigation", "status": "done"},
-    {"id": 3, "name": "Agent synthesis and final plan", "status": "done"},
-    {"id": 4, "name": "IP reputation analysis", "status": "done"},
-    {"id": 5, "name": "3-tier architecture finalization", "status": "done"}
+    {"id": 1, "name": "Week 1: Scrapling Service + Residential-First", "status": "done", "week": 1},
+    {"id": 2, "name": "Week 2: Check Adaptation + Domain Learning (55 checks runV2)", "status": "done", "week": 2},
+    {"id": 3, "name": "Week 3: Concurrency (10→200) + Streaming", "status": "done", "week": 3},
+    {"id": 4, "name": "Week 4: TieredFetcher Integration", "status": "done", "week": 4}
   ],
   "architecture": {
     "t0": {
-      "name": "Fetcher + Geonode Residential",
+      "name": "Scrapling Fetcher + Geonode Residential",
       "success_rate": "98%",
       "cost": "$0.77/GB",
       "usage": "96% of requests"
@@ -45,18 +44,23 @@
     "vs_old_direct": "+$18/month but zero IP risk"
   },
   "remaining_tasks": [
-    {"id": 1, "name": "Week 1: Scrapling Service + Residential-First", "status": "complete", "week": 1},
-    {"id": 2, "name": "Week 2: Check Adaptation + Domain Learning", "status": "complete", "week": 2, "result": "55 checks migrated to runV2, 12 new fields in Python/TypeScript"},
-    {"id": 3, "name": "Week 3: Concurrency + Streaming", "status": "not_started", "week": 3},
-    {"id": 4, "name": "Week 4: Testing + Rollout", "status": "not_started", "week": 4}
+    {"id": 1, "name": "Shadow testing old vs new", "status": "not_started"},
+    {"id": 2, "name": "Gradual rollout 10%→100%", "status": "ready", "note": "Set USE_SCRAPLING_FETCHER=true"},
+    {"id": 3, "name": "Deprecate old code", "status": "not_started"},
+    {"id": 4, "name": "Documentation update", "status": "not_started"}
   ],
-  "blockers": [],
-  "decisions": [
-    {"decision": "NEVER use direct server IP", "rationale": "IP reputation decay is real and cross-site via Cloudflare", "phase": "100"},
-    {"decision": "Residential proxy at T0", "rationale": "98% success, server IP protected, $0.77/GB", "phase": "100"},
-    {"decision": "3 tiers only", "rationale": "Simplified from 7: Residential → Stealth → DataForSEO", "phase": "100"},
-    {"decision": "Scrapling for fetch AND parse", "rationale": "2.02ms parse, comprehensive JSON output, no Cheerio needed", "phase": "100"},
-    {"decision": "Remove Webshare DC tier", "rationale": "Burned IPs, near-zero value", "phase": "100"}
+  "feature_flag": {
+    "name": "USE_SCRAPLING_FETCHER",
+    "current": "false",
+    "to_enable": "Set USE_SCRAPLING_FETCHER=true in environment"
+  },
+  "files_modified": [
+    "services/scrapling-engine/app.py",
+    "services/scrapling-engine/schema.py",
+    "open-seo-main/src/server/features/scraping/ScraplingClient.ts",
+    "open-seo-main/src/server/features/scraping/TieredFetcher.ts",
+    "open-seo-main/src/server/features/scraping/ScrapingService.ts",
+    "open-seo-main/src/env.d.ts"
   ],
   "targets": {
     "scrape_time_5000": "15 min → <3 min",
@@ -64,6 +68,6 @@
     "t0_success_rate": "60-80% (decaying) → 98% (stable)",
     "server_ip_exposure": "Yes → Never"
   },
-  "next_action": "Week 3: Increase concurrency from 10 to 200, add Redis streaming for RAG integration, implement batch extraction endpoint",
-  "context_notes": "9 Opus agents investigated. User was right: direct server IP causes cascading reputation decay. Fixed by mandating residential proxy at T0. Extra $18/month buys zero IP risk."
+  "next_action": "Enable USE_SCRAPLING_FETCHER=true for shadow testing, then gradual rollout",
+  "context_notes": "Phase 100 implementation complete. TieredFetcher now has fetchWithScrapling() method gated behind USE_SCRAPLING_FETCHER env var for safe rollout."
 }

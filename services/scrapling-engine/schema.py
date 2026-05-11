@@ -234,7 +234,28 @@ class BatchExtractRequest(BaseModel):
     tier: str = "residential"
     keyword: Optional[str] = None
     timeout_ms: int = 30000
-    concurrency: int = 10
+    concurrency: int = 50
+
+
+class StreamBatchRequest(BaseModel):
+    """Request for streaming batch extraction with progress."""
+    urls: list[str]
+    tier: str = "residential"
+    keyword: Optional[str] = None
+    timeout_ms: int = 30000
+    concurrency: int = 100
+    chunk_size: int = 100
+
+
+class BatchProgress(BaseModel):
+    """Progress update for streaming batch extraction."""
+    type: str = "progress"
+    completed: int
+    total: int
+    percent: float
+    current_url: Optional[str] = None
+    success_count: int = 0
+    error_count: int = 0
 
 
 class HealthResponse(BaseModel):

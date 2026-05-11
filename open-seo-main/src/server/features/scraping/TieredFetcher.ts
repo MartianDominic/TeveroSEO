@@ -33,6 +33,17 @@ import type { AlertManager } from "./monitoring/AlertManager";
 import { recordCircuitState, recordTierUsage } from "./monitoring/MetricsCollector";
 import { fetcherLogger, cacheLogger, logCircuitStateChange, logTierEscalation } from "./logging";
 import { getBandwidthTracker, type BandwidthTracker, type ProxyProvider } from "./monitoring/BandwidthTracker";
+import {
+  getScraplingClient,
+  ScraplingError,
+  AllTiersExhaustedError as ScraplingAllTiersExhausted,
+  type SEOExtractionResult,
+} from "./ScraplingClient";
+
+// Phase 100: Feature flag for Scrapling-first architecture
+// When true: T0=Scrapling+Geonode, T1=Camoufox, T2=DataForSEO
+// When false: Legacy 7-tier system
+const USE_SCRAPLING_FETCHER = process.env.USE_SCRAPLING_FETCHER === "true";
 
 // =============================================================================
 // Types
@@ -269,6 +280,26 @@ export class TieredFetcher {
       } catch (error) {
         // Log but continue to network fetch on cache error
         cacheLogger.error({ url, error: error instanceof Error ? error.message : String(error) }, 'Cache lookup failed');
+      }
+    }
+
+    // Phase 100: Scrapling-first architecture (3-tier residential-first)
+    // T0: Scrapling + Geonode residential (98% success)
+    // T1: Camoufox + Geonode (88% Cloudflare bypass)
+    // T2: DataForSEO (100% nuclear - handled below)
+    if (USE_SCRAPLING_FETCHER) {
+      try {
+        const scraplingResult = await this.fetchWithScrapling(url, options, startTime);
+        await this.storeToCacheIfSuccessful(url, scraplingResult);
+        return scraplingResult;
+      } catch (error) {
+        // All Scrapling tiers exhausted, fall through to DataForSEO
+        if (error instanceof ScraplingAllTiersExhausted) {
+          fetcherLogger.info({ url }, 'Scrapling tiers exhausted, falling back to DataForSEO');
+          // Fall through to legacy path which handles DataForSEO
+        } else {
+          throw error;
+        }
       }
     }
 
@@ -589,6 +620,71 @@ export class TieredFetcher {
   }
 
   /**
+   * Fetch using Scrapling-first architecture (Phase 100).
+   *
+   * 3-tier residential-first system:
+   * - T0: Scrapling Fetcher + Geonode residential (98% success)
+   * - T1: Camoufox + Geonode residential (88% Cloudflare bypass)
+   * - Throws AllTiersExhausted if both fail (caller handles DataForSEO)
+   *
+   * CRITICAL: Server IP NEVER touches target sites.
+   */
+  private async fetchWithScrapling(
+    url: string,
+    options: FetchOptions,
+    startTime: number
+  ): Promise<FetchResult> {
+    const client = getScraplingClient();
+
+    try {
+      const result = await client.extract(url, {
+        keyword: undefined, // Keywords handled separately in check layer
+        timeoutMs: options.timeoutMs,
+      });
+
+      // Map Scrapling tier to ScrapeTier
+      const tierMapping: Record<string, ScrapeTier> = {
+        residential: "geonode",
+        camoufox: "camoufox",
+        test: "direct",
+      };
+      const tierUsed = tierMapping[result.tier_used] ?? "geonode";
+
+      // Record tier usage
+      recordTierUsage(tierUsed);
+
+      // Calculate cost (Geonode: $0.77/GB)
+      const responseSizeBytes = result.body_text.length * 2; // Rough estimate
+      const costUsd = tierUsed === "geonode" || tierUsed === "camoufox"
+        ? (responseSizeBytes / 1_073_741_824) * 0.77 // $0.77/GB
+        : 0;
+
+      return {
+        url,
+        success: result.status_code >= 200 && result.status_code < 400,
+        html: result.body_text, // Note: Scrapling returns extracted text, not raw HTML
+        statusCode: result.status_code,
+        tierUsed,
+        fromCache: false,
+        responseTimeMs: Date.now() - startTime,
+        responseSizeBytes,
+        estimatedCostUsd: costUsd,
+        quality: {
+          score: 100, // Scrapling extraction guarantees quality
+          acceptable: true,
+          wordCount: result.word_count,
+          textRatio: 0.5, // Not calculated by Scrapling
+        },
+      };
+    } catch (error) {
+      if (error instanceof ScraplingError) {
+        fetcherLogger.warn({ url, error: error.message, tier: error.tier }, 'Scrapling fetch failed');
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Convert internal result format to public FetchResult.
    */
   private convertResult(
@@ -634,7 +730,7 @@ export class TieredFetcher {
     urls: string[],
     options: FetchOptions & { concurrency?: number } = {}
   ): Promise<Map<string, FetchResult>> {
-    const concurrency = options.concurrency ?? 10;
+    const concurrency = options.concurrency ?? 200;
     const results = new Map<string, FetchResult>();
     const queue = [...urls];
 

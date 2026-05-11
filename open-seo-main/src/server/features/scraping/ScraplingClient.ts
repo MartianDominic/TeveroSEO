@@ -232,6 +232,43 @@ export interface BatchExtractOptions extends ExtractOptions {
   concurrency?: number;
 }
 
+export interface StreamExtractOptions extends ExtractOptions {
+  /** Max concurrent requests */
+  concurrency?: number;
+  /** Chunk size for memory-efficient processing */
+  chunkSize?: number;
+}
+
+export interface StreamProgress {
+  type: "progress";
+  completed: number;
+  total: number;
+  percent: number;
+  current_url: string | null;
+  success_count: number;
+  error_count: number;
+}
+
+export interface StreamResult {
+  type: "result";
+  data: SEOExtractionResult;
+}
+
+export interface StreamError {
+  type: "error";
+  url: string;
+  error: string;
+}
+
+export interface StreamComplete {
+  type: "complete";
+  total: number;
+  success: number;
+  errors: number;
+}
+
+export type StreamEvent = StreamProgress | StreamResult | StreamError | StreamComplete;
+
 export interface HealthResponse {
   status: "healthy" | "degraded" | "unhealthy";
   version: string;
@@ -344,7 +381,7 @@ export class ScraplingClient {
     urls: string[],
     options: BatchExtractOptions = {}
   ): Promise<Map<string, SEOExtractionResult | ScraplingError>> {
-    const concurrency = options.concurrency ?? 10;
+    const concurrency = options.concurrency ?? 200;
     const timeout = options.timeoutMs ?? this.defaultTimeout;
 
     const results = new Map<string, SEOExtractionResult | ScraplingError>();
@@ -389,6 +426,66 @@ export class ScraplingClient {
     }
 
     return results;
+  }
+
+  /**
+   * Stream SEO extraction results with progress callbacks.
+   *
+   * Memory-efficient: Processes URLs in chunks (100 at a time by default).
+   * Yields results as they complete via Server-Sent Events.
+   */
+  async *streamExtract(
+    urls: string[],
+    options: StreamExtractOptions = {}
+  ): AsyncGenerator<StreamEvent, void, unknown> {
+    const response = await fetch(`${this.baseUrl}/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        urls,
+        tier: options.tier ?? "residential",
+        keyword: options.keyword,
+        timeout_ms: options.timeoutMs ?? this.defaultTimeout,
+        concurrency: options.concurrency ?? 100,
+        chunk_size: options.chunkSize ?? 100,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new ScraplingError(
+        `Stream request failed: ${response.status}`,
+        response.status,
+        "stream"
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new ScraplingError("No response body", 500, "stream");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+            yield data as StreamEvent;
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   /**
