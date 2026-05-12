@@ -18,7 +18,7 @@ paramiko>=3.4.0           # CVE-2023-48795 (Terrapin SSH attack)
 # HIGH - Security vulnerabilities
 pillow>=11.3.0,<12.0      # KNOWN RISK: 2 CVEs (CVE-2026-25990, CVE-2026-40192) require 12.x
                           # Blocked by moviepy<12.0 constraint. Monitor moviepy for pillow 12 support.
-starlette>=0.49.1         # 2 CVEs
+starlette>=1.0.0         # 2 CVEs
 python-multipart>=0.0.26  # 2 CVEs
 urllib3>=2.6.3            # 3 CVEs
 pyjwt>=2.12.0             # 1 CVE (PyJWT)
@@ -73,7 +73,7 @@ defusedxml==0.7.1
 distro==1.9.0
 exa-py==1.9.1
 exceptiongroup==1.3.1
-fastapi==0.135.3
+fastapi==0.136.1
 fastapi_clerk_auth==0.0.9
 filelock==3.25.2
 frozenlist==1.8.0
@@ -184,7 +184,7 @@ tzdata==2026.1
 tzlocal==5.3.1
 uritemplate==4.2.0
 # urllib3 - version constraint in security section above
-uvicorn==0.44.0
+uvicorn==0.46.0
 uvloop==0.22.1
 w3lib==2.4.1
 watchfiles==1.1.1
