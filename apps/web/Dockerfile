@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # ---- Stage 1: builder ----
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -46,7 +46,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @tevero/web build
 
 # ---- Stage 2: runtime ----
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=3002
