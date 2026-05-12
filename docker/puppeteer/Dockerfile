@@ -3,7 +3,7 @@
 #
 # Uses Debian-based image (NOT Alpine) per RESEARCH.md recommendation.
 # Alpine causes font rendering issues in Puppeteer.
-FROM node:22-slim
+FROM node:26-slim
 
 # Install Chrome dependencies for Debian
 RUN apt-get update && apt-get install -y \
