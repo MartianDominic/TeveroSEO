@@ -39,32 +39,35 @@ import { softDeleteColumns } from "./soft-delete-columns";
 
 /**
  * Payment providers supported by the reconciliation system.
+ * Named RECONCILIATION_PROVIDERS to avoid collision with workspace-payment-settings-schema.
  */
-export const PAYMENT_PROVIDERS = [
+export const RECONCILIATION_PROVIDERS = [
   "stripe",
   "revolut",
   "bank_transfer",
   "cash",
   "other",
 ] as const;
-export type PaymentProviderType = (typeof PAYMENT_PROVIDERS)[number];
+export type ReconciliationProviderType = (typeof RECONCILIATION_PROVIDERS)[number];
 
 /**
- * Payment status state machine:
+ * Reconciliation payment status state machine:
  * - pending: Payment received, not yet matched to invoice
  * - matched: Auto-matched to invoice with confidence >= 90%
  * - allocated: Payment allocated to one or more invoices
  * - review: Low confidence match, needs manual review
  * - failed: Payment processing failed
+ *
+ * Named RECONCILIATION_STATUS to avoid collision with proposal-schema.
  */
-export const PAYMENT_STATUS = [
+export const RECONCILIATION_STATUS = [
   "pending",
   "matched",
   "allocated",
   "review",
   "failed",
 ] as const;
-export type PaymentStatus = (typeof PAYMENT_STATUS)[number];
+export type ReconciliationStatus = (typeof RECONCILIATION_STATUS)[number];
 
 /**
  * Match types for auto-matching engine.

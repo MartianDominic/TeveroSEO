@@ -313,3 +313,12 @@ export * from "./onpage-mastery-schema";
 
 // Tenant isolation schema (Multi-tenant SEO chat system)
 export * from "./tenant-isolation-schema";
+
+// Phase 101: Payment Reconciliation
+export * from "./payment-schema";
+
+// Phase 101: Content Library
+export * from "./content-library-schema";
+
+// Phase 101: Document Tracking
+export * from "./document-tracking-schema";
