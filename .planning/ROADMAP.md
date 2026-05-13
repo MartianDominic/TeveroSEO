@@ -2767,11 +2767,14 @@ Transform the platform into a complete agency CRM with v6 design system complian
 **Goal:** Enable sending interactive proposals without prior analysis, insert prospects at any pipeline stage (signed or not), handle offline-closed deals, and track payments via Revolut/Stripe integration with cross-platform linking.
 **Requirements**: Two-layer entry (quick capture + full), world-class payment reconciliation, tiered AI proposals, content library, enhanced document tracking
 **Depends on:** Phase 100
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 101 to break down)
-
+- [ ] 101-01-PLAN.md — Foundation: payment schema, content library schema, document tracking schema, PaymentIngestionService (Wave 1)
+- [ ] 101-02-PLAN.md — Auto-Match Engine: confidence cascade, PaymentAllocationService, review queue API (Wave 2)
+- [ ] 101-03-PLAN.md — Command Palette: quick capture, global Cmd+K, deal card actions (Wave 2)
+- [ ] 101-04-PLAN.md — Content Library: ContentLibraryService, block CRUD API, ContentLibraryPanel UI (Wave 3)
+- [ ] 101-05-PLAN.md — Document Management: Google Drive integration, SectionTrackingService, Document Hub UI (Wave 4)
 ---
 
 ### Phase 102: Advanced Document Builder
