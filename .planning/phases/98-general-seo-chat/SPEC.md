@@ -19,6 +19,7 @@
 7. [Conversion Optimization](#7-conversion-optimization)
 8. [Implementation Plan](#8-implementation-plan)
 9. [Decisions Made](#9-decisions-made-resolved)
+10. [Chat Interaction Patterns (ChatGPT-Parity)](#10-chat-interaction-patterns-chatgpt-parity)
 
 ---
 
@@ -2469,6 +2470,534 @@ Would you like me to open a new tab for mybakery.lt?
 - Test new evidence-based algorithm against 10 real prospect domains
 - Compare predictions to actual outcomes (if historical data available)
 - Adjust thresholds based on agency's risk tolerance
+
+---
+
+## 10. Chat Interaction Patterns (ChatGPT-Parity)
+
+> **Goal**: Match the interaction fluidity of ChatGPT/Claude chat interfaces. Users should never feel "stuck" or wonder what's happening.
+
+### 10.1 Stop/Abort Button
+
+Long-running analyses (keyword_analysis with 200+ keywords) need a cancel mechanism.
+
+```tsx
+// ChatInput.tsx - Stop button during generation
+{isLoading && (
+  <Button 
+    variant="ghost" 
+    size="icon"
+    onClick={() => stop()} // Vercel AI SDK stop() function
+    className="absolute right-12 top-1/2 -translate-y-1/2"
+  >
+    <SquareIcon className="h-4 w-4" /> {/* Stop icon */}
+  </Button>
+)}
+```
+
+**Behavior:**
+- Appears only during streaming/tool execution
+- Clicking sends abort signal via `stop()` from `useChat`
+- Partial results (if any) are preserved
+- Message shows "Analysis stopped by user" footer
+
+### 10.2 Regenerate Response
+
+Every assistant message gets a regenerate button on hover.
+
+```tsx
+// ChatMessage.tsx - Regenerate on hover
+<div className="group relative">
+  <MessageContent message={message} />
+  
+  {message.role === 'assistant' && (
+    <div className="absolute -bottom-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => reload()} // Vercel AI SDK reload()
+        className="text-xs text-muted-foreground"
+      >
+        <RefreshCwIcon className="h-3 w-3 mr-1" />
+        Regenerate
+      </Button>
+    </div>
+  )}
+</div>
+```
+
+**Behavior:**
+- `reload()` replays the last user message
+- Previous assistant response replaced (not branched)
+- Tool results are re-executed (may incur additional cost)
+- Show cost warning if re-execution is expensive: "Regenerating will re-run keyword analysis (~$0.02)"
+
+### 10.3 Error States UX
+
+Every failure mode needs a designed recovery path.
+
+```tsx
+// Error state types and their UI treatment
+type ChatError = 
+  | { type: 'api_error'; service: 'dataforseo' | 'grok' | 'gemini'; retry: boolean }
+  | { type: 'rate_limit'; resetAt: Date }
+  | { type: 'timeout'; tool: string; partialResults?: any }
+  | { type: 'validation'; field: string; message: string }
+  | { type: 'network'; offline: boolean };
+```
+
+**Error Card Component:**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚠️ ANALYSIS FAILED                                                         │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  DataForSEO returned an error for groziosalon.lt                           │
+│  "Rate limit exceeded. Retry after 60 seconds."                            │
+│                                                                             │
+│  [Retry Now]  [Try Different Domain]  [Skip This Step]                     │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  This error has been logged. If it persists, contact support.              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Error State Treatments:**
+
+| Error Type | Visual | Actions |
+|------------|--------|---------|
+| API Error (retryable) | Yellow warning card | [Retry] [Skip] |
+| API Error (fatal) | Red error card | [Try Different Domain] [Contact Support] |
+| Rate Limit | Yellow + countdown timer | Auto-retry when timer expires |
+| Timeout | Yellow + partial results if available | [Retry] [Use Partial Results] |
+| Network Offline | Gray overlay on input | "You're offline. Messages will send when reconnected." |
+
+### 10.4 Streaming Tool Result Animation
+
+Cards should appear progressively, not pop in fully-formed.
+
+**Phase 1: Tool Announced (0-100ms)**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ● Running domain health analysis...                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Phase 2: Skeleton Card (100ms-completion)**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  DOMAIN HEALTH                                              groziosalon.lt │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
+│  │ ░░░░░░░░░ │  │ ░░░░░░░░░ │  │ ░░░░░░░░░ │  │ ░░░░░░░░░ │               │
+│  │    DA     │  │    DR     │  │  Traffic  │  │  Keywords │               │
+│  └───────────┘  └───────────┘  └───────────┘  └───────────┘               │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Phase 3: Data Fills In (completion)**
+```tsx
+// Animate numbers counting up
+<motion.span
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  className="text-num-mega"
+>
+  <CountUp end={domainAuthority} duration={0.8} />
+</motion.span>
+```
+
+### 10.5 Confirmation Dialog (generate_proposal)
+
+The 55% trust score tool requires explicit confirmation with preview.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         GENERATE PROPOSAL                                   │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│                                                                             │
+│  You're about to create a proposal for:                                    │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │  Domain: groziosalon.lt                                               │ │
+│  │  Package: AUGIMAS (€3,500 / 6 mėn.)                                   │ │
+│  │  Keywords: 47 selected                                                │ │
+│  │  Magic Link Expires: 14 days                                          │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  ⚠️ This action will:                                                      │
+│  • Generate AI narrative (~$0.05)                                          │
+│  • Create a unique magic link                                              │
+│  • Start the 14-day expiry countdown                                       │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  PREVIEW                                                                   │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │  "Jūsų konkurentai jau užėmė 47 raktažodžius, kurie galėtų atnešti   │ │
+│  │   ~€2,400/mėn. pajamų. Mes galime padėti juos atsikovoti per 6 mėn." │ │
+│  │                                                                       │ │
+│  │   [Regenerate Preview ↻]                                              │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  [Cancel]  [Edit Package ▾]  [Review Keywords →]  [Generate & Copy Link]   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- Preview narrative generated BEFORE confirmation (can regenerate)
+- Package/keywords editable from this dialog
+- Clear cost disclosure
+- "Copy Link" is the primary CTA (not "Send to Prospect")
+
+### 10.6 Intent Correction
+
+When LLM picks the wrong tool, user needs an easy redirect.
+
+```
+USER: "Check groziosalon.lt"
+
+ASSISTANT:
+I'll analyze the domain health for groziosalon.lt...
+
+[Domain Health Card]
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Did I misunderstand? You can also:                                        │
+│  [Run Keyword Analysis Instead] [Check Feasibility] [Something Else...]    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+```tsx
+// After tool execution, show alternative actions if intent was ambiguous
+function getAlternativeActions(executedTool: string, context: SessionContext): Action[] {
+  const ambiguousTriggers = {
+    domain_health: ['check', 'analyze', 'look at'],
+    keyword_analysis: ['check', 'analyze', 'look at', 'keywords'],
+    feasibility_check: ['rank', 'can we', 'possible'],
+  };
+  
+  // If user's message contained ambiguous words, offer alternatives
+  const userMessage = context.lastUserMessage.toLowerCase();
+  const alternatives = Object.entries(ambiguousTriggers)
+    .filter(([tool]) => tool !== executedTool)
+    .filter(([_, triggers]) => triggers.some(t => userMessage.includes(t)))
+    .map(([tool]) => ({
+      label: TOOL_LABELS[tool],
+      action: () => runTool(tool),
+    }));
+  
+  return alternatives;
+}
+```
+
+### 10.7 Copy Button on Messages
+
+Every message needs easy clipboard access.
+
+```tsx
+// ChatMessage.tsx
+<div className="group relative">
+  <MessageContent message={message} />
+  
+  <Button
+    variant="ghost"
+    size="icon"
+    onClick={() => {
+      navigator.clipboard.writeText(message.content);
+      toast.success('Copied to clipboard');
+    }}
+    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+  >
+    <CopyIcon className="h-4 w-4" />
+  </Button>
+</div>
+```
+
+**Card-Specific Copy:**
+- Domain Health Card: Copy as formatted summary
+- Feasibility Card: Copy as table (tab-separated for Excel paste)
+- Proposal Card: Copy magic link only
+
+### 10.8 Markdown Rendering
+
+All assistant responses render GitHub-flavored markdown.
+
+```tsx
+// Using react-markdown with tailwind prose
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+<ReactMarkdown 
+  remarkPlugins={[remarkGfm]}
+  className="prose prose-sm dark:prose-invert max-w-none"
+  components={{
+    // Custom renderers for tool references
+    a: ({ href, children }) => (
+      <a href={href} className="text-primary hover:underline" target="_blank">
+        {children}
+      </a>
+    ),
+    code: ({ inline, children }) => 
+      inline 
+        ? <code className="text-mono bg-muted px-1 rounded">{children}</code>
+        : <pre className="bg-muted p-3 rounded overflow-x-auto"><code>{children}</code></pre>,
+  }}
+>
+  {message.content}
+</ReactMarkdown>
+```
+
+**Rendered Elements:**
+- **Bold**, *italic*, ~~strikethrough~~
+- Bullet and numbered lists
+- `inline code` and code blocks
+- [Links](url) open in new tab
+- Tables (rare but supported)
+
+### 10.9 Edit Previous Messages
+
+Allow editing earlier messages with clear history handling.
+
+```tsx
+// Edit mode on a message
+const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+
+// When user presses ↑ on empty input
+useHotkeys('up', () => {
+  if (input === '') {
+    const lastUserMessage = messages.findLast(m => m.role === 'user');
+    if (lastUserMessage) setEditingMessageId(lastUserMessage.id);
+  }
+});
+```
+
+**History Handling (Non-Branching):**
+- Editing a message REPLACES it and regenerates from that point
+- All subsequent messages are removed
+- Warning shown: "This will remove X messages below. Continue?"
+- No conversation branching (too complex for sales tool)
+
+### 10.10 Partial Results Handling
+
+When a tool times out with partial data, show what we have.
+
+```tsx
+interface PartialResult {
+  complete: boolean;
+  data: any;
+  error?: string;
+  progress: { done: number; total: number };
+}
+
+// Keyword analysis with 100 keywords, 60 returned before timeout
+{
+  complete: false,
+  data: { keywords: keywordsArray.slice(0, 60) },
+  error: "Timeout after 30s",
+  progress: { done: 60, total: 100 }
+}
+```
+
+**UI Treatment:**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  KEYWORD ANALYSIS (Partial)                                     60 of 100  │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  ⚠️ Analysis timed out. Showing 60 keywords found so far.                  │
+│                                                                             │
+│  [Show Partial Results]  [Retry Full Analysis]  [Continue with 60]         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 10.11 Typing Indicator
+
+Show activity during LLM thinking and tool execution.
+
+```tsx
+// Three-phase indicator
+type ActivityPhase = 'thinking' | 'tool_executing' | 'generating';
+
+const ActivityIndicator = ({ phase, toolName }: { phase: ActivityPhase; toolName?: string }) => (
+  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+    <Loader2Icon className="h-4 w-4 animate-spin" />
+    {phase === 'thinking' && 'Analyzing your request...'}
+    {phase === 'tool_executing' && `Running ${TOOL_LABELS[toolName]}...`}
+    {phase === 'generating' && 'Writing response...'}
+  </div>
+);
+```
+
+### 10.12 Auto-Scroll Behavior
+
+Smart scrolling that doesn't fight the user.
+
+```tsx
+const shouldAutoScroll = useRef(true);
+const messagesEndRef = useRef<HTMLDivElement>(null);
+
+// Track if user has scrolled up
+const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+  const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+  shouldAutoScroll.current = isAtBottom;
+};
+
+// Scroll to bottom on new messages (if user hasn't scrolled up)
+useEffect(() => {
+  if (shouldAutoScroll.current) {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }
+}, [messages]);
+
+// "New messages below" indicator when user has scrolled up
+{!shouldAutoScroll.current && hasNewMessages && (
+  <Button
+    onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+    className="fixed bottom-20 left-1/2 -translate-x-1/2"
+  >
+    ↓ New messages
+  </Button>
+)}
+```
+
+### 10.13 Background Completion Toast
+
+Notify when analysis completes while user is elsewhere.
+
+```tsx
+// In useSEOChat hook
+onFinish: (message) => {
+  // Check if tab is not focused
+  if (document.hidden) {
+    // Browser notification (if permitted)
+    if (Notification.permission === 'granted') {
+      new Notification('SEO Chat', {
+        body: `Analysis complete for ${context.prospectDomain}`,
+        icon: '/favicon.ico',
+      });
+    }
+    
+    // In-app toast when user returns
+    toast.success(`Analysis complete for ${context.prospectDomain}`, {
+      action: {
+        label: 'View',
+        onClick: () => scrollToMessage(message.id),
+      },
+    });
+  }
+}
+```
+
+### 10.14 Accessibility (a11y)
+
+WCAG 2.1 AA compliance for the chat interface.
+
+```tsx
+// ChatMessage.tsx - Proper ARIA labels
+<article
+  role="article"
+  aria-label={`${message.role === 'user' ? 'You' : 'SEO Chat'} said`}
+  aria-describedby={`message-${message.id}-content`}
+>
+  <div id={`message-${message.id}-content`}>
+    {message.content}
+  </div>
+</article>
+
+// ChatInput.tsx - Accessible input
+<label htmlFor="chat-input" className="sr-only">
+  Type your message
+</label>
+<textarea
+  id="chat-input"
+  aria-label="Chat message input"
+  aria-describedby="chat-input-help"
+  placeholder="Type a message or paste a prospect's question..."
+/>
+<span id="chat-input-help" className="sr-only">
+  Press Cmd+Enter to send. Type @ to mention a domain or keywords.
+</span>
+```
+
+**Accessibility Checklist:**
+- [ ] All interactive elements have visible focus states
+- [ ] Color contrast meets 4.5:1 for text, 3:1 for UI
+- [ ] Screen reader announces new messages
+- [ ] Keyboard navigation works (Tab, Enter, Escape)
+- [ ] Tool cards are expandable via keyboard
+- [ ] Error states announced to screen readers
+
+### 10.15 Dark Mode
+
+Chat-specific dark mode tokens.
+
+```css
+/* Chat-specific dark mode overrides */
+.dark .chat-panel {
+  --chat-bg: hsl(224, 71%, 4%);
+  --chat-user-bubble: hsl(217, 91%, 60%);
+  --chat-assistant-bubble: hsl(217, 33%, 17%);
+  --chat-input-bg: hsl(217, 33%, 12%);
+  --chat-card-bg: hsl(217, 33%, 10%);
+  --chat-card-border: hsl(217, 33%, 20%);
+}
+
+/* Tool result cards in dark mode */
+.dark .analysis-card {
+  background: var(--chat-card-bg);
+  border-color: var(--chat-card-border);
+}
+
+/* Skeleton loaders in dark mode */
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(217, 33%, 15%) 0%,
+    hsl(217, 33%, 20%) 50%,
+    hsl(217, 33%, 15%) 100%
+  );
+}
+```
+
+### 10.16 Conversation Search
+
+Find earlier messages in long sessions.
+
+```tsx
+// Cmd+F triggers conversation search
+const [searchOpen, setSearchOpen] = useState(false);
+const [searchQuery, setSearchQuery] = useState('');
+
+useHotkeys('mod+f', (e) => {
+  e.preventDefault();
+  setSearchOpen(true);
+});
+
+const searchResults = useMemo(() => {
+  if (!searchQuery) return [];
+  return messages.filter(m => 
+    m.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+}, [messages, searchQuery]);
+```
+
+**UI:**
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Search conversation                                        [×]            │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │ keywords                                                              │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│  3 results                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  • "Do 100 keywords analysis" (You, 12:34)                     [Jump →]   │
+│  • "Found 87 keywords for groziosalon.lt..." (Chat, 12:35)     [Jump →]   │
+│  • "Add feasible keywords to proposal" (You, 12:40)            [Jump →]   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
