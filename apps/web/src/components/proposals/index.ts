@@ -114,3 +114,13 @@ export {
   getLocalizedDescription,
   getUILabels,
 } from "./ai-generation-config";
+
+// Tiered AI Proposal Generation (101-06)
+export { ProposalModeSelector, ProposalGenerationMode } from "./ProposalModeSelector";
+export type { ProposalGenerationModeType } from "./ProposalModeSelector";
+
+export { TemplateSelector } from "./TemplateSelector";
+export type {
+  ProposalTemplate,
+  TemplatePackage,
+} from "./TemplateSelector";
