@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: completed
-last_updated: "2026-05-13T19:17:52.831Z"
+last_updated: "2026-05-13T19:46:02.975Z"
 last_activity: 2026-05-08 -- Phase 96 Plan 05 complete (Client Portal)
 progress:
   total_phases: 14
@@ -391,6 +391,9 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - Grok 4.1 Fast for CopilotKit chat (per LLM-ARCHITECTURE.md)
 - Full state snapshots in proposal_edits table for instant undo/redo
 - @ts-ignore used for AI SDK tool() type compatibility (type definition mismatch in AI SDK 6.x)
+- AI SDK 6.0.180 doesn't export React hooks - created stub implementations
+- whitespace-pre-wrap for LLM text rendering (NEVER innerHTML per T-98-04)
+- Skeleton cards with Tailwind animate-in for D-01 micro-animations
 
 ## v5.0 Phases Summary
 
