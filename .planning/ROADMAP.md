@@ -2802,14 +2802,15 @@ Plans:
   5. 3-level map toggle works per D-03 (Always Off / Per-Prospect / Always On)
   6. Prospect portal accessible via magic link at /p/[token]
   7. Error recovery with inline retry per D-02
-**Plans**: 8 plans
-  - [ ] 98-01-PLAN.md — Foundation: types, Zustand stores, Drizzle schema (Wave 1)
-  - [ ] 98-02-PLAN.md — Tools: 5 tool definitions with Zod, domain_health and feasibility executors (Wave 2)
-  - [ ] 98-03-PLAN.md — API Routes: /api/seo-chat with streamText, session CRUD, proposal generation (Wave 2)
-  - [ ] 98-04-PLAN.md — UI Components: useSEOChat hook, ChatPanel, ChatInput, ChatMessage, ProspectContext (Wave 3)
-  - [ ] 98-05-PLAN.md — Tool Cards: DomainHealthCard, KeywordAnalysisCard, FeasibilityCard, ProposalGeneratedCard (Wave 3)
-  - [ ] 98-06-PLAN.md — Topical Map: React Flow visualization with Dagre layout, settings toggle (Wave 4)
-  - [ ] 98-07-PLAN.md — Proposal & Portal: ProposalSlideOver, /p/[token] prospect portal (Wave 4)
-  - [ ] 98-08-PLAN.md — Chat Page: /seo-chat routes, SessionList, ChatSettings (Wave 5)
+**Plans**: 10 plans (10/10 complete)
+  - [x] 98-01-PLAN.md — Foundation: types, Zustand stores, Drizzle schema (Wave 1)
+  - [x] 98-02-PLAN.md — Tools: 5 tool definitions with Zod, domain_health and feasibility executors (Wave 2)
+  - [x] 98-03-PLAN.md — API Routes: /api/seo-chat with streamText, session CRUD, proposal generation (Wave 2)
+  - [x] 98-04-PLAN.md — UI Components: useSEOChat hook, ChatPanel, ChatInput, ChatMessage, ProspectContext (Wave 3)
+  - [x] 98-05-PLAN.md — Tool Cards: DomainHealthCard, KeywordAnalysisCard, FeasibilityCard, ProposalGeneratedCard (Wave 3)
+  - [x] 98-06-PLAN.md — Topical Map: React Flow visualization with Dagre layout, settings toggle (Wave 4)
+  - [x] 98-07-PLAN.md — Proposal & Portal: ProposalSlideOver, /p/[token] prospect portal (Wave 4)
+  - [x] 98-08-PLAN.md — Chat Page: /seo-chat routes, SessionList, ChatSettings (Wave 5)
+  - [x] 98-10-PLAN.md — World-Class Chat UX: Claude Code patterns, /commands, animations (Wave 6)
 
 ---
