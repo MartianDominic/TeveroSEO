@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: completed
-last_updated: "2026-05-13T20:30:00.000Z"
-last_activity: 2026-05-13 -- Phase 98 context gathered (SEO Chat)
+last_updated: "2026-05-13T19:17:52.831Z"
+last_activity: 2026-05-08 -- Phase 96 Plan 05 complete (Client Portal)
 progress:
   total_phases: 14
   completed_phases: 14
@@ -390,6 +390,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - Use immutable state pattern: all edit operations return NEW state objects
 - Grok 4.1 Fast for CopilotKit chat (per LLM-ARCHITECTURE.md)
 - Full state snapshots in proposal_edits table for instant undo/redo
+- @ts-ignore used for AI SDK tool() type compatibility (type definition mismatch in AI SDK 6.x)
 
 ## v5.0 Phases Summary
 
@@ -780,3 +781,20 @@ Key deliverables:
 ### Roadmap Evolution
 
 - Phase 101 added: Direct Proposal & Manual Deal Pipeline — Send interactive proposals without prior analysis, insert prospects at any stage (signed or not), handle offline closures, payment tracking via Revolut/Stripe integration
+
+**Executing Phase:** 98 (general-seo-chat) — 8 plans — Started 2026-05-13
+
+### Phase 98 Progress (2026-05-13) — IN PROGRESS
+
+| Plan | Name | Wave | Status |
+|------|------|------|--------|
+| 98-01 | Foundation: Types, Stores, Schema | 1 | In Progress |
+| 98-02 | Tools & Executors | 2 | Pending |
+| 98-03 | API Routes | 2 | Pending |
+| 98-04 | Chat UI Components | 3 | Pending |
+| 98-05 | Tool Result Cards | 3 | Pending |
+| 98-06 | Topical Map View | 4 | Pending |
+| 98-07 | Proposal Portal | 4 | Pending |
+| 98-08 | Chat Page Routes | 5 | Pending |
+
+**Planned Phase:** 101 (direct-proposal-manual-deals) — 6 plans — 2026-05-13T19:12:24.900Z
