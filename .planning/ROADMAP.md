@@ -2762,4 +2762,26 @@ Transform the platform into a complete agency CRM with v6 design system complian
   - [x] 96-04-PLAN.md — Content Intelligence: topic clusters, content groups, index reporting [Complete 2026-05-08]
   - [x] 96-05-PLAN.md — Client Portal: white-label views, exports, privacy controls [Complete 2026-05-08]
 
+### Phase 101: Direct Proposal & Manual Deal Pipeline
+
+**Goal:** Enable sending interactive proposals without prior analysis, insert prospects at any pipeline stage (signed or not), handle offline-closed deals, and track payments via Revolut/Stripe integration with cross-platform linking.
+**Requirements**: Two-layer entry (quick capture + full), world-class payment reconciliation, tiered AI proposals, content library, enhanced document tracking
+**Depends on:** Phase 100
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 101 to break down)
+
+---
+
+### Phase 102: Advanced Document Builder
+
+**Goal:** Visual drag-drop template builder, version comparison, real-time collaboration, and content library analytics. Deferred from Phase 101.
+**Requirements**: Deferred features from Phase 101 discussion
+**Depends on:** Phase 101
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 102 to break down)
+
 ---
