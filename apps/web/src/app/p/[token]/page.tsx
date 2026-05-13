@@ -1,14 +1,12 @@
 /**
  * Public Proposal View Page
- * Phase 57-08: Clone + Undo/Redo + Magic Link
+ * Phase 57-08 + Phase 98-07: Unified proposal portal
  *
  * Route: /p/[token]
  *
- * Features:
- * - Validate token and expiry
- * - Read-only proposal view
- * - Track view event
- * - Branded experience using proposal brandConfig
+ * Supports two proposal systems:
+ * 1. Legacy proposals (Phase 57-08) - fetched from open-seo-main API
+ * 2. SEO Chat proposals (Phase 98-07) - validated locally with apps/web DB
  *
  * CFG-CRIT-01 FIX: Uses centralized getOpenSeoUrl() from env.ts
  */
@@ -22,6 +20,8 @@ import { getOpenSeoUrl } from "@/lib/env";
 import { logger } from '@/lib/logger';
 
 import { PublicProposalView } from "./PublicProposalView";
+import { validateMagicLink, trackProposalView } from "@/lib/seo-chat/prospect-portal";
+import { SeoChatProposalView } from "./SeoChatProposalView";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -190,7 +190,20 @@ export default async function PublicProposalPage({ params }: PageProps) {
     notFound();
   }
 
-  // Fetch proposal data
+  // Try SEO Chat proposal first (Phase 98-07)
+  const seoChatValidation = await validateMagicLink(token);
+  if (seoChatValidation.valid && seoChatValidation.proposal) {
+    // Track view for SEO Chat proposal
+    const headersList = await headers();
+    trackProposalView(seoChatValidation.proposal.id, {
+      userAgent: headersList.get("user-agent") || undefined,
+      referrer: headersList.get("referer") || undefined,
+    });
+
+    return <SeoChatProposalView proposal={seoChatValidation.proposal} />;
+  }
+
+  // Fall back to legacy proposal (Phase 57-08)
   const proposal = await getProposal(token);
 
   if (!proposal) {
