@@ -139,6 +139,42 @@
   }
 }
 
+/* Enhanced shimmer animation (v6 section 2.10 Motion) */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer::before {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 /* Locale transition styles */
 [data-locale-transitioning="true"] main {
   opacity: 0.7;
