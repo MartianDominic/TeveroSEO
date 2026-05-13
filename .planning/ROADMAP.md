@@ -2785,3 +2785,28 @@ Plans:
 - [ ] TBD (run /gsd-plan-phase 102 to break down)
 
 ---
+
+### Phase 98: SEO Chat Interface
+**Goal**: Sales-focused chat that helps agency owners convert Facebook/WhatsApp/email prospects into paying clients in <30 seconds with 3-analysis MVP (Domain Health, Keyword Feasibility, Proposal Generator).
+**Depends on**: Phase 96 (Agency Analytics Platform)
+**Requirements**: CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, CHAT-06, CHAT-07, CHAT-08, CHAT-09, CHAT-10, CHAT-11
+**Working directory**: `apps/web/`, `open-seo-main/`
+**Success Criteria** (what must be TRUE):
+  1. Messages stream in real-time with parallel Right Rail updates per D-01
+  2. 5 tools (domain_health, keyword_analysis, feasibility_check, add_to_proposal, generate_proposal) integrated via Vercel AI SDK
+  3. Tool result cards animate from skeleton to filled state
+  4. Topical map renders with D-04 colors (BOFU=green, MOFU=amber, TOFU=blue) and D-05 edge weights
+  5. 3-level map toggle works per D-03 (Always Off / Per-Prospect / Always On)
+  6. Prospect portal accessible via magic link at /p/[token]
+  7. Error recovery with inline retry per D-02
+**Plans**: 8 plans
+  - [ ] 98-01-PLAN.md — Foundation: types, Zustand stores, Drizzle schema (Wave 1)
+  - [ ] 98-02-PLAN.md — Tools: 5 tool definitions with Zod, domain_health and feasibility executors (Wave 2)
+  - [ ] 98-03-PLAN.md — API Routes: /api/seo-chat with streamText, session CRUD, proposal generation (Wave 2)
+  - [ ] 98-04-PLAN.md — UI Components: useSEOChat hook, ChatPanel, ChatInput, ChatMessage, ProspectContext (Wave 3)
+  - [ ] 98-05-PLAN.md — Tool Cards: DomainHealthCard, KeywordAnalysisCard, FeasibilityCard, ProposalGeneratedCard (Wave 3)
+  - [ ] 98-06-PLAN.md — Topical Map: React Flow visualization with Dagre layout, settings toggle (Wave 4)
+  - [ ] 98-07-PLAN.md — Proposal & Portal: ProposalSlideOver, /p/[token] prospect portal (Wave 4)
+  - [ ] 98-08-PLAN.md — Chat Page: /seo-chat routes, SessionList, ChatSettings (Wave 5)
+
+---
