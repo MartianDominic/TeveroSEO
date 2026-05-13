@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Agency Analytics
+milestone: v2.0
+milestone_name: Unified Product
 status: completed
-last_updated: "2026-05-08T12:45:00.000Z"
-last_activity: 2026-05-08 -- Phase 96 COMPLETE (Agency Analytics Platform)
+last_updated: "2026-05-13T20:30:00.000Z"
+last_activity: 2026-05-13 -- Phase 98 context gathered (SEO Chat)
 progress:
-  total_phases: 15
-  completed_phases: 15
-  total_plans: 63
-  completed_plans: 63
+  total_phases: 14
+  completed_phases: 14
+  total_plans: 58
+  completed_plans: 58
   percent: 100
 ---
 
@@ -774,3 +774,9 @@ Key deliverables:
 - `.planning/phases/95-scraping-infrastructure/95-03-QUEUE-RATE-LIMITING-PLAN.md` — Queue & Rate Limiting
 - `.planning/phases/95-scraping-infrastructure/95-04-DATAFORSEO-OPTIMIZATION-PLAN.md` — DataForSEO Optimization
 - `.planning/phases/95-scraping-infrastructure/95-05-MIGRATION-MONITORING-PLAN.md` — Migration & Monitoring
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 101 added: Direct Proposal & Manual Deal Pipeline — Send interactive proposals without prior analysis, insert prospects at any stage (signed or not), handle offline closures, payment tracking via Revolut/Stripe integration
