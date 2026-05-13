@@ -806,7 +806,7 @@ Key deliverables:
 | 101-03 | Quick Capture & Entry Point UI | 2 | In Progress | - |
 | 101-04 | Command Palette Integration | 3 | Pending | - |
 | 101-05 | Content Library & Document Management | 3 | Pending | - |
-| 101-06 | Google Drive Integration | 4 | Pending | - |
+| 101-06 | Tiered AI Proposal Generation | 2 | Complete | 8868c1f64, 07db07ddf, 5008f7830, d78321d58 |
 
 **101-01 Key Deliverables:**
 
@@ -827,3 +827,13 @@ Key deliverables:
 - GET/POST /api/payments/review - Review queue listing and decision processing
 - POST /api/payments/allocate - Single, split, and credit allocation endpoints
 - 20 tests passing (TDD)
+
+**101-06 Key Deliverables:**
+
+- ProposalGenerationService with 4 modes per D-03 (Full AI, AI-Assisted, Template, Blank)
+- AIProposalGenerator using Gemini 1.5 Pro for content generation
+- POST/GET /api/proposals/tiered-generate endpoint with discriminated union validation
+- ProposalModeSelector UI with 4-tier tabs, keyboard shortcuts (1-4), mode-specific config
+- TemplateSelector UI with two-level selection (template + package), localization support
+- Rate limiting: 10 generations/hour/user
+- 8 tests passing (TDD)
