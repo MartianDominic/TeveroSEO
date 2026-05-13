@@ -154,7 +154,7 @@ export function ChatPanel({ sessionId, workspaceId, prospectDomain }: ChatPanelP
   }, [setInput]);
 
   // Handle retry for failed tools
-  const handleRetry = useCallback((toolName: string) => {
+  const handleRetry = useCallback((_toolName: string) => {
     // Reload the last message to retry
     reload();
   }, [reload]);

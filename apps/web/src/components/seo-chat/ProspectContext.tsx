@@ -15,7 +15,7 @@
  * - Error states with retry buttons
  */
 
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo } from 'react';
 import type { SessionContext } from '@/lib/seo-chat/types';
 import type { ToolProgress } from '@/hooks/useToolProgress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

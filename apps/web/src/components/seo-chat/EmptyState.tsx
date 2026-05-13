@@ -11,7 +11,7 @@
  */
 
 import { memo } from 'react';
-import { COMMANDS, type Command } from '@/lib/seo-chat/commands';
+import { COMMANDS } from '@/lib/seo-chat/commands';
 
 // ---------------------------------------------------------------------------
 // Types

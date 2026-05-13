@@ -18,10 +18,10 @@ import { memo, useCallback, useState, useEffect, useRef, FormEvent, KeyboardEven
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, Square } from 'lucide-react';
+import { Send, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SessionContext } from '@/lib/seo-chat/types';
-import { COMMANDS, filterCommands, isCommandInput, type Command } from '@/lib/seo-chat/commands';
+import { filterCommands, isCommandInput, type Command } from '@/lib/seo-chat/commands';
 
 // ---------------------------------------------------------------------------
 // Types
