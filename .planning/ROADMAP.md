@@ -2774,7 +2774,7 @@ Plans:
 - [x] 101-02-PLAN.md — Auto-Match Engine: confidence cascade, PaymentAllocationService, review queue API (Wave 2) [Complete 2026-05-13]
 - [x] 101-03-PLAN.md — Quick Capture & Command Palette: QuickCaptureService, GlobalCommandPalette, QuickCaptureModal (Wave 2) [Complete 2026-05-13]
 - [x] 101-04-PLAN.md — Content Library: ContentLibraryService, ContentBlockRepository, API routes, ContentLibraryPanel UI (Wave 3) [Complete 2026-05-13]
-- [ ] 101-05-PLAN.md — Document Management: Google Drive integration, SectionTrackingService, Document Hub UI (Wave 4)
+- [x] 101-05-PLAN.md — Document Management: Google Drive integration, SectionTrackingService, ReminderSchedulingService, Document Hub UI (Wave 4) [Complete 2026-05-13]
 ---
 
 ### Phase 102: Advanced Document Builder
