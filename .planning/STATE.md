@@ -802,8 +802,8 @@ Key deliverables:
 | Plan | Name | Wave | Status | Commit |
 |------|------|------|--------|--------|
 | 101-01 | Foundation Database Schemas | 1 | Complete | 75b337dc2, 7d7b93680, 8bd3d5cdc, 29daf306c, 8064a2cca |
-| 101-02 | Quick Capture & Entry Point UI | 2 | Pending | - |
-| 101-03 | Payment Reconciliation Engine | 2 | Pending | - |
+| 101-02 | Payment Reconciliation Engine | 2 | Complete | 6fa9cd6, 5f9146a, a4eb612 |
+| 101-03 | Quick Capture & Entry Point UI | 2 | In Progress | - |
 | 101-04 | Command Palette Integration | 3 | Pending | - |
 | 101-05 | Content Library & Document Management | 3 | Pending | - |
 | 101-06 | Google Drive Integration | 4 | Pending | - |
@@ -817,3 +817,13 @@ Key deliverables:
 - PaymentRepository with workspace-scoped CRUD
 - PaymentIngestionService for Stripe/Revolut/manual payment normalization
 - 8 tests passing (TDD)
+
+**101-02 Key Deliverables:**
+
+- AutoMatchEngine with 5-tier confidence cascade (100% memo, 95% email, 85% date, 70% name, 0% review)
+- PaymentAllocationService for single/split allocations and overpayment credits
+- PaymentReviewService for review queue management (accept/reject/manual decisions)
+- PaymentAllocationRepository and ClientCreditRepository
+- GET/POST /api/payments/review - Review queue listing and decision processing
+- POST /api/payments/allocate - Single, split, and credit allocation endpoints
+- 20 tests passing (TDD)
