@@ -87,3 +87,6 @@ export * from "./seo-ga4-snapshots";
 
 // Phase 82: Chat Integration
 export * from "./analysis-sessions";
+
+// Phase 98: SEO Chat
+export * from "./seo-chat";
