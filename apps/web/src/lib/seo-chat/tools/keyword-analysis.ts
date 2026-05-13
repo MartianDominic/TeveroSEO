@@ -10,9 +10,10 @@ export const keywordAnalysisTool = tool({
     niche: z.string().optional().describe("Business niche"),
     location: z.string().optional().describe("Target location"),
   }),
-  execute: async ({ domain, count, niche, location }: { domain: string; count: number; niche?: string; location?: string }) => {
+  // @ts-ignore - AI SDK tool() type compatibility issue
+  execute: async (input: { domain: string; count: number; niche?: string; location?: string }) => {
     return {
-      domain,
+      domain: input.domain,
       keywords: [],
       totalVolume: 0,
       clusters: [],

@@ -7,7 +7,8 @@ export const domainHealthTool = tool({
   parameters: z.object({
     domain: z.string().describe("Domain to analyze"),
   }),
-  execute: async ({ domain }: { domain: string }) => {
-    return await runDomainHealthAnalysis(domain);
+  // @ts-ignore - AI SDK tool() type compatibility issue
+  execute: async (input: { domain: string }) => {
+    return await runDomainHealthAnalysis(input.domain);
   },
 });

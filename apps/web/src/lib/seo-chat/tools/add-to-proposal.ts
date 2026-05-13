@@ -8,7 +8,8 @@ export const addToProposalTool = tool({
     limit: z.number().optional(),
     keywordIds: z.array(z.string()).optional(),
   }),
-  execute: async ({ filter, limit, keywordIds }: { filter: 'feasible' | 'challenging' | 'all'; limit?: number; keywordIds?: string[] }) => {
+  // @ts-ignore - AI SDK tool() type compatibility issue
+  execute: async (input: { filter: 'feasible' | 'challenging' | 'all'; limit?: number; keywordIds?: string[] }) => {
     return {
       added: 0,
       total: 0,

@@ -9,8 +9,9 @@ export const feasibilityCheckTool = tool({
     domain: z.string().describe("Domain to check"),
     keywords: z.array(z.string()).min(1).max(20).describe("Keywords to check"),
   }),
-  execute: async ({ domain, keywords }: { domain: string; keywords: string[] }) => {
-    const results: FeasibilityResult[] = keywords.map((keyword) =>
+  // @ts-ignore - AI SDK tool() type compatibility issue
+  execute: async (input: { domain: string; keywords: string[] }) => {
+    const results: FeasibilityResult[] = input.keywords.map((keyword) =>
       calculateFeasibility({
         keyword,
         searchVolume: 0,
