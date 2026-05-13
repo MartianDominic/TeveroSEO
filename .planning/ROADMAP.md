@@ -2772,8 +2772,8 @@ Transform the platform into a complete agency CRM with v6 design system complian
 Plans:
 - [x] 101-01-PLAN.md — Foundation: payment schema, content library schema, document tracking schema, PaymentIngestionService (Wave 1) [Complete 2026-05-13]
 - [x] 101-02-PLAN.md — Auto-Match Engine: confidence cascade, PaymentAllocationService, review queue API (Wave 2) [Complete 2026-05-13]
-- [ ] 101-03-PLAN.md — Command Palette: quick capture, global Cmd+K, deal card actions (Wave 2)
-- [ ] 101-04-PLAN.md — Content Library: ContentLibraryService, block CRUD API, ContentLibraryPanel UI (Wave 3)
+- [x] 101-03-PLAN.md — Quick Capture & Command Palette: QuickCaptureService, GlobalCommandPalette, QuickCaptureModal (Wave 2) [Complete 2026-05-13]
+- [x] 101-04-PLAN.md — Content Library: ContentLibraryService, ContentBlockRepository, API routes, ContentLibraryPanel UI (Wave 3) [Complete 2026-05-13]
 - [ ] 101-05-PLAN.md — Document Management: Google Drive integration, SectionTrackingService, Document Hub UI (Wave 4)
 ---
 
