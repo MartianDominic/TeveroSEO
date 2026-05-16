@@ -17,6 +17,7 @@
     "@ai-sdk/google": "^3.0.73",
     "@ai-sdk/react": "^3.0.184",
     "@ai-sdk/xai": "^3.0.89",
+    "@aws-sdk/client-s3": "^3.1045.0",
     "@clerk/nextjs": "^6.39.3",
     "@copilotkit/react-core": "^1.56.5",
     "@copilotkit/react-ui": "^1.56.5",
