@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 import { parseDocument } from "./parser-client";
 import { detectStructure } from "./structure-detector";
 import { detectVariables } from "./variable-detector";
+import { extractTheme } from "./theme-extractor";
 
 // =============================================================================
 // Types
@@ -250,9 +251,22 @@ async function processJob(job: QueuedJob): Promise<boolean> {
 
     await updateProgress(90);
 
-    // Step 4: Theme extraction (90-100%) - implemented in 102-11
+    // Step 4: Theme extraction (90-100%)
     await updateProgress(95);
-    // TODO: Call theme extraction (102-11)
+
+    try {
+      await extractTheme(documentId);
+      logger.info("[processing-queue] Theme extraction complete", {
+        documentId,
+      });
+    } catch (themeError) {
+      // Theme extraction failure is non-blocking
+      logger.warn("[processing-queue] Theme extraction failed", {
+        documentId,
+        error: themeError instanceof Error ? themeError.message : String(themeError),
+      });
+    }
+
     await updateProgress(100);
 
     // Mark complete
