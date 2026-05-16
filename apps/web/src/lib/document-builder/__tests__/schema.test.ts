@@ -13,8 +13,10 @@ import {
   blockVariants,
   proposalStructures,
   uploadedDocuments,
+  detectedStructures,
   type UploadedDocument,
   type NewUploadedDocument,
+  type DetectedStructure,
 } from "@/db/schema/document-builder";
 
 describe("document-builder/schema", () => {
@@ -191,6 +193,67 @@ describe("document-builder/schema", () => {
         r2Key: "ws-123/doc-id/test.pdf",
       };
       expect(newDoc.workspaceId).toBe("ws-123");
+    });
+  });
+
+  describe("detectedStructures table (102-10)", () => {
+    it("has documentId FK to uploadedDocuments", () => {
+      expect(detectedStructures).toBeDefined();
+
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("documentId");
+    });
+
+    it("has blockType column storing detected persuasion type", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("blockType");
+    });
+
+    it("has confidence column storing AI confidence 0-100", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("confidence");
+    });
+
+    it("has originalText column storing source text", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("originalText");
+    });
+
+    it("has suggestedContent column storing AI-improved version", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("suggestedContent");
+    });
+
+    it("has position, detectedVariables, and verification fields", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("position");
+      expect(columnNames).toContain("detectedVariables");
+      expect(columnNames).toContain("verified");
+      expect(columnNames).toContain("verifiedAt");
+    });
+
+    it("has createdAt timestamp", () => {
+      const columnNames = Object.keys(detectedStructures);
+      expect(columnNames).toContain("createdAt");
+    });
+
+    it("exports DetectedStructure type", () => {
+      const structure: DetectedStructure = {
+        id: "test-id",
+        documentId: "doc-123",
+        blockType: "pain_amplifier",
+        position: 0,
+        confidence: 92,
+        originalText: "Test content",
+        suggestedContent: null,
+        detectedVariables: [],
+        verified: "pending",
+        verifiedAt: null,
+        verifiedBy: null,
+        reasoning: null,
+        createdAt: new Date(),
+      };
+      expect(structure.id).toBe("test-id");
     });
   });
 });

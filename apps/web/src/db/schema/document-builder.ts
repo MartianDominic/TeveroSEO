@@ -276,3 +276,86 @@ export const uploadedDocuments = pgTable(
 
 export type UploadedDocument = typeof uploadedDocuments.$inferSelect;
 export type NewUploadedDocument = typeof uploadedDocuments.$inferInsert;
+
+// =====================================
+// Detected Structures Table (102-10)
+// =====================================
+
+/**
+ * Detected variable in content.
+ */
+export interface DetectedVariable {
+  id: string;
+  originalText: string;
+  suggestedVariable: string;
+  variableType: "company_name" | "contact_name" | "price" | "date" | "domain" | "percentage" | "custom";
+  confidence: number;
+  occurrences: number;
+  positions: Array<{ start: number; end: number }>;
+}
+
+/**
+ * AI-detected structures from uploaded documents.
+ * Stores blocks detected during processing with confidence scores.
+ * User can verify, adjust, or reject detections before creating proposals.
+ */
+export const detectedStructures = pgTable(
+  "detected_structures",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => uploadedDocuments.id, { onDelete: "cascade" }),
+
+    // Block classification
+    blockType: text("block_type").$type<PersuasionBlockType | "heading" | "paragraph" | "table" | "list" | "image" | "unknown">().notNull(),
+    position: integer("position").notNull().default(0),
+
+    // AI confidence (0-100)
+    confidence: integer("confidence").notNull().default(0),
+
+    // Original extracted text
+    originalText: text("original_text").notNull(),
+
+    // AI-suggested improved content (optional)
+    suggestedContent: text("suggested_content"),
+
+    // Variables detected in this block
+    detectedVariables: jsonb("detected_variables").$type<DetectedVariable[]>().default([]),
+
+    // User verification status
+    verified: text("verified").$type<"pending" | "accepted" | "rejected" | "modified">().notNull().default("pending"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true, mode: "date" }),
+    verifiedBy: text("verified_by"),
+
+    // AI reasoning for classification (for debugging/improvement)
+    reasoning: text("reasoning"),
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_detected_structures_document").on(table.documentId),
+    index("idx_detected_structures_type").on(table.blockType),
+    index("idx_detected_structures_verified").on(table.verified),
+    check("confidence_range", sql`${table.confidence} >= 0 AND ${table.confidence} <= 100`),
+  ]
+);
+
+// Relations for detectedStructures
+export const detectedStructuresRelations = relations(
+  detectedStructures,
+  ({ one }) => ({
+    document: one(uploadedDocuments, {
+      fields: [detectedStructures.documentId],
+      references: [uploadedDocuments.id],
+    }),
+  })
+);
+
+export type DetectedStructure = typeof detectedStructures.$inferSelect;
+export type NewDetectedStructure = typeof detectedStructures.$inferInsert;
