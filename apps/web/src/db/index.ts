@@ -8,6 +8,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as seoChatSchema from "./schema/seo-chat";
+import * as documentBuilderSchema from "./schema/document-builder";
 
 // Database connection - require explicit configuration
 const connectionString = process.env.DATABASE_URL;
@@ -33,6 +34,7 @@ export const pool = new pg.Pool({
 export const db = drizzle(pool, {
   schema: {
     ...seoChatSchema,
+    ...documentBuilderSchema,
   },
 });
 
@@ -40,6 +42,7 @@ export const db = drizzle(pool, {
  * Re-export schema for convenience
  */
 export * from "./schema/seo-chat";
+export * from "./schema/document-builder";
 
 /**
  * Graceful shutdown
