@@ -18,6 +18,7 @@ from typing import Optional, List, Dict, Any
 
 from parsers.pdf_parser import parse_pdf
 from parsers.docx_parser import parse_docx
+from ocr.orchestrator import extract_text_tiered
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +41,9 @@ class ParseResponse(BaseModel):
     colors: List[str]
     has_images: bool
     needs_ocr: bool
+    ocr_tier: Optional[str] = None
+    ocr_confidence: Optional[float] = None
+    ocr_cost: Optional[float] = None
     error: Optional[str] = None
 
 
@@ -144,6 +148,27 @@ async def parse_document(file: UploadFile):
         else:
             result = parse_docx(tmp_path)
 
+        # OCR processing if needed (scanned PDF or image-heavy document)
+        ocr_tier = None
+        ocr_confidence = None
+        ocr_cost = None
+
+        if result.needs_ocr and hasattr(result, "page_images") and result.page_images:
+            logger.info(f"Running tiered OCR for {len(result.page_images)} page images")
+            ocr_result = await extract_text_tiered(result.page_images)
+
+            # Merge OCR text with any native text
+            if ocr_result.text:
+                result.text = ocr_result.text
+            ocr_tier = ocr_result.tier
+            ocr_confidence = ocr_result.confidence
+            ocr_cost = ocr_result.cost
+
+            logger.info(
+                f"OCR complete: tier={ocr_tier}, confidence={ocr_confidence:.1f}%, "
+                f"cost=${ocr_cost:.4f}"
+            )
+
         logger.info(
             f"Parsed {file_type}: pages={result.page_count}, "
             f"text_len={len(result.text)}, fonts={len(result.fonts)}"
@@ -159,6 +184,9 @@ async def parse_document(file: UploadFile):
             colors=result.colors,
             has_images=result.has_images,
             needs_ocr=result.needs_ocr,
+            ocr_tier=ocr_tier,
+            ocr_confidence=ocr_confidence,
+            ocr_cost=ocr_cost,
         )
 
     except ValueError as e:
