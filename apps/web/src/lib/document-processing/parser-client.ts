@@ -1,0 +1,226 @@
+/**
+ * TypeScript client for Document Parser service.
+ * Phase 102-08: Task 4 - Client to call Python parsing service.
+ *
+ * Fetches documents from R2, sends to Python parser, returns structured results.
+ */
+
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+
+const PARSER_SERVICE_URL =
+  process.env.DOCUMENT_PARSER_URL || "http://localhost:8001";
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface ParserResult {
+  success: boolean;
+  fileType: "pdf" | "docx";
+  text: string;
+  pageCount: number;
+  metadata: {
+    title?: string;
+    author?: string;
+    creator?: string;
+  };
+  fonts: Array<{
+    font: string;
+    size: number;
+    usage: number;
+  }>;
+  colors: string[];
+  hasImages: boolean;
+  needsOcr: boolean;
+  error?: string;
+}
+
+// =============================================================================
+// R2 Client
+// =============================================================================
+
+const createR2Client = () => {
+  const endpoint = process.env.R2_ENDPOINT;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    throw new Error(
+      "R2 credentials not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY."
+    );
+  }
+
+  return new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
+};
+
+// =============================================================================
+// Parser Client
+// =============================================================================
+
+/**
+ * Parse a document from R2 storage.
+ *
+ * @param r2Key - Key of the document in R2
+ * @param fileType - Type of file ('pdf' | 'docx')
+ * @returns Parsed document with text, fonts, colors, and metadata
+ *
+ * @throws Error if parsing fails or service unavailable
+ */
+export async function parseDocument(
+  r2Key: string,
+  fileType: "pdf" | "docx"
+): Promise<ParserResult> {
+  const r2 = createR2Client();
+
+  // Fetch file from R2
+  const getCommand = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET || "documents",
+    Key: r2Key,
+  });
+
+  const r2Response = await r2.send(getCommand);
+  const fileBuffer = await r2Response.Body?.transformToByteArray();
+
+  if (!fileBuffer) {
+    throw new Error("Failed to fetch document from R2");
+  }
+
+  // Create form data for parser service
+  const formData = new FormData();
+  const mimeType =
+    fileType === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+  const blob = new Blob([fileBuffer], { type: mimeType });
+  formData.append("file", blob, `document.${fileType}`);
+
+  // Call parser service with retry
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(`${PARSER_SERVICE_URL}/parse`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Parser service error: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      return {
+        success: data.success,
+        fileType: data.file_type,
+        text: data.text,
+        pageCount: data.page_count,
+        metadata: data.metadata || {},
+        fonts: data.fonts || [],
+        colors: data.colors || [],
+        hasImages: data.has_images,
+        needsOcr: data.needs_ocr,
+        error: data.error,
+      };
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+
+      // Don't retry for password-protected error
+      if (lastError.message.includes("Password-protected")) {
+        throw lastError;
+      }
+
+      // Wait before retry (exponential backoff)
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+
+  throw lastError || new Error("Parser service unavailable");
+}
+
+/**
+ * Check if the parser service is healthy.
+ */
+export async function checkParserHealth(): Promise<boolean> {
+  try {
+    const response = await fetch(`${PARSER_SERVICE_URL}/health`, {
+      method: "GET",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parse a document directly from a buffer (for testing or direct upload).
+ *
+ * @param buffer - File content as Uint8Array
+ * @param fileType - Type of file ('pdf' | 'docx')
+ * @param fileName - Original file name
+ * @returns Parsed document with text, fonts, colors, and metadata
+ */
+export async function parseDocumentFromBuffer(
+  buffer: Uint8Array,
+  fileType: "pdf" | "docx",
+  fileName: string
+): Promise<ParserResult> {
+  const formData = new FormData();
+  const mimeType =
+    fileType === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+  const blob = new Blob([buffer], { type: mimeType });
+  formData.append("file", blob, fileName);
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(`${PARSER_SERVICE_URL}/parse`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Parser service error: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      return {
+        success: data.success,
+        fileType: data.file_type,
+        text: data.text,
+        pageCount: data.page_count,
+        metadata: data.metadata || {},
+        fonts: data.fonts || [],
+        colors: data.colors || [],
+        hasImages: data.has_images,
+        needsOcr: data.needs_ocr,
+        error: data.error,
+      };
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+
+      if (lastError.message.includes("Password-protected")) {
+        throw lastError;
+      }
+
+      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+
+  throw lastError || new Error("Parser service unavailable");
+}
