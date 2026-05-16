@@ -99,7 +99,12 @@ export async function parseDocument(
       ? "application/pdf"
       : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  const blob = new Blob([fileBuffer], { type: mimeType });
+  // Convert Uint8Array to ArrayBuffer for Blob compatibility
+  const arrayBuffer = fileBuffer.buffer.slice(
+    fileBuffer.byteOffset,
+    fileBuffer.byteOffset + fileBuffer.byteLength
+  ) as ArrayBuffer;
+  const blob = new Blob([arrayBuffer], { type: mimeType });
   formData.append("file", blob, `document.${fileType}`);
 
   // Call parser service with retry
@@ -180,7 +185,12 @@ export async function parseDocumentFromBuffer(
       ? "application/pdf"
       : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  const blob = new Blob([buffer], { type: mimeType });
+  // Convert Uint8Array to ArrayBuffer for Blob compatibility
+  const arrayBuffer = buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  ) as ArrayBuffer;
+  const blob = new Blob([arrayBuffer], { type: mimeType });
   formData.append("file", blob, fileName);
 
   let lastError: Error | null = null;

@@ -1,6 +1,7 @@
 /**
  * Document Processing Queue
  * Phase 102-07: Task 3 - Document processing queue
+ * Phase 102-08: Task 5 - Parser integration
  *
  * Uses in-memory queue with setInterval processing (same pattern as analytics-sync-worker.ts)
  * because apps/web doesn't have BullMQ. Exposes BullMQ-like interface for future migration.
@@ -12,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { uploadedDocuments } from "@/db/schema/document-builder";
 import { logger } from "@/lib/logger";
+import { parseDocument } from "./parser-client";
 
 // =============================================================================
 // Types
@@ -123,6 +125,15 @@ async function processJob(job: QueuedJob): Promise<boolean> {
     .where(eq(uploadedDocuments.id, documentId));
 
   try {
+    // Get document details for parsing
+    const doc = await db.query.uploadedDocuments.findFirst({
+      where: eq(uploadedDocuments.id, documentId),
+    });
+
+    if (!doc) {
+      throw new Error(`Document not found: ${documentId}`);
+    }
+
     // Update progress helper
     const updateProgress = async (progress: number) => {
       await db.update(uploadedDocuments)
@@ -130,10 +141,56 @@ async function processJob(job: QueuedJob): Promise<boolean> {
         .where(eq(uploadedDocuments.id, documentId));
     };
 
-    // Placeholder: actual parsing + OCR implemented in 102-08 and 102-09
-    // For now, simulate processing steps
+    // Step 1: Parse document (10-40%)
     await updateProgress(10);
-    await updateProgress(50);
+
+    const parseResult = await parseDocument(
+      doc.r2Key,
+      doc.fileType as "pdf" | "docx"
+    );
+
+    if (!parseResult.success) {
+      throw new Error(parseResult.error || "Parsing failed");
+    }
+
+    await updateProgress(40);
+
+    // Store extracted text and metadata
+    await db.update(uploadedDocuments)
+      .set({
+        extractedText: {
+          text: parseResult.text,
+          pageCount: parseResult.pageCount,
+        },
+        extractedMetadata: {
+          fonts: parseResult.fonts,
+          colors: parseResult.colors,
+          hasImages: parseResult.hasImages,
+          metadata: parseResult.metadata,
+        },
+      })
+      .where(eq(uploadedDocuments.id, documentId));
+
+    // Step 2: OCR if needed (40-70%) - implemented in 102-09
+    if (parseResult.needsOcr) {
+      await updateProgress(45);
+      // TODO: Call OCR service (102-09)
+      logger.info("[processing-queue] OCR needed, skipping for now", {
+        documentId,
+      });
+      await updateProgress(70);
+    } else {
+      await updateProgress(70);
+    }
+
+    // Step 3: Structure detection (70-90%) - implemented in 102-10
+    await updateProgress(75);
+    // TODO: Call structure detection (102-10)
+    await updateProgress(90);
+
+    // Step 4: Theme extraction (90-100%) - implemented in 102-11
+    await updateProgress(95);
+    // TODO: Call theme extraction (102-11)
     await updateProgress(100);
 
     // Mark complete
@@ -144,7 +201,12 @@ async function processJob(job: QueuedJob): Promise<boolean> {
       })
       .where(eq(uploadedDocuments.id, documentId));
 
-    logger.info("[processing-queue] Job completed", { documentId });
+    logger.info("[processing-queue] Job completed", {
+      documentId,
+      pages: parseResult.pageCount,
+      textLength: parseResult.text.length,
+      needsOcr: parseResult.needsOcr,
+    });
     return true;
 
   } catch (error) {
