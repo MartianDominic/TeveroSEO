@@ -12,7 +12,7 @@
  * - Content synced to store on change
  */
 
-import { useState, useCallback, type FC } from "react";
+import { useState, useCallback, useEffect, useRef, type FC } from "react";
 
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
@@ -100,6 +100,12 @@ export const BlockEditor: FC<BlockEditorProps> = ({
   const blockMetadata = getBlockMetadata(blockType);
   const placeholderText = placeholder ?? blockMetadata?.placeholder ?? DEFAULT_PLACEHOLDER;
 
+  // Stable callback ref to avoid recreating editor on every render
+  const onContentChangeRef = useRef(onContentChange);
+  useEffect(() => {
+    onContentChangeRef.current = onContentChange;
+  }, [onContentChange]);
+
   // Initialize TipTap editor
   const editor = useEditor({
     extensions: [
@@ -129,15 +135,15 @@ export const BlockEditor: FC<BlockEditorProps> = ({
     ],
     content: initialContent ?? { type: "doc", content: [] },
     editable,
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor: editorInstance }) => {
       // Get TipTap JSON content
-      const json = editor.getJSON() as TipTapContent;
+      const json = editorInstance.getJSON() as TipTapContent;
 
       // Update store
       updateBlockContent(blockId, json);
 
-      // Notify parent
-      onContentChange?.(json);
+      // Notify parent using stable ref
+      onContentChangeRef.current?.(json);
     },
     editorProps: {
       attributes: {
@@ -155,6 +161,15 @@ export const BlockEditor: FC<BlockEditorProps> = ({
       },
     },
   });
+
+  // Cleanup TipTap editor on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (editor) {
+        editor.destroy();
+      }
+    };
+  }, [editor]);
 
   // Get preceding blocks content for context
   const getPrecedingBlocksContent = useCallback((): string[] => {

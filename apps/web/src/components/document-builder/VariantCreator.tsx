@@ -13,7 +13,7 @@
  * Triggers from block actions "Create Variant" button.
  */
 
-import { type FC, useState, useCallback } from "react";
+import { type FC, useState, useCallback, useEffect } from "react";
 import { Copy, Plus, FlaskConical } from "lucide-react";
 
 import {
@@ -93,17 +93,21 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
   const [cloneFromControl, setCloneFromControl] = useState(true);
   const [weight, setWeight] = useState(50);
 
-  // Reset form when dialog opens
+  // Reset form state when dialog opens (useEffect for reliable reset)
+  useEffect(() => {
+    if (open) {
+      setVariantName(getDefaultVariantName(existingVariantCount));
+      setCloneFromControl(true);
+      setWeight(50);
+    }
+  }, [open, existingVariantCount]);
+
+  // Handle dialog open/close
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (newOpen) {
-        setVariantName(getDefaultVariantName(existingVariantCount));
-        setCloneFromControl(true);
-        setWeight(50);
-      }
       onOpenChange(newOpen);
     },
-    [existingVariantCount, onOpenChange]
+    [onOpenChange]
   );
 
   // Submit handler
