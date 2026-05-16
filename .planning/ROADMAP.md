@@ -2783,9 +2783,14 @@ Plans:
 **Requirements**: Deferred features from Phase 101 discussion
 **Depends on:** Phase 101
 **Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 102 to break down)
+- [ ] 102-01-PLAN.md — Foundation: TypeScript types, Drizzle schema, persuasion block definitions (Wave 1)
+- [ ] 102-02-PLAN.md — Block Palette & Drag-Drop: Zustand store, BlockPalette, PersuasionBlock, DocumentCanvas (Wave 1)
+- [ ] 102-03-PLAN.md — AI Generation & Templates: Gemini integration, framework templates, TipTap editor (Wave 2)
+- [ ] 102-04-PLAN.md — Analytics Pipeline: Redis counters, heatmap visualization, correlation tracking (Wave 2)
+- [ ] 102-05-PLAN.md — A/B Testing & Version Diff: Variant assignment, significance calculation, diff view (Wave 3)
 
 ---
 
