@@ -8,6 +8,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock Redis module - must use vi.hoisted for top-level variables
+const mockPipeline = vi.hoisted(() => ({
+  incr: vi.fn().mockReturnThis(),
+  incrby: vi.fn().mockReturnThis(),
+  exec: vi.fn().mockResolvedValue([]),
+}));
+
 const mockRedis = vi.hoisted(() => ({
   incr: vi.fn(),
   incrby: vi.fn(),
@@ -18,11 +24,8 @@ const mockRedis = vi.hoisted(() => ({
   zrange: vi.fn(),
   keys: vi.fn(),
   del: vi.fn(),
-  pipeline: vi.fn(() => ({
-    incr: vi.fn().mockReturnThis(),
-    incrby: vi.fn().mockReturnThis(),
-    exec: vi.fn().mockResolvedValue([]),
-  })),
+  scanStream: vi.fn(),
+  pipeline: vi.fn(() => mockPipeline),
 }));
 
 vi.mock("@/lib/redis/client", () => ({
@@ -44,8 +47,11 @@ import {
   getBlockAnalytics,
   calculateCorrelation,
   markConversion,
+  getAnalyticsKeys,
+  processBatchedEvents,
   type BlockAnalytics,
   type CorrelationResult,
+  type BlockInteraction,
 } from "../analytics-service";
 
 describe("analytics-service", () => {
@@ -281,6 +287,98 @@ describe("analytics-service", () => {
         `block:${blockId}:conversions`
       );
       expect(mockRedis.incr).toHaveBeenCalledWith(`block:${blockId}:won`);
+    });
+  });
+
+  describe("getAnalyticsKeys", () => {
+    it("uses SCAN cursor iteration, not KEYS command", async () => {
+      // Create a mock readable stream that emits keys
+      const mockStream = {
+        on: vi.fn((event: string, callback: (data?: string[]) => void) => {
+          if (event === "data") {
+            // Emit some keys
+            callback(["block:123:views", "block:456:views"]);
+          }
+          if (event === "end") {
+            // Signal stream end
+            callback();
+          }
+          return mockStream;
+        }),
+      };
+      mockRedis.scanStream.mockReturnValue(mockStream);
+
+      const keys = await getAnalyticsKeys();
+
+      // Should use scanStream, NOT keys command
+      expect(mockRedis.scanStream).toHaveBeenCalledWith({
+        match: "block:*:views",
+        count: 100,
+      });
+      expect(mockRedis.keys).not.toHaveBeenCalled();
+      expect(keys).toContain("block:123:views");
+      expect(keys).toContain("block:456:views");
+    });
+
+    it("handles SCAN pagination correctly", async () => {
+      // Create a mock stream that collects multiple batches
+      const dataCallbacks: ((data: string[]) => void)[] = [];
+      let endCallback: (() => void) | null = null;
+
+      const mockStream = {
+        on: vi.fn((event: string, callback: (data?: string[]) => void) => {
+          if (event === "data") {
+            dataCallbacks.push(callback as (data: string[]) => void);
+          }
+          if (event === "end") {
+            endCallback = callback as () => void;
+          }
+          // Simulate async emission after all handlers registered
+          setTimeout(() => {
+            if (dataCallbacks.length > 0 && endCallback) {
+              // Emit multiple batches
+              dataCallbacks[0](["block:1:views", "block:2:views"]);
+              dataCallbacks[0](["block:3:views"]);
+              endCallback();
+            }
+          }, 0);
+          return mockStream;
+        }),
+      };
+      mockRedis.scanStream.mockReturnValue(mockStream);
+
+      const keys = await getAnalyticsKeys();
+
+      expect(keys.length).toBe(3);
+    });
+  });
+
+  describe("processBatchedEvents", () => {
+    it("uses pipelined commands for atomicity", async () => {
+      const events: BlockInteraction[] = [
+        { type: "block_view", blockId: "block-1" },
+        { type: "block_view", blockId: "block-2", variantId: "variant-1" },
+        { type: "block_dwell", blockId: "block-1", dwellMs: 5000 },
+      ];
+
+      await processBatchedEvents("session-123", events);
+
+      // Should use pipeline
+      expect(mockRedis.pipeline).toHaveBeenCalled();
+      expect(mockPipeline.exec).toHaveBeenCalled();
+    });
+
+    it("pipelines INCR + INCRBY operations for non-atomic Redis operations", async () => {
+      const events: BlockInteraction[] = [
+        { type: "block_view", blockId: "block-1" },
+        { type: "block_dwell", blockId: "block-1", dwellMs: 3000 },
+      ];
+
+      await processBatchedEvents("session-123", events);
+
+      // Pipeline should have been used for multiple operations
+      expect(mockPipeline.incr).toHaveBeenCalled();
+      expect(mockPipeline.incrby).toHaveBeenCalled();
     });
   });
 });

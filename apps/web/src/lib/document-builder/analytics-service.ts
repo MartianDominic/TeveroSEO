@@ -386,11 +386,35 @@ export async function processBatchedEvents(
 /**
  * Get all analytics keys for sync worker.
  *
- * Returns Redis keys matching the block analytics pattern.
+ * Uses SCAN cursor iteration instead of KEYS command to avoid O(N) blocking.
+ * Per Redis best practices: KEYS should never be used in production.
+ *
+ * @returns Array of Redis keys matching block analytics pattern
  */
 export async function getAnalyticsKeys(): Promise<string[]> {
   try {
-    return await redis.keys("block:*:views");
+    const keys: string[] = [];
+
+    // Use scanStream for non-blocking cursor iteration
+    const stream = redis.scanStream({
+      match: "block:*:views",
+      count: 100, // Batch size hint for Redis
+    });
+
+    return new Promise((resolve, reject) => {
+      stream.on("data", (batch: string[]) => {
+        keys.push(...batch);
+      });
+
+      stream.on("end", () => {
+        resolve(keys);
+      });
+
+      stream.on("error", (err: Error) => {
+        logger.error("[analytics-service] SCAN stream error", { error: err.message });
+        reject(err);
+      });
+    });
   } catch (error) {
     logger.error(
       "[analytics-service] getAnalyticsKeys error",
