@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: completed
-last_updated: "2026-05-16T19:51:19.931Z"
+last_updated: "2026-05-16T20:00:34.836Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 14
@@ -396,6 +396,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - Skeleton cards with Tailwind animate-in for D-01 micro-animations
 - 102-07: In-memory queue with setInterval instead of BullMQ (apps/web pattern per 102-06)
 - 102-08: PyMuPDF for PDF parsing (superior extraction), python-docx for DOCX, port 8001 for service
+- 102-09: Tiered OCR with Tesseract (80%), DeepSeek (85%), Gemini fallback; pytesseract for local OCR; OpenRouter for DeepSeek; google-generativeai for Gemini
 
 ## v5.0 Phases Summary
 
