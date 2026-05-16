@@ -11,9 +11,11 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { uploadedDocuments } from "@/db/schema/document-builder";
+import { uploadedDocuments, detectedStructures } from "@/db/schema/document-builder";
 import { logger } from "@/lib/logger";
 import { parseDocument } from "./parser-client";
+import { detectStructure } from "./structure-detector";
+import { detectVariables } from "./variable-detector";
 
 // =============================================================================
 // Types
@@ -185,7 +187,67 @@ async function processJob(job: QueuedJob): Promise<boolean> {
 
     // Step 3: Structure detection (70-90%) - implemented in 102-10
     await updateProgress(75);
-    // TODO: Call structure detection (102-10)
+
+    const extractedText = parseResult.text;
+    if (extractedText && extractedText.length > 10) {
+      try {
+        // Detect persuasion blocks
+        const structureResult = await detectStructure(extractedText);
+
+        // Save detected structures to database
+        if (structureResult.blocks.length > 0) {
+          for (const block of structureResult.blocks) {
+            // Detect variables within each block
+            const blockVariables = detectVariables(block.content);
+            const allVariables = [
+              ...blockVariables.explicit.map((v) => ({
+                id: v.id,
+                originalText: v.originalText,
+                suggestedVariable: v.suggestedVariable,
+                variableType: v.variableType,
+                confidence: v.confidence,
+                occurrences: v.occurrences,
+                positions: v.positions,
+              })),
+              ...blockVariables.implicit.map((v) => ({
+                id: v.id,
+                originalText: v.originalText,
+                suggestedVariable: v.suggestedVariable,
+                variableType: v.variableType,
+                confidence: v.confidence,
+                occurrences: v.occurrences,
+                positions: v.positions,
+              })),
+            ];
+
+            await db.insert(detectedStructures).values({
+              documentId,
+              blockType: block.type,
+              position: block.position ?? 0,
+              confidence: block.confidence,
+              originalText: block.content,
+              suggestedContent: null, // AI can suggest improved content later
+              detectedVariables: allVariables,
+              reasoning: block.reasoning ?? null,
+              verified: "pending",
+            });
+          }
+        }
+
+        logger.info("[processing-queue] Structure detection complete", {
+          documentId,
+          blocksDetected: structureResult.blocks.length,
+          language: structureResult.metadata.language,
+        });
+      } catch (structureError) {
+        // Structure detection failure is non-blocking
+        logger.warn("[processing-queue] Structure detection failed", {
+          documentId,
+          error: structureError instanceof Error ? structureError.message : String(structureError),
+        });
+      }
+    }
+
     await updateProgress(90);
 
     // Step 4: Theme extraction (90-100%) - implemented in 102-11
