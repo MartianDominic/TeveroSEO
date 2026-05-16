@@ -12,7 +12,6 @@ import {
   FRAMEWORK_TEMPLATES,
   PERSUASION_BLOCK_TYPES,
   getFrameworkTemplate as getFrameworkFromBlocks,
-  validateFrameworkCompliance as validateFromBlocks,
 } from "./persuasion-blocks";
 import type {
   FrameworkTemplate,

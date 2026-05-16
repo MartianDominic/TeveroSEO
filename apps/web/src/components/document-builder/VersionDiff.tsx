@@ -137,15 +137,21 @@ const VersionSelector: FC<VersionSelectorProps> = ({
   side,
 }) => {
   const currentVersion = versions.find((v) => v.id === currentVersionId);
+  const selectId = `version-selector-${side}`;
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-medium text-text-3 uppercase tracking-wide">
+      <label
+        htmlFor={selectId}
+        className="text-xs font-medium text-text-3 uppercase tracking-wide"
+      >
         {label}
-      </span>
+      </label>
       <select
+        id={selectId}
         value={currentVersionId}
         onChange={(e) => onChange(e.target.value)}
+        aria-label={`Select ${label.toLowerCase()} for comparison`}
         className={cn(
           "px-2 py-1",
           "text-sm text-text-1",
