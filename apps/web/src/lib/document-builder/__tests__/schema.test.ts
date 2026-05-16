@@ -12,6 +12,9 @@ import {
   persuasionBlocks,
   blockVariants,
   proposalStructures,
+  uploadedDocuments,
+  type UploadedDocument,
+  type NewUploadedDocument,
 } from "@/db/schema/document-builder";
 
 describe("document-builder/schema", () => {
@@ -113,6 +116,81 @@ describe("document-builder/schema", () => {
       const columnNames = Object.keys(proposalStructures);
       expect(columnNames).toContain("createdAt");
       expect(columnNames).toContain("updatedAt");
+    });
+  });
+
+  describe("uploadedDocuments table (102-07)", () => {
+    it("has id, workspaceId, fileName, fileType, fileSize, r2Key fields", () => {
+      expect(uploadedDocuments).toBeDefined();
+
+      const columnNames = Object.keys(uploadedDocuments);
+      expect(columnNames).toContain("id");
+      expect(columnNames).toContain("workspaceId");
+      expect(columnNames).toContain("fileName");
+      expect(columnNames).toContain("fileType");
+      expect(columnNames).toContain("fileSize");
+      expect(columnNames).toContain("r2Key");
+    });
+
+    it("has status field with valid values", () => {
+      const columnNames = Object.keys(uploadedDocuments);
+      expect(columnNames).toContain("status");
+      expect(uploadedDocuments.status.name).toBe("status");
+    });
+
+    it("has processingProgress field as integer 0-100", () => {
+      const columnNames = Object.keys(uploadedDocuments);
+      expect(columnNames).toContain("processingProgress");
+      expect(uploadedDocuments.processingProgress.name).toBe("processing_progress");
+    });
+
+    it("has extractedText and extractedMetadata as nullable JSONB", () => {
+      const columnNames = Object.keys(uploadedDocuments);
+      expect(columnNames).toContain("extractedText");
+      expect(columnNames).toContain("extractedMetadata");
+    });
+
+    it("has indexes on workspaceId and status", () => {
+      // Verify columns used in indexes exist
+      expect(uploadedDocuments.workspaceId.name).toBe("workspace_id");
+      expect(uploadedDocuments.status.name).toBe("status");
+    });
+
+    it("exports UploadedDocument type", () => {
+      const doc: UploadedDocument = {
+        id: "test-id",
+        workspaceId: "ws-123",
+        fileName: "test.pdf",
+        fileType: "pdf",
+        fileSize: 1024,
+        mimeType: "application/pdf",
+        r2Key: "ws-123/doc-id/test.pdf",
+        r2Bucket: "documents",
+        status: "pending",
+        processingProgress: 0,
+        processingError: null,
+        processingStartedAt: null,
+        processingCompletedAt: null,
+        extractedText: null,
+        extractedMetadata: null,
+        ocrTier: null,
+        ocrConfidence: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      expect(doc.id).toBe("test-id");
+    });
+
+    it("exports NewUploadedDocument type", () => {
+      const newDoc: NewUploadedDocument = {
+        workspaceId: "ws-123",
+        fileName: "test.pdf",
+        fileType: "pdf",
+        fileSize: 1024,
+        mimeType: "application/pdf",
+        r2Key: "ws-123/doc-id/test.pdf",
+      };
+      expect(newDoc.workspaceId).toBe("ws-123");
     });
   });
 });

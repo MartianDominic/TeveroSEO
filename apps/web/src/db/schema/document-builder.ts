@@ -17,7 +17,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
-import { proposals } from "./seo-chat";
+import { seoChatProposals } from "./seo-chat";
 import type {
   PersuasionBlockType,
   TipTapContent,
@@ -43,7 +43,7 @@ export const persuasionBlocks = pgTable(
       .$defaultFn(() => nanoid()),
     proposalId: text("proposal_id")
       .notNull()
-      .references(() => proposals.id, { onDelete: "cascade" }),
+      .references(() => seoChatProposals.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").notNull(),
 
     // Block type and position
@@ -148,7 +148,7 @@ export const proposalStructures = pgTable(
       .$defaultFn(() => nanoid()),
     proposalId: text("proposal_id")
       .notNull()
-      .references(() => proposals.id, { onDelete: "cascade" }),
+      .references(() => seoChatProposals.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").notNull(),
 
     // Framework information
@@ -185,9 +185,9 @@ export const proposalStructures = pgTable(
 export const persuasionBlocksRelations = relations(
   persuasionBlocks,
   ({ one, many }) => ({
-    proposal: one(proposals, {
+    proposal: one(seoChatProposals, {
       fields: [persuasionBlocks.proposalId],
-      references: [proposals.id],
+      references: [seoChatProposals.id],
     }),
     variants: many(blockVariants),
   })
@@ -203,9 +203,9 @@ export const blockVariantsRelations = relations(blockVariants, ({ one }) => ({
 export const proposalStructuresRelations = relations(
   proposalStructures,
   ({ one }) => ({
-    proposal: one(proposals, {
+    proposal: one(seoChatProposals, {
       fields: [proposalStructures.proposalId],
-      references: [proposals.id],
+      references: [seoChatProposals.id],
     }),
   })
 );
@@ -220,3 +220,59 @@ export type BlockVariantDB = typeof blockVariants.$inferSelect;
 export type BlockVariantInsert = typeof blockVariants.$inferInsert;
 export type ProposalStructure = typeof proposalStructures.$inferSelect;
 export type ProposalStructureInsert = typeof proposalStructures.$inferInsert;
+
+// =====================================
+// Uploaded Documents Table (102-07)
+// =====================================
+
+/**
+ * Uploaded documents for processing.
+ * Tracks files uploaded to R2 and their processing status.
+ */
+export const uploadedDocuments = pgTable(
+  "uploaded_documents",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    workspaceId: text("workspace_id").notNull(),
+
+    // File metadata
+    fileName: text("file_name").notNull(),
+    fileType: text("file_type").notNull(), // 'pdf' | 'docx' | 'image'
+    fileSize: integer("file_size").notNull(), // bytes
+    mimeType: text("mime_type").notNull(),
+
+    // Storage
+    r2Key: text("r2_key").notNull(),
+    r2Bucket: text("r2_bucket").notNull().default("documents"),
+
+    // Processing state
+    status: text("status").notNull().default("pending"), // pending | processing | completed | failed
+    processingProgress: integer("processing_progress").notNull().default(0), // 0-100
+    processingError: text("processing_error"),
+    processingStartedAt: timestamp("processing_started_at", { withTimezone: true, mode: "date" }),
+    processingCompletedAt: timestamp("processing_completed_at", { withTimezone: true, mode: "date" }),
+
+    // Extracted data (populated after processing)
+    extractedText: jsonb("extracted_text"),
+    extractedMetadata: jsonb("extracted_metadata"), // fonts, colors, structure hints
+    ocrTier: text("ocr_tier"), // 'native' | 'tesseract' | 'deepseek' | 'gemini'
+    ocrConfidence: integer("ocr_confidence"), // 0-100
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_uploaded_documents_workspace").on(table.workspaceId),
+    index("idx_uploaded_documents_status").on(table.status),
+  ]
+);
+
+export type UploadedDocument = typeof uploadedDocuments.$inferSelect;
+export type NewUploadedDocument = typeof uploadedDocuments.$inferInsert;
