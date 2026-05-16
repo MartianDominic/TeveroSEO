@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Unified Product
 status: completed
-last_updated: "2026-05-16T19:41:17.865Z"
+last_updated: "2026-05-16T19:51:19.931Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 14
@@ -395,6 +395,7 @@ All 6 phases complete. Prospect data model, website scraping, keyword gap analys
 - whitespace-pre-wrap for LLM text rendering (NEVER innerHTML per T-98-04)
 - Skeleton cards with Tailwind animate-in for D-01 micro-animations
 - 102-07: In-memory queue with setInterval instead of BullMQ (apps/web pattern per 102-06)
+- 102-08: PyMuPDF for PDF parsing (superior extraction), python-docx for DOCX, port 8001 for service
 
 ## v5.0 Phases Summary
 
