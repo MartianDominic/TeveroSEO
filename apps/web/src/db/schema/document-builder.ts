@@ -359,3 +359,81 @@ export const detectedStructuresRelations = relations(
 
 export type DetectedStructure = typeof detectedStructures.$inferSelect;
 export type NewDetectedStructure = typeof detectedStructures.$inferInsert;
+
+// =====================================
+// Brand Themes Table (102-11)
+// =====================================
+
+/**
+ * Voice attributes extracted from document.
+ */
+export interface VoiceAttributes {
+  tone: string[];       // formal, casual, technical, friendly
+  vocabulary: string[]; // industry-specific terms detected
+  patterns: string[];   // common phrases
+}
+
+/**
+ * Font usage information.
+ */
+export interface FontInfo {
+  name: string;
+  usage: "heading" | "body" | "accent";
+}
+
+/**
+ * Extracted brand themes from uploaded documents.
+ * Stores colors, fonts, and voice attributes for brand consistency.
+ */
+export const brandThemes = pgTable(
+  "brand_themes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => uploadedDocuments.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id").notNull(),
+
+    // Visual identity
+    colors: jsonb("colors").$type<string[]>().notNull().default([]), // Hex colors
+    primaryColor: text("primary_color"),
+    secondaryColor: text("secondary_color"),
+
+    // Typography
+    fonts: jsonb("fonts").$type<FontInfo[]>().notNull().default([]),
+    headingFont: text("heading_font"),
+    bodyFont: text("body_font"),
+
+    // Voice attributes
+    voiceAttributes: jsonb("voice_attributes").$type<VoiceAttributes>(),
+
+    // AI confidence (0-100)
+    extractionConfidence: integer("extraction_confidence"),
+
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_brand_themes_document").on(table.documentId),
+    index("idx_brand_themes_workspace").on(table.workspaceId),
+    check("confidence_range_themes", sql`${table.extractionConfidence} IS NULL OR (${table.extractionConfidence} >= 0 AND ${table.extractionConfidence} <= 100)`),
+  ]
+);
+
+// Relations for brandThemes
+export const brandThemesRelations = relations(
+  brandThemes,
+  ({ one }) => ({
+    document: one(uploadedDocuments, {
+      fields: [brandThemes.documentId],
+      references: [uploadedDocuments.id],
+    }),
+  })
+);
+
+export type BrandTheme = typeof brandThemes.$inferSelect;
+export type NewBrandTheme = typeof brandThemes.$inferInsert;
