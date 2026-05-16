@@ -16,7 +16,9 @@
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 
+import { logger } from "@/lib/logger";
 import { PERSUASION_BLOCK_TYPES } from "./persuasion-blocks";
+import { sanitizeForPrompt, containsInjectionPatterns } from "./input-sanitizer";
 import type { ProspectContext, StyleReference, PersuasionBlockType } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -120,27 +122,28 @@ export function buildPrompt(request: GenerationRequest): string {
   sections.push(blockInfo.aiPromptHint);
   sections.push("");
 
-  // Prospect context
+  // Prospect context - sanitize all user-provided values
   if (request.prospect) {
     sections.push("PROSPECT CONTEXT:");
     if (request.prospect.domain) {
-      sections.push(`- Domain: ${request.prospect.domain}`);
+      sections.push(`- Domain: ${sanitizeForPrompt(request.prospect.domain)}`);
     }
     if (request.prospect.niche) {
-      sections.push(`- Industry/Niche: ${request.prospect.niche}`);
+      sections.push(`- Industry/Niche: ${sanitizeForPrompt(request.prospect.niche)}`);
     }
     if (request.prospect.painPoints && request.prospect.painPoints.length > 0) {
-      sections.push(`- Pain Points: ${request.prospect.painPoints.join(", ")}`);
+      const sanitizedPainPoints = request.prospect.painPoints.map(sanitizeForPrompt);
+      sections.push(`- Pain Points: ${sanitizedPainPoints.join(", ")}`);
     }
     sections.push("");
   }
 
-  // Style references
+  // Style references - sanitize user-provided content
   if (request.styleReferences && request.styleReferences.length > 0) {
     sections.push("STYLE REFERENCES:");
     for (const ref of request.styleReferences) {
       if (ref.content) {
-        sections.push(`- ${ref.content}`);
+        sections.push(`- ${sanitizeForPrompt(ref.content)}`);
       }
     }
     sections.push("");
@@ -152,11 +155,11 @@ export function buildPrompt(request: GenerationRequest): string {
     sections.push("");
   }
 
-  // Preceding blocks for narrative flow
+  // Preceding blocks for narrative flow - sanitize content
   if (request.precedingBlocks && request.precedingBlocks.length > 0) {
     sections.push("PRECEDING CONTENT (for narrative flow):");
     for (const block of request.precedingBlocks) {
-      sections.push(`- "${block}"`);
+      sections.push(`- "${sanitizeForPrompt(block)}"`);
     }
     sections.push("");
   }
@@ -170,7 +173,7 @@ export function buildPrompt(request: GenerationRequest): string {
     case "improve":
       sections.push("Improve the following existing content while maintaining its core message:");
       if (request.existingContent) {
-        sections.push(`"${request.existingContent}"`);
+        sections.push(`"${sanitizeForPrompt(request.existingContent)}"`);
       }
       break;
     case "fill_variables":
@@ -194,10 +197,10 @@ export function buildPrompt(request: GenerationRequest): string {
   sections.push("- Output only the content, no explanations or markdown formatting");
   sections.push("");
 
-  // Custom prompt
+  // Custom prompt - sanitize user input
   if (request.customPrompt) {
     sections.push("ADDITIONAL INSTRUCTIONS:");
-    sections.push(request.customPrompt);
+    sections.push(sanitizeForPrompt(request.customPrompt));
   }
 
   return sections.join("\n");
@@ -219,6 +222,33 @@ export async function generateBlockContent(
   request: GenerationRequest
 ): Promise<GenerationResponse> {
   try {
+    // Input validation
+    if (!request.blockType) {
+      logger.warn("[ai-generator] Missing blockType in request");
+      return { content: FALLBACK_MESSAGE, confidence: 0 };
+    }
+
+    // Log potential injection attempts for security monitoring
+    const fieldsToCheck = [
+      request.customPrompt,
+      request.existingContent,
+      request.prospect?.domain,
+      request.prospect?.niche,
+      ...(request.prospect?.painPoints ?? []),
+      ...(request.precedingBlocks ?? []),
+      ...(request.styleReferences?.map((r) => r.content) ?? []),
+    ].filter(Boolean) as string[];
+
+    for (const field of fieldsToCheck) {
+      if (containsInjectionPatterns(field)) {
+        logger.warn("[ai-generator] Potential injection pattern detected", {
+          blockType: request.blockType,
+          fieldLength: field.length,
+        });
+        break;
+      }
+    }
+
     const prompt = buildPrompt(request);
 
     const result = await generateText({
@@ -238,7 +268,11 @@ export async function generateBlockContent(
     };
   } catch (error) {
     // Log error but return graceful fallback
-    console.error("[ai-generator] Generation failed:", error);
+    logger.error("[ai-generator] Generation failed", {
+      blockType: request.blockType,
+      intent: request.intent,
+      error: error instanceof Error ? error.message : String(error),
+    });
 
     return {
       content: FALLBACK_MESSAGE,
