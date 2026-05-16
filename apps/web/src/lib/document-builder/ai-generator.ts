@@ -1,0 +1,248 @@
+/**
+ * AI Generation Service for Document Builder
+ * Phase 102-03: AI content generation
+ *
+ * Generates persuasive content using Gemini 3.1 Pro.
+ * Cost: $1.25/1M tokens per D-05.
+ *
+ * Features:
+ * - Block-type specific prompt engineering
+ * - Prospect context integration
+ * - Style reference support
+ * - Framework compliance context
+ * - Multi-language support (Lithuanian, English)
+ */
+
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+
+import { PERSUASION_BLOCK_TYPES } from "./persuasion-blocks";
+import type { ProspectContext, StyleReference, PersuasionBlockType } from "./types";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/**
+ * Generation request per DOCUMENT-BUILDER-ARCHITECTURE.md.
+ */
+export interface GenerationRequest {
+  /** Block type to generate content for */
+  blockType: PersuasionBlockType;
+  /** Intent of the generation */
+  intent: "create" | "fill_variables" | "regenerate" | "improve";
+  /** Prospect context for personalization */
+  prospect: ProspectContext;
+  /** Style references for tone matching */
+  styleReferences?: StyleReference[];
+  /** Existing content (for improve intent) */
+  existingContent?: string;
+  /** User's custom instructions */
+  customPrompt?: string;
+  /** Maximum word count */
+  maxLength?: number;
+  /** Desired tone */
+  tone?: string;
+  /** Target language (default: 'lt' for Lithuanian) */
+  language: string;
+  /** Framework identifier for compliance */
+  framework?: string;
+  /** Content of preceding blocks for context */
+  precedingBlocks?: string[];
+}
+
+/**
+ * Generation response.
+ */
+export interface GenerationResponse {
+  /** Generated content */
+  content: string;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Alternative phrasings */
+  suggestions?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  lt: "Lithuanian",
+  en: "English",
+};
+
+const FALLBACK_MESSAGE = "Unable to generate content. Please try again or write your content manually.";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Get block metadata for prompt construction.
+ */
+function getBlockInfo(blockType: PersuasionBlockType): {
+  label: string;
+  description: string;
+  aiPromptHint: string;
+} {
+  const metadata = PERSUASION_BLOCK_TYPES.find((b) => b.type === blockType);
+  if (!metadata) {
+    return {
+      label: "Custom Block",
+      description: "Freeform content section",
+      aiPromptHint: "Generate relevant persuasive content.",
+    };
+  }
+  return {
+    label: metadata.label,
+    description: metadata.description,
+    aiPromptHint: metadata.aiPromptHint,
+  };
+}
+
+/**
+ * Build the AI prompt from generation request.
+ */
+export function buildPrompt(request: GenerationRequest): string {
+  const blockInfo = getBlockInfo(request.blockType);
+  const languageName = LANGUAGE_NAMES[request.language] ?? "English";
+
+  const sections: string[] = [];
+
+  // System context
+  sections.push(`You are generating content for a "${request.blockType}" (${blockInfo.label}) block in a persuasive proposal document.`);
+  sections.push(`Purpose: ${blockInfo.description}`);
+  sections.push("");
+
+  // Block-specific guidance
+  sections.push("BLOCK-SPECIFIC GUIDANCE:");
+  sections.push(blockInfo.aiPromptHint);
+  sections.push("");
+
+  // Prospect context
+  if (request.prospect) {
+    sections.push("PROSPECT CONTEXT:");
+    if (request.prospect.domain) {
+      sections.push(`- Domain: ${request.prospect.domain}`);
+    }
+    if (request.prospect.niche) {
+      sections.push(`- Industry/Niche: ${request.prospect.niche}`);
+    }
+    if (request.prospect.painPoints && request.prospect.painPoints.length > 0) {
+      sections.push(`- Pain Points: ${request.prospect.painPoints.join(", ")}`);
+    }
+    sections.push("");
+  }
+
+  // Style references
+  if (request.styleReferences && request.styleReferences.length > 0) {
+    sections.push("STYLE REFERENCES:");
+    for (const ref of request.styleReferences) {
+      if (ref.content) {
+        sections.push(`- ${ref.content}`);
+      }
+    }
+    sections.push("");
+  }
+
+  // Framework context
+  if (request.framework) {
+    sections.push(`FRAMEWORK: This block is part of the "${request.framework}" persuasion framework. Ensure content aligns with framework principles.`);
+    sections.push("");
+  }
+
+  // Preceding blocks for narrative flow
+  if (request.precedingBlocks && request.precedingBlocks.length > 0) {
+    sections.push("PRECEDING CONTENT (for narrative flow):");
+    for (const block of request.precedingBlocks) {
+      sections.push(`- "${block}"`);
+    }
+    sections.push("");
+  }
+
+  // Intent-specific instructions
+  sections.push("TASK:");
+  switch (request.intent) {
+    case "create":
+      sections.push("Generate fresh, compelling content for this block.");
+      break;
+    case "improve":
+      sections.push("Improve the following existing content while maintaining its core message:");
+      if (request.existingContent) {
+        sections.push(`"${request.existingContent}"`);
+      }
+      break;
+    case "fill_variables":
+      sections.push("Fill in the variable placeholders with appropriate values based on context.");
+      break;
+    case "regenerate":
+      sections.push("Generate a completely new version of this block with a fresh approach.");
+      break;
+  }
+  sections.push("");
+
+  // Constraints
+  sections.push("CONSTRAINTS:");
+  sections.push(`- Write in ${languageName}`);
+  if (request.maxLength) {
+    sections.push(`- Maximum length: ${request.maxLength} words`);
+  }
+  if (request.tone) {
+    sections.push(`- Tone: ${request.tone}`);
+  }
+  sections.push("- Output only the content, no explanations or markdown formatting");
+  sections.push("");
+
+  // Custom prompt
+  if (request.customPrompt) {
+    sections.push("ADDITIONAL INSTRUCTIONS:");
+    sections.push(request.customPrompt);
+  }
+
+  return sections.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Main Generation Function
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate content for a document builder block.
+ *
+ * Uses Gemini 3.1 Pro for high-quality content generation.
+ *
+ * @param request - Generation request with block type, context, and constraints
+ * @returns Generated content with confidence score
+ */
+export async function generateBlockContent(
+  request: GenerationRequest
+): Promise<GenerationResponse> {
+  try {
+    const prompt = buildPrompt(request);
+
+    const result = await generateText({
+      model: google("gemini-3.1-pro"),
+      prompt,
+    });
+
+    // Calculate confidence based on content length and presence of key elements
+    // This is a heuristic - longer, more detailed content suggests higher confidence
+    const contentLength = result.text.length;
+    const hasStructure = result.text.includes("\n") || result.text.length > 100;
+    const confidence = Math.min(0.95, Math.max(0.5, contentLength / 500 + (hasStructure ? 0.2 : 0)));
+
+    return {
+      content: result.text,
+      confidence,
+    };
+  } catch (error) {
+    // Log error but return graceful fallback
+    console.error("[ai-generator] Generation failed:", error);
+
+    return {
+      content: FALLBACK_MESSAGE,
+      confidence: 0,
+    };
+  }
+}
