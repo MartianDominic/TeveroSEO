@@ -68,6 +68,7 @@ export function UploadDropzone({
         [".docx"],
       "image/png": [".png"],
       "image/jpeg": [".jpg", ".jpeg"],
+      "image/webp": [".webp"],
     },
     maxFiles: 1,
     maxSize: 20 * 1024 * 1024, // 20MB
@@ -98,71 +99,97 @@ export function UploadDropzone({
         className
       )}
     >
-      <input {...getInputProps()} />
+      <input {...getInputProps()} aria-label="Upload document file" />
 
-      {/* Idle State */}
-      {status === "idle" && (
-        <>
-          <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            {isDragActive
-              ? "Drop your file here"
-              : "Drag & drop a PDF or DOCX, or click to select"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground/75">
-            Supported: PDF, DOCX, PNG, JPG (Max 20MB)
-          </p>
-        </>
-      )}
+      {/* Status indicator with live region for screen readers */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label={
+          status === "idle"
+            ? "Ready to upload"
+            : status === "uploading"
+              ? "Uploading file"
+              : status === "processing"
+                ? `Processing document, ${progress}% complete`
+                : status === "completed"
+                  ? "Upload completed successfully"
+                  : status === "error"
+                    ? `Upload failed: ${error || "Unknown error"}`
+                    : "Ready to upload"
+        }
+      >
+        {/* Idle State */}
+        {status === "idle" && (
+          <>
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden="true" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isDragActive
+                ? "Drop your file here"
+                : "Drag & drop a PDF or DOCX, or click to select"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground/75">
+              Supported: PDF, DOCX, PNG, JPG, WEBP (Max 20MB)
+            </p>
+          </>
+        )}
 
-      {/* Uploading State */}
-      {status === "uploading" && (
-        <>
-          <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
-          <p className="mt-2 text-sm">Uploading...</p>
-        </>
-      )}
+        {/* Uploading State */}
+        {status === "uploading" && (
+          <>
+            <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" aria-hidden="true" />
+            <p className="mt-2 text-sm">Uploading...</p>
+          </>
+        )}
 
-      {/* Processing State */}
-      {status === "processing" && (
-        <>
-          <FileText className="mx-auto h-12 w-12 text-primary" />
-          <p className="mt-2 text-sm">Processing document...</p>
-          <div className="mt-2 w-full max-w-xs mx-auto bg-muted rounded-full h-2">
+        {/* Processing State */}
+        {status === "processing" && (
+          <>
+            <FileText className="mx-auto h-12 w-12 text-primary" aria-hidden="true" />
+            <p className="mt-2 text-sm">Processing document...</p>
             <div
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{progress}%</p>
-        </>
-      )}
+              className="mt-2 w-full max-w-xs mx-auto bg-muted rounded-full h-2"
+              role="progressbar"
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Document processing progress"
+            >
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{progress}%</p>
+          </>
+        )}
 
-      {/* Completed State */}
-      {status === "completed" && (
-        <>
-          <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-          <p className="mt-2 text-sm text-green-600">
-            Document processed successfully!
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Click to upload another file
-          </p>
-        </>
-      )}
+        {/* Completed State */}
+        {status === "completed" && (
+          <>
+            <CheckCircle className="mx-auto h-12 w-12 text-green-500" aria-hidden="true" />
+            <p className="mt-2 text-sm text-green-600">
+              Document processed successfully!
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Click to upload another file
+            </p>
+          </>
+        )}
 
-      {/* Error State */}
-      {status === "error" && (
-        <>
-          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-          <p className="mt-2 text-sm text-destructive">
-            {error || "Upload failed"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Click to try again
-          </p>
-        </>
-      )}
+        {/* Error State */}
+        {status === "error" && (
+          <>
+            <AlertCircle className="mx-auto h-12 w-12 text-destructive" aria-hidden="true" />
+            <p className="mt-2 text-sm text-destructive">
+              {error || "Upload failed"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Click to try again
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
