@@ -8,8 +8,10 @@ Key features:
 - Color palette extraction
 - Image detection for OCR decision
 - Password-protected PDF detection
+- Memory-efficient streaming for large PDFs
 """
 
+import gc
 import fitz  # PyMuPDF
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
@@ -43,19 +45,16 @@ def parse_pdf(file_path: str) -> PdfParseResult:
         ValueError: For password-protected PDFs
     """
 
-    doc = None
+    # Validate file can be opened and check encryption before processing
     try:
-        doc = fitz.open(file_path)
-    except Exception as e:
+        with fitz.open(file_path) as test_doc:
+            if test_doc.is_encrypted:
+                raise ValueError("Password-protected PDF detected. Please remove password protection.")
+    except fitz.fitz.FileDataError as e:
         error_str = str(e).lower()
         if "password" in error_str or "encrypted" in error_str:
             raise ValueError("Password-protected PDF detected. Please remove password protection.")
         raise
-
-    # Check if encrypted
-    if doc.is_encrypted:
-        doc.close()
-        raise ValueError("Password-protected PDF detected. Please remove password protection.")
 
     all_text = []
     all_fonts: Counter = Counter()
@@ -63,64 +62,76 @@ def parse_pdf(file_path: str) -> PdfParseResult:
     has_images = False
     needs_ocr = False
     page_images = []
+    doc_metadata = {}
 
-    # Extract metadata before iterating
-    doc_metadata = {
-        "title": doc.metadata.get("title", "") if doc.metadata else "",
-        "author": doc.metadata.get("author", "") if doc.metadata else "",
-        "creator": doc.metadata.get("creator", "") if doc.metadata else "",
-    }
+    # Use context manager to ensure proper cleanup on all code paths
+    with fitz.open(file_path) as doc:
+        # Extract metadata before iterating
+        doc_metadata = {
+            "title": doc.metadata.get("title", "") if doc.metadata else "",
+            "author": doc.metadata.get("author", "") if doc.metadata else "",
+            "creator": doc.metadata.get("creator", "") if doc.metadata else "",
+        }
 
-    for page_num, page in enumerate(doc):
-        # Extract text with formatting
-        blocks = page.get_text("dict")["blocks"]
-        page_text = []
-        page_has_text = False
+        for page_num in range(len(doc)):
+            # Load page explicitly for memory control
+            page = doc.load_page(page_num)
 
-        for block in blocks:
-            if block["type"] == 0:  # Text block
-                for line in block.get("lines", []):
-                    for span in line.get("spans", []):
-                        text = span.get("text", "")
-                        if text.strip():
-                            page_text.append(text)
-                            page_has_text = True
+            # Extract text with formatting
+            blocks = page.get_text("dict")["blocks"]
+            page_text = []
 
-                            # Track fonts
-                            font_name = span.get("font", "unknown")
-                            font_size = span.get("size", 12)
-                            font_key = f"{font_name}:{font_size:.0f}"
-                            all_fonts[font_key] += len(text)
+            for block in blocks:
+                if block["type"] == 0:  # Text block
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            text = span.get("text", "")
+                            if text.strip():
+                                page_text.append(text)
 
-                            # Track colors (as hex)
-                            color = span.get("color", 0)
-                            if isinstance(color, int):
-                                hex_color = f"#{color:06x}"
-                                all_colors[hex_color] += len(text)
+                                # Track fonts (use | separator to avoid conflicts with font names containing colons)
+                                font_name = span.get("font", "unknown")
+                                font_size = span.get("size", 12)
+                                font_key = f"{font_name}|{font_size:.0f}"
+                                all_fonts[font_key] += len(text)
 
-            elif block["type"] == 1:  # Image block
-                has_images = True
+                                # Track colors (as hex)
+                                color = span.get("color", 0)
+                                if isinstance(color, int):
+                                    hex_color = f"#{color:06x}"
+                                    all_colors[hex_color] += len(text)
 
-        text = " ".join(page_text).strip()
-        all_text.append(text)
+                elif block["type"] == 1:  # Image block
+                    has_images = True
 
-        # If page has very little text but has images, likely needs OCR
-        if len(text) < 50 and has_images:
-            needs_ocr = True
-            # Render page to image for potential OCR
-            try:
-                pix = page.get_pixmap(dpi=150)
-                page_images.append(pix.tobytes("png"))
-            except Exception:
-                # Silently skip if rendering fails
-                pass
+            text = " ".join(page_text).strip()
+            all_text.append(text)
 
-    doc.close()
+            # If page has very little text but has images, likely needs OCR
+            if len(text) < 50 and has_images:
+                needs_ocr = True
+                # Render page to image for potential OCR - limit to first 3 pages
+                # to avoid memory explosion on large image-heavy PDFs
+                if len(page_images) < 3:
+                    try:
+                        pix = page.get_pixmap(dpi=150)
+                        page_images.append(pix.tobytes("png"))
+                        del pix  # Release pixmap memory immediately
+                    except Exception:
+                        # Silently skip if rendering fails
+                        pass
+
+            # Release page memory after processing
+            del page
+
+            # For large documents (100+ pages), trigger garbage collection periodically
+            if page_num > 0 and page_num % 50 == 0:
+                gc.collect()
 
     # Build font list (top 10 by usage)
     fonts = []
     for font_key, count in all_fonts.most_common(10):
-        parts = font_key.rsplit(":", 1)
+        parts = font_key.rsplit("|", 1)
         if len(parts) == 2:
             fonts.append({
                 "font": parts[0],
