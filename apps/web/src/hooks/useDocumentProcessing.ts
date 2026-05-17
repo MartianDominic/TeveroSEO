@@ -58,6 +58,9 @@ export function useDocumentProcessing(): UseDocumentProcessingReturn {
 
   // Use ref to track polling interval for cleanup
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Track consecutive polling failures
+  const consecutiveFailuresRef = useRef<number>(0);
+  const MAX_CONSECUTIVE_FAILURES = 5;
 
   /**
    * Upload a document to the API.
@@ -124,6 +127,8 @@ export function useDocumentProcessing(): UseDocumentProcessingReturn {
 
         const data: DocumentStatus = await response.json();
 
+        // Reset failure counter on successful poll
+        consecutiveFailuresRef.current = 0;
         setProgress(data.progress || 0);
 
         if (data.status === "completed") {
@@ -140,8 +145,22 @@ export function useDocumentProcessing(): UseDocumentProcessingReturn {
             pollIntervalRef.current = null;
           }
         }
-      } catch {
-        // Ignore polling errors - will retry on next interval
+      } catch (e) {
+        consecutiveFailuresRef.current += 1;
+        console.warn(
+          `[useDocumentProcessing] Polling error (${consecutiveFailuresRef.current}/${MAX_CONSECUTIVE_FAILURES}):`,
+          e instanceof Error ? e.message : String(e)
+        );
+
+        // After N consecutive failures, stop polling and show error
+        if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          setError("Connection lost while checking document status. Please refresh the page.");
+          setStatus("error");
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        }
       }
     }, 1000);
 
@@ -162,6 +181,7 @@ export function useDocumentProcessing(): UseDocumentProcessingReturn {
     setProgress(0);
     setError(null);
     setDocumentId(null);
+    consecutiveFailuresRef.current = 0;
 
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
