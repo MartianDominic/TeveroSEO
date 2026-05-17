@@ -9,6 +9,7 @@ DeepSeek is the second tier in our OCR pipeline:
 - Best for: Complex layouts, unusual fonts, context-aware fixes
 """
 
+import logging
 import httpx
 import asyncio
 import base64
@@ -16,6 +17,8 @@ import os
 import time
 from dataclasses import dataclass
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -65,6 +68,7 @@ async def extract_with_deepseek(
     start = time.time()
     all_text = []
     total_cost = 0
+    logger.info("DeepSeek OCR starting for %d page(s)", len(page_images))
 
     async with httpx.AsyncClient(timeout=60) as client:
         for idx, image_bytes in enumerate(page_images):
@@ -117,13 +121,68 @@ async def extract_with_deepseek(
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 429 and attempt < max_retries - 1:
                         # Rate limited - exponential backoff
+                        logger.warning("Rate limited on page %d, attempt %d - retrying", idx + 1, attempt + 1)
                         await asyncio.sleep(2 ** attempt)
                         continue
-                    raise
+                    # Non-retryable HTTP error or max retries exceeded
+                    logger.error(
+                        "DeepSeek API HTTP error on page %d after %d attempts: %s (status=%d)",
+                        idx + 1, attempt + 1, e, e.response.status_code
+                    )
+                    all_text.append(f"--- PAGE {idx + 1} ---\n[OCR failed: HTTP {e.response.status_code}]")
+                    break
+                except (httpx.ConnectError, httpx.TimeoutException) as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(
+                            "Connection error on page %d, attempt %d: %s - retrying",
+                            idx + 1, attempt + 1, type(e).__name__
+                        )
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    # Max retries exceeded for connection errors
+                    logger.error(
+                        "DeepSeek connection failed on page %d after %d attempts: %s",
+                        idx + 1, attempt + 1, type(e).__name__
+                    )
+                    all_text.append(f"--- PAGE {idx + 1} ---\n[OCR failed: {type(e).__name__}]")
+                    break
+                except Exception as e:
+                    # Catch-all for unexpected errors (JSON decode, key errors, etc.)
+                    logger.error(
+                        "Unexpected error during DeepSeek OCR on page %d: %s",
+                        idx + 1, e
+                    )
+                    all_text.append(f"--- PAGE {idx + 1} ---\n[OCR failed: {type(e).__name__}]")
+                    break
+
+    processing_time = time.time() - start
+    combined_text = "\n\n".join(all_text)
+
+    # Estimate confidence based on text quality indicators:
+    # - Base confidence of 85% (DeepSeek is generally reliable)
+    # - Boost based on text density (more text = higher confidence)
+    # - This is an estimate since DeepSeek doesn't return confidence scores
+    if not combined_text.strip():
+        confidence = 0.0
+    else:
+        # Calculate text density: characters per page (excluding page markers)
+        text_without_markers = "\n".join(
+            line for line in combined_text.split("\n")
+            if not line.startswith("--- PAGE")
+        )
+        chars_per_page = len(text_without_markers) / max(len(page_images), 1)
+        # Scale: 0 chars = 85%, 500+ chars = 95% (capped)
+        density_boost = min(chars_per_page / 500, 1.0) * 10
+        confidence = 85.0 + density_boost
+
+    logger.info(
+        "DeepSeek OCR complete: confidence=%.1f%%, cost=$%.4f, time=%.2fs, pages=%d",
+        confidence, total_cost, processing_time, len(page_images)
+    )
 
     return DeepSeekResult(
-        text="\n\n".join(all_text),
-        confidence=92.0,  # DeepSeek is consistently good
+        text=combined_text,
+        confidence=confidence,
         cost=total_cost,
-        processing_time=time.time() - start,
+        processing_time=processing_time,
     )
