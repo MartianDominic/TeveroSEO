@@ -9,12 +9,16 @@ Tesseract is the first tier in our OCR pipeline:
 - Best for: Standard fonts, clean scans, simple layouts
 """
 
+import logging
 import pytesseract
+from pytesseract import TesseractError
 from PIL import Image
 import io
 import time
 from dataclasses import dataclass
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -44,19 +48,28 @@ def extract_with_tesseract(
         TesseractResult with extracted text, confidence, and timing
     """
     start = time.time()
+    logger.info("Tesseract OCR starting for %d page(s), language=%s", len(page_images), language)
 
     all_text = []
     all_confidence = []
 
-    for image_bytes in page_images:
-        image = Image.open(io.BytesIO(image_bytes))
+    for idx, image_bytes in enumerate(page_images):
+        try:
+            image = Image.open(io.BytesIO(image_bytes))
+        except (IOError, OSError) as e:
+            logger.warning("Failed to open image %d: %s - skipping", idx + 1, e)
+            continue
 
-        # Get text with confidence data
-        data = pytesseract.image_to_data(
-            image,
-            lang=language,
-            output_type=pytesseract.Output.DICT
-        )
+        try:
+            # Get text with confidence data
+            data = pytesseract.image_to_data(
+                image,
+                lang=language,
+                output_type=pytesseract.Output.DICT
+            )
+        except TesseractError as e:
+            logger.warning("Tesseract failed on image %d: %s - skipping", idx + 1, e)
+            continue
 
         # Extract text from words with positive confidence
         page_text = " ".join(
@@ -72,10 +85,16 @@ def extract_with_tesseract(
 
     # Calculate overall average confidence
     avg_confidence = sum(all_confidence) / len(all_confidence) if all_confidence else 0
+    processing_time = time.time() - start
+
+    logger.info(
+        "Tesseract OCR complete: confidence=%.1f%%, time=%.2fs, pages_processed=%d/%d",
+        avg_confidence, processing_time, len(all_text), len(page_images)
+    )
 
     return TesseractResult(
         text="\n\n".join(all_text),
         confidence=avg_confidence,
-        processing_time=time.time() - start,
+        processing_time=processing_time,
         language=language,
     )
