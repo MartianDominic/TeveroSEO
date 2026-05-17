@@ -8,10 +8,21 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 
 import { checkRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
 import { logger } from "@/lib/logger";
-import { uploadDocument, getDocumentStatus } from "@/lib/document-processing/upload-service";
+import { uploadDocument, getDocumentStatus, getDocumentWithWorkspace } from "@/lib/document-processing/upload-service";
+
+// =============================================================================
+// Validation Schemas
+// =============================================================================
+
+const uploadFormSchema = z.object({
+  workspaceId: z.string().min(1).max(100).optional(),
+});
+
+const documentIdSchema = z.string().min(1).max(50);
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -59,7 +70,19 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const workspaceId = (formData.get("workspaceId") as string) || orgId || userId;
+    const rawWorkspaceId = formData.get("workspaceId") as string | null;
+
+    // Validate form data
+    const formValidation = uploadFormSchema.safeParse({
+      workspaceId: rawWorkspaceId || undefined,
+    });
+
+    if (!formValidation.success) {
+      return NextResponse.json(
+        { error: "Invalid form data", details: formValidation.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -67,6 +90,26 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Determine and verify workspace access
+    // User can only upload to their own workspace (orgId or userId)
+    // If workspaceId is provided, verify it matches user's allowed workspace
+    const userWorkspace = orgId || userId;
+    const requestedWorkspace = formValidation.data.workspaceId;
+
+    if (requestedWorkspace && requestedWorkspace !== userWorkspace) {
+      logger.warn("[upload-api] Cross-workspace upload attempt blocked", {
+        userId,
+        userWorkspace,
+        requestedWorkspace,
+      });
+      return NextResponse.json(
+        { error: "Access denied to workspace" },
+        { status: 403 }
+      );
+    }
+
+    const workspaceId = requestedWorkspace || userWorkspace;
 
     logger.info("[upload-api] Upload request", {
       userId,
@@ -129,21 +172,44 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const documentId = request.nextUrl.searchParams.get("documentId");
-    if (!documentId) {
+    const rawDocumentId = request.nextUrl.searchParams.get("documentId");
+
+    // Validate documentId parameter
+    const documentIdValidation = documentIdSchema.safeParse(rawDocumentId);
+    if (!documentIdValidation.success) {
       return NextResponse.json(
-        { error: "documentId required" },
+        { error: "Invalid or missing documentId" },
         { status: 400 }
       );
     }
 
-    const status = await getDocumentStatus(documentId);
+    const documentId = documentIdValidation.data;
 
+    // Fetch document with workspace info for authorization check
+    const doc = await getDocumentWithWorkspace(documentId);
+
+    // Verify user has access to this document's workspace
+    const userWorkspace = orgId || userId;
+    if (doc.workspaceId !== userWorkspace) {
+      logger.warn("[upload-api] Cross-workspace document access blocked", {
+        userId,
+        userWorkspace,
+        documentWorkspace: doc.workspaceId,
+        documentId,
+      });
+      return NextResponse.json(
+        { error: "Document not found" },
+        { status: 404 } // Return 404 to avoid leaking document existence
+      );
+    }
+
+    // Return status (without workspaceId in response)
+    const status = await getDocumentStatus(documentId);
     return NextResponse.json(status);
   } catch (error) {
     if (error instanceof Error && error.message.includes("not found")) {
