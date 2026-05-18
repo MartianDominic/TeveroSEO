@@ -301,7 +301,11 @@ export const BlockEditor: FC<BlockEditorProps> = ({
       >
         {/* Error message */}
         {error && (
-          <div className="flex items-center gap-1.5 text-xs text-error">
+          <div
+            id={`block-editor-error-${blockId}`}
+            role="alert"
+            className="flex items-center gap-1.5 text-xs text-error"
+          >
             <AlertCircle className="h-3.5 w-3.5" />
             <span>{error}</span>
           </div>
@@ -317,6 +321,8 @@ export const BlockEditor: FC<BlockEditorProps> = ({
           size="sm"
           onClick={handleGenerate}
           disabled={isGenerating || !editable}
+          aria-busy={isGenerating}
+          aria-describedby={error ? `block-editor-error-${blockId}` : undefined}
           className={cn(
             "gap-1.5",
             "text-accent hover:text-accent-ink hover:bg-accent-soft",

@@ -184,22 +184,22 @@ const TextDiffDisplay: FC<TextDiffDisplayProps> = ({ segments }) => {
       {segments.map((segment, idx) => {
         if (segment.status === "added") {
           return (
-            <span
+            <ins
               key={idx}
-              className="bg-success-soft px-0.5 rounded"
+              className="bg-success-soft px-0.5 rounded no-underline"
             >
               {segment.text}
-            </span>
+            </ins>
           );
         }
         if (segment.status === "removed") {
           return (
-            <span
+            <del
               key={idx}
-              className="bg-error-soft px-0.5 rounded line-through"
+              className="bg-error-soft px-0.5 rounded"
             >
               {segment.text}
-            </span>
+            </del>
           );
         }
         return <span key={idx}>{segment.text}</span>;
