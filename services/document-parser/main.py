@@ -59,10 +59,42 @@ class HealthResponse(BaseModel):
 # =============================================================================
 
 
+def _validate_api_keys() -> None:
+    """
+    Validate required API keys at startup.
+
+    Raises:
+        RuntimeError: If any required API key is missing.
+    """
+    missing_keys = []
+
+    # DeepSeek OCR requires OpenRouter API key
+    if not os.getenv("OPENROUTER_API_KEY"):
+        missing_keys.append("OPENROUTER_API_KEY (required for DeepSeek OCR tier)")
+
+    # Gemini OCR requires Google AI API key
+    if not os.getenv("GEMINI_API_KEY"):
+        missing_keys.append("GEMINI_API_KEY (required for Gemini OCR tier)")
+
+    if missing_keys:
+        error_msg = (
+            "Document Parser service cannot start: missing required API keys.\n"
+            + "\n".join(f"  - {key}" for key in missing_keys)
+            + "\n\nSet these environment variables before starting the service."
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     logger.info("Document Parser service starting")
+
+    # Validate API keys before accepting requests
+    _validate_api_keys()
+    logger.info("API key validation passed")
+
     yield
     logger.info("Document Parser service shutting down")
 
@@ -259,7 +291,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8001,
+        port=8002,
         reload=True,
         log_level="info",
     )

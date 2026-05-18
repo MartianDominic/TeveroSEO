@@ -232,6 +232,29 @@ services:
     networks:
       - tevero-dev-net
 
+  # ===== DOCUMENT PARSER (PDF/DOCX extraction with OCR) =====
+
+  document-parser:
+    build:
+      context: ./services/document-parser
+      dockerfile: Dockerfile
+    container_name: tevero-dev-document-parser
+    ports:
+      - "58003:8002"
+    environment:
+      CORS_ORIGINS: "http://localhost:53000,http://localhost:58000"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - tevero-dev-net
+
   # ===== EMBEDDING SERVER (v5-nano for keyword intelligence) =====
 
   embedding-server:

@@ -211,6 +211,27 @@ services:
     networks:
       - teveroseo-net
 
+  # ===== DOCUMENT PARSER (PDF/DOCX extraction with OCR) =====
+
+  document-parser:
+    build:
+      context: ./services/document-parser
+      dockerfile: Dockerfile
+    image: teveroseo/document-parser:latest
+    restart: unless-stopped
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://app.tevero.lt,https://seowith.tevero.lt}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - teveroseo-net
+
   # ===== AI-WRITER =====
 
   ai-writer-backend:
