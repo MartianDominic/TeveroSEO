@@ -7,6 +7,16 @@
  * because apps/web doesn't have BullMQ. Exposes BullMQ-like interface for future migration.
  *
  * Queue processes jobs with retry logic and progress tracking.
+ *
+ * LIMITATION: In-memory queue is NOT persistent across server restarts.
+ * Jobs in the queue will be lost on restart, but jobs with status "processing"
+ * will be recovered via recoverStaleJobs() on next startup.
+ *
+ * TODO: Migrate to Redis-backed queue (BullMQ) for:
+ * - Persistence across restarts
+ * - Multi-instance support (horizontal scaling)
+ * - Better job visibility and monitoring
+ * See: https://docs.bullmq.io/
  */
 
 import { eq, and, lt } from "drizzle-orm";
@@ -145,13 +155,26 @@ async function processJob(job: QueuedJob): Promise<boolean> {
     maxAttempts,
   });
 
-  // Update status to processing
-  await db.update(uploadedDocuments)
+  // Optimistic locking: Only claim the job if status is still "pending"
+  // This prevents race conditions when multiple workers try to process the same document
+  const updateResult = await db.update(uploadedDocuments)
     .set({
       status: "processing",
       processingStartedAt: new Date(),
     })
-    .where(eq(uploadedDocuments.id, documentId));
+    .where(and(
+      eq(uploadedDocuments.id, documentId),
+      eq(uploadedDocuments.status, "pending")
+    ))
+    .returning({ id: uploadedDocuments.id });
+
+  // If no rows were updated, another worker already claimed this job
+  if (updateResult.length === 0) {
+    logger.info("[processing-queue] Job already claimed by another worker, skipping", {
+      documentId,
+    });
+    return true; // Return true since job is being handled elsewhere
+  }
 
   try {
     // Get document details for parsing
