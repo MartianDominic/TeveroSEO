@@ -11,6 +11,7 @@
  * - Rate limit: 100 events/minute/session
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { redis } from "@/lib/redis/client";
@@ -78,6 +79,15 @@ async function checkRateLimit(sessionId: string, eventCount: number): Promise<bo
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check - prevent attackers from flooding with fake events
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Parse request body
     const body = await request.json();
     const parsed = analyticsRequestSchema.safeParse(body);

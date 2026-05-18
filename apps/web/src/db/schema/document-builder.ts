@@ -17,7 +17,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
-import { seoChatProposals } from "./seo-chat";
+import { proposals } from "./seo-chat";
 import type {
   PersuasionBlockType,
   TipTapContent,
@@ -43,7 +43,7 @@ export const persuasionBlocks = pgTable(
       .$defaultFn(() => nanoid()),
     proposalId: text("proposal_id")
       .notNull()
-      .references(() => seoChatProposals.id, { onDelete: "cascade" }),
+      .references(() => proposals.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").notNull(),
 
     // Block type and position
@@ -148,7 +148,7 @@ export const proposalStructures = pgTable(
       .$defaultFn(() => nanoid()),
     proposalId: text("proposal_id")
       .notNull()
-      .references(() => seoChatProposals.id, { onDelete: "cascade" }),
+      .references(() => proposals.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").notNull(),
 
     // Framework information
@@ -185,9 +185,9 @@ export const proposalStructures = pgTable(
 export const persuasionBlocksRelations = relations(
   persuasionBlocks,
   ({ one, many }) => ({
-    proposal: one(seoChatProposals, {
+    proposal: one(proposals, {
       fields: [persuasionBlocks.proposalId],
-      references: [seoChatProposals.id],
+      references: [proposals.id],
     }),
     variants: many(blockVariants),
   })
@@ -203,9 +203,9 @@ export const blockVariantsRelations = relations(blockVariants, ({ one }) => ({
 export const proposalStructuresRelations = relations(
   proposalStructures,
   ({ one }) => ({
-    proposal: one(seoChatProposals, {
+    proposal: one(proposals, {
       fields: [proposalStructures.proposalId],
-      references: [seoChatProposals.id],
+      references: [proposals.id],
     }),
   })
 );
