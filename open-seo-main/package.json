@@ -130,7 +130,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/react-hooks": "^8.0.1",
     "@types/luxon": "^3.7.1",
-    "@types/node": "^22.18.13",
+    "@types/node": "^25.9.0",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.11.0",
     "@types/react": "^19.0.8",
@@ -144,7 +144,7 @@
     "portless": "^0.5.2",
     "prettier": "^3.6.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vite": "^7.1.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.4"
