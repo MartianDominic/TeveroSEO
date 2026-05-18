@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEO Paslaugos | Tevero</title>
+  <meta name="description" content="SEO paslaugos su 100% pinigų grąžinimu, jei nepasiekiame pozicijų. Sutartyje raštu nurodome tikslus raktažodžių skaičių. Nepasiekiame? Grąžiname viską.">
+
+  <!-- Fonts: Instrument Serif + Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES - v4 ACCESSIBILITY ENHANCED
+       ═══════════════════════════════════════════════════════════════ */
+
+    :root {
+      /* Typography */
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'Outfit', system-ui, -apple-system, sans-serif;
+
+      /* SOTD Type Scale - DISPLAY (Instrument Serif) */
+      --type-display-xl: clamp(48px, 4vw + 32px, 148px);
+      --type-display-lg: clamp(40px, 3vw + 20px, 96px);
+      --type-display-md: clamp(36px, 2.2vw + 18px, 72px);
+      --type-display-sm: clamp(28px, 1.4vw + 14px, 48px);
+
+      /* UI Type Scale (Outfit) - ACCESSIBILITY FIX: ensure 12px floor */
+      --text-xs:   max(12px, clamp(12px, 0.12vw + 11px, 14px));
+      --text-sm:   clamp(14px, 0.08vw + 13px, 15px);
+      --text-base: clamp(16px, 0.15vw + 14.5px, 18px);
+      --text-lg:   clamp(17px, 0.35vw + 13px, 22px);
+      --text-xl:   clamp(20px, 0.6vw + 12px, 28px);
+      --text-2xl:  clamp(26px, 2.6vw, 40px);
+      --text-3xl:  clamp(32px, 3.8vw, 56px);
+      --text-4xl:  clamp(40px, 5vw, 72px);
+
+      /* Display Numerals */
+      --num-mega:  clamp(56px, 5.5vw + 40px, 180px);
+      --num-hero:  clamp(44px, 3vw + 24px, 96px);
+      --num-index: clamp(80px, 8vw + 40px, 240px);
+
+      /* Line Heights - ACCESSIBILITY FIX: looser for Lithuanian descenders */
+      --leading-display-xl: 1.0;   /* Was 0.9 - now safe for ą,ę,į,ų */
+      --leading-display-lg: 1.05;  /* Was 0.92 - better for multi-line */
+      --leading-display-md: 1.1;   /* Was 0.95 - safer for card headings */
+      --leading-display-sm: 1.15;
+      --leading-index: 0.8;
+
+      /* Letter Spacing - tighter to compensate for looser leading */
+      --tracking-display-xl: -0.03em;
+      --tracking-display-lg: -0.025em;
+      --tracking-display-md: -0.02em;
+      --tracking-kicker: 0.12em;
+      --tracking-index: -0.04em;
+
+      /* Colors - Light */
+      --canvas:       #fafaf7;
+      --surface:      #ffffff;
+      --surface-2:    #f5f4ef;
+      --ink:          #18181b;
+      --ink-2:        #52525b;
+      --ink-3:        #737378;  /* ACCESSIBILITY FIX: darkened for 4.5:1 contrast */
+      --accent:       #1a1a1a;
+      --accent-soft:  #f5f5f5;
+      --line:         #e4e4e7;
+      --line-soft:    #f0f0f0;
+
+      /* Colors - Dark (for guarantee section) */
+      --dark-bg:      #0f0f0f;
+      --dark-surface: #1a1a1a;
+      --dark-text:    #fafafa;
+      --dark-muted:   #a1a1aa;
+
+      /* Spacing */
+      --space-1:  4px;
+      --space-2:  8px;
+      --space-3:  12px;
+      --space-4:  16px;
+      --space-5:  24px;
+      --space-6:  32px;
+      --space-7:  48px;
+      --space-8:  64px;
+      --space-9:  96px;
+      --space-10: 128px;
+
+      /* Layout - SOTD widened */
+      --container:    min(1400px, 92vw);
+      --text-column:  min(780px, 88vw);
+      --section-gap:  clamp(80px, 10vw, 180px);
+      --block-gap:    clamp(40px, 6vw, 72px);
+
+      /* Effects */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+
+      /* Multi-layer shadows (SOTD) */
+      --shadow-sm:
+        0 1px 2px rgba(0,0,0,0.05),
+        0 1px 3px rgba(0,0,0,0.05);
+
+      --shadow-card:
+        0 2px 4px rgba(0,0,0,0.04),
+        0 4px 16px rgba(0,0,0,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+
+      --shadow-lift:
+        0 4px 6px rgba(0,0,0,0.04),
+        0 10px 40px rgba(0,0,0,0.08);
+
+      --shadow-xl:
+        0 8px 16px rgba(0,0,0,0.04),
+        0 20px 60px rgba(0,0,0,0.1),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+
+      /* Motion */
+      --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --transition: 280ms var(--ease-out);
+      --transition-slow: 600ms var(--ease-out-expo);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESET & BASE
+       ═══════════════════════════════════════════════════════════════ */
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: 400;
+      line-height: 1.65;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 60% at 90% 10%, rgba(24, 24, 27, 0.035) 0%, transparent 60%),
+        var(--canvas);
+      letter-spacing: -0.01em;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       ACCESSIBILITY ENHANCEMENTS
+       ═══════════════════════════════════════════════════════════════ */
+
+    /* Focus states - WCAG 2.4.13 */
+    :focus-visible {
+      outline: 3px solid var(--ink);
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* High contrast mode */
+    @media (forced-colors: active) {
+      :focus-visible {
+        outline: 3px solid CanvasText;
+        outline-offset: 2px;
+      }
+    }
+
+    /* Focus ring for dark backgrounds */
+    .guarantee :focus-visible {
+      outline-color: var(--dark-text);
+    }
+
+    /* Mobile typography floor */
+    @media (max-width: 480px) {
+      :root {
+        --text-xs: 12px;
+        --text-sm: 14px;
+        --text-base: 16px;
+      }
+
+      input, select, textarea {
+        font-size: 16px;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TYPOGRAPHY
+       ═══════════════════════════════════════════════════════════════ */
+
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      font-weight: 400;
+    }
+
+    h1 {
+      font-size: var(--type-display-xl);
+      line-height: var(--leading-display-xl);
+      letter-spacing: var(--tracking-display-xl);
+    }
+
+    h2 {
+      font-size: var(--type-display-lg);
+      line-height: var(--leading-display-lg);
+      letter-spacing: var(--tracking-display-lg);
+      margin-bottom: var(--space-6);
+    }
+
+    h3 {
+      font-size: var(--type-display-md);
+      line-height: var(--leading-display-md);
+      letter-spacing: var(--tracking-display-md);
+      margin-bottom: var(--space-4);
+    }
+
+    p {
+      margin-bottom: var(--space-5);
+      color: var(--ink-2);
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    strong {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    a:hover {
+      color: var(--ink);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYOUT
+       ═══════════════════════════════════════════════════════════════ */
+
+    .page {
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: var(--container);
+      margin: 0 auto;
+      padding: 0 var(--space-5);
+    }
+
+    .text-column {
+      max-width: var(--text-column);
+      margin: 0 auto;
+    }
+
+    section {
+      padding: var(--section-gap) 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LOGO
+       ═══════════════════════════════════════════════════════════════ */
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-7);
+    }
+
+    .logo img {
+      height: clamp(40px, 5vw, 56px);
+      width: auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       COMPONENTS: Buttons
+       ═══════════════════════════════════════════════════════════════ */
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: 16px 32px;
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: white;
+      box-shadow:
+        0 1px 2px rgba(0,0,0,0.1),
+        0 1px 3px rgba(0,0,0,0.1),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .btn-primary:hover {
+      background: #000;
+      transform: translateY(-2px);
+      box-shadow:
+        0 4px 8px rgba(0,0,0,0.12),
+        0 8px 24px rgba(0,0,0,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--ink);
+      border: 1.5px solid var(--line);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface);
+      border-color: var(--ink-3);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--dark-text);
+      border: 1.5px solid rgba(255,255,255,0.2);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    .btn-lg {
+      padding: 20px 40px;
+      font-size: var(--text-lg);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       COMPONENTS: Cards
+       ═══════════════════════════════════════════════════════════════ */
+
+    .card {
+      position: relative;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: clamp(28px, 5vw, 48px);
+      transition: transform 0.3s var(--ease-out-expo), box-shadow 0.3s var(--ease-out);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-xl);
+      transform: translateY(-6px);
+    }
+
+    .card-static {
+      transition: none;
+    }
+
+    .card-static:hover {
+      transform: none;
+      box-shadow: var(--shadow-card);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       COMPONENTS: Kicker (small label above headline)
+       ═══════════════════════════════════════════════════════════════ */
+
+    .kicker {
+      display: inline-block;
+      font-family: var(--font-body);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: var(--tracking-kicker);
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: var(--space-5);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       VISUAL ANCHORS - Section Index Numbers
+       ═══════════════════════════════════════════════════════════════ */
+
+    .section-index {
+      font-family: var(--font-display);
+      font-size: var(--num-index);
+      line-height: var(--leading-index);
+      letter-spacing: var(--tracking-index);
+      font-weight: 300;
+      opacity: 0.06;
+      position: absolute;
+      top: clamp(-30px, -3vw, -60px);
+      left: clamp(-20px, -2vw, -50px);
+      pointer-events: none;
+      user-select: none;
+      z-index: 0;
+      color: var(--ink);
+    }
+
+    .section-index--light {
+      color: var(--dark-text);
+      opacity: 0.04;
+    }
+
+    /* Hero background accent */
+    .hero-accent {
+      position: absolute;
+      width: clamp(300px, 50vw, 700px);
+      height: clamp(300px, 50vw, 700px);
+      background: radial-gradient(circle, rgba(24, 24, 27, 0.04) 0%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(80px);
+      top: -30%;
+      right: -15%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCROLL REVEAL ANIMATIONS
+       ═══════════════════════════════════════════════════════════════ */
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity var(--transition-slow), transform var(--transition-slow);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-stagger > * {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s var(--ease-out-expo), transform 0.5s var(--ease-out-expo);
+    }
+
+    .reveal-stagger.visible > * {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-stagger.visible > *:nth-child(1) { transition-delay: 0ms; }
+    .reveal-stagger.visible > *:nth-child(2) { transition-delay: 60ms; }
+    .reveal-stagger.visible > *:nth-child(3) { transition-delay: 120ms; }
+    .reveal-stagger.visible > *:nth-child(4) { transition-delay: 180ms; }
+    .reveal-stagger.visible > *:nth-child(5) { transition-delay: 240ms; }
+    .reveal-stagger.visible > *:nth-child(6) { transition-delay: 300ms; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HERO SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .hero {
+      position: relative;
+      padding-top: clamp(48px, 10vw, 120px);
+      padding-bottom: var(--section-gap);
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero h1 {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto var(--space-7);
+    }
+
+    .hero-lead {
+      position: relative;
+      z-index: 1;
+      font-size: var(--text-lg);
+      color: var(--ink-2);
+      max-width: 700px;
+      margin: 0 auto var(--space-8);
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      justify-content: center;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       INTRO SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .intro {
+      background: var(--surface);
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .intro-content {
+      max-width: var(--text-column);
+      margin: 0 auto;
+    }
+
+    .intro-content p {
+      font-size: var(--text-lg);
+      line-height: 1.7;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       WHO WE SERVE SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .serve {
+      text-align: center;
+    }
+
+    .serve h2 {
+      margin-bottom: var(--space-3);
+    }
+
+    .serve-lead {
+      color: var(--ink-2);
+      margin-bottom: var(--block-gap);
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .serve-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+      margin-top: var(--block-gap);
+    }
+
+    @media (min-width: 768px) {
+      .serve-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .serve-card {
+      position: relative;
+      text-align: left;
+      overflow: visible;
+    }
+
+    .serve-card .card-index {
+      font-family: var(--font-display);
+      font-size: clamp(60px, 6vw, 100px);
+      line-height: 0.8;
+      letter-spacing: -0.03em;
+      font-weight: 300;
+      opacity: 0.06;
+      position: absolute;
+      top: -10px;
+      left: -5px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .serve-card h3 {
+      position: relative;
+      z-index: 1;
+      font-family: var(--font-display);
+      font-size: var(--type-display-sm);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-5);
+    }
+
+    .serve-card p {
+      position: relative;
+      z-index: 1;
+      font-size: var(--text-base);
+      line-height: 1.65;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       DIFFERENCE SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .difference {
+      background: var(--surface-2);
+    }
+
+    .difference-content {
+      max-width: var(--text-column);
+      margin: 0 auto;
+    }
+
+    .difference h2 {
+      text-align: center;
+      margin-bottom: var(--space-7);
+    }
+
+    .difference-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+
+    @media (min-width: 768px) {
+      .difference-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .difference-item {
+      display: flex;
+      gap: var(--space-4);
+      align-items: flex-start;
+    }
+
+    .difference-icon {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      margin-top: 2px;
+    }
+
+    .difference-item strong {
+      display: block;
+      margin-bottom: var(--space-1);
+    }
+
+    .difference-item p {
+      font-size: var(--text-sm);
+      margin: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       WHO WE DON'T SERVE SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .disqualify {
+      background: var(--canvas);
+    }
+
+    .disqualify-content {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .disqualify h2 {
+      text-align: center;
+    }
+
+    .disqualify-lead {
+      text-align: center;
+      margin-bottom: var(--block-gap);
+    }
+
+    .disqualify-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
+    }
+
+    .disqualify-item {
+      display: flex;
+      gap: var(--space-4);
+      align-items: flex-start;
+    }
+
+    .disqualify-icon {
+      flex-shrink: 0;
+      width: clamp(40px, 4vw, 56px);
+      height: clamp(40px, 4vw, 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ink);
+      color: white;
+      border-radius: 50%;
+      font-family: var(--font-display);
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 400;
+      margin-top: 0;
+    }
+
+    .disqualify-text strong {
+      display: block;
+      margin-bottom: var(--space-1);
+    }
+
+    .disqualify-text p {
+      font-size: var(--text-sm);
+      margin: 0;
+    }
+
+    .disqualify-note {
+      text-align: center;
+      margin-top: var(--block-gap);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--line);
+      font-size: var(--text-base);
+      color: var(--ink-2);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PRICING SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .pricing {
+      text-align: center;
+      background: var(--surface);
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .pricing h2 {
+      margin-bottom: var(--space-3);
+    }
+
+    .pricing-lead {
+      max-width: 700px;
+      margin: 0 auto var(--block-gap);
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--block-gap);
+    }
+
+    @media (min-width: 768px) {
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1100px) {
+      .pricing-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-6);
+      }
+    }
+
+    .plan {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      position: relative;
+    }
+
+    .plan-featured {
+      border: 2px solid var(--ink);
+      box-shadow:
+        0 0 0 1px var(--ink),
+        0 4px 20px rgba(24, 24, 27, 0.15),
+        0 8px 40px rgba(24, 24, 27, 0.12);
+    }
+
+    .plan-badge {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--ink);
+      color: white;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+
+    .plan-header {
+      margin-bottom: var(--space-5);
+    }
+
+    .plan-name {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-1);
+    }
+
+    .plan-desc {
+      font-size: var(--text-sm);
+      color: var(--ink-3);
+      margin: 0;
+    }
+
+    .plan-price {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-1);
+    }
+
+    .plan-price span {
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: var(--ink-3);
+      font-weight: 400;
+    }
+
+    .plan-features {
+      flex: 1;
+      margin-bottom: var(--space-6);
+    }
+
+    .plan-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: var(--text-sm);
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .plan-features svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--ink);
+    }
+
+    .plan-cta {
+      margin-top: auto;
+    }
+
+    .plan-cta .btn {
+      width: 100%;
+    }
+
+    .pricing-note {
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .pricing-note p {
+      font-size: var(--text-sm);
+      margin: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       GUARANTEE SECTION (Dark)
+       ═══════════════════════════════════════════════════════════════ */
+
+    .guarantee {
+      background: var(--dark-bg);
+      color: var(--dark-text);
+    }
+
+    .guarantee-content {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .guarantee h2 {
+      color: var(--dark-text);
+      margin-bottom: var(--space-7);
+    }
+
+    .guarantee-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--space-7);
+      text-align: left;
+    }
+
+    @media (min-width: 768px) {
+      .guarantee-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .guarantee-tier {
+      background: var(--dark-surface);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+    }
+
+    .guarantee-tier-name {
+      font-size: var(--text-sm);
+      color: var(--dark-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: var(--space-2);
+    }
+
+    .guarantee-tier-value {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      color: var(--dark-text);
+    }
+
+    .guarantee-mega {
+      font-family: var(--font-display);
+      font-size: var(--num-mega);
+      line-height: 0.9;
+      letter-spacing: -0.03em;
+      font-weight: 400;
+      color: var(--dark-text);
+      margin-bottom: var(--space-6);
+    }
+
+    .guarantee-steps {
+      text-align: center;
+      margin-bottom: var(--space-7);
+    }
+
+    .guarantee-steps p {
+      font-size: var(--text-lg);
+      color: var(--dark-muted);
+      margin-bottom: var(--space-4);
+    }
+
+    .guarantee-steps p:last-child {
+      margin-bottom: 0;
+    }
+
+    .guarantee-steps strong {
+      color: var(--dark-text);
+    }
+
+    .guarantee-conditions {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: var(--space-7);
+      text-align: left;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .guarantee-conditions h3 {
+      font-family: var(--font-body);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      color: var(--dark-text);
+      margin-bottom: var(--space-4);
+    }
+
+    .guarantee-conditions ul {
+      list-style: disc;
+      padding-left: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .guarantee-conditions li {
+      font-size: var(--text-sm);
+      color: var(--dark-muted);
+      margin-bottom: var(--space-2);
+    }
+
+    .guarantee-why {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: var(--space-7);
+      text-align: center;
+    }
+
+    .guarantee-why p {
+      font-size: var(--text-base);
+      color: var(--dark-muted);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PROCESS SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .process {
+      text-align: center;
+    }
+
+    .process h2 {
+      margin-bottom: var(--space-3);
+    }
+
+    .process-lead {
+      max-width: 700px;
+      margin: 0 auto var(--block-gap);
+    }
+
+    .process-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .process-item {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: var(--space-5);
+      text-align: left;
+    }
+
+    .process-marker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .process-number {
+      width: clamp(48px, 5vw, 64px);
+      height: clamp(48px, 5vw, 64px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ink);
+      color: white;
+      border-radius: 50%;
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2vw, 28px);
+      flex-shrink: 0;
+    }
+
+    .process-line {
+      flex: 1;
+      width: 3px;
+      background: var(--line);
+      margin: var(--space-3) 0;
+    }
+
+    .process-item:last-child .process-line {
+      display: none;
+    }
+
+    .process-content {
+      padding-bottom: var(--space-7);
+    }
+
+    .process-item:last-child .process-content {
+      padding-bottom: 0;
+    }
+
+    .process-title {
+      font-family: var(--font-body);
+      font-size: var(--text-lg);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-3);
+    }
+
+    .process-desc {
+      font-size: var(--text-base);
+      color: var(--ink-2);
+      margin: 0;
+    }
+
+    .process-deliverables {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+
+    .process-tag {
+      font-size: var(--text-xs);
+      background: var(--surface-2);
+      color: var(--ink-2);
+      padding: var(--space-1) var(--space-3);
+      border-radius: 100px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       POST-PLAN SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .post-plan {
+      background: var(--surface-2);
+    }
+
+    .post-plan-content {
+      max-width: var(--text-column);
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .post-plan h2 {
+      margin-bottom: var(--space-4);
+    }
+
+    .post-plan-lead {
+      margin-bottom: var(--block-gap);
+    }
+
+    .maintenance-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+      text-align: left;
+    }
+
+    @media (min-width: 768px) {
+      .maintenance-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .maintenance-tier {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .maintenance-tier h3 {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+
+    .maintenance-tier .price {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      margin-bottom: var(--space-2);
+    }
+
+    .maintenance-tier p {
+      font-size: var(--text-sm);
+      margin: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CTA SECTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    .cta-section {
+      background: var(--canvas);
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .cta-content {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .cta-content h2 {
+      margin-bottom: var(--space-4);
+    }
+
+    .cta-lead {
+      font-size: var(--text-lg);
+      margin-bottom: var(--space-7);
+    }
+
+    .cta-contact {
+      margin-bottom: var(--space-6);
+    }
+
+    .cta-phone {
+      font-family: var(--font-display);
+      font-size: var(--num-hero);
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      text-decoration: none;
+      display: block;
+      margin-bottom: var(--space-3);
+    }
+
+    .cta-phone:hover {
+      text-decoration: underline;
+    }
+
+    .cta-email {
+      font-size: var(--text-base);
+      color: var(--ink-2);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════════════ */
+
+    .footer {
+      padding: var(--space-7) 0;
+      border-top: 1px solid var(--line-soft);
+      text-align: center;
+    }
+
+    .footer p {
+      font-size: var(--text-sm);
+      color: var(--ink-3);
+      margin: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       UTILITIES
+       ═══════════════════════════════════════════════════════════════ */
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE: Large Desktop (2560px+)
+       ═══════════════════════════════════════════════════════════════ */
+
+    @media (min-width: 2560px) {
+      :root {
+        --container: 1600px;
+        --section-gap: 200px;
+        --block-gap: 80px;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       PRINT STYLES
+       ═══════════════════════════════════════════════════════════════ */
+
+    @media print {
+      :root {
+        --ink: #000;
+        --ink-2: #333;
+        --ink-3: #555;
+      }
+
+      .btn { display: none; }
+      section { padding: 40px 0; }
+      .guarantee { background: #1a1a1a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      body {
+        color: #000 !important;
+        background: #fff !important;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       REDUCED MOTION
+       ═══════════════════════════════════════════════════════════════ */
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+
+      .reveal, .reveal-stagger > * {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         HERO
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="hero">
+      <div class="hero-accent" aria-hidden="true"></div>
+      <div class="container">
+
+        <!-- Tevero Logo -->
+        <div class="logo">
+          <img src="https://i.imgur.com/ZoZOwuG.png" alt="Tevero" width="200" height="56">
+        </div>
+
+        <span class="kicker">SEO paslaugos su 100% pinigų grąžinimu</span>
+
+        <h1>Iškelsime Tavo Svetainę Į Google TOP 10. Jei Nepavyks, Grąžinsime Pinigus.</h1>
+
+        <p class="hero-lead">
+          Skaitei kitų agentūrų svetaines? Visi rašo tą patį: „individualus požiūris", „ilgametė patirtis", „garantuotas augimas".
+          Niekas nesako, kiek konkrečiai raktažodžių pateks į TOP 10. Niekas neduoda terminų. Niekas nemini pinigų grąžinimo.
+        </p>
+
+        <div class="hero-actions">
+          <a href="tel:+37068364665" class="btn btn-primary btn-lg">Skambinti</a>
+          <a href="#kainos" class="btn btn-secondary btn-lg">Pažiūrėti planus</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         INTRO
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="intro">
+      <div class="container">
+        <div class="intro-content reveal">
+          <p>
+            Pas mus sutartyje raštu surašyta: iš tavo raktažodžių sąrašo bent N frazių atsidurs Google TOP 10 per 6 mėnesius.
+            Nepasiekiame? Grąžiname visus pinigus.
+          </p>
+          <p>
+            Jei manai, kad tai skamba per gerai, kad būtų tiesa, esi visiškai teisus, kad abejoji.
+            Toliau šiame puslapyje paaiškiname, kaip tai realiai veikia.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         WHO WE SERVE
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="serve">
+      <div class="container">
+        <h2>Kam skirtos Tevero SEO paslaugos</h2>
+        <p class="serve-lead">
+          Trumpai: jei tavo klientai tave randa per Google arba turėtų rasti, bet neranda, mes esame tau.
+          Žemiau trys tipiniai scenarijai, kuriuose dirbame geriausiai.
+        </p>
+
+        <div class="serve-grid reveal-stagger">
+          <article class="card serve-card">
+            <span class="card-index" aria-hidden="true">01</span>
+            <h3>Internetinėms svetainėms</h3>
+            <p>
+              Esi paslaugų teikėjas, ir pirma kliento sąveika su tavimi vyksta per svetainę.
+              Klientas atlieka paiešką „stogų dengimas Vilnius", „elektrikas Kaune", „buhalterio paslaugos" ir tu nori būti pirmajame dešimtuke.
+            </p>
+            <p>
+              Sutvarkome techninį pagrindą, struktūrą, raktažodžius ir paleidžiame ilgalaikį turinio variklį.
+            </p>
+          </article>
+
+          <article class="card serve-card">
+            <span class="card-index" aria-hidden="true">02</span>
+            <h3>El. parduotuvėms</h3>
+            <p>
+              WooCommerce, Shopify, OpenCart, individualūs sprendimai. Nesvarbu.
+              Svarbu, kad kategorijų puslapiai veiktų, produktai būtų indeksuojami, vidinė paieška dirbtų sklandžiai.
+            </p>
+            <p>
+              El. parduotuvės SEO yra atskira disciplina, ir mes ją išmanome.
+            </p>
+          </article>
+
+          <article class="card serve-card">
+            <span class="card-index" aria-hidden="true">03</span>
+            <h3>SEO konsultacijos</h3>
+            <p>
+              Turi vidinę komandą arba tiesiog įstrigai. Reikia ne paslaugos, o šviežio žvilgsnio, audito ir aiškaus veiksmų plano.
+            </p>
+            <p>
+              Sėdame, peržiūrime, parodome, kur lieka pinigai ant stalo. Be ilgų sutarčių, be mėnesinių mokesčių.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         THE DIFFERENCE
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="difference">
+      <div class="container">
+        <div class="difference-content reveal">
+          <h2>Kuo Tevero skiriasi nuo kitų agentūrų</h2>
+
+          <div class="difference-grid">
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Garantijos pas mus tikros, ne tekstas svetainėje</strong>
+                <p>Sutartyje raštu surašyta: kiek raktažodžių pateks į TOP 10 ir per kiek laiko. Nepasiekiame? Grąžiname visus pinigus.</p>
+              </div>
+            </div>
+
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Į planą įeina realus turinio kiekis</strong>
+                <p>Pas mus į pigiausią Starto planą įeina 100 SEO straipsnių, į Augimo 200, į Premium dar daugiau. Tai realus turinio kiekis, kuris dirba tavo svetainei.</p>
+              </div>
+            </div>
+
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Ataskaitos su realiais duomenimis</strong>
+                <p>Gauni faktinius Google Search Console duomenis, o ne agentūros vidinę vertinimo sistemą. Pozicijos auga? Matosi grafike. Krenta? Irgi matosi.</p>
+              </div>
+            </div>
+
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Be PVM, kainoraštis viešai svetainėje</strong>
+                <p>Galutinė kaina yra ta pati kaina. Jokio „iš pradžių pateiksime individualų pasiūlymą" žaidimo.</p>
+              </div>
+            </div>
+
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Realūs pažadai, ne svajonės</strong>
+                <p>Mes nežadame TOP 1 per mėnesį. Žadame TOP 10 per 6 mėnesius sutartam raktažodžių skaičiui. Skirtumas didžiulis.</p>
+              </div>
+            </div>
+
+            <div class="difference-item">
+              <svg class="difference-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              <div>
+                <strong>Lankstumas po 6 mėn.</strong>
+                <p>Pasibaigus pradiniam planui, pats sprendi, ar tęsti, ar baigti. Be 24 mėnesių sutarties, be nutraukimo baudų.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         WHO WE DON'T SERVE
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="disqualify">
+      <div class="container">
+        <div class="disqualify-content reveal">
+          <h2>Kam nepadėsime</h2>
+          <p class="disqualify-lead">
+            Duodame stiprią garantiją. Todėl esame išrankūs.
+          </p>
+
+          <ul class="disqualify-list">
+            <li class="disqualify-item">
+              <span class="disqualify-icon">1</span>
+              <div class="disqualify-text">
+                <strong>Neįmanomi lūkesčiai</strong>
+                <p>TOP 1 už „kreditas" per 3 mėnesius su tūkstančio eurų biudžetu? Tai neįmanoma. Mes pažadame inžineriją, ne stebuklus.</p>
+              </div>
+            </li>
+            <li class="disqualify-item">
+              <span class="disqualify-icon">2</span>
+              <div class="disqualify-text">
+                <strong>Google bausmė</strong>
+                <p>Jei praeityje pirkai šlamštinius nuorodas ir gavai Manual Penalty. Tai atskiras procesas, kurio šiame formate neatliekame.</p>
+              </div>
+            </li>
+            <li class="disqualify-item">
+              <span class="disqualify-icon">3</span>
+              <div class="disqualify-text">
+                <strong>Mikrovadybininkai</strong>
+                <p>Jei be mūsų žinios keisi URL adresus, trinsi tekstus, keisi dizainą. Negalime prisiimti atsakomybės, jei kažkas kitas griauna.</p>
+              </div>
+            </li>
+            <li class="disqualify-item">
+              <span class="disqualify-icon">4</span>
+              <div class="disqualify-text">
+                <strong>Nekokybiškas produktas</strong>
+                <p>Galime atvesti tūkstančius žmonių į svetainę. Bet negalime priversti pirkti to, ko niekam nereikia.</p>
+              </div>
+            </li>
+          </ul>
+
+          <p class="disqualify-note">
+            Atpažinai save? Tuomet sutaupysime vieni kitų laiką.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PRICING
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="pricing" id="kainos">
+      <div class="container">
+        <h2>SEO planai ir kainos</h2>
+        <p class="pricing-lead">
+          Trys planai, visi 6 mėnesių trukmės, visi su garantija į TOP 10.
+          Skirtumas tarp jų yra apimtis: kiek raktažodžių sekame, kiek puslapių dirbame, kiek turinio gaminame.
+          Žemiau pateiktos pradinės kainos. Galutinė priklauso nuo to, kiek tavo svetainėje yra puslapių ir kokia konkurencija tavo rinkoje.
+        </p>
+
+        <div class="pricing-grid reveal-stagger">
+          <!-- Starto -->
+          <article class="card plan card-static">
+            <div class="plan-header">
+              <h3 class="plan-name">Starto SEO</h3>
+              <p class="plan-desc">Mažoms paslaugų įmonėms ir vietiniam verslui</p>
+            </div>
+
+            <div class="plan-price">
+              nuo 2 500 € <span>/ 6 mėn.</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>40–50 raktažodžių</strong> optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 10 raktažodžių į TOP 10</strong> garantija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Nuo 30 puslapių techninė optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Nuo 5 pagrindinių puslapių turinio perrašymas</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 100 naujų SEO straipsnių</strong></span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Mėnesinės GSC ataskaitos</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>SEO auditas ir raktažodžių tyrimas</span>
+              </li>
+            </ul>
+
+            <div class="plan-cta">
+              <a href="tel:+37068364665" class="btn btn-secondary">Skambinti</a>
+            </div>
+          </article>
+
+          <!-- Augimo (Featured) -->
+          <article class="card plan plan-featured card-static">
+            <span class="plan-badge">Populiariausias</span>
+
+            <div class="plan-header">
+              <h3 class="plan-name">Augimo SEO</h3>
+              <p class="plan-desc">El. parduotuvėms ir vidutinio dydžio svetainėms</p>
+            </div>
+
+            <div class="plan-price">
+              nuo 3 500 € <span>/ 6 mėn.</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>80–100 raktažodžių</strong> optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 20 raktažodžių į TOP 10</strong> garantija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Nuo 70 puslapių techninė optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Nuo 10 pagrindinių puslapių turinio perrašymas</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 200 naujų SEO straipsnių</strong></span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Mėnesinės GSC ataskaitos</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>SEO auditas, raktažodžių tyrimas, konkurentų analizė</span>
+              </li>
+            </ul>
+
+            <div class="plan-cta">
+              <a href="tel:+37068364665" class="btn btn-primary">Skambinti</a>
+            </div>
+          </article>
+
+          <!-- Premium -->
+          <article class="card plan card-static">
+            <div class="plan-header">
+              <h3 class="plan-name">Premium SEO</h3>
+              <p class="plan-desc">Didelėms parduotuvėms ir konkurencingoms rinkoms</p>
+            </div>
+
+            <div class="plan-price">
+              nuo 7 100 € <span>/ 6 mėn.</span>
+            </div>
+
+            <ul class="plan-features">
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>160–200 raktažodžių</strong> optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 40 raktažodžių į TOP 10</strong> garantija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Nuo 150 puslapių techninė optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Nuo 300 naujų SEO straipsnių</strong></span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Google Business Profile optimizacija</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Atsiliepimų strategija ir PR minėjimai</span>
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Mėnesinės GSC ataskaitos + savaitinės konsultacijos</span>
+              </li>
+            </ul>
+
+            <div class="plan-cta">
+              <a href="tel:+37068364665" class="btn btn-secondary">Skambinti</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="pricing-note">
+          <p>
+            Visos kainos ir kiekiai nurodyti su prierašu „nuo", nes galutinis plano turinys priklauso nuo tavo svetainės dydžio, esamos būklės, rinkos konkurencijos ir tikslų.
+            Jei svetainė didesnė arba norisi platesnio rezultato, planas auga atitinkamai.
+            Visos kainos be PVM (Tevero PVM netaiko).
+            <strong>Pirma konsultacija ir individualus pasiūlymas nemokami.</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         GUARANTEE
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="guarantee">
+      <div class="container">
+        <div class="guarantee-content reveal">
+          <h2>Garantija raštu, ne marketingu</h2>
+
+          <div class="guarantee-grid">
+            <div class="guarantee-tier">
+              <p class="guarantee-tier-name">Starto</p>
+              <p class="guarantee-tier-value">Bent 10 į TOP 10</p>
+            </div>
+            <div class="guarantee-tier">
+              <p class="guarantee-tier-name">Augimo</p>
+              <p class="guarantee-tier-value">Bent 20 į TOP 10</p>
+            </div>
+            <div class="guarantee-tier">
+              <p class="guarantee-tier-name">Premium</p>
+              <p class="guarantee-tier-value">Bent 40 į TOP 10</p>
+            </div>
+          </div>
+
+          <div class="guarantee-steps">
+            <p class="guarantee-mega" aria-label="100 procentų garantija">100%</p>
+            <p>Nepasiekėm per 6 mėnesius? <strong>Papildomos 90 dienų nemokamai.</strong></p>
+            <p>Vis dar ne? <strong>Pinigų grąžinimas per 30 dienų.</strong></p>
+            <p style="margin-top: var(--space-5); font-size: var(--text-base);">Jokių žvaigždučių. Jokių išlygų.</p>
+          </div>
+
+          <div class="guarantee-conditions">
+            <h3>Iš mūsų pusės įsipareigojame</h3>
+            <ul>
+              <li>Atlikti visus sutartame plane numatytus darbus laiku ir kokybiškai</li>
+              <li>Per 6 mėn. pasiekti, kad iš tavo raktažodžių sąrašo bent sutartas skaičius atsidurtų Google TOP 10</li>
+              <li>Pateikti mėnesines GSC ataskaitas su realiais duomenimis</li>
+              <li>Tęsti darbus papildomai 90 dienų be mokesčio, jei garantijos kvota nepasiekiama</li>
+              <li>Per 30 dienų grąžinti 100% sumokėtos plano sumos, jei ir po pratęsimo nepasiekiame</li>
+            </ul>
+
+            <h3>Iš kliento pusės reikalingos sąlygos</h3>
+            <ul>
+              <li>Per 14 dienų patvirtinti suderintą raktažodžių sąrašą</li>
+              <li>Suteikti reikalingas prieigas: CMS, Google Search Console, Google Analytics</li>
+              <li>Įgyvendinti rekomenduojamus techninius pakeitimus per 14 dienų arba leisti mums juos atlikti</li>
+              <li>Leisti talpinti suderintą naują turinį svetainėje per visą plano laikotarpį</li>
+              <li>Nedaryti svetainėje pakeitimų be mūsų žinios ir pritarimo</li>
+            </ul>
+          </div>
+
+          <div class="guarantee-why">
+            <p>
+              Kodėl niekas kitas Lietuvoje to nesiūlo? Dvi priežastys.
+              Pirma, dauguma agentūrų finansiškai negali sau leisti.
+              Antra, jos paprasčiausiai netiki savo metodologijos rezultatu.
+              Mes tikime. Per pastaruosius metus išsigryninome darbo procesą, kuris realiai veikia.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PROCESS
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="process">
+      <div class="container">
+        <h2>Tevero SEO darbų eiga</h2>
+        <p class="process-lead">
+          SEO yra ne magiškas mygtukas, o nuoseklus procesas. Žemiau šeši etapai, per kuriuos dirbame su kiekvienu projektu.
+          Svarbu suprasti: jie nevyksta vienas po kito kaip projekto pakopos. Jie vyksta lygiagrečiai.
+        </p>
+
+        <div class="process-timeline reveal-stagger">
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">1</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Auditas ir analizė</h3>
+              <p class="process-desc">
+                Klientas ateina ir sako: „jau turiu auditą iš kitos agentūros". Atsidarome: PDF su 47 puslapiais, raudonomis strėlytėmis ir „page speed score 67/100".
+                O veiksmų plano nulis. Mūsų auditas baigiasi atsakymu į vieną klausimą: ką darome pirmadienį 9 valandą ryto?
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">Techninis auditas</span>
+                <span class="process-tag">Konkurentų analizė</span>
+                <span class="process-tag">Prioritetų sąrašas</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">2</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Raktinių žodžių tyrimas</h3>
+              <p class="process-desc">
+                Tarp SEO klientų dažniausia klaida: manyti, kad reikia „to vieno svarbaus žodžio".
+                Baldžius iš Vilniaus sako: „noriu būti pirmas pagal žodį ‚baldai'". Mes atsakome: būsi pirmas, tave pamatys 50 000 žmonių,
+                iš jų gal 5 ieško tokių baldų, kokius tu darai. Arba leisi mums dirbti su 60 frazių tipo „virtuvės baldai pagal užsakymą Vilnius".
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">Žodžių žemėlapis</span>
+                <span class="process-tag">Ilgosios uodegos frazės</span>
+                <span class="process-tag">Sezoniškumo analizė</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">3</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Techninė optimizacija</h3>
+              <p class="process-desc">
+                „Techninis SEO" skamba sudėtingai, ir dauguma agentūrų tuo pasinaudoja: ima 1 500 EUR už meta žymų pataisymą.
+                Pasakome atvirai: 80% techninių SEO darbų bet kuris padorus front-end programuotojas atlieka per dvi dienas.
+                Mūsų darbas ne padaryti, kad tai atrodytų sudėtingai, o padaryti, kad būtų atlikta gerai ir greitai.
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">Meta žymų optimizacija</span>
+                <span class="process-tag">Greičio gerinimas</span>
+                <span class="process-tag">Struktūriniai duomenys</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">4</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Turinio kūrimas</h3>
+              <p class="process-desc">
+                Turinys yra ta vieta, kur dauguma SEO projektų nutrūksta. Agentūra pažada „kursime SEO straipsnius" ir per 6 mėnesius klientas gauna 4 straipsnius.
+                Pas mus į pigiausią Starto planą įeina 100 SEO straipsnių, į Augimo 200, į Premium dar daugiau.
+                Kiekvienas straipsnis pereina kontrolės etapus, kad neatrodytų kaip generinė nesąmonė.
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">SEO straipsniai</span>
+                <span class="process-tag">Puslapių optimizacija</span>
+                <span class="process-tag">Vidinės nuorodos</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">5</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Išorinių nuorodų kūrimas</h3>
+              <p class="process-desc">
+                Nuorodų kūrimas Lietuvoje: agentūra paima 800 EUR per mėnesį, iš jų 50 EUR investuoja į žemos kokybės nuorodas,
+                Excel'yje parodo „30 atgalinių nuorodų gauta", o likusius 750 EUR pasilieka. Po metų klientas gauna bausmę iš Google.
+                Tokio žaidimo nežaidžiame. Geriau 5 kokybiškos nuorodos iš pramonės leidinių nei 100 šlamšto.
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">Teminės nuorodos</span>
+                <span class="process-tag">PR minėjimai</span>
+                <span class="process-tag">Svečių straipsniai</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="process-item">
+            <div class="process-marker">
+              <span class="process-number">6</span>
+              <div class="process-line"></div>
+            </div>
+            <div class="process-content">
+              <h3 class="process-title">Stebėjimas ir ataskaitos</h3>
+              <p class="process-desc">
+                Mėnesinė ataskaita pas daugumą agentūrų: vadybininko Canva skaidrių komplektas, kuriame „atlikta 12 SEO darbų" ir krūva ikonų su žaliais žymekliais.
+                Mūsų ataskaita: tikras GSC eksportas su faktiniais duomenimis plius mūsų komentarai paragrafais: „Šį mėnesį pozicija pagal frazę X pakilo iš 23 į 11 vietą todėl, kad..."
+              </p>
+              <div class="process-deliverables">
+                <span class="process-tag">GSC ataskaitos</span>
+                <span class="process-tag">Pozicijų stebėjimas</span>
+                <span class="process-tag">Strategijos korekcijos</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         POST-PLAN
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="post-plan">
+      <div class="container">
+        <div class="post-plan-content reveal">
+          <h2>Kas vyksta po 6 mėn. plano</h2>
+          <p class="post-plan-lead">
+            Pasibaigus 6 mėn. planui, galimybės dvi: tęsi su mumis mėnesiniu palaikymu arba užbaigi projektą ir eini toliau pats.
+            Abi normalios. Bet būsime sąžiningi: SEO yra ne projektas su pabaiga, o procesas.
+            Pasiektos pozicijos kelis mėnesius išlieka stabilios, bet po metų be jokio darbo dauguma jų nukris.
+          </p>
+
+          <div class="maintenance-grid">
+            <div class="maintenance-tier">
+              <h3>Starto palaikymas</h3>
+              <p class="price">nuo 400 € / mėn.</p>
+              <p>Tęstinis išorinis SEO, naujo turinio kūrimas, GSC ataskaitos.</p>
+            </div>
+            <div class="maintenance-tier">
+              <h3>Augimo palaikymas</h3>
+              <p class="price">nuo 700 € / mėn.</p>
+              <p>Pilnas tęstinis SEO + turinio + nuorodų darbo paketas.</p>
+            </div>
+            <div class="maintenance-tier">
+              <h3>Premium palaikymas</h3>
+              <p class="price">nuo 1 000 € / mėn.</p>
+              <p>Pilnas SEO + savaitinės konsultacijos + strategija.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         CTA
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-content reveal">
+          <h2>Pasišnekam?</h2>
+
+          <p class="cta-lead">
+            Skaitei iki čia? Vadinasi tau SEO domina rimtai, ne tik palygini kainas su penkiomis kitomis agentūromis.
+            Pirmas pokalbis nemokamas, trunka apie 30 minučių. Pasakai mums kontekstą: kokia svetainė, kokia rinka, kokie tikslai.
+            Mes pasakome, ar tinkame vienas kitam, kokio dydžio plano tau realiai reikės ir ar galime duoti garantiją tavo projektui.
+          </p>
+
+          <p style="color: var(--ink-2); margin-bottom: var(--space-6);">
+            Jokio agresyvaus pardavimo, jokių „tik šiandien akcija" triukų. Mes tiesiog kalbame, tu tiesiog klausi. Sprendimas po pokalbio yra tavo.
+          </p>
+
+          <div class="cta-contact">
+            <a href="tel:+37068364665" class="cta-phone">+370 683 64665</a>
+            <a href="mailto:pijus@tevero.lt" class="cta-email">pijus@tevero.lt</a>
+          </div>
+
+          <a href="tel:+37068364665" class="btn btn-primary btn-lg">Skambinti</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         FOOTER
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <footer class="footer">
+      <div class="container">
+        <p>Tevero MB · Įmonės kodas 307565560 · Perkūnkiemio g. 19, LT-12120 Vilnius · tevero.lt</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Scroll Reveal Animation -->
+  <script>
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px 0px -10% 0px',
+      threshold: 0.1
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal, .reveal-stagger').forEach(el => {
+      observer.observe(el);
+    });
+  </script>
+</body>
+</html>

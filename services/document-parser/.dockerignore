@@ -1,0 +1,37 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+.pytest_cache/
+tests/
+.coverage
+htmlcov/
+
+# Type checking and linting
+.mypy_cache/
+.ruff_cache/
+
+# Development
+.env
+.env.local
+*.log
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Documentation
+*.md
+docs/
+
+# Dev requirements
+requirements-dev.txt

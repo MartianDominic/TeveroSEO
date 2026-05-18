@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO paslaugos | Tevero – garantuoti rezultatai arba pinigų grąžinimas</title>
+<meta name="description" content="Profesionalios SEO paslaugos verslui su TOP 10 pozicijų garantija ir 100% pinigų grąžinimu, jei rezultato nepasiekiame per 6 mėnesius. Aiški metodika, matuojami rezultatai, sutartis raštu.">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fdfaf5; --ink:#2a2018; --muted:#6b5d52; --tan:#c8a778; --tan-d:#a78758; --line:#e9dfce; --card:#fff;
+  --sand2:#ece4d0; --warm-pale:#f0e4cc; --dark:#14100a;
+  --c1:#7a5030; --c2:#3d6b45; --c3:#3b5a80; --c4:#7a4070; --c5:#6a7030; --c6:#2d7070;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+.wrap{max-width:980px;margin:0 auto;padding:48px 24px}
+h1{font-family:'Syne',sans-serif;font-size:2.6rem;line-height:1.15;margin:0 0 16px;letter-spacing:-0.02em;font-weight:800}
+h2{font-family:'Syne',sans-serif;font-size:1.9rem;margin:56px 0 18px;letter-spacing:-0.01em;font-weight:700}
+h3{font-family:'Syne',sans-serif;font-size:1.25rem;margin:32px 0 10px;font-weight:700}
+p{margin:0 0 14px;color:#3a2f24}
+ul{padding-left:22px}
+li{margin-bottom:8px}
+.lead{font-size:1.15rem;color:var(--muted);font-weight:300}
+.hero{padding:32px 0 12px;border-bottom:1px solid var(--line)}
+.kicker{display:inline-block;font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--tan-d);margin-bottom:12px}
+.cta{display:inline-block;background:var(--tan-d);color:#fff;padding:14px 26px;border-radius:8px;text-decoration:none;font-weight:600;margin:8px 8px 8px 0;transition:.2s}
+.cta:hover{background:#8e6f44}
+.cta-soft{background:transparent;color:var(--tan-d);border:1px solid var(--tan-d)}
+.cta-soft:hover{background:var(--tan-d);color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin:24px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.card h3{margin-top:0}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;display:flex;flex-direction:column}
+.plan.featured{border:2px solid var(--tan-d);position:relative}
+.plan.featured::before{content:"Populiariausias";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--tan-d);color:#fff;padding:4px 14px;border-radius:20px;font-size:0.75rem;font-weight:700;letter-spacing:0.05em;font-family:'Syne',sans-serif}
+.plan h3{margin:0 0 6px;font-size:1.4rem}
+.plan .price{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:700;color:var(--tan-d);margin:8px 0 4px}
+.plan .price small{font-size:1rem;color:var(--muted);font-weight:400}
+.plan .label{font-size:0.85rem;color:var(--muted);margin-bottom:16px}
+.plan ul{padding-left:18px;margin:8px 0 16px}
+.plan li{font-size:0.93rem;margin-bottom:6px}
+.plan .plan-cta{margin-top:auto}
+.note{background:#f5ecdc;border-radius:10px;padding:14px 18px;font-size:0.95rem;color:#5a4a38;margin:16px 0}
+.guarantee{background:linear-gradient(135deg,#3a2f24,#2a2018);color:#f5ecdc;border-radius:14px;padding:32px;margin:32px 0}
+.guarantee h2{margin:0 0 16px;color:#fff}
+.contact{background:var(--ink);color:#f5ecdc;border-radius:14px;padding:32px;margin-top:48px;text-align:center}
+.contact a{color:var(--tan)}
+
+/* === DARBŲ EIGA === */
+.eiga-intro{font-size:1.05rem;color:var(--muted);margin-bottom:28px;font-weight:300}
+.phases{display:flex;flex-direction:column;gap:0;margin-top:24px}
+.phase{display:grid;grid-template-columns:60px 1fr;gap:0}
+.spine{display:flex;flex-direction:column;align-items:center;padding-top:32px}
+.spine-node{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--bg);flex-shrink:0;position:relative;z-index:2;box-shadow:0 0 0 2px rgba(168,135,88,0.2)}
+.spine-line{flex:1;width:1px;background:linear-gradient(to bottom,var(--line),transparent);margin-top:6px}
+.phase:last-child .spine-line{display:none}
+.eiga-card{background:var(--card);border-radius:12px;border:1px solid var(--line);margin-bottom:20px;overflow:hidden;position:relative;transition:box-shadow 0.2s,transform 0.2s}
+.eiga-card:hover{box-shadow:0 10px 40px rgba(168,135,88,0.10);transform:translateY(-2px)}
+.eiga-card-accent{position:absolute;left:0;top:0;bottom:0;width:3px}
+.eiga-card-inner{padding:24px 28px 24px 32px}
+.eiga-card-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.phase-badge{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:3px 10px;border-radius:20px;color:#fff;flex-shrink:0}
+.phase-title{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:-0.3px}
+.phase-icon{margin-left:auto;font-size:20px;opacity:0.7;flex-shrink:0}
+.eiga-desc{font-size:0.95rem;line-height:1.6;color:var(--muted);font-weight:300;margin-bottom:16px}
+.tasks{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-bottom:16px}
+.task{display:flex;align-items:flex-start;gap:8px;font-size:0.88rem;color:var(--ink);line-height:1.4}
+.task-dot{width:5px;height:5px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.eiga-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--sand2)}
+.footer-label{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.tag{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sand2);color:var(--ink);font-weight:500}
+
+@media(max-width:600px){
+  h1{font-size:2rem}h2{font-size:1.5rem}.wrap{padding:32px 18px}
+  .tasks{grid-template-columns:1fr}
+  .phase{grid-template-columns:48px 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section class="hero">
+  <div class="kicker">Tevero · SEO paslaugos</div>
+  <h1>SEO paslaugos su 100% pinigų grąžinimu, jei nepasiekiame pozicijų</h1>
+  <p class="lead">Skaitei kitų agentūrų svetaines? Visi rašo tą patį: „individualus požiūris", „ilgametė patirtis", „garantuotas augimas". Niekas nesako, kiek konkrečiai raktažodžių pateks į TOP 10. Niekas neduoda terminų. Niekas nemini pinigų grąžinimo. Pas mus sutartyje raštu surašyta: iš tavo raktažodžių sąrašo bent N frazių atsidurs Google TOP 10 per 6 mėnesius. Nepasiekiame – grąžiname visus pinigus. Jei manai, kad tai skamba per gerai, kad būtų tiesa, esi visiškai teisus, kad abejoji. Toliau šiame puslapyje paaiškiname, kaip tai realiai veikia.</p>
+  <a href="tel:+37068364665" class="cta">Skambinti</a>
+  <a href="#kainos" class="cta cta-soft">Pažiūrėti planus</a>
+</section>
+
+<section>
+  <h2>Kam skirtos Tevero SEO paslaugos</h2>
+  <p style="color:var(--muted);font-weight:300;margin-bottom:24px">Trumpai: jei tavo klientai tave randa per Google – arba turėtų rasti, bet neranda – mes esame tau. Žemiau trys tipiniai scenarijai, kuriuose dirbame geriausiai.</p>
+  <div class="cards">
+    <div class="card">
+      <h3>Internetinėms svetainėms</h3>
+      <p>Esi paslaugų teikėjas, ir pirma kliento sąveika su tavimi vyksta per svetainę. Klientas atlieka paiešką „stogų dengimas Vilnius", „elektrikas Kaune", „buhalterio paslaugos" – ir tu nori būti pirmajame dešimtuke. Sutvarkome techninį pagrindą, struktūrą, raktažodžius ir paleidžiame ilgalaikį turinio variklį.</p>
+    </div>
+    <div class="card">
+      <h3>El. parduotuvėms</h3>
+      <p>WooCommerce, Shopify, OpenCart, individualūs sprendimai – nesvarbu. Svarbu, kad kategorijų puslapiai veiktų, produktai būtų indeksuojami, vidinė paieška dirbtų sklandžiai. El. parduotuvės SEO yra atskira disciplina, ir mes ją išmanome.</p>
+    </div>
+    <div class="card">
+      <h3>SEO konsultacijos</h3>
+      <p>Turi vidinę komandą arba tiesiog įstrigai. Reikia ne paslaugos, o šviežio žvilgsnio, audito ir aiškaus veiksmų plano. Sėdame, peržiūrime, parodome, kur lieka pinigai ant stalo. Be ilgų sutarčių, be mėnesinių mokesčių. Tau – konkretumas, mums – sąžiningas darbas.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Kodėl Tevero atrodo kitaip nei kitos SEO agentūros</h2>
+  <p>Lietuvos SEO rinka pilna dviprasmiškumo. Sutartyse nėra konkrečių pažadų. Mėnesinėse ataskaitose – krūva ikonėlių su žaliais žymekliais, bet realių skaičių vengiama. Klientas moka kas mėnesį po 600–1000 EUR, po metų atsigręžia, žiūri į paieškos rezultatus ir nesupranta, ar pakilo, ar krito. Toks modelis veikia agentūroms, nes klientui sunku pasakyti „tu nieko nepadarei". Bet jis neveikia klientui.</p>
+  <p>Tevero dirba kitaip. Sutartyje raštu surašytos konkrečios kvotos ir terminai. Mėnesinė ataskaita – tikri Google Search Console duomenys, ne PowerPoint skaidrės. Jei nepasiekiame pažadėto rezultato per 6 mėnesius net ir su 90 dienų pratęsimu, grąžiname visus pinigus. Tai ne marketingo lozungas, o sąlyga sutartyje su konkrečia procedūra ir terminais.</p>
+  <p>Į kiekvieną planą įeina realiai daug darbo: techninė optimizacija, raktažodžių tyrimas, pilnas turinio kūrimo paketas (10–40 SEO straipsnių, priklausomai nuo plano), išorinių nuorodų strategija, mėnesinės ataskaitos. Tai, ką kitos agentūros parduoda kaip atskirus papildomus paketus, mes įdedame į bazinę kainą. Klientas gauna pilną sprendimą, o ne striukų sąrašą su priedais „už atskirą mokestį".</p>
+  <p>Vienas trūkumas, kurį pasakau atvirai: negalime priimti 30 klientų vienu metu. Realus maksimumas – aštuoni paraleliniai projektai. Kai esi įsipareigojęs grąžinti 100% už nepavykusį projektą, perkrauti save reiškia žlugti. Jei esame užimti, sąžiningai pasakome „ne dabar, gal po trijų mėnesių", arba pasiūlome kontaktą kito specialisto, kuriuo pasitikime. Su tavimi kalbame kaip su partneriu, o ne kaip su klientu, kurį reikia bet kokia kaina sugriebti į portfelį.</p>
+</section>
+
+<section>
+  <h2>Kuo Tevero realiai skiriasi nuo kitų agentūrų</h2>
+  <p style="color:var(--muted);font-weight:300;margin-bottom:24px">Be marketinginių frazių, paprastai ir konkrečiai.</p>
+  <ul>
+    <li><strong>Garantijos pas mus tikros, ne tekstas svetainėje.</strong> Sutartyje raštu surašyta: kiek raktažodžių pateks į TOP 10 ir per kiek laiko. Nepasiekiame – grąžiname visus pinigus. Paklausk kitų, ar duotų tokią pat sąlygą sutartyje. Atsakymas tau papasakos viską, ką reikia žinoti.</li>
+    <li><strong>Į planą įeina realus turinio kiekis.</strong> Daugumoje agentūrų „turinio kūrimas" reiškia 1–2 straipsnius per mėnesį už atskirą priemoką. Pas mus į pigiausią Starto planą įeina 10 SEO straipsnių, į Augimo – 20, į Premium – 40. Tai realus turinio kiekis, kuris dirba tavo svetainei ir pasibaigus optimizacijos planui.</li>
+    <li><strong>Ataskaitos su realiais duomenimis, ne PDF makete.</strong> Gauni faktinius Google Search Console duomenis, o ne agentūros vidinę vertinimo sistemą, kurios reikšmių niekas niekur kitur nemato. Pozicijos auga – matosi grafike. Krenta – irgi matosi, ir mes paaiškiname kodėl.</li>
+    <li><strong>Be PVM, kainoraštis viešai svetainėje.</strong> Galutinė kaina yra ta pati kaina. Jokio „iš pradžių pateiksime individualų pasiūlymą" žaidimo, kur kaina priklauso nuo to, kaip turtingai atrodo tavo įmonė.</li>
+    <li><strong>Realūs pažadai, ne svajonės.</strong> Mes nežadame TOP 1 per mėnesį. Žadame TOP 10 per 6 mėnesius sutartam raktažodžių skaičiui. Skirtumas didžiulis ir lemia, ar tau iš tiesų bus naudos, ar tu mokėsi pinigus už tuščius pažadus.</li>
+    <li><strong>Lankstumas po 6 mėn.</strong> Pasibaigus pradiniam planui, pats sprendi, ar tęsti, ar baigti. Be 24 mėnesių sutarties, be nutraukimo baudų, be priekaištų. Norisi tau – tęsi. Nebėra biudžeto – nutrauki. Tai turėtų būti standartas, bet kažkodėl nėra.</li>
+  </ul>
+</section>
+
+<section id="kainos">
+  <h2>SEO planai ir kainos</h2>
+  <p>Trys planai, visi 6 mėnesių trukmės, visi su garantija į TOP 10. Skirtumas tarp jų – apimtis: kiek raktažodžių sekame, kiek puslapių dirbame, kiek turinio gaminame. Žemiau pateiktos pradinės kainos – galutinė priklauso nuo to, kiek tavo svetainėje yra puslapių ir kokia konkurencija tavo rinkoje. Kuo didesnė svetainė ir aršesnis sektorius, tuo daugiau darbo reikia, ir kaina koreguojama proporcingai.</p>
+
+  <div class="cards" style="margin-top:32px">
+
+    <div class="plan">
+      <h3>Starto SEO</h3>
+      <div class="label">Mažoms paslaugų įmonėms ir vietiniam verslui</div>
+      <div class="price">nuo 2 500 €<small> / 6 mėn.</small></div>
+      <ul>
+        <li><strong>40–50 raktažodžių</strong> optimizacija</li>
+        <li><strong>nuo 10 raktažodžių į TOP 10</strong> garantija</li>
+        <li>nuo 30 puslapių techninė optimizacija</li>
+        <li>nuo 5 pagrindinių puslapių turinio perrašymas</li>
+        <li>nuo 10 naujų SEO straipsnių</li>
+        <li>Mėnesinės GSC ataskaitos</li>
+        <li>SEO auditas ir raktažodžių tyrimas</li>
+      </ul>
+      <div class="plan-cta"><a href="tel:+37068364665" class="cta">Skambinti</a></div>
+    </div>
+
+    <div class="plan featured">
+      <h3>Augimo SEO</h3>
+      <div class="label">El. parduotuvėms ir vidutinio dydžio svetainėms</div>
+      <div class="price">nuo 4 400 €<small> / 6 mėn.</small></div>
+      <ul>
+        <li><strong>80–100 raktažodžių</strong> optimizacija</li>
+        <li><strong>nuo 20 raktažodžių į TOP 10</strong> garantija</li>
+        <li>nuo 70 puslapių techninė optimizacija</li>
+        <li>nuo 10 pagrindinių puslapių turinio perrašymas</li>
+        <li>nuo 20 naujų SEO straipsnių</li>
+        <li>Mėnesinės GSC ataskaitos</li>
+        <li>SEO auditas, raktažodžių tyrimas, konkurentų analizė</li>
+      </ul>
+      <div class="plan-cta"><a href="tel:+37068364665" class="cta">Skambinti</a></div>
+    </div>
+
+    <div class="plan">
+      <h3>Premium SEO</h3>
+      <div class="label">Didelėms parduotuvėms ir konkurencingoms rinkoms</div>
+      <div class="price">nuo 7 500 €<small> / 6 mėn.</small></div>
+      <ul>
+        <li><strong>160–200 raktažodžių</strong> optimizacija</li>
+        <li><strong>nuo 40 raktažodžių į TOP 10</strong> garantija</li>
+        <li>nuo 150 puslapių techninė optimizacija</li>
+        <li>nuo 20 pagrindinių puslapių turinio perrašymas</li>
+        <li>nuo 40 naujų SEO straipsnių</li>
+        <li>Mėnesinės GSC ataskaitos + savaitinės konsultacijos</li>
+        <li>Pilnas SEO + turinio + nuorodų kūrimo paketas</li>
+      </ul>
+      <div class="plan-cta"><a href="tel:+37068364665" class="cta">Skambinti</a></div>
+    </div>
+
+  </div>
+
+  <div class="note">Visos kainos ir kiekiai nurodyti su prierašu „nuo", nes galutinis plano turinys priklauso nuo tavo svetainės dydžio, esamos būklės, rinkos konkurencijos ir tikslų. Jei svetainė didesnė arba norisi platesnio rezultato, planas auga atitinkamai (kaina, raktažodžių skaičius, puslapių apimtis, turinio kiekis). Visos kainos be PVM (Tevero PVM netaiko). Pirma konsultacija ir individualus pasiūlymas – nemokami.</div>
+</section>
+
+<section class="guarantee">
+  <h2>Garantija raštu, ne marketingu</h2>
+  <p style="color:#f5ecdc">Per 6 mėn. iš tavo raktažodžių sąrašo bent sutartas skaičius atsidurs Google TOP 10 pozicijose. Konkretus skaičius priklauso nuo plano: Starto plane – bent 10 frazių iš 40–50, Augimo – bent 20 iš 80–100, Premium – bent 40 iš 160–200. Jei nepasiekiame, tęsiame darbus papildomai 90 dienų be jokio mokesčio. Jei ir tada nepasiekiame, grąžiname 100% projekto kainos per 30 dienų į tavo banko sąskaitą.</p>
+  <p style="color:#f5ecdc">Svarbus niuansas, kurį pasakome iš anksto: sutartis garantuoja kiekybę, o ne konkrečius žodžius. Tai reiškia, sutartyje neparašyta „frazė X bus 7-oje pozicijoje, frazė Y – 4-oje". Parašyta „iš sąrašo bent N frazių pasieks TOP 10". Kuriuos konkrečius žodžius stumiame pirma – sprendžiame kartu su tavimi pagal pasiekiamumą, paieškos apimtį ir verslo svarbą. Taip ir tau gerai (matuojame realų rezultatą), ir mums gerai (galime dirbti racionaliai, o ne savižudiškai).</p>
+  <p style="color:#f5ecdc">Kodėl niekas kitas Lietuvoje to neduoda? Dvi priežastys. Pirma, dauguma agentūrų finansiškai negali sau leisti. Vienas nepavykęs projektas nužudytų dviejų gerų projektų pelną, todėl jos rinkos mėnesinį mokesčio modelį, kur klientas moka kas mėnesį be konkretaus pažado. Antra, jos paprasčiausiai netiki savo metodologijos rezultatu. Mes tikime. Per pastaruosius metus išsigryninome darbo procesą, kuris realiai veikia ir leidžia stovėti už tokią garantiją. Dėl to ir galime ją duoti.</p>
+  <p style="color:#f5ecdc;margin-bottom:0">Vienas dalykas, kurį turi suprasti: garantija nereiškia, kad galime dirbti su bet kuo. Jei tavo svetainė turi gautą Google manualinę bausmę, jei reikalauji TOP 10 pagal nepasiekiamus žodžius (sektoriaus monstrus su milijoniniais biudžetais), jei tavo verslas yra tokioje rinkoje, kur 6 mėnesių nepakanka net teoriškai – sąžiningai pasakome „ne, šiame projekte garantijos duoti negalime". Tai dalis to, kodėl ji veikia tiems, kurie ją gauna.</p>
+</section>
+
+<section>
+  <h2>Garantijos sąlygos – atvirai ir iš anksto</h2>
+  <p>Žinome, kad „100% grąžinimas" skamba per gerai, kad būtų tiesa, todėl išsidėstome kortas ant stalo. Garantija veikia abiem pusėms tik tada, kai abi pusės atlieka savo darbą. Mes – savo, klientas – savo. Žemiau viskas surašyta. Tas pats tekstas atsiranda ir sutartyje, jokio smulkaus šrifto nėra.</p>
+
+  <h3>Iš mūsų pusės įsipareigojame</h3>
+  <ul>
+    <li>Atlikti visus sutartame plane numatytus darbus laiku ir kokybiškai (techninis SEO, turinys, vidinis ir išorinis nuorodų darbas, ataskaitos).</li>
+    <li>Per 6 mėn. laikotarpį pasiekti, kad iš tavo raktažodžių sąrašo bent sutartas skaičius (10 / 20 / 40, priklausomai nuo plano) atsidurtų Google TOP 10 pozicijose. Konkrečių žodžių sutartis nenurodo – garantija matuojama kiekybe.</li>
+    <li>Pateikti mėnesines GSC ataskaitas su realiais duomenimis ir atliktų darbų sąrašu, kad bet kada matytum, kas vyksta.</li>
+    <li>Tęsti optimizacijos darbus papildomai 90 dienų be jokio mokesčio, jei per pradinį 6 mėn. laikotarpį garantijos kvota nepasiekiama.</li>
+    <li>Per 30 dienų grąžinti 100% sumokėtos plano sumos, jei ir per pratęstą laikotarpį garantijos sąlygos neįvykdomos.</li>
+  </ul>
+
+  <h3>Iš kliento pusės reikalingos sąlygos</h3>
+  <ul>
+    <li>Per 14 dienų patvirtinti suderintą raktažodžių sąrašą. Galutinį sąrašą Tevero formuoja kartu su klientu pagal pasiekiamumo įvertinimą. Klientas siūlo savo idėjas, Tevero pasako, kurie žodžiai tinka į garantijos kvotą, kurie eina į pilną planą be konkretaus įsipareigojimo, o kurių apskritai nesiūlome dėl per didelės konkurencijos.</li>
+    <li>Suteikti reikalingas prieigas prie sistemų: turinio valdymo (CMS arba FTP), Google Search Console, Google Analytics.</li>
+    <li>Įgyvendinti rekomenduojamus techninius pakeitimus per 14 dienų nuo gavimo arba leisti Tevero juos atlikti už atskirą priemoką.</li>
+    <li>Leisti talpinti suderintą naują turinį svetainėje per visą plano laikotarpį.</li>
+    <li><strong>Nedaryti svetainėje pakeitimų be Tevero žinios ir pritarimo.</strong> Tai apima visus turinio, dizaino, struktūros, technologijų ir konfigūracijos pakeitimus: nuo CMS migracijos, domeno keitimo ar viso svetainės perprojektavimo iki naujų puslapių kūrimo, esamų puslapių redagavimo, URL adresų keitimo, meniu pertvarkymo, papildinių diegimo ar šalinimo. Bet kokie planuojami pakeitimai prieš įgyvendinimą turi būti suderinti tiesiogiai su mumis – pasakai, kas bus daroma, mes patvirtiname arba siūlome alternatyvą, jei pakeitimas gali pakenkti SEO rezultatui. Tai nereiškia, kad kažko negalima daryti – tai reiškia, kad viską darome kartu, kad nepražudytume bendro darbo.</li>
+  </ul>
+
+  <h3>Garantija negalioja, jeigu</h3>
+  <ul>
+    <li>Klientas neįgyvendino savo dalies pareigų, ir tai dokumentuotai užfiksuota.</li>
+    <li>Per garantijos laikotarpį svetainėje atlikti pakeitimai be Tevero žinios ir suderinimo.</li>
+    <li>Per garantijos laikotarpį svetainė pakeista kitu domenu arba CMS be Tevero suderinimo.</li>
+    <li>Google taiko manualinę bausmę už istorinį juodąjį SEO, atsiradusį iki Tevero darbo pradžios.</li>
+    <li>Įvyksta force majeure (didelis Google algoritmo atnaujinimas, paveikęs visą rinką, oficialiai patvirtintas).</li>
+  </ul>
+
+  <div class="note"><strong>Mokėjimo struktūra.</strong> Plano kaina padalinta į dalis: 30% pradžioje (auditas ir paruošimas), 30% per 3 mėn. tašką, 30% per 6 mėn. plano pabaigoje, 10% po garantijos termino įvykdymo. Grąžinami visi sumokėti pinigai už SEO darbus. Atskiri papildomi paketai (papildomi straipsniai, premium nuorodos, naujos sekcijos) į grąžinimą neįeina, nes yra atliekami realūs darbai su realiu rezultatu.</div>
+</section>
+
+<!-- ============== DARBŲ EIGA ============== -->
+<section>
+  <h2>Tevero SEO darbų eiga</h2>
+  <p class="eiga-intro">SEO yra ne magiškas mygtukas, o nuoseklus procesas. Žemiau – šeši etapai, per kuriuos dirbame su kiekvienu projektu. Svarbu suprasti vieną dalyką: jie nevyksta vienas po kito kaip projekto pakopos – jie vyksta lygiagrečiai. Trečią mėnesį tu jau matai kuriamą turinį (IV etapas), bet ir techninė optimizacija (III etapas) tebevyksta, ir nuorodų darbas (V etapas) jau pradėtas. Tikras SEO yra konvejeris, o ne sąrašas.</p>
+
+  <div class="phases">
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c1);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c1);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c1);">I etapas</span>
+            <span class="phase-title">Auditas ir analizė</span>
+            <span class="phase-icon">🔍</span>
+          </div>
+          <p class="eiga-desc">Klientas ateina ir sako: „jau turiu auditą iš kitos agentūros". Atsidarome – PDF su 47 puslapiais, raudonomis strėlytėmis, „page speed score 67/100" ir kitomis ekrano nuotraukomis iš PageSpeed Insights. O veiksmų plano nulis. Pakuota gražiai, esmės nėra. Mūsų auditas baigiasi atsakymu į vieną klausimą: ką darome pirmadienį 9 valandą ryto? Jei to atsakymo nėra, tai ne auditas, o sumaketuotas Word dokumentas.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Techninis svetainės auditas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Konkurentų analizė</div>
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Esamų pozicijų peržiūra</div>
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Turinio spragų analizė</div>
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Greičio ir vartotojo patirties vertinimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c1);"></div>Nuorodų profilio patikrinimas</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Audito ataskaita</span>
+            <span class="tag">Prioritetų sąrašas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c2);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c2);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c2);">II etapas</span>
+            <span class="phase-title">Raktinių žodžių tyrimas</span>
+            <span class="phase-icon">🗝️</span>
+          </div>
+          <p class="eiga-desc">Tarp SEO klientų dažniausia klaida – manyti, kad reikia „to vieno svarbaus žodžio". Pavyzdys: ateina baldžius iš Vilniaus ir sako: „noriu būti pirmas pagal žodį 'baldai'". Jam atsakome: „Gerai, būsi pirmas pagal 'baldai', tave pamatys 50 000 žmonių per mėnesį, iš jų gal 100 yra Vilniuje, iš jų gal 5 ieško tokių baldų, kokius tu darai. Arba leisi mums dirbti su 60 frazių tipo 'pagal užsakymą virtuvės baldai Vilnius', 'medinė virtuvė pagal individualų projektą', kurių ieško 800 žmonių per mėnesį, ir 600 iš jų yra realūs tavo klientai." Ką jis pasirenka – atspėk pats.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Pagrindinis raktinių žodžių tyrimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Ilgosios uodegos frazės</div>
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Semantinis grupavimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Puslapių priskyrimas žodžiams</div>
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Sezoniškumo analizė</div>
+            <div class="task"><div class="task-dot" style="background:var(--c2);"></div>Vartotojo ketinimo nustatymas</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Žodžių žemėlapis</span>
+            <span class="tag">Prioritetinės frazės</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c3);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c3);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c3);">III etapas</span>
+            <span class="phase-title">Techninė optimizacija</span>
+            <span class="phase-icon">⚙️</span>
+          </div>
+          <p class="eiga-desc">„Techninis SEO" skamba kaip kažkas labai sudėtingo, ir dauguma agentūrų tuo pasinaudoja – ima 1 500 EUR už „techninę optimizaciją", kuri realybėje yra meta žymų pataisymas plius vidinių nuorodų plano sutvarkymas. Pasakome atvirai: 80% techninių SEO darbų bet kuris padorus front-end programuotojas atlieka per dvi dienas. Mūsų darbas – ne padaryti, kad tai atrodytų sudėtingai, o padaryti, kad būtų atlikta gerai ir greitai. Be magijos, be aukso pelyčių, be PowerPoint pristatymų.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Meta žymų ir antraščių sutvarkymas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Puslapių greičio gerinimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Mobiliojo suderinamumo užtikrinimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Struktūrinių duomenų diegimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Vidinių nuorodų struktūra</div>
+            <div class="task"><div class="task-dot" style="background:var(--c3);"></div>Sitemap ir robots.txt</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Techniškai optimizuota svetainė</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c4);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c4);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c4);">IV etapas</span>
+            <span class="phase-title">Turinio kūrimas ir optimizacija</span>
+            <span class="phase-icon">✍️</span>
+          </div>
+          <p class="eiga-desc">Turinys yra ta vieta, kur dauguma SEO projektų nutrūksta. Klientas susimoka už planą, agentūra pažada „kursime SEO straipsnius", ir per 6 mėnesius klientas gauna 4 straipsnius su silpna struktūra. Pas mus į pigiausią Starto planą įeina 10 SEO straipsnių, į Augimo – 20, į Premium – 40. Tai ne marketingo skaičiai, o bazė, kuri realiai talpinama svetainėje per plano laikotarpį. Kiekvienas straipsnis pereina kelis kontrolės etapus, kad neatrodytų kaip generinė nesąmonė. Realiai apčiuopiamas turinio kiekis, kuris dirba tavo svetainei ir pasibaigus mūsų bendradarbiavimui.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Esamų puslapių turinio optimizacija</div>
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Naujų SEO puslapių kūrimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Tinklaraščio straipsniai pagal paieškos ketinimą</div>
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Ilgaformis ekspertinis turinys</div>
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Vaizdų alt tekstų sutvarkymas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c4);"></div>Vidinių nuorodų strategija</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Optimizuotas turinys</span>
+            <span class="tag">Nauji SEO puslapiai</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c5);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c5);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c5);">V etapas</span>
+            <span class="phase-title">Išorinių nuorodų kūrimas</span>
+            <span class="phase-icon">🔗</span>
+          </div>
+          <p class="eiga-desc">Nuorodų kūrimas Lietuvoje – tema, kurioje rinka primena Laukinius Vakarus. Pavyzdys, kurį tenka matyti: agentūra paima iš kliento 800 EUR per mėnesį „už SEO", iš jų 50 EUR investuoja į žemos kokybės nuorodas iš užsienio šaltinių, klientui Excel'yje parodo „30 atgalinių nuorodų gauta", o likusius 750 EUR pasilieka. Po metų klientas gauna manualinę bausmę iš Google ir nesupranta, kodėl pozicijos krito. Tokio žaidimo nežaidžiame, ne dėl to, kad esame šventieji, o dėl to, kad 100% grąžinimo garantija reiškia: jei tavo pozicijos nukris dėl mūsų nesąmonių, mokame mes. Geriau 5 kokybiškos nuorodos iš pramonės leidinių, asociacijų ar profesionalių portalų per mėnesį, nei 100 šlamšto. Brangiau? Taip. Bet veikia.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>Teminių nuorodų paieška</div>
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>Verslo katalogų registracija</div>
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>Partnerių tinklalapių nuorodos</div>
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>PR ir žiniasklaidos minėjimai</div>
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>Svečių straipsniai</div>
+            <div class="task"><div class="task-dot" style="background:var(--c5);"></div>Toksiškų nuorodų šalinimas</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Nuorodų ataskaita</span>
+            <span class="tag">Augantis svetainės autoritetas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="spine">
+        <div class="spine-node" style="background:var(--c6);"></div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="eiga-card">
+        <div class="eiga-card-accent" style="background:var(--c6);"></div>
+        <div class="eiga-card-inner">
+          <div class="eiga-card-top">
+            <span class="phase-badge" style="background:var(--c6);">VI etapas</span>
+            <span class="phase-title">Stebėjimas ir ataskaitos</span>
+            <span class="phase-icon">📊</span>
+          </div>
+          <p class="eiga-desc">Mėnesinė ataskaita pas daugumą agentūrų – tai vadybininko Canva skaidrių komplektas, kuriame „atlikta 12 SEO darbų" ir krūva ikonų su žaliais žymekliais. Konkrečiai kas atlikta? Klientas nesupranta. Kokios pozicijos pakilo, kokios krito? Neaišku. Mūsų ataskaita – tikras GSC eksportas su faktiniais duomenimis plius mūsų komentarai paragrafais: „Šį mėnesį pozicija pagal frazę X pakilo iš 23 į 11 vietą todėl, kad publikavome straipsnį Y ir gavome nuorodą iš Z. Frazė W krito iš 8 į 14, nes konkurentas A paskelbė naujesnę informaciją. Kovo mėnesį planuojame atnaujinti šiuos puslapius." Skaitai – ir žinai, kas vyksta.</p>
+          <div class="tasks">
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Pozicijų stebėjimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Organinio srauto analizė</div>
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Konversijų sekimas</div>
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Reguliarios veiklos ataskaitos</div>
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Strategijos korekcijos</div>
+            <div class="task"><div class="task-dot" style="background:var(--c6);"></div>Augimo rekomendacijos</div>
+          </div>
+          <div class="eiga-footer">
+            <span class="footer-label">Rezultatas</span>
+            <span class="tag">Mėnesinė ataskaita</span>
+            <span class="tag">Nuolatinis augimas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>Kai standartinis planas neužtenka</h2>
+  <p>Trys planai padengia maždaug 80% scenarijų. Tačiau realybėje kiekviena svetainė ir rinka turi savo specifiką, ir kartais reikia kažko, ko bazinis paketas nepasiūlo. Žemiau – dažniausi atvejai, kuriuos prijungiame papildomai. Kainų čia nerašome – jos formuojamos individualiai, atsižvelgiant į konkretų darbų kiekį. Per pirmą skambutį pasakome konkretų skaičių.</p>
+
+  <h3>Ką dažniausiai pridedame</h3>
+  <ul>
+    <li><strong>Papildomas turinys.</strong> Jei tavo verslas remiasi turinio rinkodara arba nori greitesnio augimo, prie plano galime pridėti papildomų SEO straipsnių, kategorijų aprašymų, DUK sekcijų ar kitokių turinio elementų.</li>
+    <li><strong>Naujos svetainės sekcijos ir pagrindiniai puslapiai.</strong> Ne visada plano apimtis atitinka tavo svetainės ambiciją. Galime sukurti naujas paslaugų sritis, vietines sritis (pagal miestus, rajonus), pramonės žodynus, kainoraščius, sertifikatų sekcijas ir kitus elementus, kurie generuoja srautą.</li>
+    <li><strong>Premium atgalinės nuorodos.</strong> Kai kurioms rinkoms reikia stipresnio autoriteto signalo nei standartinis nuorodų darbas. Dirbame su pramonės leidiniais, asociacijomis ir aukšto autoriteto šaltiniais.</li>
+    <li><strong>Lokalaus SEO paruošimas.</strong> Google Business Profile optimizacija, vietinių katalogų registracija, atsiliepimų strategija, citavimo nuoseklumo darbas. Aktualu paslaugų verslams, kurie aptarnauja konkrečias geografines zonas.</li>
+    <li><strong>El. parduotuvės struktūros darbai.</strong> Produkto puslapių šablonų optimizacija, kategorijų hierarchijos pertvarka, vidinės paieškos SEO, filtrų indeksavimo strategija.</li>
+    <li><strong>Techninės migracijos palydėjimas.</strong> Jei planuoji svetainės perprojektavimą, CMS keitimą ar domeno migraciją, padedame šito nepaversti SEO katastrofa.</li>
+    <li><strong>Konkurentų gilus tyrimas.</strong> Detali analizė, kodėl konkretus konkurentas dominuoja paieškoje, ir konkretus veiksmų planas, kaip jį aplenkti.</li>
+    <li><strong>Dideli enterprise projektai.</strong> Klientams su didelėmis svetainėmis (tūkstančiai produktų, šimtai vietų ar paslaugų) statome individualius didelio masto SEO sprendimus su mėnesiniu turinio gamybos rezultatu, kuris kitaip nepasiekiamas.</li>
+  </ul>
+
+  <div class="note">Kainos papildymams formuojamos individualiai, atsižvelgiant į konkretaus darbo apimtį ir poreikį tavo projekte. Pirma konsultacija ir individualus pasiūlymas su preliminaria papildymų kaina – nemokami.</div>
+</section>
+
+<section>
+  <h2>Kas vyksta po 6 mėn. plano</h2>
+  <p>Pasibaigus 6 mėn. planui, galimybės dvi: tęsi su mumis mėnesiniu palaikymu arba užbaigi projektą ir eini toliau pats. Abi normalios. Bet būsime sąžiningi: SEO yra ne projektas su pabaiga, o procesas. Pasiektos pozicijos kelis mėnesius išlieka stabilios, bet po metų be jokio darbo dauguma jų nukris, nes Google algoritmas keičiasi, o konkurentai nemiega. Jei organinis srautas tau yra svarbus pajamų kanalas, palaikymas yra ne prabanga, o būtinybė. Jei tai buvo vienkartinis projektas pradžiai – galime ir užbaigti, ir tu išliksi gerose pozicijose savaites ar mėnesius.</p>
+
+  <div class="cards" style="margin-top:24px">
+    <div class="card">
+      <h3>Starto palaikymas</h3>
+      <p style="font-family:'Syne',sans-serif;color:var(--tan-d);font-size:1.4rem;font-weight:700;margin:4px 0">nuo 400 EUR / mėn.</p>
+      <p style="font-size:0.92rem">Tęstinis išorinis SEO, naujo turinio kūrimas, GSC ataskaitos.</p>
+    </div>
+    <div class="card">
+      <h3>Augimo palaikymas</h3>
+      <p style="font-family:'Syne',sans-serif;color:var(--tan-d);font-size:1.4rem;font-weight:700;margin:4px 0">nuo 700 EUR / mėn.</p>
+      <p style="font-size:0.92rem">Pilnas tęstinis SEO + turinio + nuorodų darbo paketas.</p>
+    </div>
+    <div class="card">
+      <h3>Premium palaikymas</h3>
+      <p style="font-family:'Syne',sans-serif;color:var(--tan-d);font-size:1.4rem;font-weight:700;margin:4px 0">nuo 1 000 EUR / mėn.</p>
+      <p style="font-size:0.92rem">Pilnas SEO + savaitinės konsultacijos + strategija.</p>
+    </div>
+  </div>
+  <p style="font-size:0.92rem;color:var(--muted);margin-top:12px">Palaikymo kaina priklauso nuo svetainės dydžio, rinkos konkurencijos ir norimo darbų intensyvumo. Galutinė kaina formuojama individualiai pasibaigus pradiniam planui. Palaikymas neturi fiksuoto termino – klientas gali nutraukti bet kada, įspėjęs prieš 30 dienų.</p>
+</section>
+
+<section class="contact">
+  <h2 style="margin-top:0;color:#fff">Pasišnekam?</h2>
+  <p>Skaitei iki čia? Vadinasi tau SEO domina rimtai, ne tik palygini kainas su penkiomis kitomis agentūromis. Pirmas pokalbis nemokamas, trunka apie 30 minučių. Pasakai mums kontekstą: kokia svetainė, kokia rinka, kokie tikslai. Mes pasakome, ar tinkame vienas kitam, kokio dydžio plano tau realiai reikės ir ar galime duoti garantiją tavo projektui. Jei ne – pasakome, kur tau bus geriau.</p>
+  <p>Jokio agresyvaus pardavimo, jokių „tik šiandien akcija" triukų. Mes tiesiog kalbame, tu tiesiog klausi. Sprendimas po pokalbio – tavo.</p>
+  <p style="font-size:1.3rem;margin-top:24px">
+    <a href="tel:+37068364665" style="color:var(--tan);font-weight:600;text-decoration:none">+370 683 64665</a>
+  </p>
+  <p>
+    <a href="mailto:pijus@tevero.lt" style="color:var(--tan)">pijus@tevero.lt</a>
+  </p>
+  <a href="tel:+37068364665" class="cta" style="margin-top:16px">Skambinti</a>
+</section>
+
+<footer style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:48px;padding-top:24px;border-top:1px solid var(--line)">
+  Tevero MB · įmonės kodas 307565560 · Perkūnkiemio g. 19, LT-12120 Vilnius · tevero.lt
+</footer>
+
+</div>
+</body>
+</html>

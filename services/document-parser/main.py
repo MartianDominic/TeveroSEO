@@ -3,7 +3,7 @@ TeveroSEO Document Parser Service
 Phase 102-08: Format-specific parsers for PDF and DOCX.
 
 FastAPI service that extracts text with rich metadata from uploaded documents.
-Runs on port 8001 (AI-Writer uses 8000).
+Runs on port 8002 (AI-Writer uses 8000, scrapling-engine uses 8001).
 """
 
 import os
