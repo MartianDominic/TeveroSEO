@@ -86,7 +86,11 @@ export async function exportToPdf(options: PdfExportOptions): Promise<Buffer> {
   );
 
   // Render to PDF with Puppeteer
-  const browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox and --disable-setuid-sandbox required for Docker environments
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
   try {
     const page = await browser.newPage();
