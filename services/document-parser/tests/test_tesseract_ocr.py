@@ -12,7 +12,8 @@ from unittest.mock import patch, MagicMock
 class TestTesseractOcr:
     """Test suite for Tesseract OCR extraction."""
 
-    def test_extract_returns_text_from_clear_image(self):
+    @pytest.mark.asyncio
+    async def test_extract_returns_text_from_clear_image(self):
         """Test 1: extract_with_tesseract returns text from clear image."""
         from ocr.tesseract_ocr import extract_with_tesseract, TesseractResult
 
@@ -33,13 +34,14 @@ class TestTesseractOcr:
             img.save(img_bytes, format="PNG")
             image_bytes = img_bytes.getvalue()
 
-            result = extract_with_tesseract([image_bytes])
+            result = await extract_with_tesseract([image_bytes])
 
             assert isinstance(result, TesseractResult)
             assert "Hello" in result.text
             assert "World" in result.text
 
-    def test_extract_returns_confidence_score(self):
+    @pytest.mark.asyncio
+    async def test_extract_returns_confidence_score(self):
         """Test 2: extract_with_tesseract returns confidence score 0-100."""
         from ocr.tesseract_ocr import extract_with_tesseract, TesseractResult
 
@@ -56,13 +58,14 @@ class TestTesseractOcr:
             img_bytes = io.BytesIO()
             img.save(img_bytes, format="PNG")
 
-            result = extract_with_tesseract([img_bytes.getvalue()])
+            result = await extract_with_tesseract([img_bytes.getvalue()])
 
             assert 0 <= result.confidence <= 100
             # Average of 95 and 88 = 91.5
             assert result.confidence == pytest.approx(91.5, rel=0.1)
 
-    def test_extract_supports_lithuanian_language(self):
+    @pytest.mark.asyncio
+    async def test_extract_supports_lithuanian_language(self):
         """Test 3: extract_with_tesseract supports Lithuanian (lit) language."""
         from ocr.tesseract_ocr import extract_with_tesseract
 
@@ -79,7 +82,7 @@ class TestTesseractOcr:
             img_bytes = io.BytesIO()
             img.save(img_bytes, format="PNG")
 
-            result = extract_with_tesseract([img_bytes.getvalue()], language="eng+lit")
+            result = await extract_with_tesseract([img_bytes.getvalue()], language="eng+lit")
 
             # Verify Lithuanian language was passed to pytesseract
             mock_tesseract.image_to_data.assert_called()
@@ -87,7 +90,8 @@ class TestTesseractOcr:
             assert call_args.kwargs.get("lang") == "eng+lit"
             assert "lit" in result.language
 
-    def test_extract_handles_multiple_pages(self):
+    @pytest.mark.asyncio
+    async def test_extract_handles_multiple_pages(self):
         """Test 4: extract_with_tesseract handles multiple pages."""
         from ocr.tesseract_ocr import extract_with_tesseract
 
@@ -113,13 +117,14 @@ class TestTesseractOcr:
                 img.save(img_bytes, format="PNG")
                 pages.append(img_bytes.getvalue())
 
-            result = extract_with_tesseract(pages)
+            result = await extract_with_tesseract(pages)
 
             assert "Page One" in result.text
             assert "Page Two" in result.text
             assert mock_tesseract.image_to_data.call_count == 2
 
-    def test_low_quality_images_return_low_confidence(self):
+    @pytest.mark.asyncio
+    async def test_low_quality_images_return_low_confidence(self):
         """Test 5: Low quality images return low confidence."""
         from ocr.tesseract_ocr import extract_with_tesseract
 
@@ -137,7 +142,7 @@ class TestTesseractOcr:
             img_bytes = io.BytesIO()
             img.save(img_bytes, format="PNG")
 
-            result = extract_with_tesseract([img_bytes.getvalue()])
+            result = await extract_with_tesseract([img_bytes.getvalue()])
 
             # Average of 25, 30, 15 = 23.33
             assert result.confidence < 50

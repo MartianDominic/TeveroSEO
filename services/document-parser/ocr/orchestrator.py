@@ -58,7 +58,7 @@ async def extract_text_tiered(
     total_cost = 0
 
     # Tier 1: Try Tesseract first (FREE)
-    tesseract_result = extract_with_tesseract(page_images, language)
+    tesseract_result = await extract_with_tesseract(page_images, language)
 
     if tesseract_result.confidence >= TESSERACT_THRESHOLD:
         return OcrResult(

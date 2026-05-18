@@ -9,6 +9,7 @@ Tesseract is the first tier in our OCR pipeline:
 - Best for: Standard fonts, clean scans, simple layouts
 """
 
+import asyncio
 import logging
 import pytesseract
 from pytesseract import TesseractError
@@ -30,15 +31,62 @@ class TesseractResult:
     language: str
 
 
-def extract_with_tesseract(
+def _process_single_image(image_bytes: bytes, idx: int, language: str) -> tuple[str, float]:
+    """
+    Process a single image with Tesseract OCR (synchronous).
+
+    This is a helper function designed to be run in a thread pool
+    to avoid blocking the event loop.
+
+    Args:
+        image_bytes: Raw image bytes (PNG/JPEG)
+        idx: Image index for logging
+        language: Tesseract language codes
+
+    Returns:
+        Tuple of (extracted_text, confidence) or ("", 0) on failure
+    """
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            try:
+                # Get text with confidence data
+                data = pytesseract.image_to_data(
+                    image,
+                    lang=language,
+                    output_type=pytesseract.Output.DICT
+                )
+            except TesseractError as e:
+                logger.warning("Tesseract failed on image %d: %s - skipping", idx + 1, e)
+                return "", 0
+
+            # Extract text from words with positive confidence
+            page_text = " ".join(
+                word for word, conf in zip(data["text"], data["conf"])
+                if conf > 0 and word.strip()
+            )
+
+            # Calculate average confidence (exclude -1 values which indicate no text)
+            valid_conf = [c for c in data["conf"] if c > 0]
+            avg_conf = sum(valid_conf) / len(valid_conf) if valid_conf else 0
+
+            return page_text, avg_conf
+    except (IOError, OSError) as e:
+        logger.warning("Failed to open image %d: %s - skipping", idx + 1, e)
+        return "", 0
+
+
+async def extract_with_tesseract(
     page_images: List[bytes],
     language: str = "eng+lit"  # English + Lithuanian
 ) -> TesseractResult:
     """
-    Extract text using Tesseract OCR.
+    Extract text using Tesseract OCR (async, non-blocking).
 
     Tier 1: FREE, local processing
     Best for: Clean scans, standard fonts
+
+    Uses asyncio.to_thread() to run synchronous Tesseract operations
+    in a thread pool, preventing event loop blocking.
 
     Args:
         page_images: List of image bytes (PNG/JPEG)
@@ -54,34 +102,15 @@ def extract_with_tesseract(
     all_confidence = []
 
     for idx, image_bytes in enumerate(page_images):
-        try:
-            image = Image.open(io.BytesIO(image_bytes))
-        except (IOError, OSError) as e:
-            logger.warning("Failed to open image %d: %s - skipping", idx + 1, e)
-            continue
-
-        try:
-            # Get text with confidence data
-            data = pytesseract.image_to_data(
-                image,
-                lang=language,
-                output_type=pytesseract.Output.DICT
-            )
-        except TesseractError as e:
-            logger.warning("Tesseract failed on image %d: %s - skipping", idx + 1, e)
-            continue
-
-        # Extract text from words with positive confidence
-        page_text = " ".join(
-            word for word, conf in zip(data["text"], data["conf"])
-            if conf > 0 and word.strip()
+        # Run synchronous Tesseract processing in thread pool to avoid blocking
+        page_text, conf = await asyncio.to_thread(
+            _process_single_image, image_bytes, idx, language
         )
-        all_text.append(page_text)
 
-        # Calculate average confidence (exclude -1 values which indicate no text)
-        valid_conf = [c for c in data["conf"] if c > 0]
-        if valid_conf:
-            all_confidence.append(sum(valid_conf) / len(valid_conf))
+        if page_text:
+            all_text.append(page_text)
+        if conf > 0:
+            all_confidence.append(conf)
 
     # Calculate overall average confidence
     avg_confidence = sum(all_confidence) / len(all_confidence) if all_confidence else 0
