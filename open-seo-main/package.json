@@ -138,7 +138,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "drizzle-kit": "^0.31.4",
     "jsdom": "^29.0.2",
-    "knip": "^5.66.4",
+    "knip": "^6.11.0",
     "oxlint": "^1.50.0",
     "oxlint-tsgolint": "^0.15.0",
     "portless": "^0.5.2",
