@@ -281,7 +281,12 @@ export async function detectStructure(
       textLength: text.length,
     });
 
-    throw new Error(`Structure detection failed: ${errorMessage}`);
+    // Preserve original stack trace by using cause option
+    const wrappedError = new Error(`Structure detection failed: ${errorMessage}`, {
+      cause: error,
+    });
+
+    throw wrappedError;
   }
 }
 

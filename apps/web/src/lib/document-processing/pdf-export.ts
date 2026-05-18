@@ -102,12 +102,17 @@ export async function exportToPdf(options: PdfExportOptions): Promise<Buffer> {
   try {
     const page = await browser.newPage();
 
+    // Set default timeout for all page operations to prevent hanging
+    page.setDefaultTimeout(PUPPETEER_TIMEOUT_MS);
+    page.setDefaultNavigationTimeout(PUPPETEER_TIMEOUT_MS);
+
     await page.setContent(html, { waitUntil: "networkidle0" });
 
     const pdf = await page.pdf({
       format: "A4",
       margin: { top: "1in", right: "1in", bottom: "1in", left: "1in" },
       printBackground: true,
+      timeout: PUPPETEER_TIMEOUT_MS,
     });
 
     logger.info("[pdf-export] Export complete", {
