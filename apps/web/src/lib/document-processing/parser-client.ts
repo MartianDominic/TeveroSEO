@@ -14,6 +14,7 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { logger } from "@/lib/logger";
+
 import { ParserServiceResponseSchema } from "./schemas";
 
 const PARSER_SERVICE_URL =
@@ -260,9 +261,16 @@ export async function checkParserHealth(): Promise<boolean> {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+    logger.debug("[parser-client] Health check result", {
+      healthy: response.ok,
+      status: response.status,
+    });
     return response.ok;
-  } catch {
+  } catch (error) {
     clearTimeout(timeoutId);
+    logger.warn("[parser-client] Health check failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }

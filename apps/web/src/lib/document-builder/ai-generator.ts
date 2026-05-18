@@ -63,6 +63,14 @@ export interface GenerationResponse {
   confidence: number;
   /** Alternative phrasings */
   suggestions?: string[];
+  /** Token usage for cost tracking */
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  /** Estimated cost in USD */
+  cost?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +83,12 @@ const LANGUAGE_NAMES: Record<string, string> = {
 };
 
 const FALLBACK_MESSAGE = "Unable to generate content. Please try again or write your content manually.";
+
+/**
+ * Gemini 3.1 Pro cost per million tokens.
+ * Per CLAUDE.md LLM Architecture spec: $1.25/1M tokens
+ */
+const GEMINI_COST_PER_1M_TOKENS = 1.25;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -221,12 +235,20 @@ export function buildPrompt(request: GenerationRequest): string {
 export async function generateBlockContent(
   request: GenerationRequest
 ): Promise<GenerationResponse> {
+  const startTime = Date.now();
+
   try {
     // Input validation
     if (!request.blockType) {
       logger.warn("[ai-generator] Missing blockType in request");
       return { content: FALLBACK_MESSAGE, confidence: 0 };
     }
+
+    logger.info("[ai-generator] Starting content generation", {
+      blockType: request.blockType,
+      intent: request.intent,
+      language: request.language,
+    });
 
     // Log potential injection attempts for security monitoring
     const fieldsToCheck = [
@@ -262,15 +284,45 @@ export async function generateBlockContent(
     const hasStructure = result.text.includes("\n") || result.text.length > 100;
     const confidence = Math.min(0.95, Math.max(0.5, contentLength / 500 + (hasStructure ? 0.2 : 0)));
 
+    // Extract token usage for cost tracking (AI SDK uses inputTokens/outputTokens)
+    const promptTokens = result.usage?.inputTokens ?? 0;
+    const completionTokens = result.usage?.outputTokens ?? 0;
+    const totalTokens = result.usage?.totalTokens ?? (promptTokens + completionTokens);
+
+    // Calculate cost: $1.25 per 1M tokens
+    const cost = (totalTokens / 1_000_000) * GEMINI_COST_PER_1M_TOKENS;
+
+    const durationMs = Date.now() - startTime;
+    logger.info("[ai-generator] Content generation completed", {
+      blockType: request.blockType,
+      intent: request.intent,
+      durationMs,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      cost: Math.round(cost * 1_000_000) / 1_000_000, // Round to 6 decimal places
+      contentLength: result.text.length,
+      confidence,
+    });
+
     return {
       content: result.text,
       confidence,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens,
+      },
+      cost,
     };
   } catch (error) {
+    const durationMs = Date.now() - startTime;
+
     // Log error but return graceful fallback
     logger.error("[ai-generator] Generation failed", {
       blockType: request.blockType,
       intent: request.intent,
+      durationMs,
       error: error instanceof Error ? error.message : String(error),
     });
 

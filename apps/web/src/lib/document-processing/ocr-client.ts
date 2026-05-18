@@ -7,6 +7,7 @@
  */
 
 import { logger } from "@/lib/logger";
+
 import { OcrServiceResponseSchema, OcrTierSchema } from "./schemas";
 
 const PARSER_SERVICE_URL =
