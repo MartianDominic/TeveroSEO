@@ -56,6 +56,15 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 /** Batch size for DB updates */
 const BATCH_SIZE = 50;
 
+/** Maximum retry attempts before moving to DLQ */
+const MAX_RETRIES = 3;
+
+/** Dead letter queue key prefix */
+const DLQ_PREFIX = "dlq:analytics-sync:";
+
+/** TTL for DLQ entries: 7 days */
+const DLQ_TTL_SECONDS = 7 * 24 * 60 * 60;
+
 // =============================================================================
 // Key Parsing
 // =============================================================================
@@ -122,6 +131,84 @@ async function scanKeys(pattern: string): Promise<string[]> {
 }
 
 // =============================================================================
+// Dead Letter Queue Helpers
+// =============================================================================
+
+/**
+ * Get the retry count for a variant from Redis.
+ *
+ * @param variantId - Variant ID
+ * @returns Current retry count
+ */
+async function getRetryCount(variantId: string): Promise<number> {
+  const count = await redis.get(`${DLQ_PREFIX}retry:${variantId}`);
+  return count ? parseInt(count, 10) : 0;
+}
+
+/**
+ * Increment retry count for a variant.
+ *
+ * @param variantId - Variant ID
+ * @returns New retry count
+ */
+async function incrementRetryCount(variantId: string): Promise<number> {
+  const key = `${DLQ_PREFIX}retry:${variantId}`;
+  const count = await redis.incr(key);
+  await redis.expire(key, DLQ_TTL_SECONDS);
+  return count;
+}
+
+/**
+ * Clear retry count for a variant after successful sync.
+ *
+ * @param variantId - Variant ID
+ */
+async function clearRetryCount(variantId: string): Promise<void> {
+  await redis.del(`${DLQ_PREFIX}retry:${variantId}`);
+}
+
+/**
+ * Move failed analytics data to the dead letter queue.
+ *
+ * Stores the failed data with metadata for later inspection/replay.
+ *
+ * @param variantId - Variant ID
+ * @param blockId - Block ID
+ * @param data - Failed update data
+ * @param error - Error message
+ */
+async function moveToDeadLetterQueue(
+  variantId: string,
+  blockId: string,
+  data: { impressionsDelta: number; conversionsDelta: number },
+  error: string
+): Promise<void> {
+  const dlqEntry = {
+    variantId,
+    blockId,
+    impressionsDelta: data.impressionsDelta,
+    conversionsDelta: data.conversionsDelta,
+    error,
+    failedAt: new Date().toISOString(),
+    retryCount: MAX_RETRIES,
+  };
+
+  const dlqKey = `${DLQ_PREFIX}failed:${variantId}:${Date.now()}`;
+  await redis.setex(dlqKey, DLQ_TTL_SECONDS, JSON.stringify(dlqEntry));
+
+  // Clear retry counter since we moved to DLQ
+  await redis.del(`${DLQ_PREFIX}retry:${variantId}`);
+
+  logger.warn("[analytics-sync] Moved to dead letter queue", {
+    variantId,
+    blockId,
+    impressionsDelta: data.impressionsDelta,
+    conversionsDelta: data.conversionsDelta,
+    error,
+  });
+}
+
+// =============================================================================
 // Core Sync Function
 // =============================================================================
 
@@ -158,9 +245,10 @@ export async function syncAnalytics(): Promise<SyncResult> {
     });
 
     // Group updates by variant for batching
+    // Track blockId per variant for proper key restoration on failure
     const variantUpdates = new Map<
       string,
-      { impressionsDelta: number; conversionsDelta: number }
+      { blockId: string; impressionsDelta: number; conversionsDelta: number }
     >();
 
     // Process each key with GETSET
@@ -187,8 +275,9 @@ export async function syncAnalytics(): Promise<SyncResult> {
           continue;
         }
 
-        // Accumulate updates per variant
+        // Accumulate updates per variant (store blockId for key restoration)
         const existing = variantUpdates.get(parsed.variantId) || {
+          blockId: parsed.blockId,
           impressionsDelta: 0,
           conversionsDelta: 0,
         };
@@ -227,24 +316,51 @@ export async function syncAnalytics(): Promise<SyncResult> {
             .where(eq(blockVariants.id, variantId));
 
           result.updatesPerformed++;
+
+          // Clear retry count on success
+          await clearRetryCount(variantId);
         } catch (error) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
           result.errors.push(`Variant ${variantId}: ${errorMsg}`);
 
-          // Restore Redis values on DB failure
-          const updates2 = variantUpdates.get(variantId)!;
-          if (updates2.impressionsDelta > 0) {
-            await redis.incrby(
-              `block:placeholder:variant:${variantId}:views`,
-              updates2.impressionsDelta
+          const failedUpdates = variantUpdates.get(variantId)!;
+
+          // Check retry count and decide: restore to Redis or move to DLQ
+          const retryCount = await incrementRetryCount(variantId);
+
+          if (retryCount >= MAX_RETRIES) {
+            // Max retries exceeded - move to dead letter queue
+            await moveToDeadLetterQueue(
+              variantId,
+              failedUpdates.blockId,
+              {
+                impressionsDelta: failedUpdates.impressionsDelta,
+                conversionsDelta: failedUpdates.conversionsDelta,
+              },
+              errorMsg
             );
-          }
-          if (updates2.conversionsDelta > 0) {
-            await redis.incrby(
-              `block:placeholder:variant:${variantId}:conversions`,
-              updates2.conversionsDelta
-            );
+          } else {
+            // Restore Redis values for retry on next sync cycle
+            logger.warn("[analytics-sync] DB update failed, will retry", {
+              variantId,
+              retryCount,
+              maxRetries: MAX_RETRIES,
+              error: errorMsg,
+            });
+
+            if (failedUpdates.impressionsDelta > 0) {
+              await redis.incrby(
+                `block:${failedUpdates.blockId}:variant:${variantId}:views`,
+                failedUpdates.impressionsDelta
+              );
+            }
+            if (failedUpdates.conversionsDelta > 0) {
+              await redis.incrby(
+                `block:${failedUpdates.blockId}:variant:${variantId}:conversions`,
+                failedUpdates.conversionsDelta
+              );
+            }
           }
         }
       }
@@ -265,6 +381,58 @@ export async function syncAnalytics(): Promise<SyncResult> {
   });
 
   return result;
+}
+
+// =============================================================================
+// DLQ Inspection
+// =============================================================================
+
+/**
+ * Dead letter queue entry structure.
+ */
+export interface DLQEntry {
+  variantId: string;
+  blockId: string;
+  impressionsDelta: number;
+  conversionsDelta: number;
+  error: string;
+  failedAt: string;
+  retryCount: number;
+}
+
+/**
+ * Get all entries in the dead letter queue.
+ *
+ * Useful for monitoring and manual intervention.
+ *
+ * @returns Array of DLQ entries
+ */
+export async function getDeadLetterQueueEntries(): Promise<DLQEntry[]> {
+  const keys = await scanKeys(`${DLQ_PREFIX}failed:*`);
+  const entries: DLQEntry[] = [];
+
+  for (const key of keys) {
+    const value = await redis.get(key);
+    if (value) {
+      try {
+        entries.push(JSON.parse(value) as DLQEntry);
+      } catch {
+        logger.warn("[analytics-sync] Invalid DLQ entry", { key });
+      }
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Get the count of entries in the dead letter queue.
+ *
+ * @returns Number of DLQ entries
+ */
+export async function getDeadLetterQueueCount(): Promise<number> {
+  const keys = await scanKeys(`${DLQ_PREFIX}failed:*`);
+  return keys.length;
 }
 
 // =============================================================================
