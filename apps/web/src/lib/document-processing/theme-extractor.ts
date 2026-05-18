@@ -13,6 +13,12 @@ import { uploadedDocuments, brandThemes } from "@/db/schema/document-builder";
 import { eq } from "drizzle-orm";
 import type { VoiceAttributes, FontInfo } from "@/db/schema/document-builder";
 import { logger } from "@/lib/logger";
+import {
+  VoiceAnalysisResponseSchema,
+  ExtractedMetadataSchema,
+  ExtractedTextSchema,
+  type RawFontInfo,
+} from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,14 +38,7 @@ export interface BrandTheme {
   confidence: number;
 }
 
-/**
- * Raw font info from document parser.
- */
-interface RawFontInfo {
-  font: string;
-  size: number;
-  usage: number;
-}
+// RawFontInfo type now imported from ./schemas
 
 // ---------------------------------------------------------------------------
 // Main Export
@@ -61,9 +60,12 @@ export async function extractTheme(documentId: string): Promise<BrandTheme> {
     throw new Error(`Document not found: ${documentId}`);
   }
 
-  const metadata = doc.extractedMetadata as { colors?: string[]; fonts?: RawFontInfo[] } | null;
-  const extractedText = doc.extractedText as { text?: string } | null;
-  const text = extractedText?.text || "";
+  // Validate JSONB fields with Zod schemas
+  const metadataResult = ExtractedMetadataSchema.safeParse(doc.extractedMetadata ?? {});
+  const metadata = metadataResult.success ? metadataResult.data : { colors: [], fonts: [] };
+
+  const textResult = ExtractedTextSchema.safeParse(doc.extractedText ?? {});
+  const text = textResult.success ? textResult.data.text : "";
 
   // Extract colors from metadata (from PDF parser)
   const colors = metadata?.colors || [];
@@ -193,13 +195,18 @@ Return valid JSON only.`,
       temperature: 0.3,
     });
 
-    // Parse JSON from response
+    // Parse JSON from response and validate with Zod
     const parsed = JSON.parse(analysis);
-    return {
-      tone: Array.isArray(parsed.tone) ? parsed.tone : [],
-      vocabulary: Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [],
-      patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
-    };
+    const validated = VoiceAnalysisResponseSchema.safeParse(parsed);
+
+    if (!validated.success) {
+      logger.warn("[theme-extractor] Voice analysis response validation failed", {
+        error: validated.error.message,
+      });
+      return { tone: ["professional"], vocabulary: [], patterns: [] };
+    }
+
+    return validated.data;
   } catch (error) {
     logger.warn("[theme-extractor] Voice analysis failed", {
       error: error instanceof Error ? error.message : String(error),

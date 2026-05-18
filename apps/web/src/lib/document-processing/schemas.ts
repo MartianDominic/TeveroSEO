@@ -67,3 +67,28 @@ export const VoiceAnalysisResponseSchema = z.object({
 });
 
 export type VoiceAnalysisResponse = z.infer<typeof VoiceAnalysisResponseSchema>;
+
+// =============================================================================
+// Extracted Metadata Schema (JSONB field validation)
+// =============================================================================
+
+export const RawFontInfoSchema = z.object({
+  font: z.string(),
+  size: z.number(),
+  usage: z.number(),
+});
+
+export type RawFontInfo = z.infer<typeof RawFontInfoSchema>;
+
+export const ExtractedMetadataSchema = z.object({
+  colors: z.array(z.string()).optional().default([]),
+  fonts: z.array(RawFontInfoSchema).optional().default([]),
+});
+
+export type ExtractedMetadata = z.infer<typeof ExtractedMetadataSchema>;
+
+export const ExtractedTextSchema = z.object({
+  text: z.string().optional().default(""),
+});
+
+export type ExtractedText = z.infer<typeof ExtractedTextSchema>;
