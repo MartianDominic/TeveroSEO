@@ -58,6 +58,7 @@ const MAGIC_SIGNATURES: Record<string, number[][]> = {
 const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 const STREAMING_THRESHOLD = 5 * 1024 * 1024; // 5MB - use streaming for larger files
 const MULTIPART_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for multipart upload
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer to prevent unbounded growth on network stalls
 
 // =============================================================================
 // R2 Client (lazy initialization)
@@ -129,6 +130,11 @@ export async function uploadDocument(
   file: File,
   workspaceId: string
 ): Promise<UploadResult> {
+  // Validate zero-byte files (CRITICAL: issue 20-01)
+  if (file.size === 0) {
+    throw new Error("Empty file: cannot process zero-byte files");
+  }
+
   // Validate file type (MIME from client - can be spoofed)
   if (!ALLOWED_TYPES.includes(file.type)) {
     throw new Error(
@@ -341,7 +347,7 @@ async function uploadMultipart(
   const parts: { ETag: string; PartNumber: number }[] = [];
 
   try {
-    // Stream file in chunks
+    // Stream file in chunks with backpressure control (issue 20-02)
     const stream = file.stream();
     const reader = stream.getReader();
     let partNumber = 1;
@@ -351,6 +357,42 @@ async function uploadMultipart(
       const { done, value } = await reader.read();
 
       if (value) {
+        // Check buffer size limit before appending (prevents unbounded growth on network stalls)
+        if (buffer.length + value.length > MAX_BUFFER_SIZE) {
+          logger.warn("[upload-service] Buffer limit reached, applying backpressure", {
+            key,
+            currentBufferSize: buffer.length,
+            incomingSize: value.length,
+            maxBufferSize: MAX_BUFFER_SIZE,
+          });
+          // Flush buffer before accepting more data
+          while (buffer.length >= MULTIPART_CHUNK_SIZE) {
+            const chunk = buffer.slice(0, MULTIPART_CHUNK_SIZE);
+            buffer = buffer.slice(MULTIPART_CHUNK_SIZE);
+
+            const uploadResponse = await r2.send(
+              new UploadPartCommand({
+                Bucket: bucket,
+                Key: key,
+                UploadId: uploadId,
+                PartNumber: partNumber,
+                Body: chunk,
+              })
+            );
+
+            if (!uploadResponse.ETag) {
+              throw new Error(`Missing ETag for part ${partNumber}`);
+            }
+
+            parts.push({
+              ETag: uploadResponse.ETag,
+              PartNumber: partNumber,
+            });
+
+            partNumber++;
+          }
+        }
+
         // Append chunk to buffer
         const newBuffer = new Uint8Array(buffer.length + value.length);
         newBuffer.set(buffer);
