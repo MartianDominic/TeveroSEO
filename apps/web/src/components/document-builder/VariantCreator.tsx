@@ -80,7 +80,7 @@ const EMPTY_CONTENT: TipTapContent = {
 export const VariantCreator: FC<VariantCreatorProps> = ({
   open,
   onOpenChange,
-  blockId,
+  blockId: _blockId,
   existingVariantCount,
   controlContent,
   onCreateVariant,

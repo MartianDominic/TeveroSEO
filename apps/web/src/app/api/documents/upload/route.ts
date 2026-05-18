@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 
-import { checkRateLimit, RATE_LIMITS } from "@/lib/middleware/rate-limit";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 import { logger } from "@/lib/logger";
 import { uploadDocument, getDocumentStatus, getDocumentWithWorkspace } from "@/lib/document-processing/upload-service";
 

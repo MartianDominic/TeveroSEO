@@ -40,8 +40,6 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   PERSUASION_BLOCK_TYPES,
-  getBlockDisplayInfo,
-  type BlockTypeDefinition,
 } from "@/lib/document-builder/persuasion-blocks";
 import type { PersuasionBlockType } from "@/lib/document-builder/types";
 

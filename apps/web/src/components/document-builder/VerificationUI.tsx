@@ -16,7 +16,6 @@ import {
   Pencil,
   CheckCheck,
   XCircle,
-  ChevronDown,
   Undo2,
   Redo2,
 } from "lucide-react";
