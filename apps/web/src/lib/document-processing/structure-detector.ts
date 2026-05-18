@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 import type { PersuasionBlockType } from "@/lib/document-builder/types";
+import { sanitizeForPrompt } from "@/lib/document-builder/input-sanitizer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -245,7 +246,9 @@ export async function detectStructure(
   }
 
   try {
-    const prompt = `${STRUCTURE_DETECTION_PROMPT}${text}`;
+    // Sanitize user text to prevent prompt injection attacks
+    const sanitizedText = sanitizeForPrompt(text);
+    const prompt = `${STRUCTURE_DETECTION_PROMPT}${sanitizedText}`;
 
     const result = await generateObject({
       model: google("gemini-3.1-pro"),
