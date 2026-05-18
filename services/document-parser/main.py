@@ -3,7 +3,7 @@ TeveroSEO Document Parser Service
 Phase 102-08: Format-specific parsers for PDF and DOCX.
 
 FastAPI service that extracts text with rich metadata from uploaded documents.
-Runs on port 8002 (AI-Writer uses 8000, scrapling-engine uses 8001).
+Runs on port 8002 (AI-Writer uses 8000, scraping services use 8001).
 """
 
 import os
@@ -106,13 +106,35 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for TypeScript client
+# CORS configuration
+def _get_cors_origins() -> list[str]:
+    """
+    Get allowed CORS origins from environment.
+
+    In production (ENVIRONMENT=production), wildcard "*" is rejected to prevent CSRF.
+    Defaults to localhost:3000 for local development.
+    """
+    origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+    origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+
+    # Reject wildcard in production to prevent CSRF attacks (SEC-12, 11-02)
+    environment = os.getenv("ENVIRONMENT", "development")
+    if environment == "production" and "*" in origins:
+        logger.error(
+            "CORS wildcard '*' is not allowed in production. "
+            "Set CORS_ORIGINS to specific domains (e.g., 'https://app.tevero.io')."
+        )
+        raise RuntimeError("CORS wildcard '*' not allowed in production")
+
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production
+    allow_origins=_get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 

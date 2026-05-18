@@ -8,6 +8,7 @@ Centralized documentation of all environment variables required for Phase 102 Ad
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `R2_ENDPOINT` | Yes | R2 S3-compatible endpoint (e.g., `https://<account_id>.r2.cloudflarestorage.com`) |
 | `R2_ACCOUNT_ID` | Yes | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | Yes | R2 API access key ID |
 | `R2_SECRET_ACCESS_KEY` | Yes | R2 API secret access key |
@@ -41,13 +42,14 @@ Centralized documentation of all environment variables required for Phase 102 Ad
 
 ```env
 # R2 Storage
+R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
 R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_BUCKET_NAME=tevero-documents
 
 # Document Parser
-DOCUMENT_PARSER_URL=http://localhost:8001
+DOCUMENT_PARSER_URL=http://localhost:8002
 
 # Clerk (existing)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
@@ -82,11 +84,12 @@ services:
   web:
     build: ./apps/web
     environment:
+      - R2_ENDPOINT=${R2_ENDPOINT}
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
       - R2_BUCKET_NAME=${R2_BUCKET_NAME}
-      - DOCUMENT_PARSER_URL=http://document-parser:8001
+      - DOCUMENT_PARSER_URL=http://document-parser:8002
       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
 

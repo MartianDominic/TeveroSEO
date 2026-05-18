@@ -223,11 +223,11 @@ async function processJob(job: QueuedJob): Promise<boolean> {
       })
       .where(eq(uploadedDocuments.id, documentId));
 
-    // Step 2: OCR if needed (40-70%) - implemented in 102-09
+    // Step 2: OCR if needed (40-70%)
+    // OCR is handled automatically by the parser service via tiered extraction
     if (parseResult.needsOcr) {
       await updateProgress(45);
-      // TODO: Call OCR service (102-09)
-      logger.info("[processing-queue] OCR needed, skipping for now", {
+      logger.info("[processing-queue] OCR was processed by parser service", {
         documentId,
       });
       await updateProgress(70);
