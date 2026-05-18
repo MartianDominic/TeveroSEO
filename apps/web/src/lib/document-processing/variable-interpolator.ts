@@ -215,6 +215,12 @@ function resolvePath(obj: Record<string, unknown>, path: string): unknown {
 }
 
 /**
+ * Lithuanian locale for consistent date/number formatting.
+ * Explicit locale prevents reliance on system locale which may differ between environments.
+ */
+const LOCALE = "lt-LT";
+
+/**
  * Format a value for display in text.
  *
  * @param value - The value to format
@@ -226,12 +232,12 @@ function formatValue(value: unknown): string {
   }
 
   if (typeof value === "number") {
-    // Format numbers with locale-appropriate separators
-    return value.toLocaleString();
+    // Format numbers with Lithuanian locale separators (space for thousands, comma for decimal)
+    return value.toLocaleString(LOCALE);
   }
 
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value ? "Taip" : "Ne";
   }
 
   if (Array.isArray(value)) {
@@ -239,7 +245,12 @@ function formatValue(value: unknown): string {
   }
 
   if (value instanceof Date) {
-    return value.toLocaleDateString();
+    // Format date in Lithuanian locale (e.g., "2026 m. gegužės 18 d.")
+    return value.toLocaleDateString(LOCALE, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   }
 
   return String(value);

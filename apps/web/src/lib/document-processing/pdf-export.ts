@@ -18,6 +18,13 @@ import type { TipTapContent } from "@/lib/document-builder/types";
 import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Default timeout for Puppeteer page operations in milliseconds (30 seconds) */
+const PUPPETEER_TIMEOUT_MS = 30_000;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -133,12 +140,15 @@ export function generateProposalHtml(
   variableContext: VariableContext
 ): string {
   // CSS variables from theme
+  // Font fallback includes Noto Sans/Serif for Lithuanian diacritics (ą, č, ę, ė, į, š, ų, ū, ž)
   const styles = `
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Serif:wght@400;700&display=swap');
+
     :root {
       --primary-color: ${theme?.primaryColor || "#1a1a1a"};
       --secondary-color: ${theme?.secondaryColor || "#666666"};
-      --heading-font: ${theme?.headingFont || "Georgia, serif"};
-      --body-font: ${theme?.bodyFont || "Arial, sans-serif"};
+      --heading-font: ${theme?.headingFont || "Georgia, 'Noto Serif', serif"};
+      --body-font: ${theme?.bodyFont || "Arial, 'Noto Sans', sans-serif"};
     }
 
     * {
