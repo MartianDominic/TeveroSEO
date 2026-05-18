@@ -105,7 +105,7 @@
     "jsdom": "^29.0.2",
     "tailwindcss": "4.1.17",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.6"
   },
   "pnpm": {
     "overrides": {
