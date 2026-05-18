@@ -13,7 +13,7 @@
  * - Tooltips with block descriptions
  */
 
-import { useState, type FC } from "react";
+import { useState, useCallback, type FC, memo } from "react";
 
 import { useDraggable } from "@dnd-kit/core";
 import {
@@ -38,11 +38,11 @@ import { cn } from "@/lib/utils";
 import {
   FRAMEWORK_TEMPLATES,
   PERSUASION_BLOCK_TYPES,
+  createBlocksFromFramework,
   type BlockTypeDefinition,
-  type FrameworkTemplate,
 } from "@/lib/document-builder/persuasion-blocks";
-import type { PersuasionBlockType } from "@/lib/document-builder/types";
-import { useDocumentBuilderStore } from "@/stores/documentBuilderStore";
+import type { PersuasionBlockType, FrameworkTemplate } from "@/lib/document-builder/types";
+import { useBlockActions, useFrameworkActions } from "@/stores/documentBuilderStore";
 
 import { BlockTypeBadge } from "./BlockTypeBadge";
 
@@ -77,13 +77,18 @@ export interface BlockPaletteProps {
 
 /**
  * Draggable palette item.
+ *
+ * Callbacks receive blockType to support stable memoized handlers from parent.
+ * This enables proper memoization - parent passes the same callback reference
+ * to all items, and each item passes its own type when calling.
  */
 interface PaletteItemProps {
   blockType: BlockTypeDefinition;
-  onAdd: () => void;
+  /** Callback when block is added - receives blockType for stable parent callbacks */
+  onAdd: (type: PersuasionBlockType) => void;
 }
 
-const PaletteItem: FC<PaletteItemProps> = ({ blockType, onAdd }) => {
+const PaletteItemComponent: FC<PaletteItemProps> = ({ blockType, onAdd }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${blockType.type}`,
     data: {
@@ -114,82 +119,111 @@ const PaletteItem: FC<PaletteItemProps> = ({ blockType, onAdd }) => {
         "transition-all duration-[160ms]",
         // Shadow on hover
         "hover:shadow-card",
-        // Cursor
-        "cursor-pointer",
         // Dragging state
         isDragging && "opacity-50 shadow-lift scale-[1.02]"
       )}
-      onClick={onAdd}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onAdd();
-        }
-      }}
-      aria-label={`Add ${blockType.label} block`}
+      // H-A11Y-04: Click handler for mouse users, but keyboard focus goes to internal buttons
+      onClick={() => onAdd(blockType.type)}
     >
-      {/* Drag handle */}
-      <div
+      {/* Hidden drag instructions for screen readers */}
+      <span id={`palette-drag-hint-${blockType.type}`} className="sr-only">
+        Use Tab to navigate to the add button or drag handle.
+      </span>
+
+      {/* Drag handle - keyboard accessible */}
+      <button
+        type="button"
         className={cn(
           "flex items-center justify-center",
-          "w-6 h-6",
+          "w-6 h-6 rounded-sm",
           "text-text-3",
-          "opacity-0 group-hover:opacity-50 group-focus:opacity-50",
+          "opacity-0 group-hover:opacity-50 group-focus-within:opacity-50 focus:opacity-100",
           "cursor-grab active:cursor-grabbing",
-          "transition-opacity duration-[160ms]"
+          "transition-opacity duration-[160ms]",
+          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
         )}
         {...attributes}
         {...listeners}
-        aria-label={`Drag ${blockType.label}`}
+        aria-label={`Drag ${blockType.label} block to canvas`}
+        onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="h-4 w-4" />
-      </div>
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
+      </button>
 
-      {/* Icon */}
-      <div
+      {/* Add block button - keyboard accessible, single tab stop */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAdd(blockType.type);
+        }}
         className={cn(
-          "flex items-center justify-center",
-          "w-8 h-8",
-          "rounded-md",
-          "bg-surface-2 group-hover:bg-surface-3",
-          "text-text-2",
-          "transition-colors duration-[160ms]"
+          "flex items-center gap-3 flex-1 min-w-0 text-left",
+          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-md",
+          "cursor-pointer"
         )}
+        aria-label={`Add ${blockType.label} block`}
+        aria-describedby={`palette-drag-hint-${blockType.type}`}
       >
-        <Icon className="h-4 w-4" />
-      </div>
-
-      {/* Label and description */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-1 truncate">
-            {blockType.label}
-          </span>
-          <BlockTypeBadge type={blockType.type} className="hidden sm:inline-flex" />
+        {/* Icon */}
+        <div
+          className={cn(
+            "flex items-center justify-center",
+            "w-8 h-8 shrink-0",
+            "rounded-md",
+            "bg-surface-2 group-hover:bg-surface-3",
+            "text-text-2",
+            "transition-colors duration-[160ms]"
+          )}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
         </div>
-        <p className="text-xs text-text-3 truncate mt-0.5">
-          {blockType.description}
-        </p>
-      </div>
+
+        {/* Label and description */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-text-1 truncate">
+              {blockType.label}
+            </span>
+            <BlockTypeBadge type={blockType.type} className="hidden sm:inline-flex" />
+          </div>
+          <p className="text-xs text-text-3 truncate mt-0.5">
+            {blockType.description}
+          </p>
+        </div>
+      </button>
     </div>
   );
 };
 
 /**
+ * Memoized PaletteItem - only re-renders when blockType changes.
+ */
+const PaletteItem = memo(PaletteItemComponent, (prev, next) => {
+  return prev.blockType.type === next.blockType.type;
+});
+
+PaletteItem.displayName = "PaletteItem";
+
+/**
  * Framework template item.
+ *
+ * Callbacks receive framework to support stable memoized handlers from parent.
+ * This enables proper memoization - parent passes the same callback reference
+ * to all items, and each item passes its own framework when calling.
  */
 interface FrameworkItemProps {
   framework: FrameworkTemplate;
-  onSelect: () => void;
+  /** Callback when framework is selected - receives framework for stable parent callbacks */
+  onSelect: (framework: FrameworkTemplate) => void;
 }
 
-const FrameworkItem: FC<FrameworkItemProps> = ({ framework, onSelect }) => {
-  return (
+const FrameworkItemComponent: FC<FrameworkItemProps> = ({ framework, onSelect }) => (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={() => onSelect(framework)}
+      role="listitem"
+      aria-label={`Select ${framework.name} framework with ${framework.requiredBlocks.length} required blocks`}
       className={cn(
         // Base styles
         "w-full flex items-start gap-3",
@@ -199,7 +233,8 @@ const FrameworkItem: FC<FrameworkItemProps> = ({ framework, onSelect }) => {
         "border border-transparent hover:border-accent/20",
         "text-left",
         "transition-all duration-[160ms]",
-        "hover:shadow-card"
+        "hover:shadow-card",
+        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
       )}
     >
       <div
@@ -225,8 +260,16 @@ const FrameworkItem: FC<FrameworkItemProps> = ({ framework, onSelect }) => {
         </p>
       </div>
     </button>
-  );
-};
+);
+
+/**
+ * Memoized FrameworkItem - only re-renders when framework id changes.
+ */
+const FrameworkItem = memo(FrameworkItemComponent, (prev, next) => {
+  return prev.framework.id === next.framework.id;
+});
+
+FrameworkItem.displayName = "FrameworkItem";
 
 /**
  * BlockPalette component.
@@ -237,40 +280,30 @@ const FrameworkItem: FC<FrameworkItemProps> = ({ framework, onSelect }) => {
  *
  * Each block type is draggable and can also be clicked to add.
  */
-export const BlockPalette: FC<BlockPaletteProps> = ({
+const BlockPaletteComponent: FC<BlockPaletteProps> = ({
   className,
   frameworksExpanded = false,
   onBlockAdded,
 }) => {
   const [isFrameworksOpen, setIsFrameworksOpen] = useState(frameworksExpanded);
-  const { addBlock, setFramework, initialize } = useDocumentBuilderStore();
+  // Use shallow selectors to prevent unnecessary re-renders
+  const { addBlock } = useBlockActions();
+  const { setFramework, initialize } = useFrameworkActions();
 
-  const handleAddBlock = (type: PersuasionBlockType) => {
+  const handleAddBlock = useCallback((type: PersuasionBlockType) => {
     const blockId = addBlock(type);
     onBlockAdded?.(blockId, type);
-  };
+  }, [addBlock, onBlockAdded]);
 
-  const handleSelectFramework = (framework: FrameworkTemplate) => {
+  const handleSelectFramework = useCallback((framework: FrameworkTemplate) => {
     // Set the framework
     setFramework(framework.id, framework.name);
 
-    // Add recommended blocks in sequence
-    const blocks = framework.recommendedSequence.map((type, index) => ({
-      id: `${type}-${Date.now()}-${index}`,
-      type,
-      position: index,
-      content: null,
-      title: PERSUASION_BLOCK_TYPES.find((b) => b.type === type)?.label ?? type,
-      persuasionMeta: {
-        frameworkId: framework.id,
-        isRequired: framework.requiredBlocks.includes(type),
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
+    // M-STATE-02: Use shared utility for block creation to eliminate duplication
+    const blocks = createBlocksFromFramework(framework);
 
     initialize(blocks, framework.id, framework.name);
-  };
+  }, [setFramework, initialize]);
 
   return (
     <div
@@ -292,24 +325,28 @@ export const BlockPalette: FC<BlockPaletteProps> = ({
             "w-full flex items-center justify-between",
             "text-sm font-medium text-text-2",
             "hover:text-text-1",
-            "transition-colors duration-[160ms]"
+            "transition-colors duration-[160ms]",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-md"
           )}
+          aria-expanded={isFrameworksOpen}
+          aria-controls="framework-templates-list"
+          aria-label={`Framework Templates section, ${isFrameworksOpen ? 'expanded' : 'collapsed'}`}
         >
           <span>Framework Templates</span>
           {isFrameworksOpen ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
 
         {isFrameworksOpen && (
-          <div className="mt-3 space-y-2">
+          <div id="framework-templates-list" className="mt-3 space-y-2" role="list" aria-label="Available framework templates">
             {FRAMEWORK_TEMPLATES.map((framework) => (
               <FrameworkItem
                 key={framework.id}
                 framework={framework}
-                onSelect={() => handleSelectFramework(framework)}
+                onSelect={handleSelectFramework}
               />
             ))}
           </div>
@@ -327,7 +364,7 @@ export const BlockPalette: FC<BlockPaletteProps> = ({
             <PaletteItem
               key={blockType.type}
               blockType={blockType}
-              onAdd={() => handleAddBlock(blockType.type)}
+              onAdd={handleAddBlock}
             />
           ))}
         </div>
@@ -335,5 +372,12 @@ export const BlockPalette: FC<BlockPaletteProps> = ({
     </div>
   );
 };
+
+/**
+ * Memoized BlockPalette - static palette rarely needs re-rendering.
+ */
+export const BlockPalette = memo(BlockPaletteComponent);
+
+BlockPalette.displayName = "BlockPalette";
 
 export default BlockPalette;

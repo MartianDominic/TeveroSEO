@@ -52,6 +52,23 @@ const MINIMAL_CONFIG: Config = {
 };
 
 /**
+ * Paste sanitization config for TipTap editor.
+ * Allows variable-related data attributes needed by VariableExtension.
+ *
+ * SECURITY: Only allows specific data attributes for variables,
+ * not arbitrary data-* attributes.
+ */
+const PASTE_CONFIG: Config = {
+  ALLOWED_TAGS: ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 'a', 'span'],
+  ALLOWED_ATTR: ['href', 'data-variable-key', 'data-variable-label', 'class'],
+  ALLOW_DATA_ATTR: false, // Keep false - we explicitly allow specific attrs above
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+  RETURN_DOM: false,
+  RETURN_DOM_FRAGMENT: false,
+  KEEP_CONTENT: true,
+};
+
+/**
  * Sanitize HTML content using DOMPurify with strict configuration.
  *
  * CRITICAL: Always use this function instead of regex-based sanitization.
@@ -95,4 +112,18 @@ export function sanitizeMinimalHtml(html: string): string {
 export function stripHtml(html: string): string {
   if (!html) return '';
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+}
+
+/**
+ * Sanitize pasted HTML content for TipTap editor.
+ * Preserves variable spans with data-variable-key/label attributes.
+ *
+ * Use this in TipTap's transformPastedHTML editorProp.
+ *
+ * @param html - The HTML string to sanitize
+ * @returns Sanitized HTML safe for TipTap with variables preserved
+ */
+export function sanitizePastedHtml(html: string): string {
+  if (!html) return '';
+  return DOMPurify.sanitize(html, PASTE_CONFIG);
 }

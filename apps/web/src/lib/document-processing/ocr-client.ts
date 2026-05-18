@@ -103,7 +103,9 @@ export async function requestOcr(imageBuffers: Buffer[]): Promise<OcrResult> {
 
   // Add each image to form data
   imageBuffers.forEach((buffer, index) => {
-    const blob = new Blob([buffer], { type: "image/png" });
+    // Convert Buffer to Uint8Array for Blob compatibility
+    const uint8Array = new Uint8Array(buffer);
+    const blob = new Blob([uint8Array], { type: "image/png" });
     formData.append("images", blob, `page_${index + 1}.png`);
   });
 

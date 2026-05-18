@@ -13,6 +13,17 @@ import { z } from "zod";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
 import { logger } from "@/lib/logger";
 import { uploadDocument, getDocumentStatus, getDocumentWithWorkspace } from "@/lib/document-processing/upload-service";
+import {
+  unauthorized,
+  badRequest,
+  validationError,
+  forbidden,
+  notFound,
+  rateLimited,
+  serviceUnavailable,
+  internalError,
+  success,
+} from "@/lib/api/responses";
 
 // =============================================================================
 // Validation Schemas
@@ -36,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Auth
     const { userId, orgId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Rate limit: 10 uploads per minute
@@ -49,22 +60,7 @@ export async function POST(request: NextRequest) {
 
     if (!rateLimitResult.success) {
       const retryAfter = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded",
-          message: `Too many uploads. Please try again in ${retryAfter} seconds.`,
-          retryAfter,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfter),
-            "X-RateLimit-Limit": String(rateLimitResult.limit),
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.reset / 1000)),
-          },
-        }
-      );
+      return rateLimited(`Too many uploads. Please try again in ${retryAfter} seconds.`, retryAfter);
     }
 
     // Parse form data
@@ -78,17 +74,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!formValidation.success) {
-      return NextResponse.json(
-        { error: "Invalid form data", details: formValidation.error.flatten() },
-        { status: 400 }
-      );
+      return validationError(formValidation.error);
     }
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 }
-      );
+      return badRequest("No file provided");
     }
 
     // Determine and verify workspace access
@@ -103,10 +93,7 @@ export async function POST(request: NextRequest) {
         userWorkspace,
         requestedWorkspace,
       });
-      return NextResponse.json(
-        { error: "Access denied to workspace" },
-        { status: 403 }
-      );
+      return forbidden("Access denied to workspace");
     }
 
     const workspaceId = requestedWorkspace || userWorkspace;
@@ -122,21 +109,11 @@ export async function POST(request: NextRequest) {
     // Upload and queue for processing
     const result = await uploadDocument(file, workspaceId);
 
-    return NextResponse.json(
-      {
-        success: true,
-        documentId: result.documentId,
-        status: result.status,
-        message: "Document uploaded and queued for processing",
-      },
-      {
-        headers: {
-          "X-RateLimit-Limit": String(rateLimitResult.limit),
-          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
-          "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.reset / 1000)),
-        },
-      }
-    );
+    return success({
+      documentId: result.documentId,
+      status: result.status,
+      message: "Document uploaded and queued for processing",
+    });
   } catch (error) {
     logger.error("[upload-api] Upload error", {
       error: error instanceof Error ? error.message : String(error),
@@ -148,21 +125,15 @@ export async function POST(request: NextRequest) {
         error.message.includes("Unsupported file type") ||
         error.message.includes("too large")
       ) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        return badRequest(error.message);
       }
 
       if (error.message.includes("R2 credentials not configured")) {
-        return NextResponse.json(
-          { error: "Storage service unavailable" },
-          { status: 503 }
-        );
+        return serviceUnavailable("Storage service unavailable");
       }
     }
 
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
+    return internalError("Upload failed");
   }
 }
 
@@ -174,7 +145,7 @@ export async function GET(request: NextRequest) {
   try {
     const { userId, orgId } = await auth();
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const rawDocumentId = request.nextUrl.searchParams.get("documentId");
@@ -182,10 +153,7 @@ export async function GET(request: NextRequest) {
     // Validate documentId parameter
     const documentIdValidation = documentIdSchema.safeParse(rawDocumentId);
     if (!documentIdValidation.success) {
-      return NextResponse.json(
-        { error: "Invalid or missing documentId" },
-        { status: 400 }
-      );
+      return badRequest("Invalid or missing documentId");
     }
 
     const documentId = documentIdValidation.data;
@@ -202,30 +170,21 @@ export async function GET(request: NextRequest) {
         documentWorkspace: doc.workspaceId,
         documentId,
       });
-      return NextResponse.json(
-        { error: "Document not found" },
-        { status: 404 } // Return 404 to avoid leaking document existence
-      );
+      return notFound("Document not found"); // Return 404 to avoid leaking document existence
     }
 
     // Return status (without workspaceId in response)
     const status = await getDocumentStatus(documentId);
-    return NextResponse.json(status);
+    return success(status);
   } catch (error) {
     if (error instanceof Error && error.message.includes("not found")) {
-      return NextResponse.json(
-        { error: "Document not found" },
-        { status: 404 }
-      );
+      return notFound("Document not found");
     }
 
     logger.error("[upload-api] Status error", {
       error: error instanceof Error ? error.message : String(error),
     });
 
-    return NextResponse.json(
-      { error: "Failed to get status" },
-      { status: 500 }
-    );
+    return internalError("Failed to get status");
   }
 }

@@ -10,7 +10,7 @@
  * - useDroppable from @dnd-kit/core
  */
 
-import { type FC } from "react";
+import { type FC, memo } from "react";
 
 import { useDroppable } from "@dnd-kit/core";
 
@@ -38,7 +38,7 @@ export interface DropZoneProps {
  * - Expands on hover to make dropping easier
  * - Provides visual feedback when a draggable is over it
  */
-export const DropZone: FC<DropZoneProps> = ({
+const DropZoneComponent: FC<DropZoneProps> = ({
   id,
   position,
   className,
@@ -78,6 +78,8 @@ export const DropZone: FC<DropZoneProps> = ({
         className
       )}
       aria-label={`Drop zone at position ${position + 1}`}
+      aria-live="polite"
+      aria-atomic="true"
       role="region"
     >
       {/* Drop indicator */}
@@ -96,5 +98,19 @@ export const DropZone: FC<DropZoneProps> = ({
     </div>
   );
 };
+
+/**
+ * Memoized DropZone - only re-renders when drag state or position changes.
+ */
+export const DropZone = memo(DropZoneComponent, (prev, next) => {
+  return (
+    prev.id === next.id &&
+    prev.position === next.position &&
+    prev.isDragActive === next.isDragActive &&
+    prev.className === next.className
+  );
+});
+
+DropZone.displayName = "DropZone";
 
 export default DropZone;

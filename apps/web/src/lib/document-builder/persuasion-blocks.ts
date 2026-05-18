@@ -12,6 +12,9 @@ import type {
   FrameworkTemplate,
 } from "./types";
 
+// Re-export FrameworkTemplate for consumers that import from this module
+export type { FrameworkTemplate } from "./types";
+
 // =====================================
 // Block Type Colors (UI-SPEC compliant)
 // =====================================
@@ -55,6 +58,12 @@ export interface PersuasionBlockMetadata {
   placeholder: string;
   aiPromptHint: string;
 }
+
+/**
+ * Alias for PersuasionBlockMetadata.
+ * Used by UI components (BlockTypeBadge, BlockPalette) for block type definitions.
+ */
+export type BlockTypeDefinition = PersuasionBlockMetadata;
 
 /**
  * All 11 persuasion block types with full metadata.
@@ -367,4 +376,66 @@ export function getFrameworkSequence(
 ): PersuasionBlockType[] {
   const framework = getFrameworkTemplate(frameworkId);
   return framework?.recommendedSequence ?? [];
+}
+
+// =====================================
+// Block Creation Utilities (M-STATE-02)
+// =====================================
+
+/**
+ * PersuasionBlock type for block creation.
+ * Imported from types but redeclared here to avoid circular deps.
+ */
+export interface CreatedBlock {
+  id: string;
+  type: PersuasionBlockType;
+  position: number;
+  content: TipTapContent | null;
+  title: string;
+  persuasionMeta?: {
+    frameworkId?: string;
+    isRequired?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Create blocks from a framework template.
+ * Shared utility to eliminate duplication between FrameworkSelector and BlockPalette.
+ *
+ * @param framework - The framework template to create blocks from
+ * @param options - Optional configuration
+ * @returns Array of blocks ready for store initialization
+ */
+export function createBlocksFromFramework(
+  framework: FrameworkTemplate,
+  options?: {
+    /** Include initial content from templates (default: false for empty docs) */
+    includeTemplateContent?: boolean;
+  }
+): CreatedBlock[] {
+  const now = new Date().toISOString();
+  const includeContent = options?.includeTemplateContent ?? false;
+
+  return framework.recommendedSequence.map((type, index) => {
+    const metadata = getBlockMetadata(type);
+    const content = includeContent
+      ? getBlockTemplate(type)
+      : { type: "doc" as const, content: [] };
+
+    return {
+      id: `${type}-${Date.now()}-${index}`,
+      type,
+      position: index,
+      content,
+      title: metadata?.label ?? type,
+      persuasionMeta: {
+        frameworkId: framework.id,
+        isRequired: framework.requiredBlocks.includes(type),
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
 }

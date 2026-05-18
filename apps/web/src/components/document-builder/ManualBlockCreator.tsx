@@ -9,25 +9,17 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, X, ChevronDown, ChevronUp, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Plus, X, Info } from "lucide-react";
 import {
+  cn,
+  Button,
+  Textarea,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -36,7 +28,8 @@ import {
   SheetTrigger,
   SheetFooter,
   SheetClose,
-} from "@/components/ui/sheet";
+} from "@tevero/ui";
+// RadioGroup not yet in @tevero/ui - keeping local import
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   PERSUASION_BLOCK_TYPES,
@@ -205,12 +198,14 @@ export function ManualBlockCreator({
             <Textarea
               id="block-content"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => setContent(e.target.value.slice(0, 10000))}
               placeholder={selectedBlockInfo?.placeholder || "Enter block content..."}
               className="min-h-32"
+              maxLength={10000}
+              aria-describedby="content-char-count"
             />
-            <p className="text-xs text-text-3">
-              {content.length} characters
+            <p id="content-char-count" className="text-xs text-text-3">
+              {content.length} / 10,000 characters
             </p>
           </div>
 
@@ -306,8 +301,14 @@ export function InlineBlockCreator({
     <div className={cn("border rounded-lg p-4 bg-surface-1", className)}>
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-medium">Add New Block</h4>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onCancel}>
-          <X className="w-4 h-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onCancel}
+          aria-label="Close block creator"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
         </Button>
       </div>
 
@@ -330,9 +331,10 @@ export function InlineBlockCreator({
 
         <Textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => setContent(e.target.value.slice(0, 10000))}
           placeholder={selectedBlockInfo?.placeholder || "Enter content..."}
           className="min-h-20 text-sm"
+          maxLength={10000}
           autoFocus
         />
 

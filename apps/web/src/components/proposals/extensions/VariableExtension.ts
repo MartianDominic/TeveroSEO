@@ -16,41 +16,15 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
+import {
+  VARIABLE_CATEGORY_COLORS,
+  DEFAULT_VARIABLE_ATTRS,
+  type VariableNodeAttrs,
+} from "./variable-types";
 import { VariableChip } from "../VariableChip";
 
-/**
- * Variable categories with their colors.
- * Must match the palette colors defined in VariablePalette.tsx
- */
-export const VARIABLE_CATEGORY_COLORS: Record<string, string> = {
-  client: "#3B82F6", // blue-500
-  provider: "#22C55E", // green-500
-  pricing: "#F97316", // orange-500
-  audit: "#A855F7", // purple-500
-  dates: "#6B7280", // gray-500
-  custom: "#14B8A6", // teal-500
-};
-
-/**
- * Variable node attributes stored in the document.
- */
-export interface VariableNodeAttrs {
-  /** Variable key (e.g., 'client.companyName', 'pricing.monthly') */
-  key: string;
-  /** Variable category (client, provider, pricing, audit, dates, custom) */
-  category: string;
-  /** Display label (human-readable name) */
-  label: string;
-}
-
-/**
- * Default node attributes.
- */
-const defaultAttrs: VariableNodeAttrs = {
-  key: "",
-  category: "custom",
-  label: "",
-};
+// Re-export for backward compatibility
+export { VARIABLE_CATEGORY_COLORS, type VariableNodeAttrs } from "./variable-types";
 
 /**
  * VariableExtension - TipTap Node for inline variable chips.
@@ -81,21 +55,21 @@ export const VariableExtension = Node.create({
   addAttributes() {
     return {
       key: {
-        default: defaultAttrs.key,
+        default: DEFAULT_VARIABLE_ATTRS.key,
         parseHTML: (element: HTMLElement) => element.getAttribute("data-variable-key"),
         renderHTML: (attributes: Record<string, string>) => ({
           "data-variable-key": attributes.key,
         }),
       },
       category: {
-        default: defaultAttrs.category,
+        default: DEFAULT_VARIABLE_ATTRS.category,
         parseHTML: (element: HTMLElement) => element.getAttribute("data-category"),
         renderHTML: (attributes: Record<string, string>) => ({
           "data-category": attributes.category,
         }),
       },
       label: {
-        default: defaultAttrs.label,
+        default: DEFAULT_VARIABLE_ATTRS.label,
         parseHTML: (element: HTMLElement) => element.getAttribute("data-label"),
         renderHTML: (attributes: Record<string, string>) => ({
           "data-label": attributes.label,

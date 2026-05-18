@@ -4,9 +4,15 @@
  *
  * Provides workspace-specific branding configuration for PDF generation.
  * Fetches branding data from open-seo-main API and converts colors to PDF format.
+ *
+ * SECURITY: Logo URL fetching is protected against SSRF attacks via ssrf-validator.
  */
 import "server-only";
 import { getOpenSeo } from "@/lib/server-fetch";
+import {
+  validateLogoUrl,
+  isKnownImageHost,
+} from "@/lib/validations/ssrf-validator";
 
 /**
  * Branding configuration for PDF generation
@@ -147,10 +153,33 @@ export class PdfBrandingService {
    * Fetch logo image as bytes for embedding in PDF.
    * Returns null if fetch fails or logo is not configured.
    *
+   * SECURITY: Validates URL against SSRF attacks before fetching.
+   * - Only HTTPS URLs are allowed
+   * - Internal/private IPs are blocked (127.x, 10.x, 172.16-31.x, 192.168.x)
+   * - Cloud metadata endpoints are blocked (169.254.169.254, etc.)
+   * - Localhost and internal hostnames are blocked
+   *
    * @param logoUrl - URL of the logo image
    * @returns Uint8Array of image bytes or null
    */
   async fetchLogoBytes(logoUrl: string): Promise<Uint8Array | null> {
+    // SSRF Protection: Validate URL before fetching
+    const validation = validateLogoUrl(logoUrl);
+    if (!validation.valid) {
+      // Log blocked attempt for security monitoring (without exposing to caller)
+      console.warn(
+        `[pdf-branding] Blocked logo URL fetch: ${validation.error}`
+      );
+      return null;
+    }
+
+    // Additional logging for non-allowlisted domains (informational only)
+    if (validation.hostname && !isKnownImageHost(validation.hostname)) {
+      console.info(
+        `[pdf-branding] Fetching logo from non-allowlisted domain: ${validation.hostname}`
+      );
+    }
+
     try {
       const response = await fetch(logoUrl, {
         signal: AbortSignal.timeout(10000), // 10 second timeout

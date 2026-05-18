@@ -60,7 +60,6 @@ let staleCheckInterval: ReturnType<typeof setInterval> | null = null;
 let isProcessing = false;
 let shutdownRequested = false;
 
-const QUEUE_NAME = "document-processing";
 const PROCESS_INTERVAL_MS = 1000; // Check queue every second
 const STALE_CHECK_INTERVAL_MS = 60 * 1000; // Check for stale jobs every minute
 const DEFAULT_ATTEMPTS = 3;

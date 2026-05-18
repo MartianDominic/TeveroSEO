@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import {
   Check,
   X,
@@ -48,6 +48,43 @@ import type { DetectedStructure } from "@/db/schema/document-builder";
 
 type VerificationStatus = "pending" | "accepted" | "rejected" | "modified";
 
+/**
+ * Valid verification statuses from DB.
+ */
+const VALID_VERIFICATION_STATUSES = new Set<string>([
+  "pending",
+  "accepted",
+  "rejected",
+  "modified",
+]);
+
+/**
+ * Type guard to check if a string is a valid VerificationStatus.
+ */
+function isVerificationStatus(value: unknown): value is VerificationStatus {
+  return typeof value === "string" && VALID_VERIFICATION_STATUSES.has(value);
+}
+
+/**
+ * Safely convert a DetectedStructure to VerifiableBlock with validation.
+ */
+function toVerifiableBlock(block: DetectedStructure): VerifiableBlock {
+  // Validate and coerce the verified status
+  const verifiedStatus = isVerificationStatus(block.verified)
+    ? block.verified
+    : "pending";
+
+  return {
+    id: block.id,
+    blockType: block.blockType,
+    position: block.position,
+    confidence: block.confidence,
+    originalText: block.originalText,
+    suggestedContent: block.suggestedContent,
+    verified: verifiedStatus,
+  };
+}
+
 interface VerifiableBlock {
   id: string;
   blockType: PersuasionBlockType | "heading" | "paragraph" | "table" | "list" | "image" | "unknown";
@@ -85,27 +122,53 @@ const BLOCK_TYPE_OPTIONS: Array<{ value: PersuasionBlockType | "heading" | "para
 ];
 
 // ---------------------------------------------------------------------------
+// Helper Functions (module scope for performance - avoids recreation on render)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get confidence color class based on confidence percentage.
+ * @param confidence - Confidence percentage (0-100)
+ */
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 80) return "bg-success text-success-foreground";
+  if (confidence >= 60) return "bg-warning text-warning-foreground";
+  return "bg-error text-error-foreground";
+}
+
+/**
+ * Get status badge element for verification status.
+ * @param status - The verification status
+ */
+function getStatusBadge(status: VerificationStatus): React.ReactElement {
+  switch (status) {
+    case "accepted":
+      return <Badge variant="default" className="bg-success">Accepted</Badge>;
+    case "rejected":
+      return <Badge variant="destructive">Rejected</Badge>;
+    case "modified":
+      return <Badge variant="secondary">Modified</Badge>;
+    default:
+      return <Badge variant="outline">Pending</Badge>;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function VerificationUI({
+/**
+ * VerificationUI component for side-by-side block verification.
+ * Memoized to prevent unnecessary re-renders when parent state changes.
+ */
+const VerificationUIComponent = ({
   originalText,
   detectedBlocks,
   onComplete,
   className,
-}: VerificationUIProps) {
-  // Convert detected blocks to verifiable format
+}: VerificationUIProps) => {
+  // Convert detected blocks to verifiable format with type-safe validation
   const initialBlocks: VerifiableBlock[] = useMemo(
-    () =>
-      detectedBlocks.map((block) => ({
-        id: block.id,
-        blockType: block.blockType,
-        position: block.position,
-        confidence: block.confidence,
-        originalText: block.originalText,
-        suggestedContent: block.suggestedContent,
-        verified: block.verified as VerificationStatus,
-      })),
+    () => detectedBlocks.map(toVerifiableBlock),
     [detectedBlocks]
   );
 
@@ -222,29 +285,6 @@ export function VerificationUI({
   }, [blocks, onComplete]);
 
   // ---------------------------------------------------------------------------
-  // Render Helpers
-  // ---------------------------------------------------------------------------
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return "bg-success text-success-foreground";
-    if (confidence >= 60) return "bg-warning text-warning-foreground";
-    return "bg-error text-error-foreground";
-  };
-
-  const getStatusBadge = (status: VerificationStatus) => {
-    switch (status) {
-      case "accepted":
-        return <Badge variant="default" className="bg-success">Accepted</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
-      case "modified":
-        return <Badge variant="secondary">Modified</Badge>;
-      default:
-        return <Badge variant="outline">Pending</Badge>;
-    }
-  };
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -255,13 +295,26 @@ export function VerificationUI({
         <div className="flex items-center justify-between p-4 border-b bg-surface-1">
           <div className="flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium" id="verification-progress-label">
                 {stats.verified} / {stats.total} blocks verified
               </span>
-              <Progress value={progressPercent} className="w-48 h-2 mt-1" />
+              <Progress
+                value={progressPercent}
+                className="w-48 h-2 mt-1"
+                aria-labelledby="verification-progress-label"
+                aria-valuenow={stats.verified}
+                aria-valuemin={0}
+                aria-valuemax={stats.total}
+              />
             </div>
 
-            <div className="flex gap-2 text-xs text-text-3">
+            {/* Live region for status updates */}
+            <div
+              className="flex gap-2 text-xs text-text-3"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
               <span className="text-success">{stats.accepted} accepted</span>
               <span className="text-error">{stats.rejected} rejected</span>
               <span className="text-text-2">{stats.modified} modified</span>
@@ -277,8 +330,9 @@ export function VerificationUI({
                   size="icon"
                   onClick={undo}
                   disabled={!canUndo}
+                  aria-label="Undo last action"
                 >
-                  <Undo2 className="w-4 h-4" />
+                  <Undo2 className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
@@ -291,8 +345,9 @@ export function VerificationUI({
                   size="icon"
                   onClick={redo}
                   disabled={!canRedo}
+                  aria-label="Redo last action"
                 >
-                  <Redo2 className="w-4 h-4" />
+                  <Redo2 className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
@@ -301,14 +356,24 @@ export function VerificationUI({
             <div className="w-px h-6 bg-border mx-2" />
 
             {/* Bulk actions */}
-            <Button variant="outline" size="sm" onClick={acceptAll}>
-              <CheckCheck className="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={acceptAll}
+              aria-label="Accept all pending blocks"
+            >
+              <CheckCheck className="w-4 h-4 mr-2" aria-hidden="true" />
               Accept All
             </Button>
 
             {lowConfidenceCount > 0 && (
-              <Button variant="outline" size="sm" onClick={rejectLowConfidence}>
-                <XCircle className="w-4 h-4 mr-2" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={rejectLowConfidence}
+                aria-label={`Reject ${lowConfidenceCount} low confidence blocks`}
+              >
+                <XCircle className="w-4 h-4 mr-2" aria-hidden="true" />
                 Reject Low Confidence ({lowConfidenceCount})
               </Button>
             )}
@@ -317,6 +382,7 @@ export function VerificationUI({
               onClick={handleComplete}
               disabled={stats.pending > 0}
               className="ml-4"
+              aria-label={stats.pending > 0 ? `Complete verification - ${stats.pending} blocks pending` : "Complete verification"}
             >
               Complete Verification
             </Button>
@@ -361,7 +427,7 @@ export function VerificationUI({
                         {/* Block type selector */}
                         <Select
                           value={block.blockType}
-                          onValueChange={(value) =>
+                          onValueChange={(value: string) =>
                             changeBlockType(block.id, value as VerifiableBlock["blockType"])
                           }
                         >
@@ -391,7 +457,7 @@ export function VerificationUI({
 
                       {/* Action buttons */}
                       {!isEditing && block.verified !== "rejected" && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" role="group" aria-label="Block actions">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -399,8 +465,9 @@ export function VerificationUI({
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => acceptBlock(block.id)}
+                                aria-label="Accept this block"
                               >
-                                <Check className="w-4 h-4 text-success" />
+                                <Check className="w-4 h-4 text-success" aria-hidden="true" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Accept</TooltipContent>
@@ -413,8 +480,9 @@ export function VerificationUI({
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => rejectBlock(block.id)}
+                                aria-label="Reject this block"
                               >
-                                <X className="w-4 h-4 text-error" />
+                                <X className="w-4 h-4 text-error" aria-hidden="true" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Reject</TooltipContent>
@@ -427,8 +495,9 @@ export function VerificationUI({
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => startEditing(block)}
+                                aria-label="Edit this block"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-4 h-4" aria-hidden="true" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Edit</TooltipContent>
@@ -470,5 +539,21 @@ export function VerificationUI({
     </TooltipProvider>
   );
 }
+
+/**
+ * Memoized VerificationUI - prevents re-renders when props haven't changed.
+ * Custom comparison checks originalText, detectedBlocks length, and className.
+ */
+export const VerificationUI = memo(VerificationUIComponent, (prev, next) => {
+  return (
+    prev.originalText === next.originalText &&
+    prev.detectedBlocks.length === next.detectedBlocks.length &&
+    prev.className === next.className
+    // Note: onComplete callback intentionally excluded from comparison.
+    // Parent should ensure stable callback reference via useCallback.
+  );
+});
+
+VerificationUI.displayName = "VerificationUI";
 
 export default VerificationUI;

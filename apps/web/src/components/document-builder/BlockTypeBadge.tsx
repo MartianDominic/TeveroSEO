@@ -17,7 +17,7 @@
  * - font-variant-caps: all-small-caps
  */
 
-import { type FC } from "react";
+import { type FC, memo } from "react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -90,7 +90,7 @@ function getColorClasses(metadata: BlockTypeDefinition | undefined): string {
  * - Blue (info) for social proof
  * - Green (accent) for offers and CTAs
  */
-export const BlockTypeBadge: FC<BlockTypeBadgeProps> = ({
+const BlockTypeBadgeComponent: FC<BlockTypeBadgeProps> = ({
   type,
   label,
   className,
@@ -132,5 +132,19 @@ export const BlockTypeBadge: FC<BlockTypeBadgeProps> = ({
     </span>
   );
 };
+
+/**
+ * Memoized BlockTypeBadge - only re-renders when type or label changes.
+ */
+export const BlockTypeBadge = memo(BlockTypeBadgeComponent, (prev, next) => {
+  return (
+    prev.type === next.type &&
+    prev.label === next.label &&
+    prev.compact === next.compact &&
+    prev.className === next.className
+  );
+});
+
+BlockTypeBadge.displayName = "BlockTypeBadge";
 
 export default BlockTypeBadge;

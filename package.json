@@ -23,9 +23,18 @@
       "uuid": ">=14.0.0",
       "@eslint/plugin-kit": ">=0.3.4",
       "typescript": "^5.9.3",
-      "vitest": "^4.1.4"
+      "vitest": "^4.1.4",
+      "fast-uri": ">=3.1.2",
+      "hono": ">=4.12.18",
+      "mermaid": ">=11.15.0",
+      "prismjs": ">=1.30.0",
+      "ip-address": ">=10.1.1",
+      "protobufjs": ">=7.5.6",
+      "basic-ftp": ">=5.3.1",
+      "@babel/plugin-transform-modules-systemjs": ">=7.29.4"
     }
   },
+  "sideEffects": false,
   "devDependencies": {
     "@playwright/test": "^1.59.1"
   }

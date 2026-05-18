@@ -75,7 +75,9 @@ describe("upload-service", () => {
 
   describe("uploadDocument", () => {
     it("accepts File and workspaceId, returns documentId", async () => {
-      const file = new File(["test content"], "test.pdf", {
+      // Create valid PDF magic bytes (%PDF-1.4) followed by content
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, ...Array.from(Buffer.from("test content"))]);
+      const file = new File([pdfContent], "test.pdf", {
         type: "application/pdf",
       });
       const workspaceId = "ws-123";
@@ -89,7 +91,9 @@ describe("upload-service", () => {
     });
 
     it("uploads file to R2 with path: {workspaceId}/{documentId}/{fileName}", async () => {
-      const file = new File(["test content"], "test.pdf", {
+      // Create valid PDF magic bytes (%PDF-1.4) followed by content
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, ...Array.from(Buffer.from("test content"))]);
+      const file = new File([pdfContent], "test.pdf", {
         type: "application/pdf",
       });
       const workspaceId = "ws-123";
@@ -106,7 +110,9 @@ describe("upload-service", () => {
 
     it("creates database record with status 'pending'", async () => {
       const { db } = await import("@/db");
-      const file = new File(["test content"], "test.pdf", {
+      // Create valid PDF magic bytes (%PDF-1.4) followed by content
+      const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, ...Array.from(Buffer.from("test content"))]);
+      const file = new File([pdfContent], "test.pdf", {
         type: "application/pdf",
       });
       const workspaceId = "ws-123";
@@ -129,8 +135,10 @@ describe("upload-service", () => {
     });
 
     it("validates file size (max 20MB) and rejects oversized files", async () => {
-      // Create a file larger than 20MB (simulate)
-      const largeContent = new ArrayBuffer(21 * 1024 * 1024);
+      // Create a file larger than 20MB (simulate) with valid PDF magic bytes
+      const pdfHeader = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]);
+      const largeContent = new Uint8Array(21 * 1024 * 1024);
+      largeContent.set(pdfHeader, 0);
       const file = new File([largeContent], "large.pdf", {
         type: "application/pdf",
       });

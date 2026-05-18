@@ -21,6 +21,13 @@ import {
 } from "./schemas";
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Default timeout for AI voice analysis: 30 seconds */
+const AI_VOICE_ANALYSIS_TIMEOUT_MS = 30000;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -176,9 +183,15 @@ async function analyzeVoice(text: string): Promise<VoiceAttributes> {
   }
 
   try {
-    const { text: analysis } = await generateText({
-      model: google("gemini-2.0-flash"),
-      prompt: `Analyze the voice and tone of this business document:
+    // Set up AbortController with timeout to prevent hanging indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_VOICE_ANALYSIS_TIMEOUT_MS);
+
+    let analysis: string;
+    try {
+      const result = await generateText({
+        model: google("gemini-2.0-flash"),
+        prompt: `Analyze the voice and tone of this business document:
 
 ---
 ${text.slice(0, 5000)}
@@ -192,8 +205,13 @@ Return JSON only, no markdown:
 }
 
 Return valid JSON only.`,
-      temperature: 0.3,
-    });
+        temperature: 0.3,
+        abortSignal: controller.signal,
+      });
+      analysis = result.text;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Parse JSON from response and validate with Zod
     const parsed = JSON.parse(analysis);

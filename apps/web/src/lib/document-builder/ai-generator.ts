@@ -15,6 +15,7 @@
 
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
+import * as Sentry from "@sentry/nextjs";
 
 import { logger } from "@/lib/logger";
 import { PERSUASION_BLOCK_TYPES } from "./persuasion-blocks";
@@ -85,10 +86,105 @@ const LANGUAGE_NAMES: Record<string, string> = {
 const FALLBACK_MESSAGE = "Unable to generate content. Please try again or write your content manually.";
 
 /**
+ * M-ERR-03: User-friendly error messages for specific error types.
+ * These messages provide actionable guidance instead of technical jargon.
+ */
+const USER_FRIENDLY_ERROR_MESSAGES: Record<ErrorType, string> = {
+  timeout: "Content generation is taking longer than expected. Please try again with a shorter request.",
+  rate_limit: "Our AI service is currently busy. Please wait a moment and try again.",
+  service_unavailable: "The AI service is temporarily unavailable. Please try again in a few minutes.",
+  non_retryable: "Unable to generate content. Please try again or write your content manually.",
+};
+
+/**
+ * Get user-friendly error message for error type.
+ * M-ERR-03: Provides actionable guidance to users.
+ */
+function getUserFriendlyMessage(errorType: ErrorType): string {
+  return USER_FRIENDLY_ERROR_MESSAGES[errorType] ?? FALLBACK_MESSAGE;
+}
+
+/** Default timeout for AI generation calls: 60 seconds */
+const AI_GENERATION_TIMEOUT_MS = 60000;
+
+/**
  * Gemini 3.1 Pro cost per million tokens.
  * Per CLAUDE.md LLM Architecture spec: $1.25/1M tokens
  */
 const GEMINI_COST_PER_1M_TOKENS = 1.25;
+
+/** Maximum retry attempts for retryable errors */
+const MAX_RETRIES = 3;
+
+/** Base delay for exponential backoff (ms) */
+const BASE_RETRY_DELAY_MS = 1000;
+
+// ---------------------------------------------------------------------------
+// Error Handling
+// ---------------------------------------------------------------------------
+
+/**
+ * Error classification for retry logic.
+ * Exported for testing.
+ */
+export type ErrorType = "rate_limit" | "service_unavailable" | "timeout" | "non_retryable";
+
+/**
+ * Classify an error to determine if it should be retried.
+ * Exported for testing.
+ */
+export function classifyError(error: unknown): { type: ErrorType; status?: number } {
+  // Handle null/undefined
+  if (error === null || error === undefined) {
+    return { type: "non_retryable" };
+  }
+
+  // Handle abort/timeout errors
+  if (error instanceof Error && error.name === "AbortError") {
+    return { type: "timeout" };
+  }
+
+  // Check for HTTP status codes in error message or properties
+  const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const errorObj = error as { status?: number; statusCode?: number };
+  const status = typeof errorObj === "object" ? (errorObj.status ?? errorObj.statusCode) : undefined;
+
+  // Rate limit (429)
+  if (status === 429 || errorMessage.includes("429") || errorMessage.includes("rate limit") || errorMessage.includes("resource exhausted")) {
+    return { type: "rate_limit", status: 429 };
+  }
+
+  // Service unavailable (503)
+  if (status === 503 || errorMessage.includes("503") || errorMessage.includes("service unavailable") || errorMessage.includes("overloaded")) {
+    return { type: "service_unavailable", status: 503 };
+  }
+
+  // Bad gateway (502) or gateway timeout (504)
+  if (status === 502 || status === 504 || errorMessage.includes("502") || errorMessage.includes("504") || errorMessage.includes("gateway")) {
+    return { type: "service_unavailable", status };
+  }
+
+  return { type: "non_retryable", status };
+}
+
+/**
+ * Calculate delay for exponential backoff with jitter.
+ * Exported for testing.
+ */
+export function calculateRetryDelay(attempt: number): number {
+  // Exponential backoff: 1s, 2s, 4s...
+  const exponentialDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+  // Add jitter (0-25% of delay) to prevent thundering herd
+  const jitter = exponentialDelay * Math.random() * 0.25;
+  return exponentialDelay + jitter;
+}
+
+/**
+ * Sleep for the specified duration.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -273,10 +369,63 @@ export async function generateBlockContent(
 
     const prompt = buildPrompt(request);
 
-    const result = await generateText({
-      model: google("gemini-3.1-pro"),
-      prompt,
-    });
+    // Retry loop with exponential backoff for transient errors
+    let result;
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      // Set up AbortController with timeout to prevent hanging indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_GENERATION_TIMEOUT_MS);
+
+      try {
+        // Use Gemini 3.1 Pro per MODEL-REFERENCE.md ($1.25/1M input)
+        result = await generateText({
+          model: google("gemini-3.1-pro"),
+          prompt,
+          abortSignal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        break; // Success - exit retry loop
+      } catch (error) {
+        clearTimeout(timeoutId);
+        lastError = error;
+
+        const { type: errorType, status } = classifyError(error);
+        const isRetryable = errorType !== "non_retryable";
+        const isLastAttempt = attempt === MAX_RETRIES;
+
+        logger.warn("[ai-generator] Generation attempt failed", {
+          blockType: request.blockType,
+          attempt: attempt + 1,
+          maxRetries: MAX_RETRIES + 1,
+          errorType,
+          status,
+          isRetryable,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        if (!isRetryable || isLastAttempt) {
+          // Non-retryable error or exhausted retries - throw to outer catch
+          throw error;
+        }
+
+        // Calculate backoff delay and wait before retry
+        const delayMs = calculateRetryDelay(attempt);
+        logger.info("[ai-generator] Retrying after delay", {
+          blockType: request.blockType,
+          attempt: attempt + 1,
+          delayMs: Math.round(delayMs),
+          errorType,
+        });
+        await sleep(delayMs);
+      }
+    }
+
+    // If we somehow exit the loop without result (shouldn't happen), throw last error
+    if (!result) {
+      throw lastError ?? new Error("Generation failed without result");
+    }
 
     // Calculate confidence based on content length and presence of key elements
     // This is a heuristic - longer, more detailed content suggests higher confidence
@@ -317,17 +466,40 @@ export async function generateBlockContent(
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
+    const { type: errorType, status } = classifyError(error);
 
-    // Log error but return graceful fallback
-    logger.error("[ai-generator] Generation failed", {
+    // Log error with classification for debugging
+    logger.error("[ai-generator] Generation failed after all retries", {
       blockType: request.blockType,
       intent: request.intent,
       durationMs,
+      errorType,
+      status,
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
+    // Send to Sentry for production monitoring with error classification
+    Sentry.captureException(error, {
+      tags: {
+        component: "ai-generator",
+        errorType,
+        ...(status ? { httpStatus: String(status) } : {}),
+      },
+      extra: {
+        blockType: request.blockType,
+        intent: request.intent,
+        language: request.language,
+        promptLength: buildPrompt(request).length,
+        durationMs,
+        errorType,
+        status,
+      },
+    });
+
+    // M-ERR-03: Return user-friendly message based on error type
     return {
-      content: FALLBACK_MESSAGE,
+      content: getUserFriendlyMessage(errorType),
       confidence: 0,
     };
   }

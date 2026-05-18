@@ -23,6 +23,7 @@ import type { ZodError, ZodIssue } from "zod";
  * All API errors should use this envelope for consistency.
  */
 export interface ApiErrorResponse {
+  success: false;
   error: {
     code: string;
     message: string;
@@ -34,6 +35,7 @@ export interface ApiErrorResponse {
  * Standard success response format.
  */
 export interface ApiSuccessResponse<T> {
+  success: true;
   data: T;
   meta?: {
     total?: number;
@@ -74,6 +76,7 @@ export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
 export function badRequest(message: string, details?: Record<string, unknown>): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.BAD_REQUEST,
         message,
@@ -99,6 +102,7 @@ export function badRequest(message: string, details?: Record<string, unknown>): 
 export function validationError(zodError: ZodError<unknown>): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.VALIDATION_ERROR,
         message: "Validation failed",
@@ -126,6 +130,7 @@ export function validationErrorMessage(
 ): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.VALIDATION_ERROR,
         message,
@@ -148,6 +153,7 @@ export function validationErrorMessage(
 export function unauthorized(message = "Unauthorized"): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.UNAUTHORIZED,
         message,
@@ -169,6 +175,7 @@ export function unauthorized(message = "Unauthorized"): NextResponse<ApiErrorRes
 export function forbidden(message = "Forbidden"): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.FORBIDDEN,
         message,
@@ -189,6 +196,7 @@ export function forbidden(message = "Forbidden"): NextResponse<ApiErrorResponse>
 export function notFound(message = "Not found"): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.NOT_FOUND,
         message,
@@ -217,6 +225,7 @@ export function rateLimited(
 
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.RATE_LIMITED,
         message,
@@ -239,6 +248,7 @@ export function rateLimited(
 export function conflict(message: string, details?: Record<string, unknown>): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.CONFLICT,
         message,
@@ -261,6 +271,7 @@ export function conflict(message: string, details?: Record<string, unknown>): Ne
 export function internalError(message = "Internal error"): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.INTERNAL_ERROR,
         message,
@@ -283,6 +294,7 @@ export function serviceUnavailable(
 ): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
+      success: false as const,
       error: {
         code: ERROR_CODES.SERVICE_UNAVAILABLE,
         message,
@@ -305,7 +317,7 @@ export function success<T>(
   data: T,
   meta?: ApiSuccessResponse<T>["meta"]
 ): NextResponse<ApiSuccessResponse<T>> {
-  const response: ApiSuccessResponse<T> = { data };
+  const response: ApiSuccessResponse<T> = { success: true, data };
   if (meta) {
     response.meta = meta;
   }
@@ -321,7 +333,7 @@ export function success<T>(
  * ```
  */
 export function created<T>(data: T): NextResponse<ApiSuccessResponse<T>> {
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json({ success: true as const, data }, { status: 201 });
 }
 
 /**
@@ -333,7 +345,7 @@ export function created<T>(data: T): NextResponse<ApiSuccessResponse<T>> {
  * ```
  */
 export function accepted<T>(data: T): NextResponse<ApiSuccessResponse<T>> {
-  return NextResponse.json({ data }, { status: 202 });
+  return NextResponse.json({ success: true as const, data }, { status: 202 });
 }
 
 /**

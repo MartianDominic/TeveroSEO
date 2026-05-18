@@ -6,6 +6,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock Redis client BEFORE importing rate-limit module
+// This prevents the REDIS_URL check from throwing at module load time
+vi.mock('@/lib/redis/client', () => ({
+  redis: {
+    status: 'wait',
+    ping: vi.fn().mockRejectedValue(new Error('Redis not available in tests')),
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+    keys: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 // Mock next/headers
 vi.mock('next/headers', () => ({
   headers: vi.fn(() => ({

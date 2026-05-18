@@ -142,10 +142,27 @@ export function computeBlockDiff(
 // =====================================
 
 /**
+ * Maximum combined text length for full LCS diff.
+ * Beyond this threshold, we fall back to simplified diff to prevent UI freezes.
+ * 10000 chars = ~1600 words, which creates a ~2.5M cell matrix worst case.
+ */
+const MAX_DIFF_TEXT_LENGTH = 10000;
+
+/**
+ * Maximum word count for LCS algorithm.
+ * Prevents O(m*n) matrix allocation for very long texts.
+ */
+const MAX_DIFF_WORD_COUNT = 2000;
+
+/**
  * Compute word-level diff between two text strings.
  *
  * Uses Longest Common Subsequence (LCS) algorithm to find
  * the optimal alignment of words between old and new text.
+ *
+ * Performance safeguard: For texts exceeding MAX_DIFF_TEXT_LENGTH or
+ * MAX_DIFF_WORD_COUNT, returns a simplified diff (entire text marked
+ * as removed then added) to prevent UI freezes.
  *
  * @param oldText - Original text
  * @param newText - Updated text
@@ -168,15 +185,48 @@ export function computeTextDiff(
     return oldText ? [{ text: oldText, status: "removed" }] : [];
   }
 
+  // Performance safeguard: check text length
+  const combinedLength = oldText.length + newText.length;
+  if (combinedLength > MAX_DIFF_TEXT_LENGTH) {
+    // Fall back to simplified diff for large texts
+    return createSimplifiedDiff(oldText, newText);
+  }
+
   // Tokenize into words (preserving whitespace for reconstruction)
   const oldWords = tokenizeWords(oldText);
   const newWords = tokenizeWords(newText);
+
+  // Performance safeguard: check word count
+  if (oldWords.length + newWords.length > MAX_DIFF_WORD_COUNT) {
+    return createSimplifiedDiff(oldText, newText);
+  }
 
   // Compute LCS
   const lcs = computeLCS(oldWords, newWords);
 
   // Build diff segments from LCS
   return buildDiffSegments(oldWords, newWords, lcs);
+}
+
+/**
+ * Create a simplified diff for large texts.
+ * Shows entire old text as removed and entire new text as added.
+ * This prevents UI freezes while still showing that content changed.
+ */
+function createSimplifiedDiff(
+  oldText: string,
+  newText: string
+): TextDiffSegment[] {
+  const segments: TextDiffSegment[] = [];
+
+  if (oldText.trim()) {
+    segments.push({ text: oldText, status: "removed" });
+  }
+  if (newText.trim()) {
+    segments.push({ text: newText, status: "added" });
+  }
+
+  return segments;
 }
 
 /**
@@ -330,33 +380,30 @@ export function extractTextFromContent(content: TipTapContent): string {
 }
 
 /**
+ * Type guard to check if a value is a non-null object.
+ */
+function isNonNullObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
  * Deep equality check for objects.
  */
 function deepEqual(obj1: unknown, obj2: unknown): boolean {
   if (obj1 === obj2) return true;
 
-  if (
-    typeof obj1 !== "object" ||
-    typeof obj2 !== "object" ||
-    obj1 === null ||
-    obj2 === null
-  ) {
+  // Check if both are non-null objects using type guard
+  if (!isNonNullObject(obj1) || !isNonNullObject(obj2)) {
     return false;
   }
 
-  const keys1 = Object.keys(obj1 as Record<string, unknown>);
-  const keys2 = Object.keys(obj2 as Record<string, unknown>);
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
 
   if (keys1.length !== keys2.length) return false;
 
   for (const key of keys1) {
-    if (
-      !keys2.includes(key) ||
-      !deepEqual(
-        (obj1 as Record<string, unknown>)[key],
-        (obj2 as Record<string, unknown>)[key]
-      )
-    ) {
+    if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
       return false;
     }
   }

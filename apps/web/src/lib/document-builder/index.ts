@@ -32,9 +32,44 @@ export type {
   DocumentState,
   FrameworkTemplate,
   PersuasionBlock,
+  // Block-specific content types
+  PainAmplifierContent,
+  VillainStoryContent,
+  CredibilityContent,
+  SocialProofContent,
+  ProcessRevealContent,
+  OfferStackContent,
+  RiskReversalContent,
+  ObjectionHandlerContent,
+  UrgencyContent,
+  CtaContent,
+  CustomBlockContent,
+  BlockSpecificContent,
+  // Discriminated block types
+  PainAmplifierBlock,
+  VillainStoryBlock,
+  CredibilityBlock,
+  SocialProofBlock,
+  ProcessRevealBlock,
+  OfferStackBlock,
+  RiskReversalBlock,
+  ObjectionHandlerBlock,
+  UrgencyBlock,
+  CtaBlock,
+  CustomBlock,
+  TypedPersuasionBlock,
 } from "./types";
 
-export { PERSUASION_BLOCK_TYPES_ARRAY } from "./types";
+export {
+  PERSUASION_BLOCK_TYPES_ARRAY,
+  // Type guards
+  isBlockType,
+  isPainAmplifierBlock,
+  isSocialProofBlock,
+  isCtaBlock,
+  isCredibilityBlock,
+  isOfferStackBlock,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Persuasion Blocks - Block metadata and templates
@@ -89,8 +124,8 @@ export {
 export {
   getAllFrameworkTemplates,
   applyFrameworkToCanvas,
-  validateFrameworkCompliance as validateTemplateCompliance,
-  getFrameworkSequence as getTemplateSequence,
+  validateCanvasCompliance,
+  getCanvasFrameworkSequence,
   isBlockRequired,
   getSuggestedNextBlock,
   type FrameworkValidationResult,
@@ -117,6 +152,7 @@ export {
   getHeatLabel,
   calculateHeatmapData,
   getHeatGradient,
+  clearHeatmapCache,
   type HeatLevel,
   type HeatmapData,
 } from "./heatmap-calculator";

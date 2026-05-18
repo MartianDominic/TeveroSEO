@@ -16,9 +16,11 @@
  * - Click tab to preview that variant in editor
  *
  * Renders in PersuasionBlock footer when variants exist.
+ *
+ * WCAG 2.1 AA: Proper aria-controls/aria-labelledby linkage for tabs.
  */
 
-import { type FC, useMemo } from "react";
+import { type FC, useMemo, memo } from "react";
 import { Check, X, Plus, Activity, BarChart3 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -29,9 +31,26 @@ import {
 } from "@/lib/document-builder/ab-testing-service";
 
 /**
+ * Helper to generate consistent panel ID for a variant.
+ * Use this in parent components to link tabpanel to tab.
+ */
+export function getVariantPanelId(blockId: string, variantId: string): string {
+  return `variant-panel-${blockId}-${variantId}`;
+}
+
+/**
+ * Helper to generate consistent tab ID for a variant.
+ */
+export function getVariantTabId(blockId: string, variantId: string): string {
+  return `variant-tab-${blockId}-${variantId}`;
+}
+
+/**
  * Props for VariantTabs component.
  */
 export interface VariantTabsProps {
+  /** Block ID for generating unique ARIA IDs */
+  blockId: string;
   /** Array of variants for this block */
   variants: BlockVariant[];
   /** Currently active variant ID */
@@ -121,28 +140,37 @@ function getStatusBadge(
  * Single variant tab component.
  */
 interface VariantTabProps {
+  blockId: string;
   variant: BlockVariant;
   isActive: boolean;
   onClick: () => void;
   result?: ABTestResult;
   showAnalytics: boolean;
+  /** Whether the corresponding tabpanel is rendered. If false, aria-controls is omitted. */
+  panelExists?: boolean;
 }
 
-const VariantTab: FC<VariantTabProps> = ({
+const VariantTabComponent: FC<VariantTabProps> = ({
+  blockId,
   variant,
   isActive,
   onClick,
   result,
   showAnalytics,
+  panelExists = true,
 }) => {
   const badge = getStatusBadge(variant.status, result);
   const conversionRate = result
     ? `${(result.conversionRate * 100).toFixed(1)}%`
     : null;
 
+  const tabId = getVariantTabId(blockId, variant.id);
+  const panelId = getVariantPanelId(blockId, variant.id);
+
   return (
     <button
       type="button"
+      id={tabId}
       onClick={onClick}
       className={cn(
         "flex items-center gap-2",
@@ -156,7 +184,9 @@ const VariantTab: FC<VariantTabProps> = ({
           : "bg-surface-2 text-text-3 hover:bg-surface-3 hover:text-text-2"
       )}
       aria-selected={isActive}
+      aria-controls={panelExists ? panelId : undefined}
       role="tab"
+      tabIndex={isActive ? 0 : -1}
     >
       {/* Variant name */}
       <span>{variant.variantName}</span>
@@ -170,7 +200,7 @@ const VariantTab: FC<VariantTabProps> = ({
             isActive ? "text-accent-ink/70" : "text-text-4"
           )}
         >
-          <BarChart3 className="h-3 w-3" />
+          <BarChart3 className="h-3 w-3" aria-hidden="true" />
           {formatNumber(variant.impressions)}
           {conversionRate && (
             <>
@@ -193,7 +223,7 @@ const VariantTab: FC<VariantTabProps> = ({
           )}
           title={badge.label}
         >
-          {badge.icon && <badge.icon className="h-3 w-3" />}
+          {badge.icon && <badge.icon className="h-3 w-3" aria-hidden="true" />}
           {badge.label.length <= 10 && <span>{badge.label}</span>}
         </span>
       )}
@@ -202,12 +232,36 @@ const VariantTab: FC<VariantTabProps> = ({
 };
 
 /**
+ * Memoized VariantTab - only re-renders when variant data or selection changes.
+ */
+const VariantTab = memo(VariantTabComponent, (prev, next) => {
+  return (
+    prev.blockId === next.blockId &&
+    prev.variant.id === next.variant.id &&
+    prev.variant.status === next.variant.status &&
+    prev.variant.impressions === next.variant.impressions &&
+    prev.variant.variantName === next.variant.variantName &&
+    prev.isActive === next.isActive &&
+    prev.showAnalytics === next.showAnalytics &&
+    prev.panelExists === next.panelExists &&
+    prev.result?.conversionRate === next.result?.conversionRate
+  );
+});
+
+VariantTab.displayName = "VariantTab";
+
+/**
  * VariantTabs component.
  *
  * Displays tabs for switching between A/B test variants in a block.
  * Includes statistical significance badges and inline analytics.
+ * Memoized to prevent re-renders from parent state changes.
+ *
+ * WCAG 2.1 AA compliant with proper aria-controls linkage.
+ * Parent must use getVariantPanelId() to set the tabpanel id.
  */
-export const VariantTabs: FC<VariantTabsProps> = ({
+const VariantTabsComponent: FC<VariantTabsProps> = ({
+  blockId,
   variants,
   activeVariantId,
   onSelectVariant,
@@ -244,6 +298,7 @@ export const VariantTabs: FC<VariantTabsProps> = ({
       {variants.map((variant) => (
         <VariantTab
           key={variant.id}
+          blockId={blockId}
           variant={variant}
           isActive={variant.id === activeVariantId}
           onClick={() => onSelectVariant(variant.id)}
@@ -270,12 +325,35 @@ export const VariantTabs: FC<VariantTabsProps> = ({
           )}
           aria-label="Add variant"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">Variant</span>
         </button>
       )}
     </div>
   );
 };
+
+/**
+ * Memoized VariantTabs with custom comparison.
+ */
+export const VariantTabs = memo(VariantTabsComponent, (prev, next) => {
+  // Re-render if blockId changed
+  if (prev.blockId !== next.blockId) return false;
+  // Re-render if variants array changed
+  if (prev.variants.length !== next.variants.length) return false;
+  if (prev.activeVariantId !== next.activeVariantId) return false;
+  if (prev.showAnalytics !== next.showAnalytics) return false;
+
+  // Check if any variant data changed
+  for (let i = 0; i < prev.variants.length; i++) {
+    if (prev.variants[i].id !== next.variants[i].id) return false;
+    if (prev.variants[i].status !== next.variants[i].status) return false;
+    if (prev.variants[i].impressions !== next.variants[i].impressions) return false;
+  }
+
+  return true;
+});
+
+VariantTabs.displayName = "VariantTabs";
 
 export default VariantTabs;

@@ -18,7 +18,7 @@
  * - "No changes between these versions" empty state
  */
 
-import { type FC, useMemo } from "react";
+import { type FC, useMemo, memo } from "react";
 import { GitCompare, Plus, Minus, Edit3, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -129,7 +129,7 @@ interface VersionSelectorProps {
   side: "left" | "right";
 }
 
-const VersionSelector: FC<VersionSelectorProps> = ({
+const VersionSelectorComponent: FC<VersionSelectorProps> = ({
   label,
   currentVersionId,
   versions,
@@ -171,6 +171,16 @@ const VersionSelector: FC<VersionSelectorProps> = ({
   );
 };
 
+const VersionSelector = memo(VersionSelectorComponent, (prev, next) => {
+  return (
+    prev.currentVersionId === next.currentVersionId &&
+    prev.versions.length === next.versions.length &&
+    prev.side === next.side
+  );
+});
+
+VersionSelector.displayName = "VersionSelector";
+
 /**
  * Inline text diff display.
  */
@@ -178,7 +188,7 @@ interface TextDiffDisplayProps {
   segments: TextDiffSegment[];
 }
 
-const TextDiffDisplay: FC<TextDiffDisplayProps> = ({ segments }) => {
+const TextDiffDisplayComponent: FC<TextDiffDisplayProps> = ({ segments }) => {
   return (
     <span>
       {segments.map((segment, idx) => {
@@ -208,6 +218,12 @@ const TextDiffDisplay: FC<TextDiffDisplayProps> = ({ segments }) => {
   );
 };
 
+const TextDiffDisplay = memo(TextDiffDisplayComponent, (prev, next) => {
+  return prev.segments.length === next.segments.length;
+});
+
+TextDiffDisplay.displayName = "TextDiffDisplay";
+
 /**
  * Block diff card.
  */
@@ -216,7 +232,7 @@ interface BlockDiffCardProps {
   side: "left" | "right";
 }
 
-const BlockDiffCard: FC<BlockDiffCardProps> = ({ diffItem, side }) => {
+const BlockDiffCardComponent: FC<BlockDiffCardProps> = ({ diffItem, side }) => {
   const { status, blockType, oldContent, newContent } = diffItem;
 
   // Determine content to show based on side and status
@@ -302,6 +318,20 @@ const BlockDiffCard: FC<BlockDiffCardProps> = ({ diffItem, side }) => {
   );
 };
 
+const BlockDiffCard = memo(BlockDiffCardComponent, (prev, next) => {
+  // Compare all fields that affect rendering, including content for text diff
+  return (
+    prev.diffItem.blockId === next.diffItem.blockId &&
+    prev.diffItem.status === next.diffItem.status &&
+    prev.side === next.side &&
+    // For modified blocks, content changes affect the text diff
+    prev.diffItem.oldContent === next.diffItem.oldContent &&
+    prev.diffItem.newContent === next.diffItem.newContent
+  );
+});
+
+BlockDiffCard.displayName = "BlockDiffCard";
+
 /**
  * Diff summary bar.
  */
@@ -309,7 +339,7 @@ interface DiffSummaryBarProps {
   diff: BlockDiffItem[];
 }
 
-const DiffSummaryBar: FC<DiffSummaryBarProps> = ({ diff }) => {
+const DiffSummaryBarComponent: FC<DiffSummaryBarProps> = ({ diff }) => {
   const summary = getDiffSummary(diff);
 
   return (
@@ -339,6 +369,12 @@ const DiffSummaryBar: FC<DiffSummaryBarProps> = ({ diff }) => {
   );
 };
 
+const DiffSummaryBar = memo(DiffSummaryBarComponent, (prev, next) => {
+  return prev.diff.length === next.diff.length;
+});
+
+DiffSummaryBar.displayName = "DiffSummaryBar";
+
 // =====================================
 // Main Component
 // =====================================
@@ -349,7 +385,7 @@ const DiffSummaryBar: FC<DiffSummaryBarProps> = ({ diff }) => {
  * Side-by-side comparison of two document versions with
  * block-level and word-level diff highlighting.
  */
-export const VersionDiff: FC<VersionDiffProps> = ({
+const VersionDiffComponent: FC<VersionDiffProps> = ({
   versionA,
   versionB,
   availableVersions,
@@ -444,14 +480,18 @@ export const VersionDiff: FC<VersionDiffProps> = ({
             </p>
           </div>
         ) : (
-          // Side-by-side diff
+          // Side-by-side diff with proper WCAG 2.1 AA structure
           <div className="grid grid-cols-2 gap-6">
             {/* Left column (Version A / Old) */}
-            <div className="space-y-4">
+            <div
+              className="space-y-4"
+              role="region"
+              aria-label={`${versionA.label} - original version${versionA.timestamp ? ` (${versionA.timestamp})` : ""}`}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-medium text-text-2">
+                <h3 className="text-sm font-medium text-text-2">
                   {versionA.label}
-                </span>
+                </h3>
                 {versionA.timestamp && (
                   <span className="text-xs text-text-4">
                     {versionA.timestamp}
@@ -469,11 +509,15 @@ export const VersionDiff: FC<VersionDiffProps> = ({
             </div>
 
             {/* Right column (Version B / New) */}
-            <div className="space-y-4">
+            <div
+              className="space-y-4"
+              role="region"
+              aria-label={`${versionB.label} - new version${versionB.timestamp ? ` (${versionB.timestamp})` : ""}`}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-medium text-text-2">
+                <h3 className="text-sm font-medium text-text-2">
                   {versionB.label}
-                </span>
+                </h3>
                 {versionB.timestamp && (
                   <span className="text-xs text-text-4">
                     {versionB.timestamp}
@@ -495,5 +539,20 @@ export const VersionDiff: FC<VersionDiffProps> = ({
     </div>
   );
 };
+
+/**
+ * Memoized VersionDiff - only re-renders when version data changes.
+ */
+export const VersionDiff = memo(VersionDiffComponent, (prev, next) => {
+  return (
+    prev.versionA.id === next.versionA.id &&
+    prev.versionB.id === next.versionB.id &&
+    prev.versionA.blocks.length === next.versionA.blocks.length &&
+    prev.versionB.blocks.length === next.versionB.blocks.length &&
+    prev.availableVersions?.length === next.availableVersions?.length
+  );
+});
+
+VersionDiff.displayName = "VersionDiff";
 
 export default VersionDiff;

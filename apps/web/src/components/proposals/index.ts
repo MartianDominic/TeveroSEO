@@ -7,6 +7,9 @@
 export { ProposalInlineEditor } from "./ProposalInlineEditor";
 export type { ProposalInlineEditorProps } from "./ProposalInlineEditor";
 
+// Lazy-loaded editor (recommended for better bundle splitting)
+export { LazyProposalInlineEditor, ProposalEditorSkeleton } from "./LazyProposalInlineEditor";
+
 export { ProposalPreview } from "./ProposalPreview";
 
 // Variable system (57-02, 57-03)

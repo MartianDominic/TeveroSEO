@@ -22,7 +22,7 @@ import {
 import { useVariableValue } from "@/hooks/useVariableValue";
 import { cn } from "@/lib/utils";
 
-import { VARIABLE_CATEGORY_COLORS, type VariableNodeAttrs } from "./extensions/VariableExtension";
+import { VARIABLE_CATEGORY_COLORS, type VariableNodeAttrs } from "./extensions/variable-types";
 
 /**
  * Category colors for chip backgrounds.

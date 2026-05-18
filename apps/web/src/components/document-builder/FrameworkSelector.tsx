@@ -26,9 +26,8 @@ import {
   getAllFrameworkTemplates,
   type FrameworkTemplate,
 } from "@/lib/document-builder/template-service";
-import { useDocumentBuilderStore } from "@/stores/documentBuilderStore";
-import { PERSUASION_BLOCK_TYPES } from "@/lib/document-builder/persuasion-blocks";
-import type { PersuasionBlockType } from "@/lib/document-builder/types";
+import { useFrameworkActions } from "@/stores/documentBuilderStore";
+import { createBlocksFromFramework } from "@/lib/document-builder/persuasion-blocks";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,6 +68,7 @@ const FrameworkCard: FC<FrameworkCardProps> = ({ framework, onSelect }) => {
     <button
       type="button"
       onClick={onSelect}
+      aria-label={`Select ${framework.name} framework: ${framework.description}`}
       className={cn(
         // Base styles
         "w-full flex flex-col",
@@ -78,7 +78,7 @@ const FrameworkCard: FC<FrameworkCardProps> = ({ framework, onSelect }) => {
         "text-left",
         "transition-all duration-[240ms]",
         "hover:shadow-card hover:-translate-y-0.5",
-        "focus:outline-none focus:ring-2 focus:ring-accent/30"
+        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
       )}
     >
       {/* Header */}
@@ -92,7 +92,7 @@ const FrameworkCard: FC<FrameworkCardProps> = ({ framework, onSelect }) => {
             "text-accent"
           )}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-text-1">
@@ -136,6 +136,7 @@ const FreestyleCard: FC<FreestyleCardProps> = ({ onSelect }) => {
     <button
       type="button"
       onClick={onSelect}
+      aria-label="Start without a framework - build your proposal from scratch"
       className={cn(
         // Base styles
         "w-full flex items-center gap-3",
@@ -144,7 +145,7 @@ const FreestyleCard: FC<FreestyleCardProps> = ({ onSelect }) => {
         "border border-dashed border-hairline hover:border-text-4",
         "text-left",
         "transition-all duration-[240ms]",
-        "focus:outline-none focus:ring-2 focus:ring-accent/30"
+        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
       )}
     >
       <div
@@ -156,7 +157,7 @@ const FreestyleCard: FC<FreestyleCardProps> = ({ onSelect }) => {
           "text-text-3"
         )}
       >
-        <LayoutGrid className="h-5 w-5" />
+        <LayoutGrid className="h-5 w-5" aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-sm font-semibold text-text-2">
@@ -186,28 +187,16 @@ export const FrameworkSelector: FC<FrameworkSelectorProps> = ({
   onOpenChange,
   onSelect,
 }) => {
-  const { setFramework, initialize, reset } = useDocumentBuilderStore();
+  // Use shallow selectors to prevent unnecessary re-renders
+  const { setFramework, initialize, reset } = useFrameworkActions();
   const frameworks = getAllFrameworkTemplates();
 
   const handleSelectFramework = (framework: FrameworkTemplate) => {
     // Set the framework
     setFramework(framework.id, framework.name);
 
-    // Create blocks from recommended sequence
-    const now = new Date().toISOString();
-    const blocks = framework.recommendedSequence.map((type: PersuasionBlockType, index: number) => ({
-      id: `${type}-${Date.now()}-${index}`,
-      type,
-      position: index,
-      content: { type: "doc" as const, content: [] },
-      title: PERSUASION_BLOCK_TYPES.find((b) => b.type === type)?.label ?? type,
-      persuasionMeta: {
-        frameworkId: framework.id,
-        isRequired: framework.requiredBlocks.includes(type),
-      },
-      createdAt: now,
-      updatedAt: now,
-    }));
+    // M-STATE-02: Use shared utility for block creation to eliminate duplication
+    const blocks = createBlocksFromFramework(framework);
 
     initialize(blocks, framework.id, framework.name);
 
@@ -247,9 +236,9 @@ export const FrameworkSelector: FC<FrameworkSelectorProps> = ({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
-                aria-label="Close"
+                aria-label="Close dialog"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DialogClose>
           </div>

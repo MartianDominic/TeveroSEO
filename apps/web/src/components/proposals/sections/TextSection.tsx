@@ -9,7 +9,7 @@
 
 import { type FC } from "react";
 
-import { ProposalInlineEditor } from "../ProposalInlineEditor";
+import { LazyProposalInlineEditor } from "../LazyProposalInlineEditor";
 
 export interface TextSectionData {
   content: string;
@@ -38,7 +38,7 @@ export const TextSection: FC<TextSectionProps> = ({
   editable = true,
 }) => {
   return (
-    <ProposalInlineEditor
+    <LazyProposalInlineEditor
       content={data.content}
       onUpdate={(content) => onChange({ content })}
       locale={locale}

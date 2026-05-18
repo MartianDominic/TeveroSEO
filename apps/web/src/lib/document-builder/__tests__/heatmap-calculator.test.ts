@@ -3,7 +3,7 @@
  * Phase 102-04: Analytics Pipeline and Heatmap Visualization
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   calculateEngagementScore,
   getHeatLevel,
@@ -11,6 +11,7 @@ import {
   getHeatLabel,
   calculateHeatmapData,
   getHeatGradient,
+  clearHeatmapCache,
   type HeatLevel,
 } from "../heatmap-calculator";
 
@@ -150,6 +151,58 @@ describe("heatmap-calculator", () => {
     it("includes the heat color", () => {
       const gradient = getHeatGradient("cold");
       expect(gradient).toContain("156, 163, 175");
+    });
+  });
+
+  describe("heatmap caching", () => {
+    beforeEach(() => {
+      clearHeatmapCache();
+    });
+
+    it("returns same reference for identical input", () => {
+      const blocks = [
+        { blockId: "block-1", views: 100, avgDwellMs: 10000 },
+        { blockId: "block-2", views: 50, avgDwellMs: 5000 },
+      ];
+
+      const result1 = calculateHeatmapData(blocks);
+      const result2 = calculateHeatmapData(blocks);
+
+      // Should return cached result (same reference)
+      expect(result1).toBe(result2);
+    });
+
+    it("returns different result for different input", () => {
+      const blocks1 = [
+        { blockId: "block-1", views: 100, avgDwellMs: 10000 },
+        { blockId: "block-2", views: 50, avgDwellMs: 5000 },
+      ];
+      const blocks2 = [
+        { blockId: "block-1", views: 100, avgDwellMs: 10000 },
+        { blockId: "block-2", views: 10, avgDwellMs: 1000 }, // Different values
+      ];
+
+      const result1 = calculateHeatmapData(blocks1);
+      const result2 = calculateHeatmapData(blocks2);
+
+      // Should be different results (different references due to different cache keys)
+      expect(result1).not.toBe(result2);
+      // Block 2 scores should differ due to different normalization
+      expect(result1[1].score).not.toBe(result2[1].score);
+    });
+
+    it("clearHeatmapCache clears the cache", () => {
+      const blocks = [
+        { blockId: "block-1", views: 100, avgDwellMs: 10000 },
+      ];
+
+      const result1 = calculateHeatmapData(blocks);
+      clearHeatmapCache();
+      const result2 = calculateHeatmapData(blocks);
+
+      // After clearing, should compute fresh (different reference, same values)
+      expect(result1).not.toBe(result2);
+      expect(result1[0].score).toBe(result2[0].score);
     });
   });
 });

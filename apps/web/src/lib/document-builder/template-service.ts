@@ -12,6 +12,7 @@ import {
   FRAMEWORK_TEMPLATES,
   PERSUASION_BLOCK_TYPES,
   getFrameworkTemplate as getFrameworkFromBlocks,
+  getBlockTemplate,
 } from "./persuasion-blocks";
 import type {
   FrameworkTemplate,
@@ -93,12 +94,22 @@ export function getAllFrameworkTemplates(): readonly FrameworkTemplate[] {
  * Creates pre-configured blocks in the recommended sequence
  * with proper metadata for framework tracking.
  *
+ * M-ERR-01: Returns null for "not found" vs [] for "exists but empty sequence"
+ * to allow callers to distinguish between invalid framework and valid framework
+ * with no blocks.
+ *
  * @param frameworkId - Framework identifier
- * @returns Array of canvas blocks ready for the store
+ * @returns Array of canvas blocks ready for the store, or null if framework not found
  */
-export function applyFrameworkToCanvas(frameworkId: string): CanvasBlock[] {
+export function applyFrameworkToCanvas(frameworkId: string): CanvasBlock[] | null {
   const framework = getFrameworkTemplate(frameworkId);
   if (!framework) {
+    // M-ERR-01: Return null for "not found" - caller can distinguish from empty
+    return null;
+  }
+
+  // Framework exists but has no blocks in sequence (edge case)
+  if (framework.recommendedSequence.length === 0) {
     return [];
   }
 
@@ -113,7 +124,7 @@ export function applyFrameworkToCanvas(frameworkId: string): CanvasBlock[] {
       type,
       position: index,
       title: metadata?.label ?? "Custom Block",
-      content: createEmptyTipTapDoc(),
+      content: getBlockTemplate(type),
       persuasionMeta: {
         frameworkId: framework.id,
         isRequired,
@@ -125,13 +136,16 @@ export function applyFrameworkToCanvas(frameworkId: string): CanvasBlock[] {
 }
 
 /**
- * Validate blocks against a framework's requirements.
+ * Validate canvas blocks against a framework's requirements.
+ *
+ * This is the detailed validation for canvas blocks (with full PersuasionBlock objects).
+ * For simple type-based validation, use validateFrameworkCompliance from persuasion-blocks.
  *
  * @param blocks - Current blocks on the canvas
  * @param frameworkId - Framework to validate against
- * @returns Detailed validation result
+ * @returns Detailed validation result with warnings and compliance score
  */
-export function validateFrameworkCompliance(
+export function validateCanvasCompliance(
   blocks: PersuasionBlock[],
   frameworkId: string
 ): FrameworkValidationResult {
@@ -215,12 +229,15 @@ export function validateFrameworkCompliance(
 }
 
 /**
- * Get the recommended block sequence for a framework.
+ * Get the recommended block sequence for a canvas framework.
+ *
+ * This is an alias for canvas-specific usage. For simple sequence retrieval,
+ * use getFrameworkSequence from persuasion-blocks.
  *
  * @param frameworkId - Framework identifier
  * @returns Ordered array of block types
  */
-export function getFrameworkSequence(
+export function getCanvasFrameworkSequence(
   frameworkId: string
 ): PersuasionBlockType[] {
   const framework = getFrameworkTemplate(frameworkId);
@@ -274,16 +291,3 @@ export function getSuggestedNextBlock(
   return undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Create an empty TipTap document.
- */
-function createEmptyTipTapDoc(): TipTapContent {
-  return {
-    type: "doc",
-    content: [],
-  };
-}

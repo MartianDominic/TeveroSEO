@@ -277,4 +277,45 @@ describe("version-diff", () => {
       expect(hasChanges(diff)).toBe(true);
     });
   });
+
+  describe("computeTextDiff performance safeguards", () => {
+    it("falls back to simplified diff for very long texts", () => {
+      // Create texts that exceed the MAX_DIFF_TEXT_LENGTH (10000 chars)
+      const longOldText = "old ".repeat(3000); // 12000 chars
+      const longNewText = "new ".repeat(3000); // 12000 chars
+
+      const diff = computeTextDiff(longOldText, longNewText);
+
+      // Should return simplified diff (whole text removed, whole text added)
+      expect(diff.length).toBe(2);
+      expect(diff[0].status).toBe("removed");
+      expect(diff[1].status).toBe("added");
+      // Verify it contains the full texts
+      expect(diff[0].text).toBe(longOldText);
+      expect(diff[1].text).toBe(longNewText);
+    });
+
+    it("uses full LCS diff for texts under the limit", () => {
+      const oldText = "The quick brown fox";
+      const newText = "The slow brown dog";
+
+      const diff = computeTextDiff(oldText, newText);
+
+      // Should have granular word-level diff
+      expect(diff.length).toBeGreaterThan(2);
+      expect(diff.some((s) => s.status === "unchanged")).toBe(true);
+    });
+
+    it("handles edge case where only old text is long", () => {
+      const longOldText = "old ".repeat(3000);
+      const shortNewText = "short";
+
+      const diff = computeTextDiff(longOldText, shortNewText);
+
+      // Should fall back due to combined length exceeding limit
+      expect(diff.length).toBe(2);
+      expect(diff[0].status).toBe("removed");
+      expect(diff[1].status).toBe("added");
+    });
+  });
 });

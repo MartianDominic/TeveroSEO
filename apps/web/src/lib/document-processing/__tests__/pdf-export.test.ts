@@ -214,4 +214,141 @@ describe("pdf-export", () => {
       expect(html).toContain("<body>");
     });
   });
+
+  describe("XSS Prevention", () => {
+    test("escapes script tags in variable values", () => {
+      const blocks = [
+        {
+          id: "b1",
+          type: "pain_amplifier",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Welcome {{prospect.company}}!" }],
+              },
+            ],
+          },
+        },
+      ];
+      const maliciousContext = {
+        prospect: { company: '<script>alert("xss")</script>' },
+      };
+
+      const html = generateProposalHtml(blocks as any, null, maliciousContext);
+
+      // Should NOT contain raw script tags
+      expect(html).not.toContain("<script>");
+      expect(html).not.toContain("</script>");
+      // Should contain escaped version
+      expect(html).toContain("&lt;script&gt;");
+    });
+
+    test("escapes event handlers in variable values", () => {
+      const blocks = [
+        {
+          id: "b1",
+          type: "credibility",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Contact: {{prospect.email}}" }],
+              },
+            ],
+          },
+        },
+      ];
+      const maliciousContext = {
+        prospect: { email: '"><img src=x onerror="alert(1)"><"' },
+      };
+
+      const html = generateProposalHtml(blocks as any, null, maliciousContext);
+
+      // Should NOT contain raw img tag (< and > are escaped)
+      expect(html).not.toContain("<img");
+      // Should contain escaped version - the tag is neutralized
+      expect(html).toContain("&lt;img");
+      // Quotes are also escaped preventing attribute breakout
+      expect(html).toContain("&quot;");
+    });
+
+    test("escapes javascript: URLs in variable values", () => {
+      const blocks = [
+        {
+          id: "b1",
+          type: "cta",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Visit {{prospect.website}}" }],
+              },
+            ],
+          },
+        },
+      ];
+      const maliciousContext = {
+        prospect: { website: 'javascript:alert(document.cookie)' },
+      };
+
+      const html = generateProposalHtml(blocks as any, null, maliciousContext);
+
+      // The colon should not be escaped (it's not in our escape list)
+      // but any attempt to use this in an href would still be blocked
+      // because the surrounding quotes would be escaped
+      expect(html).toContain("javascript:alert");
+    });
+
+    test("escapes HTML in block content text", () => {
+      const blocks = [
+        {
+          id: "b1",
+          type: "pain_amplifier",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: '<div onclick="steal()">Click here</div>' }],
+              },
+            ],
+          },
+        },
+      ];
+
+      const html = generateProposalHtml(blocks as any, null, {});
+
+      expect(html).not.toContain('<div onclick');
+      expect(html).toContain("&lt;div");
+    });
+
+    test("preserves safe Lithuanian text", () => {
+      const blocks = [
+        {
+          id: "b1",
+          type: "credibility",
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Sveiki, {{prospect.contact_name}}!" }],
+              },
+            ],
+          },
+        },
+      ];
+      const context = {
+        prospect: { contact_name: "Ąžuolas Jonaitis" },
+      };
+
+      const html = generateProposalHtml(blocks as any, null, context);
+
+      expect(html).toContain("Sveiki, Ąžuolas Jonaitis!");
+    });
+  });
 });

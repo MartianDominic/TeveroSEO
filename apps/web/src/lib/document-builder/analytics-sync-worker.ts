@@ -14,6 +14,7 @@
  */
 
 import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { redis } from "@/lib/redis/client";
 import { logger } from "@/lib/logger";
 import { db } from "@/db";
@@ -42,7 +43,7 @@ export interface SyncResult {
  */
 interface ParsedKey {
   blockId: string;
-  variantId: string;
+  variantId: string | null;
   metric: "views" | "conversions";
 }
 
@@ -75,6 +76,8 @@ const DLQ_TTL_SECONDS = 7 * 24 * 60 * 60;
  * Supports keys like:
  * - block:{blockId}:variant:{variantId}:views
  * - block:{blockId}:variant:{variantId}:conversions
+ * - block:{blockId}:views (block-level, no variant)
+ * - block:{blockId}:conversions (block-level, no variant)
  *
  * @param key - Redis key
  * @returns Parsed components or null if invalid
@@ -90,6 +93,17 @@ function parseRedisKey(key: string): ParsedKey | null {
       blockId: variantMatch[1],
       variantId: variantMatch[2],
       metric: variantMatch[3] as "views" | "conversions",
+    };
+  }
+
+  // Match: block:{blockId}:{metric} (block-level without variant)
+  const blockMatch = key.match(/^block:([^:]+):(views|conversions)$/);
+
+  if (blockMatch) {
+    return {
+      blockId: blockMatch[1],
+      variantId: null,
+      metric: blockMatch[2] as "views" | "conversions",
     };
   }
 
@@ -140,7 +154,7 @@ async function scanKeys(pattern: string): Promise<string[]> {
  * @param variantId - Variant ID
  * @returns Current retry count
  */
-async function getRetryCount(variantId: string): Promise<number> {
+export async function getRetryCount(variantId: string): Promise<number> {
   const count = await redis.get(`${DLQ_PREFIX}retry:${variantId}`);
   return count ? parseInt(count, 10) : 0;
 }
@@ -233,22 +247,58 @@ export async function syncAnalytics(): Promise<SyncResult> {
     durationMs: 0,
   };
 
+  // H-CON-03: Acquire mutex to prevent concurrent sync operations
+  if (!acquireSyncMutex()) {
+    logger.warn("[analytics-sync] Sync already in progress, skipping");
+    result.errors.push("Sync already in progress");
+    result.durationMs = Date.now() - startTime;
+    return result;
+  }
+
   try {
-    // Scan for view keys
-    const viewKeys = await scanKeys("block:*:variant:*:views");
-    const conversionKeys = await scanKeys("block:*:variant:*:conversions");
-    const allKeys = [...viewKeys, ...conversionKeys];
+    // Scan for variant-level keys
+    const variantViewKeys = await scanKeys("block:*:variant:*:views");
+    const variantConversionKeys = await scanKeys("block:*:variant:*:conversions");
+
+    // Scan for block-level keys (no variant)
+    // These match block:{blockId}:views but NOT block:{blockId}:variant:*:views
+    const blockViewKeys = await scanKeys("block:*:views");
+    const blockConversionKeys = await scanKeys("block:*:conversions");
+
+    // Filter out variant keys from block-level scans (block:*:views also matches block:*:variant:*:views)
+    const filteredBlockViewKeys = blockViewKeys.filter(
+      (key) => !key.includes(":variant:")
+    );
+    const filteredBlockConversionKeys = blockConversionKeys.filter(
+      (key) => !key.includes(":variant:")
+    );
+
+    const allKeys = [
+      ...variantViewKeys,
+      ...variantConversionKeys,
+      ...filteredBlockViewKeys,
+      ...filteredBlockConversionKeys,
+    ];
 
     logger.debug("[analytics-sync] Found keys to sync", {
-      viewKeys: viewKeys.length,
-      conversionKeys: conversionKeys.length,
+      variantViewKeys: variantViewKeys.length,
+      variantConversionKeys: variantConversionKeys.length,
+      blockViewKeys: filteredBlockViewKeys.length,
+      blockConversionKeys: filteredBlockConversionKeys.length,
+      total: allKeys.length,
     });
 
     // Group updates by variant for batching
     // Track blockId per variant for proper key restoration on failure
+    // For block-level keys (no variant), we use a composite key: "block:{blockId}"
     const variantUpdates = new Map<
       string,
-      { blockId: string; impressionsDelta: number; conversionsDelta: number }
+      {
+        blockId: string;
+        variantId: string | null;
+        impressionsDelta: number;
+        conversionsDelta: number;
+      }
     >();
 
     // Process each key with GETSET
@@ -275,9 +325,13 @@ export async function syncAnalytics(): Promise<SyncResult> {
           continue;
         }
 
+        // Use composite key for map: variantId for variant keys, "block:{blockId}" for block-level keys
+        const mapKey = parsed.variantId ?? `block:${parsed.blockId}`;
+
         // Accumulate updates per variant (store blockId for key restoration)
-        const existing = variantUpdates.get(parsed.variantId) || {
+        const existing = variantUpdates.get(mapKey) || {
           blockId: parsed.blockId,
+          variantId: parsed.variantId,
           impressionsDelta: 0,
           conversionsDelta: 0,
         };
@@ -288,7 +342,7 @@ export async function syncAnalytics(): Promise<SyncResult> {
           existing.conversionsDelta += delta;
         }
 
-        variantUpdates.set(parsed.variantId, existing);
+        variantUpdates.set(mapKey, existing);
         result.keysProcessed++;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -297,13 +351,27 @@ export async function syncAnalytics(): Promise<SyncResult> {
     }
 
     // Batch update Postgres
-    const variantIds = Array.from(variantUpdates.keys());
+    const updateKeys = Array.from(variantUpdates.keys());
 
-    for (let i = 0; i < variantIds.length; i += BATCH_SIZE) {
-      const batch = variantIds.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < updateKeys.length; i += BATCH_SIZE) {
+      const batch = updateKeys.slice(i, i + BATCH_SIZE);
 
-      for (const variantId of batch) {
-        const updates = variantUpdates.get(variantId)!;
+      for (const mapKey of batch) {
+        const updates = variantUpdates.get(mapKey)!;
+
+        // Skip block-level keys (no variant) - these are aggregate counters
+        // that don't map to the blockVariants table
+        if (updates.variantId === null) {
+          logger.debug("[analytics-sync] Skipping block-level key (no variant)", {
+            blockId: updates.blockId,
+            impressionsDelta: updates.impressionsDelta,
+            conversionsDelta: updates.conversionsDelta,
+          });
+          result.keysProcessed++;
+          continue;
+        }
+
+        const variantId = updates.variantId;
 
         try {
           // Use SQL increment to avoid race conditions
@@ -324,8 +392,6 @@ export async function syncAnalytics(): Promise<SyncResult> {
             error instanceof Error ? error.message : String(error);
           result.errors.push(`Variant ${variantId}: ${errorMsg}`);
 
-          const failedUpdates = variantUpdates.get(variantId)!;
-
           // Check retry count and decide: restore to Redis or move to DLQ
           const retryCount = await incrementRetryCount(variantId);
 
@@ -333,10 +399,10 @@ export async function syncAnalytics(): Promise<SyncResult> {
             // Max retries exceeded - move to dead letter queue
             await moveToDeadLetterQueue(
               variantId,
-              failedUpdates.blockId,
+              updates.blockId,
               {
-                impressionsDelta: failedUpdates.impressionsDelta,
-                conversionsDelta: failedUpdates.conversionsDelta,
+                impressionsDelta: updates.impressionsDelta,
+                conversionsDelta: updates.conversionsDelta,
               },
               errorMsg
             );
@@ -349,16 +415,16 @@ export async function syncAnalytics(): Promise<SyncResult> {
               error: errorMsg,
             });
 
-            if (failedUpdates.impressionsDelta > 0) {
+            if (updates.impressionsDelta > 0) {
               await redis.incrby(
-                `block:${failedUpdates.blockId}:variant:${variantId}:views`,
-                failedUpdates.impressionsDelta
+                `block:${updates.blockId}:variant:${variantId}:views`,
+                updates.impressionsDelta
               );
             }
-            if (failedUpdates.conversionsDelta > 0) {
+            if (updates.conversionsDelta > 0) {
               await redis.incrby(
-                `block:${failedUpdates.blockId}:variant:${variantId}:conversions`,
-                failedUpdates.conversionsDelta
+                `block:${updates.blockId}:variant:${variantId}:conversions`,
+                updates.conversionsDelta
               );
             }
           }
@@ -369,15 +435,32 @@ export async function syncAnalytics(): Promise<SyncResult> {
     const errorMsg = error instanceof Error ? error.message : String(error);
     result.errors.push(`Sync failed: ${errorMsg}`);
     logger.error("[analytics-sync] Sync failed", { error: errorMsg });
+  } finally {
+    // H-CON-03: Always release mutex
+    releaseSyncMutex();
   }
 
   result.durationMs = Date.now() - startTime;
+
+  // Monitor DLQ size after each sync
+  await monitorDeadLetterQueue();
+
+  // Calculate throughput metrics (M-OBS-02)
+  const throughputKeysPerSecond = result.durationMs > 0
+    ? Math.round((result.keysProcessed / result.durationMs) * 1000 * 100) / 100
+    : 0;
+  const throughputUpdatesPerSecond = result.durationMs > 0
+    ? Math.round((result.updatesPerformed / result.durationMs) * 1000 * 100) / 100
+    : 0;
 
   logger.info("[analytics-sync] Sync complete", {
     keysProcessed: result.keysProcessed,
     updatesPerformed: result.updatesPerformed,
     errorCount: result.errors.length,
     durationMs: result.durationMs,
+    // Throughput metrics (M-OBS-02)
+    throughputKeysPerSecond,
+    throughputUpdatesPerSecond,
   });
 
   return result;
@@ -401,6 +484,37 @@ export interface DLQEntry {
 }
 
 /**
+ * Zod schema for validating DLQ entries from Redis.
+ * Ensures type safety when parsing JSON from untrusted storage.
+ */
+const DLQEntrySchema = z.object({
+  variantId: z.string(),
+  blockId: z.string(),
+  impressionsDelta: z.number(),
+  conversionsDelta: z.number(),
+  error: z.string(),
+  failedAt: z.string(),
+  retryCount: z.number(),
+});
+
+/**
+ * Safely parse a DLQ entry from JSON string.
+ * Returns null if parsing or validation fails.
+ */
+function parseDLQEntry(value: string): DLQEntry | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    const result = DLQEntrySchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get all entries in the dead letter queue.
  *
  * Useful for monitoring and manual intervention.
@@ -414,9 +528,10 @@ export async function getDeadLetterQueueEntries(): Promise<DLQEntry[]> {
   for (const key of keys) {
     const value = await redis.get(key);
     if (value) {
-      try {
-        entries.push(JSON.parse(value) as DLQEntry);
-      } catch {
+      const entry = parseDLQEntry(value);
+      if (entry) {
+        entries.push(entry);
+      } else {
         logger.warn("[analytics-sync] Invalid DLQ entry", { key });
       }
     }
@@ -436,11 +551,208 @@ export async function getDeadLetterQueueCount(): Promise<number> {
 }
 
 // =============================================================================
+// DLQ Monitoring
+// =============================================================================
+
+/** Warning threshold for DLQ size */
+const DLQ_WARNING_THRESHOLD = 100;
+
+/** Critical threshold for DLQ size */
+const DLQ_CRITICAL_THRESHOLD = 500;
+
+/**
+ * Monitor dead letter queue size and log warnings.
+ *
+ * Called during each sync cycle to alert on growing DLQ.
+ */
+async function monitorDeadLetterQueue(): Promise<void> {
+  const count = await getDeadLetterQueueCount();
+
+  if (count >= DLQ_CRITICAL_THRESHOLD) {
+    logger.error("[analytics-sync] CRITICAL: Dead letter queue size exceeded critical threshold", {
+      count,
+      threshold: DLQ_CRITICAL_THRESHOLD,
+      action: "Manual intervention required - check DLQ entries",
+    });
+  } else if (count >= DLQ_WARNING_THRESHOLD) {
+    logger.warn("[analytics-sync] WARNING: Dead letter queue size exceeded warning threshold", {
+      count,
+      threshold: DLQ_WARNING_THRESHOLD,
+    });
+  } else if (count > 0) {
+    logger.debug("[analytics-sync] Dead letter queue status", { count });
+  }
+}
+
+// =============================================================================
+// DLQ Processing (Retry Failed Entries)
+// =============================================================================
+
+/**
+ * Sleep helper for rate limiting.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Process dead letter queue entries.
+ *
+ * Attempts to retry failed entries with exponential backoff.
+ * Should be called manually or via a separate scheduled job.
+ *
+ * M-CON-03: Includes rate limiting to prevent overwhelming the system.
+ *
+ * @param maxEntries - Maximum number of entries to process (default 50)
+ * @returns Number of entries successfully processed
+ */
+export async function processDeadLetterQueue(maxEntries = 50): Promise<number> {
+  const entries = await getDeadLetterQueueEntries();
+  // M-CON-03: Limit batch size to prevent overwhelming system
+  const batchSize = Math.min(maxEntries, 50);
+  const toProcess = entries.slice(0, batchSize);
+
+  let successCount = 0;
+  let lastProcessTime = 0;
+
+  for (const entry of toProcess) {
+    // M-CON-03: Rate limiting - ensure minimum delay between items
+    const now = Date.now();
+    const elapsed = now - lastProcessTime;
+    if (lastProcessTime > 0 && elapsed < DLQ_ITEM_DELAY_MS) {
+      await sleep(DLQ_ITEM_DELAY_MS - elapsed);
+    }
+    lastProcessTime = Date.now();
+
+    try {
+      // Attempt DB update
+      await db
+        .update(blockVariants)
+        .set({
+          impressions: sql`${blockVariants.impressions} + ${entry.impressionsDelta}`,
+          conversions: sql`${blockVariants.conversions} + ${entry.conversionsDelta}`,
+        })
+        .where(eq(blockVariants.id, entry.variantId));
+
+      // Success - remove from DLQ
+      const dlqKeys = await scanKeys(`${DLQ_PREFIX}failed:${entry.variantId}:*`);
+      for (const key of dlqKeys) {
+        await redis.del(key);
+      }
+
+      successCount++;
+      logger.info("[analytics-sync] Successfully processed DLQ entry", {
+        variantId: entry.variantId,
+        blockId: entry.blockId,
+        impressionsDelta: entry.impressionsDelta,
+        conversionsDelta: entry.conversionsDelta,
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error("[analytics-sync] Failed to process DLQ entry", {
+        variantId: entry.variantId,
+        blockId: entry.blockId,
+        error: errorMsg,
+      });
+    }
+  }
+
+  logger.info("[analytics-sync] DLQ processing complete", {
+    processed: toProcess.length,
+    successful: successCount,
+    failed: toProcess.length - successCount,
+    remaining: entries.length - toProcess.length,
+  });
+
+  return successCount;
+}
+
+// =============================================================================
 // Worker Management
 // =============================================================================
 
 let syncInterval: ReturnType<typeof setInterval> | null = null;
+let initialSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 let isRunning = false;
+let cleanupRegistered = false;
+
+// H-CON-03: Mutex flag to prevent concurrent sync operations
+let isSyncing = false;
+
+/**
+ * Acquire the sync mutex.
+ * Returns true if acquired, false if already held.
+ */
+function acquireSyncMutex(): boolean {
+  if (isSyncing) {
+    return false;
+  }
+  isSyncing = true;
+  return true;
+}
+
+/**
+ * Release the sync mutex.
+ */
+function releaseSyncMutex(): void {
+  isSyncing = false;
+}
+
+/** M-CON-03: Rate limit for DLQ processing (items per second) */
+const DLQ_RATE_LIMIT = 10;
+
+/** M-CON-03: Minimum delay between DLQ item processing (ms) */
+const DLQ_ITEM_DELAY_MS = Math.ceil(1000 / DLQ_RATE_LIMIT);
+
+/**
+ * H-MEM-02: Store cleanup handler reference so it can be removed on worker stop.
+ * This prevents handler accumulation during HMR (Hot Module Replacement).
+ */
+let cleanupHandler: (() => void) | null = null;
+
+/**
+ * Register process exit handlers for graceful shutdown.
+ * Only registers once to avoid duplicate handlers.
+ * H-MEM-02: Handlers can be removed via unregisterProcessExitHandlers().
+ */
+function registerProcessExitHandlers(): void {
+  if (cleanupRegistered) {
+    return;
+  }
+
+  cleanupHandler = () => {
+    logger.info("[analytics-sync] Process exit signal received, cleaning up");
+    analyticsSyncWorker.stop();
+  };
+
+  // Handle various termination signals
+  process.on("beforeExit", cleanupHandler);
+  process.on("SIGINT", cleanupHandler);
+  process.on("SIGTERM", cleanupHandler);
+  process.on("SIGUSR2", cleanupHandler); // nodemon restart signal
+
+  cleanupRegistered = true;
+  logger.debug("[analytics-sync] Process exit handlers registered");
+}
+
+/**
+ * H-MEM-02: Unregister process exit handlers to prevent accumulation during HMR.
+ * Called when worker is stopped.
+ */
+function unregisterProcessExitHandlers(): void {
+  if (!cleanupRegistered || !cleanupHandler) {
+    return;
+  }
+
+  process.off("beforeExit", cleanupHandler);
+  process.off("SIGINT", cleanupHandler);
+  process.off("SIGTERM", cleanupHandler);
+  process.off("SIGUSR2", cleanupHandler);
+
+  cleanupHandler = null;
+  cleanupRegistered = false;
+  logger.debug("[analytics-sync] Process exit handlers unregistered");
+}
 
 /**
  * Analytics sync worker that runs every 5 minutes.
@@ -448,6 +760,7 @@ let isRunning = false;
 export const analyticsSyncWorker = {
   /**
    * Start the sync worker.
+   * Registers process exit handlers for graceful shutdown.
    */
   start(): void {
     if (syncInterval) {
@@ -455,10 +768,14 @@ export const analyticsSyncWorker = {
       return;
     }
 
+    // Register cleanup handlers for graceful shutdown
+    registerProcessExitHandlers();
+
     logger.info("[analytics-sync] Starting worker", {
       intervalMs: SYNC_INTERVAL_MS,
     });
 
+    // H-CON-03: Use syncAnalytics directly - it has internal mutex protection
     syncInterval = setInterval(async () => {
       if (isRunning) {
         logger.warn("[analytics-sync] Previous sync still running, skipping");
@@ -473,8 +790,11 @@ export const analyticsSyncWorker = {
       }
     }, SYNC_INTERVAL_MS);
 
-    // Run initial sync after 10 seconds
-    setTimeout(() => {
+    // H-CON-03: Run initial sync after 10 seconds
+    // The syncAnalytics function has mutex protection, so even if this
+    // fires while interval sync is starting, only one will proceed
+    initialSyncTimeout = setTimeout(() => {
+      initialSyncTimeout = null; // Clear reference after execution
       if (!isRunning) {
         isRunning = true;
         syncAnalytics().finally(() => {
@@ -486,13 +806,23 @@ export const analyticsSyncWorker = {
 
   /**
    * Stop the sync worker.
+   * H-MEM-02: Also unregisters process exit handlers to prevent accumulation during HMR.
    */
   stop(): void {
+    // Clear the initial sync timeout if it hasn't fired yet
+    if (initialSyncTimeout) {
+      clearTimeout(initialSyncTimeout);
+      initialSyncTimeout = null;
+    }
+
     if (syncInterval) {
       clearInterval(syncInterval);
       syncInterval = null;
       logger.info("[analytics-sync] Worker stopped");
     }
+
+    // H-MEM-02: Unregister exit handlers to prevent accumulation during HMR
+    unregisterProcessExitHandlers();
   },
 
   /**

@@ -20,6 +20,8 @@ import { ParserServiceResponseSchema } from "./schemas";
 const PARSER_SERVICE_URL =
   process.env.DOCUMENT_PARSER_URL || "http://localhost:8001";
 
+const PARSER_API_KEY = process.env.PARSER_API_KEY;
+
 const FETCH_TIMEOUT_MS = 60000; // 60 seconds
 
 /**
@@ -165,6 +167,7 @@ export async function parseDocument(
         method: "POST",
         body: formData,
         signal: controller.signal,
+        headers: PARSER_API_KEY ? { "X-API-Key": PARSER_API_KEY } : undefined,
       });
 
       clearTimeout(timeoutId);
@@ -332,6 +335,7 @@ export async function parseDocumentFromBuffer(
         method: "POST",
         body: formData,
         signal: controller.signal,
+        headers: PARSER_API_KEY ? { "X-API-Key": PARSER_API_KEY } : undefined,
       });
 
       clearTimeout(timeoutId);

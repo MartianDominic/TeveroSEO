@@ -21,7 +21,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { ProposalInlineEditor } from "./ProposalInlineEditor";
+import { LazyProposalInlineEditor } from "./LazyProposalInlineEditor";
 import { SectionHandle } from "./SectionHandle";
 
 import type { EditorSection } from "./types";
@@ -183,7 +183,7 @@ export const SortableSection: FC<SortableSectionProps> = ({
       {/* Section content */}
       <div className="p-4">
         {children ?? (
-          <ProposalInlineEditor
+          <LazyProposalInlineEditor
             content={section.content}
             onUpdate={onUpdate}
             locale={locale}

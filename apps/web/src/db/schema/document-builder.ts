@@ -14,7 +14,9 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
   check,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
 import { proposals } from "./seo-chat";
@@ -76,6 +78,8 @@ export const persuasionBlocks = pgTable(
     index("idx_persuasion_blocks_workspace").on(table.workspaceId),
     index("idx_persuasion_blocks_type").on(table.type),
     index("idx_persuasion_blocks_position").on(table.proposalId, table.position),
+    // Composite index for FK lookups filtering by workspace and proposal
+    index("idx_persuasion_blocks_workspace_proposal").on(table.workspaceId, table.proposalId),
   ]
 );
 
@@ -127,6 +131,8 @@ export const blockVariants = pgTable(
   (table) => [
     index("idx_block_variants_parent").on(table.parentBlockId),
     index("idx_block_variants_status").on(table.status),
+    // H-DB-01: Composite index for "get active variants for parent" query pattern
+    index("idx_block_variants_parent_status").on(table.parentBlockId, table.status),
     // CHECK constraint for weight 0-100 (T-102-01 mitigation)
     check("weight_range", sql`${table.weight} >= 0 AND ${table.weight} <= 100`),
   ]
@@ -172,7 +178,8 @@ export const proposalStructures = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_proposal_structures_proposal").on(table.proposalId),
+    // M-DB-01: Unique constraint to prevent duplicate structures for same proposal
+    uniqueIndex("idx_proposal_structures_proposal").on(table.proposalId),
     index("idx_proposal_structures_workspace").on(table.workspaceId),
     index("idx_proposal_structures_framework").on(table.frameworkId),
   ]
@@ -271,6 +278,12 @@ export const uploadedDocuments = pgTable(
   (table) => [
     index("idx_uploaded_documents_workspace").on(table.workspaceId),
     index("idx_uploaded_documents_status").on(table.status),
+    // Composite index for stale job recovery queries (filtering by workspace + status)
+    index("idx_uploaded_documents_workspace_status").on(table.workspaceId, table.status),
+    // H-DB-02: Composite index for stale processing job detection
+    index("idx_uploaded_docs_status_started").on(table.status, table.processingStartedAt),
+    // M-DB-03: CHECK constraint for valid status values
+    check("valid_status", sql`${table.status} IN ('pending', 'processing', 'completed', 'failed')`),
   ]
 );
 
@@ -342,6 +355,8 @@ export const detectedStructures = pgTable(
     index("idx_detected_structures_document").on(table.documentId),
     index("idx_detected_structures_type").on(table.blockType),
     index("idx_detected_structures_verified").on(table.verified),
+    // M-DB-02: Composite index for querying verified structures by document
+    index("idx_detected_structures_doc_verified").on(table.documentId, table.verified),
     check("confidence_range", sql`${table.confidence} >= 0 AND ${table.confidence} <= 100`),
   ]
 );
@@ -418,7 +433,8 @@ export const brandThemes = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_brand_themes_document").on(table.documentId),
+    // M-DB-04: Unique constraint to prevent duplicate themes per document
+    uniqueIndex("idx_brand_themes_document").on(table.documentId),
     index("idx_brand_themes_workspace").on(table.workspaceId),
     check("confidence_range_themes", sql`${table.extractionConfidence} IS NULL OR (${table.extractionConfidence} >= 0 AND ${table.extractionConfidence} <= 100)`),
   ]

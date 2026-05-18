@@ -98,3 +98,9 @@ export {
   type ParserServiceResponse,
   type OcrServiceResponse,
 } from "./schemas";
+
+// ---------------------------------------------------------------------------
+// HTML Escape - XSS prevention utility
+// ---------------------------------------------------------------------------
+
+export { escapeHtml, unescapeHtml } from "./html-escape";

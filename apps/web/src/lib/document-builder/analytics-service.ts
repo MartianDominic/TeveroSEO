@@ -44,54 +44,135 @@ export interface BlockInteraction {
   dwellMs?: number;
   percent?: number;
   timestamp?: number;
+  /** Sequence number for ordering guarantee within a session */
+  sequenceNumber?: number;
+  /** Client-generated event ID for deduplication */
+  eventId?: string;
 }
 
 // =============================================================================
-// Key Builders
+// Event Sequencing (H-CON-01)
 // =============================================================================
 
-function viewKey(blockId: string, variantId?: string): string {
-  if (variantId) {
-    return `block:${blockId}:variant:${variantId}:views`;
-  }
-  return `block:${blockId}:views`;
+let globalSequenceCounter = 0;
+
+/**
+ * Generate a unique sequence number for event ordering.
+ * Combines timestamp with incrementing counter for total ordering.
+ */
+export function generateSequenceNumber(): number {
+  globalSequenceCounter = (globalSequenceCounter + 1) % Number.MAX_SAFE_INTEGER;
+  return Date.now() * 1000 + (globalSequenceCounter % 1000);
 }
 
-function dwellKey(blockId: string, variantId?: string): string {
-  if (variantId) {
-    return `block:${blockId}:variant:${variantId}:dwell`;
-  }
-  return `block:${blockId}:dwell`;
+/**
+ * Generate a unique event ID for deduplication.
+ * Format: {timestamp}-{random}-{sequence}
+ */
+export function generateEventId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  const seq = (globalSequenceCounter % 1000).toString(36).padStart(3, "0");
+  return `${timestamp}-${random}-${seq}`;
 }
 
-function dwellCountKey(blockId: string, variantId?: string): string {
+// =============================================================================
+// Key Builders (CS-001: Consolidated into single generic function)
+// =============================================================================
+
+/**
+ * Build a Redis key for block analytics.
+ *
+ * Key patterns follow D-04 specification:
+ * - `block:{blockId}:{metric}` - block-level metric
+ * - `block:{blockId}:variant:{variantId}:{metric}` - variant-level metric
+ *
+ * @param blockId - The block identifier
+ * @param metric - The metric type (views, dwell, conversions, etc.)
+ * @param variantId - Optional variant identifier for A/B testing
+ * @returns Formatted Redis key
+ */
+function buildKey(blockId: string, metric: string, variantId?: string): string {
   if (variantId) {
-    return `block:${blockId}:variant:${variantId}:dwell:count`;
+    return `block:${blockId}:variant:${variantId}:${metric}`;
   }
-  return `block:${blockId}:dwell:count`;
+  return `block:${blockId}:${metric}`;
 }
 
-function conversionsKey(blockId: string, variantId?: string): string {
-  if (variantId) {
-    return `block:${blockId}:variant:${variantId}:conversions`;
-  }
-  return `block:${blockId}:conversions`;
+/** Build key for view counter */
+function buildViewKey(blockId: string, variantId?: string): string {
+  return buildKey(blockId, "views", variantId);
 }
 
-function outcomeKey(
+/** Build key for cumulative dwell time */
+function buildDwellKey(blockId: string, variantId?: string): string {
+  return buildKey(blockId, "dwell", variantId);
+}
+
+/** Build key for dwell event count (for average calculation) */
+function buildDwellCountKey(blockId: string, variantId?: string): string {
+  return buildKey(blockId, "dwell:count", variantId);
+}
+
+/** Build key for conversion counter */
+function buildConversionsKey(blockId: string, variantId?: string): string {
+  return buildKey(blockId, "conversions", variantId);
+}
+
+/** Build key for outcome tracking (won/lost) */
+function buildOutcomeKey(
   blockId: string,
   variantId: string | undefined,
   outcome: "won" | "lost"
 ): string {
-  if (variantId) {
-    return `block:${blockId}:variant:${variantId}:${outcome}`;
-  }
-  return `block:${blockId}:${outcome}`;
+  return buildKey(blockId, outcome, variantId);
 }
 
-function timeSeriesKey(blockId: string): string {
+/** Build key for time-series sorted set */
+function buildTimeSeriesKey(blockId: string): string {
   return `block:${blockId}:views:ts`;
 }
+
+// =============================================================================
+// Correlation Constants (CS-002: Named constants for magic numbers)
+// =============================================================================
+
+/**
+ * Baseline win rate representing no correlation.
+ * A 50% win rate means the block has no effect on proposal outcomes.
+ */
+const BASELINE_WIN_RATE = 0.5;
+
+/**
+ * Multiplier to normalize win rate to correlation range.
+ * Converts (0, 1) win rate to (-1, 1) correlation coefficient.
+ */
+const CORRELATION_NORMALIZER = 2;
+
+/**
+ * Sample size for full confidence calculation.
+ * At 20+ samples, we consider the data statistically significant.
+ * Based on rule of thumb for minimum sample size in A/B testing.
+ */
+const FULL_CONFIDENCE_SAMPLE_SIZE = 20;
+
+/**
+ * Minimum sample size threshold for meaningful confidence.
+ * Below 5 samples, confidence is heavily penalized.
+ */
+const MIN_MEANINGFUL_SAMPLE_SIZE = 5;
+
+/**
+ * Maximum confidence level cap.
+ * Even with large samples, we cap at 95% to account for external factors.
+ */
+const MAX_CONFIDENCE = 0.95;
+
+/**
+ * Confidence penalty multiplier for insufficient samples.
+ * Applied when sample size is below MIN_MEANINGFUL_SAMPLE_SIZE.
+ */
+const INSUFFICIENT_SAMPLE_PENALTY = 0.5;
 
 // =============================================================================
 // Record Operations
@@ -105,14 +186,24 @@ function timeSeriesKey(blockId: string): string {
  *
  * @param blockId - The block ID
  * @param variantId - Optional variant ID for A/B testing
+ * @returns true if recorded, false if validation failed
  */
 export async function recordBlockView(
   blockId: string,
   variantId?: string
-): Promise<void> {
+): Promise<boolean> {
+  // Validate blockId is present and non-empty
+  if (!blockId || typeof blockId !== "string" || blockId.trim() === "") {
+    logger.error("[analytics-service] recordBlockView: Missing or invalid blockId", {
+      blockId,
+      variantId,
+    });
+    return false;
+  }
+
   try {
-    const key = viewKey(blockId, variantId);
-    const tsKey = timeSeriesKey(blockId);
+    const key = buildViewKey(blockId, variantId);
+    const tsKey = buildTimeSeriesKey(blockId);
 
     // Atomic increment
     await redis.incr(key);
@@ -121,11 +212,13 @@ export async function recordBlockView(
     const timestamp = Date.now();
     const member = `${timestamp}:${variantId || "control"}`;
     await redis.zadd(tsKey, timestamp, member);
+    return true;
   } catch (error) {
     logger.error(
       "[analytics-service] recordBlockView error",
       error instanceof Error ? error : { error: String(error) }
     );
+    return false;
   }
 }
 
@@ -137,26 +230,49 @@ export async function recordBlockView(
  * @param blockId - The block ID
  * @param variantId - Optional variant ID for A/B testing
  * @param dwellMs - Dwell time in milliseconds
+ * @returns true if recorded, false if validation failed
  */
 export async function recordBlockDwell(
   blockId: string,
   variantId: string | undefined,
   dwellMs: number
-): Promise<void> {
+): Promise<boolean> {
+  // Validate blockId is present and non-empty
+  if (!blockId || typeof blockId !== "string" || blockId.trim() === "") {
+    logger.error("[analytics-service] recordBlockDwell: Missing or invalid blockId", {
+      blockId,
+      variantId,
+      dwellMs,
+    });
+    return false;
+  }
+
+  // Validate dwellMs is a positive number
+  if (typeof dwellMs !== "number" || dwellMs <= 0 || !Number.isFinite(dwellMs)) {
+    logger.warn("[analytics-service] recordBlockDwell: Invalid dwellMs", {
+      blockId,
+      variantId,
+      dwellMs,
+    });
+    return false;
+  }
+
   try {
-    const dKey = dwellKey(blockId, variantId);
-    const dcKey = dwellCountKey(blockId, variantId);
+    const dwellRedisKey = buildDwellKey(blockId, variantId);
+    const dwellCountRedisKey = buildDwellCountKey(blockId, variantId);
 
     // Increment cumulative dwell time
-    await redis.incrby(dKey, dwellMs);
+    await redis.incrby(dwellRedisKey, Math.round(dwellMs));
 
     // Increment view count for average calculation
-    await redis.incr(dcKey);
+    await redis.incr(dwellCountRedisKey);
+    return true;
   } catch (error) {
     logger.error(
       "[analytics-service] recordBlockDwell error",
       error instanceof Error ? error : { error: String(error) }
     );
+    return false;
   }
 }
 
@@ -178,16 +294,17 @@ export async function getBlockAnalytics(
   variantId?: string
 ): Promise<BlockAnalytics> {
   try {
-    const vKey = viewKey(blockId, variantId);
-    const cKey = conversionsKey(blockId, variantId);
-    const dKey = dwellKey(blockId, variantId);
-    const dcKey = dwellCountKey(blockId, variantId);
+    // MAINT-02: Use descriptive variable names instead of abbreviations
+    const viewRedisKey = buildViewKey(blockId, variantId);
+    const conversionsRedisKey = buildConversionsKey(blockId, variantId);
+    const dwellRedisKey = buildDwellKey(blockId, variantId);
+    const dwellCountRedisKey = buildDwellCountKey(blockId, variantId);
 
     const [views, conversions, dwell, dwellCount] = await redis.mget(
-      vKey,
-      cKey,
-      dKey,
-      dcKey
+      viewRedisKey,
+      conversionsRedisKey,
+      dwellRedisKey,
+      dwellCountRedisKey
     );
 
     const impressions = parseInt(views || "0", 10);
@@ -236,15 +353,17 @@ export async function calculateCorrelation(
   variantId?: string
 ): Promise<CorrelationResult> {
   try {
-    const wonKey = outcomeKey(blockId, variantId, "won");
-    const lostKey = outcomeKey(blockId, variantId, "lost");
+    const wonKey = buildOutcomeKey(blockId, variantId, "won");
+    const lostKey = buildOutcomeKey(blockId, variantId, "lost");
     const totalKey = `block:${blockId}:total:proposals`;
 
     const [won, lost, total] = await redis.mget(wonKey, lostKey, totalKey);
 
     const wonCount = parseInt(won || "0", 10);
     const lostCount = parseInt(lost || "0", 10);
-    const totalProposals = parseInt(total || "0", 10);
+    // CS-003: totalProposals reserved for future Bayesian confidence calculation
+    // that accounts for proposals where this block was NOT shown
+    void parseInt(total || "0", 10);
 
     // No data - return zero correlation
     if (wonCount === 0 && lostCount === 0) {
@@ -261,16 +380,16 @@ export async function calculateCorrelation(
     const totalWithBlock = wonCount + lostCount;
     const winRate = totalWithBlock > 0 ? wonCount / totalWithBlock : 0;
 
-    // Normalize to -1 to 1 range
-    // 0.5 win rate = 0 correlation
-    // 1.0 win rate = 1 correlation
-    // 0.0 win rate = -1 correlation
-    const correlation = (winRate - 0.5) * 2;
+    // CS-002: Use named constants for correlation calculation
+    // Normalize to -1 to 1 range using baseline and normalizer
+    const correlation = (winRate - BASELINE_WIN_RATE) * CORRELATION_NORMALIZER;
 
-    // Confidence based on sample size (min 10 for reasonable confidence)
-    const sampleFactor = Math.min(totalWithBlock / 20, 1);
+    // Confidence based on sample size using named thresholds
+    const sampleFactor = Math.min(totalWithBlock / FULL_CONFIDENCE_SAMPLE_SIZE, 1);
     const confidence =
-      totalWithBlock >= 5 ? Math.min(0.95, sampleFactor) : sampleFactor * 0.5;
+      totalWithBlock >= MIN_MEANINGFUL_SAMPLE_SIZE
+        ? Math.min(MAX_CONFIDENCE, sampleFactor)
+        : sampleFactor * INSUFFICIENT_SAMPLE_PENALTY;
 
     return {
       correlation: Math.max(-1, Math.min(1, correlation)),
@@ -313,8 +432,8 @@ export async function markConversion(
   outcome: "won" | "lost"
 ): Promise<void> {
   try {
-    const convKey = conversionsKey(blockId, variantId);
-    const outKey = outcomeKey(blockId, variantId, outcome);
+    const convKey = buildConversionsKey(blockId, variantId);
+    const outKey = buildOutcomeKey(blockId, variantId, outcome);
 
     // Increment conversion counter (for both won and lost)
     if (outcome === "won") {
@@ -339,31 +458,60 @@ export async function markConversion(
  * Process a batch of block interactions.
  *
  * Used by the analytics API route to handle batched events efficiently.
+ * Mirrors the same data writes as single-event tracking (recordBlockView, recordBlockDwell)
+ * to ensure data consistency between batch and single-event processing.
  *
  * @param sessionId - Session ID for rate limiting
  * @param events - Array of block interactions
  */
 export async function processBatchedEvents(
-  sessionId: string,
+  // CS-003: sessionId reserved for future per-session rate limiting (e.g., max 1000 events/session/hour)
+  // Will be used with Redis INCR + TTL pattern when rate limiting is implemented
+  _sessionId: string,
   events: BlockInteraction[]
 ): Promise<void> {
   const pipeline = redis.pipeline();
+  const timestamp = Date.now();
 
-  for (const event of events) {
+  // H-CON-01: Sort events by sequence number if present, then by timestamp
+  // This ensures ordering guarantee even with concurrent batches
+  const sortedEvents = [...events].sort((a, b) => {
+    const seqA = a.sequenceNumber ?? a.timestamp ?? 0;
+    const seqB = b.sequenceNumber ?? b.timestamp ?? 0;
+    return seqA - seqB;
+  });
+
+  for (const event of sortedEvents) {
     const { type, blockId, variantId, dwellMs } = event;
+
+    // Validate blockId for all event types
+    if (!blockId || typeof blockId !== "string" || blockId.trim() === "") {
+      logger.warn("[analytics-service] processBatchedEvents: Skipping event with invalid blockId", {
+        type,
+        blockId,
+        variantId,
+      });
+      continue;
+    }
 
     switch (type) {
       case "block_view": {
-        const key = viewKey(blockId, variantId);
+        const key = buildViewKey(blockId, variantId);
         pipeline.incr(key);
+
+        // Add to time-series sorted set for decay analysis (matches recordBlockView)
+        const tsKey = buildTimeSeriesKey(blockId);
+        const member = `${timestamp}:${variantId || "control"}`;
+        pipeline.zadd(tsKey, timestamp, member);
         break;
       }
       case "block_dwell": {
-        if (dwellMs !== undefined) {
-          const dKey = dwellKey(blockId, variantId);
-          const dcKey = dwellCountKey(blockId, variantId);
-          pipeline.incrby(dKey, dwellMs);
-          pipeline.incr(dcKey);
+        if (dwellMs !== undefined && typeof dwellMs === "number" && dwellMs > 0 && Number.isFinite(dwellMs)) {
+          // MAINT-02: Use descriptive variable names
+          const dwellRedisKey = buildDwellKey(blockId, variantId);
+          const dwellCountRedisKey = buildDwellCountKey(blockId, variantId);
+          pipeline.incrby(dwellRedisKey, Math.round(dwellMs));
+          pipeline.incr(dwellCountRedisKey);
         }
         break;
       }

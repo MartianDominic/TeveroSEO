@@ -20,12 +20,13 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@tevero/ui";
-import { sanitizeHtml } from "@/lib/sanitize";
-import { useDocumentBuilderStore } from "@/stores/documentBuilderStore";
+import { sanitizeHtml, sanitizePastedHtml } from "@/lib/sanitize";
+import { useBlockActions } from "@/stores/documentBuilderStore";
+import useDocumentBuilderStore from "@/stores/documentBuilderStore";
 import { getBlockMetadata } from "@/lib/document-builder/persuasion-blocks";
 import type { PersuasionBlockType, TipTapContent } from "@/lib/document-builder/types";
 
@@ -94,7 +95,9 @@ export const BlockEditor: FC<BlockEditorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { updateBlockContent, blocks } = useDocumentBuilderStore();
+  // Only subscribe to actions, not to blocks state
+  // Use getState() for preceding blocks to avoid re-renders on any block change
+  const { updateBlockContent } = useBlockActions();
 
   // Get block metadata for placeholder
   const blockMetadata = getBlockMetadata(blockType);
@@ -158,21 +161,34 @@ export const BlockEditor: FC<BlockEditorProps> = ({
           "[&_.is-editor-empty]:before:h-0"
         ),
         "data-block-id": blockId,
+        // WCAG 2.1 AA: Accessible name for the rich text editor
+        "aria-label": `${blockMetadata?.label ?? blockType} block content editor`,
+        role: "textbox",
+        "aria-multiline": "true",
+      },
+      // Sanitize pasted HTML to prevent XSS while preserving variable spans
+      transformPastedHTML(html) {
+        return sanitizePastedHtml(html);
       },
     },
   });
 
-  // Cleanup TipTap editor on unmount to prevent memory leak
+  // M-MEM-02: Explicit editor cleanup on unmount
+  // While useEditor has implicit cleanup, explicit destroy ensures resources
+  // are released even if the hook's cleanup is delayed or skipped
   useEffect(() => {
     return () => {
-      if (editor) {
+      if (editor && !editor.isDestroyed) {
         editor.destroy();
       }
     };
   }, [editor]);
 
   // Get preceding blocks content for context
+  // Uses getState() to read blocks only when needed (on generate click)
+  // instead of subscribing to all block changes
   const getPrecedingBlocksContent = useCallback((): string[] => {
+    const blocks = useDocumentBuilderStore.getState().blocks;
     const currentIndex = blocks.findIndex((b) => b.id === blockId);
     if (currentIndex <= 0) return [];
 
@@ -198,11 +214,12 @@ export const BlockEditor: FC<BlockEditorProps> = ({
         return "";
       })
       .filter(Boolean);
-  }, [blocks, blockId]);
+  }, [blockId]);
 
   // Handle AI generation
   const handleGenerate = useCallback(async () => {
-    if (isGenerating || !editor) return;
+    // H-STATE-01: Check if editor exists and is not destroyed to prevent stale closure issues
+    if (isGenerating || !editor || editor.isDestroyed) return;
 
     setIsGenerating(true);
     setError(null);
@@ -235,7 +252,8 @@ export const BlockEditor: FC<BlockEditorProps> = ({
 
       const data = await response.json();
 
-      if (data.content) {
+      // H-STATE-01: Re-check editor state after async operation to handle component unmount
+      if (data.content && editor && !editor.isDestroyed) {
         // Set content in editor
         editor
           .chain()
@@ -279,11 +297,17 @@ export const BlockEditor: FC<BlockEditorProps> = ({
       {/* Editor content */}
       <div className={cn(isGenerating && "opacity-50")}>
         {isGenerating ? (
-          // Skeleton shimmer during generation
-          <div className="min-h-[80px] px-3 py-2 space-y-2">
-            <div className="h-4 bg-surface-2 rounded animate-pulse w-3/4" />
-            <div className="h-4 bg-surface-2 rounded animate-pulse w-full" />
-            <div className="h-4 bg-surface-2 rounded animate-pulse w-2/3" />
+          // Skeleton shimmer during generation - WCAG 2.1 AA: accessible loading state
+          <div
+            className="min-h-[80px] px-3 py-2 space-y-2"
+            role="status"
+            aria-label="Loading editor content"
+            aria-busy="true"
+          >
+            <div className="h-4 bg-surface-2 rounded animate-pulse w-3/4" aria-hidden="true" />
+            <div className="h-4 bg-surface-2 rounded animate-pulse w-full" aria-hidden="true" />
+            <div className="h-4 bg-surface-2 rounded animate-pulse w-2/3" aria-hidden="true" />
+            <span className="sr-only">Generating content, please wait...</span>
           </div>
         ) : (
           <EditorContent editor={editor} />
@@ -299,15 +323,31 @@ export const BlockEditor: FC<BlockEditorProps> = ({
           "bg-surface-2/50"
         )}
       >
-        {/* Error message */}
+        {/* Error message with retry */}
         {error && (
           <div
             id={`block-editor-error-${blockId}`}
             role="alert"
-            className="flex items-center gap-1.5 text-xs text-error"
+            className="flex items-center gap-2 text-xs text-error"
           >
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span>{error}</span>
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded",
+                "bg-error/10 hover:bg-error/20",
+                "text-error hover:text-error",
+                "transition-colors duration-[160ms]",
+                "focus:outline-none focus:ring-1 focus:ring-error/50"
+              )}
+              aria-label="Retry AI generation"
+            >
+              <RefreshCw className="h-3 w-3" />
+              <span>Retry</span>
+            </button>
           </div>
         )}
 

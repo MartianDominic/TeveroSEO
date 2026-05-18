@@ -125,6 +125,9 @@ const structureDetectionResponseSchema = z.object({
 // Prompt Template
 // ---------------------------------------------------------------------------
 
+/** Default timeout for AI structure detection: 60 seconds */
+const AI_DETECTION_TIMEOUT_MS = 60000;
+
 const STRUCTURE_DETECTION_PROMPT = `You are an expert at analyzing sales proposals and identifying persuasion techniques.
 
 TASK: Analyze this document text and identify distinct persuasion blocks.
@@ -250,11 +253,21 @@ export async function detectStructure(
     const sanitizedText = sanitizeForPrompt(text);
     const prompt = `${STRUCTURE_DETECTION_PROMPT}${sanitizedText}`;
 
-    const result = await generateObject({
-      model: google("gemini-3.1-pro"),
-      schema: structureDetectionResponseSchema,
-      prompt,
-    });
+    // Set up AbortController with timeout to prevent hanging indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_DETECTION_TIMEOUT_MS);
+
+    let result;
+    try {
+      result = await generateObject({
+        model: google("gemini-3.1-pro"),
+        schema: structureDetectionResponseSchema,
+        prompt,
+        abortSignal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Sort blocks by position
     const sortedBlocks = [...result.object.blocks].sort((a, b) => {
@@ -297,11 +310,20 @@ export async function detectStructure(
 export async function generateStructuredContent(
   prompt: string
 ): Promise<z.infer<typeof structureDetectionResponseSchema>> {
-  const result = await generateObject({
-    model: google("gemini-3.1-pro"),
-    schema: structureDetectionResponseSchema,
-    prompt,
-  });
+  // Set up AbortController with timeout to prevent hanging indefinitely
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AI_DETECTION_TIMEOUT_MS);
 
-  return result.object;
+  try {
+    const result = await generateObject({
+      model: google("gemini-3.1-pro"),
+      schema: structureDetectionResponseSchema,
+      prompt,
+      abortSignal: controller.signal,
+    });
+
+    return result.object;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

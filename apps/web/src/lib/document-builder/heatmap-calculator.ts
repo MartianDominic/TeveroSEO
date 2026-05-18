@@ -165,9 +165,30 @@ interface BlockData {
 }
 
 /**
+ * Simple cache for memoizing heatmap calculations.
+ * Uses a hash of block data as the cache key.
+ */
+const heatmapCache = new Map<string, HeatmapData[]>();
+const MAX_CACHE_SIZE = 100;
+
+/**
+ * Generate a cache key from block data.
+ * Uses a hash of blockIds and their view/dwell values.
+ */
+function generateCacheKey(blocks: BlockData[]): string {
+  // Create a stable string representation of the input
+  const parts = blocks.map(
+    (b) => `${b.blockId}:${b.views}:${b.avgDwellMs}`
+  );
+  return parts.join("|");
+}
+
+/**
  * Calculate heatmap data for multiple blocks.
  *
  * Normalizes scores across all blocks for fair comparison.
+ * Results are memoized based on input data to prevent
+ * redundant calculations on re-renders.
  *
  * @param blocks - Array of block data
  * @returns Array of heatmap data with scores and colors
@@ -177,11 +198,18 @@ export function calculateHeatmapData(blocks: BlockData[]): HeatmapData[] {
     return [];
   }
 
+  // Check cache first
+  const cacheKey = generateCacheKey(blocks);
+  const cached = heatmapCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   // Calculate totals for normalization
   const totalViews = blocks.reduce((sum, b) => sum + b.views, 0);
   const maxDwellMs = Math.max(...blocks.map((b) => b.avgDwellMs), 1);
 
-  return blocks.map((block) => {
+  const result = blocks.map((block) => {
     const score = calculateEngagementScore(
       block.views,
       block.avgDwellMs,
@@ -200,6 +228,26 @@ export function calculateHeatmapData(blocks: BlockData[]): HeatmapData[] {
       label: getHeatLabel(level),
     };
   });
+
+  // Store in cache (with LRU-style eviction)
+  if (heatmapCache.size >= MAX_CACHE_SIZE) {
+    // Remove oldest entry (first key in Map iteration order)
+    const firstKey = heatmapCache.keys().next().value;
+    if (firstKey !== undefined) {
+      heatmapCache.delete(firstKey);
+    }
+  }
+  heatmapCache.set(cacheKey, result);
+
+  return result;
+}
+
+/**
+ * Clear the heatmap calculation cache.
+ * Useful for testing or when data sources change significantly.
+ */
+export function clearHeatmapCache(): void {
+  heatmapCache.clear();
 }
 
 /**

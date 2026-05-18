@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from "vitest";
 
-import { sanitizeHtml, sanitizeMinimalHtml, stripHtml } from "./sanitize";
+import { sanitizeHtml, sanitizeMinimalHtml, stripHtml, sanitizePastedHtml } from "./sanitize";
 
 describe("sanitizeHtml - XSS Prevention", () => {
   describe("Script tag removal", () => {
@@ -211,5 +211,115 @@ describe("stripHtml", () => {
 
   it("should handle empty input", () => {
     expect(stripHtml("")).toBe("");
+  });
+});
+
+describe("sanitizePastedHtml - TipTap paste sanitization", () => {
+  describe("Variable attribute preservation", () => {
+    it("should preserve data-variable-key attribute", () => {
+      const html = '<span data-variable-key="client_name">Client Name</span>';
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain('data-variable-key="client_name"');
+      expect(result).toContain("Client Name");
+    });
+
+    it("should preserve data-variable-label attribute", () => {
+      const html = '<span data-variable-label="Client Name">{{client_name}}</span>';
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain('data-variable-label="Client Name"');
+    });
+
+    it("should preserve both variable attributes together", () => {
+      const html = '<span data-variable-key="company" data-variable-label="Company Name">Acme Inc</span>';
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain('data-variable-key="company"');
+      expect(result).toContain('data-variable-label="Company Name"');
+    });
+  });
+
+  describe("Allowed formatting tags", () => {
+    it("should preserve basic formatting tags", () => {
+      const html = "<p><strong>Bold</strong> and <em>italic</em></p>";
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain("<strong>Bold</strong>");
+      expect(result).toContain("<em>italic</em>");
+    });
+
+    it("should preserve underline tags", () => {
+      const html = "<u>Underlined text</u>";
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain("<u>Underlined text</u>");
+    });
+
+    it("should preserve links with href", () => {
+      const html = '<a href="https://example.com">Link</a>';
+      const result = sanitizePastedHtml(html);
+      expect(result).toContain('href="https://example.com"');
+    });
+  });
+
+  describe("XSS prevention", () => {
+    it("should remove script tags", () => {
+      const malicious = '<script>alert("xss")</script><p>Content</p>';
+      const result = sanitizePastedHtml(malicious);
+      expect(result).not.toContain("<script");
+      expect(result).not.toContain("alert");
+      expect(result).toContain("Content");
+    });
+
+    it("should remove event handlers", () => {
+      const malicious = '<p onclick="alert(1)">Click me</p>';
+      const result = sanitizePastedHtml(malicious);
+      expect(result).not.toContain("onclick");
+      expect(result).toContain("Click me");
+    });
+
+    it("should remove javascript: URLs", () => {
+      const malicious = '<a href="javascript:alert(1)">Evil link</a>';
+      const result = sanitizePastedHtml(malicious);
+      expect(result).not.toContain("javascript:");
+    });
+
+    it("should remove arbitrary data-* attributes", () => {
+      const html = '<span data-evil="payload" data-variable-key="safe">Text</span>';
+      const result = sanitizePastedHtml(html);
+      expect(result).not.toContain("data-evil");
+      expect(result).toContain('data-variable-key="safe"');
+    });
+  });
+
+  describe("Complex tags removal", () => {
+    it("should remove table tags", () => {
+      const html = "<table><tr><td>Cell</td></tr></table>";
+      const result = sanitizePastedHtml(html);
+      expect(result).not.toContain("<table>");
+      expect(result).toContain("Cell");
+    });
+
+    it("should remove heading tags", () => {
+      const html = "<h1>Title</h1><p>Content</p>";
+      const result = sanitizePastedHtml(html);
+      expect(result).not.toContain("<h1>");
+      expect(result).toContain("Title");
+      expect(result).toContain("<p>Content</p>");
+    });
+
+    it("should remove image tags", () => {
+      const html = '<img src="x" onerror="alert(1)"><p>Text</p>';
+      const result = sanitizePastedHtml(html);
+      expect(result).not.toContain("<img");
+      expect(result).toContain("Text");
+    });
+  });
+
+  describe("Edge cases", () => {
+    it("should handle empty string", () => {
+      expect(sanitizePastedHtml("")).toBe("");
+    });
+
+    it("should handle plain text", () => {
+      const text = "Just plain text";
+      expect(sanitizePastedHtml(text)).toBe(text);
+    });
   });
 });

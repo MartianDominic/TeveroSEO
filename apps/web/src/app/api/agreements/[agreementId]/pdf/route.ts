@@ -21,6 +21,12 @@ import { requireAuth, AuthError } from "@/lib/auth/api-auth";
 import { logger } from '@/lib/logger';
 import { getOpenSeo, FastApiError } from "@/lib/server-fetch";
 import { getPdfGenerationService } from "@/server/services/pdf-generation-service";
+import {
+  badRequest,
+  notFound,
+  unauthorized,
+  internalError,
+} from "@/lib/api/responses";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,10 +49,7 @@ export async function GET(
 
     // Validate agreementId format
     if (!agreementId || typeof agreementId !== "string") {
-      return NextResponse.json(
-        { error: "Invalid agreement ID" },
-        { status: 400 }
-      );
+      return badRequest("Invalid agreement ID");
     }
 
     // Verify agreement exists (this also checks workspace access via open-seo-main auth)
@@ -57,10 +60,7 @@ export async function GET(
       );
     } catch (err) {
       if (err instanceof FastApiError && err.status === 404) {
-        return NextResponse.json(
-          { error: "Agreement not found" },
-          { status: 404 }
-        );
+        return notFound("Agreement not found");
       }
       throw err;
     }
@@ -104,28 +104,24 @@ export async function GET(
       },
     });
   } catch (err) {
-    // Handle authentication errors
+    // Handle authentication errors using standardized response helper
     if (err instanceof AuthError) {
-      return NextResponse.json(
-        { error: err.message },
-        { status: err.statusCode }
-      );
+      return unauthorized(err.message);
     }
 
-    // Handle API errors from open-seo-main
+    // Handle API errors from open-seo-main using standardized response helper
     if (err instanceof FastApiError) {
-      return NextResponse.json(
-        { error: err.sanitizedBody.error || "Backend error" },
-        { status: err.status }
-      );
+      // Use internalError for backend failures - don't expose internal error codes
+      logger.error("[PDF Route] Backend error", {
+        status: err.status,
+        message: err.sanitizedBody.error,
+      });
+      return internalError("Backend service error");
     }
 
     // Log unexpected errors (don't expose details to client)
     logger.error("[PDF Route] Generation error", err instanceof Error ? err : { error: String(err) });
 
-    return NextResponse.json(
-      { error: "Failed to generate PDF" },
-      { status: 500 }
-    );
+    return internalError("Failed to generate PDF");
   }
 }

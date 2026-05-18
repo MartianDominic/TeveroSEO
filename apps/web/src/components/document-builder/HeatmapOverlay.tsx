@@ -12,7 +12,7 @@
 
 "use client";
 
-import * as React from "react";
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import {
   type HeatLevel,
@@ -53,7 +53,7 @@ export interface HeatmapOverlayProps {
  * </div>
  * ```
  */
-export function HeatmapOverlay({
+function HeatmapOverlayComponent({
   level,
   score,
   visible,
@@ -128,6 +128,21 @@ export function HeatmapOverlay({
   );
 }
 
+/**
+ * Memoized HeatmapOverlay with custom comparison.
+ */
+export const HeatmapOverlay = memo(HeatmapOverlayComponent, (prev, next) => {
+  return (
+    prev.level === next.level &&
+    prev.score === next.score &&
+    prev.visible === next.visible &&
+    prev.showLabel === next.showLabel &&
+    prev.className === next.className
+  );
+});
+
+HeatmapOverlay.displayName = "HeatmapOverlay";
+
 // =============================================================================
 // BlockAnalytics wrapper (for convenience)
 // =============================================================================
@@ -153,8 +168,9 @@ export interface BlockAnalyticsDisplayProps {
  * BlockAnalytics displays detailed analytics for a block.
  *
  * Used in analytics panel, not as overlay.
+ * Memoized to prevent unnecessary re-renders.
  */
-export function BlockAnalyticsDisplay({
+function BlockAnalyticsDisplayComponent({
   blockId,
   level,
   score,
@@ -231,5 +247,22 @@ export function BlockAnalyticsDisplay({
     </div>
   );
 }
+
+/**
+ * Memoized BlockAnalyticsDisplay with custom comparison.
+ */
+export const BlockAnalyticsDisplay = memo(BlockAnalyticsDisplayComponent, (prev, next) => {
+  return (
+    prev.blockId === next.blockId &&
+    prev.level === next.level &&
+    prev.score === next.score &&
+    prev.impressions === next.impressions &&
+    prev.avgDwellMs === next.avgDwellMs &&
+    prev.correlation === next.correlation &&
+    prev.className === next.className
+  );
+});
+
+BlockAnalyticsDisplay.displayName = "BlockAnalyticsDisplay";
 
 export default HeatmapOverlay;

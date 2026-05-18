@@ -13,7 +13,7 @@
  * Triggers from block actions "Create Variant" button.
  */
 
-import { type FC, useState, useCallback, useEffect } from "react";
+import { type FC, useState, useCallback } from "react";
 import { Copy, Plus, FlaskConical } from "lucide-react";
 
 import {
@@ -93,21 +93,18 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
   const [cloneFromControl, setCloneFromControl] = useState(true);
   const [weight, setWeight] = useState(50);
 
-  // Reset form state when dialog opens (useEffect for reliable reset)
-  useEffect(() => {
-    if (open) {
-      setVariantName(getDefaultVariantName(existingVariantCount));
-      setCloneFromControl(true);
-      setWeight(50);
-    }
-  }, [open, existingVariantCount]);
-
-  // Handle dialog open/close
+  // Handle dialog open/close with form reset
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
+      if (newOpen) {
+        // Reset form state when dialog opens
+        setVariantName(getDefaultVariantName(existingVariantCount));
+        setCloneFromControl(true);
+        setWeight(50);
+      }
       onOpenChange(newOpen);
     },
-    [onOpenChange]
+    [onOpenChange, existingVariantCount]
   );
 
   // Submit handler
@@ -115,9 +112,11 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
     (e: React.FormEvent) => {
       e.preventDefault();
 
+      // H-STATE-02: Use structuredClone for deep cloning to prevent shared references
+      // in nested objects (e.g., TipTap content nodes with marks/attrs)
       const content = cloneFromControl && controlContent
-        ? { ...controlContent }
-        : EMPTY_CONTENT;
+        ? structuredClone(controlContent)
+        : structuredClone(EMPTY_CONTENT);
 
       onCreateVariant({
         variantName: variantName.trim() || getDefaultVariantName(existingVariantCount),
@@ -173,8 +172,9 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
               id="variant-name"
               type="text"
               value={variantName}
-              onChange={(e) => setVariantName(e.target.value)}
+              onChange={(e) => setVariantName(e.target.value.slice(0, 100))}
               placeholder="e.g., Variant A"
+              maxLength={100}
               className={cn(
                 "w-full",
                 "px-3 py-2",
@@ -190,14 +190,16 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
           </div>
 
           {/* Content Source */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-text-2">
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium text-text-2">
               Starting Content
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+            </legend>
+            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Select starting content source">
               {/* Clone from control */}
               <button
                 type="button"
+                role="radio"
+                aria-checked={cloneFromControl}
                 onClick={() => setCloneFromControl(true)}
                 className={cn(
                   "flex flex-col items-center gap-2",
@@ -205,17 +207,20 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
                   "rounded-lg",
                   "border-2",
                   "transition-all duration-[160ms]",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                   cloneFromControl
                     ? "border-accent bg-accent-soft"
                     : "border-hairline bg-surface-2 hover:border-accent/50"
                 )}
                 disabled={!controlContent}
+                aria-disabled={!controlContent}
               >
                 <Copy
                   className={cn(
                     "h-5 w-5",
                     cloneFromControl ? "text-accent-ink" : "text-text-3"
                   )}
+                  aria-hidden="true"
                 />
                 <span
                   className={cn(
@@ -233,6 +238,8 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
               {/* Start blank */}
               <button
                 type="button"
+                role="radio"
+                aria-checked={!cloneFromControl}
                 onClick={() => setCloneFromControl(false)}
                 className={cn(
                   "flex flex-col items-center gap-2",
@@ -240,6 +247,7 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
                   "rounded-lg",
                   "border-2",
                   "transition-all duration-[160ms]",
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                   !cloneFromControl
                     ? "border-accent bg-accent-soft"
                     : "border-hairline bg-surface-2 hover:border-accent/50"
@@ -250,6 +258,7 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
                     "h-5 w-5",
                     !cloneFromControl ? "text-accent-ink" : "text-text-3"
                   )}
+                  aria-hidden="true"
                 />
                 <span
                   className={cn(
@@ -264,7 +273,7 @@ export const VariantCreator: FC<VariantCreatorProps> = ({
                 </span>
               </button>
             </div>
-          </div>
+          </fieldset>
 
           {/* Traffic Weight Slider */}
           <div className="space-y-3">

@@ -10,9 +10,10 @@
  * - Click-to-insert behavior
  * - Keyboard navigation support
  * - 44px min-height per WCAG touch target
+ * - WCAG 2.1 AA: Proper combobox/listbox ARIA pattern
  */
 
-import { useState, useMemo, useCallback, type FC, type KeyboardEvent } from "react";
+import { useState, useMemo, useCallback, useId, type FC, type KeyboardEvent, memo } from "react";
 
 import {
   BarChart3,
@@ -73,8 +74,9 @@ function getCategoryIcon(iconName: string): LucideIcon {
 
 /**
  * Variable picker component with search and category grouping.
+ * Memoized to prevent re-renders when parent state changes.
  */
-export const VariablePicker: FC<VariablePickerProps> = ({
+const VariablePickerComponent: FC<VariablePickerProps> = ({
   onSelect,
   onClose,
   className,
@@ -83,6 +85,11 @@ export const VariablePicker: FC<VariablePickerProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Generate unique IDs for ARIA linkage
+  const instanceId = useId();
+  const listboxId = `variable-listbox-${instanceId}`;
+  const inputId = `variable-search-${instanceId}`;
 
   // Filter categories based on allowedCategories prop
   const filteredCategories = useMemo(() => {
@@ -163,6 +170,17 @@ export const VariablePicker: FC<VariablePickerProps> = ({
     return null;
   }
 
+  // Generate option ID for aria-activedescendant
+  const getOptionId = useCallback(
+    (path: string) => `variable-option-${instanceId}-${path.replace(/\./g, "-")}`,
+    [instanceId]
+  );
+
+  // Get the currently selected variable's option ID
+  const activeDescendantId = flattenedVariables[selectedIndex]
+    ? getOptionId(flattenedVariables[selectedIndex].path)
+    : undefined;
+
   return (
     <div
       className={cn(
@@ -170,11 +188,16 @@ export const VariablePicker: FC<VariablePickerProps> = ({
         "flex flex-col max-h-96",
         className
       )}
+      role="combobox"
+      aria-expanded={open}
+      aria-haspopup="listbox"
+      aria-owns={listboxId}
     >
       {/* Header with search */}
       <div className="flex items-center gap-2 border-b px-3 py-2">
-        <Search className="h-4 w-4 text-text-3" />
+        <Search className="h-4 w-4 text-text-3" aria-hidden="true" />
         <Input
+          id={inputId}
           type="text"
           placeholder="Search variables..."
           value={searchQuery}
@@ -185,24 +208,34 @@ export const VariablePicker: FC<VariablePickerProps> = ({
           onKeyDown={handleKeyDown}
           className="h-8 flex-1 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
           autoFocus
+          role="searchbox"
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-activedescendant={activeDescendantId}
+          aria-label="Search variables"
         />
         {onClose && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Close variable picker"
             className="h-6 w-6 p-0"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         )}
       </div>
 
       {/* Variables list */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        id={listboxId}
+        role="listbox"
+        aria-label="Available variables"
+        className="flex-1 overflow-y-auto"
+      >
         {searchResults.length === 0 ? (
-          <div className="p-4 text-center text-sm text-text-3">
+          <div className="p-4 text-center text-sm text-text-3" role="status">
             No variables found for "{searchQuery}"
           </div>
         ) : (
@@ -212,6 +245,7 @@ export const VariablePicker: FC<VariablePickerProps> = ({
               category={category}
               selectedPath={flattenedVariables[selectedIndex]?.path}
               onSelect={handleSelect}
+              getOptionId={getOptionId}
             />
           ))
         )}
@@ -240,32 +274,45 @@ interface VariableCategorySectionProps {
   category: VariableCategory;
   selectedPath?: string;
   onSelect: (variable: VariableDefinition) => void;
+  getOptionId: (path: string) => string;
 }
 
-const VariableCategorySection: FC<VariableCategorySectionProps> = ({
+const VariableCategorySectionComponent: FC<VariableCategorySectionProps> = ({
   category,
   selectedPath,
   onSelect,
+  getOptionId,
 }) => {
   const Icon = getCategoryIcon(category.icon);
 
   return (
-    <div className="py-1">
+    <div className="py-1" role="group" aria-label={category.label}>
       {/* Category header */}
       <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-text-2">
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {category.label}
       </div>
 
       {/* Variables */}
       {category.variables.map((variable) => (
-        <button
+        <div
           key={variable.path}
+          id={getOptionId(variable.path)}
+          role="option"
+          aria-selected={selectedPath === variable.path}
           onClick={() => onSelect(variable)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelect(variable);
+            }
+          }}
+          tabIndex={-1}
           className={cn(
-            "flex w-full items-start gap-2 px-3 py-2 text-left transition-colors",
+            "flex w-full items-start gap-2 px-3 py-2 text-left transition-colors cursor-pointer",
             "min-h-[44px]", // WCAG touch target
             "hover:bg-surface-2",
+            "focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring",
             selectedPath === variable.path && "bg-accent-soft"
           )}
         >
@@ -287,10 +334,42 @@ const VariableCategorySection: FC<VariableCategorySectionProps> = ({
               e.g. {variable.example}
             </div>
           )}
-        </button>
+        </div>
       ))}
     </div>
   );
 };
+
+/**
+ * Memoized VariableCategorySection - only re-renders when category or selection changes.
+ */
+const VariableCategorySection = memo(VariableCategorySectionComponent, (prev, next) => {
+  return (
+    prev.category.category === next.category.category &&
+    prev.category.variables.length === next.category.variables.length &&
+    prev.selectedPath === next.selectedPath
+  );
+});
+
+VariableCategorySection.displayName = "VariableCategorySection";
+
+/**
+ * Memoized VariablePicker with custom comparison.
+ *
+ * M-COMP-05: Callbacks (onSelect, onClose) are intentionally excluded from comparison.
+ * These callbacks are expected to be stable references from the parent (via useCallback).
+ * Including them would cause unnecessary re-renders if parent doesn't memoize properly,
+ * and the component's internal state (search, selection) handles user interactions anyway.
+ * If callbacks change semantically, the parent should also change other props like `open`.
+ */
+export const VariablePicker = memo(VariablePickerComponent, (prev, next) => {
+  return (
+    prev.open === next.open &&
+    prev.className === next.className &&
+    prev.categories?.join(",") === next.categories?.join(",")
+  );
+});
+
+VariablePicker.displayName = "VariablePicker";
 
 export default VariablePicker;

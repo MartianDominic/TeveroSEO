@@ -14,8 +14,10 @@ import {
   interpolateVariables,
   type VariableContext,
 } from "./variable-interpolator";
+import { escapeHtml } from "./html-escape";
 import type { TipTapContent } from "@/lib/document-builder/types";
 import { logger } from "@/lib/logger";
+import { validateUrl } from "@/lib/validations/ssrf-validator";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -80,9 +82,10 @@ export async function exportToPdf(options: PdfExportOptions): Promise<Buffer> {
   // Get theme if available
   let theme: BrandThemeData | null = null;
   if (includeTheme && blocks[0]) {
-    theme = await db.query.brandThemes.findFirst({
+    const foundTheme = await db.query.brandThemes.findFirst({
       where: eq(brandThemes.workspaceId, blocks[0].workspaceId),
     });
+    theme = foundTheme ?? null;
   }
 
   // Generate HTML
@@ -105,6 +108,55 @@ export async function exportToPdf(options: PdfExportOptions): Promise<Buffer> {
     // Set default timeout for all page operations to prevent hanging
     page.setDefaultTimeout(PUPPETEER_TIMEOUT_MS);
     page.setDefaultNavigationTimeout(PUPPETEER_TIMEOUT_MS);
+
+    // SECURITY: Intercept requests to prevent SSRF via external resources
+    // Only allow trusted domains (fonts, etc.) and block internal network access
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+
+      // Allow data URLs (inline content)
+      if (url.startsWith("data:")) {
+        request.continue();
+        return;
+      }
+
+      // Allow trusted font CDNs
+      const trustedDomains = [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com",
+      ];
+      try {
+        const parsed = new URL(url);
+        const isTrusted = trustedDomains.some(
+          (domain) =>
+            parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
+        );
+
+        if (isTrusted) {
+          request.continue();
+          return;
+        }
+
+        // Validate all other URLs against SSRF
+        const validation = validateUrl(url);
+        if (!validation.valid) {
+          logger.warn("[pdf-export] Blocked request to unsafe URL", {
+            url,
+            error: validation.error,
+          });
+          request.abort("blockedbyclient");
+          return;
+        }
+
+        // Allow validated external resources
+        request.continue();
+      } catch {
+        // Invalid URL, block it
+        logger.warn("[pdf-export] Blocked request with invalid URL", { url });
+        request.abort("blockedbyclient");
+      }
+    });
 
     await page.setContent(html, { waitUntil: "networkidle0" });
 
@@ -295,9 +347,14 @@ function extractTextFromTipTap(content: TipTapContent): string {
 
 /**
  * Format plain text as HTML (handle newlines).
+ *
+ * SECURITY: Text is escaped before HTML insertion to prevent XSS attacks.
+ * User-controlled content (variable values) must never be inserted raw into HTML.
  */
 function formatTextAsHtml(text: string): string {
-  return text
+  // Escape HTML special characters BEFORE wrapping in HTML tags
+  const escaped = escapeHtml(text);
+  return escaped
     .split("\n\n")
     .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
     .join("\n");
