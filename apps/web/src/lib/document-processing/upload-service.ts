@@ -55,10 +55,23 @@ const MAGIC_SIGNATURES: Record<string, number[][]> = {
   "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF (need to also check "WEBP" at offset 8)
 };
 
-const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+/**
+ * Memory constraint constants (issue 05-01).
+ *
+ * Memory usage profile:
+ * - Small files (<5MB): Single buffer, ~10MB peak (file + R2 request overhead)
+ * - Large files (5-20MB): Streaming multipart, ~15MB peak (MAX_BUFFER_SIZE + chunk)
+ * - Backpressure triggers when buffer exceeds MAX_BUFFER_SIZE, forcing flush before accepting more data
+ *
+ * These limits prevent OOM during:
+ * - Network stalls (slow client uploads)
+ * - R2 throttling (slow S3 responses)
+ * - Concurrent uploads (multiple files in parallel)
+ */
+const MAX_SIZE = 20 * 1024 * 1024; // 20MB - maximum file size accepted
 const STREAMING_THRESHOLD = 5 * 1024 * 1024; // 5MB - use streaming for larger files
-const MULTIPART_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for multipart upload
-const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer to prevent unbounded growth on network stalls
+const MULTIPART_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB - S3 multipart minimum chunk size
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB - backpressure trigger point
 
 // =============================================================================
 // R2 Client (lazy initialization)

@@ -3,16 +3,30 @@
  * Phase 102-08: Task 4 - Client to call Python parsing service.
  *
  * Fetches documents from R2, sends to Python parser, returns structured results.
+ *
+ * Memory constraints (issue 05-02):
+ * - MAX_DOCUMENT_SIZE limits memory usage during R2 fetch
+ * - For documents at the 20MB limit, peak memory ~40MB (buffer + FormData copy)
+ * - Python parser service handles actual parsing in separate process
+ * - Consider streaming uploads for files >10MB in future optimization
  */
 
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
+import { logger } from "@/lib/logger";
 import { ParserServiceResponseSchema } from "./schemas";
 
 const PARSER_SERVICE_URL =
   process.env.DOCUMENT_PARSER_URL || "http://localhost:8001";
 
 const FETCH_TIMEOUT_MS = 60000; // 60 seconds
+
+/**
+ * Maximum document size to load into memory (20MB).
+ * Matches upload-service.ts MAX_SIZE limit.
+ * Prevents unbounded memory growth from malformed R2 objects.
+ */
+const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 
 // =============================================================================
 // Types
@@ -86,6 +100,12 @@ export async function parseDocument(
   r2Key: string,
   fileType: "pdf" | "docx"
 ): Promise<ParserResult> {
+  const startTime = Date.now();
+  logger.info("[parser-client] Starting document parse", {
+    r2Key,
+    fileType,
+  });
+
   const r2 = getR2Client();
 
   // Fetch file from R2
@@ -95,10 +115,26 @@ export async function parseDocument(
   });
 
   const r2Response = await r2.send(getCommand);
+
+  // Validate content length before loading into memory (issue 05-02)
+  const contentLength = r2Response.ContentLength;
+  if (contentLength && contentLength > MAX_DOCUMENT_SIZE) {
+    throw new Error(
+      `Document too large: ${(contentLength / 1024 / 1024).toFixed(1)}MB exceeds ${MAX_DOCUMENT_SIZE / 1024 / 1024}MB limit`
+    );
+  }
+
   const fileBuffer = await r2Response.Body?.transformToByteArray();
 
   if (!fileBuffer) {
     throw new Error("Failed to fetch document from R2");
+  }
+
+  // Double-check actual size (ContentLength may be missing or incorrect)
+  if (fileBuffer.length > MAX_DOCUMENT_SIZE) {
+    throw new Error(
+      `Document too large: ${(fileBuffer.length / 1024 / 1024).toFixed(1)}MB exceeds ${MAX_DOCUMENT_SIZE / 1024 / 1024}MB limit`
+    );
   }
 
   // Create form data for parser service
@@ -148,6 +184,16 @@ export async function parseDocument(
 
       const data = parseResult.data;
 
+      const durationMs = Date.now() - startTime;
+      logger.info("[parser-client] Document parse completed", {
+        r2Key,
+        fileType,
+        durationMs,
+        pageCount: data.page_count,
+        textLength: data.text.length,
+        needsOcr: data.needs_ocr,
+      });
+
       return {
         success: data.success,
         fileType: data.file_type,
@@ -171,13 +217,32 @@ export async function parseDocument(
 
       // Don't retry for password-protected error
       if (lastError.message.includes("Password-protected")) {
+        logger.error("[parser-client] Password-protected document", {
+          r2Key,
+          fileType,
+          durationMs: Date.now() - startTime,
+        });
         throw lastError;
       }
+
+      logger.warn("[parser-client] Parse attempt failed, retrying", {
+        r2Key,
+        fileType,
+        attempt: attempt + 1,
+        error: lastError.message,
+      });
 
       // Wait before retry (exponential backoff)
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
+
+  logger.error("[parser-client] All parse attempts failed", {
+    r2Key,
+    fileType,
+    durationMs: Date.now() - startTime,
+    error: lastError?.message,
+  });
 
   throw lastError || new Error("Parser service unavailable");
 }
@@ -215,6 +280,25 @@ export async function parseDocumentFromBuffer(
   fileType: "pdf" | "docx",
   fileName: string
 ): Promise<ParserResult> {
+  const startTime = Date.now();
+  logger.info("[parser-client] Starting buffer parse", {
+    fileName,
+    fileType,
+    bufferSize: buffer.length,
+  });
+
+  // Validate buffer size before processing (issue 05-02)
+  if (buffer.length > MAX_DOCUMENT_SIZE) {
+    logger.error("[parser-client] Document too large", {
+      fileName,
+      bufferSize: buffer.length,
+      maxSize: MAX_DOCUMENT_SIZE,
+    });
+    throw new Error(
+      `Document too large: ${(buffer.length / 1024 / 1024).toFixed(1)}MB exceeds ${MAX_DOCUMENT_SIZE / 1024 / 1024}MB limit`
+    );
+  }
+
   const formData = new FormData();
   const mimeType =
     fileType === "pdf"
@@ -260,6 +344,16 @@ export async function parseDocumentFromBuffer(
 
       const data = parseResult.data;
 
+      const durationMs = Date.now() - startTime;
+      logger.info("[parser-client] Buffer parse completed", {
+        fileName,
+        fileType,
+        durationMs,
+        pageCount: data.page_count,
+        textLength: data.text.length,
+        needsOcr: data.needs_ocr,
+      });
+
       return {
         success: data.success,
         fileType: data.file_type,
@@ -282,12 +376,31 @@ export async function parseDocumentFromBuffer(
       }
 
       if (lastError.message.includes("Password-protected")) {
+        logger.error("[parser-client] Password-protected document (buffer)", {
+          fileName,
+          fileType,
+          durationMs: Date.now() - startTime,
+        });
         throw lastError;
       }
+
+      logger.warn("[parser-client] Buffer parse attempt failed, retrying", {
+        fileName,
+        fileType,
+        attempt: attempt + 1,
+        error: lastError.message,
+      });
 
       await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
     }
   }
+
+  logger.error("[parser-client] All buffer parse attempts failed", {
+    fileName,
+    fileType,
+    durationMs: Date.now() - startTime,
+    error: lastError?.message,
+  });
 
   throw lastError || new Error("Parser service unavailable");
 }
